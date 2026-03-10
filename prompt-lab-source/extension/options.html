@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Prompt Lab — Settings</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #0f0f13; color: #e2e8f0;
+           display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .box { background: #1a1a24; border: 1px solid #2d2d3d; border-radius: 12px;
+           padding: 2rem; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 1.2rem; }
+    h1 { font-size: 1.1rem; font-weight: 700; color: #a78bfa; margin: 0; }
+    label { font-size: .8rem; color: #94a3b8; }
+    input { width: 100%; background: #0f0f13; border: 1.5px solid #2d2d3d; border-radius: 8px;
+            padding: .6rem .8rem; font-size: .85rem; color: #e2e8f0; font-family: monospace;
+            box-sizing: border-box; }
+    input:focus { outline: none; border-color: #7c3aed; }
+    button { background: #7c3aed; color: white; border: none; border-radius: 8px;
+             padding: .65rem; font-size: .85rem; font-weight: 600; cursor: pointer; }
+    button:hover { background: #6d28d9; }
+    .status { font-size: .78rem; color: #4ade80; min-height: 1.2rem; }
+    a { font-size: .72rem; color: #7c3aed; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>⚡ Prompt Lab Settings</h1>
+    <div>
+      <label>Anthropic API Key</label>
+      <input type="password" id="key" placeholder="sk-ant-…" autocomplete="off">
+    </div>
+    <button id="saveBtn">Save Key</button>
+    <div class="status" id="status"></div>
+    <a href="https://console.anthropic.com/settings/keys" target="_blank">Get a key from Anthropic Console →</a>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
