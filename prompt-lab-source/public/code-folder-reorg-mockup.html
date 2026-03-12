@@ -305,17 +305,17 @@
       <div class="panel hero-main">
         <div class="eyebrow">Workspace Organization Mockup</div>
         <h1>Reorganize <span class="gradient">/Code</span> without risk.</h1>
-        <p class="sub">This mockup proposes a non-destructive first pass: categorize active repos, park archives, and move one-off prototypes out of root clutter while preserving all files and git metadata.</p>
+        <p class="sub">This mockup now reflects the applied move-only reorg: active repos grouped under `10-active-projects`, prototypes isolated, archives parked, and git metadata preserved.</p>
       </div>
       <aside class="panel hero-meta">
         <div class="stat-grid">
           <div class="stat">
             <div class="k">Top-level folders</div>
-            <div class="v">24</div>
+            <div class="v">6</div>
           </div>
           <div class="stat">
             <div class="k">Top-level files</div>
-            <div class="v">19</div>
+            <div class="v">1</div>
           </div>
           <div class="stat">
             <div class="k">Git repos</div>
@@ -327,8 +327,8 @@
           </div>
         </div>
         <div class="cta">
-          <a class="btn btn-primary" href="#">Dry Run First</a>
-          <a class="btn" href="#">Review Move Map</a>
+          <a class="btn btn-primary" href="#">Reorg Applied</a>
+          <a class="btn" href="#">Review Post-Reorg Map</a>
         </div>
       </aside>
     </section>
@@ -336,24 +336,24 @@
     <section class="layout">
       <article class="panel">
         <header class="box-head">
-          <h2>Current Root Snapshot</h2>
-          <span class="tag">As-Is</span>
+          <h2>Current Root Snapshot (Post-Reorg)</h2>
+          <span class="tag">Live</span>
         </header>
         <ul class="tree">
-          <li><span>prompt-lab-provider-branch/</span><span class="chip chip-active">active</span></li>
-          <li><span>prompt-lab-v1.1-source/</span><span class="chip chip-archive">archive</span></li>
-          <li><span>files 2/</span><span class="chip chip-proto">prototype</span></li>
-          <li><span>Deploy Zips/ + *.zip</span><span class="chip chip-archive">archive</span></li>
-          <li><span>NotionWidgets/</span><span class="chip chip-active">active</span></li>
-          <li><span>Garden/</span><span class="chip chip-active">active</span></li>
-          <li><span>standalone *.html/*.tsx</span><span class="chip chip-proto">prototype</span></li>
+          <li><span>10-active-projects/</span><span class="chip chip-active">live</span></li>
+          <li><span>20-prototypes/</span><span class="chip chip-proto">live</span></li>
+          <li><span>30-archives/</span><span class="chip chip-archive">live</span></li>
+          <li><span>40-docs-personal/</span><span class="chip chip-docs">live</span></li>
+          <li><span>90-system/</span><span class="chip chip-system">live</span></li>
+          <li><span>00-inbox/</span><span class="chip chip-system">live</span></li>
+          <li><span>REORG_MAP.md + GIT_REFERENCES.md</span><span class="chip chip-system">traceability</span></li>
         </ul>
       </article>
 
       <article class="panel">
         <header class="box-head">
-          <h2>Proposed Top-Level Structure</h2>
-          <span class="tag">To-Be</span>
+          <h2>Applied Top-Level Structure</h2>
+          <span class="tag">Live</span>
         </header>
         <ul class="tree">
           <li><span>10-active-projects/</span><span class="chip chip-active">dev</span></li>
@@ -369,8 +369,8 @@
 
     <section class="panel moves">
       <header class="box-head" style="margin: 0 -18px 12px;">
-        <h2>Sample Move Map</h2>
-        <span class="tag">Dry-Run Preview</span>
+        <h2>Completed Move Map</h2>
+        <span class="tag">Applied</span>
       </header>
       <table>
         <thead>
@@ -382,14 +382,14 @@
         </thead>
         <tbody>
           <tr>
-            <td>`prompt-lab-provider-branch/`</td>
-            <td>`10-active-projects/prompt-lab-provider-branch/`</td>
-            <td>Move folder, preserve `.git`</td>
+            <td>`Garden/`, `NotionWidgets/`, `prompt-lab-provider-branch/`</td>
+            <td>`10-active-projects/*`</td>
+            <td>Moved folders, preserved `.git` metadata</td>
           </tr>
           <tr>
-            <td>`prompt-lab-v1.1-source/` + old PromptLab copies</td>
+            <td>Legacy PromptLab copies (`prompt-lab*`)</td>
             <td>`30-archives/prompt-lab/`</td>
-            <td>Move-only, no delete</td>
+            <td>Archived with move-only policy</td>
           </tr>
           <tr>
             <td>`garden-planner-v4.html`, widgets, `remixed-*.tsx`</td>
