@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Folder Reorg Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ink: #1f2430;
+      --muted: #5f6a7d;
+      --line: #d8deea;
+      --paper: #f5f7fb;
+      --card: #ffffff;
+      --accent: #0f8b8d;
+      --accent-2: #f4a261;
+      --good: #2a9d8f;
+      --warn: #e76f51;
+      --shadow: 0 18px 44px rgba(22, 34, 58, 0.09);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 85% 10%, rgba(244, 162, 97, 0.18), transparent 34%),
+        radial-gradient(circle at 10% 90%, rgba(15, 139, 141, 0.14), transparent 30%),
+        var(--paper);
+      line-height: 1.4;
+    }
+
+    .wrap {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 40px 20px 70px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-main {
+      padding: 26px;
+    }
+
+    .eyebrow {
+      font-family: "IBM Plex Mono", monospace;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 48px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+    }
+
+    .gradient {
+      background: linear-gradient(115deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .sub {
+      margin: 14px 0 0;
+      color: var(--muted);
+      max-width: 62ch;
+      font-size: 15px;
+    }
+
+    .hero-meta {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfdff;
+    }
+
+    .stat .k {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat .v {
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .cta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      padding: 9px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--ink);
+      background: #fff;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(120deg, var(--accent), #12a6a9);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .box-head {
+      padding: 18px 18px 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .box-head h2 {
+      margin: 0;
+      font-size: 19px;
+      letter-spacing: -0.01em;
+    }
+
+    .tag {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    .tree {
+      margin: 0;
+      padding: 16px 18px 18px;
+      list-style: none;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 13px;
+      color: #253047;
+      display: grid;
+      gap: 8px;
+    }
+
+    .tree li {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 9px 11px;
+      background: #fff;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .chip {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .chip-archive { color: #8f4f00; background: #fff4e7; border-color: #ffd2a4; }
+    .chip-active { color: #0a6f70; background: #e6fbfb; border-color: #a9e8e9; }
+    .chip-proto { color: #46638a; background: #eef5ff; border-color: #c8daf7; }
+    .chip-docs { color: #6b4f8e; background: #f2ebff; border-color: #dac8ff; }
+    .chip-system { color: #536170; background: #f1f5f9; border-color: #d6dee8; }
+
+    .moves {
+      padding: 0 18px 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 11px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .phase {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .phase .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #ffffff;
+    }
+
+    .phase .n {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .phase .t {
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .phase .d {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .alert {
+      margin-top: 14px;
+      border: 1px solid #ffd8cc;
+      background: #fff7f4;
+      color: #8b3d24;
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 13px;
+    }
+
+    @media (max-width: 960px) {
+      .hero, .layout { grid-template-columns: 1fr; }
+      .phase { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .phase { grid-template-columns: 1fr; }
+      .stat-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="panel hero-main">
+        <div class="eyebrow">Workspace Organization Mockup</div>
+        <h1>Reorganize <span class="gradient">/Code</span> without risk.</h1>
+        <p class="sub">This mockup proposes a non-destructive first pass: categorize active repos, park archives, and move one-off prototypes out of root clutter while preserving all files and git metadata.</p>
+      </div>
+      <aside class="panel hero-meta">
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="k">Top-level folders</div>
+            <div class="v">24</div>
+          </div>
+          <div class="stat">
+            <div class="k">Top-level files</div>
+            <div class="v">19</div>
+          </div>
+          <div class="stat">
+            <div class="k">Git repos</div>
+            <div class="v">3</div>
+          </div>
+          <div class="stat">
+            <div class="k">Safety mode</div>
+            <div class="v">Move-only</div>
+          </div>
+        </div>
+        <div class="cta">
+          <a class="btn btn-primary" href="#">Dry Run First</a>
+          <a class="btn" href="#">Review Move Map</a>
+        </div>
+      </aside>
+    </section>
+
+    <section class="layout">
+      <article class="panel">
+        <header class="box-head">
+          <h2>Current Root Snapshot</h2>
+          <span class="tag">As-Is</span>
+        </header>
+        <ul class="tree">
+          <li><span>prompt-lab-provider-branch/</span><span class="chip chip-active">active</span></li>
+          <li><span>prompt-lab-v1.1-source/</span><span class="chip chip-archive">archive</span></li>
+          <li><span>files 2/</span><span class="chip chip-proto">prototype</span></li>
+          <li><span>Deploy Zips/ + *.zip</span><span class="chip chip-archive">archive</span></li>
+          <li><span>NotionWidgets/</span><span class="chip chip-active">active</span></li>
+          <li><span>Garden/</span><span class="chip chip-active">active</span></li>
+          <li><span>standalone *.html/*.tsx</span><span class="chip chip-proto">prototype</span></li>
+        </ul>
+      </article>
+
+      <article class="panel">
+        <header class="box-head">
+          <h2>Proposed Top-Level Structure</h2>
+          <span class="tag">To-Be</span>
+        </header>
+        <ul class="tree">
+          <li><span>10-active-projects/</span><span class="chip chip-active">dev</span></li>
+          <li><span>20-prototypes/</span><span class="chip chip-proto">experiments</span></li>
+          <li><span>30-archives/</span><span class="chip chip-archive">snapshots</span></li>
+          <li><span>40-docs-personal/</span><span class="chip chip-docs">docs</span></li>
+          <li><span>90-system/</span><span class="chip chip-system">workspace internals</span></li>
+          <li><span>00-inbox/</span><span class="chip chip-system">uncategorized drops</span></li>
+          <li><span>REORG_MAP.md + manifest</span><span class="chip chip-system">traceability</span></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="panel moves">
+      <header class="box-head" style="margin: 0 -18px 12px;">
+        <h2>Sample Move Map</h2>
+        <span class="tag">Dry-Run Preview</span>
+      </header>
+      <table>
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Destination</th>
+            <th>Method</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>`prompt-lab-provider-branch/`</td>
+            <td>`10-active-projects/prompt-lab-provider-branch/`</td>
+            <td>Move folder, preserve `.git`</td>
+          </tr>
+          <tr>
+            <td>`prompt-lab-v1.1-source/` + old PromptLab copies</td>
+            <td>`30-archives/prompt-lab/`</td>
+            <td>Move-only, no delete</td>
+          </tr>
+          <tr>
+            <td>`garden-planner-v4.html`, widgets, `remixed-*.tsx`</td>
+            <td>`20-prototypes/singles/`</td>
+            <td>File move</td>
+          </tr>
+          <tr>
+            <td>`*.zip`, `Deploy Zips/`</td>
+            <td>`30-archives/zips/`</td>
+            <td>Batch move by extension</td>
+          </tr>
+          <tr>
+            <td>Resume / interview docs</td>
+            <td>`40-docs-personal/`</td>
+            <td>File move</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="phase">
+        <div class="card">
+          <div class="n">Phase 1</div>
+          <div class="t">Inventory</div>
+          <div class="d">Generate before-manifest and detect git boundaries.</div>
+        </div>
+        <div class="card">
+          <div class="n">Phase 2</div>
+          <div class="t">Dry Run</div>
+          <div class="d">Print exact source→destination map for approval.</div>
+        </div>
+        <div class="card">
+          <div class="n">Phase 3</div>
+          <div class="t">Move Pass</div>
+          <div class="d">Apply non-destructive moves only.</div>
+        </div>
+        <div class="card">
+          <div class="n">Phase 4</div>
+          <div class="t">Verify</div>
+          <div class="d">Create after-manifest + optional dedupe recommendations.</div>
+        </div>
+      </div>
+
+      <div class="alert">
+        Safety rule: no delete/rewrite in first pass. Only moves, with a full manifest and rollback map.
+      </div>
+    </section>
+  </div>
+</body>
+</html>
