@@ -6,7 +6,7 @@ const DEFAULT_PROVIDER = 'anthropic';
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 const DEFAULT_OLLAMA_MODEL = 'llama3.2:3b';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o';
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-preview-04-17';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'anthropic/claude-sonnet-4-20250514';
 
 const VALID_PROVIDERS = ['anthropic', 'ollama', 'openai', 'gemini', 'openrouter'];
@@ -221,6 +221,32 @@ async function callOpenRouter(payload, apiKey, model) {
 // ── Message listener ────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  // Ollama model discovery — returns list of installed models
+  if (msg?.type === 'OLLAMA_LIST_MODELS') {
+    (async () => {
+      try {
+        const baseUrl = normalizeBaseUrl(msg.baseUrl, DEFAULT_OLLAMA_BASE_URL);
+        const response = await fetch(`${baseUrl}/api/tags`, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
+        const data = await response.json();
+        const models = (data?.models || []).map(m => ({
+          name: m.name,
+          size: m.size,
+          modified: m.modified_at,
+          family: m.details?.family || '',
+          paramSize: m.details?.parameter_size || '',
+        }));
+        sendResponse({ models });
+      } catch (e) {
+        sendResponse({ error: e.message || 'Cannot reach Ollama' });
+      }
+    })();
+    return true;
+  }
+
   if (msg?.type !== 'MODEL_REQUEST') return;
 
   (async () => {

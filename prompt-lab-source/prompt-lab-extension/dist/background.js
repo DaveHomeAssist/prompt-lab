@@ -6,7 +6,7 @@ const DEFAULT_PROVIDER = 'anthropic';
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 const DEFAULT_OLLAMA_MODEL = 'llama3.2:3b';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o';
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-preview-04-17';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
 const DEFAULT_OPENROUTER_MODEL = 'anthropic/claude-sonnet-4-20250514';
 
 const VALID_PROVIDERS = ['anthropic', 'ollama', 'openai', 'gemini', 'openrouter'];

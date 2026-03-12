@@ -3,7 +3,7 @@ const DEFAULTS = {
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
   openaiModel: 'gpt-4o',
-  geminiModel: 'gemini-2.5-flash-preview-04-17',
+  geminiModel: 'gemini-2.5-flash',
   openrouterModel: 'anthropic/claude-sonnet-4-20250514',
 };
 
@@ -33,6 +33,9 @@ const els = {
   // Ollama
   ollamaBaseUrl: document.getElementById('ollamaBaseUrl'),
   ollamaModel: document.getElementById('ollamaModel'),
+  ollamaModelManual: document.getElementById('ollamaModelManual'),
+  ollamaRefreshBtn: document.getElementById('ollamaRefreshBtn'),
+  ollamaStatus: document.getElementById('ollamaStatus'),
   // Buttons & status
   saveBtn: document.getElementById('saveBtn'),
   testBtn: document.getElementById('testBtn'),
@@ -55,6 +58,71 @@ function setStatus(message, type = 'ok') {
 function clearStatus() {
   els.status.textContent = '';
   els.status.className = 'status';
+}
+
+// ── Ollama model discovery ───────────────────────────────────────────────────
+
+function getOllamaBaseUrl() {
+  return normalizeUrl(els.ollamaBaseUrl.value, DEFAULTS.ollamaBaseUrl);
+}
+
+function getOllamaModelValue() {
+  // Manual input takes priority; fall back to dropdown selection
+  const manual = (els.ollamaModelManual.value || '').trim();
+  if (manual) return manual;
+  return els.ollamaModel.value || DEFAULTS.ollamaModel;
+}
+
+function setOllamaStatus(text, type = '') {
+  els.ollamaStatus.textContent = text;
+  els.ollamaStatus.style.color = type === 'ok' ? 'var(--green)' : type === 'err' ? 'var(--red)' : 'var(--text-muted)';
+}
+
+function fetchOllamaModels(selectModel) {
+  const baseUrl = getOllamaBaseUrl();
+  setOllamaStatus('checking…');
+  els.ollamaRefreshBtn.disabled = true;
+
+  chrome.runtime.sendMessage(
+    { type: 'OLLAMA_LIST_MODELS', baseUrl },
+    (resp) => {
+      els.ollamaRefreshBtn.disabled = false;
+
+      if (chrome.runtime.lastError || resp?.error) {
+        const errMsg = resp?.error || chrome.runtime.lastError?.message || 'Cannot reach Ollama';
+        setOllamaStatus('offline', 'err');
+        els.ollamaModel.innerHTML = '<option value="">— Ollama not reachable —</option>';
+        setStatus(`Ollama: ${errMsg}`, 'err');
+        return;
+      }
+
+      const models = resp.models || [];
+      if (models.length === 0) {
+        setOllamaStatus('no models', 'err');
+        els.ollamaModel.innerHTML = '<option value="">— no models installed —</option>';
+        return;
+      }
+
+      setOllamaStatus(`${models.length} model${models.length > 1 ? 's' : ''}`, 'ok');
+
+      // Build dropdown options
+      els.ollamaModel.innerHTML = models.map(m => {
+        const sizeLabel = m.paramSize ? ` (${m.paramSize})` : '';
+        return `<option value="${m.name}">${m.name}${sizeLabel}</option>`;
+      }).join('');
+
+      // Select the right model
+      const target = selectModel || DEFAULTS.ollamaModel;
+      const found = models.some(m => m.name === target);
+      if (found) {
+        els.ollamaModel.value = target;
+      }
+      // Clear manual input if dropdown has the model
+      if (found && els.ollamaModelManual.value.trim() === target) {
+        els.ollamaModelManual.value = '';
+      }
+    }
+  );
 }
 
 function maskKey(key) {
@@ -125,7 +193,9 @@ function loadSettings() {
 
       // Ollama
       els.ollamaBaseUrl.value = normalizeUrl(store.ollamaBaseUrl, DEFAULTS.ollamaBaseUrl);
-      els.ollamaModel.value = (store.ollamaModel || DEFAULTS.ollamaModel).trim();
+      const savedOllamaModel = (store.ollamaModel || DEFAULTS.ollamaModel).trim();
+      // Attempt to fetch models; if offline, fall back to manual input
+      fetchOllamaModels(savedOllamaModel);
 
       renderSections();
     }
@@ -194,9 +264,9 @@ function saveSettings() {
         setStatus('Ollama URL must start with http:// or https://', 'err');
         return;
       }
-      const model = (els.ollamaModel.value || DEFAULTS.ollamaModel).trim();
+      const model = getOllamaModelValue();
       if (!model) {
-        setStatus('Enter an Ollama model name.', 'err');
+        setStatus('Select or enter an Ollama model.', 'err');
         return;
       }
       next.ollamaBaseUrl = url;
@@ -267,7 +337,7 @@ function getActiveModel() {
     case 'openai': return els.openaiModel.value;
     case 'gemini': return els.geminiModel.value;
     case 'openrouter': return els.openrouterModel.value.trim() || DEFAULTS.openrouterModel;
-    case 'ollama': return els.ollamaModel.value.trim() || DEFAULTS.ollamaModel;
+    case 'ollama': return getOllamaModelValue();
     default: return 'claude-sonnet-4-20250514';
   }
 }
@@ -297,6 +367,22 @@ els.testBtn.addEventListener('click', () => {
   saveSettings();
   // Small delay to let storage write complete
   setTimeout(testConnection, 200);
+});
+
+// Ollama: refresh button fetches model list
+els.ollamaRefreshBtn.addEventListener('click', () => {
+  clearStatus();
+  fetchOllamaModels(getOllamaModelValue());
+});
+
+// Ollama: re-fetch models when base URL changes (on blur)
+els.ollamaBaseUrl.addEventListener('blur', () => {
+  if (currentProvider === 'ollama') fetchOllamaModels(getOllamaModelValue());
+});
+
+// Ollama: clear manual input when dropdown is used
+els.ollamaModel.addEventListener('change', () => {
+  els.ollamaModelManual.value = '';
 });
 
 loadSettings();

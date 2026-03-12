@@ -3,7 +3,7 @@ const DEFAULTS = {
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
   openaiModel: 'gpt-4o',
-  geminiModel: 'gemini-2.5-flash-preview-04-17',
+  geminiModel: 'gemini-2.5-flash',
   openrouterModel: 'anthropic/claude-sonnet-4-20250514',
 };
 

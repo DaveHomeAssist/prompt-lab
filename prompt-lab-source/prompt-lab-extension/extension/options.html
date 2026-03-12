@@ -275,8 +275,8 @@
       <div>
         <label class="field-label" for="geminiModel">Model</label>
         <select id="geminiModel">
-          <option value="gemini-2.5-flash-preview-04-17">gemini-2.5-flash-preview-04-17</option>
-          <option value="gemini-2.5-pro-preview-05-06">gemini-2.5-pro-preview-05-06</option>
+          <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+          <option value="gemini-2.5-pro">gemini-2.5-pro</option>
           <option value="gemini-2.0-flash">gemini-2.0-flash</option>
           <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
         </select>
@@ -301,13 +301,22 @@
     <div id="ollamaSection" class="section hidden">
       <div>
         <label class="field-label" for="ollamaBaseUrl">Base URL</label>
-        <input type="text" id="ollamaBaseUrl" placeholder="http://localhost:11434" autocomplete="off">
+        <div style="display:flex;gap:0.4rem;align-items:center;">
+          <input type="text" id="ollamaBaseUrl" placeholder="http://localhost:11434" autocomplete="off" style="flex:1;">
+          <span id="ollamaStatus" style="font-size:0.75rem;white-space:nowrap;"></span>
+        </div>
       </div>
       <div>
         <label class="field-label" for="ollamaModel">Model</label>
-        <input type="text" id="ollamaModel" placeholder="llama3.2:3b" autocomplete="off">
+        <div style="display:flex;gap:0.4rem;align-items:center;">
+          <select id="ollamaModel" style="flex:1;">
+            <option value="">— click refresh to load models —</option>
+          </select>
+          <button type="button" id="ollamaRefreshBtn" class="secondary" style="padding:0.5rem 0.7rem;font-size:0.75rem;flex-shrink:0;" title="Fetch installed models from Ollama">↻</button>
+        </div>
+        <input type="text" id="ollamaModelManual" placeholder="Or type a model name manually" autocomplete="off" style="margin-top:0.35rem;">
       </div>
-      <p class="hint">Ollama runs locally. No API key needed.</p>
+      <p class="hint">Ollama runs locally. No API key needed. Hit ↻ to discover installed models, or type one manually.</p>
     </div>
 
     <hr class="divider">
