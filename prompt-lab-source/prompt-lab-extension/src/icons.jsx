@@ -26,8 +26,11 @@ const PATHS = {
   RotateCcw: `<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>`,
   ArrowRight: `<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>`,
 };
+Object.freeze(PATHS);
 
 export default function Ic({ n, size = 14, className = '' }) {
+  const markup = PATHS[n];
+  if (!markup) return null;
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +43,7 @@ export default function Ic({ n, size = 14, className = '' }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
-      dangerouslySetInnerHTML={{ __html: PATHS[n] }}
+      dangerouslySetInnerHTML={{ __html: markup }}
     />
   );
 }

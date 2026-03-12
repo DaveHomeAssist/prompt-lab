@@ -4,7 +4,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
-const dist = join(root, 'dist');
+const outName = process.argv[2] || 'dist';
+const dist = join(root, outName);
 const ext = join(root, 'extension');
 
 // Ensure dist/icons exists
@@ -22,6 +23,16 @@ for (const f of files) {
   console.log(`  ✓ ${f}`);
 }
 
+// Copy fonts
+const fontsDir = join(ext, 'fonts');
+if (existsSync(fontsDir)) {
+  mkdirSync(join(dist, 'fonts'), { recursive: true });
+  for (const f of readdirSync(fontsDir)) {
+    copyFileSync(join(fontsDir, f), join(dist, 'fonts', f));
+    console.log(`  ✓ fonts/${f}`);
+  }
+}
+
 // Copy icons
 const iconsDir = join(ext, 'icons');
 if (existsSync(iconsDir)) {
@@ -31,5 +42,5 @@ if (existsSync(iconsDir)) {
   }
 }
 
-console.log('\n✅ Extension assembled in dist/');
-console.log('   Load unpacked from dist/ in vivaldi://extensions');
+console.log(`\n✅ Extension assembled in ${outName}/`);
+console.log(`   Load unpacked from ${outName}/ in vivaldi://extensions`);

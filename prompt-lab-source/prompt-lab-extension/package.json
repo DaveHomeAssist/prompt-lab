@@ -1,12 +1,14 @@
 {
   "name": "prompt-lab-extension",
-  "version": "1.0.0",
+  "version": "1.3.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/assemble.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs",
+    "build:cws": "vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
   "dependencies": {
     "react": "^18.3.1",

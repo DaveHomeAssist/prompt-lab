@@ -135,9 +135,6 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     variants: Array.isArray(entry.variants) ? entry.variants.map(normalizeVariant).filter(v => v.content.trim()) : [],
     notes: ensureString(entry.notes),
     tags: Array.isArray(entry.tags) ? entry.tags.filter(t => typeof t === 'string' && t.trim()) : [],
-    lintDismissals: Array.isArray(entry.lintDismissals)
-      ? entry.lintDismissals.filter(rule => typeof rule === 'string' && rule.trim())
-      : [],
     collection: ensureString(entry.collection),
     createdAt,
     updatedAt,

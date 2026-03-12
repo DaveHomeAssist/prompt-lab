@@ -9,10 +9,7 @@ Manifest V3 · Vivaldi / Chrome · No `unsafe-eval`
 2. Open `vivaldi://extensions` (or `chrome://extensions`)
 3. Enable **Developer mode**
 4. **Load unpacked** → select the `dist/` folder
-5. Click extension icon → **Options**
-6. Choose provider:
-   - **Anthropic API**: paste your key and save
-   - **Ollama (local)**: set base URL (default `http://localhost:11434`) and model (for example `llama3.2:3b`)
+5. Click extension icon → **Options** → paste your Anthropic API key → Save
 6. Web Panel: right-click sidebar → **Add Web Panel** → `chrome-extension://<ID>/panel.html`
 
 ## Development
@@ -57,14 +54,12 @@ scripts/
 ## Key Architecture Decisions
 
 - **No `unsafe-eval`**: Vite compiles JSX at build time. No Babel standalone needed at runtime.
-- **Provider isolation**: Credentials/settings live in `chrome.storage.local`, accessed only by `background.js`. Never touches the page.
+- **API key isolation**: Key lives in `chrome.storage.local`, accessed only by `background.js`. Never touches the page.
 - **Icon system**: Custom `Ic` component with inline SVG paths. No npm icon library needed.
 - **Clipboard**: Hybrid — `navigator.clipboard` first, `execCommand` fallback for restricted contexts.
 - **Storage**: `localStorage` for library, collections, pad, and color mode.
 
 ## Model Config
 
-- Anthropic mode: `claude-sonnet-4-20250514`
-- Ollama mode: configured local model (default `llama3.2:3b`)
-- Enhance: 1500 max tokens
-- A/B Test: 800 max tokens
+- Enhance: `claude-sonnet-4-20250514`, 1500 tokens
+- A/B Test: `claude-sonnet-4-20250514`, 800 tokens
