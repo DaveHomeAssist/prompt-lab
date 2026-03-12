@@ -4,29 +4,31 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PromptFoundry — Forge Better Prompts</title>
-<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 /* ============================
    CSS VARIABLES & RESET
    ============================ */
 :root {
-  --forge-orange: #F36A23;
-  --forge-amber: #FFB15A;
-  --forge-cream: #F7EFD7;
-  --molten-red: #CC4D18;
-  --steel-950: #07090D;
-  --steel-900: #0B0F15;
-  --steel-800: #131925;
-  --steel-700: #1A2233;
-  --steel-600: #273144;
-  --steel-500: #3B4760;
-  --steel-400: #65718A;
-  --steel-300: #A2ABBF;
-  --steel-200: #CDD2DE;
-  --steel-100: #EEF0F5;
-  --glow-orange: rgba(243, 106, 35, 0.38);
-  --font-display: 'Teko', sans-serif;
-  --font-body: 'Manrope', sans-serif;
+  --forge-orange: #E87A20;
+  --forge-amber: #F5A623;
+  --forge-gold: #FFD166;
+  --molten-red: #C4420A;
+  --steel-900: #0D0F13;
+  --steel-800: #151820;
+  --steel-700: #1C2030;
+  --steel-600: #252A3A;
+  --steel-500: #3A4058;
+  --steel-400: #7A81A0;
+  --steel-300: #8A90A8;
+  --steel-200: #B8BDD0;
+  --steel-100: #E0E3EE;
+  --neon-cyan: #00E5FF;
+  --neon-purple: #B24BF3;
+  --glow-orange: rgba(232, 122, 32, 0.4);
+  --glow-cyan: rgba(0, 229, 255, 0.15);
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-body: 'Outfit', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
@@ -38,9 +40,7 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(1300px 700px at 50% -10%, rgba(243,106,35,0.12), transparent 60%),
-    linear-gradient(180deg, var(--steel-800), var(--steel-950));
+  background: var(--steel-900);
   color: var(--steel-200);
   font-family: var(--font-body);
   font-weight: 400;
@@ -106,43 +106,13 @@ body::before {
   pointer-events: none;
 }
 
-.forge-press {
+.hero-logo {
   position: relative;
   z-index: 2;
-  width: min(460px, 86vw);
-  margin-bottom: 0.8rem;
-}
-
-.forge-press::before {
-  content: '';
-  position: absolute;
-  top: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 52%;
-  height: 30px;
-  border: 2px solid rgba(243,106,35,0.45);
-  border-bottom: none;
-  background: linear-gradient(180deg, var(--steel-600), var(--steel-800));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.16);
-}
-
-.logo-frame {
-  border: 2px solid rgba(243,106,35,0.4);
-  border-radius: 12px;
-  padding: 14px;
-  background:
-    linear-gradient(180deg, rgba(9,12,18,0.88), rgba(6,8,12,0.95));
-  box-shadow:
-    0 0 60px rgba(243,106,35,0.18),
-    inset 0 0 0 1px rgba(247,239,215,0.06);
-}
-
-.hero-logo {
-  display: block;
-  width: 100%;
-  border-radius: 8px;
-  filter: drop-shadow(0 0 36px rgba(243,106,35,0.25));
+  width: 320px;
+  max-width: 80vw;
+  border-radius: 16px;
+  filter: drop-shadow(0 0 60px rgba(232, 122, 32, 0.35));
   animation: logoEnter 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
@@ -156,19 +126,17 @@ body::before {
   position: relative;
   z-index: 2;
   font-family: var(--font-display);
-  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
   font-weight: 700;
-  color: var(--forge-cream);
-  margin-top: 1.4rem;
-  letter-spacing: 0.02em;
-  line-height: 0.95;
-  text-transform: uppercase;
+  color: var(--steel-100);
+  margin-top: 2.5rem;
+  letter-spacing: -0.02em;
   animation: fadeUp 1s 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
 }
 
 .hero-tagline .accent {
-  background: linear-gradient(135deg, var(--forge-orange), var(--forge-amber));
+  background: linear-gradient(135deg, var(--forge-orange), var(--forge-gold));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -206,8 +174,8 @@ body::before {
 .btn-primary {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.25rem;
-  letter-spacing: 0.06em;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 0.9rem 2.2rem;
   border: none;
@@ -233,15 +201,17 @@ body::before {
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 50px var(--glow-orange), inset 0 1px 0 rgba(255,255,255,0.2);
+  box-shadow: 0 0 50px var(--glow-orange), 
+              0 0 20px var(--forge-orange);
+  background: linear-gradient(135deg, var(--forge-amber), var(--forge-orange));
 }
 .btn-primary:hover::after { transform: translateX(100%); }
 
 .btn-secondary {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.2rem;
-  letter-spacing: 0.06em;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   padding: 0.9rem 2.2rem;
   border: 1.5px solid var(--steel-500);
@@ -525,12 +495,85 @@ body::before {
   overflow-x: auto;
 }
 
-.code-body .kw { color: var(--forge-orange); }
-.code-body .fn { color: var(--forge-amber); }
-.code-body .str { color: var(--forge-cream); }
+.code-body .kw { color: var(--neon-purple); }
+.code-body .fn { color: var(--neon-cyan); }
+.code-body .str { color: var(--forge-gold); }
 .code-body .cm { color: var(--steel-500); font-style: italic; }
 .code-body .op { color: var(--steel-300); }
-.code-body .num { color: var(--molten-red); }
+.code-body .num { color: var(--forge-orange); }
+
+/* Code tabs */
+.code-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--steel-800);
+  border-bottom: 1px solid var(--steel-700);
+  padding: 0 0.5rem;
+  overflow-x: auto;
+}
+
+.code-tab {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  padding: 0.65rem 1rem;
+  border: none;
+  background: none;
+  color: var(--steel-400);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.code-tab:hover {
+  color: var(--steel-200);
+}
+
+.code-tab.active {
+  color: var(--forge-amber);
+  border-bottom-color: var(--forge-orange);
+}
+
+.code-copy-btn {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--steel-600);
+  border-radius: 5px;
+  background: rgba(255,255,255,0.03);
+  color: var(--steel-400);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.code-copy-btn:hover {
+  border-color: var(--forge-orange);
+  color: var(--forge-amber);
+}
+
+.code-copy-btn.copied {
+  border-color: #28C840;
+  color: #28C840;
+}
+
+/* Code panel switching */
+.code-panel {
+  display: none;
+}
+
+.code-panel.active {
+  display: block;
+  animation: codeFadeIn 0.3s ease;
+}
+
+@keyframes codeFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ============================
    WORKFLOW SECTION
@@ -678,6 +721,26 @@ footer .forge-mark {
 .stagger > .reveal:nth-child(4) { transition-delay: 0.3s; }
 .stagger > .reveal:nth-child(5) { transition-delay: 0.4s; }
 .stagger > .reveal:nth-child(6) { transition-delay: 0.5s; }
+.stagger > .reveal:nth-child(7) { transition-delay: 0.6s; }
+
+/* Vivaldi badge */
+.vivaldi-badge {
+  display: inline-block;
+  margin-top: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.8rem;
+  border-radius: 100px;
+  background: rgba(232, 122, 32, 0.1);
+  border: 1px solid rgba(232, 122, 32, 0.25);
+  color: var(--forge-amber);
+}
+
+.vivaldi-card {
+  border-color: rgba(232, 122, 32, 0.2);
+}
 
 /* ============================
    SPARKLE PARTICLES (CSS only)
@@ -706,14 +769,7 @@ footer .forge-mark {
   100% { opacity: 0; transform: translateY(-400px) translateX(var(--drift)) scale(0); }
 }
 
-.spark:nth-child(1) { left: 20%; bottom: 40%; animation-duration: 3.5s; animation-delay: 0s; --drift: 40px; }
-.spark:nth-child(2) { left: 35%; bottom: 35%; animation-duration: 4s; animation-delay: 0.7s; --drift: -30px; }
-.spark:nth-child(3) { left: 50%; bottom: 42%; animation-duration: 3s; animation-delay: 1.4s; --drift: 20px; }
-.spark:nth-child(4) { left: 65%; bottom: 38%; animation-duration: 4.5s; animation-delay: 0.3s; --drift: -50px; }
-.spark:nth-child(5) { left: 80%; bottom: 40%; animation-duration: 3.2s; animation-delay: 2s; --drift: 35px; }
-.spark:nth-child(6) { left: 45%; bottom: 36%; animation-duration: 3.8s; animation-delay: 1s; --drift: -15px; }
-.spark:nth-child(7) { left: 55%; bottom: 44%; animation-duration: 4.2s; animation-delay: 2.5s; --drift: 25px; }
-.spark:nth-child(8) { left: 30%; bottom: 41%; animation-duration: 3.6s; animation-delay: 1.8s; --drift: -40px; }
+/* Spark positions are now generated dynamically via JS */
 
 /* ============================
    RESPONSIVE
@@ -723,8 +779,6 @@ footer .forge-mark {
   .provider-chip { font-size: 0.8rem; padding: 0.5rem 1rem; }
   .feature-grid { grid-template-columns: 1fr; }
   .hero-cta-group { flex-direction: column; align-items: center; }
-  .forge-press::before { top: -28px; height: 22px; }
-  .logo-frame { padding: 10px; }
 }
 </style>
 </head>
@@ -732,28 +786,15 @@ footer .forge-mark {
 
 <!-- ========== HERO ========== -->
 <section class="hero">
-  <div class="sparks">
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-    <div class="spark"></div>
-  </div>
+  <div class="sparks" aria-hidden="true"></div>
 
-  <div class="forge-press">
-    <div class="logo-frame">
-      <img class="hero-logo" src="hero-logo.png" alt="PromptFoundry official mark">
-    </div>
-  </div>
+  <img class="hero-logo" src="hero-logo.png" alt="PromptFoundry — Anvil and circuit logo with glowing molten metal, framed by a hydraulic press" loading="eager">
 
   <h1 class="hero-tagline">
-    <span class="accent">Forge</span> Prompt Systems.
+    <span class="accent">Forge</span> better prompts.
   </h1>
   <p class="hero-sub">
-    Industrial-grade prompt engineering for Vivaldi. Enhance, A/B test, compose, and compare outputs across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama from one forged control panel.
+    A multi-provider prompt engineering workbench for Vivaldi. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — from a single panel.
   </p>
 
   <div class="hero-cta-group">
@@ -822,6 +863,13 @@ footer .forge-mark {
       <div class="feature-name">Provider Hot-Swap</div>
       <div class="feature-desc">Switch providers without losing context. Your library, settings, and experiment history persist across every provider change.</div>
     </div>
+
+    <div class="feature-card reveal vivaldi-card">
+      <div class="feature-icon">🪟</div>
+      <div class="feature-name">Vivaldi Side Panel</div>
+      <div class="feature-desc">Stays open while you browse — zero tab-switching required. Optimized for Vivaldi's side panel so you can forge prompts alongside any page.</div>
+      <div class="vivaldi-badge">Optimized for Vivaldi</div>
+    </div>
   </div>
 </section>
 
@@ -835,32 +883,59 @@ footer .forge-mark {
     </div>
 
     <div class="code-window reveal">
+      <div class="code-tabs">
+        <button class="code-tab active" data-provider="anthropic">Anthropic</button>
+        <button class="code-tab" data-provider="openai">OpenAI</button>
+        <button class="code-tab" data-provider="ollama">Ollama</button>
+        <button class="code-copy-btn" title="Copy code">&#x2398; Copy</button>
+      </div>
       <div class="code-titlebar">
         <div class="code-dot red"></div>
         <div class="code-dot yellow"></div>
         <div class="code-dot green"></div>
         <span>background.js</span>
       </div>
-      <div class="code-body">
-<pre><span class="cm">// Normalized response shape — every provider</span>
-<span class="kw">function</span> <span class="fn">normalize</span><span class="op">(</span>provider<span class="op">,</span> raw<span class="op">) {</span>
-  <span class="kw">const</span> text <span class="op">=</span> extractors<span class="op">[</span>provider<span class="op">](</span>raw<span class="op">);</span>
-  <span class="kw">return</span> <span class="op">{</span>
-    content<span class="op">: [{</span>
-      type<span class="op">:</span> <span class="str">'text'</span><span class="op">,</span>
-      text
-    <span class="op">}]</span>
-  <span class="op">};</span>
-<span class="op">}</span>
 
-<span class="cm">// Route to active provider</span>
-<span class="kw">const</span> handlers <span class="op">= {</span>
-  anthropic<span class="op">:</span> <span class="fn">callAnthropic</span><span class="op">,</span>
-  openai<span class="op">:</span>    <span class="fn">callOpenAI</span><span class="op">,</span>
-  gemini<span class="op">:</span>    <span class="fn">callGemini</span><span class="op">,</span>
-  openrouter<span class="op">:</span><span class="fn">callOpenRouter</span><span class="op">,</span>
-  ollama<span class="op">:</span>    <span class="fn">callOllama</span>
-<span class="op">};</span></pre>
+      <!-- Anthropic snippet -->
+      <div class="code-body code-panel active" data-provider="anthropic">
+<pre><span class="cm">// Anthropic — native format</span>
+<span class="kw">async function</span> <span class="fn">callAnthropic</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.anthropic.com/v1/messages'</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    headers<span class="op">: {</span> <span class="str">'x-api-key'</span><span class="op">:</span> key <span class="op">},</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">(</span>payload<span class="op">)</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'anthropic'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
+      </div>
+
+      <!-- OpenAI snippet -->
+      <div class="code-body code-panel" data-provider="openai">
+<pre><span class="cm">// OpenAI — chat completions format</span>
+<span class="kw">async function</span> <span class="fn">callOpenAI</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.openai.com/v1/chat/completions'</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    headers<span class="op">: {</span> Authorization<span class="op">:</span> <span class="str">`Bearer ${key}`</span> <span class="op">},</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span> model<span class="op">,</span> messages<span class="op">:</span> msgs <span class="op">})</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'openai'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
+      </div>
+
+      <!-- Ollama snippet -->
+      <div class="code-body code-panel" data-provider="ollama">
+<pre><span class="cm">// Ollama — local, no auth required</span>
+<span class="kw">async function</span> <span class="fn">callOllama</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">`${baseUrl}/api/chat`</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span>
+      model<span class="op">,</span> messages<span class="op">:</span> msgs<span class="op">,</span> stream<span class="op">:</span> <span class="num">false</span>
+    <span class="op">})</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'ollama'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
       </div>
     </div>
   </div>
@@ -878,7 +953,7 @@ footer .forge-mark {
       <div class="step-number">1</div>
       <div class="step-content">
         <h3>Install the extension</h3>
-        <p>Unzip the release into a folder. Open <code style="color:var(--forge-amber); background:rgba(232,122,32,0.1); padding:0.1em 0.4em; border-radius:4px; font-family:var(--font-mono); font-size:0.85em;">vivaldi://extensions</code>, enable Developer Mode, and load unpacked.</p>
+        <p>Unzip the release into a folder. Open <code style="color:var(--forge-amber); background:rgba(232,122,32,0.1); padding:0.1em 0.4em; border-radius:4px; font-family:var(--font-mono); font-size:0.85em;">vivaldi://extensions</code> or <code style="color:var(--forge-amber); background:rgba(232,122,32,0.1); padding:0.1em 0.4em; border-radius:4px; font-family:var(--font-mono); font-size:0.85em;">chrome://extensions</code>, enable Developer Mode, and load unpacked.</p>
       </div>
     </div>
 
@@ -923,8 +998,9 @@ footer .forge-mark {
   <span class="forge-mark">⚒</span> PromptFoundry v1.3.0 — Built for prompt engineers who ship.
 </footer>
 
-<!-- ========== SCROLL REVEAL JS ========== -->
+<!-- ========== INTERACTIVE JS ========== -->
 <script>
+  // ---- Scroll reveal ----
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
@@ -934,6 +1010,57 @@ footer .forge-mark {
   }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
 
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  // ---- Dynamic spark particles ----
+  const sparksContainer = document.querySelector('.sparks');
+  for (let i = 0; i < 20; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'spark';
+    spark.style.left = Math.random() * 100 + '%';
+    spark.style.bottom = (30 + Math.random() * 20) + '%';
+    spark.style.animationDuration = (2.5 + Math.random() * 3) + 's';
+    spark.style.animationDelay = Math.random() * 5 + 's';
+    spark.style.setProperty('--drift', (Math.random() * 100 - 50) + 'px');
+    // Vary spark sizes slightly
+    const size = 2 + Math.random() * 2;
+    spark.style.width = size + 'px';
+    spark.style.height = size + 'px';
+    sparksContainer.appendChild(spark);
+  }
+
+  // ---- Code tab switching ----
+  const codeTabs = document.querySelectorAll('.code-tab');
+  const codePanels = document.querySelectorAll('.code-panel');
+
+  codeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const provider = tab.dataset.provider;
+
+      codeTabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      codePanels.forEach(panel => {
+        panel.classList.toggle('active', panel.dataset.provider === provider);
+      });
+    });
+  });
+
+  // ---- Copy button ----
+  const copyBtn = document.querySelector('.code-copy-btn');
+  copyBtn.addEventListener('click', () => {
+    const activePanel = document.querySelector('.code-panel.active pre');
+    if (!activePanel) return;
+
+    const text = activePanel.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      copyBtn.textContent = '✓ Copied';
+      copyBtn.classList.add('copied');
+      setTimeout(() => {
+        copyBtn.textContent = '⌘ Copy';
+        copyBtn.classList.remove('copied');
+      }, 2000);
+    });
+  });
 </script>
 
 </body>
