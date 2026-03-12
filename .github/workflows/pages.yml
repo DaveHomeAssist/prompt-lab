@@ -27,14 +27,14 @@ jobs:
         with:
           node-version: "20"
           cache: npm
-          cache-dependency-path: prompt-lab-source/package.json
+          cache-dependency-path: prompt-lab-source/prompt-lab-extension/package.json
 
       - name: Install dependencies
-        working-directory: prompt-lab-source
+        working-directory: prompt-lab-source/prompt-lab-extension
         run: npm install
 
       - name: Build web app
-        working-directory: prompt-lab-source
+        working-directory: prompt-lab-source/prompt-lab-extension
         run: npm run build
 
       - name: Setup Pages
@@ -43,7 +43,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: prompt-lab-source/dist
+          path: prompt-lab-source/prompt-lab-extension/dist
 
   deploy:
     needs: build

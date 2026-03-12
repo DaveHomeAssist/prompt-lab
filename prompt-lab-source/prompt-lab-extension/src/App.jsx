@@ -7,6 +7,9 @@ import {
   ensureString, suggestTitleFromText, normalizeEntry,
   looksSensitive, isTransientError,
 } from './promptUtils';
+import { lintPrompt, applyLintQuickFix } from './promptLint';
+import { normalizeError } from './errorTaxonomy';
+import { scanSensitiveData, redactPayload } from './piiScanner';
 import { ALL_TAGS, MODES, T } from './constants';
 import usePersistedState from './usePersistedState';
 import useLibrary from './useLibrary';
@@ -36,7 +39,10 @@ export default function App() {
   const [variants, setVariants] = useState([]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
+  const [lintIssues, setLintIssues] = useState([]);
+  const [lintOpen, setLintOpen] = useState(false);
+  const [piiWarning, setPiiWarning] = useState(null);
   const [showSave, setShowSave] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [saveTitle, setSaveTitle] = useState('');
@@ -52,6 +58,7 @@ export default function App() {
   const [pendingTemplate, setPendingTemplate] = useState(null);
   const [editorLayout, setEditorLayout] = useState('split');
   const enhanceReqRef = useRef(0);
+  const lintTimerRef = useRef(null);
 
   // ── Composer state ──
   const [composerBlocks, setComposerBlocks] = useState([]);
@@ -86,6 +93,14 @@ export default function App() {
       }
     }
   }, []);
+
+  // ── Debounced lint ──
+  useEffect(() => {
+    if (lintTimerRef.current) clearTimeout(lintTimerRef.current);
+    if (!raw.trim()) { setLintIssues([]); return; }
+    lintTimerRef.current = setTimeout(() => setLintIssues(lintPrompt(raw)), 300);
+    return () => clearTimeout(lintTimerRef.current);
+  }, [raw]);
 
   // ── Clipboard ──
   const copy = async (text, msg = 'Copied!') => {
@@ -137,7 +152,7 @@ export default function App() {
   const clearEditor = () => {
     enhanceReqRef.current += 1;
     setLoading(false); setRaw(''); setEnhanced(''); setVariants([]);
-    setNotes(''); setShowSave(false); setEditingId(null); setError('');
+    setNotes(''); setShowSave(false); setEditingId(null); setError(null);
   };
 
   const openOptions = () => {
@@ -148,19 +163,33 @@ export default function App() {
     }
   };
 
-  const enhance = async () => {
-    if (!raw.trim()) return;
-    const reqId = enhanceReqRef.current + 1;
-    enhanceReqRef.current = reqId;
-    setLoading(true); setError(''); setEnhanced(''); setVariants([]); setNotes('');
-    setShowSave(false); setShowDiff(false); setEditingId(null);
+  const handleLintFix = (ruleId) => setRaw(applyLintQuickFix(raw, ruleId));
+
+  const buildEnhancePayload = () => {
     const modeObj = MODES.find(x => x.id === enhMode) || MODES[0];
     const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
+    return { model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: raw }] };
+  };
+
+  const enhance = async (overridePayload) => {
+    if (!raw.trim()) return;
+    const payload = overridePayload || buildEnhancePayload();
+
+    // PII gate — only on first call, not after user dismisses/redacts
+    if (!overridePayload) {
+      const { matches } = scanSensitiveData({ payload });
+      if (matches.length > 0) {
+        setPiiWarning({ matches, payload });
+        return;
+      }
+    }
+
+    const reqId = enhanceReqRef.current + 1;
+    enhanceReqRef.current = reqId;
+    setLoading(true); setError(null); setEnhanced(''); setVariants([]); setNotes('');
+    setShowSave(false); setShowDiff(false); setEditingId(null);
     try {
-      const data = await callWithRetry({
-        model: 'claude-sonnet-4-20250514', max_tokens: 1500,
-        system: sys, messages: [{ role: 'user', content: raw }],
-      });
+      const data = await callWithRetry(payload);
       if (reqId !== enhanceReqRef.current) return;
       const txt = extractTextFromAnthropic(data);
       const p = parseEnhancedPayload(txt);
@@ -169,10 +198,14 @@ export default function App() {
       setSaveTitle(suggestTitleFromText(p.enhanced || raw));
       setShowSave(true);
     } catch (e) {
-      if (reqId === enhanceReqRef.current) setError(e.message || 'Enhancement failed.');
+      if (reqId === enhanceReqRef.current) setError(normalizeError(e));
     }
     if (reqId === enhanceReqRef.current) setLoading(false);
   };
+
+  const piiSendAnyway = () => { const p = piiWarning.payload; setPiiWarning(null); enhance(p); };
+  const piiRedactAndSend = () => { const { matches, payload } = piiWarning; setPiiWarning(null); enhance(redactPayload(payload, matches)); };
+  const piiCancel = () => setPiiWarning(null);
 
   const doSave = () => {
     lib.doSave({ raw, enhanced, variants, notes, tags: saveTags, title: saveTitle, collection: saveCollection, editingId });
@@ -324,6 +357,29 @@ export default function App() {
                   </div>
                 );
               })()}
+              {/* Lint Issues */}
+              {lintIssues.length > 0 && (
+                <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                  <button onClick={() => setLintOpen(p => !p)}
+                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
+                    <span>Lint ({lintIssues.length} {lintIssues.length === 1 ? 'issue' : 'issues'})</span>
+                    <Ic n={lintOpen ? 'ChevronUp' : 'ChevronDown'} size={10} />
+                  </button>
+                  {lintOpen && (
+                    <div className="px-3 pb-3 flex flex-col gap-1.5">
+                      {lintIssues.map(issue => (
+                        <div key={issue.id} className={`flex items-start justify-between gap-2 text-xs ${
+                          issue.severity === 'warning' ? 'text-yellow-400' : m.textAlt
+                        }`}>
+                          <span className="flex-1">{issue.message}</span>
+                          <button onClick={() => handleLintFix(issue.id)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline">Fix</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Mode + Enhance */}
               <div className="flex gap-2">
                 <select value={enhMode} onChange={e => setEnhMode(e.target.value)}
@@ -339,7 +395,24 @@ export default function App() {
                 <button onClick={clearEditor} disabled={loading}
                   className="px-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors">Clear</button>
               </div>
-              {error && <div className="text-red-400 text-xs bg-red-950/40 border border-red-900 rounded-lg p-2.5">{error}</div>}
+              {error && (
+                <div className="text-red-400 text-xs bg-red-950/40 border border-red-900 rounded-lg p-2.5">
+                  <p className="font-semibold mb-1">{error.userMessage}</p>
+                  {error.suggestions?.length > 0 && (
+                    <ul className="list-disc list-inside mb-2 text-red-300/80">
+                      {error.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                    </ul>
+                  )}
+                  <div className="flex gap-2">
+                    {error.actions?.includes('retry') && (
+                      <button onClick={() => enhance()} className="text-xs text-violet-400 hover:text-violet-300 underline">Retry</button>
+                    )}
+                    {error.actions?.includes('open_provider_settings') && (
+                      <button onClick={openOptions} className="text-xs text-violet-400 hover:text-violet-300 underline">Open Settings</button>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* Enhanced */}
               {enhanced && <>
                 <div>
@@ -697,6 +770,43 @@ export default function App() {
                   <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ PII WARNING MODAL ══ */}
+      {piiWarning && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
+          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`}>
+            <div className="flex justify-between items-center">
+              <h2 className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
+              <button onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+            </div>
+            <p className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt:</p>
+            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+              {piiWarning.matches.map(match => (
+                <div key={match.id} className={`text-xs ${m.textBody} flex items-center gap-2`}>
+                  <span className="text-yellow-400 font-semibold uppercase text-[10px]">{match.type}</span>
+                  <span className="font-mono truncate">{match.snippet.length > 32
+                    ? `${match.snippet.slice(0, 8)}...${match.snippet.slice(-6)}`
+                    : match.snippet}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={piiRedactAndSend}
+                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                Redact & Send
+              </button>
+              <button onClick={piiSendAnyway}
+                className={`flex-1 ${m.btn} rounded-lg py-2 text-xs font-semibold ${m.textBody} transition-colors`}>
+                Send Anyway
+              </button>
+              <button onClick={piiCancel}
+                className="px-3 bg-red-600 hover:bg-red-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                Cancel
+              </button>
             </div>
           </div>
         </div>
