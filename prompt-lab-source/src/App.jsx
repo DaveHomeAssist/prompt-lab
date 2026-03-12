@@ -50,6 +50,14 @@ const MODES = [
   { id: 'detailed', label: '📝 Detailed', sys: 'Expand with rich context, examples, edge cases, explicit constraints. Make it comprehensive.' },
 ];
 
+const PROVIDER_DEFAULTS = {
+  anthropic: { model: 'claude-sonnet-4-20250514', label: 'Anthropic' },
+  openai: { model: 'gpt-4o', label: 'OpenAI' },
+  gemini: { model: 'gemini-2.5-flash-preview-04-17', label: 'Gemini' },
+  openrouter: { model: 'anthropic/claude-sonnet-4-20250514', label: 'OpenRouter' },
+  ollama: { model: 'llama3.2:3b', label: 'Ollama' },
+};
+
 const DEFAULT_LIBRARY_SEEDS = [
   {
     title: 'Transcript Summary - Markdown',
@@ -740,7 +748,7 @@ export default function App() {
     const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
     try {
       const basePayload = {
-        model: 'claude-sonnet-4-20250514', max_tokens: 1500,
+        model: wizardModel, max_tokens: 1500,
         system: sys, messages: [{ role: 'user', content: raw }],
       };
       const payload = await applySensitiveGate(basePayload, `${raw}\n${sys}`);
@@ -1778,11 +1786,16 @@ export default function App() {
               <div className="flex flex-col gap-3">
                 <p className={`text-sm ${m.textBody}`}>Set your provider and verify connectivity.</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <select value={wizardProvider} onChange={e => setWizardProvider(e.target.value)} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`}>
+                  <select value={wizardProvider} onChange={e => { const p = e.target.value; setWizardProvider(p); setWizardModel(PROVIDER_DEFAULTS[p]?.model || 'claude-sonnet-4-20250514'); }} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`}>
                     <option value="anthropic">Anthropic</option>
+                    <option value="openai">OpenAI</option>
+                    <option value="gemini">Gemini</option>
+                    <option value="openrouter">OpenRouter</option>
+                    <option value="ollama">Ollama (local)</option>
                   </select>
-                  <input value={wizardModel} onChange={e => setWizardModel(e.target.value)} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`} />
+                  <input value={wizardModel} onChange={e => setWizardModel(e.target.value)} placeholder={PROVIDER_DEFAULTS[wizardProvider]?.model || ''} className={`${m.input} border rounded-lg px-2 py-2 text-sm ${m.text} focus:outline-none`} />
                 </div>
+                <p className={`text-xs ${m.textMuted}`}>Configure API keys in extension Options. The model can be overridden here.</p>
                 <button onClick={runWizardConnectivityCheck} className={`w-fit px-3 py-2 rounded-lg text-sm ${m.btn} ${m.textBody} transition-colors`}>Validate connectivity</button>
                 {wizardConnectivity.status !== 'idle' && <p className={`text-xs ${wizardConnectivity.status === 'ok' ? 'text-green-400' : wizardConnectivity.status === 'error' ? 'text-red-400' : m.textSub}`}>{wizardConnectivity.message}</p>}
               </div>
@@ -1931,7 +1944,7 @@ export default function App() {
               </div>
             )}
             <button onClick={openOptions} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
-              🔑 Manage API Key (Options)
+              🔑 Manage Provider Keys (Options)
             </button>
             <button onClick={relaunchWizard} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}>
               🚀 Getting started

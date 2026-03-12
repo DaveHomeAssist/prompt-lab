@@ -11,6 +11,15 @@ function getWebApiKey() {
   return '';
 }
 
+/**
+ * Send a request through the background service worker (extension mode)
+ * or fall back to direct Anthropic fetch (web mode).
+ *
+ * In extension mode, the background worker reads the active provider from
+ * chrome.storage.local and routes to Anthropic / OpenAI / Gemini /
+ * OpenRouter / Ollama accordingly. The payload shape is always Anthropic-
+ * style; the background worker converts as needed.
+ */
 export function callAnthropic(payload) {
   if (IS_EXTENSION) {
     return new Promise((resolve, reject) => {
@@ -26,6 +35,7 @@ export function callAnthropic(payload) {
     });
   }
 
+  // Web fallback — Anthropic only
   const apiKey = getWebApiKey();
   if (!apiKey) {
     throw new Error('Missing API key. In web mode, set localStorage key pl2-anthropic-api-key.');
