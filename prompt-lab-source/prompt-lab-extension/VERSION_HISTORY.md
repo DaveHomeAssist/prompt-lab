@@ -2,75 +2,45 @@
 
 ## v1.5.0 — 2026-03-13
 
-Cross-platform desktop release. Prompt Lab now runs as both a Chrome extension and a standalone desktop app via Tauri 2.
+Shared frontend, desktop target, and release infrastructure update.
 
 ### Architecture
 
 - Prompt Lab now ships as both:
   - an MV3 Chrome/Vivaldi side panel extension
-  - a Tauri 2 desktop app (macOS verified, Windows and Linux configured)
-- The desktop app loads the shared frontend from `prompt-lab-extension/src/` through a relative import in `prompt-lab-desktop/index.html` — no symlinks, Windows-safe.
+  - a Tauri 2 desktop app
+- The desktop app loads the shared frontend from `prompt-lab-extension/src/` through a relative import in `prompt-lab-desktop/index.html`.
 - Desktop-specific provider settings use `localStorage` key `pl2-provider-settings`, while the extension continues to use `chrome.storage.local`.
 
-### Platform abstraction
+### Runtime and platform work
 
-- Added `src/lib/platform.js` — runtime detection (`chrome.runtime` presence), unified `callModel`, `sessionGet`/`sessionSet`, and `openSettings` API surface.
-- Session persistence on desktop uses `localStorage` with `pl2-session-` key prefix (replaces volatile in-memory cache).
-- `src/api.js` and hooks (`useSessionState`, `usePromptEditor`) rewired to import from `platform.js` instead of calling Chrome APIs directly.
-
-### Shared provider layer
-
-- Moved `providers.js` and `providerRegistry.js` from `extension/lib/` to `src/lib/` — now shared between extension and desktop.
-- `desktopApi.js` rewritten from 178 lines of duplicated provider code to ~40-line thin adapter delegating to shared `providers.js`.
-- Provider implementations use dependency-injected `fetchImpl` parameter for testability.
-
-### Desktop UI
-
-- Added `DesktopSettingsModal.jsx` — in-app provider selection, API key input, model config, and test-connection flow.
-- Modal renders only when `!isExtension`, triggered via `pl:open-settings` custom event.
+- Added a desktop-only in-app provider settings modal.
+- Extracted provider dispatch into `src/lib/providerRegistry.js` and `src/lib/providers.js`.
+- Consolidated PII scanning and redaction around a single `src/lib/piiEngine.js`.
+- Standardized shared utility imports away from re-export layers.
 
 ### Tests and verification
 
 - Added hook-level tests for `useTestCases` and `useEvalRuns`.
 - Added provider unit tests.
 - Added unified PII engine tests.
-- Consolidated PII scanning and redaction around a single `src/lib/piiEngine.js`.
 - Added a Playwright smoke test for the extension enhance flow.
-- Current verified extension suite: 49 tests passing.
+- Current maintained extension suite: 49 tests across 8 suites, all passing.
 
 ### Build and packaging
 
 - Added extension CI workflow for `npm test` + `npm run build`.
 - Added desktop CI workflow using `tauri-apps/tauri-action@v0` across macOS, Linux, and Windows.
-- Tauri config: macOS `.app`/`.dmg`, Windows `.exe`/`.msi` (sha256), Linux `.deb`/`.appimage`.
-- CSP whitelist covers all 5 API provider endpoints.
-- Icons: `.png` (1024x1024), `.icns` (macOS), `.ico` (Windows).
 - Fixed desktop macOS packaging hygiene:
   - bundle identifier changed to `com.promptlab.desktop`
   - source icon resized to 1024x1024 for bundling
 
-### Platform support
-
-| Platform | Status | Artifacts |
-|----------|--------|-----------|
-| Chrome extension | Production | `dist/` |
-| macOS desktop | Built and verified | `.app`, `.dmg` |
-| Windows desktop | Configured, awaiting CI | `.exe`, `.msi` |
-| Linux desktop | Configured, awaiting CI | `.deb`, `.appimage` |
-| iOS / Android | Not started (Phase 2) | — |
-
-### Commits
-
-- `4edddf1` — feat(core): add platform abstraction and shared provider layer
-- `4e22085` — feat(desktop): add in-app settings modal for desktop mode
-- `64b7af6` — chore(desktop): add Tauri 2 desktop app with cross-platform packaging
-- `dcd8e20` — ci(desktop): add cross-platform desktop build workflow
-
 ### Notes
 
+- Desktop currently shares the extension frontend directly rather than maintaining a separate UI fork.
+- Test coverage was reorganized during the shared frontend / desktop transition. The current maintained extension suite is 49 tests across 8 suites.
 - Chrome Web Store review materials are still incomplete; see `CWS_SUBMISSION_CHECKLIST.md`.
 - A Vite warning remains about `desktopApi.js` being both dynamically and statically imported. It does not block current builds.
-- Code signing and auto-update deferred to post-CI-validation.
 
 ## v1.4.0 — 2026-03-12
 

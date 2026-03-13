@@ -423,6 +423,20 @@ export default function App() {
           {showLibraryPane && (
           <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
+              {!showEditorPane && (
+                <div className="flex gap-1">
+                  {[
+                    ['editor', 'Editor'],
+                    ['library', 'Library'],
+                    ...(!compact ? [['split', 'Split']] : []),
+                  ].map(([id, label]) => (
+                    <button key={id} onClick={() => setEditorLayout(id)}
+                      className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
                 <div className="relative flex-1">
                   <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
