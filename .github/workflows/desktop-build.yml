@@ -1,0 +1,92 @@
+name: Desktop Build
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/prompt-lab-extension/src/**
+      - .github/workflows/desktop-build.yml
+  pull_request:
+    paths:
+      - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/prompt-lab-extension/src/**
+      - .github/workflows/desktop-build.yml
+
+permissions:
+  contents: read
+
+jobs:
+  extension-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prompt-lab-source/prompt-lab-extension
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-extension/package-lock.json
+
+      - name: Install extension dependencies
+        run: npm ci
+
+      - name: Run extension tests
+        run: npm test
+
+  desktop-build:
+    needs: extension-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-desktop/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Add macOS universal targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install frontend dependencies
+        working-directory: prompt-lab-source/prompt-lab-desktop
+        run: npm ci
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Build desktop app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: prompt-lab-source/prompt-lab-desktop
+          args: ${{ matrix.args }}
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: prompt-lab-[platform]-[arch]-[bundle]
