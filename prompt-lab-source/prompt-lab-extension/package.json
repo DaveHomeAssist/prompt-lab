@@ -1,25 +1,35 @@
 {
   "name": "prompt-lab-extension",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/assemble.js",
     "preview": "vite preview",
-    "test": "node --test tests/*.test.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:legacy": "node --test tests/*.test.mjs",
     "build:cws": "vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
+  },
+  "engines": {
+    "node": ">=20 <26"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
-    "pngjs": "^7.0.0",
+    "jiti": "^2.6.1",
+    "jsdom": "^28.1.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "vite": "^6.0.0"
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0"
   }
 }

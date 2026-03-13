@@ -1,6 +1,4 @@
-function ensureString(v) {
-  return typeof v === 'string' ? v : '';
-}
+import { ensureString } from './lib/utils.js';
 
 function pickCode(msg) {
   const match = msg.match(/\b([A-Z_]{3,}|\d{3})\b/);

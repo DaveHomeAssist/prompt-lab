@@ -1,3 +1,5 @@
+import { luhnPasses } from './lib/utils.js';
+
 const PLACEHOLDERS = Object.freeze({
   api_key: '[API_KEY]',
   email: '[EMAIL]',
@@ -30,23 +32,6 @@ function normalizeSettings(settings) {
       ? next.customPatterns.map((p) => String(p || '')).filter(Boolean)
       : [],
   };
-}
-
-function luhnPasses(digits) {
-  const clean = digits.replace(/\D/g, '');
-  if (clean.length < 13 || clean.length > 19) return false;
-  let sum = 0;
-  let shouldDouble = false;
-  for (let i = clean.length - 1; i >= 0; i -= 1) {
-    let n = Number(clean[i]);
-    if (shouldDouble) {
-      n *= 2;
-      if (n > 9) n -= 9;
-    }
-    sum += n;
-    shouldDouble = !shouldDouble;
-  }
-  return sum % 10 === 0;
 }
 
 function getBuiltInDetectors() {

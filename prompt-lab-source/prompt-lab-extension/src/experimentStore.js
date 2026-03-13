@@ -1,7 +1,20 @@
+import {
+  filterEvalRuns,
+  normalizeEntityId as normalizePromptId,
+  normalizeEvalRunRecord,
+  normalizeTestCaseRecord,
+} from './lib/evalSchema.js';
+import { logWarn } from './lib/logger.js';
+import { hashText } from './lib/utils.js';
+
 const DB_NAME = 'prompt_lab_local';
-const STORE_NAME = 'experiments';
-const VERSION = 1;
-const LS_KEY = 'pl2-experiment-fallback';
+const EXPERIMENT_STORE = 'experiments';
+const EVAL_RUN_STORE = 'eval_runs';
+const TEST_CASE_STORE = 'test_cases';
+const VERSION = 3;
+const EXPERIMENT_LS_KEY = 'pl2-experiment-fallback';
+const EVAL_RUN_LS_KEY = 'pl2-eval-run-fallback';
+const TEST_CASE_LS_KEY = 'pl2-test-case-fallback';
 
 let dbPromise;
 
@@ -12,10 +25,23 @@ function openDb() {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(EXPERIMENT_STORE)) {
+        const store = db.createObjectStore(EXPERIMENT_STORE, { keyPath: 'id' });
         store.createIndex('createdAt', 'createdAt');
         store.createIndex('label', 'label');
+      }
+      if (!db.objectStoreNames.contains(EVAL_RUN_STORE)) {
+        const store = db.createObjectStore(EVAL_RUN_STORE, { keyPath: 'id' });
+        store.createIndex('createdAt', 'createdAt');
+        store.createIndex('promptId', 'promptId');
+        store.createIndex('mode', 'mode');
+        store.createIndex('provider', 'provider');
+      }
+      if (!db.objectStoreNames.contains(TEST_CASE_STORE)) {
+        const store = db.createObjectStore(TEST_CASE_STORE, { keyPath: 'id' });
+        store.createIndex('promptId', 'promptId');
+        store.createIndex('createdAt', 'createdAt');
+        store.createIndex('updatedAt', 'updatedAt');
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -24,20 +50,20 @@ function openDb() {
   return dbPromise;
 }
 
-function readFallback() {
+function readFallback(key) {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function writeFallback(records) {
+function writeFallback(key, records) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(records));
-  } catch {
-    // no-op
+    localStorage.setItem(key, JSON.stringify(records));
+  } catch (e) {
+    logWarn('localStorage write failed', e);
   }
 }
 
@@ -56,7 +82,7 @@ function txDone(tx) {
   });
 }
 
-function normalizeRecord(record) {
+export function normalizeExperimentRecord(record) {
   return {
     id: record.id || crypto.randomUUID(),
     createdAt: record.createdAt || new Date().toISOString(),
@@ -68,25 +94,16 @@ function normalizeRecord(record) {
   };
 }
 
-export function hashText(text) {
-  const input = String(text || '');
-  let hash = 5381;
-  for (let i = 0; i < input.length; i += 1) {
-    hash = ((hash << 5) + hash) ^ input.charCodeAt(i);
-  }
-  return `h_${(hash >>> 0).toString(16)}`;
-}
-
 export async function saveExperiment(record) {
-  const normalized = normalizeRecord(record);
-  const db = await openDb().catch(() => null);
+  const normalized = normalizeExperimentRecord(record);
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    const next = [normalized, ...readFallback()].slice(0, 500);
-    writeFallback(next);
+    const next = [normalized, ...readFallback(EXPERIMENT_LS_KEY)].slice(0, 500);
+    writeFallback(EXPERIMENT_LS_KEY, next);
     return normalized;
   }
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  tx.objectStore(STORE_NAME).put(normalized);
+  const tx = db.transaction(EXPERIMENT_STORE, 'readwrite');
+  tx.objectStore(EXPERIMENT_STORE).put(normalized);
   await txDone(tx);
   return normalized;
 }
@@ -98,13 +115,13 @@ export async function listExperiments(filters = {}) {
     dateTo = '',
   } = filters;
   const q = String(search || '').trim().toLowerCase();
-  const db = await openDb().catch(() => null);
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   let records = [];
   if (!db) {
-    records = readFallback();
+    records = readFallback(EXPERIMENT_LS_KEY);
   } else {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const store = tx.objectStore(STORE_NAME);
+    const tx = db.transaction(EXPERIMENT_STORE, 'readonly');
+    const store = tx.objectStore(EXPERIMENT_STORE);
     records = (await txRequest(store.getAll())) || [];
   }
   return records
@@ -123,11 +140,108 @@ export async function listExperiments(filters = {}) {
 
 export async function getExperimentById(id) {
   if (!id) return null;
-  const db = await openDb().catch(() => null);
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    return readFallback().find((entry) => entry.id === id) || null;
+    return readFallback(EXPERIMENT_LS_KEY).find((entry) => entry.id === id) || null;
   }
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const store = tx.objectStore(STORE_NAME);
+  const tx = db.transaction(EXPERIMENT_STORE, 'readonly');
+  const store = tx.objectStore(EXPERIMENT_STORE);
   return txRequest(store.get(id));
 }
+
+export async function saveEvalRun(record) {
+  const normalized = normalizeEvalRunRecord(record);
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  if (!db) {
+    const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY)].slice(0, 1000);
+    writeFallback(EVAL_RUN_LS_KEY, next);
+    return normalized;
+  }
+  const tx = db.transaction(EVAL_RUN_STORE, 'readwrite');
+  tx.objectStore(EVAL_RUN_STORE).put(normalized);
+  await txDone(tx);
+  return normalized;
+}
+
+export async function listEvalRuns(filters = {}) {
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  let records = [];
+  if (!db) {
+    records = readFallback(EVAL_RUN_LS_KEY);
+  } else {
+    const tx = db.transaction(EVAL_RUN_STORE, 'readonly');
+    const store = tx.objectStore(EVAL_RUN_STORE);
+    records = (await txRequest(store.getAll())) || [];
+  }
+  return filterEvalRuns(records, filters);
+}
+
+export async function getEvalRunById(id) {
+  if (!id) return null;
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  if (!db) {
+    return readFallback(EVAL_RUN_LS_KEY).find((entry) => entry.id === id) || null;
+  }
+  const tx = db.transaction(EVAL_RUN_STORE, 'readonly');
+  const store = tx.objectStore(EVAL_RUN_STORE);
+  return txRequest(store.get(id));
+}
+
+export async function saveTestCase(record) {
+  const normalized = normalizeTestCaseRecord(record);
+  if (!normalized.promptId || !normalized.input.trim()) {
+    throw new Error('Test cases require a promptId and input.');
+  }
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  if (!db) {
+    const existing = readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== normalized.id);
+    const next = [normalized, ...existing].slice(0, 1000);
+    writeFallback(TEST_CASE_LS_KEY, next);
+    return normalized;
+  }
+  const tx = db.transaction(TEST_CASE_STORE, 'readwrite');
+  tx.objectStore(TEST_CASE_STORE).put(normalized);
+  await txDone(tx);
+  return normalized;
+}
+
+export async function listTestCases(filters = {}) {
+  const {
+    promptId = '',
+    limit = 200,
+  } = filters;
+  const promptFilter = normalizePromptId(promptId);
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  let records = [];
+  if (!db) {
+    records = readFallback(TEST_CASE_LS_KEY);
+  } else {
+    const tx = db.transaction(TEST_CASE_STORE, 'readonly');
+    const store = tx.objectStore(TEST_CASE_STORE);
+    records = (await txRequest(store.getAll())) || [];
+  }
+  return records
+    .map(normalizeTestCaseRecord)
+    .filter((row) => !promptFilter || row.promptId === promptFilter)
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+    .slice(0, Math.max(1, Math.min(500, Number(limit) || 200)));
+}
+
+export async function deleteTestCase(id) {
+  if (!id) return;
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  if (!db) {
+    writeFallback(TEST_CASE_LS_KEY, readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== id));
+    return;
+  }
+  const tx = db.transaction(TEST_CASE_STORE, 'readwrite');
+  tx.objectStore(TEST_CASE_STORE).delete(id);
+  await txDone(tx);
+}
+
+export {
+  filterEvalRuns,
+  hashText,
+  normalizeEvalRunRecord,
+  normalizeTestCaseRecord,
+};

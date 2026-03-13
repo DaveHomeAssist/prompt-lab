@@ -1,252 +1,81 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import Ic from './icons';
-import { callModel } from './api';
 import {
-  wordDiff, scorePrompt, extractVars, decodeShare,
-  extractTextFromAnthropic, parseEnhancedPayload,
-  ensureString, suggestTitleFromText, normalizeEntry,
-  looksSensitive, isTransientError,
+  wordDiff, scorePrompt, extractVars,
+  ensureString,
+  looksSensitive,
 } from './promptUtils';
-import { lintPrompt, applyLintQuickFix } from './promptLint';
-import { normalizeError } from './errorTaxonomy';
-import { scanSensitiveData, redactPayload } from './piiScanner';
 import { ALL_TAGS, MODES, T } from './constants';
-import usePersistedState from './usePersistedState';
-import useLibrary from './useLibrary';
+import useLibrary from './hooks/usePromptLibrary.js';
+import useUiState from './hooks/useUiState.js';
+import usePromptEditor from './hooks/usePromptEditor.js';
 import Toast from './Toast';
 import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
+import TestCasesPanel from './TestCasesPanel';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
-  const [colorMode, setColorMode] = usePersistedState('pl2-mode', 'dark', {
-    validate: v => (v === 'dark' || v === 'light') ? v : 'dark',
-  });
+  const ui = useUiState();
+  const {
+    viewportWidth,
+    colorMode,
+    setColorMode,
+    tab,
+    setTab,
+    toast,
+    setToast,
+    notify,
+    showSettings,
+    setShowSettings,
+    showCmdPalette,
+    setShowCmdPalette,
+    showShortcuts,
+    setShowShortcuts,
+    cmdQuery,
+    setCmdQuery,
+  } = ui;
   const m = T[colorMode];
-
-  const [tab, setTab] = useState('editor');
-  const [toast, setToast] = useState(null);
-  const notify = msg => setToast(msg);
 
   // ── Library hook ──
   const lib = useLibrary(notify);
 
-  // ── Editor state ──
-  const [raw, setRaw] = useState('');
-  const [enhanced, setEnhanced] = useState('');
-  const [variants, setVariants] = useState([]);
-  const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [lintIssues, setLintIssues] = useState([]);
-  const [lintOpen, setLintOpen] = useState(false);
-  const [piiWarning, setPiiWarning] = useState(null);
-  const [showSave, setShowSave] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [saveTitle, setSaveTitle] = useState('');
-  const [saveTags, setSaveTags] = useState([]);
-  const [saveCollection, setSaveCollection] = useState('');
-  const [showDiff, setShowDiff] = useState(false);
-  const [enhMode, setEnhMode] = useState('balanced');
-  const [showNotes, setShowNotes] = useState(true);
-  const [showNewColl, setShowNewColl] = useState(false);
-  const [newCollName, setNewCollName] = useState('');
-  const [varVals, setVarVals] = useState({});
-  const [showVarForm, setShowVarForm] = useState(false);
-  const [pendingTemplate, setPendingTemplate] = useState(null);
-  const [editorLayout, setEditorLayout] = useState('split');
-  const enhanceReqRef = useRef(0);
-  const lintTimerRef = useRef(null);
+  // ── Editor hook ──
+  const ed = usePromptEditor(ui, lib);
+  const {
+    raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
+    enhMode, setEnhMode, showNotes, setShowNotes,
+    lintIssues, lintOpen, setLintOpen, handleLintFix,
+    piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
+    showSave, setShowSave, editingId, setEditingId, saveTitle, setSaveTitle,
+    saveTags, setSaveTags, saveCollection, setSaveCollection,
+    showDiff, setShowDiff,
+    evalRuns, showEvalHistory, setShowEvalHistory,
+    testCasesByPrompt, caseFormPromptId, editingCaseId,
+    caseTitle, setCaseTitle, caseInput, setCaseInput,
+    caseTraits, setCaseTraits, caseExclusions, setCaseExclusions,
+    caseNotes, setCaseNotes, runningCases,
+    openCaseForm, resetCaseForm, saveCaseForPrompt, removeCase,
+    loadCaseIntoEditor, runSingleCase, runAllCases,
+    showNewColl, setShowNewColl, newCollName, setNewCollName,
+    varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate,
+    editorLayout, setEditorLayout,
+    composerBlocks, setComposerBlocks,
+    enhance, doSave, clearEditor, openSavePanel, openOptions, copy,
+    loadEntry, addToComposer,
+    hasSavablePrompt, currentTestCases,
+  } = ed;
 
-  // ── Composer state ──
-  const [composerBlocks, setComposerBlocks] = useState([]);
-
-  // ── Modal state ──
-  const [showSettings, setShowSettings] = useState(false);
-  const [showCmdPalette, setShowCmdPalette] = useState(false);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [cmdQuery, setCmdQuery] = useState('');
-
-  const hasSavablePrompt = raw.trim() || enhanced.trim();
-
-  // ── Share URL init ──
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#share=')) {
-      const d = decodeShare(hash.slice(7));
-      if (d) {
-        const normalized = normalizeEntry({ ...d, id: crypto.randomUUID() });
-        if (normalized) {
-          setRaw(normalized.original);
-          setEnhanced(normalized.enhanced);
-          setVariants(normalized.variants || []);
-          setNotes(normalized.notes || '');
-          setSaveTags(normalized.tags || []);
-          setSaveTitle(normalized.title || '');
-          setShowSave(true);
-          notify('Shared prompt loaded!');
-        } else {
-          notify('Shared prompt is invalid.');
-        }
-      }
-    }
-  }, []);
-
-  // ── Debounced lint ──
-  useEffect(() => {
-    if (lintTimerRef.current) clearTimeout(lintTimerRef.current);
-    if (!raw.trim()) { setLintIssues([]); return; }
-    lintTimerRef.current = setTimeout(() => setLintIssues(lintPrompt(raw)), 300);
-    return () => clearTimeout(lintTimerRef.current);
-  }, [raw]);
-
-  // ── Clipboard ──
-  const copy = async (text, msg = 'Copied!') => {
-    const value = ensureString(text);
-    if (!value) { notify('Nothing to copy'); return; }
-    try { await navigator.clipboard.writeText(value); }
-    catch {
-      try {
-        const el = document.createElement('textarea'); el.value = value;
-        el.style.cssText = 'position:fixed;top:-9999px;opacity:0';
-        document.body.appendChild(el); el.focus(); el.select();
-        document.execCommand('copy'); document.body.removeChild(el);
-      } catch { notify('Copy unavailable'); return; }
-    }
-    notify(msg);
-  };
-
-  // ── API with retry ──
-  const callWithRetry = async (payload, retries = 1) => {
-    let attempt = 0;
-    let lastError = null;
-    while (attempt <= retries) {
-      try { return await callModel(payload); }
-      catch (e) {
-        lastError = e;
-        if (attempt >= retries || !isTransientError(e)) break;
-        await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
-      }
-      attempt += 1;
-    }
-    throw lastError || new Error('Request failed.');
-  };
-
-  // ── Editor actions ──
-  const openSavePanel = (entry = null) => {
-    const source = entry?.enhanced || enhanced || raw;
-    setSaveTitle(entry?.title || suggestTitleFromText(source));
-    if (entry) {
-      setEditingId(entry.id);
-      setSaveTags(entry.tags || []);
-      setSaveCollection(entry.collection || '');
-    } else {
-      setEditingId(null);
-      if (!enhanced.trim()) setSaveTags([]);
-    }
-    setShowSave(true);
-  };
-
-  const clearEditor = () => {
-    enhanceReqRef.current += 1;
-    setLoading(false); setRaw(''); setEnhanced(''); setVariants([]);
-    setNotes(''); setShowSave(false); setEditingId(null); setError(null);
-  };
-
-  const openOptions = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    } else {
-      notify('Options page is only available in the extension.');
-    }
-  };
-
-  const handleLintFix = (ruleId) => setRaw(applyLintQuickFix(raw, ruleId));
-
-  const buildEnhancePayload = () => {
-    const modeObj = MODES.find(x => x.id === enhMode) || MODES[0];
-    const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
-    return { model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: raw }] };
-  };
-
-  const enhance = async (overridePayload) => {
-    if (!raw.trim()) return;
-    const payload = overridePayload || buildEnhancePayload();
-
-    // PII gate — only on first call, not after user dismisses/redacts
-    if (!overridePayload) {
-      const { matches } = scanSensitiveData({ payload });
-      if (matches.length > 0) {
-        setPiiWarning({ matches, payload });
-        return;
-      }
-    }
-
-    const reqId = enhanceReqRef.current + 1;
-    enhanceReqRef.current = reqId;
-    setLoading(true); setError(null); setEnhanced(''); setVariants([]); setNotes('');
-    setShowSave(false); setShowDiff(false); setEditingId(null);
-    try {
-      const data = await callWithRetry(payload);
-      if (reqId !== enhanceReqRef.current) return;
-      const txt = extractTextFromAnthropic(data);
-      const p = parseEnhancedPayload(txt);
-      setEnhanced(p.enhanced || ''); setVariants(p.variants || []); setNotes(p.notes || '');
-      setSaveTags(p.tags || []);
-      setSaveTitle(suggestTitleFromText(p.enhanced || raw));
-      setShowSave(true);
-    } catch (e) {
-      if (reqId === enhanceReqRef.current) setError(normalizeError(e));
-    }
-    if (reqId === enhanceReqRef.current) setLoading(false);
-  };
-
-  const piiSendAnyway = () => { const p = piiWarning.payload; setPiiWarning(null); enhance(p); };
-  const piiRedactAndSend = () => { const { matches, payload } = piiWarning; setPiiWarning(null); enhance(redactPayload(payload, matches)); };
-  const piiCancel = () => setPiiWarning(null);
-
-  const doSave = () => {
-    lib.doSave({ raw, enhanced, variants, notes, tags: saveTags, title: saveTitle, collection: saveCollection, editingId });
-    setShowSave(false); setEditingId(null);
-  };
-
-  const loadEntry = entry => {
-    const vars = extractVars(entry?.enhanced);
-    if (vars.length > 0) { setPendingTemplate(entry); setVarVals(Object.fromEntries(vars.map(v => [v, '']))); setShowVarForm(true); }
-    else applyEntry(entry);
-  };
-
-  const applyEntry = entry => {
-    const normalized = normalizeEntry(entry);
-    if (!normalized) return;
-    setEditingId(normalized.id); setRaw(normalized.original); setEnhanced(normalized.enhanced);
-    setVariants(normalized.variants || []); setNotes(normalized.notes || '');
-    setSaveTags(normalized.tags || []); setSaveTitle(normalized.title);
-    setSaveCollection(normalized.collection || ''); setShowSave(false); setShowDiff(false);
-    lib.bumpUse(normalized.id); setTab('editor'); notify('Loaded into editor!');
-  };
-
-  const applyTemplate = () => {
-    if (!pendingTemplate) return;
-    let text = ensureString(pendingTemplate.enhanced);
-    Object.entries(varVals).forEach(([k, v]) => { text = text.replaceAll(`{{${k}}}`, v); });
-    applyEntry({ ...pendingTemplate, enhanced: text });
-    setShowVarForm(false); setPendingTemplate(null);
-  };
-
-  const addToComposer = entry => {
-    setComposerBlocks(prev => [...prev, { id: crypto.randomUUID(), label: entry.title, content: entry.enhanced, sourceId: entry.id }]);
-    lib.bumpUse(entry.id); notify('Added to Composer!');
-  };
-
-  // ── Derived ──
+  // ── Derived (view-only) ──
   const score = scorePrompt(raw);
   const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
+  const compact = viewportWidth < 560;
+  const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
-  const showEditorPane = tab !== 'editor' || editorLayout !== 'library';
-  const showLibraryPane = tab !== 'editor' || editorLayout !== 'editor';
+  const showEditorPane = tab !== 'editor' || effectiveEditorLayout !== 'library';
+  const showLibraryPane = tab !== 'editor' || effectiveEditorLayout !== 'editor';
 
   // ── Keyboard shortcuts ──
   useEffect(() => {
@@ -288,50 +117,58 @@ export default function App() {
     <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col`} style={{ fontFamily: 'system-ui,sans-serif' }}>
 
       {/* Header */}
-      <header className={`flex items-center justify-between px-4 py-2 ${m.header} border-b shrink-0`}>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5">
-            <Ic n="Wand2" size={15} className="text-violet-500" />
-            <span className="font-bold text-sm">Prompt Lab</span>
+      <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
+        <div className={`flex ${compact ? 'flex-col gap-2' : 'items-center justify-between gap-3'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Ic n="Wand2" size={15} className="text-violet-500" />
+                <span className="font-bold text-sm">Prompt Lab</span>
+              </div>
+              <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
+              <button onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
+                {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
+              </button>
+              <button onClick={() => setShowShortcuts(true)} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+              <button onClick={() => setShowSettings(true)} className={`p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {[['editor', 'Editor'], ['composer', 'Composer'], ['abtest', 'A/B Test'], ['pad', 'Pad']].map(([id, label]) => (
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-0.5' : ''}`}>
+            {[['editor', 'Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
               <button key={id} onClick={() => setTab(id)}
-                className={`px-2 py-1.5 font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
-                style={{ fontSize: '0.6rem', letterSpacing: '0.03em' }}>
+                className={`px-2.5 py-1.5 font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                style={{ fontSize: '0.68rem', letterSpacing: '0.03em' }}>
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <span className={`text-xs ${m.textMuted} mr-1 hidden sm:inline`}>{lib.library.length} saved</span>
-          <button onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`px-1.5 py-1 rounded-lg ${m.btn} ${m.textAlt} text-xs font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
-          <button onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`p-1 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
-            {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
-          </button>
-          <button onClick={() => setShowShortcuts(true)} className={`p-1 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
-          <button onClick={() => setShowSettings(true)} className={`p-1 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
-        </div>
       </header>
 
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
-        <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
+        <div className="flex flex-1 overflow-hidden">
           {showEditorPane && (
-          <div className={`${showLibraryPane ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col overflow-y-auto`}>
+          <div className={`${showLibraryPane && !compact ? `w-1/2 border-r ${m.border}` : 'w-full'} flex flex-col overflow-y-auto`}>
             <div className="p-4 flex flex-col gap-3">
               <div className="flex gap-1">
-                {[['split', 'Split'], ['editor', 'Focus Editor'], ['library', 'Focus Library']].map(([id, label]) => (
+                {[
+                  ['editor', 'Editor'],
+                  ['library', 'Library'],
+                  ...(!compact ? [['split', 'Split']] : []),
+                ].map(([id, label]) => (
                   <button key={id} onClick={() => setEditorLayout(id)}
-                    className={`text-xs px-2 py-1 rounded-lg transition-colors ${editorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                    className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                     {label}
                   </button>
                 ))}
               </div>
               {/* Input */}
               <div>
-                <div className="flex justify-between items-center mb-1.5">
+                <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
                   <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
                   <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
@@ -381,20 +218,41 @@ export default function App() {
                 </div>
               )}
               {/* Mode + Enhance */}
-              <div className="flex gap-2">
-                <select value={enhMode} onChange={e => setEnhMode(e.target.value)}
-                  className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none shrink-0 max-w-36`}>
-                  {MODES.map(md => <option key={md.id} value={md.id}>{md.label}</option>)}
-                </select>
-                <button onClick={enhance} disabled={loading || !raw.trim()}
-                  className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
-                  {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
-                </button>
-                <button onClick={() => openSavePanel()} disabled={!hasSavablePrompt}
-                  className="px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors">Save</button>
-                <button onClick={clearEditor} disabled={loading}
-                  className="px-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors">Clear</button>
+              <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
+                <div className={`flex gap-2 ${compact ? 'w-full' : 'flex-1'}`}>
+                  <select value={enhMode} onChange={e => setEnhMode(e.target.value)}
+                    className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none shrink-0 ${compact ? 'w-32' : 'max-w-36'}`}>
+                    {MODES.map(md => <option key={md.id} value={md.id}>{md.label}</option>)}
+                  </select>
+                  <button onClick={enhance} disabled={loading || !raw.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
+                    {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
+                  </button>
+                  <button onClick={runAllCases} disabled={loading || runningCases || currentTestCases.length === 0}
+                    className="flex items-center justify-center gap-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                    {runningCases ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={12} />}Run Cases
+                  </button>
+                </div>
+                <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
+                  <button onClick={() => openSavePanel()} disabled={!hasSavablePrompt}
+                    className="flex-1 px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2">Save</button>
+                  <button onClick={clearEditor} disabled={loading}
+                    className="flex-1 px-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2">Clear</button>
+                </div>
               </div>
+              {editingId && currentTestCases.length > 0 && (
+                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
+                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
+                    <Ic n="FlaskConical" size={10} />
+                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
+                  </span>
+                  <button onClick={runAllCases} disabled={loading || runningCases}
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
+                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
+                    Run All
+                  </button>
+                </div>
+              )}
               {error && (
                 <div className="text-red-400 text-xs bg-red-950/40 border border-red-900 rounded-lg p-2.5">
                   <p className="font-semibold mb-1">{error.userMessage}</p>
@@ -418,7 +276,7 @@ export default function App() {
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Enhanced</span>
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
                       <button onClick={() => setShowDiff(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
                         <Ic n="GitBranch" size={10} />{showDiff ? 'Hide Diff' : 'Show Diff'}
                       </button>
@@ -461,6 +319,41 @@ export default function App() {
                     <p className={`text-xs ${m.textBody} leading-relaxed`}>{notes}</p>
                   </div>
                 )}
+                <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                  <button onClick={() => setShowEvalHistory(p => !p)}
+                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
+                    <span>{editingId ? `Run History (${evalRuns.length})` : `Recent Runs (${evalRuns.length})`}</span>
+                    <Ic n={showEvalHistory ? 'ChevronUp' : 'ChevronDown'} size={10} />
+                  </button>
+                  {showEvalHistory && evalRuns.length > 0 && (
+                    <div className="px-3 pb-3 flex flex-col gap-2 max-h-56 overflow-y-auto">
+                      {evalRuns.map((run) => (
+                        <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-semibold text-violet-400 truncate">{run.variantLabel || run.promptTitle}</span>
+                            <span className={m.textMuted}>{new Date(run.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                          </div>
+                          <div className={`flex flex-wrap gap-2 mb-1 ${m.textMuted}`}>
+                            <span className="uppercase">{run.mode}</span>
+                            <span>{run.provider}</span>
+                            <span>{run.model}</span>
+                            <span>{run.latencyMs}ms</span>
+                          </div>
+                          <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
+                          {run.output && (
+                            <button onClick={() => copy(run.output, 'Run output copied')}
+                              className={`mt-1 flex items-center gap-1 ${m.textSub} hover:text-white transition-colors`}>
+                              <Ic n="Copy" size={10} />Copy output
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showEvalHistory && evalRuns.length === 0 && (
+                    <p className={`px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</p>
+                  )}
+                </div>
               </>}
               {/* Save panel */}
               {showSave && (
@@ -501,7 +394,7 @@ export default function App() {
               {/* Quick Inject */}
               {lib.quickInject.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-2"><Ic n="Zap" size={10} className="text-yellow-500" /><span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Quick Inject</span></div>
+                  <div className="flex items-center gap-1.5 mb-2"><Ic n="Zap" size={10} className="text-yellow-500" /><span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Frequently Used</span></div>
                   {lib.quickInject.map(e => (
                     <div key={e.id} className={`flex items-center justify-between ${m.surface} border ${m.border} ${m.borderHov} rounded-lg px-3 py-2 gap-2 mb-1 transition-colors`}>
                       <span className={`text-xs ${m.textBody} truncate flex-1`}>{e.title}</span>
@@ -519,19 +412,21 @@ export default function App() {
 
           {/* Right — Library */}
           {showLibraryPane && (
-          <div className={`${showEditorPane ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
+          <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
-              <div className="flex gap-2">
+              <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
                 <div className="relative flex-1">
                   <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
                   <input className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
                     placeholder="Search…" value={lib.search} onChange={e => lib.setSearch(e.target.value)} />
                 </div>
-                <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
-                  className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none`}>
-                  <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
-                </select>
-                <button onClick={lib.exportLib} className={`px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors`}>Export</button>
+                <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
+                  <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
+                    className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
+                    <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
+                  </select>
+                  <button onClick={lib.exportLib} className={`px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
+                </div>
               </div>
               {lib.collections.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
@@ -588,22 +483,13 @@ export default function App() {
                           {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-0.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {manual && <Ic n="GripVertical" size={12} className={m.textMuted} />}
                         <button onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={12} /></button>
                         <button onClick={() => loadEntry(entry)} className={`px-2 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}>Load</button>
-                        <button onClick={() => addToComposer(entry)} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Layers" size={12} /></button>
-                        <button onClick={() => {
-                          if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
-                            && !window.confirm('This shared link may include sensitive content. Continue?')) return;
-                          lib.setShareId(p => p === entry.id ? null : entry.id);
-                        }} className={`p-1.5 rounded ${m.btn} ${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Share2" size={12} /></button>
-                        <button onClick={() => openSavePanel(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
-                        <button onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
                         <button onClick={() => lib.setExpandedId(p => p === entry.id ? null : entry.id)} className={`p-1.5 rounded ${m.btn} ${m.textSub} transition-colors`}>
                           {lib.expandedId === entry.id ? <Ic n="ChevronUp" size={12} /> : <Ic n="ChevronDown" size={12} />}
                         </button>
-                        <button onClick={() => lib.del(entry.id)} className="p-1.5 rounded bg-red-600 hover:bg-red-500 text-white transition-colors"><Ic n="Trash2" size={12} /></button>
                       </div>
                     </div>
                     {(entry.tags || []).length > 0 && <div className="flex flex-wrap gap-1 px-3 pb-2">{entry.tags.map(t => <TagChip key={t} tag={t} />)}</div>}
@@ -615,6 +501,31 @@ export default function App() {
                     )}
                     {lib.expandedId === entry.id && (
                       <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
+                        <div className={`flex flex-wrap gap-2`}>
+                          <button onClick={() => addToComposer(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Add to Compose</button>
+                          <button onClick={() => {
+                            if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+                              && !window.confirm('This shared link may include sensitive content. Continue?')) return;
+                            lib.setShareId(p => p === entry.id ? null : entry.id);
+                          }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share</button>
+                          <button onClick={() => openSavePanel(entry)} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
+                          <button onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
+                          <button onClick={() => lib.del(entry.id)} className="px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs transition-colors flex items-center gap-1"><Ic n="Trash2" size={11} />Delete</button>
+                        </div>
+                        <TestCasesPanel
+                          m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
+                          evalRuns={evalRuns} editingCaseId={editingCaseId}
+                          caseFormPromptId={caseFormPromptId}
+                          caseTitle={caseTitle} setCaseTitle={setCaseTitle}
+                          caseInput={caseInput} setCaseInput={setCaseInput}
+                          caseTraits={caseTraits} setCaseTraits={setCaseTraits}
+                          caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
+                          caseNotes={caseNotes} setCaseNotes={setCaseNotes}
+                          openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
+                          saveCaseForPrompt={saveCaseForPrompt}
+                          loadCaseIntoEditor={loadCaseIntoEditor}
+                          runSingleCase={runSingleCase} removeCase={removeCase}
+                        />
                         {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
                           <div key={lbl}><p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p><p className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>{txt}</p></div>
                         ))}
@@ -662,11 +573,11 @@ export default function App() {
       {/* ══ COMPOSER TAB ══ */}
       {tab === 'composer' && (
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} />
+          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} />
       )}
 
       {/* ══ A/B TEST TAB ══ */}
-      {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} />}
+      {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} />}
 
       {/* ══ PAD TAB ══ */}
       {tab === 'pad' && <PadTab m={m} notify={notify} />}
@@ -800,11 +711,11 @@ export default function App() {
                 Redact & Send
               </button>
               <button onClick={piiSendAnyway}
-                className={`flex-1 ${m.btn} rounded-lg py-2 text-xs font-semibold ${m.textBody} transition-colors`}>
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-lg py-2 text-xs font-semibold transition-colors">
                 Send Anyway
               </button>
               <button onClick={piiCancel}
-                className="px-3 bg-red-600 hover:bg-red-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                className={`px-3 ${m.btn} ${m.textBody} rounded-lg py-2 text-xs font-semibold transition-colors`}>
                 Cancel
               </button>
             </div>

@@ -2,6 +2,9 @@
 // This is the ONLY place API credentials are used.
 // panel.html sends messages here; this worker calls configured providers.
 
+// Open side panel when extension icon is clicked
+chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+
 const DEFAULT_PROVIDER = 'anthropic';
 const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 const DEFAULT_OLLAMA_MODEL = 'llama3.2:3b';
@@ -78,6 +81,8 @@ async function callAnthropic(payload, apiKey) {
       'Content-Type': 'application/json',
       'x-api-key': apiKey,
       'anthropic-version': '2023-06-01',
+      // Required: Anthropic API mandates this header for browser-context requests.
+      // The service worker fetch qualifies as a browser-context call.
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify(payload),

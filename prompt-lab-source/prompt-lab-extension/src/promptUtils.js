@@ -1,7 +1,6 @@
-function randomId() {
-  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
-  return `id-${Math.random().toString(36).slice(2, 10)}`;
-}
+import { ensureString } from './lib/utils.js';
+
+export { ensureString, safeDate } from './lib/utils.js';
 
 export function wordDiff(a, b) {
   const left = typeof a === 'string' ? a : '';
@@ -97,73 +96,6 @@ export function parseEnhancedPayload(rawText) {
 
 const SECRET_PATTERN = /\b(sk-ant-|api[_-]?key|password|secret|access[_-]?token|bearer)\b/i;
 
-export function ensureString(value) {
-  return typeof value === 'string' ? value : '';
-}
-
-export function safeDate(value) {
-  const t = Date.parse(value);
-  return Number.isFinite(t) ? new Date(t).toISOString() : new Date().toISOString();
-}
-
-export function suggestTitleFromText(value) {
-  const txt = ensureString(value).replace(/\s+/g, ' ').trim();
-  if (!txt) return 'Untitled Prompt';
-  const short = txt.slice(0, 72);
-  return short.length < txt.length ? `${short}…` : short;
-}
-
-function normalizeVariant(v) {
-  return {
-    label: ensureString(v?.label) || 'Variant',
-    content: ensureString(v?.content),
-  };
-}
-
-export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
-  if (!entry || typeof entry !== 'object') return null;
-  const original = ensureString(entry.original);
-  const enhanced = ensureString(entry.enhanced) || original;
-  if (!enhanced.trim()) return null;
-  const createdAt = safeDate(entry.createdAt || fallbackTs);
-  const updatedAt = entry.updatedAt ? safeDate(entry.updatedAt) : undefined;
-  return {
-    id: ensureString(entry.id) || randomId(),
-    title: ensureString(entry.title).trim() || suggestTitleFromText(enhanced),
-    original,
-    enhanced,
-    variants: Array.isArray(entry.variants) ? entry.variants.map(normalizeVariant).filter(v => v.content.trim()) : [],
-    notes: ensureString(entry.notes),
-    tags: Array.isArray(entry.tags) ? entry.tags.filter(t => typeof t === 'string' && t.trim()) : [],
-    collection: ensureString(entry.collection),
-    createdAt,
-    updatedAt,
-    useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
-    versions: Array.isArray(entry.versions)
-      ? entry.versions
-        .map(v => ({
-          enhanced: ensureString(v?.enhanced),
-          variants: Array.isArray(v?.variants) ? v.variants.map(normalizeVariant) : [],
-          savedAt: safeDate(v?.savedAt || createdAt),
-        }))
-        .filter(v => v.enhanced.trim())
-      : [],
-  };
-}
-
-export function normalizeLibrary(list) {
-  if (!Array.isArray(list)) return [];
-  const seen = new Set();
-  return list
-    .map((entry, i) => normalizeEntry(entry, new Date(Date.now() - i).toISOString()))
-    .filter(Boolean)
-    .map(entry => {
-      const id = seen.has(entry.id) ? randomId() : entry.id;
-      seen.add(id);
-      return { ...entry, id };
-    });
-}
-
 export function looksSensitive(text) {
   return SECRET_PATTERN.test(ensureString(text));
 }
@@ -177,3 +109,8 @@ export function isTransientError(err) {
     || msg.includes('failed to fetch')
     || msg.includes('temporar');
 }
+
+export {
+  suggestTitleFromText,
+  normalizeLibrary,
+} from './lib/promptSchema.js';

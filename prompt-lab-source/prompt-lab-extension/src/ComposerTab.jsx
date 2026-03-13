@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import Ic from './icons';
 
-export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab }) {
+export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, compact = false }) {
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
+  const [mobileView, setMobileView] = useState('canvas');
 
   const composedPrompt = composerBlocks.map(b => `# ${b.label}\n${b.content}`).join('\n\n---\n\n');
+  const showLibrary = !compact || mobileView === 'library';
+  const showCanvas = !compact || mobileView === 'canvas';
+  const showPreview = !compact || mobileView === 'preview';
 
   return (
-    <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
-      <div className={`w-64 shrink-0 flex flex-col border-r ${m.border} overflow-hidden`}>
+    <div className="flex flex-1 overflow-hidden">
+      <div className={`${compact ? 'hidden' : 'w-64 shrink-0'} flex flex-col border-r ${m.border} overflow-hidden`}>
         <div className={`px-3 py-2 border-b ${m.border} shrink-0`}><p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Library · Drag to add</p></div>
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5">
           {library.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No saved prompts yet.</p>}
@@ -42,7 +46,39 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             </>}
           </div>
         </div>
-        <div className="flex flex-1 overflow-hidden gap-3 p-3">
+        {compact && (
+          <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
+            {[['library', `Library (${library.length})`], ['canvas', `Canvas (${composerBlocks.length})`], ['preview', 'Preview']].map(([id, label]) => (
+              <button key={id} onClick={() => setMobileView(id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${mobileView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className={`flex flex-1 overflow-hidden gap-3 p-3 ${compact ? 'flex-col' : ''}`}>
+          {showLibrary && (
+          <div className={`${compact ? 'min-h-0 max-h-44' : 'hidden'} rounded-xl border ${m.border} overflow-hidden`}>
+            <div className={`px-3 py-2 border-b ${m.border} shrink-0`}>
+              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Library</p>
+            </div>
+            <div className="overflow-y-auto p-2 flex flex-col gap-1.5 h-full">
+              {library.length === 0 && <p className={`text-xs ${m.textMuted} p-2`}>No saved prompts yet.</p>}
+              {library.map(entry => (
+                <div key={entry.id} className={`border rounded-lg p-2.5 transition-colors ${m.draggable}`}>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold ${m.text} truncate`}>{entry.title}</p>
+                      <p className={`text-xs ${m.textAlt} line-clamp-1 mt-0.5`}>{entry.enhanced}</p>
+                    </div>
+                    <button onClick={() => addToComposer(entry)} className="text-violet-400 hover:text-violet-300 shrink-0 transition-colors"><Ic n="Plus" size={14} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          )}
+          {showCanvas && (
           <div
             onDragOver={e => { e.preventDefault(); setDragOverComposer(true); }}
             onDragLeave={() => setDragOverComposer(false)}
@@ -74,11 +110,14 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
               </div>
             ))}
           </div>
-          {composerBlocks.length > 0 && (
-            <div className="w-2/5 flex flex-col">
+          )}
+          {showPreview && (
+            <div className={`${compact ? 'flex-1 min-h-0' : 'w-2/5'} flex flex-col`}>
               <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Preview</p>
               <div className={`flex-1 ${m.codeBlock} border ${m.border} rounded-xl p-3 overflow-y-auto`}>
-                <pre className={`text-xs ${m.textBody} whitespace-pre-wrap leading-relaxed font-mono`}>{composedPrompt}</pre>
+                {composerBlocks.length > 0
+                  ? <pre className={`text-xs ${m.textBody} whitespace-pre-wrap leading-relaxed font-mono`}>{composedPrompt}</pre>
+                  : <p className={`text-sm ${m.textMuted}`}>Add blocks to see the combined prompt.</p>}
               </div>
             </div>
           )}

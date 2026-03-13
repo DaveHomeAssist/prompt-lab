@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { logWarn } from './lib/logger.js';
 
 /**
  * useState backed by localStorage. Reads on mount, writes on change.
@@ -36,7 +37,7 @@ export default function usePersistedState(key, fallback, opts = {}) {
     }
     try {
       localStorage.setItem(key, serialize(value));
-    } catch { /* quota exceeded — silent */ }
+    } catch (e) { logWarn(`localStorage write "${key}"`, e); }
   }, [value, key, serialize]);
 
   return [value, setValue];

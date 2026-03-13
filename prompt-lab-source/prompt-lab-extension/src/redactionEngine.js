@@ -1,3 +1,5 @@
+import { luhnPasses } from './lib/utils.js';
+
 export const REDACTION_SETTINGS_KEY = 'pl2-redaction-settings';
 
 const TYPE_META = {
@@ -66,7 +68,9 @@ export function loadRedactionSettings() {
 export function saveRedactionSettings(settings) {
   try {
     localStorage.setItem(REDACTION_SETTINGS_KEY, JSON.stringify(settings));
-  } catch {}
+  } catch (e) {
+    console.warn('[PromptLab] save redaction settings', e?.message || e);
+  }
 }
 
 function makeMatch(type, start, end, value) {
@@ -102,23 +106,6 @@ function matchesForRegex(type, regex, text, max = 200) {
   return out;
 }
 
-function luhnValid(numberText) {
-  const digits = numberText.replace(/\D/g, '');
-  if (digits.length < 13 || digits.length > 19) return false;
-  let sum = 0;
-  let doubleDigit = false;
-  for (let i = digits.length - 1; i >= 0; i -= 1) {
-    let n = Number(digits[i]);
-    if (doubleDigit) {
-      n *= 2;
-      if (n > 9) n -= 9;
-    }
-    sum += n;
-    doubleDigit = !doubleDigit;
-  }
-  return sum % 10 === 0;
-}
-
 function looksLikeHighEntropyToken(value) {
   if (!value || value.length < 32) return false;
   if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return false;
@@ -148,7 +135,7 @@ function runBuiltInDetectors(text, settings) {
 
   if (enabled.credit_card) {
     const cardLike = matchesForRegex('credit_card', /\b(?:\d[ -]*?){13,19}\b/g, text, 200)
-      .filter(m => luhnValid(m.value));
+      .filter(m => luhnPasses(m.value));
     matches.push(...cardLike);
   }
 

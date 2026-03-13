@@ -1,93 +1,39 @@
-import { useState, useEffect, useRef } from 'react';
 import Ic from './icons';
-import { callModel } from './api';
-import { extractTextFromAnthropic, isTransientError } from './promptUtils';
-import { saveExperiment, listExperiments, hashText } from './experimentStore';
+import useABTest from './hooks/useABTest';
 
-export default function ABTestTab({ m, copy, notify }) {
-  const [abA, setAbA] = useState({ prompt: '', response: '', loading: false });
-  const [abB, setAbB] = useState({ prompt: '', response: '', loading: false });
-  const [abWinner, setAbWinner] = useState(null);
-  const abReqRef = useRef({ a: 0, b: 0 });
-  const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
-
-  useEffect(() => { listExperiments().then(setHistory).catch(() => {}); }, []);
+export default function ABTestTab({ m, copy, notify, compact = false }) {
+  const {
+    abA,
+    setAbA,
+    abB,
+    setAbB,
+    abWinner,
+    history,
+    showHistory,
+    setShowHistory,
+    evalRuns,
+    showRuns,
+    setShowRuns,
+    activeSide,
+    setActiveSide,
+    runAB,
+    resetAB,
+    pickWinner,
+  } = useABTest({ notify });
 
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
 
-  const callWithRetry = async (payload, retries = 1) => {
-    let attempt = 0;
-    let lastError = null;
-    while (attempt <= retries) {
-      try { return await callModel(payload); }
-      catch (e) {
-        lastError = e;
-        if (attempt >= retries || !isTransientError(e)) break;
-        await new Promise(r => setTimeout(r, 350 * (attempt + 1)));
-      }
-      attempt += 1;
-    }
-    throw lastError || new Error('Request failed.');
-  };
-
-  const runAB = async side => {
-    const state = side === 'a' ? abA : abB;
-    const setter = side === 'a' ? setAbA : setAbB;
-    const reqId = abReqRef.current[side] + 1;
-    abReqRef.current = { ...abReqRef.current, [side]: reqId };
-    if (!state.prompt.trim()) return;
-    setter(p => ({ ...p, loading: true, response: '' }));
-    try {
-      const data = await callWithRetry({ model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{ role: 'user', content: state.prompt }] });
-      if (abReqRef.current[side] !== reqId) return;
-      setter(p => ({ ...p, response: extractTextFromAnthropic(data), loading: false }));
-    } catch (e) {
-      if (abReqRef.current[side] !== reqId) return;
-      setter(p => ({ ...p, response: e.message || 'Request failed.', loading: false }));
-    }
-  };
-
-  const pickWinner = async (side) => {
-    const winnerLabel = `Variant ${side}`;
-    setAbWinner(winnerLabel);
-    try {
-      const record = {
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        label: `A/B: ${abA.prompt.slice(0, 40) || 'Untitled'}`,
-        variants: [
-          { id: 'A', promptHash: hashText(abA.prompt), prompt: abA.prompt, response: abA.response },
-          { id: 'B', promptHash: hashText(abB.prompt), prompt: abB.prompt, response: abB.response },
-        ],
-        keyInputSnapshot: JSON.stringify({ aPrompt: abA.prompt.slice(0, 280), bPrompt: abB.prompt.slice(0, 280) }),
-        outcome: { winnerVariantId: side },
-        notes: '',
-      };
-      await saveExperiment(record);
-      const updated = await listExperiments();
-      setHistory(updated);
-      notify('Experiment saved');
-    } catch { /* silent */ }
-  };
-
   return (
-    <div className="flex flex-1 flex-col overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
+    <div className="flex flex-1 flex-col overflow-hidden">
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
           <button onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
             className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run Both
           </button>
-          <button onClick={() => {
-            abReqRef.current = { a: abReqRef.current.a + 1, b: abReqRef.current.b + 1 };
-            setAbA({ prompt: '', response: '', loading: false });
-            setAbB({ prompt: '', response: '', loading: false });
-            setAbWinner(null);
-          }}
-            className={`px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
+          <button onClick={resetAB} className={`px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
         </div>
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
@@ -98,8 +44,18 @@ export default function ABTestTab({ m, copy, notify }) {
           Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
         </p>
       </div>
-      <div className="flex flex-1 overflow-hidden">
-        {([['A', abA, setAbA], ['B', abB, setAbB]]).map(([side, state, setter]) => (
+      {compact && (
+        <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
+          {[['A', abA], ['B', abB]].map(([side, state]) => (
+            <button key={side} onClick={() => setActiveSide(side)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === side ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Variant {side}{state.response ? ' Ready' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className={`flex flex-1 overflow-hidden ${compact ? 'flex-col' : ''}`}>
+        {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => (
           <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} overflow-hidden`}>
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
               <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
@@ -122,18 +78,52 @@ export default function ABTestTab({ m, copy, notify }) {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-violet-400 font-semibold uppercase tracking-wider">Response</span>
-                    {state.response && <span className={`text-xs ${m.textMuted}`}>~{Math.round(state.response.length / 4)} tokens</span>}
+                    {state.response && !state.error && <span className={`text-xs ${m.textMuted}`}>~{Math.round(state.response.length / 4)} tokens</span>}
                   </div>
                   {state.loading
                     ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
-                    : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
+                    : state.error
+                      ? <div className="bg-red-950/40 border border-red-900 rounded-lg p-3 text-xs text-red-300 leading-relaxed">{state.response}</div>
+                      : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
                   }
-                  {state.response && <button onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
+                  {state.error && (
+                    <div className="flex gap-3 mt-2">
+                      <button onClick={() => runAB(side.toLowerCase())} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
+                    </div>
+                  )}
+                  {state.response && !state.error && <button onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
                 </div>
               )}
             </div>
           </div>
         ))}
+      </div>
+      <div className={`border-t ${m.border} shrink-0`}>
+        <button onClick={() => setShowRuns(p => !p)}
+          className={`w-full flex justify-between items-center px-4 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
+          <span>Recent Runs ({evalRuns.length})</span>
+          <Ic n={showRuns ? 'ChevronUp' : 'ChevronDown'} size={10} />
+        </button>
+        {showRuns && evalRuns.length > 0 && (
+          <div className="px-4 pb-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
+            {evalRuns.map((run) => (
+              <div key={run.id} className={`${m.surface} border ${m.border} rounded-lg p-2 text-xs`}>
+                <div className="flex justify-between items-center gap-2">
+                  <span className={`font-semibold ${m.text}`}>{run.variantLabel || run.promptTitle}</span>
+                  <span className={m.textMuted}>{new Date(run.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className={`mt-1 flex flex-wrap gap-2 ${m.textMuted}`}>
+                  <span>{run.provider}</span>
+                  <span>{run.model}</span>
+                  <span>{run.latencyMs}ms</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {showRuns && evalRuns.length === 0 && (
+          <p className={`px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</p>
+        )}
       </div>
       {/* Experiment History */}
       <div className={`border-t ${m.border} shrink-0`}>

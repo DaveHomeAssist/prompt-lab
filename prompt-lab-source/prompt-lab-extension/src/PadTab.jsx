@@ -1,7 +1,22 @@
 import { useState, useRef } from 'react';
 import Ic from './icons';
+import { logWarn } from './lib/logger.js';
+import { storageKeys } from './lib/storage.js';
 
-const PAD_KEY = 'pl-pad';
+const PAD_KEY = storageKeys.pad;
+
+// One-time migration from legacy key
+try {
+  const OLD_KEY = 'pl-pad';
+  const legacy = localStorage.getItem(OLD_KEY);
+  if (legacy !== null && localStorage.getItem(PAD_KEY) === null) {
+    localStorage.setItem(PAD_KEY, legacy);
+    const meta = localStorage.getItem(OLD_KEY + '_meta');
+    if (meta) localStorage.setItem(PAD_KEY + '_meta', meta);
+    localStorage.removeItem(OLD_KEY);
+    localStorage.removeItem(OLD_KEY + '_meta');
+  }
+} catch { /* migration is best-effort */ }
 
 export default function PadTab({ m, notify }) {
   const [text, setText] = useState(() => { try { return localStorage.getItem(PAD_KEY) || ''; } catch { return ''; } });
@@ -19,7 +34,7 @@ export default function PadTab({ m, notify }) {
         const s = 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         localStorage.setItem(PAD_KEY + '_meta', s);
         setStamp(s);
-      } catch {}
+      } catch (e) { logWarn('pad save', e); }
     }, 600);
   };
 
@@ -31,7 +46,7 @@ export default function PadTab({ m, notify }) {
     const next = text.slice(0, pos) + entry + text.slice(ta.selectionEnd);
     setText(next);
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + entry.length; ta.focus(); }, 0);
-    try { localStorage.setItem(PAD_KEY, next); } catch {}
+    try { localStorage.setItem(PAD_KEY, next); } catch (e) { logWarn('pad insert date', e); }
   };
 
   const copyPad = () => {
@@ -49,11 +64,11 @@ export default function PadTab({ m, notify }) {
   const clearPad = () => {
     if (!window.confirm('Clear all notes?')) return;
     setText(''); setStamp('');
-    try { localStorage.removeItem(PAD_KEY); localStorage.removeItem(PAD_KEY + '_meta'); } catch {}
+    try { localStorage.removeItem(PAD_KEY); localStorage.removeItem(PAD_KEY + '_meta'); } catch (e) { logWarn('pad clear', e); }
   };
 
   return (
-    <div className="flex flex-col flex-1 overflow-hidden" style={{ height: 'calc(100vh - 44px)' }}>
+    <div className="flex flex-col flex-1 overflow-hidden">
       <div className={`flex items-center justify-between px-4 py-2 border-b ${m.border} shrink-0`}>
         <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
         <div className="flex gap-2">
