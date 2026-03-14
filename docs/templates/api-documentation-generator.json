@@ -1,0 +1,28 @@
+[
+  {
+    "title": "API Documentation Generator",
+    "original": "Generate API documentation from code.",
+    "enhanced": "You are a senior developer writing production API documentation.\n\nAnalyze the following {{language}} source code and generate complete API documentation.\n\nFor each endpoint/function found, output:\n\n### `{{method}} {{path}}`\n- **Description:** what it does (one sentence)\n- **Parameters:**\n  | Name | Type | Required | Default | Description |\n  |------|------|----------|---------|-------------|\n- **Request body:** JSON schema if applicable\n- **Response:** example JSON with realistic data\n- **Error codes:** table of possible error responses\n- **Example:** curl or fetch snippet\n\nRules:\n- Use realistic example values, not \"string\" or \"123\"\n- Note any authentication requirements\n- Flag any undocumented side effects\n\nSource code:\n```{{language}}\n{{clipboard}}\n```",
+    "variants": [
+      {
+        "label": "OpenAPI spec",
+        "content": "You are an API architect. Convert this {{language}} source code into a valid OpenAPI 3.0 YAML specification. Include paths, schemas, and example responses. Use realistic example values.\n\n```{{language}}\n{{clipboard}}\n```"
+      },
+      {
+        "label": "SDK usage examples",
+        "content": "You are a developer advocate. Given this API source code, write usage examples in JavaScript (fetch), Python (requests), and curl. Each example should be copy-pasteable and use realistic test data.\n\n```{{language}}\n{{clipboard}}\n```"
+      }
+    ],
+    "notes": "Variables: {{language}} (e.g. Python, Go, TypeScript), {{clipboard}} (auto-injects code), {{method}}, {{path}}. Best used with the A/B test feature to compare output quality across models.",
+    "tags": ["System", "Research"],
+    "collection": "Starter Templates",
+    "testCases": [
+      {
+        "title": "Express.js route handler",
+        "input": "app.get('/users/:id', auth, async (req, res) => { const user = await db.users.findById(req.params.id); if (!user) return res.status(404).json({ error: 'Not found' }); res.json(user); });",
+        "traits": ["includes parameter table", "includes curl example", "includes error codes"],
+        "exclusions": ["placeholder values like 'string' or '123'"]
+      }
+    ]
+  }
+]

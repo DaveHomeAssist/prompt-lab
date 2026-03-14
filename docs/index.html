@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
+<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
 <meta name="robots" content="index,follow">
 <meta property="og:title" content="Prompt Lab — Craft Better Prompts">
 <meta property="og:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
@@ -14,8 +14,10 @@
 <meta name="twitter:title" content="Prompt Lab — Craft Better Prompts">
 <meta name="twitter:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
 <meta name="twitter:image" content="https://davehomeassist.github.io/prompt-lab-provider-options/og-image.png?v=2">
-<title>Prompt Lab — Craft Better Prompts</title>
+<title>Prompt Lab | AI Prompt Engineering Workbench for Chrome</title>
 <link rel="canonical" href="https://davehomeassist.github.io/prompt-lab-provider-options/">
+<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face {
   font-family: 'Outfit';
@@ -82,9 +84,10 @@
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-html {
-  scroll-behavior: smooth;
-  overflow-x: hidden;
+html { overflow-x: hidden; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
 }
 
 body {
@@ -172,7 +175,7 @@ body::before {
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.hero-wordmark {
+.wordmark {
   position: relative;
   z-index: 2;
   font-family: var(--font-display);
@@ -186,7 +189,7 @@ body::before {
   opacity: 0;
 }
 
-.hero-wordmark span {
+.wordmark span {
   color: var(--lab-violet-light);
 }
 
@@ -242,6 +245,20 @@ body::before {
   opacity: 0;
 }
 
+.reveal-static {
+  animation: none;
+  opacity: 1;
+}
+
+.inline-code-chip {
+  color: var(--lab-violet-light);
+  background: rgba(124, 58, 237, 0.1);
+  padding: 0.15em 0.45em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
 /* ============================
    BUTTONS
    ============================ */
@@ -288,11 +305,10 @@ body::before {
   border: 1.5px solid var(--glass-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  background: var(--glass-bg);
+  background: rgba(15, 23, 42, 0.88);
   color: var(--surface-300);
   text-decoration: none;
   transition: all 0.3s ease;
-  backdrop-filter: blur(var(--glass-blur));
 }
 
 .btn-secondary:hover {
@@ -370,8 +386,7 @@ body::before {
   padding: 0.6rem 1.2rem;
   border-radius: 100px;
   border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 0.85rem;
@@ -440,8 +455,7 @@ body::before {
   padding: 2rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   transition: all 0.4s ease;
   overflow: hidden;
 }
@@ -698,8 +712,7 @@ body::before {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   border: 1.5px solid rgba(124, 58, 237, 0.3);
   color: var(--lab-violet-light);
   position: relative;
@@ -841,14 +854,26 @@ footer .lab-mark {
   50% { opacity: 1; }
 }
 
-/* ============================
-   BACKDROP-FILTER FALLBACK
-   ============================ */
-@supports not (backdrop-filter: blur(1px)) {
-  .provider-chip,
-  .feature-card,
-  .btn-secondary,
-  .step-number { background: rgba(15, 23, 42, 0.85); }
+@supports (backdrop-filter: blur(1px)) {
+  .btn-secondary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .provider-chip {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .feature-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .step-number {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
 }
 
 /* ============================
@@ -861,6 +886,25 @@ footer .lab-mark {
   .hero-cta-group { flex-direction: column; align-items: center; }
 }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Prompt Lab",
+  "description": "Multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Chrome, Windows, macOS, Linux",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Dave Robertson"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -868,12 +912,9 @@ footer .lab-mark {
 <section class="hero">
   <div class="molecules" aria-hidden="true"></div>
 
-  <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager">
+  <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager" fetchpriority="high" width="320" height="320">
 
-  <p class="hero-wordmark">Prompt <span>Lab</span></p>
-  <h1 class="hero-tagline">
-    <span class="accent">Craft</span> better prompts.
-  </h1>
+  <h1 class="hero-tagline"><span class="wordmark">Prompt Lab</span> &mdash; <span class="accent">Craft</span> better prompts.</h1>
   <p class="hero-sub">
     A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — from a single panel.
   </p>
@@ -891,7 +932,7 @@ footer .lab-mark {
 
 <!-- ========== PROVIDERS ========== -->
 <section class="providers">
-  <div class="providers-label">Works with your stack</div>
+  <h2 class="providers-label">Works with your stack</h2>
   <div class="provider-logos stagger">
     <div class="provider-chip reveal"><span class="dot"></span> Anthropic</div>
     <div class="provider-chip reveal"><span class="dot"></span> OpenAI</div>
@@ -913,7 +954,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
       </div>
-      <div class="feature-name">One-Click Enhance</div>
+      <h3 class="feature-name">One-Click Enhance</h3>
       <div class="feature-desc">Refine any prompt instantly using your active provider. Prompt Lab analyzes structure, specificity, and clarity — then rewrites it better.</div>
     </div>
 
@@ -921,7 +962,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L20.2 3.8M21 16v5h-5M4 4l16.2 16.2"/></svg>
       </div>
-      <div class="feature-name">A/B Testing</div>
+      <h3 class="feature-name">A/B Testing</h3>
       <div class="feature-desc">Run the same prompt against two models side-by-side. Compare output quality, tone, and completeness across providers in real time.</div>
     </div>
 
@@ -929,7 +970,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
       </div>
-      <div class="feature-name">Prompt Composer</div>
+      <h3 class="feature-name">Prompt Composer</h3>
       <div class="feature-desc">Build complex system prompts with modular blocks. Chain instructions, personas, and constraints into structured templates.</div>
     </div>
 
@@ -937,7 +978,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
       </div>
-      <div class="feature-name">Prompt Library</div>
+      <h3 class="feature-name">Prompt Library</h3>
       <div class="feature-desc">Save, tag, and organize your best prompts. Import and export your collection as JSON for portability across machines.</div>
     </div>
 
@@ -945,7 +986,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       </div>
-      <div class="feature-name">Credential Isolation</div>
+      <h3 class="feature-name">Credential Isolation</h3>
       <div class="feature-desc">API keys never leave the Manifest V3 service worker. The panel UI has zero access to your credentials — by architecture, not policy.</div>
     </div>
 
@@ -953,7 +994,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       </div>
-      <div class="feature-name">Provider Hot-Swap</div>
+      <h3 class="feature-name">Provider Hot-Swap</h3>
       <div class="feature-desc">Switch providers without losing context. Your library, settings, and experiment history persist across every provider change.</div>
     </div>
 
@@ -961,7 +1002,7 @@ footer .lab-mark {
       <div class="feature-icon">
         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       </div>
-      <div class="feature-name">Side Panel Mode</div>
+      <h3 class="feature-name">Side Panel Mode</h3>
       <div class="feature-desc">Stays open while you browse — zero tab-switching. Works in Chrome, Vivaldi, Edge, and Brave side panels so you can refine prompts alongside any page.</div>
     </div>
   </div>
@@ -978,10 +1019,10 @@ footer .lab-mark {
 
     <div class="code-window reveal">
       <div class="code-tabs">
-        <button class="code-tab active" data-provider="anthropic">Anthropic</button>
-        <button class="code-tab" data-provider="openai">OpenAI</button>
-        <button class="code-tab" data-provider="ollama">Ollama</button>
-        <button class="code-copy-btn" title="Copy code">&#x2398; Copy</button>
+        <button type="button" class="code-tab active" data-provider="anthropic">Anthropic</button>
+        <button type="button" class="code-tab" data-provider="openai">OpenAI</button>
+        <button type="button" class="code-tab" data-provider="ollama">Ollama</button>
+        <button type="button" class="code-copy-btn" title="Copy code">&#x2398; Copy</button>
       </div>
       <div class="code-titlebar">
         <div class="code-dot red"></div>
@@ -1047,7 +1088,7 @@ footer .lab-mark {
       <div class="step-number">1</div>
       <div class="step-content">
         <h3>Load the extension</h3>
-        <p>Unzip the release into a folder. Open <code style="color:var(--lab-violet-light); background:rgba(124,58,237,0.1); padding:0.15em 0.45em; border-radius:4px; font-family:var(--font-mono); font-size:0.85em;">chrome://extensions</code>, enable Developer Mode, and load unpacked.</p>
+        <p>Unzip the release into a folder. Open <code class="inline-code-chip">chrome://extensions</code>, enable Developer Mode, and load unpacked.</p>
       </div>
     </div>
 
@@ -1081,15 +1122,16 @@ footer .lab-mark {
 <section class="final-cta">
   <h2 class="section-title reveal">Ready to experiment?</h2>
   <p class="reveal">Stop guessing at prompts. Start engineering them.</p>
-  <div class="hero-cta-group reveal" style="animation: none; opacity: 1;">
-    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options#readme" target="_blank" rel="noreferrer" class="btn-primary">Install Guide</a>
-    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noreferrer" class="btn-secondary">View Source</a>
+  <div class="hero-cta-group reveal reveal-static">
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options#readme" target="_blank" rel="noreferrer noopener" class="btn-primary">Install Guide</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noreferrer noopener" class="btn-secondary">View Source</a>
   </div>
 </section>
 
 <!-- ========== FOOTER ========== -->
 <footer>
   <span class="lab-mark">&aleph;</span> Prompt Lab v1.5.0 — Built for prompt engineers who ship.
+  <br><a href="./guide.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">How-To Guide</a> &middot; <a href="./setup.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Setup</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Source</a>
 </footer>
 
 <!-- ========== INTERACTIVE JS ========== -->
@@ -1105,32 +1147,34 @@ footer .lab-mark {
 
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-  // ---- Floating molecules (replaces sparks) ----
-  const molContainer = document.querySelector('.molecules');
-  for (let i = 0; i < 16; i++) {
-    const mol = document.createElement('div');
-    mol.className = 'molecule';
-    mol.style.left = Math.random() * 100 + '%';
-    mol.style.bottom = (20 + Math.random() * 30) + '%';
-    mol.style.animationDuration = (4 + Math.random() * 5) + 's';
-    mol.style.animationDelay = Math.random() * 8 + 's';
-    mol.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
-    const size = 2 + Math.random() * 3;
-    mol.style.width = size + 'px';
-    mol.style.height = size + 'px';
-    molContainer.appendChild(mol);
-  }
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // ---- Floating molecules (replaces sparks) ----
+    const molContainer = document.querySelector('.molecules');
+    for (let i = 0; i < 16; i++) {
+      const mol = document.createElement('div');
+      mol.className = 'molecule';
+      mol.style.left = Math.random() * 100 + '%';
+      mol.style.bottom = (20 + Math.random() * 30) + '%';
+      mol.style.animationDuration = (4 + Math.random() * 5) + 's';
+      mol.style.animationDelay = Math.random() * 8 + 's';
+      mol.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+      const size = 2 + Math.random() * 3;
+      mol.style.width = size + 'px';
+      mol.style.height = size + 'px';
+      molContainer.appendChild(mol);
+    }
 
-  // ---- Molecular bonds ----
-  for (let i = 0; i < 5; i++) {
-    const bond = document.createElement('div');
-    bond.className = 'bond';
-    bond.style.top = (15 + Math.random() * 60) + '%';
-    bond.style.left = (10 + Math.random() * 40) + '%';
-    bond.style.width = (80 + Math.random() * 120) + 'px';
-    bond.style.transform = `rotate(${Math.random() * 360}deg)`;
-    bond.style.animationDelay = Math.random() * 6 + 's';
-    molContainer.appendChild(bond);
+    // ---- Molecular bonds ----
+    for (let i = 0; i < 5; i++) {
+      const bond = document.createElement('div');
+      bond.className = 'bond';
+      bond.style.top = (15 + Math.random() * 60) + '%';
+      bond.style.left = (10 + Math.random() * 40) + '%';
+      bond.style.width = (80 + Math.random() * 120) + 'px';
+      bond.style.transform = `rotate(${Math.random() * 360}deg)`;
+      bond.style.animationDelay = Math.random() * 6 + 's';
+      molContainer.appendChild(bond);
+    }
   }
 
   // ---- Code tab switching ----

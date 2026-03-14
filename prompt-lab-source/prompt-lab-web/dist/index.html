@@ -1,25 +1,1303 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Prompt Lab</title>
-  <style>
-    html, body, #root {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-    }
-    body {
-      min-width: 320px;
-      overflow: hidden;
-    }
-  </style>
-  <script type="module" crossorigin src="/assets/main-CitCRmK9.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-C-PgLdoo.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench and LLM comparison tool. A/B test prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama. Use as a web app or Chrome extension.">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#020617">
+<link rel="icon" type="image/png" href="/og-image.png">
+<meta property="og:title" content="Prompt Lab — Craft Better Prompts">
+<meta property="og:description" content="A multi-provider prompt engineering workbench. Use it instantly on the web or install the Chrome extension. Enhance, A/B test, and compose prompts across five providers.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://promptlab.tools/">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Prompt Lab — Craft Better Prompts">
+<meta name="twitter:description" content="A multi-provider prompt engineering workbench. Use it on the web or install the Chrome extension.">
+<meta name="twitter:image" content="https://promptlab.tools/og-image.png">
+<title>Prompt Lab | AI Prompt Engineering Workbench — Web App &amp; Chrome Extension</title>
+<link rel="canonical" href="https://promptlab.tools/">
+<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('./fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ============================
+   DESIGN SYSTEM — LAB AESTHETIC
+   ============================
+   Primary: Violet-600 (#7C3AED) → Violet-400 (#A78BFA)
+   Surface: Slate-950 (#020617) → Slate-800 (#1E293B)
+   Glass:   rgba(255,255,255, 0.03–0.06) + backdrop-blur
+   Text:    Slate-100 (#F1F5F9), Slate-300 (#CBD5E1), Slate-400 (#94A3B8)
+   Accent:  Indigo-400 (#818CF8), Teal-400 (#2DD4BF)
+   ============================ */
+:root {
+  --lab-violet: #7C3AED;
+  --lab-violet-light: #A78BFA;
+  --lab-violet-dim: #6D28D9;
+  --lab-indigo: #818CF8;
+  --lab-teal: #2DD4BF;
+  --lab-teal-dim: rgba(45, 212, 191, 0.15);
+
+  --surface-950: #020617;
+  --surface-900: #0F172A;
+  --surface-800: #1E293B;
+  --surface-700: #334155;
+  --surface-600: #475569;
+  --surface-500: #64748B;
+  --surface-400: #94A3B8;
+  --surface-300: #CBD5E1;
+  --surface-200: #E2E8F0;
+  --surface-100: #F1F5F9;
+
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+
+  --glow-violet: rgba(124, 58, 237, 0.35);
+  --glow-violet-soft: rgba(124, 58, 237, 0.12);
+  --glow-teal: rgba(45, 212, 191, 0.15);
+
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { overflow-x: hidden; }
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  background: var(--surface-950);
+  color: var(--surface-300);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+
+/* ============================
+   MOLECULAR GRID OVERLAY
+   ============================ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(124, 58, 237, 0.04) 1px, transparent 0);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ============================
+   HERO SECTION
+   ============================ */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  overflow: hidden;
+}
+
+/* Radial glow — cool violet */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  width: 900px;
+  height: 900px;
+  background: radial-gradient(ellipse, var(--glow-violet) 0%, transparent 60%);
+  pointer-events: none;
+  animation: pulseGlow 5s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  from { opacity: 0.4; transform: translate(-50%, -55%) scale(1); }
+  to { opacity: 0.7; transform: translate(-50%, -55%) scale(1.06); }
+}
+
+/* Subtle hex grid */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.025) 1px, transparent 1px);
+  background-size: 64px 64px;
+  pointer-events: none;
+}
+
+.hero-logo {
+  position: relative;
+  z-index: 2;
+  width: 280px;
+  max-width: 70vw;
+  border-radius: var(--radius-lg);
+  filter: drop-shadow(0 0 80px var(--glow-violet));
+  animation: logoEnter 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes logoEnter {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.wordmark {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: clamp(0.85rem, 1.5vw, 1rem);
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--surface-400);
+  margin-top: 2rem;
+  animation: fadeUp 1s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.wordmark span {
+  color: var(--lab-violet-light);
+}
+
+.hero-tagline {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  font-weight: 700;
+  color: var(--surface-100);
+  margin-top: 0.6rem;
+  letter-spacing: -0.03em;
+  animation: fadeUp 1s 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.hero-tagline .accent {
+  background: linear-gradient(135deg, var(--lab-violet-light), var(--lab-indigo));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-sub {
+  position: relative;
+  z-index: 2;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: var(--surface-400);
+  margin-top: 1.2rem;
+  max-width: 560px;
+  font-weight: 300;
+  line-height: 1.7;
+  animation: fadeUp 1s 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-cta-group {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fadeUp 1s 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.reveal-static {
+  animation: none;
+  opacity: 1;
+}
+
+.hero-proof {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+  animation: fadeUp 1s 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.github-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.github-badge:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+
+.hero-stat {
+  color: var(--text-sub);
+  font-size: 0.8rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+.inline-code-chip {
+  color: var(--lab-violet-light);
+  background: rgba(124, 58, 237, 0.1);
+  padding: 0.15em 0.45em;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+.workflow-link {
+  color: var(--lab-violet-light);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.workflow-link:hover {
+  color: var(--lab-indigo);
+}
+
+/* ============================
+   BUTTONS
+   ============================ */
+.btn-primary {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  padding: 0.85rem 2rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-dim));
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 0 40px var(--glow-violet), inset 0 1px 0 rgba(255,255,255,0.12);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 60px var(--glow-violet), 0 8px 32px rgba(124, 58, 237, 0.3);
+  background: linear-gradient(135deg, var(--lab-violet-light), var(--lab-violet));
+}
+.btn-primary:hover::after { transform: translateX(100%); }
+
+.btn-secondary {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  padding: 0.85rem 2rem;
+  border: 1.5px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: rgba(15, 23, 42, 0.88);
+  color: var(--surface-300);
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  border-color: var(--lab-violet-light);
+  color: var(--lab-violet-light);
+  background: rgba(124, 58, 237, 0.06);
+  transform: translateY(-2px);
+}
+
+/* ============================
+   SCROLL INDICATOR
+   ============================ */
+.scroll-indicator {
+  position: absolute;
+  bottom: 2rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--surface-500);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  animation: fadeUp 1s 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+}
+
+.scroll-line {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, var(--lab-violet-light), transparent);
+  animation: scrollPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(0.6); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+/* ============================
+   PROVIDER RIBBON
+   ============================ */
+.providers {
+  position: relative;
+  padding: 3.5rem 2rem;
+  text-align: center;
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+  background: var(--surface-900);
+}
+
+.providers-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--surface-500);
+  margin-bottom: 2rem;
+}
+
+.provider-logos {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.provider-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 100px;
+  border: 1px solid var(--glass-border);
+  background: rgba(15, 23, 42, 0.88);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--surface-300);
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.provider-chip:hover {
+  border-color: rgba(124, 58, 237, 0.3);
+  background: var(--glass-bg-hover);
+  box-shadow: 0 0 24px var(--glow-violet-soft);
+  transform: translateY(-1px);
+}
+
+.provider-chip .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lab-violet-light);
+  box-shadow: 0 0 8px var(--glow-violet);
+}
+
+/* ============================
+   SECTION HEADERS
+   ============================ */
+.section-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--lab-violet-light);
+  margin-bottom: 0.8rem;
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+  font-weight: 700;
+  color: var(--surface-100);
+  letter-spacing: -0.03em;
+}
+
+/* ============================
+   FEATURES SECTION
+   ============================ */
+.features {
+  padding: 7rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.feature-card {
+  position: relative;
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--glass-border);
+  background: rgba(15, 23, 42, 0.88);
+  transition: all 0.4s ease;
+  overflow: hidden;
+}
+
+.feature-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lab-violet-light), transparent);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.feature-card:hover {
+  border-color: rgba(124, 58, 237, 0.2);
+  background: var(--glass-bg-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3), 0 0 40px var(--glow-violet-soft);
+}
+
+.feature-card:hover::before { opacity: 1; }
+
+.feature-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.2rem;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.15);
+  color: var(--lab-violet-light);
+}
+
+.feature-icon svg {
+  width: 22px;
+  height: 22px;
+  stroke: var(--lab-violet-light);
+  stroke-width: 1.5;
+  fill: none;
+}
+
+.feature-name {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--surface-100);
+  margin-bottom: 0.5rem;
+}
+
+.feature-desc {
+  font-size: 0.9rem;
+  color: var(--surface-400);
+  line-height: 1.7;
+}
+.feature-desc code {
+  color: var(--lab-violet-light);
+  background: rgba(124, 58, 237, 0.12);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* ============================
+   CODE DEMO SECTION
+   ============================ */
+.demo {
+  padding: 7rem 2rem;
+  background: var(--surface-900);
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+  border-bottom: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.demo-container {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr;
+  gap: 3rem;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .demo-container { grid-template-columns: 1fr; }
+}
+
+.demo-text { padding-top: 0; }
+.demo-text .section-eyebrow { text-align: left; }
+.demo-text .section-title { text-align: left; font-size: clamp(1.4rem, 3vw, 1.9rem); }
+
+.demo-text p {
+  margin-top: 1rem;
+  color: var(--surface-400);
+  font-size: 0.95rem;
+  line-height: 1.75;
+}
+
+.code-window {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-950);
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 40px var(--glow-violet-soft);
+}
+
+.code-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.code-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--surface-600);
+}
+.code-dot.red { background: #FF5F57; }
+.code-dot.yellow { background: #FEBC2E; }
+.code-dot.green { background: #28C840; }
+
+.code-titlebar span {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--surface-500);
+  letter-spacing: 0.05em;
+}
+
+.code-body {
+  padding: 1.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.85;
+  overflow-x: auto;
+}
+
+.code-body .kw { color: var(--lab-violet-light); }
+.code-body .fn { color: var(--lab-teal); }
+.code-body .str { color: var(--lab-indigo); }
+.code-body .cm { color: var(--surface-600); font-style: italic; }
+.code-body .op { color: var(--surface-400); }
+.code-body .num { color: var(--lab-violet-light); }
+
+/* Code tabs */
+.code-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--glass-border);
+  padding: 0 0.5rem;
+  overflow-x: auto;
+}
+
+.code-tab {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 0.65rem 1rem;
+  border: none;
+  background: none;
+  color: var(--surface-500);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.code-tab:hover { color: var(--surface-300); }
+
+.code-tab.active {
+  color: var(--lab-violet-light);
+  border-bottom-color: var(--lab-violet);
+}
+
+.code-copy-btn {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 5px;
+  background: var(--glass-bg);
+  color: var(--surface-500);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  white-space: nowrap;
+}
+
+.code-copy-btn:hover {
+  border-color: var(--lab-violet-light);
+  color: var(--lab-violet-light);
+}
+
+.code-copy-btn.copied {
+  border-color: #28C840;
+  color: #28C840;
+}
+
+.code-panel { display: none; }
+.code-panel.active {
+  display: block;
+  animation: codeFadeIn 0.3s ease;
+}
+
+@keyframes codeFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================
+   WORKFLOW SECTION
+   ============================ */
+.workflow {
+  padding: 7rem 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.workflow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 3rem;
+  position: relative;
+}
+
+.workflow-steps::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 23px;
+  width: 1px;
+  background: linear-gradient(to bottom, var(--lab-violet), var(--surface-800));
+}
+
+.workflow-step {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.8rem 0;
+  align-items: flex-start;
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  background: rgba(15, 23, 42, 0.88);
+  border: 1.5px solid rgba(124, 58, 237, 0.3);
+  color: var(--lab-violet-light);
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 24px var(--glow-violet-soft);
+}
+
+.step-content h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--surface-100);
+  margin-bottom: 0.3rem;
+}
+
+.step-content p {
+  font-size: 0.9rem;
+  color: var(--surface-400);
+  line-height: 1.7;
+}
+
+/* ============================
+   CTA SECTION
+   ============================ */
+.final-cta {
+  padding: 7rem 2rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-900);
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+}
+
+.final-cta::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 700px;
+  height: 500px;
+  background: radial-gradient(ellipse, var(--glow-violet) 0%, transparent 65%);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.final-cta .section-title {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 1rem;
+}
+
+.final-cta p {
+  position: relative;
+  z-index: 1;
+  color: var(--surface-400);
+  max-width: 480px;
+  margin: 0 auto 2rem;
+  font-size: 1rem;
+}
+
+/* ============================
+   FOOTER
+   ============================ */
+footer {
+  padding: 2.5rem;
+  text-align: center;
+  border-top: 1px solid rgba(124, 58, 237, 0.08);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--surface-600);
+  letter-spacing: 0.06em;
+}
+
+footer .lab-mark {
+  color: var(--lab-violet-light);
+}
+
+/* ============================
+   SCROLL ANIMATIONS
+   ============================ */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stagger > .reveal:nth-child(1) { transition-delay: 0s; }
+.stagger > .reveal:nth-child(2) { transition-delay: 0.08s; }
+.stagger > .reveal:nth-child(3) { transition-delay: 0.16s; }
+.stagger > .reveal:nth-child(4) { transition-delay: 0.2s; }
+.stagger > .reveal:nth-child(5) { transition-delay: 0.28s; }
+.stagger > .reveal:nth-child(6) { transition-delay: 0.36s; }
+.stagger > .reveal:nth-child(7) { transition-delay: 0.44s; }
+
+/* ============================
+   FLOATING MOLECULES (replaces sparks)
+   ============================ */
+.molecules {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.molecule {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--lab-violet-light);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--glow-violet);
+  animation: moleculeFloat linear infinite;
+}
+
+@keyframes moleculeFloat {
+  0% { opacity: 0; transform: translateY(0) scale(0); }
+  15% { opacity: 0.6; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-500px) translateX(var(--drift)) scale(0.3); }
+}
+
+/* Molecular bonds — subtle connecting lines */
+.bond {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.15), transparent);
+  animation: bondFade 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes bondFade {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .btn-secondary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .provider-chip {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .feature-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .step-number {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+}
+
+/* ============================
+   RESPONSIVE
+   ============================ */
+@media (max-width: 600px) {
+  .provider-logos { gap: 0.75rem; }
+  .provider-chip { font-size: 0.78rem; padding: 0.45rem 0.9rem; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .hero-cta-group { flex-direction: column; align-items: center; }
+}
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Prompt Lab",
+  "description": "Multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Web, Chrome, Windows, macOS, Linux",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "USD"
+  },
+  "author": {
+    "@type": "Person",
+    "name": "Dave Robertson"
+  }
+}
+</script>
 </head>
 <body>
-  <div id="root"></div>
+<a href="#features" class="sr-only" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;z-index:999" onfocus="this.style.cssText='position:fixed;left:1rem;top:1rem;z-index:999;padding:0.75rem 1.5rem;background:#7C3AED;color:#fff;border-radius:8px;font-family:system-ui;text-decoration:none;font-weight:600';" onblur="this.style.cssText='position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden';">Skip to content</a>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="molecules" aria-hidden="true"></div>
+
+  <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager" fetchpriority="high" width="280" height="280">
+
+  <h1 class="hero-tagline"><span class="wordmark">Prompt Lab</span> &mdash; <span class="accent">Craft</span> better prompts.</h1>
+  <p class="hero-sub">
+    A multi-provider prompt engineering workbench. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — on the web or as a Chrome extension.
+  </p>
+
+  <div class="hero-cta-group">
+    <a href="/app/" class="btn-primary">Open Web App</a>
+    <a href="#get-started" class="btn-secondary">Install Extension</a>
+  </div>
+
+  <div class="hero-proof">
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noreferrer noopener" class="github-badge">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>Star on GitHub</span>
+    </a>
+    <span class="hero-stat">5 providers &middot; 50+ models</span>
+  </div>
+
+  <div class="scroll-indicator" aria-hidden="true">
+    <div class="scroll-line"></div>
+    scroll
+  </div>
+</section>
+
+<main>
+
+<!-- ========== PROVIDERS ========== -->
+<section class="providers">
+  <h2 class="providers-label">Works with your stack</h2>
+  <div class="provider-logos stagger">
+    <div class="provider-chip reveal"><span class="dot"></span> Anthropic</div>
+    <div class="provider-chip reveal"><span class="dot"></span> OpenAI</div>
+    <div class="provider-chip reveal"><span class="dot"></span> Google Gemini</div>
+    <div class="provider-chip reveal"><span class="dot"></span> OpenRouter</div>
+    <div class="provider-chip reveal"><span class="dot"></span> Ollama</div>
+  </div>
+</section>
+
+<!-- ========== FEATURES ========== -->
+<section class="features" id="features">
+  <div class="section-header reveal">
+    <div class="section-eyebrow">// capabilities</div>
+    <h2 class="section-title">A complete prompt engineering and LLM comparison toolkit</h2>
+  </div>
+
+  <div class="feature-grid stagger">
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      </div>
+      <h3 class="feature-name">One-Click Enhance</h3>
+      <p class="feature-desc">Refine any prompt instantly using your active provider. Prompt Lab analyzes structure, specificity, and clarity — then rewrites it better.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L20.2 3.8M21 16v5h-5M4 4l16.2 16.2"/></svg>
+      </div>
+      <h3 class="feature-name">A/B Testing</h3>
+      <p class="feature-desc">Run the same prompt against two models side-by-side. Compare output quality, tone, and completeness across providers in real time.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      </div>
+      <h3 class="feature-name">Prompt Composer</h3>
+      <p class="feature-desc">Build complex system prompts with modular blocks. Chain instructions, personas, and constraints into structured templates.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      </div>
+      <h3 class="feature-name">Prompt Library</h3>
+      <p class="feature-desc">Save, tag, and organize your best prompts. Import and export your collection as JSON for portability across machines.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </div>
+      <h3 class="feature-name">Credential Isolation</h3>
+      <p class="feature-desc">API keys stay in your browser. On the web app, keys live in localStorage and route through a CORS proxy. The Chrome extension isolates them in a Manifest V3 service worker.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      </div>
+      <h3 class="feature-name">Provider Hot-Swap</h3>
+      <p class="feature-desc">Switch providers without losing context. Your library, settings, and experiment history persist across every provider change.</p>
+    </div>
+
+    <div class="feature-card reveal">
+      <div class="feature-icon">
+        <svg aria-hidden="true" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+      </div>
+      <h3 class="feature-name">Template Variables</h3>
+      <p class="feature-desc">Define dynamic placeholders like <code>{{role}}</code>, <code>{{context}}</code>, or <code>{{clipboard}}</code> in any prompt. Fill them at run time — reuse one template across dozens of scenarios.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CODE DEMO ========== -->
+<section class="demo">
+  <div class="demo-container">
+    <div class="demo-text reveal">
+      <div class="section-eyebrow">// under the hood</div>
+      <h2 class="section-title">One panel, five providers, zero config drift</h2>
+      <p>Every API call routes through a single service worker that translates your prompt into each provider's native format. Responses are normalized so the UI never needs to know which model answered.</p>
+    </div>
+
+    <div class="code-window reveal">
+      <div class="code-tabs" role="tablist" aria-label="Provider code examples">
+        <button type="button" class="code-tab active" data-provider="anthropic" role="tab" aria-selected="true" id="tab-anthropic" aria-controls="panel-anthropic">Anthropic</button>
+        <button type="button" class="code-tab" data-provider="openai" role="tab" aria-selected="false" id="tab-openai" aria-controls="panel-openai">OpenAI</button>
+        <button type="button" class="code-tab" data-provider="ollama" role="tab" aria-selected="false" id="tab-ollama" aria-controls="panel-ollama">Ollama</button>
+        <button type="button" class="code-copy-btn" title="Copy code" aria-label="Copy code to clipboard"><span aria-hidden="true">&#x2398; </span>Copy</button>
+      </div>
+      <div class="code-titlebar">
+        <div class="code-dot red"></div>
+        <div class="code-dot yellow"></div>
+        <div class="code-dot green"></div>
+        <span>background.js</span>
+      </div>
+
+      <!-- Anthropic snippet -->
+      <div class="code-body code-panel active" data-provider="anthropic" role="tabpanel" id="panel-anthropic" aria-labelledby="tab-anthropic">
+<pre><span class="cm">// Anthropic — native format, routed via callModel()</span>
+<span class="kw">async function</span> <span class="fn">callModel</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.anthropic.com/v1/messages'</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    headers<span class="op">: {</span> <span class="str">'x-api-key'</span><span class="op">:</span> key <span class="op">},</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">(</span>payload<span class="op">)</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'anthropic'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
+      </div>
+
+      <!-- OpenAI snippet -->
+      <div class="code-body code-panel" data-provider="openai" role="tabpanel" id="panel-openai" aria-labelledby="tab-openai">
+<pre><span class="cm">// OpenAI — chat completions format</span>
+<span class="kw">async function</span> <span class="fn">callOpenAI</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">'https://api.openai.com/v1/chat/completions'</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    headers<span class="op">: {</span> Authorization<span class="op">:</span> <span class="str">`Bearer ${key}`</span> <span class="op">},</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span> model<span class="op">,</span> messages<span class="op">:</span> msgs <span class="op">})</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'openai'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
+      </div>
+
+      <!-- Ollama snippet -->
+      <div class="code-body code-panel" data-provider="ollama" role="tabpanel" id="panel-ollama" aria-labelledby="tab-ollama">
+<pre><span class="cm">// Ollama — local, no auth required</span>
+<span class="kw">async function</span> <span class="fn">callOllama</span><span class="op">(</span>payload<span class="op">) {</span>
+  <span class="kw">const</span> msgs <span class="op">=</span> <span class="fn">toChatMessages</span><span class="op">(</span>payload<span class="op">);</span>
+  <span class="kw">const</span> res <span class="op">=</span> <span class="kw">await</span> <span class="fn">fetch</span><span class="op">(</span><span class="str">`${baseUrl}/api/chat`</span><span class="op">, {</span>
+    method<span class="op">:</span> <span class="str">'POST'</span><span class="op">,</span>
+    body<span class="op">:</span> <span class="fn">JSON.stringify</span><span class="op">({</span>
+      model<span class="op">,</span> messages<span class="op">:</span> msgs<span class="op">,</span> stream<span class="op">:</span> <span class="num">false</span>
+    <span class="op">})</span>
+  <span class="op">});</span>
+  <span class="kw">return</span> <span class="fn">normalize</span><span class="op">(</span><span class="str">'ollama'</span><span class="op">,</span> <span class="kw">await</span> res<span class="op">.</span><span class="fn">json</span><span class="op">());</span>
+<span class="op">}</span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== WORKFLOW ========== -->
+<section class="workflow" id="get-started">
+  <div class="section-header reveal">
+    <div class="section-eyebrow">// get started</div>
+    <h2 class="section-title">Two ways to get started</h2>
+  </div>
+
+  <div class="workflow-steps">
+    <div class="workflow-step reveal">
+      <div class="step-number">A</div>
+      <div class="step-content">
+        <h3>Use the web app</h3>
+        <p>Open <a href="/app/" class="workflow-link">promptlab.tools/app</a> — no install, no setup. Works in any modern browser.</p>
+      </div>
+    </div>
+
+    <div class="workflow-step reveal">
+      <div class="step-number">B</div>
+      <div class="step-content">
+        <h3>Install the Chrome extension</h3>
+        <p>Download the release, open <code class="inline-code-chip">chrome://extensions</code>, enable Developer Mode, and load unpacked for side-panel access.</p>
+      </div>
+    </div>
+
+    <div class="workflow-step reveal">
+      <div class="step-number">2</div>
+      <div class="step-content">
+        <h3>Choose your provider</h3>
+        <p>Open Settings, pick a provider, enter your API key, and select a model from the dropdown — or type a slug for OpenRouter and Ollama.</p>
+      </div>
+    </div>
+
+    <div class="workflow-step reveal">
+      <div class="step-number">3</div>
+      <div class="step-content">
+        <h3>Start experimenting</h3>
+        <p>Type a prompt, hit Enhance. A/B test variants. Save to your library. Switch providers and compare. Iterate until it's perfect.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ========== FINAL CTA ========== -->
+<section class="final-cta">
+  <h2 class="section-title reveal">Ready to experiment?</h2>
+  <p class="reveal">Stop guessing at prompts. Start engineering them.</p>
+  <div class="hero-cta-group reveal reveal-static">
+    <a href="/app/" class="btn-primary">Open Web App</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" target="_blank" rel="noreferrer noopener" class="btn-secondary">View Source</a>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <span class="lab-mark">&aleph;</span> Prompt Lab v1.5.0 — Built for prompt engineers who ship.
+</footer>
+
+<!-- ========== INTERACTIVE JS ========== -->
+<script>
+  // ---- Scroll reveal ----
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    // ---- Floating molecules (replaces sparks) ----
+    const molContainer = document.querySelector('.molecules');
+    for (let i = 0; i < 16; i++) {
+      const mol = document.createElement('div');
+      mol.className = 'molecule';
+      mol.style.left = Math.random() * 100 + '%';
+      mol.style.bottom = (20 + Math.random() * 30) + '%';
+      mol.style.animationDuration = (4 + Math.random() * 5) + 's';
+      mol.style.animationDelay = Math.random() * 8 + 's';
+      mol.style.setProperty('--drift', (Math.random() * 80 - 40) + 'px');
+      const size = 2 + Math.random() * 3;
+      mol.style.width = size + 'px';
+      mol.style.height = size + 'px';
+      molContainer.appendChild(mol);
+    }
+
+    // ---- Molecular bonds ----
+    for (let i = 0; i < 5; i++) {
+      const bond = document.createElement('div');
+      bond.className = 'bond';
+      bond.style.top = (15 + Math.random() * 60) + '%';
+      bond.style.left = (10 + Math.random() * 40) + '%';
+      bond.style.width = (80 + Math.random() * 120) + 'px';
+      bond.style.transform = `rotate(${Math.random() * 360}deg)`;
+      bond.style.animationDelay = Math.random() * 6 + 's';
+      molContainer.appendChild(bond);
+    }
+  }
+
+  // ---- Code tab switching ----
+  const codeTabs = document.querySelectorAll('.code-tab');
+  const codePanels = document.querySelectorAll('.code-panel');
+
+  codeTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const provider = tab.dataset.provider;
+      codeTabs.forEach(t => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
+      codePanels.forEach(panel => {
+        panel.classList.toggle('active', panel.dataset.provider === provider);
+      });
+    });
+  });
+
+  // ---- Copy button ----
+  const copyBtn = document.querySelector('.code-copy-btn');
+  if (copyBtn) {
+    function legacyCopyText(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    copyBtn.addEventListener('click', async () => {
+      const activePanel = document.querySelector('.code-panel.active pre');
+      if (!activePanel) return;
+
+      const text = activePanel.textContent;
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {
+        ok = legacyCopyText(text);
+      }
+
+      copyBtn.textContent = ok ? '\u2713 Copied' : '\u2717 Copy failed';
+      copyBtn.classList.toggle('copied', ok);
+      setTimeout(() => {
+        copyBtn.textContent = '\u2318 Copy';
+        copyBtn.classList.remove('copied');
+      }, 1500);
+    });
+  }
+</script>
+
 </body>
 </html>
