@@ -288,11 +288,10 @@ body::before {
   border: 1.5px solid var(--glass-border);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  background: var(--glass-bg);
+  background: rgba(15, 23, 42, 0.88);
   color: var(--surface-300);
   text-decoration: none;
   transition: all 0.3s ease;
-  backdrop-filter: blur(var(--glass-blur));
 }
 
 .btn-secondary:hover {
@@ -370,8 +369,7 @@ body::before {
   padding: 0.6rem 1.2rem;
   border-radius: 100px;
   border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   font-family: var(--font-display);
   font-weight: 500;
   font-size: 0.85rem;
@@ -440,8 +438,7 @@ body::before {
   padding: 2rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   transition: all 0.4s ease;
   overflow: hidden;
 }
@@ -698,8 +695,7 @@ body::before {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
+  background: rgba(15, 23, 42, 0.88);
   border: 1.5px solid rgba(124, 58, 237, 0.3);
   color: var(--lab-violet-light);
   position: relative;
@@ -841,14 +837,26 @@ footer .lab-mark {
   50% { opacity: 1; }
 }
 
-/* ============================
-   BACKDROP-FILTER FALLBACK
-   ============================ */
-@supports not (backdrop-filter: blur(1px)) {
-  .provider-chip,
-  .feature-card,
-  .btn-secondary,
-  .step-number { background: rgba(15, 23, 42, 0.85); }
+@supports (backdrop-filter: blur(1px)) {
+  .btn-secondary {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .provider-chip {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .feature-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .step-number {
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur));
+  }
 }
 
 /* ============================
