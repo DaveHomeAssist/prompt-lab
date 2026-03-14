@@ -48,6 +48,10 @@ async function writeNoJekyll() {
   await writeFile(join(docsDir, '.nojekyll'), '', 'utf8');
 }
 
+async function writeCname() {
+  await writeFile(join(docsDir, 'CNAME'), 'promptlab.tools\n', 'utf8');
+}
+
 async function validatePublicInputs() {
   for (const [fromName] of copyTargets) {
     await stat(join(publicDir, fromName));
@@ -80,18 +84,8 @@ async function main() {
     }
   }
 
-  // Copy templates directory
-  const templatesDir = join(webPublicDir, 'templates');
-  try {
-    const s = await stat(templatesDir);
-    if (s.isDirectory()) {
-      await cp(templatesDir, join(docsDir, 'templates'), { recursive: true });
-    }
-  } catch {
-    console.warn('  Optional templates/ directory not found, skipping');
-  }
-
   await writeNoJekyll();
+  await writeCname();
 
   console.log(`Landing site published to ${docsDir}`);
 }
