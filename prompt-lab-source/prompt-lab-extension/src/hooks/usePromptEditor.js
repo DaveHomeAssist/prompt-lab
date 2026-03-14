@@ -177,7 +177,7 @@ export default function usePromptEditor(ui, lib) {
   const buildEnhancePayloadFor = (inputText) => {
     const modeObj = MODES.find(x => x.id === enhMode) || MODES[0];
     const sys = `You are an expert prompt engineer. ${modeObj.sys}\nReturn ONLY valid JSON, no markdown, no backticks:\n{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}\nProduce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
-    return { model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: inputText }] };
+    return { model: 'claude-sonnet-4-20250514', max_tokens: 1500, system: sys, messages: [{ role: 'user', content: inputText }], responseFormat: 'json' };
   };
 
   const buildEnhancePayload = () => buildEnhancePayloadFor(raw);
