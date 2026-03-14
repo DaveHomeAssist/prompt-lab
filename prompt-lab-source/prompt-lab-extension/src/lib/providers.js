@@ -128,6 +128,7 @@ export async function callGemini(payload, settings = {}, fetchImpl = globalThis.
   if (typeof payload?.system === 'string' && payload.system.trim()) {
     requestBody.systemInstruction = { parts: [{ text: payload.system }] };
   }
+  requestBody.generationConfig.responseMimeType = 'application/json';
   if (payload.max_tokens) requestBody.generationConfig.maxOutputTokens = payload.max_tokens;
   if (typeof payload.temperature === 'number') requestBody.generationConfig.temperature = payload.temperature;
 
