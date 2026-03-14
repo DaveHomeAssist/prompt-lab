@@ -2,3 +2,9 @@ node_modules/
 _archive/
 .DS_Store
 *.log
+
+# Rust / Tauri build artifacts
+prompt-lab-desktop/src-tauri/target/
+
+# Desktop Vite build output (regenerated)
+prompt-lab-desktop/dist/

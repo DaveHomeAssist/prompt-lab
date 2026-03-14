@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - docs/**
+      - prompt-lab-source/public/**
+      - prompt-lab-source/scripts/**
+      - prompt-lab-source/package.json
+      - prompt-lab-source/package-lock.json
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -27,6 +31,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: prompt-lab-source/package-lock.json
+
+      - name: Install landing dependencies
+        working-directory: prompt-lab-source
+        run: npm ci
+
+      - name: Build landing site
+        working-directory: prompt-lab-source
+        run: npm run build:landing
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

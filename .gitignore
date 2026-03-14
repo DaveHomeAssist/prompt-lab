@@ -1,3 +1,13 @@
 node_modules/
 .DS_Store
 *.log
+*.zip
+
+# Build artifacts
+prompt-lab-source/prompt-lab-extension/test-results/
+prompt-lab-source/prompt-lab-extension/playwright-report/
+prompt-lab-source/prompt-lab-desktop/src-tauri/target/
+prompt-lab-source/prompt-lab-desktop/dist/
+
+# Archive
+prompt-lab-source/_archive/

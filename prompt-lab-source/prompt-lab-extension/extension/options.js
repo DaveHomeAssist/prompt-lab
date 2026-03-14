@@ -1,13 +1,4 @@
-const DEFAULTS = {
-  provider: 'anthropic',
-  ollamaBaseUrl: 'http://localhost:11434',
-  ollamaModel: 'llama3.2:3b',
-  openaiModel: 'gpt-4o',
-  geminiModel: 'gemini-2.5-flash',
-  openrouterModel: 'anthropic/claude-sonnet-4-20250514',
-};
-
-const VALID_PROVIDERS = ['anthropic', 'ollama', 'openai', 'gemini', 'openrouter'];
+import { DEFAULTS, PROVIDER_SETTINGS_KEYS, VALID_PROVIDERS } from './lib/providerRegistry.js';
 
 const els = {
   // Provider chips
@@ -158,14 +149,7 @@ function renderSections() {
 
 function loadSettings() {
   chrome.storage.local.get(
-    [
-      'provider',
-      'apiKey', 'anthropicModel',
-      'openaiApiKey', 'openaiModel',
-      'geminiApiKey', 'geminiModel',
-      'openrouterApiKey', 'openrouterModel',
-      'ollamaBaseUrl', 'ollamaModel',
-    ],
+    PROVIDER_SETTINGS_KEYS,
     (store) => {
       currentProvider = normalizeProvider(store.provider);
 

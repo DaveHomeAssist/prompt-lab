@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, existsSync, readdirSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,7 +8,20 @@ const outName = process.argv[2] || 'dist';
 const dist = join(root, outName);
 const ext = join(root, 'extension');
 
-// Ensure dist/icons exists
+function copyDir(source, target) {
+  mkdirSync(target, { recursive: true });
+  for (const entry of readdirSync(source)) {
+    const from = join(source, entry);
+    const to = join(target, entry);
+    if (statSync(from).isDirectory()) {
+      copyDir(from, to);
+    } else {
+      copyFileSync(from, to);
+      console.log(`  ✓ ${to.replace(`${dist}/`, '')}`);
+    }
+  }
+}
+
 mkdirSync(join(dist, 'icons'), { recursive: true });
 
 // Copy extension files into dist
@@ -26,20 +39,18 @@ for (const f of files) {
 // Copy fonts
 const fontsDir = join(ext, 'fonts');
 if (existsSync(fontsDir)) {
-  mkdirSync(join(dist, 'fonts'), { recursive: true });
-  for (const f of readdirSync(fontsDir)) {
-    copyFileSync(join(fontsDir, f), join(dist, 'fonts', f));
-    console.log(`  ✓ fonts/${f}`);
-  }
+  copyDir(fontsDir, join(dist, 'fonts'));
 }
 
 // Copy icons
 const iconsDir = join(ext, 'icons');
 if (existsSync(iconsDir)) {
-  for (const f of readdirSync(iconsDir)) {
-    copyFileSync(join(iconsDir, f), join(dist, 'icons', f));
-    console.log(`  ✓ icons/${f}`);
-  }
+  copyDir(iconsDir, join(dist, 'icons'));
+}
+
+const libDir = join(ext, 'lib');
+if (existsSync(libDir)) {
+  copyDir(libDir, join(dist, 'lib'));
 }
 
 console.log(`\n✅ Extension assembled in ${outName}/`);

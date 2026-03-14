@@ -1,35 +1,55 @@
 # Prompt Lab
 
-Chrome extension (MV3 side panel) for prompt engineering with A/B testing, eval runs, and PII scanning.
+Chrome extension (MV3 side panel) for prompt engineering with A/B testing, eval runs, PII scanning, and five provider backends.
 
-## Tech Stack
+## Stack
 
 - React 18
 - Vite 8
 - Tailwind CSS
 - Vitest + React Testing Library
+- Playwright smoke coverage
 
-## Getting Started
+## Providers
+
+- Anthropic
+- OpenAI
+- Google Gemini
+- OpenRouter
+- Ollama
+
+## Getting started
 
 ```bash
 nvm use
 npm install
-npm run dev
+npm test
 npm run build
 ```
 
-After `npm run build`, open `chrome://extensions`, enable Developer mode, choose Load unpacked, and select `dist/`.
+Load the unpacked extension from `dist/` in `chrome://extensions` or `vivaldi://extensions`.
 
 ## Architecture
 
-- `src/hooks/` contains stateful editor, library, eval run, A/B test, and test-case hooks.
-- `src/lib/` contains shared utilities, schemas, storage helpers, logging, and the unified PII engine.
-- `src/__tests__/` contains Vitest and React Testing Library coverage for hooks, storage, schemas, utilities, and PII flows.
-- `extension/` contains MV3 assets such as the manifest, service worker, icons, and extension-specific files copied into `dist/`.
+- `src/` is the shared frontend used by both the extension and the Tauri desktop shell.
+- `src/hooks/` owns editor, library, eval run, A/B test, and test case state.
+- `src/lib/` contains shared utilities, provider abstractions, storage helpers, platform adapters, and the unified PII engine.
+- `src/__tests__/` contains Vitest + RTL coverage for hooks, providers, storage, schemas, utilities, and PII flows.
+- `e2e/` contains the Playwright smoke test for the extension enhance flow.
+- `extension/` contains MV3 assets copied into `dist/` during assembly.
 
-## Testing
+## Commands
 
 ```bash
+npm run dev
+npm run build
+npm run build:cws
 npm test
 npm run test:watch
+npm run test:e2e
 ```
+
+## CI
+
+- `.github/workflows/extension-ci.yml` runs extension tests and builds on push and pull request.
+- `.github/workflows/desktop-build.yml` also depends on this shared source because the desktop app imports `../prompt-lab-extension/src/main.jsx`.

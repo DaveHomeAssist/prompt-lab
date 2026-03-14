@@ -1,33 +1,26 @@
 # Prompt Lab Changelog (Plain English)
 
-- Date: 2026-03-11
+Date: 2026-03-13
 
-## What changed
+## What changed in v1.5.0
 
-1. You can now save prompts even if you never ran “Enhance”.
-2. Prompt titles now auto-fill from your prompt text, so you don’t start with a blank title every time.
-3. Prompt renaming is now built in directly from the library list.
-4. You can manually reorder prompts in the library using drag-and-drop (`Sort: Manual`).
-5. The editor and library can now be focused/collapsed (`Split`, `Focus Editor`, `Focus Library`).
-6. Delete/trash actions are more obvious (red buttons) andd now use confirmations for destructive actions.
-7. A/B Test now clearly explains exactly what gets sent to the model: one plain prompt per side, no extra hidden context.
-8. The app is more resilient to bad data from imports/shared links and won’t crash on malformed prompt objects.
-9. The save/update logic is safer and no longer accidentally overwrites prompts just because titles match.
-10. Background API calls are now stricter and safer:
-    - only valid sender/messages accepted
-    - request size/model/token bounds validated
-    - basic rate limiting added
-11. API key settings are improved:
-    - choose persistent key or session-only key
-    - clear key button added
-12. Export/share now warn when content looks sensitive.
-13. Internal utility tests were added and the project now has a runnable `npm test` command.
+1. Prompt Lab now has a matching Tauri desktop shell in addition to the MV3 extension.
+2. The desktop app reuses the same React frontend as the extension, so product behavior stays aligned across both targets.
+3. Desktop users now have an in-app provider settings modal instead of the extension-only options page flow.
+4. Provider-specific request logic was pulled into a shared provider layer, which makes adding or changing providers less brittle.
+5. The PII scanner and the settings redaction rules now share one canonical engine instead of duplicating regex logic in two places.
+6. Hook-level tests were added for test cases and eval run loading, which closes coverage gaps around editor state refresh behavior.
+7. There is now a browser-level smoke test for the extension enhance flow in addition to the unit and integration suite.
+8. CI now gates extension builds and tests, and desktop builds are prepared for macOS, Linux, and Windows runners.
+9. Desktop packaging was cleaned up with a valid macOS bundle identifier and a 1024x1024 source icon for bundling.
 
 ## Stability check
 
-- Tests: pass (`npm test`)
-- Build: pass (`npm run build`)
+- Extension tests: pass (`npm test`, 49 tests)
+- Extension build: pass (`npm run build`)
+- Desktop frontend build: pass (`cd ../prompt-lab-desktop && npm run build`)
+- macOS Tauri bundles: pass locally for `.app` and `.dmg`
 
 ## In short
 
-This release makes Prompt Lab easier to use day-to-day, harder to break with bad input, and safer around API key/payload handling.
+This release turns Prompt Lab from an extension-only tool into a shared extension-plus-desktop codebase with better test coverage, cleaner provider plumbing, and cleaner release infrastructure.

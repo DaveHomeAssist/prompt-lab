@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
     "test:legacy": "node --test tests/*.test.mjs",
     "build:cws": "vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
@@ -20,10 +21,11 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.20",
     "jiti": "^2.6.1",
     "jsdom": "^28.1.0",

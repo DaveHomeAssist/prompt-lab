@@ -5,6 +5,13 @@
 | Permission | Justification |
 |---|---|
 | `storage` | Required to persist API keys, provider selection, prompt library, and application settings via `chrome.storage.local`. |
+| `sidePanel` | Required because Prompt Lab is delivered as an MV3 side panel and `panel.html` is opened through the `side_panel.default_path` manifest entry. |
+
+## Non-permissions notes
+
+- The extension does not request `<all_urls>`.
+- The extension does not inject content scripts into arbitrary pages.
+- Network access is limited to the configured provider APIs and local Ollama loopback endpoints.
 
 ## Host Permissions
 

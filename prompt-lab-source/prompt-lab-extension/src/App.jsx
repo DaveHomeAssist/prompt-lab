@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Ic from './icons';
 import {
   wordDiff, scorePrompt, extractVars,
@@ -14,10 +14,13 @@ import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import TestCasesPanel from './TestCasesPanel';
+import DesktopSettingsModal from './DesktopSettingsModal';
+import { isExtension } from './lib/platform.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
+  const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const {
     viewportWidth,
     colorMode,
@@ -93,6 +96,13 @@ export default function App() {
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
   }, [loading, raw, showSave, hasSavablePrompt]);
+
+  useEffect(() => {
+    if (isExtension) return;
+    const handler = () => setShowDesktopSettings(true);
+    window.addEventListener('pl:open-settings', handler);
+    return () => window.removeEventListener('pl:open-settings', handler);
+  }, []);
 
   // ── Command palette ──
   const CMD_ACTIONS = [
@@ -223,7 +233,7 @@ export default function App() {
                     className={`${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none shrink-0 ${compact ? 'w-32' : 'max-w-36'}`}>
                     {MODES.map(md => <option key={md.id} value={md.id}>{md.label}</option>)}
                   </select>
-                  <button onClick={enhance} disabled={loading || !raw.trim()}
+                  <button onClick={() => enhance()} disabled={loading || !raw.trim()}
                     className="flex-1 flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg py-2 text-sm font-semibold transition-colors">
                     {loading ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Enhancing…</> : <><Ic n="Wand2" size={13} />Enhance ⌘↵</>}
                   </button>
@@ -413,6 +423,20 @@ export default function App() {
           {showLibraryPane && (
           <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
             <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
+              {!showEditorPane && (
+                <div className="flex gap-1">
+                  {[
+                    ['editor', 'Editor'],
+                    ['library', 'Library'],
+                    ...(!compact ? [['split', 'Split']] : []),
+                  ].map(([id, label]) => (
+                    <button key={id} onClick={() => setEditorLayout(id)}
+                      className={`text-xs px-2 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
                 <div className="relative flex-1">
                   <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
@@ -723,6 +747,14 @@ export default function App() {
       )}
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+      {!isExtension && (
+        <DesktopSettingsModal
+          show={showDesktopSettings}
+          onClose={() => setShowDesktopSettings(false)}
+          m={m}
+          notify={notify}
+        />
+      )}
     </div>
   );
 }

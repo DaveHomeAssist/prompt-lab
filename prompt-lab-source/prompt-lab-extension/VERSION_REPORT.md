@@ -1,122 +1,46 @@
 # Prompt Lab Version Report
 
-- Date: 2026-03-11
-- Project: `prompt-lab-extension`
-- Baseline app version: `1.0.0` (manifest + package)
-- Report scope: UX updates, debugger hardening, STRIDE/OWASP remediation, test coverage pass
+- Date: 2026-03-13
+- Release: `v1.5.0`
+- Scope: extension runtime, shared frontend architecture, desktop shell, CI, and packaging
 
-## Release Summary
+## Release summary
 
-This update delivered a combined UX + security + reliability release:
+`v1.5.0` is the first release where Prompt Lab is documented and maintained as a shared extension-plus-desktop product instead of only an MV3 extension.
 
-- Added editor/library workflow improvements (save raw prompts, clear editor, rename prompts, manual reorder, editor/library focus modes).
-- Added A/B transparency and race-condition guards for async request flows.
-- Hardened import/share/storage normalization to prevent malformed data crashes.
-- Hardened background API proxy controls (sender validation, payload validation, bounds checks, rate limiting).
-- Improved key management UX with persistent/session key modes and clear-key action.
-- Added utility-level automated tests and wired `npm test`.
+## Technical state
 
-## Key Functional Changes
+- Shared frontend source lives in `prompt-lab-extension/src/`.
+- The Chrome extension packages that source into an MV3 side panel build.
+- The Tauri desktop app loads the same `main.jsx` entry through `prompt-lab-desktop/index.html`.
+- Supported providers are Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
 
-### Editor and Library
+## Notable changes in this release
 
-- Save is no longer enhancement-gated (`raw` prompts can be saved).
-- Save title auto-fills from prompt content.
-- Added explicit `Save` and `Clear` buttons in editor action row.
-- Added `Split`, `Focus Editor`, and `Focus Library` modes.
-- Added library `Rename` and `Edit` actions.
-- Added manual drag-drop reorder in library with `Sort: Manual`.
-- Export button surfaced in library header.
-- Destructive actions use clearer red styling + confirmation prompts.
+- Added hook-level coverage for `useTestCases` and `useEvalRuns`.
+- Consolidated PII detection and redaction logic into `src/lib/piiEngine.js`.
+- Introduced provider abstraction modules for background-side provider dispatch.
+- Added a Playwright smoke test for the extension enhance flow.
+- Added extension CI and desktop cross-platform CI workflows.
+- Added a desktop in-app settings modal with localStorage-backed provider settings.
+- Cleaned up desktop packaging inputs for macOS bundle generation.
 
-### A/B Testing
+## Verification snapshot
 
-- Added visible clarification that each variant runs as isolated prompt-only payload (no added context).
-- Added stale request guards so reset/clear cannot be overwritten by late async responses.
+- `npm test` in `prompt-lab-extension/`: pass, 49 tests
+- `npm run build` in `prompt-lab-extension/`: pass
+- `npm run build` in `prompt-lab-desktop/`: pass
+- `npx tauri build --bundles app` in `prompt-lab-desktop/`: pass on macOS
+- `npx tauri build --bundles dmg` in `prompt-lab-desktop/`: pass on macOS
 
-## Security and OWASP/STRIDE Remediation
+## CI snapshot
 
-### Background Proxy (`extension/background.js`)
+- Extension CI: `.github/workflows/extension-ci.yml`
+- Desktop build matrix: `.github/workflows/desktop-build.yml`
 
-- Enforced sender identity check (`sender.id`).
-- Added payload schema and size validation:
-  - Allowed model pattern only (`claude-*`)
-  - `max_tokens` bounded
-  - `messages` structure/role/content checks
-  - per-message and total content length limits
-- Added in-memory rate limiting (`30/min`).
-- Hardened upstream error handling for non-JSON and non-2xx responses.
+## Companion docs
 
-### Secrets Handling (`extension/options.*`)
-
-- Added persistence mode control:
-  - Persistent key (`chrome.storage.local`)
-  - Session-only key (`chrome.storage.session` with fallback)
-- Added clear-key action.
-- Added masked key placeholder refresh behavior.
-
-### Extension Exposure (`extension/manifest.json`)
-
-- Reduced `web_accessible_resources.matches` from `"<all_urls>"` to:
-  - `https://*/*`
-  - `http://*/*`
-
-### UI Safety
-
-- Added icon lookup guard and frozen map in `src/icons.jsx` to reduce sink misuse risk around `dangerouslySetInnerHTML`.
-
-## Reliability and Correctness Hardening
-
-- Added centralized normalization/validation utilities (`src/promptUtils.js`):
-  - type guards for string-only operations
-  - safe entry/library normalization
-  - duplicate ID deconfliction
-  - robust share/import parsing
-  - transient error detection
-- Save/update now uses `editingId` semantics to avoid title-collision overwrite issues.
-- Export now revokes object URLs after use.
-- Import now rejects oversized files and invalid payloads gracefully.
-
-## New Test Coverage
-
-- Added `tests/promptUtils.test.mjs`.
-- Added `npm test` script in `package.json`.
-- Current suite validates:
-  - null/type guards (`scorePrompt`, `extractVars`)
-  - normalization behavior (`normalizeEntry`, `normalizeLibrary`)
-  - duplicate ID dedupe
-  - share/payload parsing robustness
-  - transient error classification
-  - sensitive-string detection
-
-## Files Added
-
-- `src/promptUtils.js`
-- `tests/promptUtils.test.mjs`
-- `VERSION_REPORT.md`
-
-## Files Updated
-
-- `src/App.jsx`
-- `src/icons.jsx`
-- `extension/background.js`
-- `extension/options.html`
-- `extension/options.js`
-- `extension/manifest.json`
-- `package.json`
-
-## Verification Results
-
-- Test command: `npm test`
-  - Result: pass (9/9)
-- Build command: `npm run build`
-  - Result: pass, extension assembled in `dist/`
-
-## Notes
-
-- App/manifest semantic version remains `1.0.0`. If publishing this bundle, recommended bump is `1.1.0` due to additive features and behavior changes.
-
-## Companion Docs
-
-- `BUG_PATCH_REPORT.md`
+- `README.md`
+- `VERSION_HISTORY.md`
 - `CHANGELOG_PLAIN_ENGLISH.md`
+- `CWS_SUBMISSION_CHECKLIST.md`

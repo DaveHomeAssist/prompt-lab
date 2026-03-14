@@ -13,6 +13,7 @@ import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { ALL_TAGS, MODES } from '../constants';
 import { saveEvalRun } from '../experimentStore';
 import { useSessionRestore, useSessionSave } from './useSessionState.js';
+import { openSettings } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
 import useEvalRuns from './useEvalRuns.js';
@@ -168,11 +169,7 @@ export default function usePromptEditor(ui, lib) {
   };
 
   const openOptions = () => {
-    if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    } else {
-      notify('Options page is only available in the extension.');
-    }
+    openSettings();
   };
 
   const handleLintFix = (ruleId) => setRaw(applyLintQuickFix(raw, ruleId));
@@ -229,9 +226,12 @@ export default function usePromptEditor(ui, lib) {
 
   const enhance = async (overridePayload) => {
     if (!raw.trim()) return;
-    const payload = overridePayload || buildEnhancePayload();
+    const safeOverridePayload = overridePayload && typeof overridePayload === 'object' && 'nativeEvent' in overridePayload
+      ? null
+      : overridePayload;
+    const payload = safeOverridePayload || buildEnhancePayload();
 
-    if (!overridePayload) {
+    if (!safeOverridePayload) {
       const { matches } = scanSensitiveData({ payload });
       if (matches.length > 0) {
         setPiiWarning({ matches, payload });

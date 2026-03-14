@@ -1,5 +1,47 @@
 # Prompt Lab — Version History
 
+## v1.5.0 — 2026-03-13
+
+Shared frontend, desktop target, and release infrastructure update.
+
+### Architecture
+
+- Prompt Lab now ships as both:
+  - an MV3 Chrome/Vivaldi side panel extension
+  - a Tauri 2 desktop app
+- The desktop app loads the shared frontend from `prompt-lab-extension/src/` through a relative import in `prompt-lab-desktop/index.html`.
+- Desktop-specific provider settings use `localStorage` key `pl2-provider-settings`, while the extension continues to use `chrome.storage.local`.
+
+### Runtime and platform work
+
+- Added a desktop-only in-app provider settings modal.
+- Extracted provider dispatch into `src/lib/providerRegistry.js` and `src/lib/providers.js`.
+- Consolidated PII scanning and redaction around a single `src/lib/piiEngine.js`.
+- Standardized shared utility imports away from re-export layers.
+
+### Tests and verification
+
+- Added hook-level tests for `useTestCases` and `useEvalRuns`.
+- Added provider unit tests.
+- Added unified PII engine tests.
+- Added a Playwright smoke test for the extension enhance flow.
+- Current maintained extension suite: 49 tests across 8 suites, all passing.
+
+### Build and packaging
+
+- Added extension CI workflow for `npm test` + `npm run build`.
+- Added desktop CI workflow using `tauri-apps/tauri-action@v0` across macOS, Linux, and Windows.
+- Fixed desktop macOS packaging hygiene:
+  - bundle identifier changed to `com.promptlab.desktop`
+  - source icon resized to 1024x1024 for bundling
+
+### Notes
+
+- Desktop currently shares the extension frontend directly rather than maintaining a separate UI fork.
+- Test coverage was reorganized during the shared frontend / desktop transition. The current maintained extension suite is 49 tests across 8 suites.
+- Chrome Web Store review materials are still incomplete; see `CWS_SUBMISSION_CHECKLIST.md`.
+- A Vite warning remains about `desktopApi.js` being both dynamically and statically imported. It does not block current builds.
+
 ## v1.4.0 — 2026-03-12
 
 Module wiring and stabilization release. All six pure-logic modules that existed as dead code since v1.3.0 are now live in the runtime.

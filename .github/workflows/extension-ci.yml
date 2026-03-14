@@ -1,0 +1,42 @@
+name: Extension CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prompt-lab-source/prompt-lab-extension/**
+      - .github/workflows/extension-ci.yml
+  pull_request:
+    paths:
+      - prompt-lab-source/prompt-lab-extension/**
+      - .github/workflows/extension-ci.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prompt-lab-source/prompt-lab-extension
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-extension/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build extension
+        run: npm run build
