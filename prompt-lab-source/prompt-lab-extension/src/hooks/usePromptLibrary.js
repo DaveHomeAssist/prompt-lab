@@ -137,6 +137,16 @@ export default function usePromptLibrary(notify) {
     notify('Restored!');
   };
 
+  const openVersionHistory = (entryId, initialIdx = 0) => {
+    setExpandedVersionId(entryId);
+    setDiffVersionIdx(initialIdx);
+  };
+
+  const closeVersionHistory = () => {
+    setExpandedVersionId(null);
+    setDiffVersionIdx(null);
+  };
+
   const pinGoldenResponse = (entryId, { text, runId, provider, model } = {}) => {
     const pinnedText = ensureString(text);
     if (!pinnedText.trim()) return false;
@@ -160,6 +170,10 @@ export default function usePromptLibrary(notify) {
     });
     if (changed) notify('Golden response cleared.');
     return changed;
+  };
+
+  const setGoldenThreshold = (entryId, threshold) => {
+    updateLibraryEntry(entryId, entry => updatePromptEntry(entry, { goldenThreshold: threshold }));
   };
 
   const exportLib = () => {
@@ -231,8 +245,8 @@ export default function usePromptLibrary(notify) {
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion,
-    pinGoldenResponse, clearGoldenResponse,
+    doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
+    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
     exportLib, importLib, getShareUrl,
     allLibTags, filtered, quickInject,
   };

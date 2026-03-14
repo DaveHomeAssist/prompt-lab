@@ -6,6 +6,7 @@ import {
   suggestTitleFromText,
   looksSensitive, isTransientError,
   isGhostVar, resolveGhostVars,
+  ngramSimilarity,
 } from '../promptUtils';
 import { normalizeEntry } from '../lib/promptSchema.js';
 import { lintPrompt, applyLintQuickFix } from '../promptLint';

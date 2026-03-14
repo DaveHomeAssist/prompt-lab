@@ -15,6 +15,7 @@ import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import TestCasesPanel from './TestCasesPanel';
 import DesktopSettingsModal from './DesktopSettingsModal';
+import VersionDiffModal from './VersionDiffModal';
 import { isExtension } from './lib/platform.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
@@ -89,6 +90,9 @@ export default function App() {
     ? 'Cmd'
     : 'Ctrl';
   const currentEntry = editingId ? lib.library.find((entry) => entry.id === editingId) || null : null;
+  const versionHistoryEntry = lib.expandedVersionId
+    ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
+    : null;
   const goldenResponse = currentEntry?.goldenResponse || null;
   const latestEvalRun = evalRuns[0] || null;
   const comparisonText = typeof enhanced === 'string' && enhanced.trim()
@@ -130,7 +134,13 @@ export default function App() {
       }
       if (mod && e.key === 'k') { e.preventDefault(); setShowCmdPalette(p => !p); setCmdQuery(''); }
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setShowShortcuts(p => !p);
-      if (e.key === 'Escape') { setShowCmdPalette(false); setShowShortcuts(false); setShowSettings(false); lib.setShareId(null); }
+      if (e.key === 'Escape') {
+        setShowCmdPalette(false);
+        setShowShortcuts(false);
+        setShowSettings(false);
+        lib.setShareId(null);
+        lib.closeVersionHistory();
+      }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
@@ -697,40 +707,20 @@ export default function App() {
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
-                              <button onClick={() => lib.setExpandedVersionId(p => p === entry.id ? null : entry.id)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>
-                                {lib.expandedVersionId === entry.id ? 'Collapse' : 'Expand'}
+                              <button
+                                onClick={() => lib.openVersionHistory(entry.id, 0)}
+                                className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1`}
+                              >
+                                <Ic n="GitBranch" size={9} />
+                                Open History
                               </button>
                             </div>
-                            {lib.expandedVersionId === entry.id && (
-                              <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
-                                {[...entry.versions].reverse().map((v, i) => (
-                                  <div key={i} className={`${m.codeBlock} border ${m.border} rounded-lg p-2`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                      <div className="flex items-center gap-2">
-                                        <span className={`text-xs ${m.textMuted}`}>{new Date(v.savedAt).toLocaleString()}</span>
-                                        {v.source && <span className={`text-xs px-1.5 py-0.5 rounded ${v.source === 'restore' ? 'bg-blue-500/20 text-blue-400' : 'bg-violet-500/20 text-violet-400'}`}>{v.source}</span>}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <button onClick={() => lib.setDiffVersionIdx(p => p === i ? null : i)}
-                                          className={`flex items-center gap-1 text-xs transition-colors ${lib.diffVersionIdx === i ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}><Ic n="GitBranch" size={9} />{lib.diffVersionIdx === i ? 'Hide Diff' : 'Diff'}</button>
-                                        <button onClick={() => lib.restoreVersion(entry.id, v)}
-                                          className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"><Ic n="RotateCcw" size={9} />Restore</button>
-                                      </div>
-                                    </div>
-                                    {v.changeNote && <p className={`text-xs ${m.textSub} italic mb-1`}>{v.changeNote}</p>}
-                                    {lib.diffVersionIdx === i ? (
-                                      <p className={`text-xs leading-relaxed ${m.codeBlock} rounded p-1.5`}>
-                                        {wordDiff(v.enhanced, entry.enhanced).map((d, di) => (
-                                          <span key={di} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>{d.v}</span>
-                                        ))}
-                                      </p>
-                                    ) : (
-                                      <p className={`text-xs ${m.textAlt} line-clamp-2`}>{v.enhanced}</p>
-                                    )}
-                                  </div>
-                                ))}
+                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
+                              <div className="flex items-center justify-between gap-3">
+                                <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
+                                <span className={m.textMuted}>Restore and compare in modal</span>
                               </div>
-                            )}
+                            </div>
                           </div>
                         )}
                       </div>
@@ -889,6 +879,15 @@ export default function App() {
           </div>
         </div>
       )}
+
+      <VersionDiffModal
+        entry={versionHistoryEntry}
+        selectedIndex={lib.diffVersionIdx}
+        onSelectIndex={lib.setDiffVersionIdx}
+        onClose={lib.closeVersionHistory}
+        onRestore={(version) => lib.restoreVersion(versionHistoryEntry?.id, version)}
+        m={m}
+      />
 
       {/* ══ PII WARNING MODAL ══ */}
       {piiWarning && (

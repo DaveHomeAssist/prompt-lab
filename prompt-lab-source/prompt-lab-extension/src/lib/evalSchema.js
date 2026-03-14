@@ -29,6 +29,7 @@ export function normalizeEvalRunRecord(record) {
     notes: String(record.notes || '').slice(0, 2000),
     status,
     testCaseId: normalizeEntityId(record.testCaseId),
+    goldenScore: Number.isFinite(record.goldenScore) ? Math.max(0, Math.min(1, record.goldenScore)) : null,
   };
 }
 
