@@ -1,0 +1,156 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. v1.5.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  extension-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prompt-lab-source/prompt-lab-extension
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-extension/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  desktop-build:
+    needs: extension-tests
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            artifact: prompt-lab-macos
+          - platform: ubuntu-22.04
+            args: ''
+            artifact: prompt-lab-linux
+          - platform: windows-latest
+            args: ''
+            artifact: prompt-lab-windows
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-desktop/package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: prompt-lab-source/prompt-lab-desktop/src-tauri
+
+      - name: Add macOS universal targets
+        if: matrix.platform == 'macos-latest'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        working-directory: prompt-lab-source/prompt-lab-desktop
+        run: npm ci
+
+      - name: Build desktop app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: prompt-lab-source/prompt-lab-desktop
+          args: ${{ matrix.args }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.dmg
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.app
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.deb
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.AppImage
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.exe
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.msi
+          if-no-files-found: warn
+
+  publish-release:
+    needs: desktop-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Prompt Lab ${{ inputs.version }}
+          prerelease: ${{ inputs.prerelease }}
+          generate_release_notes: true
+          body: |
+            ## Desktop App Downloads
+
+            Download the installer for your platform below.
+
+            ### Installation notes
+            - **Windows:** SmartScreen may warn because the app is not code-signed. Click "More info" → "Run anyway."
+            - **macOS:** Gatekeeper may block the app. Right-click → "Open" to bypass, or allow in System Settings → Privacy & Security.
+            - **Linux:** Make the AppImage executable with `chmod +x` before running.
+
+            ### First launch
+            1. Click the gear icon to open Settings
+            2. Select your AI provider (Anthropic, OpenAI, Gemini, OpenRouter, or Ollama)
+            3. Enter your API key (not needed for Ollama)
+            4. Click Test Connection → Save
+
+            ### Requirements
+            - **Windows:** Windows 10 (21H2+) or 11 — WebView2 pre-installed
+            - **macOS:** macOS 10.15+
+            - **Linux:** WebKitGTK 4.1
+          files: |
+            release-artifacts/**/*.dmg
+            release-artifacts/**/*.deb
+            release-artifacts/**/*.AppImage
+            release-artifacts/**/*.exe
+            release-artifacts/**/*.msi
