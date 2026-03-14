@@ -1,55 +1,24 @@
-# Prompt Lab
+# Prompt Lab Extension
 
-Chrome extension (MV3 side panel) for prompt engineering with A/B testing, eval runs, PII scanning, and five provider backends.
+Prompt Lab is a Chrome MV3 side-panel extension for writing, testing, and refining prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama. The extension shares its React frontend with the desktop app and remains the main browser-native distribution target.
 
-## Stack
-
-- React 18
-- Vite 8
-- Tailwind CSS
-- Vitest + React Testing Library
-- Playwright smoke coverage
-
-## Providers
-
-- Anthropic
-- OpenAI
-- Google Gemini
-- OpenRouter
-- Ollama
-
-## Getting started
+## Install From Source
 
 ```bash
-nvm use
+cd prompt-lab-source/prompt-lab-extension
 npm install
-npm test
 npm run build
 ```
 
-Load the unpacked extension from `dist/` in `chrome://extensions` or `vivaldi://extensions`.
+Then open `chrome://extensions`, enable Developer Mode, choose **Load unpacked**, and select `dist/`.
 
-## Architecture
-
-- `src/` is the shared frontend used by both the extension and the Tauri desktop shell.
-- `src/hooks/` owns editor, library, eval run, A/B test, and test case state.
-- `src/lib/` contains shared utilities, provider abstractions, storage helpers, platform adapters, and the unified PII engine.
-- `src/__tests__/` contains Vitest + RTL coverage for hooks, providers, storage, schemas, utilities, and PII flows.
-- `e2e/` contains the Playwright smoke test for the extension enhance flow.
-- `extension/` contains MV3 assets copied into `dist/` during assembly.
-
-## Commands
+## Run Tests
 
 ```bash
-npm run dev
-npm run build
-npm run build:cws
+cd prompt-lab-source/prompt-lab-extension
 npm test
-npm run test:watch
-npm run test:e2e
 ```
 
-## CI
+## More Docs
 
-- `.github/workflows/extension-ci.yml` runs extension tests and builds on push and pull request.
-- `.github/workflows/desktop-build.yml` also depends on this shared source because the desktop app imports `../prompt-lab-extension/src/main.jsx`.
+See the [root README](../../README.md) for the overall project layout, desktop app notes, and CI/development workflow.
