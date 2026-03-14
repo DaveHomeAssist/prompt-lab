@@ -1,50 +1,32 @@
 # Prompt Lab Desktop
 
-Tauri 2 desktop wrapper for Prompt Lab. The desktop shell reuses the shared React frontend from `../prompt-lab-extension/src/`.
+Prompt Lab Desktop is a Tauri 2 shell around the shared Prompt Lab React frontend. It reuses `../prompt-lab-extension/src/` so the extension and desktop app stay on one UI codebase.
 
-## Stack
+## Prerequisites
 
-- React 18
-- Vite 8
-- Tailwind CSS
-- Tauri 2
+- Node.js 22+
+- Rust toolchain with `cargo`
+- Tauri platform dependencies for your OS
+  - macOS: Xcode command line tools
+  - Linux: WebKitGTK/AppIndicator/RSVG packages
+  - Windows: WebView2 + MSVC build tools
 
-## Shared source model
-
-- `index.html` loads `../prompt-lab-extension/src/main.jsx` directly.
-- Desktop-only provider settings live in `src/lib/desktopApi.js` and use localStorage key `pl2-provider-settings`.
-- Desktop platform behavior is routed through `src/lib/platform.js`, including the in-app settings modal trigger.
-
-## Commands
+## Development
 
 ```bash
-nvm use
+cd prompt-lab-source/prompt-lab-desktop
 npm install
-npm run dev
-npm run build
-npm run tauri:dev
-npm run tauri:build
+cargo tauri dev
 ```
 
-## Packaging
-
-- Tauri config: `src-tauri/tauri.conf.json`
-- macOS bundle identifier: `com.promptlab.desktop`
-- Source app icon: `src-tauri/icons/icon.png` (1024x1024)
-- Local verification:
+## Build
 
 ```bash
-PATH="$HOME/.cargo/bin:$PATH" npx tauri build --bundles app
-PATH="$HOME/.cargo/bin:$PATH" npx tauri build --bundles dmg
+cd prompt-lab-source/prompt-lab-desktop
+npm install
+cargo tauri build
 ```
 
-## CI
+## More Docs
 
-- Extension tests run first in `.github/workflows/desktop-build.yml`.
-- Desktop build matrix targets `macos-latest`, `ubuntu-22.04`, and `windows-latest`.
-- Linux runners install `libwebkit2gtk-4.1-dev`, `libayatana-appindicator3-dev`, `librsvg2-dev`, and `patchelf`.
-
-## Notes
-
-- The desktop app supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
-- Desktop builds depend on the sibling `prompt-lab-extension/` directory being present in the checkout.
+See the [root README](../../README.md) for project structure, platform status, and shared development workflow.
