@@ -16,6 +16,9 @@ Updated: 2026-03-13
 | `prompt-lab-extension/CHANGELOG_PLAIN_ENGLISH.md` | Non-technical release notes | Active | Product-facing summary of the current release. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
 | `QA_LANDING_PAGE.md` | Landing page QA pack | Active | Manual QA checklist for the GitHub Pages marketing site. |
+| `prompt-lab-web/README.md` | Web deployment quickstart | Active | Dev setup, local proxy testing, and Vercel deploy instructions. |
+| `prompt-lab-web/vercel.json` | Vercel config | Active | SPA rewrite, CORS headers on `/api/*` routes. |
+| `prompt-lab-web/api/proxy.js` | CORS proxy edge function | Active | Domain-allowlisted pass-through proxy for provider APIs. |
 
 ## Historical but retained
 
@@ -35,5 +38,5 @@ Updated: 2026-03-13
 ## Maintenance notes
 
 - Prefer updating docs under `prompt-lab-source/`; treat material outside that tree as legacy unless there is an explicit migration task.
-- When shared frontend behavior changes, update both extension and desktop docs because `prompt-lab-desktop/index.html` imports `../prompt-lab-extension/src/main.jsx`.
+- When shared frontend behavior changes, update extension, desktop, and web docs — all three shells import `../prompt-lab-extension/src/main.jsx`.
 - Keep release docs aligned with the latest verified commands: `npm test`, `npm run build`, and Tauri bundle commands where relevant.

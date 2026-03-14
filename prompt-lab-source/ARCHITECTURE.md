@@ -2,10 +2,11 @@
 
 ## Overview
 
-Prompt Lab is currently delivered through two shells that share one frontend codebase:
+Prompt Lab is currently delivered through three shells that share one frontend codebase:
 
 - Chrome / Vivaldi extension: MV3 side panel build
 - Desktop app: Tauri 2 wrapper
+- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function
 
 The shared React application lives in `prompt-lab-extension/src/`.
 
@@ -23,6 +24,10 @@ The shared React application lives in `prompt-lab-extension/src/`.
 - `prompt-lab-desktop/`
   - Tauri shell that loads `../prompt-lab-extension/src/main.jsx`
   - Desktop packaging config and native bundle settings
+- `prompt-lab-web/`
+  - Hosted web shell that loads `../prompt-lab-extension/src/main.jsx`
+  - Vercel Edge Function CORS proxy at `api/proxy.js`
+  - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection
 - `.github/workflows/`
   - Extension CI
   - Desktop cross-platform build workflow
@@ -54,6 +59,17 @@ The desktop app uses Tauri plus local browser storage:
 - `src/lib/desktopApi.js` stores provider settings in localStorage under `pl2-provider-settings`
 - `src/lib/platform.js` switches behavior between extension and desktop flows
 - Desktop settings are exposed through an in-app modal instead of the extension options page
+
+### Web path
+
+The hosted web app runs as a standard Vite SPA deployed to Vercel:
+
+- `prompt-lab-web/index.html` imports `../prompt-lab-extension/src/main.jsx`
+- `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
+- `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
+- `prompt-lab-web/api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
+- Ollama requests bypass the proxy and go direct to localhost
+- API keys are entered by the user and never stored server-side
 
 ## Providers
 

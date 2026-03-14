@@ -6,8 +6,17 @@
  */
 import { callProvider, listOllamaModels as listModels } from './providers.js';
 import { normalizeProvider } from './providerRegistry.js';
+import { createProxyFetch } from './proxyFetch.js';
 
 const SETTINGS_KEY = 'pl2-provider-settings';
+
+const IS_WEB = typeof import.meta !== 'undefined'
+  && import.meta.env?.VITE_WEB_MODE === 'true';
+
+function getFetchImpl(provider) {
+  if (!IS_WEB || provider === 'ollama') return globalThis.fetch;
+  return createProxyFetch();
+}
 
 export function loadSettings() {
   try {
@@ -24,10 +33,12 @@ export function saveSettings(settings) {
 
 export async function callModelDirect(payload, { settingsOverride } = {}) {
   const s = settingsOverride || loadSettings();
+  const provider = normalizeProvider(s.provider);
   return callProvider({
-    provider: normalizeProvider(s.provider),
+    provider,
     payload,
     settings: s,
+    fetchImpl: getFetchImpl(provider),
   });
 }
 
