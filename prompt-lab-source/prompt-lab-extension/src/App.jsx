@@ -4,7 +4,7 @@ import {
   wordDiff, scorePrompt,
   isGhostVar, ngramSimilarity,
 } from './promptUtils';
-import { ALL_TAGS, T } from './constants';
+import { ALL_TAGS, T, APP_VERSION } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
 import useEditorState from './hooks/useEditorState.js';
@@ -209,6 +209,7 @@ export default function App() {
               <div className="flex items-center gap-1.5">
                 <Ic n="Wand2" size={15} className="text-violet-500" />
                 <span className="font-bold text-sm">Prompt Lab</span>
+                <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}</span>
               </div>
               <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
             </div>

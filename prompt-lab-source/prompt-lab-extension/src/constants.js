@@ -1,5 +1,7 @@
 // ── Shared constants ─────────────────────────────────────────────────────────
 
+export const APP_VERSION = '1.7.0';
+
 export const TAG_COLORS = {
   Writing: 'bg-blue-600', Code: 'bg-green-600', Research: 'bg-purple-600',
   Analysis: 'bg-yellow-600', Creative: 'bg-pink-600', System: 'bg-red-600',
