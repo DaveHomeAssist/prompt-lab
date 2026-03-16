@@ -18,6 +18,7 @@ import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
+import RunTimelinePanel from './RunTimelinePanel';
 import { isExtension } from './lib/platform.js';
 import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
@@ -225,7 +226,7 @@ export default function App() {
             </div>
           </div>
           <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab views">
-            {[['editor', 'Prompt Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad']].map(([id, label]) => (
+            {[['editor', 'Prompt Editor'], ['composer', 'Compose'], ['abtest', 'A/B Test'], ['pad', 'Scratchpad'], ['history', 'History']].map(([id, label]) => (
               <button key={id} type="button" onClick={() => setTab(id)} role="tab" aria-selected={tab === id}
                 className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
@@ -685,6 +686,9 @@ export default function App() {
         setTab('editor');
         notify('Loaded into editor — save to library when ready.');
       }} />}
+
+      {/* ══ HISTORY TAB ══ */}
+      {tab === 'history' && <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} />}
       </main>
 
       {/* ══ MODALS ══ */}

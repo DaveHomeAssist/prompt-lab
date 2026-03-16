@@ -1,32 +1,79 @@
-import { useState, useEffect } from 'react';
-import { listEvalRuns } from '../experimentStore';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { listEvalRuns, saveEvalRun, getEvalRunById } from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
 
-export default function useEvalRuns({ editingId, tab }) {
+export default function useEvalRuns(optionsOrLegacy) {
+  // Backward-compatible: accept { editingId, tab } (old) or { promptId, tab, limit, mode, provider, search } (new)
+  const opts = optionsOrLegacy || {};
+  const promptId = opts.promptId ?? opts.editingId ?? null;
+  const tab = opts.tab ?? null;
+  const limit = opts.limit ?? 12;
+  const modeFilter = opts.mode ?? '';
+  const providerFilter = opts.provider ?? '';
+  const searchFilter = opts.search ?? '';
+
   const [evalRuns, setEvalRuns] = useState([]);
   const [showEvalHistory, setShowEvalHistory] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(0);
+  const displayLimit = useRef(limit);
 
-  const refreshEvalRuns = async (promptId = editingId) => {
+  const refreshEvalRuns = useCallback(async (overridePromptId) => {
+    const pid = overridePromptId ?? promptId;
+    setLoading(true);
     try {
-      const filters = { limit: 12 };
-      if (promptId) filters.promptId = promptId;
+      // Fetch a large window so we can count total + paginate client-side
+      const filters = { limit: 200 };
+      if (pid) filters.promptId = pid;
       else filters.mode = 'enhance';
+      if (modeFilter) filters.mode = modeFilter;
+      if (providerFilter) filters.provider = providerFilter;
+      if (searchFilter) filters.search = searchFilter;
+
       const rows = await listEvalRuns(filters);
-      setEvalRuns(rows);
+      setTotal(rows.length);
+      setEvalRuns(rows.slice(0, displayLimit.current));
     } catch (e) {
       logWarn('refresh eval runs', e);
       setEvalRuns([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [promptId, modeFilter, providerFilter, searchFilter]);
+
+  const loadMore = useCallback(() => {
+    displayLimit.current = Math.min(displayLimit.current + 20, 200);
+    refreshEvalRuns();
+  }, [refreshEvalRuns]);
+
+  const updateRun = useCallback(async (id, patch) => {
+    try {
+      const existing = await getEvalRunById(id);
+      if (!existing) return;
+      await saveEvalRun({ ...existing, ...patch });
+      refreshEvalRuns();
+    } catch (e) {
+      logWarn('update eval run', e);
+    }
+  }, [refreshEvalRuns]);
 
   useEffect(() => {
-    if (tab === 'editor') refreshEvalRuns();
-  }, [editingId, tab]);
+    displayLimit.current = limit;
+  }, [promptId, modeFilter, providerFilter, searchFilter, limit]);
+
+  useEffect(() => {
+    if (tab === 'editor' || tab === 'history') refreshEvalRuns();
+  }, [promptId, tab, refreshEvalRuns]);
 
   return {
     evalRuns,
     showEvalHistory,
     setShowEvalHistory,
     refreshEvalRuns,
+    loading,
+    hasMore: evalRuns.length < total,
+    loadMore,
+    updateRun,
   };
 }
