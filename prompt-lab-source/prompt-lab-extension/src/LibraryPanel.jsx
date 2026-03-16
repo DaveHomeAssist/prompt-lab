@@ -3,6 +3,7 @@ import Ic from './icons';
 import { extractVars, looksSensitive } from './promptUtils';
 import TagChip from './TagChip';
 import TestCasesPanel from './TestCasesPanel';
+import MarkdownPreview from './MarkdownPreview';
 
 /**
  * Library sidebar panel — extracted from App.jsx to prevent re-renders
@@ -30,7 +31,7 @@ const LibraryPanel = memo(function LibraryPanel({
           <div className="flex gap-1">
             {[
               ['editor', 'Editor'],
-              ['library', 'Library'],
+              ['library', 'Prompt Library'],
               ...(!compact ? [['split', 'Split']] : []),
             ].map(([id, label]) => (
               <button key={id} type="button" onClick={() => setEditorLayout(id)}
@@ -134,7 +135,7 @@ const LibraryPanel = memo(function LibraryPanel({
                         && !window.confirm('This shared link may include sensitive content. Continue?')) return;
                       lib.setShareId(p => p === entry.id ? null : entry.id);
                     }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share</button>
-                    <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
+                    <button type="button" onClick={() => { loadEntry(entry); openSavePanel(entry); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit</button>
                     <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
                     <button type="button" onClick={() => lib.del(entry.id)} className="ui-control px-2 py-1 rounded bg-red-600 hover:bg-red-500 text-white text-xs transition-colors flex items-center gap-1"><Ic n="Trash2" size={11} />Delete</button>
                   </div>
@@ -153,7 +154,12 @@ const LibraryPanel = memo(function LibraryPanel({
                     runSingleCase={runSingleCase} removeCase={removeCase}
                   />
                   {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
-                    <div key={lbl}><p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p><p className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>{txt}</p></div>
+                    <div key={lbl}>
+                      <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
+                      <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
+                        <MarkdownPreview text={txt || ''} className="text-xs" />
+                      </div>
+                    </div>
                   ))}
                   {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
                   {(entry.variants || []).length > 0 && (

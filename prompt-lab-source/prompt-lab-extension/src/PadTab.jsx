@@ -159,7 +159,7 @@ function buildPadId() {
 
 /* ── Component ── */
 
-export default function PadTab({ m, notify, pageScroll = false }) {
+export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibrary }) {
   const migrationCheckedRef = useRef(false);
   const textareaRef = useRef(null);
 
@@ -328,6 +328,26 @@ export default function PadTab({ m, notify, pageScroll = false }) {
     } catch (e) { logWarn('pad insert date', e); }
     notify('Date separator inserted');
   };
+
+  const insertAtCursor = (prefix, suffix = '') => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const selected = text.slice(start, end);
+    const insert = prefix + selected + suffix;
+    const next = text.slice(0, start) + insert + text.slice(end);
+    setText(next);
+    const cursorPos = selected ? start + insert.length : start + prefix.length;
+    setTimeout(() => { ta.selectionStart = ta.selectionEnd = cursorPos; ta.focus(); }, 0);
+    try { clearTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
+  };
+
+  const insertHeading = () => insertAtCursor('\n## ', '\n');
+  const insertBullet = () => insertAtCursor('\n- ');
+  const insertNumbered = () => insertAtCursor('\n1. ');
+  const insertCodeBlock = () => insertAtCursor('\n```\n', '\n```\n');
+  const insertQuote = () => insertAtCursor('\n> ');
 
   const handleCopy = () => {
     if (!text.trim()) return;
@@ -576,6 +596,19 @@ export default function PadTab({ m, notify, pageScroll = false }) {
           </div>
           <div className="flex flex-wrap items-center gap-1">
             <button type="button" onClick={handleRenamePad} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Rename pad">Rename</button>
+            {onPromoteToLibrary && (
+              <button
+                type="button"
+                onClick={() => { if (text.trim()) onPromoteToLibrary(activePad?.name || 'Untitled', text); }}
+                disabled={!text.trim()}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+                  text.trim() ? 'text-violet-400 hover:bg-violet-600/20' : `${m.textMuted} opacity-40 cursor-not-allowed`
+                }`}
+                title="Save pad content to Prompt Library"
+              >
+                <Ic n="BookmarkPlus" size={11} />Library
+              </button>
+            )}
             <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Insert date separator">📅</button>
             <button
               type="button"
@@ -604,6 +637,15 @@ export default function PadTab({ m, notify, pageScroll = false }) {
               <Ic n="Trash2" size={11} />
             </button>
           </div>
+        </div>
+        {/* Formatting toolbar */}
+        <div className={`flex items-center gap-1 px-4 py-1.5 border-b ${m.border} shrink-0`}>
+          <span className={`text-[10px] uppercase tracking-wider font-semibold ${m.textMuted} mr-2`}>Format</span>
+          <button type="button" onClick={insertHeading} title="Heading (##)" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-bold`}>H</button>
+          <button type="button" onClick={insertBullet} title="Bullet list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="List" size={12} /></button>
+          <button type="button" onClick={insertNumbered} title="Numbered list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>1.</button>
+          <button type="button" onClick={insertCodeBlock} title="Code block" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>{'{}'}</button>
+          <button type="button" onClick={insertQuote} title="Blockquote" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="Quote" size={12} /></button>
         </div>
         <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
           <textarea

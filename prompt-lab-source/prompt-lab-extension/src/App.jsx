@@ -200,7 +200,7 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider mode={colorMode}>
-      <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+      <div data-theme={colorMode} className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
       <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
@@ -250,7 +250,7 @@ export default function App() {
               <div className="flex gap-1">
                 {[
                   ['editor', 'Editor'],
-                  ['library', 'Library'],
+                  ['library', 'Prompt Library'],
                   ...(!compact ? [['split', 'Split']] : []),
                 ].map(([id, label]) => (
                   <button key={id} type="button" onClick={() => setEditorLayout(id)}
@@ -325,6 +325,7 @@ export default function App() {
                 </div>
               )}
               {/* Mode + Enhance */}
+              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
               <EditorActions
                 m={m}
                 compact={compact}
@@ -676,7 +677,14 @@ export default function App() {
       {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} pageScroll={isWeb} />}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <PadTab m={m} notify={notify} pageScroll={isWeb} />}
+      {tab === 'pad' && <PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
+        setRaw(content);
+        setEnhanced(content);
+        setSaveTitle(title);
+        setShowSave(true);
+        setTab('editor');
+        notify('Loaded into editor — save to library when ready.');
+      }} />}
       </main>
 
       {/* ══ MODALS ══ */}
