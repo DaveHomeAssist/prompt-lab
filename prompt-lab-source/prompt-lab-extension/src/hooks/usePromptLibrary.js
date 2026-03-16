@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
+import { getStarterLibraries, loadStarterPack as loadPack } from '../lib/seedTransform.js';
 
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
@@ -222,6 +223,18 @@ export default function usePromptLibrary(notify) {
     return code ? `${window.location.origin}${window.location.pathname}#share=${code}` : null;
   };
 
+  const starterLibraries = getStarterLibraries();
+
+  const loadStarterPack = useCallback((packId) => {
+    const result = loadPack(packId, library, setLibrary, collections, setCollections);
+    if (result && result.count > 0) {
+      notify(`Loaded ${result.count} prompts into ${result.collection}`);
+    } else if (result && result.count === 0) {
+      notify('Pack already loaded.');
+    }
+    return result;
+  }, [library, collections, notify]);
+
   const allLibTags = [...new Set(library.flatMap(entry => entry.tags || []))];
   const filtered = [...library]
     .filter(entry => {
@@ -248,6 +261,7 @@ export default function usePromptLibrary(notify) {
     doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
     exportLib, importLib, getShareUrl,
+    starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject,
   };
 }

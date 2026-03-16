@@ -18,6 +18,7 @@ function normalizeStringList(value) {
 function normalizePromptMetadata(value) {
   const metadata = value && typeof value === 'object' ? value : {};
   return {
+    ...metadata,
     owner: ensureString(metadata.owner),
     purpose: ensureString(metadata.purpose),
     status: ensureString(metadata.status),
@@ -72,8 +73,23 @@ export function arePromptSnapshotsEqual(left, right) {
 export function suggestTitleFromText(value) {
   const text = ensureString(value).replace(/\s+/g, ' ').trim();
   if (!text) return 'Untitled Prompt';
-  const short = text.slice(0, 72);
-  return short.length < text.length ? `${short}…` : short;
+
+  // Try to extract a meaningful first line or sentence
+  const firstLine = text.split(/\n/)[0].trim();
+  const candidate = firstLine || text;
+
+  // Extract first sentence (end at . ! ? or —) if reasonably short
+  const sentenceMatch = candidate.match(/^(.+?[.!?])(?:\s|$)/);
+  const phrase = sentenceMatch && sentenceMatch[1].length <= 80
+    ? sentenceMatch[1]
+    : candidate;
+
+  // Trim to a reasonable length, breaking at word boundary
+  const MAX = 60;
+  if (phrase.length <= MAX) return phrase;
+  const truncated = phrase.slice(0, MAX);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > MAX * 0.4 ? truncated.slice(0, lastSpace) : truncated) + '…';
 }
 
 export function normalizeVersion(version, fallbackTs = new Date().toISOString()) {
