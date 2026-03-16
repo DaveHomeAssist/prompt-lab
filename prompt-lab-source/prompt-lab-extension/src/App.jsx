@@ -37,6 +37,8 @@ export default function App() {
     viewportHeight,
     colorMode,
     setColorMode,
+    density,
+    setDensity,
     tab,
     setTab,
     toast,
@@ -198,7 +200,7 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider mode={colorMode}>
-      <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+      <div className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
       <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
@@ -722,6 +724,17 @@ export default function App() {
               <span>Show enhancement notes</span>
               <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-violet-500" />
             </label>
+            <div>
+              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Density</p>
+              <div className="flex gap-1">
+                {[['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']].map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => setDensity(id)}
+                    className={`flex-1 text-xs px-2 py-1.5 rounded-lg transition-colors font-medium ${density === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             {lib.collections.length > 0 && (
               <div>
                 <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Collections</p>

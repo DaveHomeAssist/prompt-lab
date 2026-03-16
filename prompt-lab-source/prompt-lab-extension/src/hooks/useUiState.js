@@ -7,6 +7,9 @@ export default function useUiState() {
   const [colorMode, setColorMode] = usePersistedState('pl2-mode', 'dark', {
     validate: value => (value === 'dark' || value === 'light') ? value : 'dark',
   });
+  const [density, setDensity] = usePersistedState('pl2-density', 'comfortable', {
+    validate: value => ['compact', 'comfortable', 'spacious'].includes(value) ? value : 'comfortable',
+  });
   const [tab, setTab] = useState('editor');
   const [toast, setToast] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -28,6 +31,8 @@ export default function useUiState() {
     viewportHeight,
     colorMode,
     setColorMode,
+    density,
+    setDensity,
     tab,
     setTab,
     toast,
