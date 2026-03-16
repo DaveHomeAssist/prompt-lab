@@ -1,0 +1,145 @@
+{
+  "review_date": "2026-03-14",
+  "reviewer": "Claude Opus 4.6 — Architecture Consultant",
+  "codebase": "PromptLab v1.5.0 (prompt-lab-provider-branch)",
+
+  "architecture_health": {
+    "score": 78,
+    "strengths": [
+      "Single shared codebase powers three delivery channels (extension, desktop, web) with minimal branching — platform.js adapter pattern is clean and effective",
+      "Provider abstraction (callProvider → 5 implementations) allows adding new LLM providers without touching UI code",
+      "Zero-backend design — all user data stays client-side; web mode only injects API keys server-side via edge function",
+      "Dual persistence layer (IndexedDB primary, localStorage fallback) handles browser limitations gracefully",
+      "Comprehensive error taxonomy with classified categories, user-facing messages, recovery suggestions, and actionable UI buttons",
+      "PII engine is well-isolated, configurable per-pattern, and includes Luhn validation — production-grade for a client-side tool",
+      "Hooks-based state management avoids Redux/Context boilerplate while keeping concerns separated (editor, library, UI, AB test, test cases)",
+      "Prompt schema normalization handles version migration and metadata evolution without breaking existing saved data",
+      "Well-documented — ARCHITECTURE.md and IMPLEMENTATION_PLAN.md explain design decisions and runtime model"
+    ],
+    "weaknesses": [
+      "App.jsx (972 LOC) is a monolithic orchestrator — all tab switching, keyboard shortcuts, state wiring, and layout logic in one file",
+      "PadTab.jsx (22K) is the largest component and handles both the editor surface and the library sidebar — two distinct concerns",
+      "No React Context or state container — hooks are passed as props through tab components, creating prop-drilling chains 3-4 levels deep",
+      "Test coverage is thin — 9 unit test files cover utilities and hooks, but no integration tests for the enhance flow or provider round-trips",
+      "Web demo mode couples frontend to Vercel deployment (proxy.js key injection) — no abstraction for alternative hosting",
+      "No feature flag system — capabilities like ghost variables, version history, and demo mode are hardcoded conditionals",
+      "Inline styles mixed with Tailwind classes in several components — inconsistent styling approach"
+    ]
+  },
+
+  "design_issues": [
+    {
+      "pattern": "God Component",
+      "issue": "App.jsx (972 LOC) orchestrates all state hooks, tab switching, keyboard shortcuts, modals, toast notifications, and layout — too many responsibilities for a single component",
+      "impact": "Every feature addition touches App.jsx, increasing merge conflicts and cognitive load. Difficult to test in isolation.",
+      "refactoring_strategy": "Extract feature shells: EditorShell (wires usePromptEditor + PadTab), LibraryShell (wires usePromptLibrary), ABTestShell. App.jsx becomes a thin layout + router with <TabRouter> dispatching to shells. Each shell owns its hook wiring.",
+      "affected_modules": ["App.jsx", "PadTab.jsx", "ABTestTab.jsx", "ComposerTab.jsx"],
+      "effort_estimate": "Medium (2-3 sessions) — mostly moving code, no logic changes"
+    },
+    {
+      "pattern": "Mixed Concerns in Component",
+      "issue": "PadTab.jsx (22K) renders both the prompt editor surface AND the library sidebar with search/filter/drag-reorder — two distinct UX domains in one file",
+      "impact": "Changes to library UX risk breaking editor rendering. File is too large to review in one pass.",
+      "refactoring_strategy": "Split into PadEditor.jsx (editor textarea, enhance button, diff view, lint panel) and LibrarySidebar.jsx (search, filters, card list, drag-reorder). PadTab becomes a layout wrapper: <PadTab><LibrarySidebar /><PadEditor /></PadTab>",
+      "affected_modules": ["PadTab.jsx"],
+      "effort_estimate": "Medium (1-2 sessions) — file split, no logic changes"
+    },
+    {
+      "pattern": "Prop Drilling",
+      "issue": "State from hooks in App.jsx is passed 3-4 levels deep through tab components. Example: usePromptEditor returns ~20 values, all threaded through PadTab props.",
+      "impact": "Adding new state requires updating prop signatures through the entire chain. Components receive props they only forward.",
+      "refactoring_strategy": "Introduce a lightweight PromptLabContext (or two: EditorContext + LibraryContext) at the App level. Tab components useContext() instead of accepting prop bundles. Keep hooks as-is — Context just replaces the prop-drilling bridge.",
+      "affected_modules": ["App.jsx", "PadTab.jsx", "ABTestTab.jsx", "ComposerTab.jsx", "TestCasesPanel.jsx"],
+      "effort_estimate": "Small-Medium (1 session) — mechanical replacement of props with useContext()"
+    },
+    {
+      "pattern": "Missing Abstraction",
+      "issue": "No provider interface contract — each provider function (callAnthropic, callOpenAI, etc.) has a similar but subtly different signature. No TypeScript interface or JSDoc contract enforces consistency.",
+      "impact": "Adding a new provider requires reading existing implementations to discover the expected shape. Easy to miss edge cases (streaming, error format, auth header).",
+      "refactoring_strategy": "Define a ProviderAdapter interface (JSDoc or .d.ts): { name, call(payload, settings, fetchImpl), formatMessages(payload), parseResponse(raw), validateSettings(settings) }. Each provider exports an object implementing this interface. callProvider() dispatches by looking up the adapter.",
+      "affected_modules": ["lib/providers.js", "lib/providerRegistry.js"],
+      "effort_estimate": "Small (1 session) — restructure existing functions into adapter objects"
+    },
+    {
+      "pattern": "Implicit Feature Flags",
+      "issue": "Capabilities like ghost variables, version history, demo mode, and web mode are controlled by scattered conditionals (import.meta.env.VITE_WEB_MODE, platform detection, hardcoded booleans) with no central registry",
+      "impact": "No way to toggle features without code changes. Hard to reason about what's enabled in which platform/build.",
+      "refactoring_strategy": "Create lib/features.js exporting a frozen flags object derived from build-time env vars and runtime detection: { webMode, demoMode, ghostVariables, versionHistory, piiScanning }. Components check features.ghostVariables instead of inline conditionals.",
+      "affected_modules": ["lib/platform.js", "usePromptEditor.js", "promptUtils.js", "App.jsx"],
+      "effort_estimate": "Small (< 1 session) — extract existing checks into one module"
+    },
+    {
+      "pattern": "Insufficient Test Coverage",
+      "issue": "9 unit test files cover utilities and hooks, but no integration tests for the core enhance flow (user input → provider call → response display) or cross-platform behavior. E2E is a single smoke test.",
+      "impact": "Regressions in the critical path (enhance, save, load) are caught manually. Provider format changes can break silently.",
+      "refactoring_strategy": "Add integration tests for: (1) enhance flow with mocked provider responses, (2) library save/load round-trip, (3) A/B test experiment persistence, (4) PII scan → redact → send flow. Use MSW (Mock Service Worker) for provider API mocking.",
+      "affected_modules": ["src/__tests__/"],
+      "effort_estimate": "Medium (2-3 sessions) — test infrastructure + 4-5 integration tests"
+    },
+    {
+      "pattern": "Storage Layer Fragmentation",
+      "issue": "Three separate persistence mechanisms (localStorage via storage.js, IndexedDB via experimentStore.js, chrome.storage.local in background.js) with no unified interface. Each has its own error handling and serialization.",
+      "impact": "Data migration across platforms requires touching three codepaths. No single place to implement encryption-at-rest or export/import.",
+      "refactoring_strategy": "Create lib/dataStore.js with a unified interface: { get(collection, key), put(collection, key, value), list(collection, query), delete(collection, key) }. Implementations: IndexedDBStore (primary), LocalStorageStore (fallback), ChromeStorageStore (extension settings). experimentStore and storage.js become thin wrappers.",
+      "affected_modules": ["lib/storage.js", "lib/experimentStore.js", "extension/background.js"],
+      "effort_estimate": "Medium (2 sessions) — new abstraction layer + migration of existing callers"
+    },
+    {
+      "pattern": "Styling Inconsistency",
+      "issue": "Components mix Tailwind utility classes, inline style objects, CSS custom properties (constants.js tagColors), and raw className strings. No single styling convention.",
+      "impact": "Difficult to maintain design consistency. Theme changes require updating multiple styling mechanisms.",
+      "refactoring_strategy": "Standardize on Tailwind for all component styling. Convert inline styles to Tailwind classes or @apply directives. Move tagColors from JS constants to Tailwind theme extensions. This is cosmetic — defer until a design system pass.",
+      "affected_modules": ["PadTab.jsx", "ABTestTab.jsx", "ComposerTab.jsx", "DesktopSettingsModal.jsx", "constants.js"],
+      "effort_estimate": "Large (3+ sessions) — touches every component, high diff volume"
+    }
+  ],
+
+  "structural_improvements": [
+    "Extract App.jsx into thin layout shell + feature shells (EditorShell, LibraryShell, ABTestShell) to reduce the 972-LOC monolith to ~200 LOC",
+    "Split PadTab.jsx (22K) into PadEditor + LibrarySidebar — two files, one layout wrapper",
+    "Introduce EditorContext and LibraryContext to eliminate 3-4 level prop drilling chains",
+    "Define a formal ProviderAdapter interface (JSDoc or .d.ts) so new providers can be added by implementing a known contract",
+    "Create lib/features.js to centralize feature flag checks currently scattered as inline conditionals",
+    "Add 4-5 integration tests covering the enhance flow, library round-trip, A/B persistence, and PII redaction pipeline",
+    "Unify storage behind a single DataStore interface with IndexedDB/localStorage/chrome.storage implementations",
+    "Add JSDoc @typedef blocks to hooks return values — usePromptEditor returns ~20 values with no type documentation"
+  ],
+
+  "recommended_patterns": [
+    {
+      "pattern": "Adapter Pattern (formalized)",
+      "use_case": "Provider implementations — replace switch/case dispatch with registered adapter objects",
+      "example": "const geminiAdapter = { name: 'gemini', call(payload, settings, fetchImpl) { ... }, formatMessages(payload) { return toGeminiContents(payload); }, parseResponse(raw) { ... } }; registry.register(geminiAdapter);"
+    },
+    {
+      "pattern": "Context Injection (lightweight)",
+      "use_case": "Replace prop drilling from App.jsx through tab components — EditorContext provides hook values to any descendant",
+      "example": "const EditorContext = createContext(); function EditorProvider({ children }) { const editor = usePromptEditor(); return <EditorContext.Provider value={editor}>{children}</EditorContext.Provider>; }"
+    },
+    {
+      "pattern": "Feature Flag Registry",
+      "use_case": "Centralize platform/build-dependent feature checks into one queryable object",
+      "example": "export const features = Object.freeze({ webMode: import.meta.env.VITE_WEB_MODE === 'true', demoMode: Boolean(import.meta.env.VITE_DEMO_KEY), ghostVars: true, piiScanning: true });"
+    },
+    {
+      "pattern": "Repository Pattern (for storage)",
+      "use_case": "Unify localStorage, IndexedDB, and chrome.storage behind one interface for library, experiments, and settings",
+      "example": "class PromptRepository { constructor(store) { this.store = store; } async save(entry) { await this.store.put('prompts', entry.id, entry); } async find(id) { return this.store.get('prompts', id); } async list(query) { return this.store.list('prompts', query); } }"
+    },
+    {
+      "pattern": "Compound Component (for tabs)",
+      "use_case": "Replace the monolithic App.jsx tab switch with self-contained tab modules that register themselves",
+      "example": "<TabRouter default='pad'><TabRouter.Tab id='pad' label='Pad'><EditorShell /></TabRouter.Tab><TabRouter.Tab id='ab' label='A/B Test'><ABTestShell /></TabRouter.Tab></TabRouter>"
+    }
+  ],
+
+  "migration_path": [
+    "Phase 1 — Reduce App.jsx (1 session): Extract EditorContext + LibraryContext, move hook wiring out of App.jsx into provider components. App.jsx drops to ~200 LOC layout + tab routing.",
+    "Phase 2 — Split PadTab (1 session): Extract LibrarySidebar.jsx and PadEditor.jsx from PadTab.jsx. PadTab becomes a flex layout wrapper.",
+    "Phase 3 — Formalize provider interface (1 session): Define ProviderAdapter shape, refactor callAnthropic/callOpenAI/callGemini/callOpenRouter/callOllama into adapter objects. Add providerRegistry.register().",
+    "Phase 4 — Feature flags (< 1 session): Create lib/features.js, replace scattered conditionals. No behavior change.",
+    "Phase 5 — Integration tests (2 sessions): Add MSW for provider mocking. Write tests for enhance flow, library CRUD, A/B persistence, PII redaction.",
+    "Phase 6 — Unified storage (2 sessions): Build DataStore interface with IndexedDB + localStorage + chrome.storage backends. Migrate experimentStore and storage.js callers.",
+    "Phase 7 — Styling pass (defer): Standardize on Tailwind, remove inline styles. Do this when a design system or rebrand is planned."
+  ]
+}
