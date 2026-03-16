@@ -9,14 +9,14 @@ import {
   decodeShare,
   extractTextFromAnthropic,
   parseEnhancedPayload,
-  ensureString,
-  safeDate,
   suggestTitleFromText,
-  normalizeEntry,
   normalizeLibrary,
   looksSensitive,
   isTransientError,
 } from '../src/promptUtils.js';
+
+import { ensureString, safeDate } from '../src/lib/utils.js';
+import { normalizeEntry } from '../src/lib/promptSchema.js';
 
 // ── wordDiff ────────────────────────────────────────────────────────────────
 
@@ -156,11 +156,11 @@ test('extract: throws on error field', () => {
 });
 
 test('extract: throws on missing content', () => {
-  assert.throws(() => extractTextFromAnthropic({}), /no content/i);
+  assert.throws(() => extractTextFromAnthropic({}), /no.*text.*content/i);
 });
 
 test('extract: throws on empty content', () => {
-  assert.throws(() => extractTextFromAnthropic({ content: [{ text: '' }] }), /empty/i);
+  assert.throws(() => extractTextFromAnthropic({ content: [{ text: '' }] }), /no.*content/i);
 });
 
 test('extract: handles mixed block types', () => {
@@ -176,13 +176,13 @@ test('parse: clean JSON', () => {
 });
 
 test('parse: JSON in markdown code fence', () => {
-  const r = parseEnhancedPayload('```json\n{"key":"val"}\n```');
-  assert.equal(r.key, 'val');
+  const r = parseEnhancedPayload('```json\n{"enhanced":"val"}\n```');
+  assert.equal(r.enhanced, 'val');
 });
 
 test('parse: JSON with leading/trailing noise', () => {
-  const r = parseEnhancedPayload('Here is the result: {"x":1} hope that helps!');
-  assert.equal(r.x, 1);
+  const r = parseEnhancedPayload('Here is the result: {"enhanced":"cleaned up"} hope that helps!');
+  assert.equal(r.enhanced, 'cleaned up');
 });
 
 test('parse: throws on empty', () => {
@@ -222,14 +222,15 @@ test('parse: stringifies object-shaped prompt fields', () => {
     tags: ['Analysis', { type: 'Other' }],
   }));
 
-  assert.match(r.enhanced, /"role": "expert"/);
+  // coercePromptText flattens objects to "key: value" lines
+  assert.match(r.enhanced, /role: expert/);
   assert.equal(r.variants[0].label, 'Variant A');
-  assert.match(r.variants[0].content, /"role": "reviewer"/);
+  assert.match(r.variants[0].content, /role: reviewer/);
   assert.equal(r.variants[1].label, 'Variant');
-  assert.match(r.variants[1].content, /"role": "fallback"/);
-  assert.match(r.notes, /"source": "model"/);
+  assert.match(r.variants[1].content, /role: fallback/);
+  assert.match(r.notes, /source: model/);
   assert.equal(r.tags[0], 'Analysis');
-  assert.match(r.tags[1], /"type": "Other"/);
+  assert.match(r.tags[1], /type: Other/);
 });
 
 // ── ensureString ────────────────────────────────────────────────────────────

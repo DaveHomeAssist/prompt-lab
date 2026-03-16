@@ -7,7 +7,7 @@ import {
   isTransientError,
   ngramSimilarity,
 } from '../promptUtils';
-import { ALL_TAGS, MODES } from '../constants';
+import { ALL_TAGS, buildSystemPrompt } from '../constants';
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
@@ -60,15 +60,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   };
 
   const buildEnhancePayloadFor = (inputText) => {
-    const modeObj = MODES.find((item) => item.id === enhMode) || MODES[0];
-    const sys = `You are an expert prompt engineer. ${modeObj.sys}
-Return ONLY valid JSON, no markdown, no backticks:
-{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","tags":["..."]}
-Produce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
     return {
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
-      system: sys,
+      temperature: 0.4,
+      system: buildSystemPrompt(enhMode, ALL_TAGS),
       messages: [{ role: 'user', content: inputText }],
       responseFormat: 'json',
     };
@@ -158,7 +154,14 @@ Produce 2 variants. Available tags: ${ALL_TAGS.join(', ')}.`;
 
       setEnhanced(parsed.enhanced || '');
       setVariants(parsed.variants || []);
-      setNotes(parsed.notes || '');
+
+      // Surface assumptions in notes panel for transparency
+      const assumptions = parsed.assumptions || [];
+      const notesText = parsed.notes || '';
+      const assumptionBlock = assumptions.length > 0
+        ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a}`).join('\n')}`
+        : '';
+      setNotes(notesText + assumptionBlock);
       setSaveTags(parsed.tags || []);
 
       const nextTitle = suggestTitleFromText(parsed.enhanced || raw);

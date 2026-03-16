@@ -7,15 +7,70 @@ export const TAG_COLORS = {
 };
 export const ALL_TAGS = Object.keys(TAG_COLORS);
 
+// ── Enhancement mode policy ──────────────────────────────────────────────────
+// INTENT_POLICY is prepended to every mode's system prompt. It guards against
+// the engine inventing medium, audience, tone, or subject when the user's
+// prompt doesn't specify them. Keep it short — it competes for attention with
+// the mode-specific instruction.
+const INTENT_POLICY = [
+  'Preserve the user\'s original intent, subject, and scope exactly.',
+  'Do not invent or assume a medium (email, blog, Notion, etc.), audience, or tone the user did not specify.',
+  'If the prompt uses contextual references like "the", "this", or "that", keep them — do not replace with placeholders.',
+  'Only add structure the prompt genuinely lacks. Shorter prompts are not automatically worse.',
+].join(' ');
+
 export const MODES = [
-  { id: 'balanced', label: '⚖️ Balanced', sys: 'Improve clarity, specificity, and structure. Add role, task, format, and constraints where missing.' },
-  { id: 'claude', label: '🟣 Claude', sys: 'Optimize for Claude. Use XML tags, clear instructions, explicit output format.' },
-  { id: 'chatgpt', label: '🟢 ChatGPT', sys: 'Optimize for GPT-4/o. Use system/user cues, chain-of-thought prompting, JSON output where appropriate.' },
-  { id: 'image', label: '🎨 Image Gen', sys: 'Optimize for image generation. Include style, medium, lighting, composition, aspect ratio, quality modifiers.' },
-  { id: 'code', label: '💻 Code Gen', sys: 'Optimize for code generation. Specify language, framework, input/output types, error handling, coding style.' },
-  { id: 'concise', label: '✂️ Concise', sys: 'Make the prompt as short and direct as possible while preserving all intent.' },
-  { id: 'detailed', label: '📝 Detailed', sys: 'Expand with rich context, examples, edge cases, explicit constraints. Make it comprehensive.' },
+  {
+    id: 'balanced',
+    label: '⚖️ Balanced',
+    sys: 'Improve clarity and specificity. Add role, task, format, or constraints only when genuinely absent and needed for execution. Prefer minimal changes over aggressive restructuring. If the prompt is already clear, make only light adjustments.',
+  },
+  {
+    id: 'claude',
+    label: '🟣 Claude',
+    sys: 'Optimize for Anthropic Claude models. Use XML tags (<instructions>, <context>, <output>) to structure the prompt where helpful. Make the output format explicit. Use direct, clear instructions. Avoid system-message tricks that only work on other models.',
+  },
+  {
+    id: 'chatgpt',
+    label: '🟢 ChatGPT',
+    sys: 'Optimize for OpenAI GPT-4/o models. Use system/user message structure idioms. Add chain-of-thought prompting ("think step by step") where it improves accuracy. Use JSON output format where appropriate. Avoid XML tags.',
+  },
+  {
+    id: 'image',
+    label: '🎨 Image Gen',
+    sys: 'Optimize for image generation models (DALL-E, Midjourney, Stable Diffusion). Add style, artistic medium, lighting, composition, camera angle, aspect ratio, and quality modifiers where missing. Keep the subject description faithful to the user\'s intent. Do not change what the user wants to see — only improve how it is described for the model.',
+  },
+  {
+    id: 'code',
+    label: '💻 Code Gen',
+    sys: 'Optimize for code generation. Specify language, framework, and runtime where inferrable. Clarify input/output types, error handling expectations, and coding style. Add edge case notes only when they are likely to cause bugs. Do not add requirements the user did not ask for.',
+  },
+  {
+    id: 'concise',
+    label: '✂️ Concise',
+    sys: 'Make the prompt as short and direct as possible. Remove filler words, redundant instructions, and unnecessary politeness. Preserve all intent, meaning, and constraints exactly. Do not add anything new. The goal is compression, not expansion.',
+  },
+  {
+    id: 'detailed',
+    label: '📝 Detailed',
+    sys: 'Expand the prompt with richer context, concrete examples, explicit edge cases, and clear constraints. Ground every addition in what the user actually asked for — do not introduce new goals, audiences, or requirements. The expansion should make the existing intent more executable, not change the intent.',
+  },
 ];
+
+/**
+ * Build the full system prompt for an enhancement request.
+ * Centralizes assembly so it can be tested independently of the hook.
+ */
+export function buildSystemPrompt(modeId, tags) {
+  const modeObj = MODES.find((item) => item.id === modeId) || MODES[0];
+  const tagList = Array.isArray(tags) ? tags.join(', ') : tags;
+  return `You are an expert prompt engineer. ${INTENT_POLICY} ${modeObj.sys}
+Return ONLY valid JSON, no markdown, no backticks:
+{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","assumptions":["..."],"tags":["..."]}
+Produce 2 variants. In "notes", explain what you changed and why. In "assumptions", list anything you added that was not explicitly stated in the original prompt (medium, audience, tone, structure, constraints). If you added nothing, return an empty array. Available tags: ${tagList}.`;
+}
+
+export { INTENT_POLICY };
 
 export const DEFAULT_LIBRARY_SEEDS = [
   {

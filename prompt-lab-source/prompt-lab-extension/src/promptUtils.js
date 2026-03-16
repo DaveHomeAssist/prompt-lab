@@ -171,8 +171,23 @@ function stringifyPromptValue(value) {
   }
 }
 
+function looksLikeJSON(text) {
+  const trimmed = text.trim();
+  return (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+         (trimmed.startsWith('[') && trimmed.endsWith(']'));
+}
+
 function coercePromptText(value) {
-  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (looksLikeJSON(trimmed)) {
+      try {
+        const inner = JSON.parse(trimmed);
+        if (inner && typeof inner === 'object') return coercePromptText(inner);
+      } catch { /* not JSON, return as-is */ }
+    }
+    return trimmed;
+  }
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (!value || typeof value !== 'object') return '';
 
@@ -185,16 +200,25 @@ function coercePromptText(value) {
     if (candidate) return candidate;
   }
 
-  const structured = ['role', 'task', 'context', 'format', 'constraints', 'tone', 'audience', 'goal']
-    .filter((key) => typeof value[key] === 'string' && value[key].trim())
-    .map((key) => `${key}: ${value[key].trim()}`);
-  if (structured.length) return structured.join('\n');
+  const ORDERED_KEYS = ['role', 'task', 'context', 'format', 'constraints', 'tone', 'audience', 'goal'];
+  const orderedSet = new Set(ORDERED_KEYS);
 
-  return Object.entries(value)
-    .filter(([, entry]) => typeof entry === 'string' && entry.trim())
-    .map(([key, entry]) => `${key}: ${entry.trim()}`)
-    .join('\n')
-    .trim();
+  function formatEntry(key, entry) {
+    if (typeof entry === 'string') return `${key}: ${entry.trim()}`;
+    if (Array.isArray(entry)) return `${key}: ${entry.map((item) => coercePromptText(item)).filter(Boolean).join('; ')}`;
+    return `${key}: ${coercePromptText(entry)}`;
+  }
+
+  const lines = [];
+  for (const key of ORDERED_KEYS) {
+    if (value[key] != null && value[key] !== '') lines.push(formatEntry(key, value[key]));
+  }
+  for (const [key, entry] of Object.entries(value)) {
+    if (orderedSet.has(key) || entry == null || entry === '') continue;
+    lines.push(formatEntry(key, entry));
+  }
+  const result = lines.filter((line) => !line.endsWith(': ')).join('\n').trim();
+  return result;
 }
 
 function normalizeParsedPayload(payload) {
@@ -220,9 +244,12 @@ function normalizeParsedPayload(payload) {
         })
         .filter((variant) => variant.content.trim())
       : [],
-    notes: stringifyPromptValue(payload.notes),
+    notes: coercePromptText(payload.notes),
+    assumptions: Array.isArray(payload.assumptions)
+      ? payload.assumptions.map((a) => coercePromptText(a)).filter(Boolean)
+      : [],
     tags: Array.isArray(payload.tags)
-      ? payload.tags.map((tag) => stringifyPromptValue(tag).trim()).filter(Boolean)
+      ? payload.tags.map((tag) => coercePromptText(tag)).filter(Boolean)
       : [],
   };
 }
