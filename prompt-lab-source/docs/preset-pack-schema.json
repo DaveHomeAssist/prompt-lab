@@ -1,0 +1,389 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "ui-enhancement-pack",
+  "title": "UI Enhancement Prompt Pack",
+  "description": "Reusable UX and frontend prompts for interface audits, optimization passes, and implementation planning.",
+  "project": "general",
+  "status": "active",
+  "tags": ["ux", "ui", "frontend", "performance", "prompts"],
+  "createdAt": "2026-03-18",
+  "updatedAt": "2026-03-18",
+  "author": "Dave",
+  "presets": [
+    {
+      "id": "navigation-simplification",
+      "title": "Navigation Simplification",
+      "category": "Information Architecture",
+      "status": "ready",
+      "priority": 1,
+      "tags": ["navigation", "ia", "cognitive-load"],
+      "summary": "Reduce navigation complexity to 4-6 items grouped by user intent.",
+      "useCases": [
+        "Apps with 7+ top-level nav items",
+        "Users getting lost between views",
+        "Redundant paths to the same content"
+      ],
+      "modelHints": {
+        "bestFor": ["claude", "codex"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "CurlPlan top nav, Garden OS sidebar"
+        },
+        {
+          "key": "current_nav",
+          "label": "Current Navigation Items",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List current nav items and their destinations"
+        }
+      ],
+      "prompt": "You are an information architect.\n\nTASK:\nReduce navigation complexity and cognitive load for: {{target_surface}}.\n\nCURRENT NAVIGATION:\n{{current_nav}}\n\nINSTRUCTIONS:\n- Limit top-level navigation to 4–6 items\n- Group by user intent, not system structure\n- Remove redundant paths\n- Use contextual navigation where possible\n- Add clear backtracking\n\nOUTPUT FORMAT:\n1. New Navigation Structure\n2. Removed / Merged Elements\n3. Core User Flows",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["New Navigation Structure", "Removed / Merged Elements", "Core User Flows"]
+      }
+    },
+    {
+      "id": "cta-clarity-optimization",
+      "title": "CTA Clarity Optimization",
+      "category": "UX Strategy",
+      "status": "ready",
+      "priority": 2,
+      "tags": ["cta", "labels", "clarity", "conversion"],
+      "summary": "Enforce one primary action per screen and rewrite vague labels to outcome-based labels.",
+      "useCases": [
+        "Screens with competing buttons",
+        "Vague labels like Submit or OK",
+        "Users hesitating before acting"
+      ],
+      "modelHints": {
+        "bestFor": ["claude"],
+        "temperature": 0.3
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Planner view, editor panel, quote form"
+        },
+        {
+          "key": "current_actions",
+          "label": "Current Actions / Buttons",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List all buttons and actions currently visible on the screen"
+        }
+      ],
+      "prompt": "You are a product UX strategist.\n\nTASK:\nMaximize action clarity and reduce hesitation for: {{target_surface}}.\n\nCURRENT ACTIONS:\n{{current_actions}}\n\nINSTRUCTIONS:\n- Enforce one primary action per screen\n- Increase contrast and size for primary CTA\n- Rewrite vague labels to outcome-based labels\n- Reduce competing actions\n- Add directional cues (progress, grouping)\n\nOUTPUT FORMAT:\n1. CTA Hierarchy Map (primary, secondary)\n2. Rewritten Labels (before → after)\n3. Layout Adjustments (attention flow)",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["CTA Hierarchy Map", "Rewritten Labels", "Layout Adjustments"]
+      }
+    },
+    {
+      "id": "visual-hierarchy-compression",
+      "title": "Visual Hierarchy Compression",
+      "category": "UI Systems",
+      "status": "ready",
+      "priority": 3,
+      "tags": ["hierarchy", "typography", "whitespace", "noise"],
+      "summary": "Enforce 3-4 typography tiers, increase whitespace, and de-emphasize non-critical information.",
+      "useCases": [
+        "Cluttered interfaces",
+        "Too many font sizes or weights",
+        "Hard to scan at a glance"
+      ],
+      "modelHints": {
+        "bestFor": ["claude", "codex"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Dashboard, inspector panel, settings page"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe current typography, spacing, and visual issues"
+        }
+      ],
+      "prompt": "You are a UI systems designer.\n\nTASK:\nImprove clarity and reduce visual noise for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Define 3–4 typography tiers max\n- Use contrast and size for priority\n- Increase whitespace around key actions\n- Group related elements into sections/cards\n- De-emphasize non-critical information\n\nOUTPUT FORMAT:\n1. Hierarchy Levels (primary → tertiary)\n2. Layout Changes\n3. Typography Scale",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Hierarchy Levels", "Layout Changes", "Typography Scale"]
+      }
+    },
+    {
+      "id": "interaction-density",
+      "title": "Interaction Density Optimization",
+      "category": "UX Systems",
+      "status": "ready",
+      "priority": 4,
+      "tags": ["ux", "density", "keyboard", "workflow"],
+      "summary": "Compress multi-step flows into denser single-surface interactions.",
+      "useCases": [
+        "Modal-heavy interfaces",
+        "Too many clicks to complete a task",
+        "Slow admin or data-entry workflows"
+      ],
+      "modelHints": {
+        "bestFor": ["claude", "codex"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Planner view, dashboard, game log"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe the current UI and pain points"
+        }
+      ],
+      "prompt": "You are a senior UX systems engineer.\n\nTASK:\nIncrease interaction density and reduce user friction for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Collapse multi-step flows into single-surface interactions\n- Replace page transitions with inline expansion, drawers, or modals\n- Convert static UI into interactive elements (inline edit, clickable rows)\n- Add keyboard shortcuts for all primary actions\n- Remove redundant confirmations unless destructive\n\nOUTPUT FORMAT:\n1. Interaction Map (Before → After)\n2. UI Changes (bullet list, specific components)\n3. Keyboard Shortcut Map (action → key)",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Interaction Map", "UI Changes", "Keyboard Shortcut Map"]
+      }
+    },
+    {
+      "id": "microinteraction-system",
+      "title": "Microinteraction System",
+      "category": "Motion Design",
+      "status": "ready",
+      "priority": 5,
+      "tags": ["animation", "feedback", "tactile", "motion"],
+      "summary": "Add tactile feedback to all key interactions under 200ms.",
+      "useCases": [
+        "Buttons that feel dead",
+        "No visual response to user action",
+        "Interface feels static or sluggish"
+      ],
+      "modelHints": {
+        "bestFor": ["claude"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Buttons, modals, tab transitions, cards"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "List the interactive elements that currently lack feedback"
+        }
+      ],
+      "prompt": "You are a microinteraction designer.\n\nTASK:\nAdd tactile feedback to all key interactions for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Button press → scale + color shift\n- Hover → affordance or preview\n- Drag → resistance + snapping\n- Success → confirmation feedback\n- Error → shake or highlight\n\nCONSTRAINTS:\n- Animation duration ≤200ms\n- No decorative motion\n\nOUTPUT FORMAT:\n1. Interaction → Feedback Mapping\n2. Timing + Easing Specs",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Interaction → Feedback Mapping", "Timing + Easing Specs"]
+      }
+    },
+    {
+      "id": "anticipatory-ux",
+      "title": "Anticipatory UX",
+      "category": "UX Systems",
+      "status": "ready",
+      "priority": 6,
+      "tags": ["prediction", "prefill", "localStorage", "intent"],
+      "summary": "Predict user intent and pre-fill inputs based on behavioral history.",
+      "useCases": [
+        "Repetitive data entry",
+        "Users always selecting the same options",
+        "No memory between sessions"
+      ],
+      "modelHints": {
+        "bestFor": ["claude"],
+        "temperature": 0.3
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Form modals, planner, search fields"
+        },
+        {
+          "key": "user_patterns",
+          "label": "Known User Patterns",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe repetitive behaviors you've observed"
+        }
+      ],
+      "prompt": "You are building anticipatory UX for: {{target_surface}}.\n\nKNOWN USER PATTERNS:\n{{user_patterns}}\n\nTASK:\nMake the interface predict user intent.\n\nINSTRUCTIONS:\n- Suggest next actions based on context\n- Pre-fill common inputs from history\n- Highlight likely selections\n- Persist preferences in localStorage\n\nOUTPUT FORMAT:\n1. Prediction Opportunities (context signal → predicted intent → action)\n2. UI Changes\n3. Stored Data Model (localStorage key and shape)",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Prediction Opportunities", "UI Changes", "Stored Data Model"]
+      }
+    },
+    {
+      "id": "reactive-ui-states",
+      "title": "Reactive UI States",
+      "category": "UX Systems",
+      "status": "ready",
+      "priority": 7,
+      "tags": ["state", "empty", "error", "loading", "completed"],
+      "summary": "Define UI behavior for empty, active, completed, and error states.",
+      "useCases": [
+        "Blank screens with no guidance",
+        "Errors that don't explain recovery",
+        "No feedback after completing a task"
+      ],
+      "modelHints": {
+        "bestFor": ["claude"],
+        "temperature": 0.3
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Dashboard, list views, form modals"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe what happens in each state currently"
+        }
+      ],
+      "prompt": "You are a reactive UI systems designer for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nTASK:\nMake the interface adapt to user state.\n\nINSTRUCTIONS:\nDefine UI behavior for:\n- Empty state (first-time use guidance)\n- Active state (current workflow feedback)\n- Completed state (summary + next steps)\n- Error state (clear recovery actions)\n\nOUTPUT FORMAT:\n1. State Matrix (state → UI behavior)\n2. UI Components per State\n3. Microcopy per State",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["State Matrix", "UI Components per State", "Microcopy per State"]
+      }
+    },
+    {
+      "id": "perceived-performance",
+      "title": "Perceived Performance Enhancement",
+      "category": "Frontend Performance",
+      "status": "ready",
+      "priority": 8,
+      "tags": ["performance", "latency", "skeleton", "animation", "optimistic"],
+      "summary": "Make the interface feel instant regardless of actual latency.",
+      "useCases": [
+        "Slow-feeling UI despite fast backend",
+        "Async actions with no feedback",
+        "Blank waits during API calls"
+      ],
+      "modelHints": {
+        "bestFor": ["claude", "codex"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "text",
+          "required": true,
+          "placeholder": "Output pane, save flow, list rendering"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Describe where latency is visible to the user"
+        }
+      ],
+      "prompt": "You are a frontend performance engineer focused on perceived speed.\n\nTASK:\nMake the interface feel instant for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Implement optimistic UI updates with rollback logic\n- Replace spinners with skeleton loaders\n- Preload likely next views based on user intent\n- Ensure visual feedback within 50ms of interaction\n- Use micro-animations (≤150ms) to mask delays\n\nOUTPUT FORMAT:\n1. Latency-Hiding Techniques Applied\n2. UI State Model (loading, success, error)\n3. Animation Specs (timing, trigger, purpose)",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Latency-Hiding Techniques Applied", "UI State Model", "Animation Specs"]
+      }
+    },
+    {
+      "id": "single-file-ui-optimization",
+      "title": "Single-File UI Optimization",
+      "category": "Frontend Performance",
+      "status": "ready",
+      "priority": 9,
+      "tags": ["performance", "single-file", "github-pages", "vanilla-js"],
+      "summary": "Optimize performance and maintainability for single-file HTML/CSS/JS apps.",
+      "useCases": [
+        "GitHub Pages apps that feel slow on first load",
+        "Single-file apps that are hard to maintain",
+        "No-build apps that need structure without a bundler"
+      ],
+      "modelHints": {
+        "bestFor": ["claude", "codex"],
+        "temperature": 0.2
+      },
+      "inputs": [
+        {
+          "key": "target_file",
+          "label": "Target File",
+          "type": "text",
+          "required": true,
+          "placeholder": "index.html, garden-planner-v4.html"
+        },
+        {
+          "key": "constraints",
+          "label": "Constraints",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Single file only, no CDN, must work offline, etc."
+        }
+      ],
+      "prompt": "You are a frontend engineer optimizing a single-file HTML/CSS/JS app.\n\nTASK:\nImprove performance and maintainability for: {{target_file}}.\n\nCONSTRAINTS:\n{{constraints}}\n\nINSTRUCTIONS:\n- Use CSS variables for theming\n- Create reusable class-based components\n- Minimize DOM nodes\n- Lazy-render hidden sections\n- Use event delegation\n\nOUTPUT FORMAT:\n1. Performance Improvements\n2. Component Patterns\n3. Render Strategy",
+      "outputFormat": {
+        "type": "structured-markdown",
+        "sections": ["Performance Improvements", "Component Patterns", "Render Strategy"]
+      }
+    }
+  ],
+  "chains": [
+    {
+      "id": "ui-audit-stack",
+      "title": "UI Audit Execution Stack",
+      "description": "Run UI enhancement prompts in this order. Each pass preserves prior improvements and outputs only net-new changes.",
+      "steps": [
+        "navigation-simplification",
+        "cta-clarity-optimization",
+        "visual-hierarchy-compression",
+        "interaction-density",
+        "microinteraction-system",
+        "anticipatory-ux",
+        "reactive-ui-states",
+        "perceived-performance"
+      ],
+      "rules": [
+        "Preserve previous improvements at each step",
+        "Do not regress earlier passes",
+        "Output only net-new changes per pass",
+        "Skip passes that don't apply to the target surface"
+      ]
+    }
+  ]
+}
