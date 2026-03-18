@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import Ic from './icons';
 import useEvalRuns from './hooks/useEvalRuns.js';
+import { wordDiff } from './promptUtils';
 
 const VERDICT_CYCLE = [null, 'pass', 'fail', 'mixed'];
 const VERDICT_STYLES = {
@@ -15,6 +16,11 @@ const PROVIDER_COLORS = {
   openrouter: 'bg-purple-500/20 text-purple-300',
   ollama: 'bg-gray-500/20 text-gray-300',
 };
+const MODEL_COMPARE_GRID_CLASS = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+};
 
 function formatLatency(ms) {
   if (!ms) return '—';
@@ -24,6 +30,11 @@ function formatLatency(ms) {
 function formatTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function formatSignedNumber(value, suffix = '') {
+  if (!Number.isFinite(value) || value === 0) return `0${suffix}`;
+  return `${value > 0 ? '+' : ''}${value}${suffix}`;
 }
 
 function resolveVersion(run, prompt) {
@@ -68,11 +79,12 @@ function ModelComparisonView({ runs, m }) {
   }, [runs]);
 
   if (byModel.length < 2) return null;
+  const gridClass = MODEL_COMPARE_GRID_CLASS[Math.min(byModel.length, 3)] || 'grid-cols-2';
 
   return (
     <div className={`${m.surface} border ${m.border} rounded-lg p-3 mb-3`}>
       <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Model Comparison (latest per model)</p>
-      <div className={`grid gap-2 ${byModel.length <= 3 ? `grid-cols-${byModel.length}` : 'grid-cols-2'}`}>
+      <div className={`grid gap-2 ${gridClass}`}>
         {byModel.slice(0, 4).map(run => (
           <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
             <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold mb-1 ${PROVIDER_COLORS[run.provider] || 'bg-gray-500/20 text-gray-300'}`}>
@@ -198,9 +210,21 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
 }
 
 // ── Compare Panel ──
-function ComparePanel({ runs, m, onClose }) {
+function ComparePanel({ runs, m, compact, copy, onClose }) {
   if (runs.length < 2) return null;
   const [a, b] = runs;
+  const diffSegments = wordDiff(a.output || '', b.output || '');
+  const outputDelta = (b.output || '').length - (a.output || '').length;
+  const latencyDelta = (b.latencyMs || 0) - (a.latencyMs || 0);
+  const goldenDelta = (b.goldenScore ?? 0) - (a.goldenScore ?? 0);
+  const compareSummary = [
+    `${a.provider}/${a.model} · ${formatTime(a.createdAt)}`,
+    a.output || '(no output)',
+    '',
+    `${b.provider}/${b.model} · ${formatTime(b.createdAt)}`,
+    b.output || '(no output)',
+  ].join('\n');
+
   return (
     <div className={`${m.surface} border ${m.border} rounded-lg p-3 mb-3`}>
       <div className="flex justify-between items-center mb-2">
@@ -208,6 +232,26 @@ function ComparePanel({ runs, m, onClose }) {
         <button type="button" onClick={onClose} className={`${m.textMuted} hover:text-red-400 transition-colors`}>
           <Ic n="X" size={12} />
         </button>
+      </div>
+      <div className={`grid gap-2 mb-3 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
+        <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 text-xs`}>
+          <p className={`text-[11px] font-semibold ${m.textSub} uppercase tracking-wider mb-1`}>Output Delta</p>
+          <span className={`${outputDelta >= 0 ? 'text-emerald-400' : 'text-amber-400'} font-semibold`}>
+            {formatSignedNumber(outputDelta, ' chars')}
+          </span>
+        </div>
+        <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 text-xs`}>
+          <p className={`text-[11px] font-semibold ${m.textSub} uppercase tracking-wider mb-1`}>Latency Delta</p>
+          <span className={`${latencyDelta <= 0 ? 'text-emerald-400' : 'text-amber-400'} font-semibold`}>
+            {formatSignedNumber(latencyDelta, 'ms')}
+          </span>
+        </div>
+        <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 text-xs`}>
+          <p className={`text-[11px] font-semibold ${m.textSub} uppercase tracking-wider mb-1`}>Golden Delta</p>
+          <span className={`${goldenDelta >= 0 ? 'text-emerald-400' : 'text-red-400'} font-semibold`}>
+            {formatSignedNumber(Math.round(goldenDelta * 100), '%')}
+          </span>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {[a, b].map(run => (
@@ -228,6 +272,27 @@ function ComparePanel({ runs, m, onClose }) {
           </div>
         ))}
       </div>
+      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose mt-3`}>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <p className={`text-[11px] font-semibold ${m.textSub} uppercase tracking-wider`}>Diff Highlight</p>
+          <button
+            type="button"
+            onClick={() => copy(compareSummary, 'Comparison copied')}
+            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+          >
+            <Ic n="Copy" size={10} />
+            Copy Comparison
+          </button>
+        </div>
+        {diffSegments.map((segment, index) => (
+          <span
+            key={`${segment.t}-${index}`}
+            className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}
+          >
+            {segment.v}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -236,6 +301,9 @@ function ComparePanel({ runs, m, onClose }) {
 export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll }) {
   const [mode, setMode] = useState('');
   const [provider, setProvider] = useState('');
+  const [model, setModel] = useState('');
+  const [status, setStatus] = useState('');
+  const [dateRange, setDateRange] = useState('30d');
   const [search, setSearch] = useState('');
   const [showModelCompare, setShowModelCompare] = useState(false);
   const [compareSelection, setCompareSelection] = useState([]);
@@ -246,7 +314,10 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
     limit: 20,
     mode,
     provider,
+    model,
+    status,
     search,
+    dateRange,
   });
 
   const copyBtn = 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300';
@@ -256,6 +327,15 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
     const set = new Set(evalRuns.map(r => r.provider));
     return [...set].sort();
   }, [evalRuns]);
+
+  const availableModels = useMemo(() => {
+    const set = new Set(
+      evalRuns
+        .filter((run) => !provider || run.provider === provider)
+        .map((run) => run.model)
+    );
+    return [...set].sort();
+  }, [evalRuns, provider]);
 
   const handleSelectCompare = (run) => {
     setCompareSelection(prev => {
@@ -300,6 +380,25 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
             <option value="">All providers</option>
             {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
+          <select value={model} onChange={e => setModel(e.target.value)}
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            <option value="">All models</option>
+            {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <select value={status} onChange={e => setStatus(e.target.value)}
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            <option value="">All statuses</option>
+            <option value="success">Success</option>
+            <option value="error">Error</option>
+            <option value="blocked">Blocked</option>
+          </select>
+          <select value={dateRange} onChange={e => setDateRange(e.target.value)}
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            <option value="7d">Last 7 days</option>
+            <option value="30d">Last 30 days</option>
+            <option value="90d">Last 90 days</option>
+            <option value="">All time</option>
+          </select>
           <input type="search" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search runs…"
             className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
@@ -319,7 +418,7 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
 
         {/* Compare Panel */}
         {compareSelection.length === 2 && (
-          <ComparePanel runs={compareSelection} m={m} onClose={() => setCompareSelection([])} />
+          <ComparePanel runs={compareSelection} m={m} compact={compact} copy={copy} onClose={() => setCompareSelection([])} />
         )}
 
         {/* Loading */}

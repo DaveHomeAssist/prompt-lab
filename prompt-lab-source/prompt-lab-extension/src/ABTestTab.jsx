@@ -1,27 +1,32 @@
+import { useState } from 'react';
 import Ic from './icons';
-import useABTest from './hooks/useABTest';
+import DiffPane from './DiffPane';
 
-export default function ABTestTab({ m, copy, notify, compact = false, pageScroll = false }) {
-  const {
-    abA,
-    setAbA,
-    abB,
-    setAbB,
-    abWinner,
-    history,
-    showHistory,
-    setShowHistory,
-    evalRuns,
-    showRuns,
-    setShowRuns,
-    activeSide,
-    setActiveSide,
-    runAB,
-    resetAB,
-    pickWinner,
-  } = useABTest({ notify });
-
+export default function ABTestTab({
+  m,
+  copy,
+  compact = false,
+  pageScroll = false,
+  abA,
+  setAbA,
+  abB,
+  setAbB,
+  abWinner,
+  history,
+  showHistory,
+  setShowHistory,
+  evalRuns,
+  showRuns,
+  setShowRuns,
+  activeSide,
+  setActiveSide,
+  runAB,
+  resetAB,
+  pickWinner,
+}) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
+  const [showDiff, setShowDiff] = useState(false);
+  const bothReady = Boolean(abA.response && !abA.error && abB.response && !abB.error);
 
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
@@ -32,6 +37,15 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
           <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
             className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run Both
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDiff(true)}
+            disabled={!bothReady}
+            className={`ui-control flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${bothReady ? 'bg-violet-600 hover:bg-violet-500 text-white' : `${m.btn} ${m.textMuted} cursor-not-allowed`}`}
+            title={bothReady ? 'Compare variant outputs' : 'Run both variants first'}
+          >
+            <Ic n="GitBranch" size={11} />Sync View
           </button>
           <button type="button" onClick={resetAB} className={`ui-control px-2 py-1.5 ${m.btn} rounded-lg text-xs ${m.textAlt} transition-colors`}>Reset</button>
         </div>
@@ -151,6 +165,15 @@ export default function ABTestTab({ m, copy, notify, compact = false, pageScroll
           <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</div>
         )}
       </div>
+      {showDiff && bothReady && (
+        <DiffPane
+          textA={abA.response}
+          textB={abB.response}
+          onClose={() => setShowDiff(false)}
+          copy={copy}
+          m={m}
+        />
+      )}
     </div>
   );
 }

@@ -264,4 +264,36 @@ describe('useABTest', () => {
     expect(result.current.abB).toEqual({ prompt: '', response: '', loading: false, error: false });
     expect(result.current.abWinner).toBe(null);
   });
+
+  it('loadVariant seeds one side, clears stale output, and resets winner state', async () => {
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+
+    await act(async () => {
+      result.current.setAbA({ prompt: 'Old A', response: 'Old response', loading: false, error: false });
+      result.current.setAbB({ prompt: 'Old B', response: 'Other response', loading: false, error: false });
+    });
+
+    await act(async () => {
+      await result.current.pickWinner('B');
+    });
+
+    act(() => {
+      result.current.loadVariant('a', 'Fresh prompt from library');
+    });
+
+    expect(result.current.abA).toEqual({
+      prompt: 'Fresh prompt from library',
+      response: '',
+      loading: false,
+      error: false,
+    });
+    expect(result.current.abB).toEqual({
+      prompt: 'Old B',
+      response: 'Other response',
+      loading: false,
+      error: false,
+    });
+    expect(result.current.abWinner).toBe(null);
+    expect(result.current.activeSide).toBe('A');
+  });
 });

@@ -3,14 +3,17 @@ import { listEvalRuns, saveEvalRun, getEvalRunById } from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
 
 export default function useEvalRuns(optionsOrLegacy) {
-  // Backward-compatible: accept { editingId, tab } (old) or { promptId, tab, limit, mode, provider, search } (new)
+  // Backward-compatible: accept { editingId, tab } (old) or { promptId, tab, limit, mode, provider, model, status, search, dateRange } (new)
   const opts = optionsOrLegacy || {};
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
   const limit = opts.limit ?? 12;
   const modeFilter = opts.mode ?? '';
   const providerFilter = opts.provider ?? '';
+  const modelFilter = opts.model ?? '';
+  const statusFilter = opts.status ?? '';
   const searchFilter = opts.search ?? '';
+  const dateRangeFilter = opts.dateRange ?? '';
 
   const [evalRuns, setEvalRuns] = useState([]);
   const [showEvalHistory, setShowEvalHistory] = useState(false);
@@ -28,7 +31,10 @@ export default function useEvalRuns(optionsOrLegacy) {
       else filters.mode = 'enhance';
       if (modeFilter) filters.mode = modeFilter;
       if (providerFilter) filters.provider = providerFilter;
+      if (modelFilter) filters.model = modelFilter;
+      if (statusFilter) filters.status = statusFilter;
       if (searchFilter) filters.search = searchFilter;
+      if (dateRangeFilter) filters.dateRange = dateRangeFilter;
 
       const rows = await listEvalRuns(filters);
       setTotal(rows.length);
@@ -40,7 +46,7 @@ export default function useEvalRuns(optionsOrLegacy) {
     } finally {
       setLoading(false);
     }
-  }, [promptId, modeFilter, providerFilter, searchFilter]);
+  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter]);
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);
@@ -60,7 +66,7 @@ export default function useEvalRuns(optionsOrLegacy) {
 
   useEffect(() => {
     displayLimit.current = limit;
-  }, [promptId, modeFilter, providerFilter, searchFilter, limit]);
+  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, limit]);
 
   useEffect(() => {
     if (tab === 'editor' || tab === 'history') refreshEvalRuns();

@@ -86,8 +86,11 @@ const PROVIDERS = Object.freeze({
       return {
         ...payload,
         model: this.resolveModel(payload, settings),
+        stream: false,
       };
     },
+
+    parseStream: parseAnthropicSse,
 
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = anthropicBlocksToText(data?.content);
@@ -126,10 +129,10 @@ const PROVIDERS = Object.freeze({
       return { 'Content-Type': 'application/json' };
     },
 
-    buildPayload(payload, settings) {
+    buildPayload(payload, settings, options = {}) {
       return {
         model: this.resolveModel(payload, settings),
-        stream: false,
+        stream: !!options.stream,
         messages: toChatMessages(payload),
       };
     },
@@ -167,15 +170,18 @@ const PROVIDERS = Object.freeze({
       };
     },
 
-    buildPayload(payload, settings) {
+    buildPayload(payload, settings, options = {}) {
       const body = {
         model: this.resolveModel(payload, settings),
         max_tokens: payload.max_tokens || 1500,
         messages: toChatMessages(payload),
+        stream: !!options.stream,
       };
       if (typeof payload.temperature === 'number') body.temperature = payload.temperature;
       return body;
     },
+
+    parseStream: parseOpenAiSse,
 
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.choices?.[0]?.message?.content;
@@ -277,11 +283,12 @@ const PROVIDERS = Object.freeze({
       };
     },
 
-    buildPayload(payload, settings) {
+    buildPayload(payload, settings, options = {}) {
       const body = {
         model: this.resolveModel(payload, settings),
         max_tokens: payload.max_tokens || 1500,
         messages: toChatMessages(payload),
+        stream: !!options.stream,
       };
       if (typeof payload.temperature === 'number') body.temperature = payload.temperature;
       return body;
@@ -292,6 +299,8 @@ const PROVIDERS = Object.freeze({
       if (!text) throw new Error('OpenRouter returned empty content.');
       return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openrouter' };
     },
+
+    parseStream: parseOpenAiSse,
 
     extractText(data) {
       return data?.content?.[0]?.text || '';

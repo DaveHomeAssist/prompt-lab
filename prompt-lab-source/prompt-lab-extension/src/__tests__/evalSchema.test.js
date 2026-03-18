@@ -35,8 +35,8 @@ describe('normalizeTestCaseRecord', () => {
 
 describe('filterEvalRuns', () => {
   const runs = [
-    { id: '1', createdAt: '2024-01-01T00:00:00Z', mode: 'enhance', provider: 'anthropic', promptTitle: 'Test', input: 'hi', output: 'hey' },
-    { id: '2', createdAt: '2024-01-02T00:00:00Z', mode: 'ab', provider: 'openai', promptTitle: 'AB', input: 'a', output: 'b' },
+    { id: '1', createdAt: '2024-01-01T00:00:00Z', mode: 'enhance', provider: 'anthropic', model: 'claude-1', status: 'success', promptTitle: 'Test', input: 'hi', output: 'hey' },
+    { id: '2', createdAt: '2024-01-02T00:00:00Z', mode: 'ab', provider: 'openai', model: 'gpt-4o', status: 'error', promptTitle: 'AB', input: 'a', output: 'b' },
   ];
 
   it('filters by mode', () => {
@@ -47,8 +47,28 @@ describe('filterEvalRuns', () => {
     expect(filterEvalRuns(runs, { search: 'AB' })).toHaveLength(1);
   });
 
+  it('filters by model', () => {
+    expect(filterEvalRuns(runs, { model: 'gpt-4o' })).toHaveLength(1);
+    expect(filterEvalRuns(runs, { model: 'claude-1' })[0].id).toBe('1');
+  });
+
+  it('filters by status', () => {
+    expect(filterEvalRuns(runs, { status: 'error' })).toHaveLength(1);
+    expect(filterEvalRuns(runs, { status: 'success' })[0].id).toBe('1');
+  });
+
   it('sorts by createdAt descending', () => {
     const result = filterEvalRuns(runs);
     expect(result[0].id).toBe('2');
+  });
+
+  it('filters by date range', () => {
+    const now = Date.now();
+    const recentRuns = [
+      { id: 'recent', createdAt: new Date(now - (2 * 24 * 60 * 60 * 1000)).toISOString(), mode: 'enhance', provider: 'openai', model: 'gpt-4o', promptTitle: 'Recent', input: 'x', output: 'y' },
+      { id: 'old', createdAt: new Date(now - (45 * 24 * 60 * 60 * 1000)).toISOString(), mode: 'enhance', provider: 'openai', model: 'gpt-4o', promptTitle: 'Old', input: 'x', output: 'y' },
+    ];
+    expect(filterEvalRuns(recentRuns, { dateRange: '7d' }).map((run) => run.id)).toEqual(['recent']);
+    expect(filterEvalRuns(recentRuns, { dateRange: '30d' }).map((run) => run.id)).toEqual(['recent']);
   });
 });

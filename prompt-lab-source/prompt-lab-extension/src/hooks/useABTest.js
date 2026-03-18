@@ -94,6 +94,21 @@ export default function useABTest({ notify }) {
     setAbWinner(null);
   };
 
+  const loadVariant = (side, prompt) => {
+    const setter = side === 'a' ? setAbA : setAbB;
+    const nextPrompt = typeof prompt === 'string' ? prompt : '';
+    abReqRef.current = { ...abReqRef.current, [side]: abReqRef.current[side] + 1 };
+    setter((prev) => ({
+      ...prev,
+      prompt: nextPrompt,
+      response: '',
+      loading: false,
+      error: false,
+    }));
+    setAbWinner(null);
+    setActiveSide(side.toUpperCase());
+  };
+
   const pickWinner = async (side) => {
     const winnerLabel = `Variant ${side}`;
     setAbWinner(winnerLabel);
@@ -132,6 +147,7 @@ export default function useABTest({ notify }) {
     setShowRuns,
     activeSide,
     setActiveSide,
+    loadVariant,
     runAB,
     resetAB,
     pickWinner,

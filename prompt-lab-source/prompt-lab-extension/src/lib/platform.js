@@ -89,9 +89,9 @@ function normalizeDesktopModelList(result) {
   return Array.isArray(result?.models) ? result.models : [];
 }
 
-async function desktopCallModel(payload) {
+async function desktopCallModel(payload, options) {
   const { callModelDirect } = await getDesktopApi();
-  return callModelDirect(payload);
+  return callModelDirect(payload, options);
 }
 
 async function desktopListOllamaModels(baseUrl) {

@@ -10,6 +10,7 @@ const DEFAULT_PROMPT_METADATA = Object.freeze({
   compatibility: [],
   riskLevel: '',
 });
+const PROMPT_INPUT_TYPES = new Set(['text', 'textarea', 'select']);
 
 function normalizeStringList(value) {
   return Array.isArray(value) ? value.filter(item => typeof item === 'string' && item.trim()) : [];
@@ -30,6 +31,53 @@ function normalizePromptMetadata(value) {
 function normalizeGoldenThreshold(value) {
   if (!Number.isFinite(value)) return 0.7;
   return Math.max(0, Math.min(1, value));
+}
+
+function normalizeOptionalSchemaField(value) {
+  if (Number.isFinite(value)) return value;
+  const text = ensureString(value).trim();
+  return text || null;
+}
+
+function normalizePromptInputOptions(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((option) => {
+      if (typeof option === 'string') {
+        const text = option.trim();
+        return text ? { label: text, value: text } : null;
+      }
+      if (!option || typeof option !== 'object') return null;
+      const rawValue = ensureString(option.value).trim() || ensureString(option.label).trim();
+      if (!rawValue) return null;
+      return {
+        label: ensureString(option.label).trim() || rawValue,
+        value: rawValue,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizePromptInput(input) {
+  if (!input || typeof input !== 'object') return null;
+  const key = ensureString(input.key).trim();
+  if (!key) return null;
+  const type = ensureString(input.type).trim().toLowerCase();
+  const normalizedType = PROMPT_INPUT_TYPES.has(type) ? type : 'text';
+  return {
+    key,
+    label: ensureString(input.label).trim() || key,
+    type: normalizedType,
+    required: Boolean(input.required),
+    placeholder: ensureString(input.placeholder),
+    options: normalizedType === 'select' ? normalizePromptInputOptions(input.options) : [],
+  };
+}
+
+function normalizePromptInputs(value) {
+  return Array.isArray(value)
+    ? value.map(normalizePromptInput).filter(Boolean)
+    : [];
 }
 
 function normalizeGoldenResponse(value) {
@@ -162,7 +210,7 @@ export function createPromptEntry(value, options = {}) {
     ...value,
     id: ensureString(value?.id) || randomId(),
     createdAt: value?.createdAt || now,
-    updatedAt: value?.updatedAt || now,
+    updatedAt: value?.updatedAt || value?.updated_at || now,
     currentVersionId: ensureString(value?.currentVersionId) || randomId(),
     versions: Array.isArray(value?.versions) ? value.versions : [],
     testCases: Array.isArray(value?.testCases) ? value.testCases : [],
@@ -220,6 +268,9 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     goldenThreshold: Object.prototype.hasOwnProperty.call(changes, 'goldenThreshold')
       ? normalizeGoldenThreshold(changes.goldenThreshold)
       : current.goldenThreshold,
+    inputs: Object.prototype.hasOwnProperty.call(changes, 'inputs')
+      ? normalizePromptInputs(changes.inputs)
+      : current.inputs,
     metadata: Object.prototype.hasOwnProperty.call(changes, 'metadata')
       ? changes.metadata
       : current.metadata,
@@ -248,7 +299,14 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
   const content = normalizeContentShape(entry);
   if (!content.enhanced.trim()) return null;
   const createdAt = safeDate(entry.createdAt || fallbackTs);
-  const updatedAt = entry.updatedAt ? safeDate(entry.updatedAt) : undefined;
+  // Preserve snake_case aliases for imported/shared records so external schema fields round-trip cleanly.
+  const updatedAt = entry.updatedAt
+    ? safeDate(entry.updatedAt)
+    : entry.updated_at
+      ? safeDate(entry.updated_at)
+      : undefined;
+  const version = normalizeOptionalSchemaField(entry.version);
+  const schemaVersion = normalizeOptionalSchemaField(entry.schema_version ?? entry.schemaVersion);
   const versions = Array.isArray(entry.versions)
     ? entry.versions
       .map(version => normalizeVersion(version, createdAt))
@@ -270,12 +328,16 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
     updatedAt,
+    updated_at: updatedAt || createdAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
     currentVersionId: ensureString(entry.currentVersionId) || randomId(),
+    version,
+    schema_version: schemaVersion,
     versions,
     testCases,
     goldenResponse: normalizeGoldenResponse(entry.goldenResponse),
     goldenThreshold: normalizeGoldenThreshold(entry.goldenThreshold),
+    inputs: normalizePromptInputs(entry.inputs),
     metadata: normalizePromptMetadata(entry.metadata),
   };
 }

@@ -38,18 +38,26 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [piiWarning, setPiiWarning] = useState(null);
+  const [streamPreview, setStreamPreview] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [optimisticSaveVisible, setOptimisticSaveVisible] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ active: false, completed: 0, total: 0, currentLabel: '' });
   const enhanceReqRef = useRef(0);
+  const enhanceAbortRef = useRef(null);
 
   const evalRunsHook = useEvalRuns({ editingId, tab });
   const testCasesHook = useTestCases({ notify });
 
-  const callWithRetry = async (payload, retries = 1) => {
+  const callWithRetry = async (payload, retries = 1, options = {}) => {
     let attempt = 0;
     let lastError = null;
     while (attempt <= retries) {
       try {
-        return await callModel(payload);
+        return await callModel(payload, options);
       } catch (caught) {
+        if (options?.signal?.aborted || caught?.name === 'AbortError') {
+          throw caught;
+        }
         lastError = caught;
         if (attempt >= retries || !isTransientError(caught)) break;
         await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
@@ -90,7 +98,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         input: inputText,
         output: message,
         latencyMs: nowMs() - startedAt,
-        status: 'error',
+        status: 'blocked',
         notes: 'Sensitive data detected before send.',
         testCaseId: testCase.id,
       });
@@ -128,6 +136,24 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     if (!safeOverridePayload) {
       const { matches } = scanSensitiveData({ payload });
       if (matches.length > 0) {
+        // Record blocked sends so preflight PII stops are visible in run history instead of disappearing.
+        try {
+          await saveEvalRun({
+            promptId: editingId,
+            promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
+            mode: 'enhance',
+            provider: 'blocked',
+            model: payload?.model || 'unknown',
+            input: raw,
+            output: 'Prompt blocked before send due to sensitive data detection.',
+            latencyMs: 0,
+            status: 'blocked',
+            notes: 'Sensitive data detected before send.',
+          });
+          evalRunsHook.refreshEvalRuns(editingId).catch((caught) => logWarn('refresh blocked eval runs', caught));
+        } catch (caught) {
+          logWarn('save blocked eval run', caught);
+        }
         setPiiWarning({ matches, payload });
         return;
       }
@@ -136,17 +162,30 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     const reqId = enhanceReqRef.current + 1;
     enhanceReqRef.current = reqId;
     const startedAt = nowMs();
+    enhanceAbortRef.current?.abort();
+    const abortController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    enhanceAbortRef.current = abortController;
 
     setLoading(true);
+    setStreaming(false);
+    setStreamPreview('');
     setError(null);
     setEnhanced('');
     setVariants([]);
     setNotes('');
+    setOptimisticSaveVisible(true);
     setShowSave(false);
     setShowDiff(false);
 
     try {
-      const data = await callWithRetry(payload);
+      const data = await callWithRetry(payload, 1, {
+        signal: abortController?.signal,
+        onChunk: (chunk, fullText) => {
+          if (reqId !== enhanceReqRef.current) return;
+          setStreaming(true);
+          setStreamPreview(fullText || chunk || '');
+        },
+      });
       if (reqId !== enhanceReqRef.current) return;
 
       const txt = extractTextFromAnthropic(data);
@@ -188,13 +227,40 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
 
       setShowSave(true);
+      setOptimisticSaveVisible(false);
+      setStreamPreview('');
+      setStreaming(false);
     } catch (caught) {
+      if (caught?.name === 'AbortError' || abortController?.signal?.aborted) {
+        if (reqId === enhanceReqRef.current) {
+          setLoading(false);
+          setStreaming(false);
+          setStreamPreview('');
+          setOptimisticSaveVisible(false);
+        }
+        return;
+      }
       if (reqId === enhanceReqRef.current) {
+        setOptimisticSaveVisible(false);
         setError(normalizeError(caught, 'execution'));
       }
     } finally {
+      if (enhanceAbortRef.current === abortController) {
+        enhanceAbortRef.current = null;
+      }
       if (reqId === enhanceReqRef.current) setLoading(false);
     }
+  };
+
+  const cancelEnhance = () => {
+    enhanceReqRef.current += 1;
+    enhanceAbortRef.current?.abort();
+    enhanceAbortRef.current = null;
+    setLoading(false);
+    setStreaming(false);
+    setStreamPreview('');
+    setError(null);
+    notify('Generation cancelled.');
   };
 
   const piiSendAnyway = () => {
@@ -221,6 +287,12 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const runSingleCase = async (testCase, promptTitle) => {
     testCasesHook.setRunningCases(true);
+    setBatchProgress({
+      active: true,
+      completed: 0,
+      total: 1,
+      currentLabel: testCase.title,
+    });
     try {
       await runTestCaseJob(testCase, promptTitle);
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
@@ -232,6 +304,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
     } finally {
       testCasesHook.setRunningCases(false);
+      setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
     }
   };
 
@@ -243,9 +316,21 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     testCasesHook.setRunningCases(true);
     let completed = 0;
     for (const testCase of cases) {
+      setBatchProgress({
+        active: true,
+        completed,
+        total: cases.length,
+        currentLabel: testCase.title,
+      });
       try {
         await runTestCaseJob(testCase, promptTitle);
         completed += 1;
+        setBatchProgress({
+          active: true,
+          completed,
+          total: cases.length,
+          currentLabel: testCase.title,
+        });
       } catch (caught) {
         logWarn(`test case batch: ${testCase.title}`, caught);
       }
@@ -254,14 +339,21 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     await evalRunsHook.refreshEvalRuns(editingId);
     evalRunsHook.setShowEvalHistory(true);
     testCasesHook.setRunningCases(false);
+    setBatchProgress({ active: false, completed, total: cases.length, currentLabel: '' });
     notify(`Ran ${completed}/${cases.length} test cases`);
   };
 
   const clearExecutionState = () => {
     enhanceReqRef.current += 1;
+    enhanceAbortRef.current?.abort();
+    enhanceAbortRef.current = null;
     setLoading(false);
     setError(null);
     setPiiWarning(null);
+    setStreamPreview('');
+    setStreaming(false);
+    setOptimisticSaveVisible(false);
+    setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
   };
 
   const currentTestCases = editingId ? (testCasesHook.testCasesByPrompt[editingId] || []) : [];
@@ -270,6 +362,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     loading,
     error,
     piiWarning,
+    streamPreview,
+    streaming,
+    optimisticSaveVisible,
+    batchProgress,
     piiSendAnyway,
     piiRedactAndSend,
     piiCancel,
@@ -301,6 +397,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     loadCaseIntoEditor,
     runSingleCase,
     runAllCases,
+    cancelEnhance,
     currentTestCases,
     openOptions: openSettings,
     clearExecutionState,

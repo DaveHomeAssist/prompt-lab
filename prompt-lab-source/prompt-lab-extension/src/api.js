@@ -5,6 +5,6 @@
  */
 import { callModel as platformCallModel } from './lib/platform.js';
 
-export function callModel(payload) {
-  return platformCallModel(payload);
+export function callModel(payload, options) {
+  return platformCallModel(payload, options);
 }

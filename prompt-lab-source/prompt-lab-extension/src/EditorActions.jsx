@@ -13,10 +13,15 @@ export default function EditorActions({
   loading,
   hasInput,
   runningCases,
+  batchProgress,
   testCaseCount,
   hasSavablePrompt,
+  onCancelEnhance,
   enhanceShortcutLabel = 'Ctrl+Enter',
 }) {
+  const batchLabel = batchProgress?.active
+    ? `Run Cases ${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}`
+    : 'Run Cases';
   return (
     <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
       <div className={`flex gap-2 ${compact ? 'w-full' : 'flex-1'}`}>
@@ -52,6 +57,16 @@ export default function EditorActions({
                 </>
               )}
         </button>
+        {loading && (
+          <button
+            type="button"
+            onClick={onCancelEnhance}
+            className="ui-control flex items-center justify-center gap-1 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-2 text-xs font-semibold transition-colors"
+          >
+            <Ic n="Square" size={10} />
+            Cancel
+          </button>
+        )}
         <button
           type="button"
           onClick={onRunCases}
@@ -62,7 +77,7 @@ export default function EditorActions({
           {runningCases
             ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             : <Ic n="FlaskConical" size={12} />}
-          Run Cases
+          {batchLabel}
         </button>
       </div>
       <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>

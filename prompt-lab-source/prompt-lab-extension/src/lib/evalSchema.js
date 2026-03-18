@@ -1,5 +1,6 @@
 export const EVAL_MODES = Object.freeze(['enhance', 'ab', 'test-case']);
 export const VERDICT_VALUES = Object.freeze(['pass', 'fail', 'mixed']);
+export const EVAL_STATUSES = Object.freeze(['success', 'error', 'blocked']);
 
 function normalizeEntityId(value) {
   const id = String(value || '').trim();
@@ -10,8 +11,13 @@ function normalizeVerdict(value) {
   return VERDICT_VALUES.includes(value) ? value : null;
 }
 
+function normalizeStatus(value) {
+  // Preserve blocked preflight runs so aborted sends do not appear successful in history.
+  return EVAL_STATUSES.includes(value) ? value : 'success';
+}
+
 export function normalizeEvalRunRecord(record) {
-  const status = record.status === 'error' ? 'error' : 'success';
+  const status = normalizeStatus(record.status);
   return {
     id: record.id || crypto.randomUUID(),
     createdAt: record.createdAt || new Date().toISOString(),
@@ -58,14 +64,28 @@ export function filterEvalRuns(records, filters = {}) {
     promptId = '',
     mode = '',
     provider = '',
+    model = '',
     status = '',
+    dateRange = '',
+    dateFrom = '',
+    dateTo = '',
     limit = 20,
   } = filters;
   const query = String(search || '').trim().toLowerCase();
   const promptFilter = normalizeEntityId(promptId);
   const modeFilter = String(mode || '').trim();
   const providerFilter = String(provider || '').trim();
+  const modelFilter = String(model || '').trim();
   const statusFilter = String(status || '').trim();
+  const dateFromFilter = String(dateFrom || '').trim();
+  const dateToFilter = String(dateTo || '').trim();
+  const now = Date.now();
+  const rangeDays = ({
+    '7d': 7,
+    '30d': 30,
+    '90d': 90,
+  })[String(dateRange || '').trim()] || 0;
+  const rangeStartMs = rangeDays ? now - (rangeDays * 24 * 60 * 60 * 1000) : null;
 
   return records
     .map(normalizeEvalRunRecord)
@@ -73,7 +93,12 @@ export function filterEvalRuns(records, filters = {}) {
       if (promptFilter && row.promptId !== promptFilter) return false;
       if (modeFilter && row.mode !== modeFilter) return false;
       if (providerFilter && row.provider !== providerFilter) return false;
+      if (modelFilter && row.model !== modelFilter) return false;
       if (statusFilter && row.status !== statusFilter) return false;
+      const createdAtMs = row.createdAt ? new Date(row.createdAt).getTime() : 0;
+      if (rangeStartMs && createdAtMs < rangeStartMs) return false;
+      if (dateFromFilter && createdAtMs < new Date(`${dateFromFilter}T00:00:00`).getTime()) return false;
+      if (dateToFilter && createdAtMs > new Date(`${dateToFilter}T23:59:59`).getTime()) return false;
       if (query) {
         const haystack = `${row.promptTitle} ${row.model} ${row.input} ${row.output} ${row.notes}`.toLowerCase();
         if (!haystack.includes(query)) return false;

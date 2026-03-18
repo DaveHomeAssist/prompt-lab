@@ -10,6 +10,7 @@ import useUiState from './hooks/useUiState.js';
 import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
+import useABTest from './hooks/useABTest.js';
 import Toast from './Toast';
 import TagChip from './TagChip';
 import PadTab from './PadTab';
@@ -20,6 +21,12 @@ import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
 import { isExtension } from './lib/platform.js';
+import {
+  SUBVIEWS,
+  matchShortcut,
+  buildCommandActions,
+  filterCommands,
+} from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
@@ -30,8 +37,10 @@ export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
+  const [showQuickInject, setShowQuickInject] = useState(true);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
+  const [resultTab, setResultTab] = useState('improved');
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
@@ -64,10 +73,18 @@ export default function App() {
 
   // ── Library hook ──
   const lib = useLibrary(notify);
+  const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──
   const editorState = useEditorState();
-  const persistenceFlow = usePersistenceFlow({ ui, lib, editor: editorState });
+  const persistenceFlow = usePersistenceFlow({
+    ui: {
+      ...ui,
+      setABVariant: (side, promptText) => abTest.loadVariant(side, promptText),
+    },
+    lib,
+    editor: editorState,
+  });
   const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
   const ed = {
     ...editorState,
@@ -82,13 +99,14 @@ export default function App() {
   };
   const {
     raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
+    streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
     lintIssues, lintOpen, setLintOpen, handleLintFix,
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
-    showSave, setShowSave, editingId, setEditingId, saveTitle, setSaveTitle,
+    showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
-    showDiff, setShowDiff,
+    setShowDiff,
     evalRuns, showEvalHistory, setShowEvalHistory,
     testCasesByPrompt, caseFormPromptId, editingCaseId,
     caseTitle, setCaseTitle, caseInput, setCaseInput,
@@ -97,11 +115,11 @@ export default function App() {
     openCaseForm, resetCaseForm, saveCaseForPrompt, removeCase,
     loadCaseIntoEditor, runSingleCase, runAllCases,
     showNewColl, setShowNewColl, newCollName, setNewCollName,
-    varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate,
+    varVals, setVarVals, showVarForm, setShowVarForm, pendingTemplate, applyTemplate, skipTemplate,
     editorLayout, setEditorLayout,
     composerBlocks, setComposerBlocks,
-    enhance, doSave, clearEditor, openSavePanel, openOptions, copy,
-    loadEntry, addToComposer,
+    enhance, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy, cancelEnhance,
+    loadEntry, sendEntryToABTest, addToComposer,
     hasSavablePrompt, currentTestCases,
   } = ed;
 
@@ -140,7 +158,29 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
-  const createView = workspaceView === 'composer' ? 'composer' : effectiveEditorLayout;
+  const activeSection = primaryView === 'runs'
+    ? 'experiments'
+    : (workspaceView === 'library' ? 'library' : 'create');
+  const createLayoutOptions = compact
+    ? []
+    : [
+        ['editor', 'Focus'],
+        ['split', 'Dual Pane'],
+      ];
+  const resultTabs = [
+    { id: 'improved', label: 'Improved' },
+    { id: 'diff', label: 'Diff' },
+    ...(variants.length > 0 ? [{ id: 'variants', label: `Variants (${variants.length})` }] : []),
+    ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
+  ];
+  const activeResultTab = resultTabs.some((tabItem) => tabItem.id === resultTab) ? resultTab : 'improved';
+  const canSavePanel = hasSavablePrompt || hasPanelSaveSource;
+  const pendingTemplateInputs = Array.isArray(pendingTemplate?.inputs) ? pendingTemplate.inputs : [];
+  const pendingTemplateInputMap = Object.fromEntries(
+    pendingTemplateInputs
+      .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
+      .map((input) => [input.key, input])
+  );
 
   useEffect(() => {
     if (tab !== 'editor') return;
@@ -158,9 +198,35 @@ export default function App() {
     }
   }, [effectiveEditorLayout, setWorkspaceView, tab, workspaceView]);
 
+  useEffect(() => {
+    if (!enhanced.trim()) {
+      setResultTab('improved');
+      return;
+    }
+    setResultTab('improved');
+    setEnhMdPreview(false);
+  }, [enhanced, setEnhMdPreview]);
+
   const openCreateView = (nextView) => {
     setPrimaryView('create');
     setWorkspaceView(nextView);
+  };
+
+  const openSection = (nextSection) => {
+    if (nextSection === 'create') {
+      setPrimaryView('create');
+      setWorkspaceView('editor');
+      return;
+    }
+    if (nextSection === 'library') {
+      setPrimaryView('create');
+      setWorkspaceView('library');
+      return;
+    }
+    if (nextSection === 'experiments') {
+      setPrimaryView('runs');
+      setRunsView('compare');
+    }
   };
 
   const openRunsView = (nextView) => {
@@ -168,48 +234,48 @@ export default function App() {
     setRunsView(nextView);
   };
 
-  const loadTemplateWithoutVars = () => {
-    if (!pendingTemplate) return;
-    setEditingId(pendingTemplate.id);
-    setRaw(pendingTemplate.original || '');
-    setEnhanced(pendingTemplate.enhanced || '');
-    setVariants(pendingTemplate.variants || []);
-    setNotes(pendingTemplate.notes || '');
-    setSaveTags(pendingTemplate.tags || []);
-    setSaveTitle(pendingTemplate.title || '');
-    setSaveCollection(pendingTemplate.collection || '');
-    setShowSave(false);
-    setShowDiff(false);
-    setVarVals({});
-    setShowVarForm(false);
-    lib.bumpUse(pendingTemplate.id);
-    setTab('editor');
-    notify('Loaded into editor!');
+  const commitNewCollection = () => {
+    const name = newCollName.trim();
+    if (!name) {
+      setNewCollName('');
+      setShowNewColl(false);
+      return;
+    }
+    if (!lib.collections.includes(name)) {
+      lib.setCollections((prev) => [...prev, name]);
+    }
+    setSaveCollection(name);
+    setNewCollName('');
+    setShowNewColl(false);
   };
 
-  // ── Keyboard shortcuts ──
+  // ── Keyboard shortcuts (driven by navigationRegistry) ──
   useEffect(() => {
     const h = e => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key === 'Enter') { e.preventDefault(); if (!loading && raw.trim()) kbFns.current.enhance(); }
-      if (mod && e.key === 's') {
-        e.preventDefault();
-        if (hasSavablePrompt && !showSave) kbFns.current.openSavePanel();
-        else if (hasSavablePrompt && showSave) kbFns.current.doSave();
-      }
-      if (mod && e.key === 'k') { e.preventDefault(); setShowCmdPalette(p => !p); setCmdQuery(''); }
-      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) setShowShortcuts(p => !p);
-      if (e.key === 'Escape') {
-        setShowCmdPalette(false);
-        setShowShortcuts(false);
-        setShowSettings(false);
-        lib.setShareId(null);
-        lib.closeVersionHistory();
+      const shortcut = matchShortcut(e);
+      if (!shortcut) return;
+      e.preventDefault();
+      switch (shortcut.id) {
+        case 'enhance': if (!loading && raw.trim()) kbFns.current.enhance(); break;
+        case 'save':
+          if (hasSavablePrompt && !showSave) kbFns.current.openSavePanel();
+          else if (canSavePanel && showSave) kbFns.current.doSave();
+          break;
+        case 'cmdPalette': setShowCmdPalette(p => !p); setCmdQuery(''); break;
+        case 'shortcuts': setShowShortcuts(p => !p); break;
+        case 'escape':
+          setShowCmdPalette(false);
+          setShowShortcuts(false);
+          setShowSettings(false);
+          closeSavePanel();
+          lib.setShareId(null);
+          lib.closeVersionHistory();
+          break;
       }
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [loading, raw, showSave, hasSavablePrompt]);
+  }, [canSavePanel, loading, raw, showSave, hasSavablePrompt]);
 
   useEffect(() => {
     if (isExtension) return;
@@ -218,24 +284,25 @@ export default function App() {
     return () => window.removeEventListener('pl:open-settings', handler);
   }, []);
 
-  // ── Command palette ──
-  const CMD_ACTIONS = [
-    { label: 'Enhance Prompt', hint: '⌘↵', action: () => { if (!loading && raw.trim()) enhance(); setShowCmdPalette(false); } },
-    { label: 'Save Prompt', hint: '⌘S', action: () => { if (hasSavablePrompt) openSavePanel(); setShowCmdPalette(false); } },
-    { label: 'Clear Editor', hint: '', action: () => { clearEditor(); setShowCmdPalette(false); } },
-    { label: 'Go to Create', hint: '', action: () => { openCreateView('editor'); setShowCmdPalette(false); } },
-    { label: 'Go to Library', hint: '', action: () => { openCreateView('library'); setShowCmdPalette(false); } },
-    { label: 'Go to Build', hint: '', action: () => { openCreateView('composer'); setShowCmdPalette(false); } },
-    { label: 'Go to Runs', hint: '', action: () => { openRunsView('history'); setShowCmdPalette(false); } },
-    { label: 'Go to Compare', hint: '', action: () => { openRunsView('compare'); setShowCmdPalette(false); } },
-    { label: 'Go to Notebook', hint: '', action: () => { setPrimaryView('notebook'); setShowCmdPalette(false); } },
-    { label: 'Toggle Light / Dark', hint: '', action: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); setShowCmdPalette(false); } },
-    { label: 'Export Library', hint: '', action: () => { lib.exportLib(); setShowCmdPalette(false); } },
-    { label: 'Open Settings', hint: '', action: () => { setShowSettings(true); setShowCmdPalette(false); } },
-    { label: 'Extension Options (API Key)', hint: '', action: () => { openOptions(); setShowCmdPalette(false); } },
-    { label: 'Show Keyboard Shortcuts', hint: '?', action: () => { setShowShortcuts(true); setShowCmdPalette(false); } },
-  ];
-  const filteredCmds = CMD_ACTIONS.filter(a => !cmdQuery || a.label.toLowerCase().includes(cmdQuery.toLowerCase()));
+  // ── Command palette (driven by navigationRegistry) ──
+  const closePalette = () => setShowCmdPalette(false);
+  const CMD_ACTIONS = buildCommandActions({
+    enhance: () => { if (!loading && raw.trim()) enhance(); closePalette(); },
+    save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
+    clear: () => { clearEditor(); closePalette(); },
+    goEditor: () => { openSection('create'); closePalette(); },
+    goLibrary: () => { openSection('library'); closePalette(); },
+    goBuild: () => { openCreateView('composer'); closePalette(); },
+    goRuns: () => { openSection('experiments'); closePalette(); },
+    goCompare: () => { openRunsView('compare'); closePalette(); },
+    goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
+    toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
+    exportLib: () => { lib.exportLib(); closePalette(); },
+    openSettings: () => { setShowSettings(true); closePalette(); },
+    openOptions: () => { openOptions(); closePalette(); },
+    showShortcuts: () => { setShowShortcuts(true); closePalette(); },
+  });
+  const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -264,29 +331,35 @@ export default function App() {
               <button type="button" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
             </div>
           </div>
-          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Prompt Lab sections">
-            {[['create', 'Create'], ['runs', 'Runs'], ['notebook', 'Notebook']].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => setPrimaryView(id)} role="tab" aria-selected={primaryView === id}
-                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+        </div>
+        <div className={`flex items-center justify-between gap-2 mt-2 ${compact ? 'flex-col items-stretch' : ''}`}>
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label="Primary workspaces">
+            {[
+              ['create', 'Create'],
+              ['library', 'Library'],
+              ['experiments', 'Experiments'],
+            ].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
+                className={`ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
           </div>
+          <div className={`flex items-center gap-1 ${compact ? 'overflow-x-auto pb-1' : ''}`} aria-label="Prompt Lab utilities">
+            <button type="button" onClick={() => openCreateView('composer')}
+              className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Build
+            </button>
+            <button type="button" onClick={() => setPrimaryView('notebook')}
+              className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Notebook
+            </button>
+          </div>
         </div>
-        <div className={`flex items-center gap-1 mt-2 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label={primaryView === 'create' ? 'Create views' : primaryView === 'runs' ? 'Run views' : 'Notebook views'}>
-          {primaryView === 'create' && (
+        <div className={`flex items-center gap-1 mt-2 ${compact ? 'overflow-x-auto pb-1' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+          {activeSection === 'experiments' && (
             <>
-              {[['editor', 'Create'], ['library', 'Library'], ['composer', 'Build'], ['split', 'Dual Pane']].map(([id, label]) => (
-                <button key={id} type="button" onClick={() => openCreateView(id)} role="tab" aria-selected={createView === id}
-                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${createView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                  {label}
-                </button>
-              ))}
-            </>
-          )}
-          {primaryView === 'runs' && (
-            <>
-              {[['history', 'History'], ['compare', 'Compare']].map(([id, label]) => (
+              {SUBVIEWS.runs.map(({ id, label }) => (
                 <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
                   className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                   {label}
@@ -297,10 +370,23 @@ export default function App() {
           {primaryView === 'notebook' && (
             <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
           )}
+          {activeSection === 'create' && createLayoutOptions.length > 0 && (
+            <>
+              {createLayoutOptions.map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                  className={`ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
+          {activeSection === 'library' && (
+            <span className={`text-[11px] ${m.textMuted}`}>Browse, filter, and reuse saved prompts</span>
+          )}
         </div>
       </header>
 
-      <main role="tabpanel" aria-label={tab} className="flex-1 flex flex-col overflow-hidden">
+      <main role="tabpanel" aria-label={tab} className="pl-tab-panel flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <MainWorkspace
@@ -310,20 +396,61 @@ export default function App() {
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
           editorPane={(
-            <div className="h-full min-h-0 flex flex-col overflow-hidden">
+            <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
               <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
-              <div className="flex gap-1">
-                {[
-                  ['editor', 'Create'],
-                  ['library', 'Library'],
-                  ...(!compact ? [['split', 'Dual Pane']] : []),
-                ].map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => openCreateView(id)}
-                    className={`ui-control text-xs px-2.5 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                    {label}
+              {activeSection === 'create' && createLayoutOptions.length > 0 && (
+                <div className="flex gap-1">
+                  {createLayoutOptions.map(([id, label]) => (
+                    <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                      className={`ui-control text-xs px-2.5 py-1 rounded-lg transition-colors ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {lib.quickInject.length > 0 && (
+                <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                  <button
+                    type="button"
+                    onClick={() => setShowQuickInject((prev) => !prev)}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Ic n="Zap" size={10} className="text-yellow-500" />
+                      Frequently Used
+                    </span>
+                    <Ic n={showQuickInject ? 'ChevronUp' : 'ChevronDown'} size={10} />
                   </button>
-                ))}
-              </div>
+                  {showQuickInject && (
+                    <div className="px-3 pb-3 flex flex-col gap-2">
+                      <p className={`text-xs ${m.textMuted}`}>Reuse saved prompts without leaving Create. Load replaces the current draft; Copy keeps your editor state intact.</p>
+                      <div className="flex flex-col gap-1.5">
+                        {lib.quickInject.map((entry) => (
+                          <div key={entry.id} className={`flex items-center justify-between ${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 gap-2`}>
+                            <span className={`text-xs ${m.textBody} truncate flex-1`}>{entry.title}</span>
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => { copy(entry.enhanced, `Copied: ${entry.title}`); lib.bumpUse(entry.id); }}
+                                className={`ui-control px-2 py-1 rounded text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                              >
+                                Copy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => loadEntry(entry)}
+                                className="ui-control px-2 py-1 rounded bg-violet-600 text-white text-xs font-semibold transition-colors hover:bg-violet-500"
+                              >
+                                Load
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Input */}
               <div>
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
@@ -400,13 +527,62 @@ export default function App() {
                 onRunCases={runAllCases}
                 onSave={() => openSavePanel()}
                 onClear={clearEditor}
+                onCancelEnhance={cancelEnhance}
                 loading={loading}
                 hasInput={Boolean(raw.trim())}
                 runningCases={runningCases}
+                batchProgress={batchProgress}
                 testCaseCount={currentTestCases.length}
                 hasSavablePrompt={hasSavablePrompt}
                 enhanceShortcutLabel={`${primaryModKey}+Enter`}
               />
+              {(loading || batchProgress.active || optimisticSaveVisible) && (
+                <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
+                  <div className="min-w-0">
+                    {loading ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
+                        </p>
+                      </>
+                    ) : batchProgress.active ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
+                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
+                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {hasSavablePrompt && !showSave && (
+                      <button
+                        type="button"
+                        onClick={() => openSavePanel()}
+                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
+                      >
+                        Save Draft
+                      </button>
+                    )}
+                    {loading && (
+                      <button
+                        type="button"
+                        onClick={cancelEnhance}
+                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
               {editingId && currentTestCases.length > 0 && (
                 <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
                   <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
@@ -416,48 +592,104 @@ export default function App() {
                   <button onClick={runAllCases} disabled={loading || runningCases}
                     className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
                     {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
-                    Run All
+                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
                   </button>
                 </div>
               )}
               {error && (
-                <div className="text-red-400 text-xs bg-red-950/40 border border-red-900 rounded-lg p-2.5">
-                  <p className="font-semibold mb-1">{error.userMessage}</p>
+                <div className="border border-red-500/35 bg-red-950/20 rounded-xl p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">Recovery</p>
+                      <p className="mt-1 text-sm font-semibold text-red-200">{error.userMessage}</p>
+                    </div>
+                    <Ic n="AlertTriangle" size={14} className="text-red-300 shrink-0 mt-0.5" />
+                  </div>
                   {error.suggestions?.length > 0 && (
-                    <ul className="list-disc list-inside mb-2 text-red-300/80">
-                      {error.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-                    </ul>
+                    <div className="mt-3">
+                      <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textMuted}`}>Next steps</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {error.suggestions.map((suggestion, index) => (
+                          <span key={index} className="inline-flex items-center rounded-full border border-red-400/20 bg-red-500/10 px-2.5 py-1 text-xs text-red-100">
+                            {suggestion}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                  <div className="flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     {error.actions?.includes('retry') && (
-                      <button onClick={() => enhance()} className="text-xs text-violet-400 hover:text-violet-300 underline">Retry</button>
+                      <button
+                        type="button"
+                        onClick={() => enhance()}
+                        className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                      >
+                        <Ic n="RefreshCw" size={11} />
+                        Try Again
+                      </button>
                     )}
                     {error.actions?.includes('open_provider_settings') && (
-                      <button onClick={openOptions} className="text-xs text-violet-400 hover:text-violet-300 underline">Open Settings</button>
+                      <button
+                        type="button"
+                        onClick={openOptions}
+                        className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                      >
+                        <Ic n="Settings" size={11} />
+                        Open Provider Settings
+                      </button>
                     )}
                   </div>
                 </div>
               )}
               <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
               {/* Enhanced */}
+              {(loading || enhanced) && <>
+                {loading && !enhanced && (
+                  <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+                    <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
+                            {streaming ? 'Streaming' : 'Preparing'}
+                          </span>
+                        </div>
+                        <p className={`mt-1 text-xs ${m.textMuted}`}>Output stays live while the request is in flight.</p>
+                      </div>
+                    </div>
+                    <div className="pl-skeleton-stack">
+                      <div className="pl-skeleton-line w-4/5" />
+                      <div className="pl-skeleton-line w-full" />
+                      <div className="pl-skeleton-line w-11/12" />
+                    </div>
+                    {streamPreview && (
+                      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap mt-3 max-h-56 overflow-y-auto`}>
+                        {streamPreview}
+                      </div>
+                    )}
+                  </div>
+                )}
               {enhanced && <>
-                <div>
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="flex items-center gap-2">
-                      <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Enhanced</span>
-                      {goldenVerdict && (
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
-                        </span>
+                <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+                  <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
+                        {goldenVerdict && (
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
+                    </div>
+                    <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'}`}>
+                      {activeResultTab === 'improved' && (
+                        <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
+                          <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
+                        </button>
                       )}
-                    </span>
-                    <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
-                      <button onClick={() => { setShowDiff(p => !p); setEnhMdPreview(false); }} className={`flex items-center gap-1 text-xs transition-colors ${showDiff ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
-                        <Ic n="GitBranch" size={10} />{showDiff ? 'Hide Diff' : 'Show Diff'}
-                      </button>
-                      <button onClick={() => { setEnhMdPreview(p => !p); setShowDiff(false); }} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`}`}>
-                        <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
-                      </button>
                       {editingId && (
                         <button
                           onClick={() => lib.pinGoldenResponse(editingId, {
@@ -480,46 +712,67 @@ export default function App() {
                       ><Ic n="Copy" size={12} />Copy</button>
                     </div>
                   </div>
-                  {showDiff ? (
+
+                  <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Result views">
+                    {resultTabs.map(({ id, label }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeResultTab === id}
+                        onClick={() => {
+                          setResultTab(id);
+                          if (id !== 'improved') setEnhMdPreview(false);
+                        }}
+                        className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeResultTab === 'improved' && (
+                    enhMdPreview ? (
+                      <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
+                        <MarkdownPreview text={enhanced} />
+                      </div>
+                    ) : (
+                      <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
+                    )
+                  )}
+
+                  {activeResultTab === 'diff' && (
                     <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
                       {wordDiff(raw, enhanced).map((d, i) => (
                         <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>{d.v}</span>
                       ))}
                     </div>
-                  ) : enhMdPreview ? (
-                    <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
-                      <MarkdownPreview text={enhanced} />
-                    </div>
-                  ) : (
-                    <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
                   )}
-                </div>
-                {/* Variants */}
-                {variants.length > 0 && (
-                  <div>
-                    <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold block mb-2`}>Variants</span>
+
+                  {activeResultTab === 'variants' && variants.length > 0 && (
                     <div className="flex flex-col gap-2">
                       {variants.map((v, i) => (
-                        <div key={i} className={`${m.surface} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
-                          <div className="flex justify-between items-center mb-1">
+                        <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
+                          <div className="flex justify-between items-center mb-1 gap-3">
                             <span className="text-xs font-bold text-violet-400">{v.label}</span>
                             <div className="flex gap-3">
-                              <button onClick={() => setEnhanced(v.content)} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
+                              <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
                               <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
                             </div>
                           </div>
-                          <p className={`text-xs ${m.textAlt} leading-relaxed line-clamp-2`}>{v.content}</p>
+                          <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{v.content}</p>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-                {showNotes && notes && (
-                  <div className={`${m.notesBg} border rounded-lg p-3`}>
-                    <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
-                    <p className={`text-xs ${m.textBody} leading-relaxed`}>{notes}</p>
-                  </div>
-                )}
+                  )}
+
+                  {activeResultTab === 'notes' && showNotes && notes && (
+                    <div className={`${m.notesBg} border rounded-lg p-3`}>
+                      <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
+                      <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{notes}</p>
+                    </div>
+                  )}
+                </div>
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
                   <button type="button" onClick={() => setShowEvalHistory(p => !p)}
                     className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
@@ -649,63 +902,9 @@ export default function App() {
                   </div>
                 )}
               </>}
-              {/* Quick Inject */}
-              {lib.quickInject.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-1.5 mb-2"><Ic n="Zap" size={10} className="text-yellow-500" /><span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Frequently Used</span></div>
-                  {lib.quickInject.map(e => (
-                    <div key={e.id} className={`flex items-center justify-between ${m.surface} border ${m.border} ${m.borderHov} rounded-lg px-3 py-2 gap-2 mb-1 transition-colors`}>
-                      <span className={`text-xs ${m.textBody} truncate flex-1`}>{e.title}</span>
-                      <div className="flex gap-2 shrink-0">
-                        <button onClick={() => { copy(e.enhanced, `Copied: ${e.title}`); lib.bumpUse(e.id); }} className={`${m.textSub} hover:text-violet-400 transition-colors`}><Ic n="Copy" size={11} /></button>
-                        <button onClick={() => loadEntry(e)} className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors">Load</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              </>}
               </div>
             </div>
-            {/* Save panel — pinned outside scroll container */}
-            {showSave && (
-              <div className={`shrink-0 ${m.surface} border-t ${m.border} p-3 flex flex-col gap-2`}>
-                <span className={`text-xs ${m.textAlt} font-semibold uppercase tracking-wider`}>{editingId ? 'Update Prompt' : 'Save to Library'}</span>
-                <input autoFocus className={`${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                  placeholder="Prompt title…" value={saveTitle} onChange={e => setSaveTitle(e.target.value)} />
-                <div className="flex gap-2">
-                  <select value={saveCollection} onChange={e => setSaveCollection(e.target.value)}
-                    className={`flex-1 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none`}>
-                    <option value="">No Collection</option>
-                    {lib.collections.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {showNewColl ? (
-                    <div className="flex gap-1">
-                      <input autoFocus className={`w-28 ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none focus:border-violet-500`}
-                        placeholder="Name…" value={newCollName} onChange={e => setNewCollName(e.target.value)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter') { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }
-                          if (e.key === 'Escape') setShowNewColl(false);
-                        }} />
-                      <button onClick={() => { const n = newCollName.trim(); if (n && !lib.collections.includes(n)) { lib.setCollections(p => [...p, n]); setSaveCollection(n); } setNewCollName(''); setShowNewColl(false); }}
-                        className="px-2 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs transition-colors"><Ic n="Check" size={11} /></button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setShowNewColl(true)} className={`px-2.5 ${m.btn} rounded-lg ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Plus" size={11} /></button>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {ALL_TAGS.map(t => <TagChip key={t} tag={t} selected={saveTags.includes(t)} onClick={() => setSaveTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])} />)}
-                </div>
-                {editingId && (
-                  <input className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 ${m.text}`}
-                    placeholder="What changed? (optional)" value={changeNote} onChange={e => setChangeNote(e.target.value)} />
-                )}
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => doSave()} disabled={!hasSavablePrompt} className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg py-1.5 text-sm font-semibold transition-colors"><Ic n="Save" size={12} />Save ⌘S</button>
-                  <button onClick={() => { setShowSave(false); setEditingId(null); }} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Cancel</button>
-                </div>
-              </div>
-            )}
             </div>
           )}
           libraryPane={(
@@ -726,7 +925,7 @@ export default function App() {
               loadCaseIntoEditor={loadCaseIntoEditor}
               runSingleCase={runSingleCase} removeCase={removeCase}
               loadEntry={loadEntry} addToComposer={addToComposer}
-              openSavePanel={openSavePanel} copy={copy}
+              openSavePanel={openSavePanel} sendToABTest={sendEntryToABTest} copy={copy}
             />
           )}
         />
@@ -734,56 +933,219 @@ export default function App() {
 
       {/* ══ COMPOSER TAB ══ */}
       {tab === 'composer' && (
+        <div className="pl-tab-panel">
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
           addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={isWeb} />
+        </div>
       )}
 
       {/* ══ A/B TEST TAB ══ */}
-      {tab === 'abtest' && <ABTestTab m={m} copy={copy} notify={notify} compact={compact} pageScroll={isWeb} />}
+      {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} /></div>}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
         setRaw(content);
         setEnhanced(content);
         setSaveTitle(title);
         setShowSave(true);
         setTab('editor');
         notify('Loaded into editor — save to library when ready.');
-      }} />}
+      }} /></div>}
 
       {/* ══ HISTORY TAB ══ */}
-      {tab === 'history' && <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} />}
+      {tab === 'history' && <div className="pl-tab-panel"><RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} /></div>}
       </main>
+
+      {showSave && (
+        <aside
+          className={`pl-modal-panel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="save-panel-title"
+        >
+          <div className={`flex items-start justify-between gap-3 border-b ${m.border} px-4 py-4`}>
+            <div>
+              <p id="save-panel-title" className={`text-sm font-semibold ${m.text}`}>
+                {saveTargetId ? 'Update Prompt' : 'Save to Library'}
+              </p>
+              <p className={`mt-1 text-xs ${m.textMuted}`}>
+                Keep editing in the background while you set title, collection, and tags.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeSavePanel}
+              className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
+              aria-label="Close save panel"
+            >
+              <Ic n="X" size={14} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Title</label>
+                <input
+                  autoFocus
+                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                  placeholder="Prompt title…"
+                  value={saveTitle}
+                  onChange={(e) => setSaveTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
+                  {!showNewColl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewColl(true)}
+                      className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                    >
+                      <Ic n="Plus" size={11} />
+                      New
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <select
+                    value={saveCollection}
+                    onChange={(e) => setSaveCollection(e.target.value)}
+                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                  >
+                    <option value="">No Collection</option>
+                    {lib.collections.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {showNewColl && (
+                    <div className="flex gap-2">
+                      <input
+                        autoFocus
+                        className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                        placeholder="New collection name…"
+                        value={newCollName}
+                        onChange={(e) => setNewCollName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitNewCollection();
+                          if (e.key === 'Escape') {
+                            setNewCollName('');
+                            setShowNewColl(false);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={commitNewCollection}
+                        className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_TAGS.map((t) => (
+                    <TagChip
+                      key={t}
+                      tag={t}
+                      selected={saveTags.includes(t)}
+                      onClick={() => setSaveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {saveTargetId && (
+                <div>
+                  <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Change Note</label>
+                  <input
+                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 ${m.text}`}
+                    placeholder="What changed? (optional)"
+                    value={changeNote}
+                    onChange={(e) => setChangeNote(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={`border-t ${m.border} px-4 py-4`}>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => doSave()}
+                disabled={!canSavePanel}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
+              >
+                <Ic n="Save" size={12} />
+                Save {primaryModKey}+S
+              </button>
+              <button
+                type="button"
+                onClick={closeSavePanel}
+                className={`ui-control rounded-lg px-4 text-sm transition-colors ${m.btn} ${m.textBody}`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
 
       {/* ══ MODALS ══ */}
       {showVarForm && pendingTemplate && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
             <div className="flex justify-between items-center">
               <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
               <button type="button" onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
             </div>
             <p className={`text-xs ${m.textAlt}`}>"{pendingTemplate.title}" contains template variables:</p>
             <div className="flex flex-col gap-2">
-              {Object.keys(varVals).map(k => (
+              {Object.keys(varVals).map(k => {
+                const inputDef = pendingTemplateInputMap[k];
+                const isSelect = inputDef?.type === 'select' && Array.isArray(inputDef.options) && inputDef.options.length > 0;
+                return (
                 <div key={k}>
                   <label className="text-xs font-mono font-semibold text-violet-400 block mb-1">
-                    {`{{${k}}}`}
+                    {inputDef?.label || `{{${k}}}`}
                     {isGhostVar(k) && (
                       <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-emerald-300">
                         auto
                       </span>
                     )}
                   </label>
-                  <input className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
-                    placeholder={isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`}
-                    value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
+                  {isSelect ? (
+                    <select
+                      className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                      value={varVals[k]}
+                      onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))}
+                      aria-label={inputDef.label || k}
+                    >
+                      <option value="">{inputDef.placeholder || `Select ${inputDef.label || k}…`}</option>
+                      {inputDef.options.map((opt) => (
+                        <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                          {typeof opt === 'string' ? opt : (opt.label || opt.value)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                      placeholder={inputDef?.placeholder || (isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`)}
+                      value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
+                  )}
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div className="flex gap-2">
               <button onClick={applyTemplate} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
-              <button onClick={loadTemplateWithoutVars} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
+              <button onClick={skipTemplate} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
             </div>
           </div>
         </div>
@@ -791,7 +1153,7 @@ export default function App() {
 
       {showSettings && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
             <div className="flex justify-between items-center">
               <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
               <button type="button" onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
@@ -838,7 +1200,7 @@ export default function App() {
 
       {showCmdPalette && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-start justify-center z-50 pt-20 p-4`} onClick={() => setShowCmdPalette(false)}>
-          <div className={`${m.modal} border rounded-xl w-full max-w-md overflow-hidden shadow-2xl`} onClick={e => e.stopPropagation()}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl w-full max-w-md overflow-hidden shadow-2xl`} onClick={e => e.stopPropagation()}>
             <div className={`flex items-center gap-2 px-4 py-3 border-b ${m.border}`}>
               <Ic n="Search" size={13} className={m.textSub} />
               <input autoFocus className={`flex-1 bg-transparent text-sm ${m.text} focus:outline-none placeholder-gray-500`}
@@ -861,7 +1223,7 @@ export default function App() {
 
       {showShortcuts && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`} onClick={() => setShowShortcuts(false)}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-4">
               <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
               <button type="button" onClick={() => setShowShortcuts(false)} className={m.textSub}><Ic n="X" size={14} /></button>
@@ -911,7 +1273,7 @@ export default function App() {
       {/* ══ PII WARNING MODAL ══ */}
       {piiWarning && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
-          <div className={`${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
             <div className="flex justify-between items-center">
               <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
               <button type="button" onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>

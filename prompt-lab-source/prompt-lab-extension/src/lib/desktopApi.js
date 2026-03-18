@@ -46,7 +46,7 @@ function withDemoKeys(settings, provider) {
   return s;
 }
 
-export async function callModelDirect(payload, { settingsOverride } = {}) {
+export async function callModelDirect(payload, { settingsOverride, onChunk, signal } = {}) {
   const s = settingsOverride || loadSettings();
   const provider = normalizeProvider(s.provider);
   return callProvider({
@@ -54,6 +54,8 @@ export async function callModelDirect(payload, { settingsOverride } = {}) {
     payload,
     settings: withDemoKeys(s, provider),
     fetchImpl: getFetchImpl(provider),
+    onChunk,
+    signal,
   });
 }
 
