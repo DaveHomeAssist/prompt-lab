@@ -9,7 +9,10 @@
     "build": "npm run check:node && vite build && node scripts/assemble.js",
     "preview": "npm run check:node && vite preview",
     "test": "npm run check:node && vitest run",
+    "test:phase1": "npm run check:node && vitest run src/tests/usePersistenceFlow.test.jsx src/tests/usePersistenceFlow.share.test.jsx src/tests/useExecutionFlow.test.jsx src/tests/providerSettings.test.jsx",
     "test:watch": "npm run check:node && vitest",
+    "test:desktop": "npm run check:node && vitest run tests/desktop-smoke.test.mjs",
+    "test:diag": "npm run check:node && vitest run --reporter=hanging-process",
     "test:e2e": "npm run check:node && npm run build && playwright test",
     "test:legacy": "npm run check:node && node --test tests/*.test.mjs",
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
@@ -36,6 +39,6 @@
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^8.0.0",
-    "vitest": "^4.1.0"
+    "vitest": "~3.2.4"
   }
 }
