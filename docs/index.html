@@ -109,25 +109,6 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
-.skip-link {
-  position: absolute;
-  left: -9999px;
-  top: auto;
-  padding: 8px 16px;
-  z-index: 10000;
-  text-decoration: none;
-  border-radius: 4px;
-  font-size: 14px;
-  background: var(--surface-900);
-  color: var(--lab-teal);
-}
-
-.skip-link:focus {
-  left: 10px;
-  top: 10px;
-  outline: 2px solid currentColor;
-}
-
 /* ============================
    MOLECULAR GRID OVERLAY
    ============================ */
@@ -181,10 +162,7 @@ body::before {
   gap: 0.35rem;
 }
 .site-nav-links a {
-  padding: 0.5rem 0.85rem;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
+  padding: 0.35rem 0.75rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.7rem;
   letter-spacing: 0.04em;
@@ -200,8 +178,7 @@ body::before {
 .site-nav-links .nav-cta {
   color: #fff;
   background: var(--lab-violet);
-  padding: 0.5rem 1rem;
-  min-height: 44px;
+  padding: 0.35rem 0.85rem;
   font-weight: 600;
 }
 .site-nav-links .nav-cta:hover {
@@ -222,10 +199,6 @@ body::before {
   text-align: center;
   padding: 2rem;
   overflow: hidden;
-}
-
-@supports (height: 100dvh) {
-  .hero { min-height: 100dvh; }
 }
 
 /* Radial glow — cool violet */
@@ -315,30 +288,11 @@ body::before {
   color: transparent;
 }
 
-.hero-free-badge {
-  position: relative;
-  z-index: 2;
-  display: inline-block;
-  margin-top: 1rem;
-  padding: 0.35rem 1.2rem;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--lab-teal);
-  background: var(--lab-teal-dim);
-  border: 1px solid rgba(45, 212, 191, 0.25);
-  border-radius: 999px;
-  animation: fadeUp 1s 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  opacity: 0;
-}
-
 .hero-sub {
   position: relative;
   z-index: 2;
   font-size: clamp(1rem, 2vw, 1.2rem);
-  color: var(--surface-300);
+  color: var(--surface-400);
   margin-top: 1.2rem;
   max-width: 560px;
   font-weight: 300;
@@ -448,7 +402,7 @@ body::before {
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  color: var(--surface-400);
+  color: var(--surface-500);
   font-family: var(--font-mono);
   font-size: 0.65rem;
   letter-spacing: 0.2em;
@@ -897,63 +851,17 @@ body::before {
    FOOTER
    ============================ */
 footer {
-  padding: 3rem 2rem;
+  padding: 2.5rem;
+  text-align: center;
   border-top: 1px solid rgba(124, 58, 237, 0.08);
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  color: var(--surface-400);
+  color: var(--surface-600);
   letter-spacing: 0.06em;
 }
 
-.footer-inner {
-  max-width: 960px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1.5rem;
-}
-
-.footer-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.footer-brand .lab-mark {
+footer .lab-mark {
   color: var(--lab-violet-light);
-  font-size: 1rem;
-}
-
-.footer-links {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.footer-links a {
-  color: var(--surface-300);
-  text-decoration: none;
-  padding: 0.25rem 0;
-  transition: color 0.2s;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.footer-links a:hover {
-  color: var(--lab-violet-light);
-}
-
-.footer-legal {
-  width: 100%;
-  text-align: center;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--glass-border);
-  color: var(--surface-500);
-  font-size: 0.65rem;
 }
 
 /* ============================
@@ -1047,7 +955,7 @@ footer {
 @media (max-width: 600px) {
   .site-nav { padding: 0.5rem 1rem; }
   .site-nav-links a:not(.nav-cta) { display: none; }
-  .site-nav-links .nav-cta { font-size: 0.65rem; padding: 0.5rem 0.85rem; min-height: 44px; }
+  .site-nav-links .nav-cta { font-size: 0.65rem; padding: 0.3rem 0.7rem; }
   .provider-logos { gap: 0.75rem; }
   .provider-chip { font-size: 0.78rem; padding: 0.45rem 0.9rem; }
   .feature-grid { grid-template-columns: 1fr; }
@@ -1076,7 +984,6 @@ footer {
 </script>
 </head>
 <body>
-<a href="#main" class="skip-link">Skip to content</a>
 
 <!-- ========== SITE NAV ========== -->
 <nav class="site-nav" aria-label="Site navigation">
@@ -1089,6 +996,9 @@ footer {
     <a href="#features">Features</a>
     <a href="./guide.html">Guide</a>
     <a href="./setup.html">Setup</a>
+    <a href="../promptkeeper_brand_identity.html">Brand</a>
+    <a href="../promptlab-design-template.html">Template</a>
+    <a href="../promptlab-badge-set.html">Badges</a>
     <a href="./privacy.html">Privacy</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
     <a href="https://prompt-lab-tawny.vercel.app/app/" class="nav-cta">Open App</a>
@@ -1096,7 +1006,7 @@ footer {
 </nav>
 
 <!-- ========== HERO ========== -->
-<section class="hero" id="main">
+<section class="hero">
   <div class="molecules" aria-hidden="true"></div>
 
   <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager" fetchpriority="high" width="320" height="320">
@@ -1105,7 +1015,6 @@ footer {
   <p class="hero-sub">
     A multi-provider prompt engineering workbench. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — in your browser or as a Chrome extension.
   </p>
-  <p class="hero-free-badge">Free &middot; No signup required</p>
 
   <div class="hero-cta-group">
     <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
@@ -1318,19 +1227,8 @@ footer {
 
 <!-- ========== FOOTER ========== -->
 <footer>
-  <div class="footer-inner">
-    <div class="footer-brand">
-      <span class="lab-mark">&aleph;</span> Prompt Lab v1.7.0
-    </div>
-    <nav class="footer-links" aria-label="Footer navigation">
-      <a href="./guide.html">Guide</a>
-      <a href="./setup.html">Setup</a>
-      <a href="./privacy.html">Privacy</a>
-      <a href="./scriptagent.html">Script Agent</a>
-      <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
-    </nav>
-    <p class="footer-legal">&copy; 2026 Dave Robertson. Built for prompt engineers who ship.</p>
-  </div>
+  <span class="lab-mark">&aleph;</span> Prompt Lab v1.7.0 — Built for prompt engineers who ship.
+  <br><a href="./guide.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">How-To Guide</a> &middot; <a href="./setup.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Setup</a> &middot; <a href="./privacy.html" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" style="color:var(--lab-violet-light); text-decoration:none; font-size:0.72rem;">Source</a>
 </footer>
 
 <!-- ========== INTERACTIVE JS ========== -->

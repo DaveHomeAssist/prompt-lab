@@ -36,19 +36,11 @@ function hasExample(text) {
 
 function issue(id, message, severity, text, idx = 0) {
   const line = lineFromIndex(text, idx);
-  const suggestedFixMap = {
-    goal_near_top: 'Add a one-sentence goal near the top so the model knows the exact outcome.',
-    role_definition: 'Add a role statement such as "You are a senior UX auditor" or "Act as a staff engineer."',
-    constraints: 'Add explicit guardrails for length, tone, must-have content, or forbidden content.',
-    output_format: 'Specify the output format you want back: list, JSON, markdown sections, table, or another structure.',
-    example_io: 'Add a short example input/output pair to anchor the expected shape of the response.',
-  };
   return {
     id,
     message,
     severity,
     line,
-    suggestedFix: suggestedFixMap[id] || '',
     range: { start: idx, end: idx },
   };
 }

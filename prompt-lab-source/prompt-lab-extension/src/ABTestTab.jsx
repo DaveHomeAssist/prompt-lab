@@ -23,7 +23,6 @@ export default function ABTestTab({
   runAB,
   resetAB,
   pickWinner,
-  loadHistoryEntry,
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
@@ -32,7 +31,7 @@ export default function ABTestTab({
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Compare Variants</p>
+        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
           <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
@@ -53,7 +52,10 @@ export default function ABTestTab({
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
         <p className={`text-xs ${m.textAlt}`}>
-          Paste two prompt variants and run them side-by-side against the same provider. Each variant is sent as a single isolated user message.
+          Each side is sent exactly as one isolated user message with no extra context.
+        </p>
+        <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
+          Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
         </p>
       </div>
       {compact && (
@@ -134,7 +136,7 @@ export default function ABTestTab({
           </div>
         )}
         {showRuns && evalRuns.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>Run both variants to start recording results.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No A/B runs saved yet.</div>
         )}
       </div>
       {/* Experiment History */}
@@ -148,38 +150,19 @@ export default function ABTestTab({
           <div className="px-4 pb-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
             {history.slice(0, 20).map(exp => (
               <div key={exp.id} className={`${m.surface} border ${m.border} rounded-lg p-2 text-xs`}>
-                <div className="flex justify-between items-start gap-2">
-                  <div className="min-w-0">
-                    <span className={`font-semibold ${m.text} block truncate`}>{exp.label}</span>
-                    <span className={`block mt-0.5 ${m.textMuted}`}>
-                      {exp.variants?.map((variant) => variant.provider).filter(Boolean).join(' vs ') || 'Providers unavailable'}
-                    </span>
-                  </div>
-                  <span className={`${m.textMuted} shrink-0`}>{new Date(exp.createdAt).toLocaleDateString()}</span>
+                <div className="flex justify-between items-center">
+                  <span className={`font-semibold ${m.text}`}>{exp.label}</span>
+                  <span className={m.textMuted}>{new Date(exp.createdAt).toLocaleDateString()}</span>
                 </div>
-                {exp.variants?.[0]?.prompt && (
-                  <p className={`mt-1 ${m.textAlt} leading-relaxed`}>
-                    {exp.variants[0].prompt.slice(0, 96)}{exp.variants[0].prompt.length > 96 ? '…' : ''}
-                  </p>
-                )}
                 {exp.outcome?.winnerVariantId && (
                   <span className="text-green-400 text-[10px]">Winner: Variant {exp.outcome.winnerVariantId}</span>
                 )}
-                <div className="mt-2 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => loadHistoryEntry(exp)}
-                    className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
-                  >
-                    Load
-                  </button>
-                </div>
               </div>
             ))}
           </div>
         )}
         {showHistory && history.length === 0 && (
-          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>Completed comparisons will appear here.</div>
+          <div className={`ui-empty-state px-4 pb-3 text-xs ${m.textMuted}`}>No experiments saved yet.</div>
         )}
       </div>
       {showDiff && bothReady && (

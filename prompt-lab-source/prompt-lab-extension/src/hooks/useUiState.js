@@ -1,30 +1,6 @@
 import { useEffect, useState } from 'react';
 import usePersistedState from '../usePersistedState.js';
 
-function readInitialFontSize(primaryKey, legacyKey, fallback) {
-  if (typeof window === 'undefined') return fallback;
-
-  try {
-    const primaryRaw = localStorage.getItem(primaryKey);
-    if (primaryRaw !== null) {
-      const primaryValue = JSON.parse(primaryRaw);
-      const n = Number(primaryValue);
-      if (Number.isFinite(n) && n >= 10 && n <= 22) return n;
-    }
-
-    const legacyRaw = localStorage.getItem(legacyKey);
-    if (legacyRaw !== null) {
-      const legacyValue = JSON.parse(legacyRaw);
-      const n = Number(legacyValue);
-      if (Number.isFinite(n) && n >= 10 && n <= 22) return n;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
-}
-
 export default function useUiState() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 420));
   const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 720));
@@ -33,18 +9,6 @@ export default function useUiState() {
   });
   const [density, setDensity] = usePersistedState('pl2-density', 'comfortable', {
     validate: value => ['compact', 'comfortable', 'spacious'].includes(value) ? value : 'comfortable',
-  });
-  const [editorFontSize, setEditorFontSize] = usePersistedState('pl2-editor-font-size', readInitialFontSize('pl2-editor-font-size', 'pl2-font-size', 14), {
-    validate: value => {
-      const n = Number(value);
-      return Number.isFinite(n) && n >= 10 && n <= 22 ? n : 14;
-    },
-  });
-  const [resultFontSize, setResultFontSize] = usePersistedState('pl2-result-font-size', readInitialFontSize('pl2-result-font-size', 'pl2-font-size', 14), {
-    validate: value => {
-      const n = Number(value);
-      return Number.isFinite(n) && n >= 10 && n <= 22 ? n : 14;
-    },
   });
   const [primaryView, setPrimaryView] = useState('create');
   const [workspaceView, setWorkspaceView] = useState('editor');
@@ -105,10 +69,6 @@ export default function useUiState() {
     setColorMode,
     density,
     setDensity,
-    editorFontSize,
-    setEditorFontSize,
-    resultFontSize,
-    setResultFontSize,
     primaryView,
     setPrimaryView,
     workspaceView,

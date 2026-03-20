@@ -1,0 +1,171 @@
+PROMPT LAB
+
+Steam-Style Store Writeup
+
+Prompt Lab is a focused prompt engineering workspace for people who actually iterate, compare, test, and ship prompts.
+
+It is built for real prompt work, not one-off demos. Write raw prompts, enhance them, compare versions, run A/B tests, manage reusable prompt libraries, track evaluation runs, and move from rough draft to production-ready prompt systems without losing the thread.
+
+Whether you are tuning system prompts, building reusable templates, evaluating model behavior, or organizing a serious prompt library, Prompt Lab gives you a single workspace to do the work cleanly.
+
+Core Pitch
+
+Prompt Lab turns prompt iteration into a real workflow:
+- draft
+- enhance
+- compare
+- test
+- save
+- version
+- reuse
+
+Instead of juggling raw text files, ad hoc notes, and half-reproducible experiments, you get a dedicated environment for structured prompt development across extension, desktop, and web surfaces.
+
+Why Prompt Lab
+
+- Build prompts with speed and structure
+- Save reusable prompts into a searchable library
+- Fill template variables before execution
+- Compare raw and improved outputs side by side
+- Run A/B tests between prompt variants
+- Track evaluation runs over time
+- Organize prompts by collections and tags
+- Keep version history and restore prior prompt states
+- Move prompts between library, composer, scratchpad, and testing workflows
+
+Key Features
+
+1. Prompt Creation Workspace
+- Write and edit prompts in a dedicated creator surface
+- Switch between focused and split layouts
+- View improved output, diffs, variants, and notes in one workflow
+- Use markdown preview where useful
+
+2. Prompt Enhancement Flow
+- Send prompts through supported model providers
+- Stream responses on supported direct-fetch paths
+- See skeleton loading and live output preview during generation
+- Cancel stale or unwanted requests cleanly
+- Surface save actions optimistically during active enhancement
+
+3. Prompt Library
+- Save prompts with title, tags, collections, and change notes
+- Search and filter the library quickly
+- Import preset packs into the library
+- Detect duplicate or near-duplicate presets before import
+- Preserve structured prompt inputs including select-style variables
+
+4. Template Variable Support
+- Detect template variables inside prompts
+- Open a fill step before applying templated prompts
+- Support editable auto-filled ghost variables
+- Render select inputs when preset metadata defines enumerated choices
+
+5. A/B Testing
+- Send prompts directly from the library into Variant A or Variant B
+- Resolve template variables before A/B insertion
+- Compare prompt variants in a dedicated experiment flow
+
+6. Evaluation Timeline
+- Review run history in a timeline panel
+- Filter runs by model, status, and date range
+- Compare outputs with diff highlighting
+- View delta-style comparison metrics
+- Copy comparison results for external review
+
+7. Versioning and Recovery
+- Keep version history for saved prompts
+- Restore older versions when experimentation goes sideways
+- Use change notes to understand what shifted between revisions
+
+8. Multi-Surface Workflow
+- Designed to work across:
+  - Chrome extension
+  - Tauri desktop app
+  - web mode
+- Keeps prompt work portable across contexts
+
+9. Supporting Workspaces
+- Scratchpad-style writing surface
+- Composer workflow for assembling blocks
+- Test case support for prompt-specific evaluation flows
+
+10. UX Quality Improvements
+- Debounced library search
+- Toast feedback with motion polish
+- Modal and tab transitions
+- Batch progress visibility for long-running test operations
+- More useful compare and history flows for repeated iteration
+
+Who It Is For
+
+- prompt engineers
+- AI product builders
+- eval and QA teams
+- solo builders refining reusable prompts
+- anyone managing more than a handful of serious prompts
+
+What Makes It Different
+
+Prompt Lab is not just a text box with an API call behind it.
+
+It is a prompt workflow system:
+- library management
+- structured templating
+- version history
+- A/B comparison
+- run timeline review
+- reusable preset import
+- multi-surface deployment
+
+If you are doing real iterative prompt work, those systems matter more than novelty UI.
+
+Feature Summary
+
+- Prompt editor
+- Enhancement pipeline
+- Streaming responses
+- Diff view
+- Markdown preview
+- Prompt library
+- Tag and collection organization
+- Version history and restore
+- Template variable modal
+- Select-style prompt inputs
+- Preset pack import
+- Duplicate detection
+- Empty-prompt validation
+- A/B testing workflow
+- Evaluation timeline
+- Run filters
+- Comparison metrics
+- Scratchpad
+- Composer
+- Test case support
+- Desktop, extension, and web deployment targets
+
+Short Description
+
+Prompt Lab is a dedicated prompt engineering workspace for writing, enhancing, comparing, testing, versioning, and organizing serious prompt systems.
+
+Long Description
+
+Prompt Lab gives prompt work the same kind of structure other creative and technical tools give code, design, or writing.
+
+Build prompts in a focused workspace. Save them into a searchable library. Apply template variables before execution. Compare raw and enhanced outputs. Run A/B tests. Track evaluation runs over time. Restore older versions when you need to rewind. Import reusable preset packs and keep structured inputs intact.
+
+From first draft to reusable prompt system, Prompt Lab is designed to keep the whole workflow in one place.
+
+Tagline Options
+
+- Build Better Prompts, Like They Matter
+- The Prompt Engineering Workspace
+- Draft. Test. Compare. Ship.
+- Serious Tools for Serious Prompt Work
+
+Store Capsule One-Liners
+
+- A prompt engineering workspace for drafting, testing, comparing, and managing reusable prompts.
+- Build prompts with versioning, templating, A/B testing, and evaluation history.
+- A dedicated lab for prompt iteration across extension, desktop, and web.
+

@@ -3,7 +3,6 @@ export const PAD_SHORTCUTS = Object.freeze([
   { id: 'insertDate', key: 'd', mod: true, shift: true, alt: false },
   { id: 'copyAll', key: 'c', mod: true, shift: true, alt: false },
   { id: 'clear', key: 'x', mod: true, shift: true, alt: false },
-  { id: 'toggleRef', key: 'r', mod: true, shift: true, alt: false },
 ]);
 
 export function matchPadShortcut(event) {

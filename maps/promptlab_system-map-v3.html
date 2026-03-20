@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive system map of active software projects, shared modules, deployment infrastructure, and their relationships." />
+  <meta name="theme-color" content="#0b1020" />
+  <meta property="og:title" content="System Map | Software Development Projects" />
+  <meta property="og:description" content="Interactive system map of active software projects, shared modules, deployment infrastructure, and their relationships." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="System Map | Software Development Projects" />
+  <meta name="twitter:description" content="Interactive system map of active software projects, shared modules, deployment infrastructure, and their relationships." />
+  <title>System Map | Software Development Projects</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #131a2e;
+      --panel-2: #18213a;
+      --muted: #8ea0c6;
+      --text: #edf2ff;
+      --line: #2a3558;
+      --accent: #7c3aed;
+      --accent-2: #22c55e;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --info: #38bdf8;
+      --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+      --radius: 18px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+    html, body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #111831 0%, var(--bg) 45%);
+      color: var(--text);
+      min-height: 100%;
+    }
+
+    body { padding: 24px; }
+
+    .page {
+      max-width: 1540px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero, .toolbar, .canvas, .detail {
+      background: rgba(19, 26, 46, 0.92);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      backdrop-filter: blur(10px);
+    }
+
+    .noscript-card {
+      max-width: 1540px;
+      margin: 24px auto;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 18px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      background: rgba(124, 58, 237, 0.12);
+      color: #c9b3ff;
+      border: 1px solid rgba(124,58,237,0.28);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 14px 0 10px;
+      font-size: clamp(30px, 5vw, 48px);
+      line-height: 1.02;
+    }
+
+    .hero p {
+      color: var(--muted);
+      max-width: 70ch;
+      line-height: 1.55;
+    }
+
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      align-content: start;
+    }
+
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      margin-top: 8px;
+      font-size: 28px;
+      font-weight: 800;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(140px, 180px)) minmax(140px, 180px) minmax(220px, 1fr);
+      gap: 12px;
+      align-items: center;
+    }
+
+    .field, .segmented, .legend, .detail-card {
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-sm);
+    }
+
+    .field { padding: 10px 12px; }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      margin-bottom: 6px;
+    }
+
+    .field input, .field select {
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+
+    .field select option { background: var(--panel); color: var(--text); }
+
+    .segmented {
+      display: flex;
+      padding: 6px;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .segmented button, .ghost-btn {
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      padding: 10px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-family: inherit;
+      transition: background 160ms ease, color 160ms ease;
+      white-space: nowrap;
+    }
+
+    .segmented button.active,
+    .segmented button:hover,
+    .ghost-btn:hover {
+      background: rgba(124,58,237,0.16);
+      color: var(--text);
+    }
+
+    .segmented button:focus-visible,
+    .ghost-btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .ghost-btn {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: var(--panel-2);
+      color: var(--text);
+      width: 100%;
+    }
+
+    /* ── Main grid ── */
+    .main {
+      display: grid;
+      grid-template-columns: minmax(0, 2.2fr) minmax(320px, 0.85fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .canvas { padding: 14px; }
+
+    .canvas-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 6px 14px;
+      flex-wrap: wrap;
+    }
+
+    .canvas-title { font-size: 18px; font-weight: 800; }
+
+    .legend {
+      display: flex;
+      gap: 10px;
+      padding: 10px 12px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .map-wrap {
+      border-radius: var(--radius);
+      overflow: auto;
+      border: 1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      max-height: 80vh;
+    }
+
+    svg {
+      width: 100%;
+      min-width: 1440px;
+      height: auto;
+      display: block;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(124,58,237,0.10), transparent 28%),
+        radial-gradient(circle at 80% 10%, rgba(34,197,94,0.07), transparent 28%),
+        radial-gradient(circle at 50% 85%, rgba(245,158,11,0.05), transparent 28%),
+        radial-gradient(circle at 15% 80%, rgba(56,189,248,0.06), transparent 28%),
+        #0b1122;
+    }
+
+    .edge { stroke: rgba(142,160,198,0.28); stroke-width: 1.8; }
+
+    .edge.highlight {
+      stroke: rgba(124,58,237,0.85);
+      stroke-width: 2.8;
+      filter: drop-shadow(0 0 6px rgba(124,58,237,0.3));
+    }
+
+    .node { cursor: pointer; }
+    .node rect.bg {
+      fill: rgba(19,26,46,0.94);
+      stroke: rgba(255,255,255,0.09);
+      stroke-width: 1.2;
+      rx: 18;
+      transition: stroke 160ms ease;
+    }
+
+    .node:hover rect.bg { stroke: rgba(255,255,255,0.2); }
+
+    .node.selected rect.bg {
+      stroke: rgba(124,58,237,0.9);
+      stroke-width: 2.2;
+      filter: drop-shadow(0 0 20px rgba(124,58,237,0.2));
+    }
+
+    .node.dimmed {
+      pointer-events: none;
+    }
+
+    .node text.title { fill: var(--text); font-weight: 800; font-size: 13px; }
+    .node text.meta { fill: var(--muted); font-size: 10.5px; }
+    .node text.badge { font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* ── Detail panel ── */
+    .detail {
+      padding: 14px;
+      position: sticky;
+      top: 24px;
+      max-height: calc(100vh - 48px);
+      overflow-y: auto;
+    }
+
+    .detail-stack { display: grid; gap: 12px; }
+    .detail-card { padding: 14px; }
+
+    .detail-kicker {
+      color: #c9b3ff;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 800;
+    }
+
+    .detail h2 { margin: 8px 0 10px; font-size: 24px; line-height: 1.1; }
+    .detail p, .detail li { color: var(--muted); line-height: 1.5; font-size: 14px; }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+
+    .chip {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .chip[data-layer] { border-color: transparent; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 14px;
+    }
+
+    .kv:last-child { border-bottom: 0; }
+    .kv .k { color: var(--muted); }
+    .kv .v { color: var(--text); font-weight: 600; }
+
+    .list { margin: 0; padding-left: 18px; }
+    .list li { padding: 2px 0; }
+
+    .muted { color: var(--muted); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-right: 6px;
+    }
+
+    .status-live { background: var(--accent-2); }
+    .status-active { background: var(--info); }
+    .status-draft { background: var(--warn); }
+    .status-planning { background: var(--warn); }
+    .status-placeholder { background: rgba(255,255,255,0.2); }
+
+    /* ── Keyboard focus ── */
+    .node:focus-visible rect.bg {
+      stroke: var(--accent);
+      stroke-width: 2.5;
+      outline: none;
+    }
+
+    /* ── Scroll bar ── */
+    .detail::-webkit-scrollbar { width: 6px; }
+    .detail::-webkit-scrollbar-track { background: transparent; }
+    .detail::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 999px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 1200px) {
+      .hero, .toolbar, .main { grid-template-columns: 1fr; }
+      .detail { position: static; max-height: none; }
+      .toolbar { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 14px; }
+      .toolbar { grid-template-columns: 1fr; }
+      .hero-stats { grid-template-columns: 1fr 1fr; }
+      .kv { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sr-only" id="selectionAnnouncer" aria-live="polite" aria-atomic="true"></div>
+  <noscript>
+    <section class="hero noscript-card">
+      <div>
+        <div class="eyebrow">Software Development Projects</div>
+        <h1>System Map</h1>
+        <p>This page requires JavaScript to render the interactive system map. Open it with JavaScript enabled to browse projects, dependencies, and deployment relationships.</p>
+      </div>
+    </section>
+  </noscript>
+
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="eyebrow">Software Development Projects</div>
+        <h1>System Map</h1>
+        <p>
+          A verified operating view of active projects, shared modules, deployment infrastructure,
+          and the connections between them. Data sourced from the live codebase and CI/CD configuration.
+        </p>
+      </div>
+      <div class="hero-stats" id="heroStats"></div>
+    </header>
+
+    <section class="toolbar">
+      <div class="field">
+        <label for="search">Search nodes</label>
+        <input id="search" type="text" placeholder="Search by name, tag, owner, or layer" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="layerFilter">Layer</label>
+        <select id="layerFilter"></select>
+      </div>
+      <div class="field">
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter"></select>
+      </div>
+      <div class="field">
+        <label for="ownerFilter">Owner</label>
+        <select id="ownerFilter"></select>
+      </div>
+      <button class="ghost-btn" id="resetBtn" type="button">Reset filters</button>
+      <div class="segmented" id="focusModes" role="group" aria-label="Focus mode filters"></div>
+    </section>
+
+    <div class="main" aria-describedby="mapHelp">
+      <section class="canvas">
+        <div class="canvas-header">
+          <div class="canvas-title" id="canvasTitle">Topology View</div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <p class="sr-only" id="mapHelp">Use the search and filters to narrow the map. Select a visible node to inspect its details and linked systems.</p>
+        <div class="map-wrap">
+          <svg id="map" viewBox="0 0 1440 960" role="img" aria-label="Interactive system map"></svg>
+        </div>
+      </section>
+
+      <aside class="detail">
+        <div class="detail-stack" id="detailPanel"></div>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    /* ──────────────────────────────────────────
+       Data — verified against live codebase
+       2026-03-14
+       ────────────────────────────────────────── */
+
+    const layers = {
+      Core:       '#7c3aed',
+      Platform:   '#a855f7',
+      Workflow:   '#22c55e',
+      Data:       '#38bdf8',
+      People:     '#f59e0b',
+      Delivery:   '#ef4444',
+      Product:    '#ec4899'
+    };
+
+    const statusColors = {
+      Live:        '#22c55e',
+      Active:      '#38bdf8',
+      Draft:       '#f59e0b',
+      Planning:    '#f59e0b',
+      Placeholder: 'rgba(255,255,255,0.25)'
+    };
+
+    const nodes = [
+      /* ── Core products ── */
+      {
+        id: 'prompt-lab',
+        name: 'Prompt Lab',
+        layer: 'Core',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Product Hub',
+        x: 60, y: 60,
+        description: 'Primary control surface for prompt tooling, experiments, provider integrations, and publishing. Shared React frontend (src/) deployed to three shells: Chrome extension, Tauri desktop app, and Vercel web app.',
+        tags: ['product', 'react', 'vite', 'multi-shell'],
+        systems: ['App.jsx', 'providers.js', 'providerRegistry.js', 'promptSchema.js', 'piiEngine.js', 'evalSchema.js', 'platform.js', 'storage.js'],
+        deploy: 'Extension: Chrome Web Store | Desktop: Tauri 2 | Web: Vercel',
+        risks: ['Shared src/ symlink model requires careful build isolation', 'Public launch needs release packaging'],
+        next: ['Harden public docs', 'Unify launcher patterns', 'Finalize web deploy']
+      },
+      {
+        id: 'notion-widgets',
+        name: 'NotionWidgets',
+        layer: 'Product',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Widget Suite',
+        x: 430, y: 60,
+        description: 'Self-contained single-file HTML widgets for Notion embeds. Includes Quest Log, Project Status, and Client Approval. URL parameter configuration, safe DOM APIs, PWA manifest.',
+        tags: ['html', 'notion', 'commercial', 'pwa'],
+        systems: ['index.html', 'quest-log.html', 'project-status.html', 'client-approval.html', 'app.js', 'sw.js'],
+        deploy: 'GitHub Pages: davehomeassist.github.io/NotionWidgets/',
+        risks: ['Need broader widget family and launcher page', 'sw.js caching strategy needs review'],
+        next: ['Build habit tracker', 'Create public gallery index']
+      },
+      {
+        id: 'garden',
+        name: 'Garden Planner',
+        layer: 'Product',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Planning App',
+        x: 800, y: 60,
+        description: 'Interactive garden/plant planning application. Multiple version iterations (v3-v7), currently on v4. Single-file HTML pattern with GitHub Pages deployment.',
+        tags: ['html', 'planning', 'iterative'],
+        systems: ['garden-planner-v4.1-prototype.html', 'garden-planner-v7.html'],
+        deploy: 'GitHub Pages (pages.yml workflow)',
+        risks: ['Multiple version files need consolidation'],
+        next: ['Consolidate to single active version', 'Add seasonal planning']
+      },
+      {
+        id: 'catering',
+        name: 'Catering App',
+        layer: 'Product',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Business App',
+        x: 1120, y: 60,
+        description: 'Catering application with booking and menu management. Standalone HTML + JavaScript with Netlify deployment.',
+        tags: ['html', 'business', 'netlify'],
+        systems: ['index.html', 'app.js', 'icons/', 'images/'],
+        deploy: 'Netlify',
+        risks: ['Single-file scale limits as features grow'],
+        next: ['Evaluate modularization needs']
+      },
+
+      /* ── Platform shells ── */
+      {
+        id: 'extension',
+        name: 'Chrome Extension',
+        layer: 'Platform',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Deploy Shell',
+        x: 60, y: 250,
+        description: 'Chrome MV3 extension shell. Shares src/ with desktop and web via the prompt-lab-extension directory. Service worker background.js, options page for provider keys.',
+        tags: ['chrome', 'mv3', 'extension'],
+        systems: ['manifest.json', 'background.js', 'options.html', 'options.js'],
+        deploy: 'Chrome Web Store (dist/)',
+        risks: ['MV3 service worker lifecycle constraints'],
+        next: ['Submission review', 'Key permission audit']
+      },
+      {
+        id: 'desktop',
+        name: 'Tauri Desktop',
+        layer: 'Platform',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Deploy Shell',
+        x: 310, y: 250,
+        description: 'Tauri 2 desktop app shell. Symlinks to shared src/, Rust backend for native file access and secure key storage. Cross-platform build workflow.',
+        tags: ['tauri', 'rust', 'desktop', 'cross-platform'],
+        systems: ['src-tauri/', 'tauri.conf.json', 'desktopApi.js', 'vite.config.js'],
+        deploy: 'CI: desktop-build.yml (.app, .dmg, .exe, .msi, .deb, .AppImage)',
+        risks: ['Rust toolchain maintenance', 'src symlink path resolution on Windows'],
+        next: ['Stabilize cross-platform builds', 'Add auto-update']
+      },
+      {
+        id: 'web-app',
+        name: 'Vercel Web App',
+        layer: 'Platform',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Deploy Shell',
+        x: 560, y: 250,
+        description: 'Vercel-hosted web app shell. Symlinks to shared src/, includes CORS proxy (api/proxy.js) for browser-based provider calls.',
+        tags: ['vercel', 'web', 'cors-proxy'],
+        systems: ['vite.config.js', 'api/proxy.js', 'proxyFetch.js', 'vercel.json'],
+        deploy: 'Vercel (vercel.json)',
+        risks: ['CORS proxy rate limits and abuse potential', 'Vercel cold start latency'],
+        next: ['Add rate limiting to proxy', 'Production domain setup']
+      },
+
+      /* ── Core modules (verified in src/lib/) ── */
+      {
+        id: 'prompt-schema',
+        name: 'Prompt Schema',
+        layer: 'Workflow',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Validation Engine',
+        x: 60, y: 440,
+        description: 'Prompt structure validation module. Evolved from the archived promptLint.js. Validates prompt structure, catches unsafe phrasing and consistency issues.',
+        tags: ['validation', 'schema', 'quality'],
+        systems: ['promptSchema.js (src/lib/)'],
+        deploy: 'Bundled in all three shells',
+        risks: ['Rule severity tuning for real-world edge cases'],
+        next: ['Expand rule set', 'Add explain mode for lint failures']
+      },
+      {
+        id: 'pii-engine',
+        name: 'PII Engine',
+        layer: 'Workflow',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Safety Filter',
+        x: 310, y: 440,
+        description: 'PII detection, scanning, and redaction engine. Evolved from the archived redactionGate.js. Screens prompt content and output before export.',
+        tags: ['pii', 'privacy', 'safety', 'redaction'],
+        systems: ['piiEngine.js (src/lib/)'],
+        deploy: 'Bundled in all three shells',
+        risks: ['False positives could frustrate advanced users'],
+        next: ['Improve traceability', 'Add preview diff for redactions']
+      },
+      {
+        id: 'eval-schema',
+        name: 'Eval Schema',
+        layer: 'Workflow',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Test Framework',
+        x: 560, y: 440,
+        description: 'Evaluation and test case validation schema. Defines structure for side-by-side prompt comparisons, A/B runs, and experiment metadata.',
+        tags: ['eval', 'testing', 'comparison'],
+        systems: ['evalSchema.js (src/lib/)'],
+        deploy: 'Bundled in all three shells',
+        risks: ['Needs export strategy and schema versioning'],
+        next: ['Add migration docs', 'Document state contract']
+      },
+      {
+        id: 'providers',
+        name: 'Provider System',
+        layer: 'Data',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Integration Layer',
+        x: 810, y: 250,
+        description: 'LLM provider integrations and dynamic registration. Supports Anthropic, OpenAI, Google, OpenRouter, and Ollama. Platform-aware fetch routing (direct, proxy, or Tauri).',
+        tags: ['llm', 'api', 'multi-provider'],
+        systems: ['providers.js', 'providerRegistry.js', 'platform.js'],
+        deploy: 'Bundled in all three shells',
+        risks: ['Provider API breaking changes', 'Key storage varies by platform'],
+        next: ['Add provider health checks', 'Standardize error surfaces']
+      },
+
+      /* ── Delivery and infrastructure ── */
+      {
+        id: 'landing',
+        name: 'Landing Page',
+        layer: 'Delivery',
+        status: 'Draft',
+        owner: 'Dave',
+        type: 'Marketing Site',
+        x: 810, y: 440,
+        description: 'Brand and marketing landing page for Prompt Lab. Published via GitHub Pages using publish-landing.mjs script. Assets in public/, output in docs/.',
+        tags: ['landing', 'brand', 'seo', 'github-pages'],
+        systems: ['prompt-lab-landing.html', 'publish-landing.mjs', 'docs/', 'hero-logo.png', 'og-image.png'],
+        deploy: 'GitHub Pages (pages.yml workflow → docs/)',
+        risks: ['Needs final domain direction', 'Placeholder content remains'],
+        next: ['Replace placeholder copy', 'Finalize metadata and CTA flows']
+      },
+      {
+        id: 'ops-pages',
+        name: 'Interactive Ops Pages',
+        layer: 'Core',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Page Pattern',
+        x: 60, y: 640,
+        description: 'Reusable single-file HTML pages for system maps, reference tables, gear maps, decision matrices, and comparison views. This page is an instance of the pattern.',
+        tags: ['pattern', 'ui-system', 'single-file', 'self-documenting'],
+        systems: ['system-map.html (SYSMAP/)', 'sdlc_tool_stack_map.html', 'Reference Table pattern', 'Comparison Map pattern'],
+        deploy: 'Local / GitHub Pages',
+        risks: ['Design drift if page contract stays implicit'],
+        next: ['Define standard shell template', 'Publish starter kit']
+      },
+      {
+        id: 'ci-cd',
+        name: 'CI/CD Workflows',
+        layer: 'Delivery',
+        status: 'Live',
+        owner: 'Dave',
+        type: 'Automation',
+        x: 1060, y: 250,
+        description: 'GitHub Actions workflow suite. Covers GitHub Pages deployment, cross-platform desktop builds, extension CI, release automation, and documentation generation.',
+        tags: ['github-actions', 'ci', 'automation'],
+        systems: ['pages.yml', 'desktop-build.yml', 'extension-ci.yml', 'release.yml', 'notion-docs-agent.yml'],
+        deploy: 'GitHub Actions (.github/workflows/)',
+        risks: ['Workflow count growing — needs consolidation review'],
+        next: ['Add workflow status badges', 'Create release checklist']
+      },
+      {
+        id: 'notion',
+        name: 'Notion Ecosystem',
+        layer: 'Data',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Knowledge System',
+        x: 310, y: 640,
+        description: 'Destination for dashboards, databases, embeds, and operational views. Widget embed target, documentation sync via notion-docs-agent.',
+        tags: ['database', 'knowledge', 'workspace', 'embed-target'],
+        systems: ['Teamspaces', 'Dashboards', 'Widget embeds', 'notion-docs-agent.mjs'],
+        deploy: 'Notion workspace',
+        risks: ['Embed versioning and reliability constraints'],
+        next: ['Document embed patterns', 'Map launch SKUs to Notion views']
+      },
+      {
+        id: 'users',
+        name: 'Users & Operators',
+        layer: 'People',
+        status: 'Live',
+        owner: 'Shared',
+        type: 'Stakeholder Layer',
+        x: 560, y: 640,
+        description: 'Founders, collaborators, and end users who interact with the toolchain and outputs across all products.',
+        tags: ['stakeholders', 'operators', 'buyers'],
+        systems: ['Dave (builder/operator)', 'Clients', 'Collaborators', 'End users'],
+        deploy: 'N/A',
+        risks: ['Onboarding flow from first touch to active use needs work'],
+        next: ['Segment personas', 'Tune page types by use case']
+      },
+      {
+        id: 'freelance',
+        name: 'Freelance & Contractor',
+        layer: 'Product',
+        status: 'Active',
+        owner: 'Dave',
+        type: 'Business Apps',
+        x: 810, y: 640,
+        description: 'Freelance portfolio/client apps and contractor management tools. Standalone HTML + JS. Netlify deployment for freelance.',
+        tags: ['business', 'portfolio', 'client-facing'],
+        systems: ['freelance/index.html', 'contractor/index.html'],
+        deploy: 'Netlify (freelance)',
+        risks: ['Placeholder state on freelance-landing'],
+        next: ['Build out freelance landing', 'Connect to client approval widget']
+      },
+      {
+        id: 'launch',
+        name: 'Launch Pipeline',
+        layer: 'Delivery',
+        status: 'Planning',
+        owner: 'Dave',
+        type: 'Execution Flow',
+        x: 1060, y: 640,
+        description: 'Release path from internal tooling to public pages, package distribution, and product positioning. Coordinates across GitHub Pages, Vercel, Chrome Web Store, and Tauri releases.',
+        tags: ['release', 'deployment', 'positioning'],
+        systems: ['GitHub Pages', 'Vercel', 'Chrome Web Store', 'Tauri releases', 'README', 'ROADMAP.md'],
+        deploy: 'Multi-platform coordination',
+        risks: ['Too many deployment targets without a single launch checklist'],
+        next: ['Create unified release checklist', 'Add versioned launch milestones']
+      }
+    ];
+
+    const edges = [
+      /* Prompt Lab → its shells */
+      ['prompt-lab', 'extension'],
+      ['prompt-lab', 'desktop'],
+      ['prompt-lab', 'web-app'],
+      /* Prompt Lab → core modules */
+      ['prompt-lab', 'prompt-schema'],
+      ['prompt-lab', 'pii-engine'],
+      ['prompt-lab', 'eval-schema'],
+      ['prompt-lab', 'providers'],
+      /* Prompt Lab → ops */
+      ['prompt-lab', 'ops-pages'],
+      /* Shells → providers */
+      ['extension', 'providers'],
+      ['desktop', 'providers'],
+      ['web-app', 'providers'],
+      /* Modules → delivery */
+      ['prompt-schema', 'pii-engine'],
+      ['eval-schema', 'providers'],
+      /* Delivery */
+      ['landing', 'ci-cd'],
+      ['ci-cd', 'launch'],
+      ['ci-cd', 'extension'],
+      ['ci-cd', 'desktop'],
+      /* Products → Notion */
+      ['notion-widgets', 'notion'],
+      ['ops-pages', 'notion'],
+      /* Products → launch */
+      ['notion-widgets', 'launch'],
+      ['landing', 'launch'],
+      ['freelance', 'launch'],
+      /* People */
+      ['notion', 'users'],
+      ['users', 'launch'],
+      ['freelance', 'users'],
+      ['notion-widgets', 'users'],
+      /* Cross-product */
+      ['garden', 'ci-cd'],
+      ['catering', 'users'],
+      ['freelance', 'notion-widgets']
+    ];
+
+    /* ──────────────────────────────────────────
+       State
+       ────────────────────────────────────────── */
+    const state = {
+      search: '',
+      layer: 'All',
+      status: 'All',
+      owner: 'All',
+      focus: 'All',
+      selectedId: 'prompt-lab',
+      lastAnnouncedSelection: null
+    };
+
+    /* ──────────────────────────────────────────
+       DOM refs
+       ────────────────────────────────────────── */
+    const $ = (id) => document.getElementById(id);
+    const mapEl        = $('map');
+    const detailPanel  = $('detailPanel');
+    const heroStats    = $('heroStats');
+    const layerFilter  = $('layerFilter');
+    const statusFilter = $('statusFilter');
+    const ownerFilter  = $('ownerFilter');
+    const focusModes   = $('focusModes');
+    const legendEl     = $('legend');
+    const canvasTitle  = $('canvasTitle');
+    const announcer    = $('selectionAnnouncer');
+
+    /* ──────────────────────────────────────────
+       Helpers
+       ────────────────────────────────────────── */
+    const unique = (items) => ['All', ...new Set(items)];
+
+    function esc(str) {
+      const el = document.createElement('span');
+      el.textContent = str;
+      return el.innerHTML;
+    }
+
+    function populateSelect(select, values) {
+      select.innerHTML = '';
+      for (const v of values) {
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      }
+    }
+
+    /* ──────────────────────────────────────────
+       Render functions
+       ────────────────────────────────────────── */
+    function renderLegend() {
+      legendEl.innerHTML = '';
+      for (const [name, color] of Object.entries(layers)) {
+        const span = document.createElement('span');
+        span.className = 'legend-item';
+        span.innerHTML = `<span class="dot" style="background:${color}"></span>`;
+        span.appendChild(document.createTextNode(name));
+        legendEl.appendChild(span);
+      }
+    }
+
+    function renderFocusModes() {
+      const modes = ['All', 'Core Stack', 'Delivery Path', 'Products', 'People View'];
+      focusModes.innerHTML = '';
+      for (const mode of modes) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.textContent = mode;
+        btn.setAttribute('aria-pressed', state.focus === mode ? 'true' : 'false');
+        if (state.focus === mode) btn.classList.add('active');
+        btn.addEventListener('click', () => { state.focus = mode; render(); });
+        focusModes.appendChild(btn);
+      }
+    }
+
+    function filteredNodes() {
+      return nodes.filter(node => {
+        const hay = [node.name, node.owner, node.layer, node.type, ...node.tags].join(' ').toLowerCase();
+        if (state.search && !hay.includes(state.search.toLowerCase())) return false;
+        if (state.layer !== 'All' && node.layer !== state.layer) return false;
+        if (state.status !== 'All' && node.status !== state.status) return false;
+        if (state.owner !== 'All' && node.owner !== state.owner) return false;
+
+        switch (state.focus) {
+          case 'Core Stack':    return ['Core', 'Platform', 'Workflow', 'Data'].includes(node.layer);
+          case 'Delivery Path': return ['Core', 'Delivery', 'Platform'].includes(node.layer);
+          case 'Products':      return ['Core', 'Product'].includes(node.layer);
+          case 'People View':   return ['People', 'Product', 'Data'].includes(node.layer);
+          default:              return true;
+        }
+      });
+    }
+
+    function renderHeroStats(visible) {
+      const counts = [
+        ['Visible nodes', visible.length],
+        ['Live systems', visible.filter(n => n.status === 'Live').length],
+        ['Active work', visible.filter(n => n.status === 'Active').length],
+        ['Draft / Planning', visible.filter(n => n.status === 'Draft' || n.status === 'Planning').length]
+      ];
+      heroStats.innerHTML = '';
+      for (const [label, value] of counts) {
+        const div = document.createElement('div');
+        div.className = 'stat';
+        div.innerHTML = `<div class="stat-label">${esc(label)}</div><div class="stat-value">${value}</div>`;
+        heroStats.appendChild(div);
+      }
+    }
+
+    const NODE_W = 260;
+    const NODE_H = 100;
+
+    function renderMap(visible) {
+      const visibleIds = new Set(visible.map(n => n.id));
+      const nodeById = Object.fromEntries(nodes.map(n => [n.id, n]));
+
+      const frag = [];
+
+      // Grid pattern
+      frag.push(`
+        <defs>
+          <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+            <path d="M 32 0 L 0 0 0 32" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+          </pattern>
+        </defs>
+        <rect width="1440" height="960" fill="url(#grid)"></rect>
+      `);
+
+      // Edges
+      for (const [a, b] of edges) {
+        const na = nodeById[a], nb = nodeById[b];
+        if (!na || !nb) continue;
+        const show = visibleIds.has(a) && visibleIds.has(b);
+        const highlight = show && state.selectedId && (a === state.selectedId || b === state.selectedId);
+        const x1 = na.x + NODE_W / 2, y1 = na.y + NODE_H / 2;
+        const x2 = nb.x + NODE_W / 2, y2 = nb.y + NODE_H / 2;
+        const mx = (x1 + x2) / 2;
+        frag.push(`<path class="edge${highlight ? ' highlight' : ''}" d="M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" fill="none" style="opacity:${show ? (highlight ? 1 : 0.5) : 0.06}" />`);
+      }
+
+      // Nodes
+      for (const node of nodes) {
+        const vis = visibleIds.has(node.id);
+        const color = layers[node.layer] || '#7c3aed';
+        const sel = node.id === state.selectedId ? 'selected' : '';
+        const dimmed = vis ? '' : 'dimmed';
+        const opacity = vis ? 1 : 0.12;
+        frag.push(`
+          <g class="node ${sel} ${dimmed}" data-id="${esc(node.id)}" data-interactive="${vis ? 'true' : 'false'}" transform="translate(${node.x}, ${node.y})" style="opacity:${opacity}" tabindex="${vis ? 0 : -1}" ${vis ? `role="button" aria-label="${esc(node.name)}"` : 'aria-hidden="true"'}>
+            <rect class="bg" width="${NODE_W}" height="${NODE_H}"></rect>
+            <rect x="14" y="14" width="58" height="8" rx="999" fill="${color}" opacity="0.9"></rect>
+            <text class="title" x="14" y="42">${esc(node.name)}</text>
+            <text class="meta" x="14" y="60">${esc(node.type)} · ${esc(node.owner)}</text>
+            <text class="meta badge" x="14" y="80" fill="${color}">${esc(node.layer)} · ${esc(node.status)}</text>
+          </g>
+        `);
+      }
+
+      mapEl.innerHTML = frag.join('');
+
+      // Update canvas title
+      canvasTitle.textContent = visible.length
+        ? (state.focus === 'All' ? 'Topology View' : `${state.focus} - Filtered`)
+        : 'No Matching Nodes';
+    }
+
+    function renderDetails(visible) {
+      if (!visible.length) {
+        detailPanel.innerHTML = `
+          <div class="detail-card">
+            <div class="detail-kicker">No results</div>
+            <h2>No nodes match the current filters</h2>
+            <p>Clear or adjust the active search and filters to restore the full system map.</p>
+          </div>
+        `;
+        if (state.lastAnnouncedSelection !== '__empty__') {
+          announcer.textContent = 'No nodes match the current filters';
+          state.lastAnnouncedSelection = '__empty__';
+        }
+        return;
+      }
+
+      const node = visible.find(n => n.id === state.selectedId) || visible[0];
+      state.selectedId = node.id;
+
+      const related = edges
+        .filter(([a, b]) => a === node.id || b === node.id)
+        .map(([a, b]) => a === node.id ? b : a)
+        .map(id => nodes.find(n => n.id === id))
+        .filter(Boolean);
+
+      const statusClass = `status-${node.status.toLowerCase()}`;
+
+      const listHtml = (items) => items.map(i => `<li>${esc(i)}</li>`).join('');
+      const chipHtml = (items) => items.map(t => `<span class="chip">${esc(t)}</span>`).join('');
+
+      detailPanel.innerHTML = `
+        <div class="detail-card">
+          <div class="detail-kicker">Selected node</div>
+          <h2>${esc(node.name)}</h2>
+          <p>${esc(node.description)}</p>
+          <div class="chip-row">
+            <span class="chip">${esc(node.layer)}</span>
+            <span class="chip"><span class="${statusClass} status-dot"></span>${esc(node.status)}</span>
+            <span class="chip">${esc(node.owner)}</span>
+            <span class="chip">${esc(node.type)}</span>
+          </div>
+        </div>
+
+        <div class="detail-card">
+          <div class="kv"><div class="k">Owner</div><div class="v">${esc(node.owner)}</div></div>
+          <div class="kv"><div class="k">Layer</div><div class="v">${esc(node.layer)}</div></div>
+          <div class="kv"><div class="k">Status</div><div class="v">${esc(node.status)}</div></div>
+          <div class="kv"><div class="k">Role</div><div class="v">${esc(node.type)}</div></div>
+          ${node.deploy ? `<div class="kv"><div class="k">Deploy</div><div class="v">${esc(node.deploy)}</div></div>` : ''}
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-kicker">Key files & systems</div>
+          <ul class="list">${listHtml(node.systems)}</ul>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-kicker">Tags</div>
+          <div class="chip-row">${chipHtml(node.tags)}</div>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-kicker">Dependencies & neighbors</div>
+          <ul class="list">${related.length ? related.map(r => `<li>${esc(r.name)} <span class="muted">(${esc(r.layer)})</span></li>`).join('') : '<li class="muted">No linked systems</li>'}</ul>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-kicker">Risks</div>
+          <ul class="list">${listHtml(node.risks)}</ul>
+        </div>
+
+        <div class="detail-card">
+          <div class="detail-kicker">Next moves</div>
+          <ul class="list">${listHtml(node.next)}</ul>
+        </div>
+      `;
+
+      if (state.lastAnnouncedSelection !== node.id) {
+        announcer.textContent = `${node.name} selected`;
+        state.lastAnnouncedSelection = node.id;
+      }
+    }
+
+    /* ──────────────────────────────────────────
+       Main render
+       ────────────────────────────────────────── */
+    function render() {
+      renderFocusModes();
+      const visible = filteredNodes();
+      const visibleIds = new Set(visible.map(n => n.id));
+      if (!visibleIds.has(state.selectedId)) state.selectedId = visible[0]?.id ?? null;
+      renderHeroStats(visible);
+      renderMap(visible);
+      renderDetails(visible);
+    }
+
+    /* ──────────────────────────────────────────
+       Init
+       ────────────────────────────────────────── */
+    populateSelect(layerFilter, unique(nodes.map(n => n.layer)));
+    populateSelect(statusFilter, unique(nodes.map(n => n.status)));
+    populateSelect(ownerFilter, unique(nodes.map(n => n.owner)));
+    renderLegend();
+
+    mapEl.addEventListener('click', (e) => {
+      const node = e.target.closest('.node[data-interactive="true"]');
+      if (!node) return;
+      state.selectedId = node.dataset.id;
+      render();
+    });
+
+    mapEl.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const node = e.target.closest('.node[data-interactive="true"]');
+      if (!node) return;
+      e.preventDefault();
+      state.selectedId = node.dataset.id;
+      render();
+    });
+
+    let searchTimer = null;
+    $('search').addEventListener('input', (e) => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = e.target.value.trim();
+        render();
+      }, 120);
+    });
+    layerFilter.addEventListener('change', (e) => { state.layer = e.target.value; render(); });
+    statusFilter.addEventListener('change', (e) => { state.status = e.target.value; render(); });
+    ownerFilter.addEventListener('change', (e) => { state.owner = e.target.value; render(); });
+
+    $('resetBtn').addEventListener('click', () => {
+      clearTimeout(searchTimer);
+      state.search = '';
+      state.layer = 'All';
+      state.status = 'All';
+      state.owner = 'All';
+      state.focus = 'All';
+      state.selectedId = 'prompt-lab';
+      $('search').value = '';
+      layerFilter.value = 'All';
+      statusFilter.value = 'All';
+      ownerFilter.value = 'All';
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

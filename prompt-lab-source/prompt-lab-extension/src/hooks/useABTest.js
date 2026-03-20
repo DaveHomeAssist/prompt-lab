@@ -5,14 +5,7 @@ import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../e
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
 
-const EMPTY_VARIANT = {
-  prompt: '',
-  response: '',
-  loading: false,
-  error: false,
-  provider: '',
-  model: '',
-};
+const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 
 export default function useABTest({ notify }) {
   const [abA, setAbA] = useState(EMPTY_VARIANT);
@@ -67,7 +60,7 @@ export default function useABTest({ notify }) {
     abReqRef.current = { ...abReqRef.current, [side]: reqId };
     if (!state.prompt.trim()) return;
     const startedAt = nowMs();
-    setter(prev => ({ ...prev, loading: true, response: '', error: false, provider: '', model: '' }));
+    setter(prev => ({ ...prev, loading: true, response: '', error: false }));
     try {
       const data = await callWithRetry({
         model: 'claude-sonnet-4-20250514',
@@ -76,14 +69,7 @@ export default function useABTest({ notify }) {
       });
       if (abReqRef.current[side] !== reqId) return;
       const responseText = extractTextFromAnthropic(data);
-      setter(prev => ({
-        ...prev,
-        response: responseText,
-        loading: false,
-        error: false,
-        provider: data?.provider || 'unknown',
-        model: data?.model || 'unknown',
-      }));
+      setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
       await saveEvalRun({
         promptTitle: `A/B Variant ${side.toUpperCase()}`,
         mode: 'ab',
@@ -97,14 +83,7 @@ export default function useABTest({ notify }) {
       refreshEvalRuns();
     } catch (error) {
       if (abReqRef.current[side] !== reqId) return;
-      setter(prev => ({
-        ...prev,
-        response: error.message || 'Request failed.',
-        loading: false,
-        error: true,
-        provider: '',
-        model: '',
-      }));
+      setter(prev => ({ ...prev, response: error.message || 'Request failed.', loading: false, error: true }));
     }
   };
 
@@ -125,8 +104,6 @@ export default function useABTest({ notify }) {
       response: '',
       loading: false,
       error: false,
-      provider: '',
-      model: '',
     }));
     setAbWinner(null);
     setActiveSide(side.toUpperCase());
@@ -141,22 +118,8 @@ export default function useABTest({ notify }) {
         createdAt: new Date().toISOString(),
         label: `A/B: ${abA.prompt.slice(0, 40) || 'Untitled'}`,
         variants: [
-          {
-            id: 'A',
-            promptHash: hashText(abA.prompt),
-            prompt: abA.prompt,
-            response: abA.response,
-            provider: abA.provider || 'unknown',
-            model: abA.model || 'unknown',
-          },
-          {
-            id: 'B',
-            promptHash: hashText(abB.prompt),
-            prompt: abB.prompt,
-            response: abB.response,
-            provider: abB.provider || 'unknown',
-            model: abB.model || 'unknown',
-          },
+          { id: 'A', promptHash: hashText(abA.prompt), prompt: abA.prompt, response: abA.response },
+          { id: 'B', promptHash: hashText(abB.prompt), prompt: abB.prompt, response: abB.response },
         ],
         keyInputSnapshot: JSON.stringify({ aPrompt: abA.prompt.slice(0, 280), bPrompt: abB.prompt.slice(0, 280) }),
         outcome: { winnerVariantId: side },
@@ -168,31 +131,6 @@ export default function useABTest({ notify }) {
     } catch (e) {
       logWarn('save experiment', e);
     }
-  };
-
-  const loadHistoryEntry = (entry) => {
-    const variants = Array.isArray(entry?.variants) ? entry.variants : [];
-    const variantA = variants.find((variant) => variant.id === 'A') || {};
-    const variantB = variants.find((variant) => variant.id === 'B') || {};
-
-    setAbA({
-      prompt: variantA.prompt || '',
-      response: variantA.response || '',
-      loading: false,
-      error: false,
-      provider: variantA.provider || '',
-      model: variantA.model || '',
-    });
-    setAbB({
-      prompt: variantB.prompt || '',
-      response: variantB.response || '',
-      loading: false,
-      error: false,
-      provider: variantB.provider || '',
-      model: variantB.model || '',
-    });
-    setAbWinner(entry?.outcome?.winnerVariantId ? `Variant ${entry.outcome.winnerVariantId}` : null);
-    setActiveSide('A');
   };
 
   return {
@@ -210,7 +148,6 @@ export default function useABTest({ notify }) {
     activeSide,
     setActiveSide,
     loadVariant,
-    loadHistoryEntry,
     runAB,
     resetAB,
     pickWinner,

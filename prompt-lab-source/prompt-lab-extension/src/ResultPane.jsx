@@ -1,4 +1,5 @@
 import Ic from './icons';
+import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 
 // ── Result Pane ─────────────────────────────────────────────────────────────
@@ -23,8 +24,6 @@ export default function ResultPane({
   resultTabs,
   resultField,
   copyBtn,
-  resultFontSize,
-  setResultFontSize,
   raw,
   goldenVerdict,
   goldenSimilarity,
@@ -46,8 +45,6 @@ export default function ResultPane({
   pinGoldenResponse,
   clearGoldenResponse,
   setGoldenThreshold,
-  diffOpen = false,
-  setDiffOpen,
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
@@ -80,7 +77,7 @@ export default function ResultPane({
         </div>
       )}
     {enhanced && <>
-      <div>
+      <div className={`${m.surface} border border-violet-500/30 rounded-2xl p-4 shadow-sm ${colorMode === 'dark' ? 'bg-violet-950/10' : 'bg-violet-50/60'}`}>
         <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -94,13 +91,6 @@ export default function ResultPane({
             <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
           </div>
           <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
-            <div className="flex items-center gap-0.5">
-              <button type="button" onClick={() => setResultFontSize(Math.max(10, resultFontSize - 1))} title="Decrease result font size"
-                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${m.btn} ${m.textAlt}`} style={{ minHeight: 'auto' }}>A−</button>
-              <span className={`text-[10px] ${m.textMuted} w-6 text-center tabular-nums`} title="Result font size">{resultFontSize}</span>
-              <button type="button" onClick={() => setResultFontSize(Math.min(22, resultFontSize + 1))} title="Increase result font size"
-                className={`text-xs px-1.5 py-0.5 rounded transition-colors ${m.btn} ${m.textAlt}`} style={{ minHeight: 'auto' }}>A+</button>
-            </div>
             {activeResultTab === 'improved' && (
               <button onClick={() => setEnhMdPreview(p => !p)} className={`ui-control flex items-center gap-1 text-sm transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`} shrink-0`}>
                 <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
@@ -137,19 +127,6 @@ export default function ResultPane({
               <Ic n="ArrowLeftRight" size={12} />
               Replace Input
             </button>
-            {setDiffOpen && (
-              <button
-                type="button"
-                onClick={() => setDiffOpen((p) => !p)}
-                aria-pressed={diffOpen}
-                className={`ui-control flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-semibold transition-colors shrink-0 ${
-                  diffOpen ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30' : `${m.btn} ${m.textAlt}`
-                }`}
-              >
-                <Ic n="GitCompare" size={12} />
-                {diffOpen ? 'Hide Diff' : 'Show Diff'}
-              </button>
-            )}
           </div>
         </div>
 
@@ -186,12 +163,20 @@ export default function ResultPane({
 
         {activeResultTab === 'improved' && (
           enhMdPreview ? (
-            <div className={`${resultField} pl-result-text border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
-              <MarkdownPreview text={enhanced} className="pl-result-text" enableCodeCopy copy={copy} />
+            <div className={`${resultField} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
+              <MarkdownPreview text={enhanced} />
             </div>
           ) : (
-            <textarea rows={5} className={`${resultField} pl-result-text border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
+            <textarea rows={5} className={`${resultField} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
           )
+        )}
+
+        {activeResultTab === 'diff' && (
+          <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
+            {wordDiff(raw, enhanced).map((d, i) => (
+              <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
+            ))}
+          </div>
         )}
 
         {activeResultTab === 'variants' && variants.length > 0 && (
