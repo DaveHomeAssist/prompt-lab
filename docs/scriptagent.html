@@ -596,10 +596,10 @@
         /* Script scenes */
         .scene {
             border: 1px solid var(--glass-border);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-md);
             overflow: hidden;
-            margin-bottom: 1.25rem;
-            background: var(--surface-900);
+            margin-bottom: 0.75rem;
+            background: var(--surface-950);
             transition: border-color 0.3s;
         }
 
@@ -607,12 +607,16 @@
             border-color: rgba(124, 58, 237, 0.2);
         }
 
+        .scene-panel {
+            display: none;
+        }
+
         .scene-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0.75rem 1.1rem;
-            background: rgba(0, 0, 0, 0.02);
+            gap: 0.6rem;
+            padding: 0.6rem 1.1rem;
+            background: var(--surface-800);
             border-bottom: 1px solid var(--glass-border);
         }
 
@@ -621,26 +625,23 @@
             font-size: 0.74rem;
             letter-spacing: 0.18em;
             text-transform: uppercase;
-            color: var(--lab-violet-light);
+            color: var(--lab-violet);
+            font-weight: 600;
         }
 
         .scene-duration {
             font-family: var(--font-mono);
             font-size: 0.74rem;
-            color: var(--surface-600);
+            color: var(--surface-500);
+            margin-left: auto;
         }
 
         .scene-body {
-            padding: 1.1rem;
+            padding: 1rem 1.1rem;
         }
 
         .scene-type {
-            font-family: var(--font-mono);
-            font-size: 0.74rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--surface-600);
-            margin-bottom: 0.4rem;
+            display: none;
         }
 
         .scene-content {
@@ -652,15 +653,15 @@
         }
 
         .scene-vo {
-            margin-top: 0.75rem;
-            padding: 0.75rem 1rem;
-            background: rgba(124, 58, 237, 0.06);
+            margin-top: 0.6rem;
+            padding: 0.65rem 0.9rem;
+            background: rgba(124, 58, 237, 0.05);
             border-left: 2px solid var(--lab-violet);
             border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
             font-family: var(--font-display);
             font-size: 0.88rem;
-            color: var(--surface-200);
-            line-height: 1.7;
+            color: var(--surface-400);
+            line-height: 1.65;
             font-style: italic;
         }
 
@@ -1924,7 +1925,7 @@
                     sceneEl.className = 'scene';
                     sceneEl.innerHTML = `
         <div class="scene-header">
-          <span class="scene-number">Scene ${String(si + 1).padStart(2, '0')}</span>
+          <span class="scene-number">Scene ${String(si + 1).padStart(2, '0')} · ${safeSceneType}</span>
           <span class="scene-duration">${safeSceneDuration}</span>
         </div>
         <div class="scene-panel">
