@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "diff-match-patch": "^1.0.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
