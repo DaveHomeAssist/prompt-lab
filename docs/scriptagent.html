@@ -1319,6 +1319,7 @@
                 <option value="anthropic">Anthropic</option>
             </select>
             <span class="nav-pill" id="modelPill">gemini-2.5-flash</span>
+            <input type="password" class="nav-select" id="apiKeyInput" placeholder="API key" aria-label="API key" style="width:180px;font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--glass-bg);color:var(--surface-300);font-family:var(--font-mono);">
         </div>
     </nav>
 
@@ -1694,7 +1695,10 @@
         function setProvider(provider, { silent = false } = {}) {
             state.provider = PROVIDERS[provider] ? provider : 'gemini';
             syncProviderUi();
+            // Restore saved key for this provider
             try {
+                const savedKey = localStorage.getItem('pl-scriptagent-key-' + state.provider) || '';
+                document.getElementById('apiKeyInput').value = savedKey;
                 window.localStorage.setItem('pl-scriptagent-provider', state.provider);
             } catch { }
             if (!silent) addLog(`Provider set to ${getProviderConfig().label}.`, 'info');
@@ -1708,6 +1712,11 @@
             const paramProvider = new URLSearchParams(window.location.search).get('provider');
             if (paramProvider && PROVIDERS[paramProvider]) initial = paramProvider;
             setProvider(initial, { silent: true });
+            // Restore saved API key
+            try {
+                const savedKey = localStorage.getItem('pl-scriptagent-key-' + initial) || '';
+                document.getElementById('apiKeyInput').value = savedKey;
+            } catch {}
             document.getElementById('providerSelect').addEventListener('change', (event) => {
                 setProvider(event.target.value);
             });
@@ -1957,16 +1966,38 @@
         }
 
         async function sendScriptAgentRequest(requestConfig) {
-            const response = await fetch(`${API_BASE}/api/proxy`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    targetUrl: requestConfig.targetUrl,
-                    headers: requestConfig.headers,
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (!apiKey) {
+                document.getElementById('apiKeyInput').focus();
+                document.getElementById('apiKeyInput').style.borderColor = '#ef4444';
+                throw new Error('API key required. Enter your key in the nav bar.');
+            }
+            document.getElementById('apiKeyInput').style.borderColor = '';
+            // Persist key per provider
+            try { localStorage.setItem('pl-scriptagent-key-' + state.provider, apiKey); } catch {}
+
+            // Build headers with API key
+            const headers = { ...requestConfig.headers };
+            if (state.provider === 'gemini') {
+                // Gemini uses query param for key
+                const url = requestConfig.targetUrl + '?key=' + encodeURIComponent(apiKey);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers,
                     body: JSON.stringify(requestConfig.body)
-                })
-            });
-            return response;
+                });
+                return response;
+            } else {
+                // Anthropic uses x-api-key header
+                headers['x-api-key'] = apiKey;
+                headers['anthropic-dangerous-direct-browser-access'] = 'true';
+                const response = await fetch(requestConfig.targetUrl, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(requestConfig.body)
+                });
+                return response;
+            }
         }
 
         // ── GENERATE ───────────────────────────────────────────
