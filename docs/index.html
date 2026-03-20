@@ -109,6 +109,25 @@ textarea:focus-visible {
   outline-offset: 3px;
 }
 
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  padding: 8px 16px;
+  z-index: 10000;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--surface-900);
+  color: var(--lab-teal);
+}
+
+.skip-link:focus {
+  left: 10px;
+  top: 10px;
+  outline: 2px solid currentColor;
+}
+
 /* ============================
    MOLECULAR GRID OVERLAY
    ============================ */
@@ -203,6 +222,10 @@ body::before {
   text-align: center;
   padding: 2rem;
   overflow: hidden;
+}
+
+@supports (height: 100dvh) {
+  .hero { min-height: 100dvh; }
 }
 
 /* Radial glow — cool violet */
@@ -1053,6 +1076,7 @@ footer {
 </script>
 </head>
 <body>
+<a href="#main" class="skip-link">Skip to content</a>
 
 <!-- ========== SITE NAV ========== -->
 <nav class="site-nav" aria-label="Site navigation">
@@ -1072,7 +1096,7 @@ footer {
 </nav>
 
 <!-- ========== HERO ========== -->
-<section class="hero">
+<section class="hero" id="main">
   <div class="molecules" aria-hidden="true"></div>
 
   <img class="hero-logo" src="hero-logo.png" alt="Prompt Lab logo" loading="eager" fetchpriority="high" width="320" height="320">
