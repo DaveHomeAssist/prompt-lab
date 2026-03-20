@@ -101,6 +101,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0.8rem;
             padding: 0.6rem 1.5rem;
             background: rgba(2, 6, 23, 0.8);
             backdrop-filter: blur(12px);
@@ -139,6 +140,8 @@
             display: flex;
             gap: 0.4rem;
             align-items: center;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .sr-only {
@@ -163,6 +166,7 @@
             border: 1px solid var(--glass-border);
             color: var(--surface-500);
             background: var(--glass-bg);
+            white-space: nowrap;
         }
 
         .nav-select {
@@ -177,6 +181,7 @@
             border: 1px solid var(--glass-border);
             color: var(--surface-300);
             min-width: 108px;
+            max-width: 170px;
             background:
                 linear-gradient(45deg, transparent 50%, var(--surface-500) 50%) calc(100% - 12px) calc(50% - 1px) / 6px 6px no-repeat,
                 linear-gradient(135deg, var(--surface-500) 50%, transparent 50%) calc(100% - 8px) calc(50% - 1px) / 6px 6px no-repeat,
@@ -286,6 +291,33 @@
             height: 100%;
         }
 
+        .sidebar-intro {
+            padding: 0 1.25rem 1rem;
+        }
+
+        .sidebar-kicker {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--lab-violet-light);
+            margin-bottom: 0.45rem;
+        }
+
+        .sidebar-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--surface-100);
+            margin-bottom: 0.35rem;
+        }
+
+        .sidebar-copy {
+            color: var(--surface-500);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            max-width: 34ch;
+        }
+
         .sidebar-section {
             padding: 0 1.25rem 1.5rem;
             border-bottom: 1px solid var(--glass-border);
@@ -363,12 +395,39 @@
             margin-bottom: 0;
         }
 
+        .field-help {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--surface-600);
+            letter-spacing: 0.03em;
+            line-height: 1.6;
+            margin-top: 0.45rem;
+        }
+
         /* Tone toggle chips */
+        .tone-groups {
+            display: grid;
+            gap: 0.7rem;
+            margin-top: 0.1rem;
+        }
+
+        .tone-group {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .tone-cluster-label {
+            font-family: var(--font-mono);
+            font-size: 0.5rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--surface-600);
+        }
+
         .tone-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 0.4rem;
-            margin-top: 0.1rem;
         }
 
         .tone-chip {
@@ -393,8 +452,9 @@
 
         .tone-chip.active {
             border-color: var(--lab-violet);
-            color: var(--lab-violet-light);
-            background: rgba(124, 58, 237, 0.12);
+            color: #fff;
+            background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-dim));
+            box-shadow: 0 0 18px rgba(124, 58, 237, 0.22);
         }
 
         .tone-chip:focus-visible,
@@ -463,10 +523,35 @@
             flex-shrink: 0;
         }
 
+        .main-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: 0.1rem;
+        }
+
+        .main-title-kicker {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--surface-600);
+        }
+
+        .main-title {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--surface-100);
+            margin-top: 0.2rem;
+        }
+
         .main-tabs {
             display: flex;
-            gap: 0;
+            gap: 0.25rem;
             margin-top: 0.75rem;
+            align-items: center;
         }
 
         .main-tab {
@@ -491,6 +576,17 @@
             border-bottom-color: var(--lab-violet);
         }
 
+        .view-label {
+            margin-left: auto;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            color: var(--surface-700);
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
         .main-body {
             flex: 1;
             overflow-y: auto;
@@ -508,6 +604,8 @@
             gap: 1rem;
             text-align: center;
             padding: 3rem;
+            max-width: 440px;
+            margin: 0 auto;
         }
 
         .empty-icon {
@@ -541,8 +639,40 @@
             font-size: 0.72rem;
             color: var(--surface-600);
             letter-spacing: 0.04em;
-            max-width: 300px;
+            max-width: 320px;
             line-height: 1.7;
+        }
+
+        .empty-card {
+            width: 100%;
+            border: 1px dashed rgba(124, 58, 237, 0.22);
+            border-radius: var(--radius-lg);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.5), rgba(15, 23, 42, 0.22));
+            padding: 1.4rem;
+        }
+
+        .empty-checklist {
+            list-style: none;
+            display: grid;
+            gap: 0.55rem;
+            margin-top: 1rem;
+            text-align: left;
+        }
+
+        .empty-checklist li {
+            font-family: var(--font-mono);
+            font-size: 0.66rem;
+            letter-spacing: 0.03em;
+            color: var(--surface-500);
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+            line-height: 1.55;
+        }
+
+        .empty-checklist li::before {
+            content: '•';
+            color: var(--lab-teal);
         }
 
         /* Script output */
@@ -979,6 +1109,8 @@
             display: flex;
             align-items: center;
             gap: 0.25rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .view-btn {
@@ -1285,8 +1417,18 @@
             .shell {
                 flex-direction: column;
                 height: auto;
-                min-height: calc(100vh - 45px);
+                min-height: calc(100dvh - 45px);
                 overflow-y: auto;
+            }
+
+            .nav {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 0.65rem 0.9rem;
+            }
+
+            .nav-brand {
+                justify-content: flex-start;
             }
 
             .sidebar {
@@ -1295,14 +1437,18 @@
                 min-width: 0;
                 max-width: none;
                 height: auto;
-                max-height: 44vh;
-                padding: 1rem 0 max(1rem, env(safe-area-inset-bottom));
+                max-height: 46dvh;
+                padding: 0.85rem 0 max(1rem, env(safe-area-inset-bottom));
                 border-bottom: 1px solid var(--glass-border);
                 background: rgba(15, 23, 42, 0.88);
             }
 
             .drag-handle.drag-left {
                 display: none;
+            }
+
+            .sidebar-intro {
+                padding: 0 1rem 0.85rem;
             }
 
             .sidebar-section {
@@ -1321,6 +1467,11 @@
                 padding: 1rem 1rem 0;
             }
 
+            .main-header-row {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
             .main-body {
                 padding: 1rem;
             }
@@ -1332,18 +1483,17 @@
             .main-tabs {
                 overflow-x: auto;
                 scrollbar-width: none;
+                padding-bottom: 0.2rem;
             }
 
             .main-tabs::-webkit-scrollbar {
                 display: none;
             }
 
-            .nav {
-                padding: 0.5rem 1rem;
-            }
-
             .nav-pills {
                 gap: 0.35rem;
+                justify-content: flex-start;
+                width: 100%;
             }
 
             .tone-chips {
@@ -1364,11 +1514,28 @@
                 font-size: 0.85rem;
                 padding: 0.7rem;
             }
+
+            .view-switcher {
+                width: 100%;
+                justify-content: flex-start;
+            }
+
+            .view-label {
+                display: none;
+            }
         }
 
         @media (max-width: 480px) {
+            .nav {
+                gap: 0.55rem;
+            }
+
             .sidebar {
-                max-height: 50vh;
+                max-height: 52dvh;
+            }
+
+            .sidebar-intro {
+                padding: 0 0.75rem 0.75rem;
             }
 
             .sidebar-section {
@@ -1390,6 +1557,34 @@
 
             .nav-tag {
                 font-size: 0.55rem;
+            }
+
+            .nav-pill,
+            .nav-select {
+                font-size: 0.56rem;
+            }
+
+            .nav-select {
+                min-width: 96px;
+                max-width: 140px;
+            }
+
+            .main-tab {
+                padding: 0.55rem 0.8rem;
+                font-size: 0.64rem;
+            }
+
+            .view-btn {
+                width: 34px;
+                height: 34px;
+            }
+
+            .empty-state {
+                padding: 1.25rem 0.25rem 2rem;
+            }
+
+            .empty-card {
+                padding: 1rem;
             }
         }
 
@@ -1429,12 +1624,18 @@
 
         <!-- ── SIDEBAR: INPUT FORM ── -->
         <aside class="sidebar" id="panelSidebar" aria-label="Script parameters">
+            <div class="sidebar-intro">
+                <div class="sidebar-kicker">// brief builder</div>
+                <div class="sidebar-title">Shape the input, then generate production-ready script variants.</div>
+                <div class="sidebar-copy">Start with the essentials, set the creative voice, then export or iterate from the generated structure.</div>
+            </div>
 
             <!-- Brand -->
             <div class="sidebar-section">
                 <div class="field-group">
                     <label class="field-label field-required" for="brand">Brand / Product</label>
                     <input type="text" id="brand" placeholder="e.g. Prompt Lab" maxlength="80" required aria-required="true" />
+                    <div class="field-help">Use the product or campaign name you want the script to anchor around.</div>
                 </div>
                 <div class="field-group">
                     <label class="field-label" for="tagline">Tagline</label>
@@ -1475,16 +1676,27 @@
                 </div>
                 <div class="field-group">
                     <label class="field-label">Tone</label>
-                    <div class="tone-chips" id="toneChips" role="group" aria-label="Tone selection">
-                        <button type="button" class="tone-chip active" data-val="direct" aria-pressed="true">Direct</button>
-                        <button type="button" class="tone-chip" data-val="witty" aria-pressed="false">Witty</button>
-                        <button type="button" class="tone-chip" data-val="emotional" aria-pressed="false">Emotional</button>
-                        <button type="button" class="tone-chip" data-val="dramatic" aria-pressed="false">Dramatic</button>
-                        <button type="button" class="tone-chip" data-val="playful" aria-pressed="false">Playful</button>
-                        <button type="button" class="tone-chip" data-val="authoritative" aria-pressed="false">Authoritative</button>
-                        <button type="button" class="tone-chip" data-val="conversational" aria-pressed="false">Conversational</button>
-                        <button type="button" class="tone-chip" data-val="aspirational" aria-pressed="false">Aspirational</button>
+                    <div class="tone-groups" id="toneChips" role="group" aria-label="Tone selection">
+                        <div class="tone-group">
+                            <div class="tone-cluster-label">Rational</div>
+                            <div class="tone-chips">
+                                <button type="button" class="tone-chip active" data-val="direct" aria-pressed="true">Direct</button>
+                                <button type="button" class="tone-chip" data-val="authoritative" aria-pressed="false">Authoritative</button>
+                                <button type="button" class="tone-chip" data-val="conversational" aria-pressed="false">Conversational</button>
+                            </div>
+                        </div>
+                        <div class="tone-group">
+                            <div class="tone-cluster-label">Emotional</div>
+                            <div class="tone-chips">
+                                <button type="button" class="tone-chip" data-val="witty" aria-pressed="false">Witty</button>
+                                <button type="button" class="tone-chip" data-val="playful" aria-pressed="false">Playful</button>
+                                <button type="button" class="tone-chip" data-val="dramatic" aria-pressed="false">Dramatic</button>
+                                <button type="button" class="tone-chip" data-val="emotional" aria-pressed="false">Emotional</button>
+                                <button type="button" class="tone-chip" data-val="aspirational" aria-pressed="false">Aspirational</button>
+                            </div>
+                        </div>
                     </div>
+                    <div class="field-help">Pick one voice. The generator will keep pacing and CTA structure aligned to that tone.</div>
                 </div>
             </div>
 
@@ -1536,14 +1748,10 @@
         <!-- ── MAIN: OUTPUT ── -->
         <main class="main" id="panelMain">
             <div class="main-header">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:0.1rem;">
+                <div class="main-header-row">
                     <div>
-                        <div
-                            style="font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--surface-600);">
-                            // output</div>
-                        <div id="outputTitle"
-                            style="font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--surface-100);margin-top:0.2rem;">
-                            Script Output</div>
+                        <div class="main-title-kicker">// output</div>
+                        <div id="outputTitle" class="main-title">Script Output</div>
                     </div>
                     <!-- View switcher -->
                     <div class="view-switcher" id="viewSwitcher" role="toolbar" aria-label="Script view modes">
@@ -1594,8 +1802,7 @@
                 <div class="main-tabs" role="tablist" aria-label="Output tabs">
                     <button class="main-tab active" id="tab-script" role="tab" aria-selected="true" aria-controls="scriptOutput" onclick="switchTab('script',this)">Script View</button>
                     <button class="main-tab" id="tab-raw" role="tab" aria-selected="false" aria-controls="rawView" onclick="switchTab('raw',this)">Raw JSON</button>
-                    <div style="margin-left:auto;font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.1em;color:var(--surface-700);display:flex;align-items:center;"
-                        id="viewLabel">// stack</div>
+                    <div class="view-label" id="viewLabel">// stack</div>
                 </div>
             </div>
 
@@ -1603,18 +1810,24 @@
 
                 <!-- Empty state -->
                 <div class="empty-state" id="emptyState">
-                    <div class="empty-icon">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
-                        </svg>
+                    <div class="empty-card">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="16" y1="13" x2="8" y2="13" />
+                                <line x1="16" y1="17" x2="8" y2="17" />
+                                <polyline points="10 9 9 9 8 9" />
+                            </svg>
+                        </div>
+                        <div class="empty-title">No script generated yet</div>
+                        <div class="empty-sub">Fill in the brief, choose a tone, then generate a structured commercial script with export-ready variants.</div>
+                        <ul class="empty-checklist">
+                            <li>Define the brand, offer, and audience in the left panel.</li>
+                            <li>Choose the tone, hook, and desired format.</li>
+                            <li>Generate, compare views, then export or regenerate.</li>
+                        </ul>
                     </div>
-                    <div class="empty-title">No script generated yet</div>
-                    <div class="empty-sub">Fill in the brand details and hit Generate Script to produce a
-                        structured commercial script.</div>
                 </div>
 
                 <!-- Skeleton loader -->
