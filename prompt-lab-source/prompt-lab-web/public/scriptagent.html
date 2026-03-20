@@ -1282,12 +1282,114 @@
         }
 
         @media (max-width: 720px) {
+            .shell {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 45px);
+                overflow-y: auto;
+            }
+
             .sidebar {
-                display: none;
+                display: flex;
+                width: 100%;
+                min-width: 0;
+                max-width: none;
+                height: auto;
+                max-height: 44vh;
+                padding: 1rem 0 max(1rem, env(safe-area-inset-bottom));
+                border-bottom: 1px solid var(--glass-border);
+                background: rgba(15, 23, 42, 0.88);
             }
 
             .drag-handle.drag-left {
                 display: none;
+            }
+
+            .sidebar-section {
+                padding: 0 1rem 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .main {
+                min-width: 0;
+                min-height: 56vh;
+                height: auto;
+                overflow: visible;
+            }
+
+            .main-header {
+                padding: 1rem 1rem 0;
+            }
+
+            .main-body {
+                padding: 1rem;
+            }
+
+            .field-row {
+                grid-template-columns: 1fr;
+            }
+
+            .main-tabs {
+                overflow-x: auto;
+                scrollbar-width: none;
+            }
+
+            .main-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .nav {
+                padding: 0.5rem 1rem;
+            }
+
+            .nav-pills {
+                gap: 0.35rem;
+            }
+
+            .tone-chips {
+                gap: 0.3rem;
+            }
+
+            .tone-chip {
+                font-size: 0.56rem;
+                padding: 0.2rem 0.5rem;
+            }
+
+            .tone-cluster-label {
+                font-size: 0.48rem;
+                margin-top: 0.15rem;
+            }
+
+            .btn-generate {
+                font-size: 0.85rem;
+                padding: 0.7rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                max-height: 50vh;
+            }
+
+            .sidebar-section {
+                padding: 0 0.75rem 0.75rem;
+                margin-bottom: 0.75rem;
+            }
+
+            .main-body {
+                padding: 0.75rem;
+            }
+
+            .scene-card {
+                padding: 0.75rem;
+            }
+
+            .nav-brand {
+                font-size: 0.75rem;
+            }
+
+            .nav-tag {
+                font-size: 0.55rem;
             }
         }
 
