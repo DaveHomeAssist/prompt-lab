@@ -19,12 +19,12 @@ export const PRIMARY_VIEWS = Object.freeze([
 export const SUBVIEWS = Object.freeze({
   create: [
     { id: 'editor', label: 'Create' },
-    { id: 'library', label: 'Library' },
+    { id: 'library', label: 'Saved' },
     { id: 'composer', label: 'Build' },
     { id: 'split', label: 'Dual Pane', hideCompact: true },
   ],
   runs: [
-    { id: 'history', label: 'History' },
+    { id: 'history', label: 'Timeline' },
     { id: 'compare', label: 'Compare' },
   ],
   notebook: [],
@@ -108,7 +108,7 @@ export function buildCommandActions(handlers) {
   const {
     enhance, save, clear,
     goEditor, goLibrary, goBuild, goRuns, goCompare, goNotebook,
-    toggleTheme, exportLib, openSettings, openOptions, showShortcuts,
+    toggleTheme, exportLib, openSettings, openOptions, showShortcuts, reportBug,
   } = handlers;
 
   return [
@@ -116,14 +116,15 @@ export function buildCommandActions(handlers) {
     { label: 'Save Prompt', hint: '⌘S', action: save },
     { label: 'Clear Editor', hint: '', action: clear },
     { label: 'Go to Create', hint: '', action: goEditor },
-    { label: 'Go to Library', hint: '', action: goLibrary },
-    { label: 'Go to Experiments', hint: '', action: goRuns },
-    { label: 'Go to Experiment History', hint: '', action: goCompare },
+    { label: 'Go to Saved Prompts', hint: '', action: goLibrary },
+    { label: 'Go to Runs', hint: '', action: goRuns },
+    { label: 'Go to Compare', hint: '', action: goCompare },
     { label: 'Open Build Utility', hint: '', action: goBuild },
     { label: 'Open Notebook', hint: '', action: goNotebook },
     { label: 'Toggle Light / Dark', hint: '', action: toggleTheme },
     { label: 'Export Library', hint: '', action: exportLib },
     { label: 'Open Settings', hint: '', action: openSettings },
+    { label: 'Report Bug', hint: '', action: reportBug },
     { label: 'Extension Options (API Key)', hint: '', action: openOptions },
     { label: 'Show Keyboard Shortcuts', hint: '?', action: showShortcuts },
   ].filter((entry) => typeof entry.action === 'function');
