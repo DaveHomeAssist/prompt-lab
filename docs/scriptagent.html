@@ -607,6 +607,23 @@
             border-color: rgba(124, 58, 237, 0.2);
         }
 
+        /* ── ADVANCED ACCORDION ──────────────────────────────── */
+        #advancedFields {
+            max-height: 600px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.2s ease;
+            opacity: 1;
+        }
+
+        #advancedFields.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        #advancedToggle.open svg {
+            transform: rotate(180deg);
+        }
+
         .scene-panel {
             display: none;
         }
@@ -872,6 +889,16 @@
         .segment-item:hover {
             border-color: var(--glass-border);
             color: var(--surface-300);
+        }
+
+        .segment-item.active {
+            border-color: var(--lab-violet);
+            background: rgba(124, 58, 237, 0.08);
+            color: var(--surface-300);
+        }
+
+        .segment-item.active .seg-num {
+            color: var(--lab-violet);
         }
 
         .segment-item .seg-num {
@@ -1336,8 +1363,9 @@
             <!-- API Key -->
             <div class="sidebar-section">
                 <div class="field-group">
-                    <label class="field-label field-required" for="apiKeyInput">API Key</label>
-                    <input type="password" id="apiKeyInput" placeholder="Paste your API key here" />
+                    <label class="field-label field-required" for="apiKeyInput" id="apiKeyLabel">Gemini API Key</label>
+                    <input type="password" id="apiKeyInput" placeholder="Paste your Gemini key here" />
+                    <div id="apiKeyError" style="display:none;font-size:0.76rem;color:#dc2626;margin-top:0.3rem;font-family:var(--font-mono);">API key required to generate scripts.</div>
                 </div>
             </div>
 
@@ -1399,34 +1427,40 @@
                 </div>
             </div>
 
-            <!-- Creative direction -->
+            <!-- Creative direction (collapsible) -->
             <div class="sidebar-section">
-                <div class="field-group">
-                    <label class="field-label" for="hook">Opening hook style</label>
-                    <select id="hook">
-                        <option value="problem">Lead with the problem</option>
-                        <option value="question">Open with a question</option>
-                        <option value="statement">Bold statement</option>
-                        <option value="scene">Drop into a scene</option>
-                        <option value="statistic">Shocking statistic</option>
-                        <option value="contrast">Before / after contrast</option>
-                    </select>
-                </div>
-                <div class="field-group">
-                    <label class="field-label" for="cta">Call to action</label>
-                    <input type="text" id="cta" placeholder="e.g. Try it free at promptlab.tools" />
-                </div>
-                <div class="field-group">
-                    <label class="field-label" for="avoid">Avoid / constraints</label>
-                    <textarea id="avoid" rows="2" placeholder="e.g. No tech jargon. No competitor mentions."></textarea>
-                </div>
-                <div class="field-group">
-                    <label class="field-label" for="variants">Script variants</label>
-                    <select id="variants">
-                        <option value="1">1 script</option>
-                        <option value="2" selected>2 variants (A/B)</option>
-                        <option value="3">3 variants</option>
-                    </select>
+                <button type="button" id="advancedToggle" onclick="document.getElementById('advancedFields').classList.toggle('collapsed');this.classList.toggle('open')" style="display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:none;cursor:pointer;padding:0 0 0.6rem;color:var(--surface-400);font-family:var(--font-mono);font-size:0.74rem;letter-spacing:0.12em;text-transform:uppercase;">
+                    Advanced options
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition:transform 0.2s;"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div id="advancedFields">
+                    <div class="field-group">
+                        <label class="field-label" for="hook">Opening hook style</label>
+                        <select id="hook">
+                            <option value="problem">Lead with the problem</option>
+                            <option value="question">Open with a question</option>
+                            <option value="statement">Bold statement</option>
+                            <option value="scene">Drop into a scene</option>
+                            <option value="statistic">Shocking statistic</option>
+                            <option value="contrast">Before / after contrast</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="cta">Call to action</label>
+                        <input type="text" id="cta" placeholder="e.g. Try it free at promptlab.tools" />
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="avoid">Avoid / constraints</label>
+                        <textarea id="avoid" rows="2" placeholder="e.g. No tech jargon. No competitor mentions."></textarea>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="variants">Script variants</label>
+                        <select id="variants">
+                            <option value="1">1 script</option>
+                            <option value="2" selected>2 variants (A/B)</option>
+                            <option value="3">3 variants</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -1707,13 +1741,22 @@
         function setProvider(provider, { silent = false } = {}) {
             state.provider = PROVIDERS[provider] ? provider : 'gemini';
             syncProviderUi();
+            const config = getProviderConfig();
+            const keyInput = document.getElementById('apiKeyInput');
+            const keyLabel = document.getElementById('apiKeyLabel');
+            const keyError = document.getElementById('apiKeyError');
             // Restore saved key for this provider
             try {
                 const savedKey = localStorage.getItem('pl-scriptagent-key-' + state.provider) || '';
-                document.getElementById('apiKeyInput').value = savedKey;
+                keyInput.value = savedKey;
                 window.localStorage.setItem('pl-scriptagent-provider', state.provider);
             } catch { }
-            if (!silent) addLog(`Provider set to ${getProviderConfig().label}.`, 'info');
+            // Update label and placeholder
+            if (keyLabel) keyLabel.textContent = config.label + ' API Key';
+            if (keyInput) keyInput.placeholder = 'Paste your ' + config.label + ' key here';
+            if (keyError) keyError.style.display = 'none';
+            keyInput.style.borderColor = '';
+            if (!silent) addLog(`Provider set to ${config.label}.`, 'info');
         }
 
         (function initProvider() {
@@ -1819,6 +1862,10 @@
         function setProgress(pct) {
             document.getElementById('progressBar').style.width = pct + '%';
             document.querySelector('.progress-bar-wrap')?.setAttribute('aria-valuenow', String(pct));
+            const btn = document.getElementById('generateBtn');
+            if (state.generating && pct > 0 && pct < 100) {
+                btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0"/></svg> Generating… ${pct}%`;
+            }
         }
 
         function setStatus(text, type = 'default') {
@@ -1835,6 +1882,7 @@
                 const item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'segment-item';
+                item.dataset.idx = i;
                 const segNum = document.createElement('span');
                 segNum.className = 'seg-num';
                 segNum.textContent = String(i + 1).padStart(2, '0');
@@ -1847,9 +1895,34 @@
                 item.append(segNum, segType, segDur);
                 item.addEventListener('click', () => {
                     document.querySelectorAll('.scene')[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    highlightSegment(i);
                 });
                 list.appendChild(item);
             });
+            // Observe scroll to highlight active segment
+            setupSegmentObserver();
+        }
+
+        function highlightSegment(idx) {
+            document.querySelectorAll('.segment-item').forEach((btn, i) => {
+                btn.classList.toggle('active', i === idx);
+            });
+        }
+
+        function setupSegmentObserver() {
+            const sceneEls = document.querySelectorAll('.scene');
+            if (!sceneEls.length) return;
+            const mainPanel = document.getElementById('panelMain');
+            if (!mainPanel) return;
+            const obs = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const idx = [...sceneEls].indexOf(entry.target);
+                        if (idx >= 0) highlightSegment(idx);
+                    }
+                });
+            }, { root: mainPanel, threshold: 0.4 });
+            sceneEls.forEach(el => obs.observe(el));
         }
 
         // ── RENDER SCRIPT ──────────────────────────────────────
@@ -1980,11 +2053,15 @@
         async function sendScriptAgentRequest(requestConfig) {
             const apiKey = document.getElementById('apiKeyInput').value.trim();
             if (!apiKey) {
-                document.getElementById('apiKeyInput').focus();
-                document.getElementById('apiKeyInput').style.borderColor = '#ef4444';
-                throw new Error('API key required. Enter your key in the nav bar.');
+                const keyInput = document.getElementById('apiKeyInput');
+                const keyError = document.getElementById('apiKeyError');
+                keyInput.focus();
+                keyInput.style.borderColor = '#dc2626';
+                if (keyError) { keyError.style.display = 'block'; }
+                throw new Error('API key required. Enter your key in the sidebar.');
             }
             document.getElementById('apiKeyInput').style.borderColor = '';
+            document.getElementById('apiKeyError').style.display = 'none';
             // Persist key per provider
             try { localStorage.setItem('pl-scriptagent-key-' + state.provider, apiKey); } catch {}
 
