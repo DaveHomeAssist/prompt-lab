@@ -386,6 +386,20 @@
             user-select: none;
         }
 
+        .tone-cluster-label {
+            width: 100%;
+            font-family: var(--font-mono);
+            font-size: 0.55rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--surface-600);
+            margin-top: 0.3rem;
+        }
+
+        .tone-cluster-label:first-child {
+            margin-top: 0;
+        }
+
         .tone-chip:hover {
             border-color: var(--lab-violet-light);
             color: var(--lab-violet-light);
@@ -393,8 +407,9 @@
 
         .tone-chip.active {
             border-color: var(--lab-violet);
-            color: var(--lab-violet-light);
-            background: rgba(124, 58, 237, 0.12);
+            color: #fff;
+            background: var(--lab-violet);
+            font-weight: 500;
         }
 
         .tone-chip:focus-visible,
@@ -1374,13 +1389,15 @@
                 <div class="field-group">
                     <label class="field-label">Tone</label>
                     <div class="tone-chips" id="toneChips" role="group" aria-label="Tone selection">
+                        <span class="tone-cluster-label">Rational</span>
                         <button type="button" class="tone-chip active" data-val="direct" aria-pressed="true">Direct</button>
-                        <button type="button" class="tone-chip" data-val="witty" aria-pressed="false">Witty</button>
-                        <button type="button" class="tone-chip" data-val="emotional" aria-pressed="false">Emotional</button>
-                        <button type="button" class="tone-chip" data-val="dramatic" aria-pressed="false">Dramatic</button>
-                        <button type="button" class="tone-chip" data-val="playful" aria-pressed="false">Playful</button>
                         <button type="button" class="tone-chip" data-val="authoritative" aria-pressed="false">Authoritative</button>
                         <button type="button" class="tone-chip" data-val="conversational" aria-pressed="false">Conversational</button>
+                        <span class="tone-cluster-label">Emotional</span>
+                        <button type="button" class="tone-chip" data-val="witty" aria-pressed="false">Witty</button>
+                        <button type="button" class="tone-chip" data-val="playful" aria-pressed="false">Playful</button>
+                        <button type="button" class="tone-chip" data-val="dramatic" aria-pressed="false">Dramatic</button>
+                        <button type="button" class="tone-chip" data-val="emotional" aria-pressed="false">Emotional</button>
                         <button type="button" class="tone-chip" data-val="aspirational" aria-pressed="false">Aspirational</button>
                     </div>
                 </div>
@@ -1590,8 +1607,7 @@
                     <div class="action-card-label">Structure</div>
                     <div class="action-card-title">Scene Breakdown</div>
                     <div class="segment-list" id="segmentList">
-                        <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--surface-700);">No script
-                            yet.</div>
+                        <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--surface-600);line-height:1.6;">Scene-by-scene timing breakdown appears here after generation.</div>
                     </div>
                 </div>
 
