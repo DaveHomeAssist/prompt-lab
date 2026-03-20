@@ -911,7 +911,7 @@ export default function App() {
       {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...experiments} /></div>}
 
       {/* ══ PAD TAB (Notebook) ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} /></div>}
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} compact={compact} /></div>}
 
       {/* ══ HISTORY TAB ══ */}
       {tab === 'history' && <div className="pl-tab-panel"><RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} /></div>}

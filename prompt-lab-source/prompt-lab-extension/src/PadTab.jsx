@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
+import ReferencePane from './ReferencePane';
 import { logWarn } from './lib/logger.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
 import { storageKeys } from './lib/storage.js';
@@ -355,7 +356,7 @@ async function copyText(text) {
   document.body.removeChild(el);
 }
 
-export default function PadTab({ m, notify, pageScroll = false }) {
+export default function PadTab({ m, notify, pageScroll = false, compact = false }) {
   const migrationCheckedRef = useRef(false);
   const textareaRefs = useRef({});
   const savedStateTimerRef = useRef(null);
@@ -378,6 +379,7 @@ export default function PadTab({ m, notify, pageScroll = false }) {
     return activePad?.timestamp ? new Date(activePad.timestamp).toISOString() : '';
   });
   const [relativeSavedAt, setRelativeSavedAt] = useState('');
+  const [refPane, setRefPane] = useState({ open: false, entryId: '', mode: 'entry' });
 
   const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
   const editorPaneMinHeightClass = pageScroll ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[calc(100vh-11rem)]';
@@ -798,6 +800,9 @@ export default function PadTab({ m, notify, pageScroll = false }) {
         case 'clear':
           handleClearShortcut();
           return;
+        case 'toggleRef':
+          setRefPane(prev => ({ ...prev, open: !prev.open, entryId: prev.entryId || activeEntryId }));
+          return;
         default:
           return;
       }
@@ -879,6 +884,16 @@ export default function PadTab({ m, notify, pageScroll = false }) {
             </button>
             <button
               type="button"
+              onClick={() => setRefPane(prev => ({ ...prev, open: !prev.open, entryId: prev.entryId || activeEntryId }))}
+              className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
+                refPane.open ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`
+              }`}
+              title="Toggle reference panel (Cmd+Shift+R)"
+            >
+              <Ic n="Columns" size={11} />Ref
+            </button>
+            <button
+              type="button"
               onClick={handleDeletePad}
               disabled={padsState.pads.length <= 1}
               className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
@@ -893,6 +908,7 @@ export default function PadTab({ m, notify, pageScroll = false }) {
           </div>
         </div>
 
+        <div className={`flex-1 flex ${!compact && refPane.open ? 'flex-row' : 'flex-col'} min-h-0 overflow-hidden`}>
         <div className={`flex-1 p-4 flex flex-col gap-3 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-y-auto'}`}>
           {activePad?.entries.map((entry) => {
             const statusMeta = STATUS_META[entry.status] || STATUS_META.draft;
@@ -947,6 +963,14 @@ export default function PadTab({ m, notify, pageScroll = false }) {
 
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setRefPane({ open: true, entryId: entry.id, mode: 'entry' })}
+                      className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1.5 rounded-lg transition-colors`}
+                      title="Open in reference panel"
+                    >
+                      <Ic n="PanelRight" size={11} />
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleCopyEntry(entry)}
@@ -1052,6 +1076,31 @@ export default function PadTab({ m, notify, pageScroll = false }) {
             ) : null}
           </div>
         </div>
+        {refPane.open && !compact && activePad && (
+          <ReferencePane
+            m={m}
+            activePad={activePad}
+            referenceEntryId={refPane.entryId}
+            referenceMode={refPane.mode}
+            onSelectEntry={(id) => setRefPane(prev => ({ ...prev, entryId: id }))}
+            onModeChange={(mode) => setRefPane(prev => ({ ...prev, mode }))}
+            onClose={() => setRefPane(prev => ({ ...prev, open: false }))}
+            docked
+          />
+        )}
+        </div>
+        {refPane.open && compact && activePad && (
+          <ReferencePane
+            m={m}
+            activePad={activePad}
+            referenceEntryId={refPane.entryId}
+            referenceMode={refPane.mode}
+            onSelectEntry={(id) => setRefPane(prev => ({ ...prev, entryId: id }))}
+            onModeChange={(mode) => setRefPane(prev => ({ ...prev, mode }))}
+            onClose={() => setRefPane(prev => ({ ...prev, open: false }))}
+            docked={false}
+          />
+        )}
       </div>
     </div>
   );
