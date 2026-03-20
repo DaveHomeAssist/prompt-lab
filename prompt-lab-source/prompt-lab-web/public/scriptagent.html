@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Script Agent — Prompt Lab</title>
+    <link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+    <style>
+        @font-face {
+            font-family: 'Outfit';
+            src: url('./fonts/outfit.woff2') format('woff2');
+            font-weight: 300 700;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        @font-face {
+            font-family: 'JetBrains Mono';
+            src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+
+        :root {
+            --lab-violet: #7C3AED;
+            --lab-violet-light: #A78BFA;
+            --lab-violet-dim: #6D28D9;
+            --lab-indigo: #818CF8;
+            --lab-teal: #2DD4BF;
+            --surface-950: #020617;
+            --surface-900: #0F172A;
+            --surface-800: #1E293B;
+            --surface-700: #334155;
+            --surface-600: #475569;
+            --surface-500: #64748B;
+            --surface-400: #94A3B8;
+            --surface-300: #CBD5E1;
+            --surface-100: #F1F5F9;
+            --glass-bg: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-blur: 16px;
+            --glow-violet: rgba(124, 58, 237, 0.35);
+            --glow-violet-soft: rgba(124, 58, 237, 0.12);
+            --font-display: 'Outfit', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--surface-950);
+            color: var(--surface-300);
+            font-family: var(--font-display);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image: radial-gradient(circle at 1px 1px, rgba(124, 58, 237, 0.04) 1px, transparent 0);
+            background-size: 48px 48px;
+            pointer-events: none;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: 2px solid var(--lab-teal);
+            outline-offset: 3px;
+        }
+
+        /* ── NAV ─────────────────────────────────────────────── */
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 1.5rem;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: var(--surface-100);
+            text-decoration: none;
+        }
+
+        .nav-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--lab-violet-light);
+            box-shadow: 0 0 8px var(--glow-violet);
+        }
+
+        .nav-tag {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--surface-600);
+            margin-left: 0.4rem;
+        }
+
+        .nav-pills {
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .nav-pill {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.22rem 0.6rem;
+            border-radius: 100px;
+            border: 1px solid var(--glass-border);
+            color: var(--surface-500);
+            background: var(--glass-bg);
+        }
+
+        .nav-select {
+            appearance: none;
+            -webkit-appearance: none;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.22rem 1.6rem 0.22rem 0.7rem;
+            border-radius: 100px;
+            border: 1px solid var(--glass-border);
+            color: var(--surface-300);
+            min-width: 108px;
+            background:
+                linear-gradient(45deg, transparent 50%, var(--surface-500) 50%) calc(100% - 12px) calc(50% - 1px) / 6px 6px no-repeat,
+                linear-gradient(135deg, var(--surface-500) 50%, transparent 50%) calc(100% - 8px) calc(50% - 1px) / 6px 6px no-repeat,
+                var(--glass-bg);
+        }
+
+        .nav-select:hover {
+            border-color: rgba(255, 255, 255, 0.16);
+        }
+
+        .nav-pill.live {
+            border-color: rgba(45, 212, 191, 0.3);
+            color: var(--lab-teal);
+            background: rgba(45, 212, 191, 0.06);
+        }
+
+        .nav-pill.live::before {
+            content: '';
+            display: inline-block;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--lab-teal);
+            margin-right: 0.4rem;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* ── LAYOUT ──────────────────────────────────────────── */
+        .shell {
+            display: flex;
+            height: calc(100vh - 45px);
+            margin-top: 45px;
+            position: relative;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        /* ── DRAG HANDLES ────────────────────────────────────── */
+        .drag-handle {
+            width: 5px;
+            flex-shrink: 0;
+            cursor: col-resize;
+            background: transparent;
+            position: relative;
+            z-index: 20;
+            transition: background 0.15s;
+            user-select: none;
+        }
+
+        .drag-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1px;
+            height: 40px;
+            background: var(--glass-border);
+            border-radius: 1px;
+            transition: background 0.15s, height 0.15s;
+        }
+
+        .drag-handle:hover,
+        .drag-handle.dragging {
+            background: rgba(124, 58, 237, 0.08);
+        }
+
+        .drag-handle:hover::after,
+        .drag-handle.dragging::after {
+            background: var(--lab-violet);
+            height: 60px;
+        }
+
+        #dragOverlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            cursor: col-resize;
+        }
+
+        /* ── SIDEBAR ─────────────────────────────────────────── */
+        .sidebar {
+            width: 300px;
+            min-width: 180px;
+            max-width: 520px;
+            flex-shrink: 0;
+            border-right: none;
+            background: rgba(15, 23, 42, 0.5);
+            overflow-y: auto;
+            padding: 1.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            height: 100%;
+        }
+
+        .sidebar-section {
+            padding: 0 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 1.5rem;
+        }
+
+        .sidebar-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .field-label {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--surface-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .field-required::after {
+            content: ' *';
+            color: var(--lab-violet-light);
+        }
+
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            background: var(--surface-900);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            color: var(--surface-100);
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            padding: 0.55rem 0.75rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: var(--lab-violet);
+            box-shadow: 0 0 0 3px var(--glow-violet-soft);
+            outline: none;
+        }
+
+        textarea {
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            padding-right: 2.2rem;
+            cursor: pointer;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.6rem;
+        }
+
+        .field-group {
+            margin-bottom: 0.9rem;
+        }
+
+        .field-group:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Tone toggle chips */
+        .tone-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.1rem;
+        }
+
+        .tone-chip {
+            appearance: none;
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.06em;
+            padding: 0.25rem 0.65rem;
+            border-radius: 100px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass-bg);
+            color: var(--surface-400);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .tone-chip:hover {
+            border-color: var(--lab-violet-light);
+            color: var(--lab-violet-light);
+        }
+
+        .tone-chip.active {
+            border-color: var(--lab-violet);
+            color: var(--lab-violet-light);
+            background: rgba(124, 58, 237, 0.12);
+        }
+
+        .tone-chip:focus-visible,
+        .view-btn:focus-visible,
+        .main-tab:focus-visible,
+        .btn-action:focus-visible,
+        .btn-generate:focus-visible,
+        .drag-handle:focus-visible,
+        .segment-item:focus-visible {
+            outline: 2px solid var(--lab-violet-light);
+            outline-offset: 2px;
+        }
+
+        /* Generate button */
+        .btn-generate {
+            width: 100%;
+            padding: 0.85rem;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            background: linear-gradient(135deg, var(--lab-violet), var(--lab-violet-dim));
+            color: #fff;
+            box-shadow: 0 0 30px var(--glow-violet), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            transition: all 0.25s;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-generate:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 0 50px var(--glow-violet), 0 8px 24px rgba(124, 58, 237, 0.3);
+        }
+
+        .btn-generate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-generate.generating {
+            background: linear-gradient(135deg, var(--lab-violet-dim), #4C1D95);
+        }
+
+        /* ── MAIN OUTPUT ─────────────────────────────────────── */
+        .main {
+            flex: 1;
+            min-width: 300px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--surface-950);
+            height: 100%;
+        }
+
+        .main-header {
+            padding: 1.25rem 1.75rem 0;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.3);
+            flex-shrink: 0;
+        }
+
+        .main-tabs {
+            display: flex;
+            gap: 0;
+            margin-top: 0.75rem;
+        }
+
+        .main-tab {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.08em;
+            padding: 0.6rem 1.1rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--surface-500);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .main-tab:hover {
+            color: var(--surface-300);
+        }
+
+        .main-tab.active {
+            color: var(--lab-violet-light);
+            border-bottom-color: var(--lab-violet);
+        }
+
+        .main-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.75rem;
+            position: relative;
+        }
+
+        /* Empty state */
+        .empty-state {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .empty-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            background: rgba(124, 58, 237, 0.08);
+            border: 1px solid rgba(124, 58, 237, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .empty-icon svg {
+            width: 26px;
+            height: 26px;
+            stroke: var(--lab-violet-light);
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .empty-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--surface-400);
+        }
+
+        .empty-sub {
+            font-family: var(--font-mono);
+            font-size: 0.72rem;
+            color: var(--surface-600);
+            letter-spacing: 0.04em;
+            max-width: 300px;
+            line-height: 1.7;
+        }
+
+        /* Script output */
+        .script-output {
+            display: none;
+        }
+
+        .script-output.visible {
+            display: block;
+        }
+
+        .script-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-pill {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 0.22rem 0.65rem;
+            border-radius: 100px;
+        }
+
+        .meta-pill.violet {
+            background: rgba(124, 58, 237, 0.1);
+            color: var(--lab-violet-light);
+            border: 1px solid rgba(124, 58, 237, 0.2);
+        }
+
+        .meta-pill.teal {
+            background: rgba(45, 212, 191, 0.08);
+            color: var(--lab-teal);
+            border: 1px solid rgba(45, 212, 191, 0.18);
+        }
+
+        .meta-pill.indigo {
+            background: rgba(129, 140, 248, 0.08);
+            color: var(--lab-indigo);
+            border: 1px solid rgba(129, 140, 248, 0.18);
+        }
+
+        /* Script scenes */
+        .scene {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+            background: rgba(15, 23, 42, 0.5);
+            transition: border-color 0.3s;
+        }
+
+        .scene:hover {
+            border-color: rgba(124, 58, 237, 0.2);
+        }
+
+        .scene-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.1rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .scene-number {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--lab-violet-light);
+        }
+
+        .scene-duration {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--surface-600);
+        }
+
+        .scene-body {
+            padding: 1.1rem;
+        }
+
+        .scene-type {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--surface-600);
+            margin-bottom: 0.4rem;
+        }
+
+        .scene-content {
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            color: var(--surface-300);
+            line-height: 1.75;
+            white-space: pre-wrap;
+        }
+
+        .scene-vo {
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: rgba(124, 58, 237, 0.06);
+            border-left: 2px solid var(--lab-violet);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-family: var(--font-display);
+            font-size: 0.88rem;
+            color: var(--surface-200);
+            line-height: 1.7;
+            font-style: italic;
+        }
+
+        .scene-vo-label {
+            font-family: var(--font-mono);
+            font-size: 0.58rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--lab-violet-light);
+            font-style: normal;
+            margin-bottom: 0.35rem;
+        }
+
+        /* Raw JSON view */
+        .raw-view {
+            display: none;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--surface-400);
+            line-height: 1.85;
+            white-space: pre-wrap;
+            background: var(--surface-900);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            border: 1px solid var(--glass-border);
+        }
+
+        .raw-view.visible {
+            display: block;
+        }
+
+        /* Streaming skeleton */
+        .skeleton-scene {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes skeletonPulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+            }
+
+            50% {
+                opacity: 0.8;
+            }
+        }
+
+        .skeleton-bar {
+            height: 12px;
+            border-radius: 6px;
+            background: var(--surface-800);
+            margin-bottom: 0.6rem;
+        }
+
+        .skeleton-bar.short {
+            width: 40%;
+        }
+
+        .skeleton-bar.medium {
+            width: 65%;
+        }
+
+        .skeleton-bar.long {
+            width: 90%;
+        }
+
+        .skeleton-body {
+            padding: 1.1rem;
+        }
+
+        /* ── INSPECTOR PANEL ─────────────────────────────────── */
+        .inspector {
+            width: 380px;
+            min-width: 200px;
+            max-width: 560px;
+            flex-shrink: 0;
+            border-left: none;
+            background: rgba(15, 23, 42, 0.5);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .inspector-header {
+            padding: 1.1rem 1.25rem 0.75rem;
+            border-bottom: 1px solid var(--glass-border);
+            flex-shrink: 0;
+        }
+
+        .inspector-title {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--surface-500);
+        }
+
+        .inspector-body {
+            padding: 1.25rem;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* Action cards */
+        .action-card {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 1rem;
+            margin-bottom: 0.85rem;
+            background: var(--glass-bg);
+            transition: border-color 0.25s;
+        }
+
+        .action-card:hover {
+            border-color: rgba(124, 58, 237, 0.2);
+        }
+
+        .action-card-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--surface-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .action-card-title {
+            font-family: var(--font-display);
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: var(--surface-100);
+            margin-bottom: 0.3rem;
+        }
+
+        .action-card-body {
+            font-size: 0.78rem;
+            color: var(--surface-400);
+            line-height: 1.65;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 0.5rem 0.9rem;
+            font-family: var(--font-mono);
+            font-size: 0.68rem;
+            letter-spacing: 0.06em;
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-sm);
+            background: var(--glass-bg);
+            color: var(--surface-400);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .btn-action:hover:not(:disabled) {
+            border-color: var(--lab-violet-light);
+            color: var(--lab-violet-light);
+            background: rgba(124, 58, 237, 0.06);
+        }
+
+        .btn-action:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-action.teal-action:hover:not(:disabled) {
+            border-color: var(--lab-teal);
+            color: var(--lab-teal);
+            background: rgba(45, 212, 191, 0.06);
+        }
+
+        /* Segment breakdown */
+        .segment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .segment-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.45rem 0.6rem;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.02);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--surface-400);
+            border: 1px solid transparent;
+            transition: all 0.2s;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            appearance: none;
+        }
+
+        .segment-item:hover {
+            border-color: var(--glass-border);
+            color: var(--surface-300);
+        }
+
+        .segment-item .seg-num {
+            color: var(--lab-violet-light);
+        }
+
+        .segment-item .seg-dur {
+            color: var(--surface-500);
+        }
+
+        /* Status / log */
+        .status-log {
+            margin-top: 1.25rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .status-log-label {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--surface-500);
+            margin-bottom: 0.6rem;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            color: var(--surface-500);
+            line-height: 1.6;
+            margin-bottom: 0.3rem;
+        }
+
+        .log-entry .log-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50;
+            margin-top: 5px;
+            flex-shrink: 0;
+        }
+
+        .log-entry.info .log-dot {
+            background: var(--surface-600);
+        }
+
+        .log-entry.success .log-dot {
+            background: var(--lab-teal);
+        }
+
+        .log-entry.active .log-dot {
+            background: var(--lab-violet-light);
+            animation: pulse 1.2s infinite;
+        }
+
+        .log-entry.error .log-dot {
+            background: #F87171;
+        }
+
+        .log-entry.success {
+            color: var(--surface-400);
+        }
+
+        .log-entry.active {
+            color: var(--lab-violet-light);
+        }
+
+        .log-entry.error {
+            color: #F87171;
+        }
+
+        /* Copy success */
+        .copy-success {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            color: var(--lab-teal);
+            letter-spacing: 0.06em;
+            opacity: 0;
+            transition: opacity 0.3s;
+            text-align: center;
+            margin-top: 0.4rem;
+        }
+
+        .copy-success.show {
+            opacity: 1;
+        }
+
+        /* Progress bar */
+        .progress-bar-wrap {
+            height: 2px;
+            background: var(--surface-800);
+            border-radius: 1px;
+            overflow: hidden;
+            margin-top: 0.75rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--lab-violet), var(--lab-violet-light));
+            border-radius: 1px;
+            transition: width 0.4s ease;
+        }
+
+        /* ── VIEW MODE SWITCHER ──────────────────────────────── */
+        .view-switcher {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .view-btn {
+            width: 30px;
+            height: 30px;
+            border: 1px solid var(--glass-border);
+            border-radius: 6px;
+            background: var(--glass-bg);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+            color: var(--surface-600);
+        }
+
+        .view-btn svg {
+            width: 14px;
+            height: 14px;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            fill: none;
+        }
+
+        .view-btn:hover {
+            border-color: var(--lab-violet-light);
+            color: var(--lab-violet-light);
+        }
+
+        .view-btn.active {
+            border-color: var(--lab-violet);
+            color: var(--lab-violet-light);
+            background: rgba(124, 58, 237, 0.12);
+        }
+
+        .view-btn title {
+            display: none;
+        }
+
+        /* ── VIEW: STACK (default) ───────────────────────────── */
+        #scriptOutput.view-stack .scene {
+            /* unchanged — single col */
+        }
+
+        #scriptOutput.view-stack .variant-cols {
+            display: block;
+        }
+
+        /* ── VIEW: GRID (2-col scene cards) ─────────────────── */
+        #scriptOutput.view-grid .scenes-wrap {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        #scriptOutput.view-grid .scene {
+            margin-bottom: 0;
+        }
+
+        #scriptOutput.view-grid .script-meta {
+            margin-bottom: 1rem;
+        }
+
+        /* ── VIEW: COLUMNS (variants side by side) ───────────── */
+        #scriptOutput.view-columns .variant-cols {
+            display: grid;
+            grid-template-columns: repeat(var(--variant-count, 1), 1fr);
+            gap: 1.25rem;
+            align-items: start;
+        }
+
+        #scriptOutput.view-columns .variant-block {
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        #scriptOutput.view-columns .variant-block-header {
+            padding: 0.65rem 1rem;
+            background: rgba(124, 58, 237, 0.06);
+            border-bottom: 1px solid var(--glass-border);
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--lab-violet-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        #scriptOutput.view-columns .variant-block-body {
+            padding: 0.75rem;
+        }
+
+        #scriptOutput.view-columns .scene {
+            border-radius: var(--radius-sm);
+            margin-bottom: 0.6rem;
+            font-size: 0.82rem;
+        }
+
+        #scriptOutput.view-columns .scene:last-child {
+            margin-bottom: 0;
+        }
+
+        #scriptOutput.view-columns .variant-header-label {
+            display: none;
+        }
+
+        /* ── VIEW: SCREENPLAY ────────────────────────────────── */
+        #scriptOutput.view-screenplay .scene {
+            border: none;
+            border-radius: 0;
+            margin-bottom: 0;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        #scriptOutput.view-screenplay .scene:hover {
+            border-color: rgba(255, 255, 255, 0.04);
+        }
+
+        #scriptOutput.view-screenplay .scene-header {
+            background: transparent;
+            border-bottom: none;
+            padding: 1.25rem 0 0.2rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-number {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.2em;
+            color: var(--surface-600);
+        }
+
+        #scriptOutput.view-screenplay .scene-duration {
+            font-family: var(--font-mono);
+            font-size: 0.62rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-body {
+            padding: 0.25rem 2rem 1.25rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-type {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--surface-500);
+            margin-bottom: 0.6rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-content {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--surface-500);
+            line-height: 1.75;
+            margin-bottom: 0.75rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-vo {
+            background: transparent;
+            border-left: none;
+            border-radius: 0;
+            padding: 0 0 0 2rem;
+            margin-top: 0;
+        }
+
+        #scriptOutput.view-screenplay .scene-vo-label {
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            letter-spacing: 0.2em;
+            color: var(--surface-600);
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        #scriptOutput.view-screenplay .scene-vo {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--surface-100);
+            font-style: normal;
+            line-height: 1.8;
+        }
+
+        #scriptOutput.view-screenplay {
+            font-size: 0.9rem;
+        }
+
+        /* ── VIEW: STORYBOARD ────────────────────────────────── */
+        #scriptOutput.view-storyboard .scenes-wrap {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.85rem;
+        }
+
+        #scriptOutput.view-storyboard .scene {
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #scriptOutput.view-storyboard .scene-header {
+            padding: 0.5rem 0.75rem;
+        }
+
+        #scriptOutput.view-storyboard .scene-panel {
+            background: var(--surface-900);
+            border-bottom: 1px solid var(--glass-border);
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #scriptOutput.view-storyboard .scene-panel-bg {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(45, 212, 191, 0.04));
+        }
+
+        #scriptOutput.view-storyboard .scene-panel-num {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: rgba(255, 255, 255, 0.06);
+            position: absolute;
+            right: 10px;
+            bottom: 4px;
+            line-height: 1;
+            z-index: 0;
+        }
+
+        #scriptOutput.view-storyboard .scene-panel-type {
+            font-family: var(--font-mono);
+            font-size: 0.6rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--lab-violet-light);
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 0 0.5rem;
+        }
+
+        #scriptOutput.view-storyboard .scene-body {
+            padding: 0.6rem 0.75rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        #scriptOutput.view-storyboard .scene-type {
+            display: none;
+        }
+
+        #scriptOutput.view-storyboard .scene-content {
+            font-size: 0.72rem;
+            color: var(--surface-500);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        #scriptOutput.view-storyboard .scene-vo {
+            padding: 0.5rem 0.6rem;
+            margin-top: auto;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        #scriptOutput.view-storyboard .scene-vo-label {
+            font-size: 0.55rem;
+        }
+
+        #scriptOutput.view-storyboard .script-meta {
+            margin-bottom: 1rem;
+        }
+
+        /* ── Responsive */
+        @media (max-width: 1100px) {
+            .inspector {
+                display: none;
+            }
+
+            .drag-handle.drag-right {
+                display: none;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .sidebar {
+                display: none;
+            }
+
+            .drag-handle.drag-left {
+                display: none;
+            }
+        }
+
+        @supports (backdrop-filter: blur(1px)) {
+
+            .sidebar,
+            .inspector,
+            .main-header {
+                backdrop-filter: blur(8px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav class="nav">
+        <a href="https://promptlab.tools" class="nav-brand">
+            <div class="nav-dot"></div>
+            Prompt Lab
+            <span class="nav-tag">Script Agent</span>
+        </a>
+        <div class="nav-pills">
+            <span class="nav-pill live" id="statusPill" role="status" aria-live="polite">ready</span>
+            <label class="sr-only" for="providerSelect">Provider</label>
+            <select class="nav-select" id="providerSelect" aria-label="Model provider">
+                <option value="gemini">Gemini</option>
+                <option value="anthropic">Anthropic</option>
+            </select>
+            <span class="nav-pill" id="modelPill">gemini-2.5-flash</span>
+        </div>
+    </nav>
+
+    <div id="dragOverlay"></div>
+    <div class="shell">
+
+        <!-- ── SIDEBAR: INPUT FORM ── -->
+        <aside class="sidebar" id="panelSidebar" aria-label="Script parameters">
+
+            <!-- Brand -->
+            <div class="sidebar-section">
+                <div class="field-group">
+                    <label class="field-label field-required" for="brand">Brand / Product</label>
+                    <input type="text" id="brand" placeholder="e.g. Prompt Lab" maxlength="80" required aria-required="true" />
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="tagline">Tagline</label>
+                    <input type="text" id="tagline" placeholder="e.g. Craft better prompts." maxlength="100" />
+                </div>
+                <div class="field-group">
+                    <label class="field-label field-required" for="product">What it does</label>
+                    <textarea id="product" rows="3" placeholder="One sentence. What problem does it solve?" required aria-required="true"></textarea>
+                </div>
+            </div>
+
+            <!-- Audience + Format -->
+            <div class="sidebar-section">
+                <div class="field-group">
+                    <label class="field-label field-required" for="audience">Target audience</label>
+                    <input type="text" id="audience" placeholder="e.g. solo developers, prompt engineers" required aria-required="true" />
+                </div>
+                <div class="field-row">
+                    <div class="field-group">
+                        <label class="field-label" for="duration">Duration</label>
+                        <select id="duration">
+                            <option value="15">:15 sec</option>
+                            <option value="30" selected>:30 sec</option>
+                            <option value="60">:60 sec</option>
+                            <option value="90">:90 sec</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label" for="format">Format</label>
+                        <select id="format">
+                            <option value="tv">TV / OLV</option>
+                            <option value="social">Social</option>
+                            <option value="pre-roll">Pre-roll</option>
+                            <option value="radio">Radio</option>
+                            <option value="podcast">Podcast</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Tone</label>
+                    <div class="tone-chips" id="toneChips" role="group" aria-label="Tone selection">
+                        <button type="button" class="tone-chip active" data-val="direct" aria-pressed="true">Direct</button>
+                        <button type="button" class="tone-chip" data-val="witty" aria-pressed="false">Witty</button>
+                        <button type="button" class="tone-chip" data-val="emotional" aria-pressed="false">Emotional</button>
+                        <button type="button" class="tone-chip" data-val="dramatic" aria-pressed="false">Dramatic</button>
+                        <button type="button" class="tone-chip" data-val="playful" aria-pressed="false">Playful</button>
+                        <button type="button" class="tone-chip" data-val="authoritative" aria-pressed="false">Authoritative</button>
+                        <button type="button" class="tone-chip" data-val="conversational" aria-pressed="false">Conversational</button>
+                        <button type="button" class="tone-chip" data-val="aspirational" aria-pressed="false">Aspirational</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Creative direction -->
+            <div class="sidebar-section">
+                <div class="field-group">
+                    <label class="field-label" for="hook">Opening hook style</label>
+                    <select id="hook">
+                        <option value="problem">Lead with the problem</option>
+                        <option value="question">Open with a question</option>
+                        <option value="statement">Bold statement</option>
+                        <option value="scene">Drop into a scene</option>
+                        <option value="statistic">Shocking statistic</option>
+                        <option value="contrast">Before / after contrast</option>
+                    </select>
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="cta">Call to action</label>
+                    <input type="text" id="cta" placeholder="e.g. Try it free at promptlab.tools" />
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="avoid">Avoid / constraints</label>
+                    <textarea id="avoid" rows="2" placeholder="e.g. No tech jargon. No competitor mentions."></textarea>
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="variants">Script variants</label>
+                    <select id="variants">
+                        <option value="1">1 script</option>
+                        <option value="2" selected>2 variants (A/B)</option>
+                        <option value="3">3 variants</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Generate -->
+            <div class="sidebar-section">
+                <button class="btn-generate" id="generateBtn" onclick="generateScript()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    Generate Script
+                </button>
+            </div>
+
+        </aside>
+
+        <div class="drag-handle drag-left" id="dragLeft" title="Drag to resize" role="separator" aria-orientation="vertical" aria-label="Resize input panel" tabindex="0"></div>
+
+        <!-- ── MAIN: OUTPUT ── -->
+        <main class="main" id="panelMain">
+            <div class="main-header">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:0.1rem;">
+                    <div>
+                        <div
+                            style="font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--surface-600);">
+                            // output</div>
+                        <div id="outputTitle"
+                            style="font-family:var(--font-display);font-weight:700;font-size:1rem;color:var(--surface-100);margin-top:0.2rem;">
+                            Script Output</div>
+                    </div>
+                    <!-- View switcher -->
+                    <div class="view-switcher" id="viewSwitcher" role="toolbar" aria-label="Script view modes">
+                        <button class="view-btn active" onclick="setView('stack',this)" title="Stack view"
+                            aria-label="Stack view" aria-pressed="true">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="3" y="4" width="18" height="4" rx="1" />
+                                <rect x="3" y="10" width="18" height="4" rx="1" />
+                                <rect x="3" y="16" width="18" height="4" rx="1" />
+                            </svg>
+                        </button>
+                        <button class="view-btn" onclick="setView('grid',this)" title="Grid view"
+                            aria-label="Grid view" aria-pressed="false">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="8" height="8" rx="1" />
+                                <rect x="13" y="3" width="8" height="8" rx="1" />
+                                <rect x="3" y="13" width="8" height="8" rx="1" />
+                                <rect x="13" y="13" width="8" height="8" rx="1" />
+                            </svg>
+                        </button>
+                        <button class="view-btn" onclick="setView('columns',this)" title="Columns view"
+                            aria-label="Columns view" aria-pressed="false">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="3" y="3" width="7" height="18" rx="1" />
+                                <rect x="14" y="3" width="7" height="18" rx="1" />
+                            </svg>
+                        </button>
+                        <button class="view-btn" onclick="setView('screenplay',this)" title="Screenplay view"
+                            aria-label="Screenplay view" aria-pressed="false">
+                            <svg viewBox="0 0 24 24">
+                                <line x1="3" y1="6" x2="21" y2="6" />
+                                <line x1="7" y1="10" x2="21" y2="10" />
+                                <line x1="7" y1="14" x2="21" y2="14" />
+                                <line x1="3" y1="18" x2="21" y2="18" />
+                            </svg>
+                        </button>
+                        <button class="view-btn" onclick="setView('storyboard',this)" title="Storyboard view"
+                            aria-label="Storyboard view" aria-pressed="false">
+                            <svg viewBox="0 0 24 24">
+                                <rect x="2" y="3" width="9" height="7" rx="1" />
+                                <rect x="13" y="3" width="9" height="7" rx="1" />
+                                <rect x="2" y="13" width="9" height="7" rx="1" />
+                                <rect x="13" y="13" width="9" height="7" rx="1" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="main-tabs" role="tablist" aria-label="Output tabs">
+                    <button class="main-tab active" id="tab-script" role="tab" aria-selected="true" aria-controls="scriptOutput" onclick="switchTab('script',this)">Script View</button>
+                    <button class="main-tab" id="tab-raw" role="tab" aria-selected="false" aria-controls="rawView" onclick="switchTab('raw',this)">Raw JSON</button>
+                    <div style="margin-left:auto;font-family:var(--font-mono);font-size:0.6rem;letter-spacing:0.1em;color:var(--surface-700);display:flex;align-items:center;"
+                        id="viewLabel">// stack</div>
+                </div>
+            </div>
+
+            <div class="main-body" id="mainBody">
+
+                <!-- Empty state -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                    </div>
+                    <div class="empty-title">No script generated yet</div>
+                    <div class="empty-sub">Fill in the brand details and hit Generate Script to produce a
+                        structured commercial script.</div>
+                </div>
+
+                <!-- Skeleton loader -->
+                <div id="skeletonLoader" style="display:none;">
+                    <div class="skeleton-scene">
+                        <div class="skeleton-body">
+                            <div class="skeleton-bar short"></div>
+                            <div class="skeleton-bar long"></div>
+                            <div class="skeleton-bar medium"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-scene">
+                        <div class="skeleton-body">
+                            <div class="skeleton-bar short"></div>
+                            <div class="skeleton-bar medium"></div>
+                            <div class="skeleton-bar long"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton-scene">
+                        <div class="skeleton-body">
+                            <div class="skeleton-bar short"></div>
+                            <div class="skeleton-bar long"></div>
+                            <div class="skeleton-bar short"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Script output -->
+                <div class="script-output" id="scriptOutput" role="tabpanel" aria-labelledby="tab-script"></div>
+
+                <!-- Raw JSON -->
+                <div class="raw-view" id="rawView" role="tabpanel" aria-labelledby="tab-raw" hidden></div>
+
+            </div>
+        </main>
+
+        <div class="drag-handle drag-right" id="dragRight" title="Drag to resize" role="separator" aria-orientation="vertical" aria-label="Resize inspector panel" tabindex="0"></div>
+
+        <!-- ── INSPECTOR ── -->
+        <aside class="inspector" id="panelInspector" aria-label="Script inspector">
+            <div class="inspector-header">
+                <div class="inspector-title">// inspector</div>
+            </div>
+            <div class="inspector-body">
+
+                <!-- Actions -->
+                <div class="action-card">
+                    <div class="action-card-label">Export</div>
+                    <div class="action-card-title">Copy & Export</div>
+                    <div class="action-card-body">Copy the script to clipboard or download as a formatted text file.
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                        <button class="btn-action" id="copyBtn" onclick="copyScript()" disabled>
+                            ⎘ Copy Script
+                        </button>
+                        <div class="copy-success" id="copySuccess" role="status" aria-live="polite">✓ Copied to clipboard</div>
+                        <button class="btn-action teal-action" id="downloadBtn" onclick="downloadScript()" disabled>
+                            ↓ Download .txt
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Regenerate variant -->
+                <div class="action-card">
+                    <div class="action-card-label">Iteration</div>
+                    <div class="action-card-title">Regenerate</div>
+                    <div class="action-card-body">Generate a fresh variant with the same parameters.</div>
+                    <button class="btn-action" id="regenBtn" onclick="generateScript()" disabled>
+                        ↺ New Variant
+                    </button>
+                </div>
+
+                <!-- Segment breakdown -->
+                <div class="action-card">
+                    <div class="action-card-label">Structure</div>
+                    <div class="action-card-title">Scene Breakdown</div>
+                    <div class="segment-list" id="segmentList">
+                        <div style="font-family:var(--font-mono);font-size:0.65rem;color:var(--surface-700);">No script
+                            yet.</div>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                <div class="status-log">
+                    <div class="status-log-label">// agent log</div>
+                    <div id="agentLog" role="log" aria-live="polite" aria-relevant="additions text">
+                        <div class="log-entry info">
+                            <div class="log-dot"></div>
+                            <span>Script agent ready. Awaiting input.</span>
+                        </div>
+                    </div>
+                    <div class="progress-bar-wrap" role="progressbar" aria-label="Script generation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+    </div>
+
+    <script>
+        // ── STATE ──────────────────────────────────────────────
+        const API_BASE = window.location.protocol === 'file:' ? 'https://promptlab.tools' : window.location.origin;
+        const PROVIDERS = {
+            gemini: {
+                label: 'Gemini',
+                model: 'gemini-2.5-flash',
+                buildRequest(systemPrompt, userPrompt) {
+                    return {
+                        targetUrl: `https://generativelanguage.googleapis.com/v1beta/models/${this.model}:generateContent`,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: {
+                            systemInstruction: { parts: [{ text: systemPrompt }] },
+                            contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+                            generationConfig: {
+                                responseMimeType: 'application/json',
+                                temperature: 0.9
+                            }
+                        }
+                    };
+                },
+                extractText(data) {
+                    const parts = data?.candidates?.[0]?.content?.parts;
+                    if (!Array.isArray(parts)) return '';
+                    return parts.map((part) => typeof part?.text === 'string' ? part.text : '').join('').trim();
+                },
+                explainEmpty(data) {
+                    return data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || null;
+                }
+            },
+            anthropic: {
+                label: 'Anthropic',
+                model: 'claude-sonnet-4-20250514',
+                buildRequest(systemPrompt, userPrompt) {
+                    return {
+                        targetUrl: 'https://api.anthropic.com/v1/messages',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'anthropic-version': '2023-06-01'
+                        },
+                        body: {
+                            model: this.model,
+                            max_tokens: 4000,
+                            system: systemPrompt,
+                            messages: [{ role: 'user', content: userPrompt }]
+                        }
+                    };
+                },
+                extractText(data) {
+                    return data?.content?.[0]?.text?.trim?.() || '';
+                },
+                explainEmpty(data) {
+                    return data?.stop_reason || null;
+                }
+            }
+        };
+
+        const state = {
+            generating: false,
+            scriptData: null,
+            rawJson: null,
+            activeTab: 'script',
+            activeView: 'stack',
+            provider: 'gemini'
+        };
+
+        function getProviderConfig() {
+            return PROVIDERS[state.provider] || PROVIDERS.gemini;
+        }
+
+        function syncProviderUi() {
+            const config = getProviderConfig();
+            const select = document.getElementById('providerSelect');
+            if (select && select.value !== state.provider) select.value = state.provider;
+            document.getElementById('modelPill').textContent = config.model;
+        }
+
+        function setProvider(provider, { silent = false } = {}) {
+            state.provider = PROVIDERS[provider] ? provider : 'gemini';
+            syncProviderUi();
+            try {
+                window.localStorage.setItem('pl-scriptagent-provider', state.provider);
+            } catch { }
+            if (!silent) addLog(`Provider set to ${getProviderConfig().label}.`, 'info');
+        }
+
+        (function initProvider() {
+            let initial = 'gemini';
+            try {
+                initial = window.localStorage.getItem('pl-scriptagent-provider') || initial;
+            } catch { }
+            const paramProvider = new URLSearchParams(window.location.search).get('provider');
+            if (paramProvider && PROVIDERS[paramProvider]) initial = paramProvider;
+            setProvider(initial, { silent: true });
+            document.getElementById('providerSelect').addEventListener('change', (event) => {
+                setProvider(event.target.value);
+            });
+        })();
+
+        // ── VIEW MODES ─────────────────────────────────────────
+        const VIEW_LABELS = {
+            stack: '// stack',
+            grid: '// 2-col grid',
+            columns: '// side by side',
+            screenplay: '// screenplay',
+            storyboard: '// storyboard'
+        };
+
+        function applyView(view) {
+            const out = document.getElementById('scriptOutput');
+            ['view-stack', 'view-grid', 'view-columns', 'view-screenplay', 'view-storyboard']
+                .forEach(c => out.classList.remove(c));
+            out.classList.add('view-' + view);
+            const lbl = document.getElementById('viewLabel');
+            if (lbl) lbl.textContent = VIEW_LABELS[view] || '';
+        }
+
+        function setView(view, btn) {
+            state.activeView = view;
+            document.querySelectorAll('.view-btn').forEach(b => {
+                b.classList.remove('active');
+                b.setAttribute('aria-pressed', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-pressed', 'true');
+            applyView(view);
+            if (state.scriptData) addLog(`View: ${view}`, 'info');
+        }
+
+        // ── TONE CHIPS ─────────────────────────────────────────
+        document.querySelectorAll('.tone-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('active');
+                chip.setAttribute('aria-pressed', chip.classList.contains('active') ? 'true' : 'false');
+            });
+        });
+
+        ['brand', 'product', 'audience'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (event) => {
+                if (event.target.value.trim()) {
+                    event.target.removeAttribute('aria-invalid');
+                }
+            });
+        });
+
+        // ── TAB SWITCHING ──────────────────────────────────────
+        function switchTab(tab, btn) {
+            state.activeTab = tab;
+            document.querySelectorAll('.main-tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            const scriptPanel = document.getElementById('scriptOutput');
+            const rawPanel = document.getElementById('rawView');
+            const showScript = tab === 'script' && state.scriptData;
+            const showRaw = tab === 'raw' && state.rawJson;
+            scriptPanel.classList.toggle('visible', showScript);
+            rawPanel.classList.toggle('visible', showRaw);
+            scriptPanel.hidden = !showScript;
+            rawPanel.hidden = !showRaw;
+        }
+
+        // ── LOG ────────────────────────────────────────────────
+        function addLog(msg, type = 'info') {
+            const log = document.getElementById('agentLog');
+            // cap at 8 entries
+            while (log.children.length >= 8) log.removeChild(log.firstChild);
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            const dot = document.createElement('div');
+            dot.className = 'log-dot';
+            const text = document.createElement('span');
+            text.textContent = msg;
+            entry.append(dot, text);
+            log.appendChild(entry);
+            // scroll to bottom
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function setProgress(pct) {
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.querySelector('.progress-bar-wrap')?.setAttribute('aria-valuenow', String(pct));
+        }
+
+        function setStatus(text, type = 'default') {
+            const pill = document.getElementById('statusPill');
+            pill.textContent = text;
+            pill.className = 'nav-pill' + (type === 'live' ? ' live' : '');
+        }
+
+        // ── BUILD SEGMENT LIST ─────────────────────────────────
+        function buildSegmentList(scenes) {
+            const list = document.getElementById('segmentList');
+            list.innerHTML = '';
+            scenes.forEach((scene, i) => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'segment-item';
+                const segNum = document.createElement('span');
+                segNum.className = 'seg-num';
+                segNum.textContent = String(i + 1).padStart(2, '0');
+                const segType = document.createElement('span');
+                segType.style.cssText = 'flex:1;padding:0 0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+                segType.textContent = scene.type || 'Scene';
+                const segDur = document.createElement('span');
+                segDur.className = 'seg-dur';
+                segDur.textContent = scene.duration || '';
+                item.append(segNum, segType, segDur);
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('.scene')[i]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+                list.appendChild(item);
+            });
+        }
+
+        // ── RENDER SCRIPT ──────────────────────────────────────
+        function renderScript(data) {
+            const container = document.getElementById('scriptOutput');
+            container.innerHTML = '';
+
+            const variants = data.variants || [data];
+
+            // Set CSS variable for column count (used by view-columns)
+            container.style.setProperty('--variant-count', Math.min(variants.length, 3));
+
+            // Outer wrapper for columns view
+            const colsWrap = document.createElement('div');
+            colsWrap.className = 'variant-cols';
+            container.appendChild(colsWrap);
+
+            variants.forEach((variant, vi) => {
+                const safeAngle = escapeHtml(variant.angle || '');
+                const safeTone = escapeHtml(variant.tone || '');
+                const safeDuration = escapeHtml(String(variant.duration || data.duration || ''));
+                const safeFormat = escapeHtml(String(variant.format || data.format || ''));
+                const variantBlock = document.createElement('div');
+                variantBlock.className = 'variant-block';
+
+                // Columns view header (hidden in other views via CSS)
+                const blockHeader = document.createElement('div');
+                blockHeader.className = 'variant-block-header';
+                blockHeader.innerHTML = `
+      <span>Variant ${String.fromCharCode(65 + vi)}</span>
+      <span style="color:var(--surface-500);font-size:0.58rem;">${safeAngle}</span>`;
+                variantBlock.appendChild(blockHeader);
+
+                const blockBody = document.createElement('div');
+                blockBody.className = 'variant-block-body';
+                variantBlock.appendChild(blockBody);
+
+                // Variant header label (shown in stack/grid/screenplay/storyboard, hidden in columns)
+                if (variants.length > 1) {
+                    const variantHeader = document.createElement('div');
+                    variantHeader.className = 'variant-header-label';
+                    variantHeader.style.cssText = `
+        font-family:var(--font-mono);font-size:0.62rem;letter-spacing:0.2em;
+        text-transform:uppercase;color:var(--lab-violet-light);
+        margin-bottom:1rem;padding-bottom:0.5rem;
+        border-bottom:1px solid var(--glass-border);
+      `;
+                    variantHeader.textContent = `// variant ${String.fromCharCode(65 + vi)} — ${variant.angle || ''}`;
+                    blockBody.appendChild(variantHeader);
+                }
+
+                // Meta pills
+                const meta = document.createElement('div');
+                meta.className = 'script-meta';
+                meta.innerHTML = `
+      <span class="meta-pill violet">${safeDuration}s</span>
+      <span class="meta-pill teal">${safeFormat}</span>
+      <span class="meta-pill indigo">${safeTone}</span>
+      ${variant.angle ? `<span class="meta-pill" style="background:rgba(129,140,248,0.06);color:var(--surface-400);border:1px solid var(--glass-border);">${safeAngle}</span>` : ''}
+    `;
+                blockBody.appendChild(meta);
+
+                // Scenes wrapper (used by grid + storyboard CSS)
+                const scenesWrap = document.createElement('div');
+                scenesWrap.className = 'scenes-wrap';
+                blockBody.appendChild(scenesWrap);
+
+                // Scenes
+                (variant.scenes || []).forEach((scene, si) => {
+                    const safeSceneDuration = escapeHtml(scene.duration || '');
+                    const safeSceneType = escapeHtml(scene.type || 'VISUAL');
+                    const sceneEl = document.createElement('div');
+                    sceneEl.className = 'scene';
+                    sceneEl.innerHTML = `
+        <div class="scene-header">
+          <span class="scene-number">Scene ${String(si + 1).padStart(2, '0')}</span>
+          <span class="scene-duration">${safeSceneDuration}</span>
+        </div>
+        <div class="scene-panel">
+          <div class="scene-panel-bg"></div>
+          <div class="scene-panel-num">${si + 1}</div>
+          <div class="scene-panel-type">${safeSceneType}</div>
+        </div>
+        <div class="scene-body">
+          <div class="scene-type">${safeSceneType}</div>
+          <div class="scene-content">${escapeHtml(scene.visual || scene.content || '')}</div>
+          ${scene.vo ? `
+            <div class="scene-vo">
+              <div class="scene-vo-label">V/O</div>
+              ${escapeHtml(scene.vo)}
+            </div>` : ''}
+        </div>`;
+                    scenesWrap.appendChild(sceneEl);
+                });
+
+                // CTA note
+                if (variant.cta_note) {
+                    const ctaNote = document.createElement('div');
+                    ctaNote.style.cssText = `
+        font-family:var(--font-mono);font-size:0.7rem;color:var(--surface-500);
+        padding:0.75rem 1rem;border-radius:var(--radius-sm);
+        background:rgba(45,212,191,0.04);border:1px solid rgba(45,212,191,0.12);
+        margin-top:0.5rem;
+      `;
+                    ctaNote.innerHTML = `<span style="color:var(--lab-teal);">// CTA</span> ${escapeHtml(variant.cta_note)}`;
+                    blockBody.appendChild(ctaNote);
+                }
+
+                colsWrap.appendChild(variantBlock);
+            });
+
+            // Build segment list from first variant
+            const firstVariant = variants[0];
+            if (firstVariant?.scenes) buildSegmentList(firstVariant.scenes);
+
+            // Re-apply current view
+            applyView(state.activeView || 'stack');
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        async function sendScriptAgentRequest(requestConfig) {
+            const response = await fetch(`${API_BASE}/api/proxy`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetUrl: requestConfig.targetUrl,
+                    headers: requestConfig.headers,
+                    body: JSON.stringify(requestConfig.body)
+                })
+            });
+            return response;
+        }
+
+        // ── GENERATE ───────────────────────────────────────────
+        async function generateScript() {
+            // Validate
+            const brand = document.getElementById('brand').value.trim();
+            const product = document.getElementById('product').value.trim();
+            const audience = document.getElementById('audience').value.trim();
+            if (!brand || !product || !audience) {
+                [
+                    ['brand', brand],
+                    ['product', product],
+                    ['audience', audience]
+                ].forEach(([id, value]) => {
+                    const field = document.getElementById(id);
+                    field.setAttribute('aria-invalid', value ? 'false' : 'true');
+                });
+                if (!brand) document.getElementById('brand').focus();
+                else if (!product) document.getElementById('product').focus();
+                else document.getElementById('audience').focus();
+                addLog('Missing required fields: Brand, What it does, Audience.', 'error');
+                return;
+            }
+
+            if (state.generating) return;
+            state.generating = true;
+
+            // Collect params
+            const duration = document.getElementById('duration').value;
+            const format = document.getElementById('format').value;
+            const hook = document.getElementById('hook').value;
+            const cta = document.getElementById('cta').value.trim();
+            const avoid = document.getElementById('avoid').value.trim();
+            const variants = document.getElementById('variants').value;
+            const tagline = document.getElementById('tagline').value.trim();
+            const tones = [...document.querySelectorAll('.tone-chip.active')].map(c => c.dataset.val).join(', ') || 'direct';
+
+            // UI: loading state
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('generateBtn').classList.add('generating');
+            document.getElementById('generateBtn').innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 1s linear infinite"><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0"/></svg>
+    Generating…`;
+
+            // Add spin keyframe if not present
+            if (!document.getElementById('spinStyle')) {
+                const s = document.createElement('style');
+                s.id = 'spinStyle';
+                s.textContent = '@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }';
+                document.head.appendChild(s);
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('skeletonLoader').style.display = 'block';
+            document.getElementById('scriptOutput').classList.remove('visible');
+            document.getElementById('rawView').classList.remove('visible');
+            document.getElementById('copyBtn').disabled = true;
+            document.getElementById('downloadBtn').disabled = true;
+            document.getElementById('regenBtn').disabled = true;
+
+            setStatus('generating', 'live');
+            setProgress(10);
+            addLog(`Building ${variants} script variant${variants > 1 ? 's' : ''} for "${brand}"…`, 'active');
+
+            // Construct system prompt
+            const systemPrompt = `You are an elite commercial script writer with 20 years of experience writing TV, digital, and radio spots for major brands. You write scripts that are structurally precise, emotionally resonant, and production-ready.
+
+You always respond with valid JSON only — no markdown, no backticks, no preamble. The JSON must exactly match the schema provided.
+
+Your scripts are:
+- Structured by scene with timing
+- Written to the exact duration specified
+- Tailored to the specified format and distribution channel
+- Tone-matched to the brand voice
+- Production-ready with V/O copy and visual direction`;
+
+            // Construct user prompt
+            const userPrompt = `Write ${variants} commercial script variant${variants > 1 ? 's' : ''} for the following brief.
+
+BRIEF:
+Brand: ${brand}
+${tagline ? `Tagline: ${tagline}` : ''}
+What it does: ${product}
+Target audience: ${audience}
+Duration: :${duration} seconds
+Format: ${format}
+Tone: ${tones}
+Opening hook style: ${hook}
+${cta ? `Call to action: ${cta}` : ''}
+${avoid ? `Avoid / constraints: ${avoid}` : ''}
+
+INSTRUCTIONS:
+- Each variant must be exactly ${duration} seconds when read at a natural pace
+- Each scene needs a duration label (e.g. "0:00–0:04")
+- Include V/O (voiceover) copy for every scene that has spoken words
+- Include visual direction for every scene
+- Give each variant a distinct creative angle (different hook, different emotional pull)
+- The final scene must always include the CTA
+
+Respond with this exact JSON schema:
+{
+  "brand": "${brand}",
+  "duration": ${duration},
+  "format": "${format}",
+  "variants": [
+    {
+      "id": "A",
+      "angle": "brief description of this variant's creative angle",
+      "tone": "${tones}",
+      "duration": ${duration},
+      "format": "${format}",
+      "scenes": [
+        {
+          "scene": 1,
+          "type": "OPEN / PROBLEM / SOLUTION / BENEFIT / CTA / etc.",
+          "duration": "0:00–0:XX",
+          "visual": "Detailed visual direction. What the viewer sees.",
+          "vo": "Exact voiceover copy spoken in this scene. Leave empty string if no V/O."
+        }
+      ],
+      "cta_note": "The final CTA URL or action"
+    }
+  ]
+}`;
+
+            setProgress(25);
+            const providerConfig = getProviderConfig();
+            addLog(`Sending to ${providerConfig.label} (${providerConfig.model})…`, 'active');
+
+            try {
+                const response = await sendScriptAgentRequest(providerConfig.buildRequest(systemPrompt, userPrompt));
+
+                setProgress(70);
+                addLog('Response received. Parsing…', 'active');
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'API error');
+
+                const rawText = providerConfig.extractText(data);
+                if (!rawText) {
+                    const blockReason = providerConfig.explainEmpty(data);
+                    throw new Error(blockReason
+                        ? `${providerConfig.label} returned no text (${blockReason}).`
+                        : `${providerConfig.label} returned no text.`);
+                }
+
+                // Strip markdown fences if present
+                const cleaned = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+                let parsed;
+                try {
+                    parsed = JSON.parse(cleaned);
+                } catch (e) {
+                    throw new Error('Could not parse JSON response. Raw: ' + rawText.slice(0, 200));
+                }
+
+                state.scriptData = parsed;
+                state.rawJson = JSON.stringify(parsed, null, 2);
+
+                setProgress(90);
+                addLog(`Parsed ${parsed.variants?.length || 1} variant(s). Rendering…`, 'active');
+
+                // Render
+                document.getElementById('skeletonLoader').style.display = 'none';
+                renderScript(parsed);
+
+                document.getElementById('rawView').textContent = state.rawJson;
+                document.getElementById('outputTitle').textContent = `${brand} · :${duration}s ${format}`;
+                applyView(state.activeView);
+
+                if (state.activeTab === 'script') {
+                    document.getElementById('scriptOutput').classList.add('visible');
+                } else {
+                    document.getElementById('rawView').classList.add('visible');
+                }
+
+                setProgress(100);
+                setTimeout(() => setProgress(0), 1000);
+
+                addLog(`✓ ${parsed.variants?.length || 1} script variant(s) ready.`, 'success');
+                setStatus('ready', 'default');
+
+                // Enable actions
+                document.getElementById('copyBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = false;
+                document.getElementById('regenBtn').disabled = false;
+
+            } catch (err) {
+                document.getElementById('skeletonLoader').style.display = 'none';
+                if (!state.scriptData) {
+                    document.getElementById('emptyState').style.display = 'flex';
+                }
+                addLog(`Error: ${err.message}`, 'error');
+                setStatus('error', 'default');
+                setProgress(0);
+            }
+
+            // Reset button
+            state.generating = false;
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.classList.remove('generating');
+            btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg> Generate Script`;
+        }
+
+        // ── COPY ───────────────────────────────────────────────
+        async function copyScript() {
+            if (!state.scriptData) return;
+            const text = formatScriptAsText(state.scriptData);
+            let ok = false;
+            try { await navigator.clipboard.writeText(text); ok = true; }
+            catch {
+                const ta = document.createElement('textarea');
+                ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+                document.body.appendChild(ta); ta.select();
+                ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+            const el = document.getElementById('copySuccess');
+            el.classList.toggle('show', ok);
+            setTimeout(() => el.classList.remove('show'), 2000);
+            if (ok) addLog('Script copied to clipboard.', 'success');
+        }
+
+        // ── DOWNLOAD ───────────────────────────────────────────
+        function downloadScript() {
+            if (!state.scriptData) return;
+            const text = formatScriptAsText(state.scriptData);
+            const brand = state.scriptData.brand || 'script';
+            const slug = brand.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const blob = new Blob([text], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${slug}-commercial-script.txt`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            addLog(`Downloaded ${slug}-commercial-script.txt`, 'success');
+        }
+
+        // ── FORMAT AS TEXT ─────────────────────────────────────
+        function formatScriptAsText(data) {
+            const lines = [];
+            lines.push(`COMMERCIAL SCRIPT — ${data.brand}`);
+            lines.push(`Duration: :${data.duration}s · Format: ${data.format}`);
+            lines.push('='.repeat(60));
+            (data.variants || [data]).forEach((v, i) => {
+                if (data.variants?.length > 1) {
+                    lines.push('');
+                    lines.push(`VARIANT ${String.fromCharCode(65 + i)}: ${v.angle || ''}`);
+                    lines.push('-'.repeat(60));
+                }
+                (v.scenes || []).forEach((scene, si) => {
+                    lines.push('');
+                    lines.push(`SCENE ${si + 1} · ${scene.type || ''} · ${scene.duration || ''}`);
+                    lines.push(`VISUAL: ${scene.visual || ''}`);
+                    if (scene.vo) lines.push(`V/O: "${scene.vo}"`);
+                });
+                if (v.cta_note) { lines.push(''); lines.push(`CTA: ${v.cta_note}`); }
+            });
+            return lines.join('\n');
+        }
+
+        // ── PREFILL DEMO (Prompt Lab) ──────────────────────────
+        (function prefill() {
+            document.getElementById('brand').value = 'Prompt Lab';
+            document.getElementById('tagline').value = 'Craft better prompts.';
+            document.getElementById('product').value = 'A multi-provider prompt engineering workbench that lets you enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, and more — in your browser.';
+            document.getElementById('audience').value = 'Solo developers and prompt engineers who ship AI-powered products';
+            document.getElementById('cta').value = 'Try it free at promptlab.tools';
+            document.getElementById('avoid').value = 'No enterprise jargon. No competitor names.';
+        })();
+
+        // ── PANEL RESIZE ───────────────────────────────────────
+        (function initResize() {
+                const overlay = document.getElementById('dragOverlay');
+                const sidebar = document.getElementById('panelSidebar');
+                const main = document.getElementById('panelMain');
+                const inspector = document.getElementById('panelInspector');
+                const dragLeft = document.getElementById('dragLeft');
+                const dragRight = document.getElementById('dragRight');
+
+                let dragging = null;  // 'left' | 'right'
+                let startX = 0;
+                let startW = 0;
+                const sidebarDefaults = { min: 180, max: 520, reset: 300 };
+                const inspectorDefaults = { min: 200, max: 560, reset: 380 };
+
+                function clamp(val, min, max) { return Math.min(Math.max(val, min), max); }
+                function updateResizeA11y() {
+                    const sidebarWidth = Math.round(sidebar.getBoundingClientRect().width);
+                    const inspectorWidth = Math.round(inspector.getBoundingClientRect().width);
+                    dragLeft.setAttribute('aria-valuemin', String(sidebarDefaults.min));
+                    dragLeft.setAttribute('aria-valuemax', String(sidebarDefaults.max));
+                    dragLeft.setAttribute('aria-valuenow', String(sidebarWidth));
+                    dragRight.setAttribute('aria-valuemin', String(inspectorDefaults.min));
+                    dragRight.setAttribute('aria-valuemax', String(inspectorDefaults.max));
+                    dragRight.setAttribute('aria-valuenow', String(inspectorWidth));
+                }
+
+                function resizeByKeyboard(side, delta) {
+                    if (side === 'left') {
+                        const current = sidebar.getBoundingClientRect().width;
+                        sidebar.style.width = clamp(current + delta, sidebarDefaults.min, sidebarDefaults.max) + 'px';
+                    } else {
+                        const current = inspector.getBoundingClientRect().width;
+                        inspector.style.width = clamp(current + delta, inspectorDefaults.min, inspectorDefaults.max) + 'px';
+                    }
+                    updateResizeA11y();
+                }
+
+                function onMouseDown(e, side) {
+                    e.preventDefault();
+                    dragging = side;
+                    startX = e.clientX;
+                    startW = side === 'left'
+                        ? sidebar.getBoundingClientRect().width
+                        : inspector.getBoundingClientRect().width;
+
+                    overlay.style.display = 'block';
+                    const handle = side === 'left' ? dragLeft : dragRight;
+                    handle.classList.add('dragging');
+                    document.body.style.userSelect = 'none';
+                }
+
+                function onMouseMove(e) {
+                    if (!dragging) return;
+                    const delta = e.clientX - startX;
+
+                    if (dragging === 'left') {
+                        const newW = clamp(startW + delta,
+                            parseInt(sidebar.style.minWidth || sidebarDefaults.min),
+                            parseInt(sidebar.style.maxWidth || sidebarDefaults.max));
+                        sidebar.style.width = newW + 'px';
+                    } else {
+                        const newW = clamp(startW - delta,
+                            parseInt(inspector.style.minWidth || inspectorDefaults.min),
+                            parseInt(inspector.style.maxWidth || inspectorDefaults.max));
+                        inspector.style.width = newW + 'px';
+                    }
+                    updateResizeA11y();
+                }
+
+                function onMouseUp() {
+                    if (!dragging) return;
+                    overlay.style.display = 'none';
+                    const handle = dragging === 'left' ? dragLeft : dragRight;
+                    handle.classList.remove('dragging');
+                    document.body.style.userSelect = '';
+
+                    // Persist widths to localStorage
+                    try {
+                        localStorage.setItem('pl-panel-sidebar', sidebar.style.width);
+                        localStorage.setItem('pl-panel-inspector', inspector.style.width);
+                    } catch (e) { }
+
+                    dragging = null;
+                }
+
+                dragLeft.addEventListener('mousedown', e => onMouseDown(e, 'left'));
+                dragRight.addEventListener('mousedown', e => onMouseDown(e, 'right'));
+                dragLeft.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); resizeByKeyboard('left', -24); }
+                    if (e.key === 'ArrowRight') { e.preventDefault(); resizeByKeyboard('left', 24); }
+                    if (e.key === 'Home') { e.preventDefault(); sidebar.style.width = sidebarDefaults.min + 'px'; updateResizeA11y(); }
+                    if (e.key === 'End') { e.preventDefault(); sidebar.style.width = sidebarDefaults.max + 'px'; updateResizeA11y(); }
+                });
+                dragRight.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowLeft') { e.preventDefault(); resizeByKeyboard('right', 24); }
+                    if (e.key === 'ArrowRight') { e.preventDefault(); resizeByKeyboard('right', -24); }
+                    if (e.key === 'Home') { e.preventDefault(); inspector.style.width = inspectorDefaults.min + 'px'; updateResizeA11y(); }
+                    if (e.key === 'End') { e.preventDefault(); inspector.style.width = inspectorDefaults.max + 'px'; updateResizeA11y(); }
+                });
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+
+                // Touch support
+                function onTouchStart(e, side) {
+                    onMouseDown({ preventDefault: () => { }, clientX: e.touches[0].clientX }, side);
+                }
+                function onTouchMove(e) { onMouseMove({ clientX: e.touches[0].clientX }); }
+                function onTouchEnd() { onMouseUp(); }
+
+                dragLeft.addEventListener('touchstart', e => onTouchStart(e, 'left'), { passive: false });
+                dragRight.addEventListener('touchstart', e => onTouchStart(e, 'right'), { passive: false });
+                document.addEventListener('touchmove', onTouchMove, { passive: true });
+                document.addEventListener('touchend', onTouchEnd);
+
+                // Double-click to reset to defaults
+                dragLeft.addEventListener('dblclick', () => {
+                    sidebar.style.width = sidebarDefaults.reset + 'px';
+                    try { localStorage.removeItem('pl-panel-sidebar'); } catch (e) { }
+                    updateResizeA11y();
+                });
+                dragRight.addEventListener('dblclick', () => {
+                    inspector.style.width = inspectorDefaults.reset + 'px';
+                    try { localStorage.removeItem('pl-panel-inspector'); } catch (e) { }
+                    updateResizeA11y();
+                });
+
+                // Restore persisted widths
+                try {
+                    const sw = localStorage.getItem('pl-panel-sidebar');
+                    const iw = localStorage.getItem('pl-panel-inspector');
+                    if (sw) sidebar.style.width = sw;
+                    if (iw) inspector.style.width = iw;
+                } catch (e) { }
+                updateResizeA11y();
+        })();
+    </script>
+</body>
+
+</html>

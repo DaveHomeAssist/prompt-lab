@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Lab — Chisel Sprint Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090f;--surface:#111118;--surface-alt:#16161f;
+  --border:#1e1e2e;--border-b:#2a2a3e;
+  --chisel:#378ADD;--chisel-dim:#185FA5;
+  --text:#e2e2ef;--text-m:#6b6b8a;--text-d:#3a3a55;
+  --red:#ff4466;--amber:#ffaa33;--green:#33dd88;--blue:#4488ff;--purple:#9f7aea;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:13px;line-height:1.6}
+
+.banner{position:relative;overflow:hidden;border-bottom:1px solid var(--border-b);padding:0 32px}
+.banner-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:32px 32px;opacity:0.4}
+.banner-glow{position:absolute;top:-60px;right:100px;width:360px;height:360px;background:radial-gradient(circle,rgba(55,138,221,0.07) 0%,transparent 70%);pointer-events:none}
+.banner-inner{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:28px 0 22px}
+.banner-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.agent-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(55,138,221,0.08);border:1px solid rgba(55,138,221,0.25);border-radius:4px;padding:3px 10px 3px 8px;font-family:var(--font-m);font-size:11px;font-weight:500;color:var(--chisel);letter-spacing:.06em;text-transform:uppercase}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--chisel);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.run-id{font-family:var(--font-m);font-size:11px;color:var(--text-d);letter-spacing:.04em}
+.banner-title{font-family:var(--font-d);font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:10px}
+.banner-title span{color:var(--chisel)}
+.stack-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px}
+.stack-tag{font-family:var(--font-m);font-size:11px;color:var(--text-m);background:var(--surface-alt);border:1px solid var(--border);border-radius:3px;padding:2px 8px}
+.stack-tag.warn{color:#ffaa33;background:rgba(255,170,51,.08);border-color:rgba(255,170,51,.2)}
+.stack-tag.crit{color:#ff4466;background:rgba(255,68,102,.08);border-color:rgba(255,68,102,.2)}
+.banner-meta{display:flex;align-items:center;gap:20px;padding-top:12px;border-top:1px solid var(--border);flex-wrap:wrap}
+.meta-item{display:flex;align-items:center;gap:5px;font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.meta-val{color:var(--text)}
+
+.content{max-width:1100px;margin:0 auto;padding:32px 32px 64px}
+.section-label{font-family:var(--font-m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:14px}
+
+.sprint-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:40px}
+.sprint-card{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.sprint-card.phase0{border-color:rgba(159,122,234,.25)}
+.sprint-header{padding:13px 16px 11px;border-bottom:1px solid var(--border)}
+.sprint-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.sprint-num{font-family:var(--font-m);font-size:10px;color:var(--text-d);letter-spacing:.06em}
+.sprint-weeks{font-family:var(--font-m);font-size:10px;color:var(--text-m);background:var(--surface-alt);border:1px solid var(--border);border-radius:3px;padding:1px 6px}
+.sprint-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px}
+.sprint-theme{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.sprint-body{padding:0}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-d);padding:7px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface)}
+td{padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+.mono{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.imp{display:inline-block;font-size:11px;padding:2px 7px;border-radius:3px;font-weight:500;white-space:nowrap}
+.imp-h{background:rgba(255,68,102,.1);color:#ff4466;border:1px solid rgba(255,68,102,.2)}
+.imp-m{background:rgba(255,170,51,.1);color:#ffaa33;border:1px solid rgba(255,170,51,.2)}
+.imp-l{background:rgba(51,221,136,.08);color:#33dd88;border:1px solid rgba(51,221,136,.15)}
+.imp-crit{background:rgba(159,122,234,.1);color:#9f7aea;border:1px solid rgba(159,122,234,.25)}
+
+.risk-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:32px}
+.risk-table th{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-m);background:var(--surface);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--border-b)}
+.risk-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6}
+.risk-table tr:last-child td{border-bottom:none}
+.risk-level{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--font-m);font-size:10px;font-weight:500}
+.rl-h{background:rgba(255,68,102,.1);color:#ff4466;border:1px solid rgba(255,68,102,.2)}
+.rl-m{background:rgba(255,170,51,.1);color:#ffaa33;border:1px solid rgba(255,170,51,.2)}
+
+.parallel{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:32px}
+.parallel-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px}
+.parallel-title{font-size:13px;font-weight:500}
+.parallel-sub{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.context-grid,.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.context-card,.chart-box{border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface)}
+.context-header,.chart-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface-alt);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.context-title,.chart-title{font-size:13px;font-weight:500;color:var(--text)}
+.context-sub,.chart-sub{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.context-table td:first-child,.reality-table td:first-child,.parallel td:first-child{width:34%;color:var(--text)}
+.chart-body{padding:14px 16px}
+.chart-body pre{font-family:var(--font-m);font-size:11px;color:var(--text-m);white-space:pre-wrap;line-height:1.7}
+.reality-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:32px}
+.reality-table th{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-m);background:var(--surface);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--border-b)}
+.reality-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6}
+.reality-table tr:last-child td{border-bottom:none}
+
+.note{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--chisel-dim);border-radius:0 6px 6px 0;padding:10px 14px;font-size:12px;color:var(--text-m);line-height:1.6;margin-bottom:20px}
+.note strong{color:var(--text);font-weight:500}
+.note.note-crit{border-left-color:var(--red)}
+.note.note-strat{border-left-color:var(--purple)}
+
+.full-width{grid-column:1 / -1}
+@media(max-width:880px){
+  .context-grid,.chart-grid,.sprint-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <div class="banner-grid"></div>
+  <div class="banner-glow"></div>
+  <div class="banner-inner">
+    <div class="banner-top">
+      <div class="agent-badge"><div class="badge-dot"></div>Chisel</div>
+      <div class="run-id">sprint-plan · 2026-03-20 · dual-roadmap</div>
+    </div>
+    <div class="banner-title">Prompt Lab — <span>Sprint Board</span></div>
+    <div class="stack-row">
+      <span class="stack-tag">App.jsx 77,384 bytes</span>
+      <span class="stack-tag">1,435 LOC</span>
+      <span class="stack-tag">React</span>
+      <span class="stack-tag">Tailwind</span>
+      <span class="stack-tag">21 JSX components</span>
+      <span class="stack-tag">9 hooks</span>
+      <span class="stack-tag">23 source tests</span>
+      <span class="stack-tag">4 live intelligence systems</span>
+      <span class="stack-tag warn">44px touch targets needed</span>
+    </div>
+    <div class="banner-meta">
+      <div class="meta-item">Sprints <span class="meta-val" style="margin-left:4px">6</span></div>
+      <div class="meta-item">Window <span class="meta-val" style="margin-left:4px">12 weeks</span></div>
+      <div class="meta-item">Primary track <span class="meta-val" style="margin-left:4px">Main app UX</span></div>
+      <div class="meta-item">Consulted track <span class="meta-val" style="margin-left:4px">promptlab.tools IA + source sync</span></div>
+      <div class="meta-item">Highest risk <span class="meta-val" style="color:var(--red);margin-left:4px">App.jsx orchestration + Runs fragmentation</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="note note-strat"><strong>Baseline first.</strong> Dirty worktree + branch divergence should be reconciled before Sprint 1 implementation, or regressions will be hard to isolate.</div>
+
+  <div class="section-label">Roadmap context</div>
+  <div class="context-grid">
+    <div class="context-card">
+      <div class="context-header">
+        <span class="context-title">Primary roadmap — main app</span>
+        <span class="context-sub">execution lane</span>
+      </div>
+      <table class="context-table">
+        <tbody>
+          <tr><td>Goal</td><td>Usability, ergonomics, readability, layout flexibility</td></tr>
+          <tr><td>Focus</td><td>Menus, buttons, output hierarchy, Runs, Compose</td></tr>
+          <tr><td>Why primary</td><td>Directly affects daily product usage and interaction loops</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="context-card">
+      <div class="context-header">
+        <span class="context-title">Consulted roadmap — promptlab.tools</span>
+        <span class="context-sub">parallel input</span>
+      </div>
+      <table class="context-table">
+        <tbody>
+          <tr><td>Goal</td><td>Public IA, docs coherence, source-of-truth cleanup</td></tr>
+          <tr><td>Focus</td><td>Landing/docs/nav/footer/source sync</td></tr>
+          <tr><td>Why consulted</td><td>Keeps naming, docs, and launch surfaces aligned with app changes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-label">Charts</div>
+  <div class="chart-grid">
+    <div class="chart-box">
+      <div class="chart-header">
+        <span class="chart-title">Dual-roadmap model</span>
+        <span class="chart-sub">planning context</span>
+      </div>
+      <div class="chart-body">
+<pre>Primary roadmap
+===============
+Main app UX
+→ readability
+→ navigation
+→ output-first layout
+→ runs unification
+→ compose cleanup
+→ architecture extraction
+
+Consulted roadmap
+=================
+promptlab.tools
+→ docs/source sync
+→ public IA
+→ naming consistency
+→ launch surface alignment</pre>
+      </div>
+    </div>
+    <div class="chart-box">
+      <div class="chart-header">
+        <span class="chart-title">Sprint dependency order</span>
+        <span class="chart-sub">app-first sequence</span>
+      </div>
+      <div class="chart-body">
+<pre>S1 Surface live systems
+   ↓
+S2 Readability + controls
+   ↓
+S3 Navigation simplification
+   ↓
+S4 Output-first layout
+   ↓
+S5 App.jsx extraction
+   ↓
+S6 Runs unification + Compose + validation
+
+Parallel, consulted throughout:
+promptlab.tools IA + docs/source-sync</pre>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Reality check</div>
+  <table class="reality-table">
+    <thead><tr><th>System</th><th>Current state</th></tr></thead>
+    <tbody>
+      <tr><td>Lint engine</td><td>Already live in editor hook; needs stronger surface treatment</td></tr>
+      <tr><td>PII gate</td><td>Already live in execution flow; needs clearer UX</td></tr>
+      <tr><td>Error taxonomy</td><td>Already live; recovery actions should be more visible</td></tr>
+      <tr><td>Run history</td><td>Already live; split across multiple surfaces</td></tr>
+      <tr><td>Navigation model</td><td>Already exists in code; UI should conform to it</td></tr>
+      <tr><td>Main bottleneck</td><td>App.jsx orchestration complexity</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-label" style="margin-bottom:16px">Sprints</div>
+  <div class="sprint-grid">
+
+    <!-- Sprint 1 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 1</span>
+          <span class="sprint-weeks">Weeks 1&ndash;2</span>
+        </div>
+        <div class="sprint-title">Surface existing intelligence</div>
+        <div class="sprint-theme">"Make the app feel smarter without rebuilding it"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Elevate lint summary into first-class editor status</td><td class="mono">App.jsx, useEditorState.js</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Improve PII warning presentation and actions</td><td class="mono">App.jsx, useExecutionFlow.js</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Add last-run metadata near enhanced output</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Normalize visible error recovery actions</td><td class="mono">App.jsx, errorTaxonomy.js</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 2 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 2</span>
+          <span class="sprint-weeks">Weeks 3&ndash;4</span>
+        </div>
+        <div class="sprint-title">Readability &amp; button ergonomics</div>
+        <div class="sprint-theme">"Everything readable, everything tappable"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Raise minimum text sizes across controls and labels</td><td class="mono">App.jsx, EditorActions.jsx, shared classes</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Increase touch targets to 44px minimum</td><td class="mono">shared controls / layout styles</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Strengthen contrast for labels, counters, metadata</td><td class="mono">all primary surfaces</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Move or guard destructive Clear actions</td><td class="mono">EditorActions.jsx, ComposerTab.jsx, settings actions</td><td><span class="imp imp-h">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 3 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 3</span>
+          <span class="sprint-weeks">Weeks 5&ndash;6</span>
+        </div>
+        <div class="sprint-title">Navigation simplification</div>
+        <div class="sprint-theme">"Create / Runs / Notes"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Group navigation using existing state model</td><td class="mono">App.jsx, navigationRegistry.js, useUiState.js</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Rename Library &rarr; Saved</td><td class="mono">App.jsx, navigationRegistry.js</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Rename A/B Test &rarr; Compare</td><td class="mono">App.jsx, navigationRegistry.js</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Rename History &rarr; Timeline</td><td class="mono">App.jsx, navigationRegistry.js</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add overflow-safe tab behavior and keyboard support</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 4 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 4</span>
+          <span class="sprint-weeks">Weeks 7&ndash;8</span>
+        </div>
+        <div class="sprint-title">Output-first layout</div>
+        <div class="sprint-theme">"The output is the product"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Elevate enhanced output panel/card</td><td class="mono">App.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Make Copy the dominant post-enhance CTA</td><td class="mono">App.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Add Replace input with result</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add Focus / Review layout presets</td><td class="mono">useUiState.js, MainWorkspace.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Preserve last good output on failed rerun</td><td class="mono">execution / result surface</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 5 -->
+    <div class="sprint-card phase0">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num" style="color:var(--red)">Sprint 5</span>
+          <span class="sprint-weeks">Weeks 9&ndash;10</span>
+          <span style="font-family:var(--font-m);font-size:10px;color:var(--red);background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.15);border-radius:3px;padding:1px 6px">gate</span>
+        </div>
+        <div class="sprint-title">App.jsx extraction</div>
+        <div class="sprint-theme">"Reduce regression radius"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Extract header/nav shell</td><td class="mono">App.jsx + new shell component</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Extract result pane</td><td class="mono">App.jsx + new result component</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Extract dialog/modal orchestration</td><td class="mono">App.jsx + modal components</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Reduce App.jsx toward sub-600 LOC target</td><td class="mono">App.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 6 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 6</span>
+          <span class="sprint-weeks">Weeks 11&ndash;12</span>
+        </div>
+        <div class="sprint-title">Runs unification + Compose cleanup + validation</div>
+        <div class="sprint-theme">"One coherent system"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Unify Compare + Timeline under Runs</td><td class="mono">ABTestTab.jsx, RunTimelinePanel.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Standardize run cards and actions</td><td class="mono">RunTimelinePanel.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add search/filter to Compose library</td><td class="mono">ComposerTab.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Improve Compose empty states and labels</td><td class="mono">ComposerTab.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Run accessibility + task-flow validation</td><td class="mono">all major app surfaces</td><td><span class="imp imp-h">High</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Parallel track -->
+  <div class="section-label">Consulted parallel track &mdash; promptlab.tools</div>
+  <div class="parallel">
+    <div class="parallel-header">
+      <span class="parallel-title">Public IA + docs/source-sync roadmap remains active</span>
+      <span class="parallel-sub">consulted throughout &bull; non-gating for core app UX</span>
+    </div>
+    <table>
+      <thead><tr><th>Topic</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>docs/ public HTML pages</td><td class="mono">8</td></tr>
+        <tr><td>prompt-lab-web/public HTML pages</td><td class="mono">6</td></tr>
+        <tr><td>Shared filenames</td><td class="mono">4</td></tr>
+        <tr><td>Docs-only pages</td><td class="mono">index, guide-preset-import, UI_ISSUES_TABLE, archived issue-table variant</td></tr>
+        <tr><td>Source-only pages</td><td class="mono">scriptagent, script-agent</td></tr>
+        <tr><td>Primary objective</td><td class="mono">single source of truth + coherent docs family</td></tr>
+        <tr><td>Why it matters to app roadmap</td><td class="mono">keeps labels, docs links, and launch surfaces aligned</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Risk register -->
+  <div class="section-label">Risk register</div>
+  <table class="risk-table">
+    <thead><tr><th>Risk</th><th>Level</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>App.jsx remains the largest regression surface</strong></td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Extract shell, result, and dialog layers before deeper UI work; keep App.jsx moving toward a sub-600 LOC target.</td>
+      </tr>
+      <tr>
+        <td><strong>Dirty worktree + branch divergence</strong></td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Reconcile the baseline before Sprint 1 implementation so regressions are attributable.</td>
+      </tr>
+      <tr>
+        <td><strong>Runs split across 3 surfaces</strong></td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Unify under one Runs mental model before adding more experiment UI.</td>
+      </tr>
+      <tr>
+        <td><strong>44px control pass may break compact density</strong></td>
+        <td><span class="risk-level rl-m">Med</span></td>
+        <td>Validate all density modes after Sprint 2.</td>
+      </tr>
+      <tr>
+        <td><strong>App navigation and public-site labels can drift apart</strong></td>
+        <td><span class="risk-level rl-m">Med</span></td>
+        <td>Consult the promptlab.tools roadmap each sprint for naming and docs updates.</td>
+      </tr>
+      <tr>
+        <td><strong>Compose improvements can sprawl into schema redesign</strong></td>
+        <td><span class="risk-level rl-m">Med</span></td>
+        <td>Limit the core window to search, filter, labels, and empty-state work.</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+</body>
+</html>
