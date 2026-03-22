@@ -191,7 +191,7 @@ footer a {
 </ul>
 
 <h2>API Keys</h2>
-<p>Provider API keys you configure (Anthropic, OpenAI, Google, OpenRouter, Ollama) are stored in your browser's local storage or Chrome extension storage. In the extension and desktop shells, requests go directly to the provider you selected. In the hosted web app, requests are forwarded through Prompt Lab's domain-allowlisted Vercel Edge proxy at <code>/api/proxy</code> to satisfy browser CORS requirements. Prompt Lab does not persist your keys server-side.</p>
+<p>Provider API keys you configure (Anthropic, OpenAI, Google, OpenRouter, Ollama) are stored in your browser's local storage or Chrome extension storage. In the extension and desktop shells, requests go directly to the provider you selected. In the hosted web app, requests are forwarded through Prompt Lab's domain-allowlisted Vercel Edge proxy at <code>https://prompt-lab-tawny.vercel.app/api/proxy</code> to satisfy browser CORS requirements. Prompt Lab does not persist your keys server-side.</p>
 
 <h2>AI Provider Requests</h2>
 <p>When you run a prompt, Prompt Lab sends your input to the provider API you selected. In extension and desktop environments, that traffic is direct. In the hosted web app, traffic passes through a narrow proxy that validates the target domain and forwards the request. Each provider has its own privacy policy and data handling practices. Prompt Lab does not store your prompts or responses in a developer-controlled backend.</p>

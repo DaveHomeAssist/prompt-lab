@@ -2,7 +2,7 @@
  * Proxy-aware fetch wrapper for hosted web mode.
  * Routes provider API requests through a Vercel Edge Function to bypass CORS.
  */
-export function createProxyFetch(proxyUrl = '/api/proxy') {
+export function createProxyFetch(proxyUrl = import.meta.env?.VITE_PROXY_URL || '/api/proxy') {
   return async function proxyFetch(url, init = {}) {
     const headers = init.headers instanceof Headers
       ? Object.fromEntries(init.headers)

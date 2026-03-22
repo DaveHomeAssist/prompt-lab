@@ -1,6 +1,6 @@
 {
-  "buildCommand": "cd prompt-lab-web && npm install && npm run build",
-  "installCommand": "echo 'skip'",
+  "buildCommand": "npm install diff-match-patch && cd prompt-lab-web && npm install && npm run build",
+  "installCommand": "echo 'root install handled in buildCommand'",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [

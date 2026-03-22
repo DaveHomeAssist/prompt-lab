@@ -6,7 +6,7 @@ Prompt Lab is currently delivered through three runtime shells that share one fr
 
 - Chrome / Vivaldi extension: MV3 side panel build
 - Desktop app: Tauri 2 wrapper
-- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function at `https://prompt-lab-tawny.vercel.app/app/`
+- Hosted web app: static Vite build served at `https://promptlab.tools/app/` with a Vercel CORS proxy edge function backing provider requests
 - Public landing page: static marketing entry at `https://promptlab.tools/`
 
 The shared React application lives in `prompt-lab-extension/src/`.
@@ -72,10 +72,10 @@ The desktop app uses Tauri plus local browser storage:
 The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
-- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://prompt-lab-tawny.vercel.app/app/`
+- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is published to `https://promptlab.tools/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
-- `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
+- `src/lib/proxyFetch.js` reroutes provider API requests through the Vercel proxy endpoint at `https://prompt-lab-tawny.vercel.app/api/proxy`
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
 - `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Ollama requests bypass the proxy and go direct to localhost
