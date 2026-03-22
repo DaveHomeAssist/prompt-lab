@@ -962,6 +962,8 @@ footer .lab-mark {
   .hero-cta-group { flex-direction: column; align-items: center; }
 }
 .workflow-step a { color: var(--lab-violet-light); }
+.skip-link { position:absolute; left:-9999px; top:auto; padding:8px 16px; z-index:10000; background:#222; color:#fff; text-decoration:none; border-radius:4px; font-size:14px; }
+.skip-link:focus { left:10px; top:10px; }
 </style>
 <script type="application/ld+json">
 {
@@ -984,6 +986,8 @@ footer .lab-mark {
 </script>
 </head>
 <body>
+<a href="#main" class="skip-link">Skip to content</a>
+<main id="main">
 
 <!-- ========== SITE NAV ========== -->
 <nav class="site-nav" aria-label="Site navigation">
@@ -992,16 +996,13 @@ footer .lab-mark {
     Prompt Lab
   </a>
   <div class="site-nav-links">
-    <a href="https://davehomeassist.github.io/">Portfolio</a>
+    <a href="https://davehomeassist.github.io/" target="_blank" rel="noopener">Portfolio</a>
     <a href="#features">Features</a>
     <a href="./guide.html">Guide</a>
     <a href="./setup.html">Setup</a>
-    <a href="../promptkeeper_brand_identity.html">Brand</a>
-    <a href="../promptlab-design-template.html">Template</a>
-    <a href="../promptlab-badge-set.html">Badges</a>
     <a href="./privacy.html">Privacy</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://prompt-lab-tawny.vercel.app/app/" class="nav-cta">Open App</a>
+    <a href="https://promptlab.tools/app/" target="_blank" rel="noopener" class="nav-cta">Open App</a>
   </div>
 </nav>
 
@@ -1017,7 +1018,7 @@ footer .lab-mark {
   </p>
 
   <div class="hero-cta-group">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
+    <a href="https://promptlab.tools/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
     <a href="#features" class="btn-secondary">Explore Features</a>
   </div>
 
@@ -1185,7 +1186,7 @@ footer .lab-mark {
       <div class="step-number">1</div>
       <div class="step-content">
         <h3>Choose your path</h3>
-        <p>Try the <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener"">web app</a> instantly — no install required. Or grab the <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener">latest release</a>, unzip it, and load it as an unpacked extension at <code class="inline-code-chip">chrome://extensions</code>.</p>
+        <p>Try the <a href="https://promptlab.tools/app/" target="_blank" rel="noopener">web app</a> instantly — no install required. Or grab the <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener">latest release</a>, unzip it, and load it as an unpacked extension at <code class="inline-code-chip">chrome://extensions</code>.</p>
       </div>
     </div>
 
@@ -1220,7 +1221,7 @@ footer .lab-mark {
   <h2 class="section-title reveal">Ready to experiment?</h2>
   <p class="reveal">Stop guessing at prompts. Start engineering them.</p>
   <div class="hero-cta-group reveal reveal-static">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
+    <a href="https://promptlab.tools/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab#readme" target="_blank" rel="noreferrer noopener" class="btn-secondary">Install Extension</a>
   </div>
 </section>
@@ -1328,5 +1329,6 @@ footer .lab-mark {
   }
 </script>
 
+</main>
 </body>
 </html>

@@ -3,15 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Setup Guide — PromptLab</title>
-    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon/favicon.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon/favicon-16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/favicon/apple-touch-icon.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<title>Setup Guide — Prompt Lab</title>
+<link rel="icon" type="image/png" href="./hero-logo.png">
+<link rel="canonical" href="https://promptlab.tools/setup.html">
+<meta name="description" content="Set up Prompt Lab with your preferred AI provider — Anthropic, OpenAI, Google Gemini, OpenRouter, or Ollama. Step-by-step API key configuration.">
+<meta property="og:title" content="Setup Guide — Prompt Lab">
+<meta property="og:description" content="Set up Prompt Lab with your preferred AI provider — step-by-step API key configuration.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://promptlab.tools/setup.html">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('./fonts/outfit.woff2') format('woff2');
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ── TOKENS ── */
 :root {
   --lab-violet:       #7C3AED;
@@ -560,7 +578,7 @@ footer a:hover { color: var(--text-sub); }
 
     <div class="page-title">
       <h1>Provider <span>Setup</span></h1>
-      <p>Connect PromptLab to any AI provider in under two minutes. API keys are stored locally in extension storage and used only to send requests to your selected provider.</p>
+      <p>Connect Prompt Lab to any AI provider in under two minutes. API keys are stored locally in extension storage and used only to send requests to your selected provider.</p>
     </div>
 
     <!-- OVERVIEW -->
@@ -569,7 +587,7 @@ footer a:hover { color: var(--text-sub); }
         <span class="section-num">00</span>
         <h2>How provider configuration works</h2>
       </div>
-      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">PromptLab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or A/B test, the extension reads your stored key and sends the request directly to your chosen provider.</p>
+      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">Prompt Lab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or A/B test, the extension reads your stored key and sends the request directly to your chosen provider.</p>
       <div class="callout info">
         <span class="callout-icon">ℹ</span>
         <div class="callout-body"><strong>Five providers supported:</strong> Anthropic Claude, OpenAI, Google Gemini, OpenRouter (gateway to 200+ models), and Ollama for fully local inference. You can switch providers at any time from Options without losing your library or settings.</div>
@@ -586,8 +604,8 @@ footer a:hover { color: var(--text-sub); }
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-body">
-            <strong>Open PromptLab</strong>
-            <p>Click the PromptLab icon in your browser toolbar to open the side panel.</p>
+            <strong>Open Prompt Lab</strong>
+            <p>Click the Prompt Lab icon in your browser toolbar to open the side panel.</p>
           </div>
         </div>
         <div class="step">
@@ -614,7 +632,7 @@ footer a:hover { color: var(--text-sub); }
       </div>
       <div class="callout tip" style="margin-top:1rem;">
         <span class="callout-icon">✓</span>
-        <div class="callout-body">You can also reach Options by right-clicking the PromptLab extension icon in the toolbar and choosing <strong>Options</strong>.</div>
+        <div class="callout-body">You can also reach Options by right-clicking the Prompt Lab extension icon in the toolbar and choosing <strong>Options</strong>.</div>
       </div>
     </div>
 
@@ -701,7 +719,7 @@ footer a:hover { color: var(--text-sub); }
             <div class="step-num">3</div>
             <div class="step-body">
               <strong>Choose a model</strong>
-              <p>Use the default model recommended in PromptLab's dropdown, or check <a href="https://platform.openai.com/docs/models" class="ext-link" target="_blank" rel="noopener noreferrer">OpenAI's model docs</a> for the latest options. Recommendations change frequently as new versions ship.</p>
+              <p>Use the default model recommended in Prompt Lab's dropdown, or check <a href="https://platform.openai.com/docs/models" class="ext-link" target="_blank" rel="noopener noreferrer">OpenAI's model docs</a> for the latest options. Recommendations change frequently as new versions ship.</p>
             </div>
           </div>
         </div>
@@ -845,7 +863,7 @@ footer a:hover { color: var(--text-sub); }
         </div>
         <div class="callout warn" style="margin-top:0.5rem;">
           <span class="callout-icon">!</span>
-          <div class="callout-body"><strong>Ollama must be running</strong> whenever you use this provider in PromptLab. If you get a connection error, open a terminal and run <code>ollama serve</code>.</div>
+          <div class="callout-body"><strong>Ollama must be running</strong> whenever you use this provider in Prompt Lab. If you get a connection error, open a terminal and run <code>ollama serve</code>.</div>
         </div>
       </div>
     </div>
@@ -898,7 +916,7 @@ footer a:hover { color: var(--text-sub); }
   <a href="./index.html">promptlab.tools</a> &nbsp;·&nbsp;
   <a href="./guide.html">How-To Guide</a> &nbsp;·&nbsp;
   <a href="./privacy.html">Privacy Policy</a> &nbsp;·&nbsp;
-  Questions? <a href="https://github.com/davehomeassist/prompt-lab-provider-options" target="_blank" rel="noopener noreferrer">GitHub</a>
+  Questions? <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a>
 </footer>
 
 <script>

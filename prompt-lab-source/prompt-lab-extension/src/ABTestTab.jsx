@@ -23,6 +23,7 @@ export default function ABTestTab({
   runAB,
   resetAB,
   pickWinner,
+  loadHistoryEntry,
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
@@ -150,13 +151,32 @@ export default function ABTestTab({
           <div className="px-4 pb-3 flex flex-col gap-2 max-h-48 overflow-y-auto">
             {history.slice(0, 20).map(exp => (
               <div key={exp.id} className={`${m.surface} border ${m.border} rounded-lg p-2 text-xs`}>
-                <div className="flex justify-between items-center">
-                  <span className={`font-semibold ${m.text}`}>{exp.label}</span>
-                  <span className={m.textMuted}>{new Date(exp.createdAt).toLocaleDateString()}</span>
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <span className={`font-semibold ${m.text} block truncate`}>{exp.label}</span>
+                    <span className={`block mt-0.5 ${m.textMuted}`}>
+                      {exp.variants?.map((variant) => variant.provider).filter(Boolean).join(' vs ') || 'Providers unavailable'}
+                    </span>
+                  </div>
+                  <span className={`${m.textMuted} shrink-0`}>{new Date(exp.createdAt).toLocaleDateString()}</span>
                 </div>
+                {exp.variants?.[0]?.prompt && (
+                  <p className={`mt-1 ${m.textAlt} leading-relaxed`}>
+                    {exp.variants[0].prompt.slice(0, 96)}{exp.variants[0].prompt.length > 96 ? '…' : ''}
+                  </p>
+                )}
                 {exp.outcome?.winnerVariantId && (
                   <span className="text-green-400 text-[10px]">Winner: Variant {exp.outcome.winnerVariantId}</span>
                 )}
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => loadHistoryEntry(exp)}
+                    className="text-xs font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                  >
+                    Load
+                  </button>
+                </div>
               </div>
             ))}
           </div>

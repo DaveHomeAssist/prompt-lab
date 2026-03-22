@@ -1,4 +1,5 @@
 User-agent: *
 Allow: /
+Disallow: /archive/
 
-Sitemap: https://davehomeassist.github.io/prompt-lab-provider-options/sitemap.xml
+Sitemap: https://promptlab.tools/sitemap.xml

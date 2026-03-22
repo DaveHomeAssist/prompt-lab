@@ -1,7 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import Ic from './icons';
 import useEvalRuns from './hooks/useEvalRuns.js';
+import useExperiments from './hooks/useExperiments.js';
+import ABTestTab from './ABTestTab';
 import { wordDiff } from './promptUtils';
+
+const NOOP = () => {};
 
 const VERDICT_CYCLE = [null, 'pass', 'fail', 'mixed'];
 const VERDICT_STYLES = {
@@ -104,7 +108,7 @@ function ModelComparisonView({ runs, m }) {
 }
 
 // ── Run Card ──
-function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected, copyBtn, copy }) {
+function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected, copyBtn, copy, onRerun }) {
   const [expanded, setExpanded] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [localNotes, setLocalNotes] = useState(run.notes || '');
@@ -136,7 +140,14 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
           <span className={m.textMuted}>{formatLatency(run.latencyMs)}</span>
           {version && <span className="text-violet-400 font-semibold">{version}</span>}
         </div>
-        <span className={`${m.textMuted} whitespace-nowrap`}>{formatTime(run.createdAt)}</span>
+        <div className="flex items-center gap-2">
+          {run.verdict && (
+            <span className={`px-1.5 py-0.5 rounded border text-xs font-semibold ${VERDICT_STYLES[run.verdict]}`}>
+              {run.verdict}
+            </span>
+          )}
+          <span className={`${m.textMuted} whitespace-nowrap`}>{formatTime(run.createdAt)}</span>
+        </div>
       </div>
 
       {/* Input preview */}
@@ -186,6 +197,13 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
           <button onClick={() => copy(run.output, 'Output copied')}
             className={`flex items-center gap-1 px-2 py-0.5 rounded font-semibold transition-colors ${copyBtn}`}>
             <Ic n="Copy" size={9} />Copy
+          </button>
+        )}
+
+        {onRerun && (
+          <button type="button" onClick={() => onRerun(run)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded border font-semibold transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}>
+            <Ic n="RotateCw" size={9} />Re-run
           </button>
         )}
       </div>
@@ -297,8 +315,8 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
   );
 }
 
-// ── Main Panel ──
-export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll }) {
+// ── Timeline Content (extracted for tab switching) ──
+function TimelineContent({ m, prompt, copy, compact, pageScroll, onRerun }) {
   const [mode, setMode] = useState('');
   const [provider, setProvider] = useState('');
   const [model, setModel] = useState('');
@@ -345,6 +363,123 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
     });
   };
 
+  return (
+    <div className={`p-4 flex flex-col gap-3 ${pageScroll ? '' : 'flex-1 min-h-0 overflow-y-auto'}`}>
+
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className={`text-sm font-bold ${m.text}`}>Run History</h2>
+          <p className={`text-xs ${m.textMuted} truncate`}>{prompt.title || 'Untitled prompt'}</p>
+        </div>
+        <span className={`text-xs ${m.textMuted}`}>{evalRuns.length} runs</span>
+      </div>
+
+      {/* Filters */}
+      <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg p-2`}>
+        <select value={mode} onChange={e => setMode(e.target.value)} aria-label="Filter by mode"
+          className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+          <option value="">All modes</option>
+          <option value="enhance">Enhance</option>
+          <option value="ab">A/B</option>
+          <option value="test-case">Test Case</option>
+        </select>
+        <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Filter by provider"
+          className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+          <option value="">All providers</option>
+          {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select value={model} onChange={e => setModel(e.target.value)} aria-label="Filter by model"
+          className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+          <option value="">All models</option>
+          {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
+        </select>
+        <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Filter by status"
+          className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+          <option value="">All statuses</option>
+          <option value="success">Success</option>
+          <option value="error">Error</option>
+          <option value="blocked">Blocked</option>
+        </select>
+        <select value={dateRange} onChange={e => setDateRange(e.target.value)} aria-label="Filter by date range"
+          className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+          <option value="7d">Last 7 days</option>
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="">All time</option>
+        </select>
+        <input type="search" value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search runs…"
+          className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
+        {availableProviders.length >= 2 && (
+          <button type="button" onClick={() => setShowModelCompare(p => !p)}
+            className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted}`}`}>
+            Compare Models
+          </button>
+        )}
+      </div>
+
+      {/* Golden Trend */}
+      <GoldenTrendBar runs={evalRuns} m={m} />
+
+      {/* Model Comparison */}
+      {showModelCompare && <ModelComparisonView runs={evalRuns} m={m} />}
+
+      {/* Compare Panel */}
+      {compareSelection.length === 2 && (
+        <ComparePanel runs={compareSelection} m={m} compact={compact} copy={copy} onClose={() => setCompareSelection([])} />
+      )}
+
+      {/* Loading */}
+      {loading && evalRuns.length === 0 && (
+        <div className={`text-center py-8 text-xs ${m.textMuted}`}>Loading runs…</div>
+      )}
+
+      {/* Run Cards */}
+      {evalRuns.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {evalRuns.map(run => (
+            <RunCard key={run.id} run={run} prompt={prompt} m={m}
+              updateRun={updateRun} copy={copy} copyBtn={copyBtn}
+              onSelectCompare={handleSelectCompare}
+              onRerun={onRerun}
+              isCompareSelected={!!compareSelection.find(r => r.id === run.id)} />
+          ))}
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && evalRuns.length === 0 && (
+        <div className={`text-center py-8 text-xs ${m.textMuted}`}>
+          No runs yet. Use the Prompt Editor to enhance a prompt and runs will appear here.
+        </div>
+      )}
+
+      {/* Load More */}
+      {hasMore && (
+        <button type="button" onClick={loadMore}
+          className={`w-full py-2 text-xs font-semibold rounded-lg border transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}>
+          Load more
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Main Panel ──
+export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll, runsView: runsViewProp, setRunsView: setRunsViewProp, onRerun }) {
+  // Use prop-driven view if provided by App.jsx, otherwise manage locally
+  const [localRunsView, setLocalRunsView] = useState('timeline');
+  const activeView = runsViewProp || localRunsView;
+  const setActiveView = setRunsViewProp || setLocalRunsView;
+
+  // Experiments state for the embedded Compare view
+  const experiments = useExperiments({ notify: NOOP });
+
+  const handleTabSwitch = useCallback((view) => {
+    setActiveView(view);
+  }, [setActiveView]);
+
   if (!prompt) {
     return (
       <div className={`flex-1 flex items-center justify-center p-8 ${pageScroll ? 'min-h-[60vh]' : ''}`}>
@@ -355,104 +490,36 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
 
   return (
     <div className={`flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
-      <div className={`p-4 flex flex-col gap-3 ${pageScroll ? '' : 'h-full min-h-0 overflow-y-auto'}`}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className={`text-sm font-bold ${m.text}`}>Run History</h2>
-            <p className={`text-xs ${m.textMuted} truncate`}>{prompt.title || 'Untitled prompt'}</p>
-          </div>
-          <span className={`text-xs ${m.textMuted}`}>{evalRuns.length} runs</span>
-        </div>
-
-        {/* Filters */}
-        <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg p-2`}>
-          <select value={mode} onChange={e => setMode(e.target.value)} aria-label="Filter by mode"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
-            <option value="">All modes</option>
-            <option value="enhance">Enhance</option>
-            <option value="ab">A/B</option>
-            <option value="test-case">Test Case</option>
-          </select>
-          <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Filter by provider"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
-            <option value="">All providers</option>
-            {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <select value={model} onChange={e => setModel(e.target.value)} aria-label="Filter by model"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
-            <option value="">All models</option>
-            {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
-          </select>
-          <select value={status} onChange={e => setStatus(e.target.value)} aria-label="Filter by status"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
-            <option value="">All statuses</option>
-            <option value="success">Success</option>
-            <option value="error">Error</option>
-            <option value="blocked">Blocked</option>
-          </select>
-          <select value={dateRange} onChange={e => setDateRange(e.target.value)} aria-label="Filter by date range"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
-            <option value="7d">Last 7 days</option>
-            <option value="30d">Last 30 days</option>
-            <option value="90d">Last 90 days</option>
-            <option value="">All time</option>
-          </select>
-          <input type="search" value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search runs…"
-            className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
-          {availableProviders.length >= 2 && (
-            <button type="button" onClick={() => setShowModelCompare(p => !p)}
-              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted}`}`}>
-              Compare Models
-            </button>
-          )}
-        </div>
-
-        {/* Golden Trend */}
-        <GoldenTrendBar runs={evalRuns} m={m} />
-
-        {/* Model Comparison */}
-        {showModelCompare && <ModelComparisonView runs={evalRuns} m={m} />}
-
-        {/* Compare Panel */}
-        {compareSelection.length === 2 && (
-          <ComparePanel runs={compareSelection} m={m} compact={compact} copy={copy} onClose={() => setCompareSelection([])} />
-        )}
-
-        {/* Loading */}
-        {loading && evalRuns.length === 0 && (
-          <div className={`text-center py-8 text-xs ${m.textMuted}`}>Loading runs…</div>
-        )}
-
-        {/* Run Cards */}
-        {evalRuns.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {evalRuns.map(run => (
-              <RunCard key={run.id} run={run} prompt={prompt} m={m}
-                updateRun={updateRun} copy={copy} copyBtn={copyBtn}
-                onSelectCompare={handleSelectCompare}
-                isCompareSelected={!!compareSelection.find(r => r.id === run.id)} />
-            ))}
-          </div>
-        )}
-
-        {/* Empty */}
-        {!loading && evalRuns.length === 0 && (
-          <div className={`text-center py-8 text-xs ${m.textMuted}`}>
-            No runs yet. Use the Prompt Editor to enhance a prompt and runs will appear here.
-          </div>
-        )}
-
-        {/* Load More */}
-        {hasMore && (
-          <button type="button" onClick={loadMore}
-            className={`w-full py-2 text-xs font-semibold rounded-lg border transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}>
-            Load more
+      {/* ── Runs tab bar ── */}
+      <div className={`flex items-center gap-1 px-4 pt-3 pb-0 shrink-0`}>
+        {[
+          { key: 'timeline', label: 'Timeline', icon: 'Clock' },
+          { key: 'compare', label: 'Compare', icon: 'GitBranch' },
+        ].map(({ key, label, icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => handleTabSwitch(key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              activeView === key
+                ? 'bg-violet-600 text-white'
+                : `${m.btn} ${m.textAlt} hover:text-white`
+            }`}
+          >
+            <Ic n={icon} size={11} />
+            {label}
           </button>
-        )}
+        ))}
       </div>
+
+      {/* ── Active sub-view ── */}
+      {activeView === 'timeline' && (
+        <TimelineContent m={m} prompt={prompt} copy={copy} compact={compact} pageScroll={pageScroll} onRerun={onRerun} />
+      )}
+
+      {activeView === 'compare' && (
+        <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...experiments} />
+      )}
     </div>
   );
 }
