@@ -105,7 +105,9 @@ async function checkDistArtifacts() {
   const checks = [
     { path: join(extDir, 'dist', 'panel.html'),  label: 'Extension panel.html' },
     { path: join(webDir, 'dist', 'index.html'),   label: 'Web index.html' },
+    { path: join(webDir, 'dist', 'app', 'index.html'), label: 'Web app index.html' },
     { path: join(docsDir, 'index.html'),           label: 'Landing docs/index.html' },
+    { path: join(docsDir, 'app', 'index.html'),    label: 'Landing docs/app/index.html' },
   ];
 
   for (const check of checks) {
@@ -146,7 +148,7 @@ async function checkBundleSize() {
 
 // ── 8. LANDING PAGE ASSETS ──
 async function checkLandingAssets() {
-  const required = ['index.html', 'fonts', 'hero-logo.png', 'og-image.png'];
+  const required = ['index.html', 'app', 'assets', 'fonts', 'hero-logo.png', 'og-image.png'];
   const optional = ['guide.html', 'setup.html', 'templates'];
 
   for (const name of required) {

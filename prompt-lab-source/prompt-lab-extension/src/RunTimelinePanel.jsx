@@ -9,12 +9,22 @@ const VERDICT_STYLES = {
   fail: 'bg-red-500/20 text-red-400 border-red-500/30',
   mixed: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
 };
+const STATUS_STYLES = {
+  success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  error: 'bg-red-500/15 text-red-400 border-red-500/25',
+  blocked: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
+};
 const PROVIDER_COLORS = {
   anthropic: 'bg-orange-500/20 text-orange-300',
   openai: 'bg-emerald-500/20 text-emerald-300',
   google: 'bg-blue-500/20 text-blue-300',
   openrouter: 'bg-purple-500/20 text-purple-300',
   ollama: 'bg-gray-500/20 text-gray-300',
+};
+const MODE_LABELS = {
+  enhance: 'Enhance',
+  ab: 'A/B',
+  'test-case': 'Test Case',
 };
 const MODEL_COMPARE_GRID_CLASS = {
   1: 'grid-cols-1',
@@ -35,6 +45,13 @@ function formatTime(iso) {
 function formatSignedNumber(value, suffix = '') {
   if (!Number.isFinite(value) || value === 0) return `0${suffix}`;
   return `${value > 0 ? '+' : ''}${value}${suffix}`;
+}
+
+function formatDateRangeLabel(value) {
+  if (value === '7d') return 'Last 7 days';
+  if (value === '30d') return 'Last 30 days';
+  if (value === '90d') return 'Last 90 days';
+  return 'All time';
 }
 
 function resolveVersion(run, prompt) {
@@ -109,6 +126,8 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
   const [editingNotes, setEditingNotes] = useState(false);
   const [localNotes, setLocalNotes] = useState(run.notes || '');
   const version = resolveVersion(run, prompt);
+  const statusClass = STATUS_STYLES[run.status] || `${m.border} ${m.textMuted}`;
+  const title = run.variantLabel || `${MODE_LABELS[run.mode] || 'Run'} output`;
 
   const cycleVerdict = () => {
     const idx = VERDICT_CYCLE.indexOf(run.verdict);
@@ -126,17 +145,23 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
   return (
     <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${isCompareSelected ? 'ring-2 ring-violet-500' : ''}`}>
       {/* Meta row */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className={`inline-block px-1.5 py-0.5 rounded font-semibold ${PROVIDER_COLORS[run.provider] || 'bg-gray-500/20 text-gray-300'}`}>
-            {run.provider}
-          </span>
-          <span className={`${m.textMuted} truncate`}>{run.model}</span>
-          <span className={`uppercase ${m.textMuted}`}>{run.mode === 'test-case' ? 'test' : run.mode}</span>
-          <span className={m.textMuted}>{formatLatency(run.latencyMs)}</span>
-          {version && <span className="text-violet-400 font-semibold">{version}</span>}
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="min-w-0">
+          <p className={`text-sm font-semibold ${m.text} truncate`}>{title}</p>
+          <div className={`flex items-center gap-2 min-w-0 mt-1 flex-wrap ${m.textMuted}`}>
+            <span className={`inline-block px-1.5 py-0.5 rounded font-semibold ${PROVIDER_COLORS[run.provider] || 'bg-gray-500/20 text-gray-300'}`}>
+              {run.provider}
+            </span>
+            <span className="truncate">{run.model}</span>
+            <span className="uppercase">{run.mode === 'test-case' ? 'test' : run.mode}</span>
+            <span>{formatLatency(run.latencyMs)}</span>
+            {version && <span className="text-violet-400 font-semibold">{version}</span>}
+            <span className="whitespace-nowrap">{formatTime(run.createdAt)}</span>
+          </div>
         </div>
-        <span className={`${m.textMuted} whitespace-nowrap`}>{formatTime(run.createdAt)}</span>
+        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusClass}`}>
+          {run.status}
+        </span>
       </div>
 
       {/* Input preview */}
@@ -308,7 +333,7 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
   const [showModelCompare, setShowModelCompare] = useState(false);
   const [compareSelection, setCompareSelection] = useState([]);
 
-  const { evalRuns, loading, hasMore, loadMore, updateRun } = useEvalRuns({
+  const { evalRuns, loading, total, hasMore, loadMore, updateRun } = useEvalRuns({
     promptId: prompt?.id || null,
     tab: 'history',
     limit: 20,
@@ -336,6 +361,20 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
     );
     return [...set].sort();
   }, [evalRuns, provider]);
+  const activeFilters = [
+    mode ? `Mode: ${MODE_LABELS[mode] || mode}` : null,
+    provider ? `Provider: ${provider}` : null,
+    model ? `Model: ${model}` : null,
+    status ? `Status: ${status}` : null,
+    search ? `Search: ${search}` : null,
+    dateRange && dateRange !== '30d' ? `Window: ${formatDateRangeLabel(dateRange)}` : null,
+  ].filter(Boolean);
+  const summaryCards = [
+    { label: 'Visible', value: `${evalRuns.length}${Number.isFinite(total) ? ` / ${total}` : ''}` },
+    { label: 'Providers', value: availableProviders.length ? String(availableProviders.length) : '—' },
+    { label: 'Compare Tray', value: `${compareSelection.length} / 2` },
+    { label: 'Window', value: formatDateRangeLabel(dateRange) },
+  ];
 
   const handleSelectCompare = (run) => {
     setCompareSelection(prev => {
@@ -343,6 +382,14 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
       if (prev.length >= 2) return [prev[1], run];
       return [...prev, run];
     });
+  };
+  const clearFilters = () => {
+    setMode('');
+    setProvider('');
+    setModel('');
+    setStatus('');
+    setDateRange('30d');
+    setSearch('');
   };
 
   if (!prompt) {
@@ -360,10 +407,22 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className={`text-sm font-bold ${m.text}`}>Run History</h2>
+            <h2 className={`text-sm font-bold ${m.text}`}>Runs & Analysis</h2>
             <p className={`text-xs ${m.textMuted} truncate`}>{prompt.title || 'Untitled prompt'}</p>
           </div>
-          <span className={`text-xs ${m.textMuted}`}>{evalRuns.length} runs</span>
+          <span className={`text-xs ${m.textMuted}`}>{evalRuns.length}{Number.isFinite(total) ? ` / ${total}` : ''} runs</span>
+        </div>
+
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: `repeat(${compact ? 2 : summaryCards.length}, minmax(0, 1fr))` }}
+        >
+          {summaryCards.map((card) => (
+            <div key={card.label} className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 min-w-0`}>
+              <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>{card.label}</p>
+              <p className={`mt-1 text-sm font-semibold ${m.text} truncate`}>{card.value}</p>
+            </div>
+          ))}
         </div>
 
         {/* Filters */}
@@ -409,12 +468,53 @@ export default function RunTimelinePanel({ m, prompt, copy, compact, pageScroll 
             </button>
           )}
         </div>
+        {(activeFilters.length > 0 || compareSelection.length > 0) && (
+          <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2`}>
+            <div className="flex flex-wrap gap-2">
+              {activeFilters.map((label) => (
+                <span key={label} className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${m.pill}`}>
+                  {label}
+                </span>
+              ))}
+              {compareSelection.length > 0 && (
+                <span className="inline-flex items-center rounded-full bg-violet-500/15 px-2 py-1 text-[11px] font-semibold text-violet-300">
+                  Compare tray: {compareSelection.length} selected
+                </span>
+              )}
+            </div>
+            {activeFilters.length > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className={`text-xs font-semibold transition-colors ${m.textAlt} hover:text-violet-400`}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Golden Trend */}
         <GoldenTrendBar runs={evalRuns} m={m} />
 
         {/* Model Comparison */}
         {showModelCompare && <ModelComparisonView runs={evalRuns} m={m} />}
+
+        {compareSelection.length === 1 && (
+          <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2`}>
+            <div>
+              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Compare Ready</p>
+              <p className={`text-xs ${m.textMuted}`}>Pick one more run card to open the side-by-side compare view.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCompareSelection([])}
+              className={`text-xs font-semibold transition-colors ${m.textAlt} hover:text-violet-400`}
+            >
+              Clear tray
+            </button>
+          </div>
+        )}
 
         {/* Compare Panel */}
         {compareSelection.length === 2 && (

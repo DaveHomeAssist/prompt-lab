@@ -7,9 +7,13 @@ on:
     paths:
       - docs/**
       - prompt-lab-source/public/**
+      - prompt-lab-source/prompt-lab-web/**
+      - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/**
       - prompt-lab-source/package.json
       - prompt-lab-source/package-lock.json
+      - prompt-lab-source/prompt-lab-web/package.json
+      - prompt-lab-source/prompt-lab-web/package-lock.json
       - .github/workflows/pages.yml
   workflow_dispatch:
 
@@ -35,12 +39,16 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: prompt-lab-source/package-lock.json
 
       - name: Install landing dependencies
         working-directory: prompt-lab-source
+        run: npm ci
+
+      - name: Install web app dependencies
+        working-directory: prompt-lab-source/prompt-lab-web
         run: npm ci
 
       - name: Build landing site

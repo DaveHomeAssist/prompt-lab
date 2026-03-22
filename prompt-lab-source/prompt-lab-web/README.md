@@ -5,13 +5,13 @@ Prompt Lab's public web deployment lives at `https://promptlab.tools` and is bui
 The public site has two routes:
 
 - `/` — landing page and product marketing surface
-- `https://prompt-lab-tawny.vercel.app/app/` — current public hosted Prompt Lab application
+- `https://promptlab.tools/app/` — current public hosted Prompt Lab application
 
 The `/app/` shell reuses the same frontend source as the extension and desktop app.
 
 ## How it works
 
-Provider API requests from the hosted app route through a Vercel Edge Function at `/api/proxy` to bypass CORS. The proxy validates the target domain against an allowlist (Anthropic, OpenAI, Gemini, OpenRouter) and forwards the request. Ollama requests go direct to localhost. API keys are entered by the user and never stored server-side.
+Provider API requests from the hosted app route through a Vercel Edge Function at `https://prompt-lab-tawny.vercel.app/api/proxy` to bypass CORS. The proxy validates the target domain against an allowlist (Anthropic, OpenAI, Gemini, OpenRouter) and forwards the request. Ollama requests go direct to localhost. API keys are entered by the user and never stored server-side.
 
 ## Dev setup
 
@@ -45,7 +45,7 @@ cd ..
 vercel
 ```
 
-Vercel builds `prompt-lab-web/`, serves `prompt-lab-web/dist`, and deploys the root edge function at `/api/proxy`.
+GitHub Pages serves the static `prompt-lab-web/dist/app/` bundle at `promptlab.tools/app/`, while Vercel continues to host the edge proxy at `https://prompt-lab-tawny.vercel.app/api/proxy`.
 
 ## Key files
 

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -6,7 +7,9 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceDir = resolve(scriptDir, '..');
 const repoDir = resolve(sourceDir, '..');
 const publicDir = join(sourceDir, 'public');
+const webDir = join(sourceDir, 'prompt-lab-web');
 const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
+const webDistDir = join(sourceDir, 'prompt-lab-web', 'dist');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
@@ -21,11 +24,38 @@ const copyTargets = [
 const webPageTargets = [
   ['guide.html', 'guide.html'],
   ['setup.html', 'setup.html'],
+  ['privacy.html', 'privacy.html'],
+  ['prompt-embed.html', 'prompt-embed.html'],
+  ['scriptagent.html', 'scriptagent.html'],
 ];
 
-async function resetDocsDir() {
-  await rm(docsDir, { recursive: true, force: true });
+const webBuildTargets = [
+  ['app', 'app'],
+  ['assets', 'assets'],
+];
+
+function buildWebApp() {
+  execFileSync('npm', ['run', 'build'], {
+    cwd: webDir,
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+}
+
+async function prepareDocsDir() {
   await mkdir(docsDir, { recursive: true });
+  const managedTargets = [
+    ...copyTargets.map(([, toName]) => toName),
+    ...webPageTargets.map(([, toName]) => toName),
+    ...webBuildTargets.map(([, toName]) => toName),
+    'fonts',
+    '.nojekyll',
+    'CNAME',
+  ];
+
+  for (const target of managedTargets) {
+    await rm(join(docsDir, target), { recursive: true, force: true });
+  }
 }
 
 async function copyTarget(fromName, toName) {
@@ -42,6 +72,12 @@ async function copyFontsDir() {
   }
 
   await cp(sourceFontsDir, targetFontsDir, { recursive: true });
+}
+
+async function copyWebBuildArtifacts() {
+  for (const [fromName, toName] of webBuildTargets) {
+    await cp(join(webDistDir, fromName), join(docsDir, toName), { recursive: true });
+  }
 }
 
 async function writeNoJekyll() {
@@ -61,17 +97,23 @@ async function validatePublicInputs() {
   if (!entries.includes('prompt-lab-landing.html')) {
     throw new Error('Landing source file is missing from public/');
   }
+
+  for (const [fromName] of webPageTargets) {
+    await stat(join(webPublicDir, fromName));
+  }
 }
 
 async function main() {
+  buildWebApp();
   await validatePublicInputs();
-  await resetDocsDir();
+  await prepareDocsDir();
 
   for (const [fromName, toName] of copyTargets) {
     await copyTarget(fromName, toName);
   }
 
   await copyFontsDir();
+  await copyWebBuildArtifacts();
 
   // Copy web pages (guide, setup)
   for (const [fromName, toName] of webPageTargets) {

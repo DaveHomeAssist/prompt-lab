@@ -58,7 +58,7 @@ docs/                     # Published public docs/static site copy
 | Surface | URL | Host |
 |---------|-----|------|
 | Public landing page | `https://promptlab.tools/` | Vercel |
-| Hosted web app | `https://prompt-lab-tawny.vercel.app/app/` | Vercel |
+| Hosted web app | `https://promptlab.tools/app/` | GitHub Pages + Vercel proxy |
 | Chrome / Vivaldi extension | Production — MV3 side panel | Chrome Web Store |
 | macOS desktop | Tauri 2 — `.app` / `.dmg` | Local build |
 | Windows desktop | Tauri 2 — `.exe` / `.msi` | Local build |
@@ -84,7 +84,7 @@ docs/                     # Published public docs/static site copy
 ## Links
 
 - Landing: https://promptlab.tools/
-- Web app: https://prompt-lab-tawny.vercel.app/app/
+- Web app: https://promptlab.tools/app/
 
 ## Conventions
 

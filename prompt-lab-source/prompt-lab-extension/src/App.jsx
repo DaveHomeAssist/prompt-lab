@@ -158,9 +158,21 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
-  const activeSection = primaryView === 'runs'
-    ? 'experiments'
-    : (workspaceView === 'library' ? 'library' : 'create');
+  const qualityCount = score
+    ? [score.role, score.task, score.format, score.constraints, score.context].filter(Boolean).length
+    : 0;
+  const runtimeLabel = isWeb ? 'Web' : (isExtension ? 'Extension' : 'Desktop');
+  const currentDraftLabel = editingId && currentEntry
+    ? currentEntry.title
+    : (raw.trim() ? 'Unsaved draft' : 'New draft');
+  const resultStateLabel = loading
+    ? (streaming ? 'Streaming output' : 'Generating')
+    : (enhanced.trim() ? 'Result ready' : (raw.trim() ? 'Draft in progress' : 'Awaiting input'));
+  const activeSection = primaryView === 'notebook'
+    ? 'notebook'
+    : primaryView === 'runs'
+      ? 'runs'
+      : (workspaceView === 'library' ? 'library' : 'create');
   const createLayoutOptions = compact
     ? []
     : [
@@ -223,9 +235,12 @@ export default function App() {
       setWorkspaceView('library');
       return;
     }
-    if (nextSection === 'experiments') {
+    if (nextSection === 'runs') {
       setPrimaryView('runs');
-      setRunsView('compare');
+      return;
+    }
+    if (nextSection === 'notebook') {
+      setPrimaryView('notebook');
     }
   };
 
@@ -248,6 +263,88 @@ export default function App() {
     setNewCollName('');
     setShowNewColl(false);
   };
+
+  const workspaceSummary = (() => {
+    if (activeSection === 'library') {
+      return {
+        kicker: 'Library',
+        title: 'Browse reusable prompts',
+        description: 'Search by collection or tag, then send the strongest prompt back into Create, Build, or Runs.',
+        stats: [
+          { label: 'Runtime', value: runtimeLabel },
+          { label: 'Saved', value: `${lib.library.length} prompts` },
+          { label: 'Visible', value: `${lib.filtered.length} shown` },
+          { label: 'Filter', value: lib.activeCollection || lib.activeTag || 'All prompts' },
+        ],
+        actions: [
+          { label: 'Open Create', onClick: () => openSection('create') },
+          { label: 'Build Sequence', onClick: () => openCreateView('composer') },
+          { label: 'View Runs', onClick: () => openSection('runs') },
+        ],
+      };
+    }
+
+    if (activeSection === 'runs') {
+      return {
+        kicker: 'Runs',
+        title: runsView === 'compare' ? 'Compare prompt variants' : 'Review run history',
+        description: runsView === 'compare'
+          ? 'Run prompt variants side by side, inspect differences, and keep the winner.'
+          : 'Filter previous runs, inspect provider responses, and compare outputs over time.',
+        stats: [
+          { label: 'Runtime', value: runtimeLabel },
+          { label: 'View', value: runsView === 'compare' ? 'Compare' : 'History' },
+          { label: 'Prompt', value: currentEntry?.title || 'Select a saved prompt' },
+          { label: 'Latest', value: latestEvalRun ? `${latestEvalRun.provider} / ${latestEvalRun.model}` : 'No runs yet' },
+        ],
+        actions: [
+          { label: 'History', onClick: () => openRunsView('history'), active: runsView === 'history' },
+          { label: 'Compare', onClick: () => openRunsView('compare'), active: runsView === 'compare' },
+          { label: 'Back to Create', onClick: () => openSection('create') },
+        ],
+      };
+    }
+
+    if (activeSection === 'notebook') {
+      return {
+        kicker: 'Notebook',
+        title: 'Capture notes and prompt fragments',
+        description: 'Keep working notes in multi-pad scratch space, then promote anything useful back into the prompt library.',
+        stats: [
+          { label: 'Runtime', value: runtimeLabel },
+          { label: 'Theme', value: colorMode === 'dark' ? 'Dark' : 'Light' },
+          { label: 'Density', value: density },
+          { label: 'Handoff', value: 'Library ready' },
+        ],
+        actions: [
+          { label: 'Open Create', onClick: () => openSection('create') },
+          { label: 'Browse Library', onClick: () => openSection('library') },
+          { label: 'View Runs', onClick: () => openSection('runs') },
+        ],
+      };
+    }
+
+    return {
+      kicker: workspaceView === 'composer' ? 'Build' : 'Create',
+      title: workspaceView === 'composer' ? 'Assemble prompts from saved blocks' : 'Draft, enhance, and refine prompts',
+      description: workspaceView === 'composer'
+        ? 'Sequence reusable prompt blocks, preview the combined output, and send the result back into the editor.'
+        : currentTestCases.length > 0
+          ? `Write and enhance a prompt, then validate it against ${currentTestCases.length} saved test ${currentTestCases.length === 1 ? 'case' : 'cases'}.`
+          : 'Start from a fresh draft, improve it with the active mode, and save the version worth keeping.',
+      stats: [
+        { label: 'Runtime', value: runtimeLabel },
+        { label: 'Draft', value: currentDraftLabel },
+        { label: 'Output', value: resultStateLabel },
+        { label: 'Quality', value: raw.trim() ? `${qualityCount}/5 signals` : 'Awaiting input' },
+      ],
+      actions: [
+        { label: 'Browse Library', onClick: () => openSection('library') },
+        { label: 'Build Sequence', onClick: () => openCreateView('composer'), active: workspaceView === 'composer' },
+        { label: 'View Runs', onClick: () => openSection('runs') },
+      ],
+    };
+  })();
 
   // ── Keyboard shortcuts (driven by navigationRegistry) ──
   useEffect(() => {
@@ -293,9 +390,9 @@ export default function App() {
     goEditor: () => { openSection('create'); closePalette(); },
     goLibrary: () => { openSection('library'); closePalette(); },
     goBuild: () => { openCreateView('composer'); closePalette(); },
-    goRuns: () => { openSection('experiments'); closePalette(); },
+    goRuns: () => { openSection('runs'); closePalette(); },
     goCompare: () => { openRunsView('compare'); closePalette(); },
-    goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
+    goNotebook: () => { openSection('notebook'); closePalette(); },
     toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
     exportLib: () => { lib.exportLib(); closePalette(); },
     openSettings: () => { setShowSettings(true); closePalette(); },
@@ -323,7 +420,7 @@ export default function App() {
               <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
             </div>
             <div className="flex items-center gap-1">
-              <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
+              <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>{primaryModKey}K</button>
               <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
                 {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
               </button>
@@ -332,37 +429,24 @@ export default function App() {
             </div>
           </div>
         </div>
-        <div className={`flex items-center justify-between gap-2 mt-2 ${compact ? 'flex-col items-stretch' : ''}`}>
-          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label="Primary workspaces">
-            <div className="pl-scroll-row">
-            {[
-              ['create', 'Create'],
-              ['library', 'Library'],
-              ['experiments', 'Experiments'],
-            ].map(([id, label]) => (
-              <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
-                className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                {label}
-              </button>
-            ))}
-            </div>
-          </div>
-          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} aria-label="Prompt Lab utilities">
-            <div className="pl-scroll-row">
-            <button type="button" onClick={() => openCreateView('composer')}
-              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Build
+        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label="Primary workspaces">
+          <div className="pl-scroll-row">
+          {[
+            ['create', 'Create'],
+            ['library', 'Library'],
+            ['runs', 'Runs'],
+            ['notebook', 'Notebook'],
+          ].map(([id, label]) => (
+            <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
+              className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              {label}
             </button>
-            <button type="button" onClick={() => setPrimaryView('notebook')}
-              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Notebook
-            </button>
-            </div>
+          ))}
           </div>
         </div>
-        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'runs' ? 'Run views' : activeSection === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
           <div className="pl-scroll-row">
-          {activeSection === 'experiments' && (
+          {activeSection === 'runs' && (
             <>
               {SUBVIEWS.runs.map(({ id, label }) => (
                 <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
@@ -372,22 +456,79 @@ export default function App() {
               ))}
             </>
           )}
-          {primaryView === 'notebook' && (
-            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
-          )}
-          {activeSection === 'create' && createLayoutOptions.length > 0 && (
+          {activeSection === 'create' && (
             <>
-              {createLayoutOptions.map(([id, label]) => (
-                <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                  {label}
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimaryView('create');
+                  setWorkspaceView('editor');
+                  setEditorLayout('editor');
+                }}
+                className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === 'editor' && effectiveEditorLayout === 'editor' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+              >
+                Write
+              </button>
+              <button
+                type="button"
+                onClick={() => openCreateView('composer')}
+                className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+              >
+                Build
+              </button>
+              {createLayoutOptions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPrimaryView('create');
+                    setWorkspaceView('editor');
+                    setEditorLayout('split');
+                  }}
+                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${tab === 'editor' && effectiveEditorLayout === 'split' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                >
+                  Dual Pane
                 </button>
-              ))}
+              )}
             </>
           )}
           {activeSection === 'library' && (
-            <span className={`text-[11px] ${m.textMuted}`}>Browse, filter, and reuse saved prompts</span>
+            <span className={`text-[11px] ${m.textMuted}`}>Search, reuse, and route prompts into Create or Build.</span>
           )}
+          {activeSection === 'notebook' && (
+            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff.</span>
+          )}
+          </div>
+        </div>
+        <div className={`mt-3 ${m.surface} border ${m.border} rounded-xl p-3`}>
+          <div className={`flex ${compact ? 'flex-col gap-3' : 'items-start justify-between gap-4'}`}>
+            <div className="min-w-0">
+              <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textSub}`}>{workspaceSummary.kicker}</p>
+              <h2 className={`mt-1 text-sm font-semibold ${m.text}`}>{workspaceSummary.title}</h2>
+              <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>{workspaceSummary.description}</p>
+            </div>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              {workspaceSummary.actions.map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={action.onClick}
+                  className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${action.active ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                >
+                  {action.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div
+            className="grid gap-2 mt-3"
+            style={{ gridTemplateColumns: `repeat(${compact ? 2 : Math.min(workspaceSummary.stats.length, 4)}, minmax(0, 1fr))` }}
+          >
+            {workspaceSummary.stats.map((item) => (
+              <div key={item.label} className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2 min-w-0`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${m.textSub}`}>{item.label}</p>
+                <p className={`mt-1 text-xs font-medium ${m.textBody} truncate`}>{item.value}</p>
+              </div>
+            ))}
           </div>
         </div>
       </header>
@@ -404,18 +545,6 @@ export default function App() {
           editorPane={(
             <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
               <div className="p-4 flex flex-col gap-3 h-full min-h-0 overflow-hidden">
-              {activeSection === 'create' && createLayoutOptions.length > 0 && (
-                <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`}>
-                  <div className="pl-scroll-row">
-                  {createLayoutOptions.map(([id, label]) => (
-                    <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                      className={`pl-tab-btn ui-control text-xs px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-                      {label}
-                    </button>
-                  ))}
-                  </div>
-                </div>
-              )}
               {lib.quickInject.length > 0 && (
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
                   <button
