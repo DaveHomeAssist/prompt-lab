@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceDir = resolve(scriptDir, '..');
 const repoDir = resolve(sourceDir, '..');
+const publicDir = join(sourceDir, 'public');
 const webDir = join(sourceDir, 'prompt-lab-web');
 const webPublicDir = join(webDir, 'public');
 const docsDir = join(repoDir, 'docs');
@@ -27,6 +28,16 @@ const dirTargets = [
   [join(webPublicDir, 'tools'), 'tools'],
 ];
 
+// Legacy mirror targets retained for compatibility.
+// The canonical web-brand art lives in prompt-lab-web/public/.
+const legacyMirrorTargets = [
+  [join(webDir, 'index.html'), join(publicDir, 'prompt-lab-landing.html')],
+  [join(webPublicDir, 'hero-logo.png'), join(publicDir, 'hero-logo.png')],
+  [join(webPublicDir, 'og-image.png'), join(publicDir, 'og-image.png')],
+  [join(webPublicDir, 'robots.txt'), join(publicDir, 'robots.txt')],
+  [join(webPublicDir, 'sitemap.xml'), join(publicDir, 'sitemap.xml')],
+];
+
 const obsoleteTargets = [
   'script-agent.html',
   'scriptagent.html',
@@ -36,6 +47,7 @@ const obsoleteTargets = [
 
 async function ensureDocsDir() {
   await mkdir(docsDir, { recursive: true });
+  await mkdir(publicDir, { recursive: true });
 }
 
 async function copyTarget(fromPath, toName) {
@@ -78,6 +90,12 @@ async function cleanupObsoleteTargets() {
   }
 }
 
+async function syncLegacyMirrors() {
+  for (const [fromPath, toPath] of legacyMirrorTargets) {
+    await cp(fromPath, toPath, { force: true });
+  }
+}
+
 async function main() {
   await validatePublicInputs();
   await ensureDocsDir();
@@ -98,6 +116,7 @@ async function main() {
     }
   }
 
+  await syncLegacyMirrors();
   await writeNoJekyll();
   await writeCname();
 

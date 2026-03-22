@@ -10,6 +10,7 @@ Updated: 2026-03-22
 - `prompt-lab-extension/VERSION_HISTORY.md` is the canonical multi-surface changelog.
 - `prompt-lab-web/index.html` is the authoring source for the public landing page.
 - `prompt-lab-web/public/` is the preferred authoring source for auxiliary public HTML docs where a source copy exists.
+- `prompt-lab-web/public/hero-logo.png` and `prompt-lab-web/public/og-image.png` are the canonical public web-brand assets.
 - `../docs/` is the published public-docs/static-site copy, not the preferred authoring location.
 - Root operational docs like `../CURRENT_PROJECT_REPORT.md` and `../SESSION_HANDOFF_PROMPT.md` are working context artifacts, not canonical product docs.
 
@@ -22,6 +23,7 @@ Updated: 2026-03-22
 | `ARCHITECTURE.md` | Canonical system architecture | Active | Runtime layout across landing, hosted web app, extension, desktop, proxy, and shared frontend. |
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
+| `BRAND_ASSETS.md` | Brand-art source-of-truth guide | Active | Defines canonical web-brand assets, mirrored copies, icon packs, and archived concept art. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the GitHub Actions driven Notion docs sync agent, required secrets, and trigger behavior. |
 
 ## Surface Docs
@@ -112,11 +114,13 @@ Updated: 2026-03-22
 |---|---|---|---|
 | `../prompt-lab-extension/README.md` | Older unpacked extension bundle | Legacy | Outside the canonical `prompt-lab-source/` tree. Leave untouched unless that duplicate tree is intentionally revived. |
 | `public/prompt-lab-landing.html` | Legacy landing mirror | Legacy | Retained as a compatibility mirror; `prompt-lab-web/index.html` is the landing-page source of truth. |
+| `../assets/archive/brand/` | Archived Prompt Lab art comps | Historical | Older concept/mockup assets retained for reference; not the source of truth for current brand art. |
 
 ## Maintenance notes
 
 - Prefer updating authoring sources under `prompt-lab-source/` first, then sync the published copy under `../docs/` when relevant.
 - Use `scripts/publish-landing.mjs` to sync public landing/docs files into `../docs/` without deleting unrelated repo-owned content such as `docs/app/` or internal trackers.
+- Treat `prompt-lab-web/public/hero-logo.png` and `prompt-lab-web/public/og-image.png` as the canonical public brand assets; `../docs/` and `public/` copies are mirrored outputs.
 - When shared frontend behavior changes, update extension, web, and desktop docs together.
 - When public URLs, repo slug, or deploy shape change, update:
   - `../README.md`

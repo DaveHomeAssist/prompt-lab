@@ -1,0 +1,233 @@
+Prompt Lab — Implementation Plan
+Rebased: 2026-03-20
+Branch: feature/promptlab-ui-notebook-handoff-20260320
+Version: 1.7.1
+
+================================================================================
+STATUS BASELINE
+================================================================================
+
+Already present in current code:
+- Version is already visible in the UI header from APP_VERSION
+- Markdown preview toggle already exists in the main editor
+- DiffPane / DiffEngine / ABTestTab already exist
+- Notebook tab and direct Prompt Lab handoff already exist
+
+Do not track those as new implementation items.
+
+
+================================================================================
+PHASE 1 — Real Quick Wins
+Target: 1-2 sessions
+================================================================================
+
+1.1  Notes affordance from the main editor
+     What: Make notes clearly reachable from the editor flow, not only as a
+           result-pane/settings concept
+     Files: App.jsx, ResultPane.jsx, ModalLayer.jsx, useEditorState.js
+     Approach: Add a visible notes entry point near the editor/result controls.
+               Keep showNotes as a visibility toggle, but make authoring access
+               obvious from the main screen.
+     Effort: Small
+     Owner: Solo dev
+     Milestone: User can discover and edit notes without hunting through tabs
+
+1.2  Font size / zoom controls
+     What: Add font-size controls for editor and result surfaces
+     Files: useUiState.js, index.css, App.jsx, ResultPane.jsx
+     Approach: Store preference in localStorage and apply via CSS custom
+               properties such as --pl-editor-font-size and --pl-result-font-size
+     Effort: Small
+     Owner: Solo dev
+     Milestone: User can adjust reading/writing density and it persists
+
+1.3  Copy button on code blocks in output
+     What: Add a one-click copy action to rendered code blocks
+     Files: ResultPane.jsx, MarkdownPreview.jsx or markdown renderer helpers
+     Approach: Prefer renderer-level decoration over post-render DOM scanning
+               so streamed output and saved views stay consistent
+     Effort: Small
+     Owner: Solo dev
+     Milestone: All rendered code blocks expose a copy affordance
+
+1.4  Runs / Compare labeling polish
+     What: Clarify Runs tab language, especially Compare state and re-run entry
+           points, now that RunTimelinePanel owns Timeline and Compare modes
+     Files: RunTimelinePanel.jsx, ABTestTab.jsx, App.jsx
+     Approach: Tighten labels, empty states, and CTA wording instead of adding
+               new layout concepts
+     Effort: Small
+     Owner: Solo dev
+     Milestone: Runs UI is understandable without prior product context
+
+
+================================================================================
+PHASE 2 — Core UX Work
+Target: 2-4 sessions
+================================================================================
+
+2.1  Split editor workspace in the primary compose flow
+     What: Add a real split view for the main prompt authoring experience
+           so prompt input can sit beside notes or results
+     Files: App.jsx, useUiState.js, index.css, ResultPane.jsx
+     Approach: Implement this in the primary editor layout first.
+               PadTab can adopt similar mechanics later, but it is not the
+               primary surface for this milestone.
+     Dependencies: Phase 1.1
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: Main editor supports a useful side-by-side workspace
+
+2.2  Language / stack selector with persistence
+     What: Add language or stack context for code prompts and persist it across
+           saves, loads, history, and prompt tests
+     Files: useEditorState.js, promptLint.js, usePromptLibrary.js,
+            lib/promptSchema.js, App.jsx, save/load flows, tests
+     Approach: Treat language as prompt metadata, not transient UI state.
+               It must survive library saves, reloads, and test-case workflows.
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: Language selector affects linting and survives persistence
+
+2.3  Library sidebar mode
+     What: Add a desktop-friendly persistent library sidebar
+     Files: LibraryPanel.jsx, App.jsx, useUiState.js, index.css
+     Approach: Persistent on wide screens, overlay on narrow screens. Reuse
+               existing LibraryPanel behavior rather than creating a second
+               library surface.
+     Dependencies: None
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: Saved prompts are always reachable on desktop widths
+
+
+================================================================================
+PHASE 3 — Product Differentiators
+Target: 3-5 sessions
+================================================================================
+
+3.1  Focus / Zen Mode
+     What: Collapse chrome and expand the authoring surface
+     Files: useUiState.js, App.jsx, index.css
+     Approach: Toggle-based first. Keyboard shortcut only after the layout is
+               stable. Avoid auto-prompting until the mode proves useful.
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: A stable distraction-reduced workspace exists
+
+3.2  Smart folders / semantic auto-tagging
+     What: Auto-group saved prompts into useful buckets
+     Files: new lib/promptClassifier.js, usePromptLibrary.js, LibraryPanel.jsx
+     Approach: Rule-based classifier first. Categories: Code, Analysis,
+               Creative, System, General.
+     Effort: Medium-Large
+     Owner: Solo dev
+     Milestone: Library can be browsed by inferred category
+
+3.3  Ghosting diff polish
+     What: Refine existing diff UX to match the intended overlay model
+     Files: DiffPane.jsx, DiffEngine.js, ABTestTab.jsx, index.css
+     Approach: Audit behavior and visuals first. Keep this as refinement work,
+               not a diff-engine rewrite.
+     Effort: Small
+     Owner: Solo dev
+     Milestone: Compare view reads as a true ghosted overlay
+
+3.4  Audio feedback for linting
+     What: Optional sound cues for lint-score changes
+     Files: new lib/audioFeedback.js, promptLint.js, settings UI
+     Approach: Web Audio API only. Off by default.
+     Effort: Small
+     Owner: Solo dev
+     Milestone: Opt-in audio cues work without adding asset files
+
+
+================================================================================
+PHASE 4 — Packaging / Release
+Target: 1-3 sessions
+================================================================================
+
+4.1  Desktop binary release
+     What: Cut macOS and Windows installers from the existing desktop build path
+     Files: .github/workflows/desktop-build.yml, prompt-lab-desktop/src-tauri/
+     Dependencies: Revalidate current desktop workflow and branch state first
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: Downloadable desktop installers published on GitHub Releases
+
+4.2  Main-branch release pass
+     What: Merge this branch only after a scoped release checklist passes
+     Dependencies:
+     - Phase 1 and 2 target items complete or explicitly deferred
+     - branch scoped to intended changes only
+     - tests/build verification documented
+     - docs and live-surface messaging updated if behavior changed
+     - no unrelated artifacts bundled into the merge
+     Effort: Medium
+     Owner: Solo dev
+     Milestone: main updated without accidental scope creep
+
+
+================================================================================
+DEFERRED / BLOCKED
+================================================================================
+
+D1  Public web PWA packaging
+    Status: Deferred
+    Reason: Current roadmap places public web app / PWA behind the extension and
+            desktop surfaces until a backend or stronger architectural need is
+            justified. Do not treat this as a near-term delivery item.
+    Former phase: 4.2
+
+D2  Token heatmap overlay
+    Status: Deferred
+    Reason: No provider returns attention weights; local tokenizer work is only
+            justified if it unlocks more than cosmetic cost estimation
+
+D3  Prompt Lab Server mode
+    Status: Deferred to v2.x
+    Reason: Large architecture move with separate deployment and trust model
+
+
+================================================================================
+RELEASE CHECKLIST
+================================================================================
+
+Before merging this branch:
+- Verify branch diff matches intended feature scope
+- Run the repo’s current test/build path and note any known gaps
+- Check extension, desktop, and hosted-web messaging for contradictions
+- Confirm no stale generated artifacts or throwaway research files are included
+- Update docs only where behavior actually changed
+
+
+================================================================================
+RESOURCES
+================================================================================
+
+Required:
+- Node 22 + npm
+- Vite dev server for hot reload
+- Vitest for hook/component coverage
+- Chrome with extensions enabled for side panel testing
+
+Optional:
+- Tauri CLI + Rust toolchain for desktop packaging
+- Apple Developer cert for macOS signing
+
+All planned work is solo-executable.
+
+
+================================================================================
+SUMMARY
+================================================================================
+
+Phase  | Items | Effort       | Key Milestone
+-------|-------|--------------|-------------------------------------------
+1      | 4     | 1-2 sessions | Notes access, font controls, code copy
+2      | 3     | 2-4 sessions | Split workspace, language metadata, sidebar
+3      | 4     | 3-5 sessions | Zen mode, smart folders, diff polish
+4      | 2     | 1-3 sessions | Desktop release, safe merge to main
+Deferred | 3   | TBD          | Web PWA, token heatmap, server mode
+
+Total estimated: 7-14 working sessions for Phases 1-4.

@@ -1,0 +1,5 @@
+.DS_Store
+dist/
+dist-cws/
+test-results/
+playwright-report/
