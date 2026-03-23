@@ -28,7 +28,8 @@ The shared React application lives in `prompt-lab-extension/src/`.
 - `prompt-lab-web/`
   - Public web deploy package
   - `index.html` is the landing page served at `/`
-  - `app/index.html` is the shared React app shell served at `/app/`
+  - `app/index.html` is the hosted app shell served at `/app/`
+  - `src/main-web.jsx` wraps the shared app with hosted-web-only providers such as Clerk and entitlements
   - `public/` holds static assets copied into the deployed site root
   - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection in the app shell
 - `api/`
@@ -72,14 +73,15 @@ The desktop app uses Tauri plus local browser storage:
 The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
-- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is published to `https://promptlab.tools/app/`
+- `prompt-lab-web/app/index.html` imports `../src/main-web.jsx` and is published to `https://promptlab.tools/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
-- `src/lib/proxyFetch.js` reroutes provider API requests through the Vercel proxy endpoint at `https://prompt-lab-tawny.vercel.app/api/proxy`
+- `src/lib/proxyFetch.js` reroutes provider API requests through the Vercel proxy endpoint at `/api/proxy`
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist and forwards the request
 - `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Ollama requests bypass the proxy and go direct to localhost
-- API keys are entered by the user and never stored server-side
+- hosted auth shell is wired through `prompt-lab-web/src/main-web.jsx`, `prompt-lab-web/src/AuthGate.jsx`, and `prompt-lab-web/src/useCurrentUser.js`
+- current hosted entitlements client layer is wired through `prompt-lab-web/src/useEntitlements.js`
 
 ## Platform runtime model
 
@@ -131,6 +133,12 @@ Auth applies only to the hosted web surface at `promptlab.tools/app/`. Extension
 
 ### Auth-related API routes
 
+Current implementation state:
+
+- hosted-web auth shell is implemented
+- Stripe scaffold and entitlement endpoints are present under `api/`
+- the hosted billing path still needs full end-to-end verification and production env validation
+
 | Route | Purpose |
 |-------|---------|
 | `api/create-checkout-session.js` | Creates Stripe Checkout session for authenticated user |
@@ -142,7 +150,7 @@ Auth applies only to the hosted web surface at `promptlab.tools/app/`. Extension
 
 | Hook | Purpose |
 |------|---------|
-| `useCurrentUser()` | Thin wrapper around Clerk's `useUser()`, returns `{ userId, isSignedIn, isLoaded }` |
+| `useCurrentUser()` | Thin wrapper around Clerk's `useUser()`, returns an owned user shape for hosted web auth |
 | `useEntitlements()` | Calls `/api/entitlements`, caches in React context, exposes `can(featureKey)` |
 
 ### Entitlement keys (test mode)
