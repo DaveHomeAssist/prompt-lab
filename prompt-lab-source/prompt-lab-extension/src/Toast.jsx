@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function Toast({ message, onDone }) {
   const [leaving, setLeaving] = useState(false);
@@ -12,9 +13,14 @@ export default function Toast({ message, onDone }) {
     };
   }, [onDone]);
 
-  return (
-    <div role="status" aria-live="polite" className={`pl-toast fixed bottom-6 left-1/2 -translate-x-1/2 bg-violet-700 text-white px-4 py-2 rounded-lg shadow-2xl z-50 text-sm font-medium ${leaving ? 'is-leaving' : ''}`}>
-      {message}
-    </div>
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4">
+      <div role="status" aria-live="polite" className={`pl-toast max-w-full rounded-lg bg-violet-700 px-4 py-2 text-sm font-medium text-white shadow-2xl ${leaving ? 'is-leaving' : ''}`}>
+        {message}
+      </div>
+    </div>,
+    document.body,
   );
 }

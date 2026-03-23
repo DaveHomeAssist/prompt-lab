@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { extractVars, looksSensitive } from './promptUtils';
 import TagChip from './TagChip';
@@ -7,12 +7,23 @@ import MarkdownPreview from './MarkdownPreview';
 import DraftBadge from './DraftBadge.jsx';
 import PresetImportPanel from './PresetImportPanel.jsx';
 
+function formatDate(value, withTime = false) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return withTime ? d.toLocaleString() : d.toLocaleDateString();
+}
+
 function StarterPackCard({ pack, m, onLoad }) {
   const [loading, setLoading] = useState(false);
   const handleClick = async () => {
     if (pack.loaded || loading) return;
     setLoading(true);
-    try { onLoad(pack.id); } finally { setLoading(false); }
+    await new Promise(resolve => {
+      const schedule = window.requestAnimationFrame || (cb => window.setTimeout(cb, 16));
+      schedule(() => resolve());
+    });
+    try { await Promise.resolve(onLoad(pack.id)); } finally { setLoading(false); }
   };
   return (
     <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex items-start gap-3`}>
@@ -44,7 +55,6 @@ function StarterPackCard({ pack, m, onLoad }) {
  */
 const LibraryPanel = memo(function LibraryPanel({
   m, lib, compact, isWeb, showEditorPane,
-  effectiveEditorLayout, setEditorLayout,
   editingId, setSaveTitle,
   testCasesByPrompt, evalRuns, editingCaseId,
   caseFormPromptId,
@@ -57,20 +67,75 @@ const LibraryPanel = memo(function LibraryPanel({
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(32);
+  const rafRef = useRef(null);
   const containedPane = !isWeb || (showEditorPane && !compact);
+  const manualMode = lib.sortBy === 'manual';
+  const deferredFiltered = useDeferredValue(lib.filtered);
+  const listEntries = manualMode ? lib.filtered : deferredFiltered;
+  const visibleEntries = useMemo(
+    () => (manualMode ? listEntries : listEntries.slice(0, visibleCount)),
+    [listEntries, manualMode, visibleCount],
+  );
 
   useEffect(() => {
     setSearchDraft(lib.search);
   }, [lib.search]);
 
   useEffect(() => {
+    if (searchDraft === lib.search) return undefined;
     const timeoutId = window.setTimeout(() => {
-      if (searchDraft !== lib.search) {
-        lib.setSearch(searchDraft);
-      }
+      lib.setSearch(searchDraft);
     }, 250);
     return () => window.clearTimeout(timeoutId);
   }, [lib.search, lib.setSearch, searchDraft]);
+
+  useEffect(() => {
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+
+    if (manualMode) {
+      setVisibleCount(lib.filtered.length);
+      return undefined;
+    }
+
+    const total = deferredFiltered.length;
+    const initialCount = Math.min(32, total);
+    setVisibleCount(initialCount);
+    if (total <= initialCount) return undefined;
+
+    const grow = () => {
+      setVisibleCount((current) => {
+        if (current >= total) return current;
+        const next = Math.min(current + 48, total);
+        if (next < total) {
+          rafRef.current = window.requestAnimationFrame(grow);
+        } else {
+          rafRef.current = null;
+        }
+        return next;
+      });
+    };
+
+    rafRef.current = window.requestAnimationFrame(grow);
+    return () => {
+      if (rafRef.current != null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, [deferredFiltered, lib.filtered.length, manualMode]);
+
+  useEffect(() => {
+    if (manualMode) return undefined;
+    if (lib.draggingLibraryId || lib.dragOverLibraryId) {
+      lib.setDraggingLibraryId(null);
+      lib.setDragOverLibraryId(null);
+    }
+    return undefined;
+  }, [lib, manualMode]);
 
   return (
     <div className={`w-full min-w-0 flex flex-col ${containedPane ? 'overflow-hidden' : ''}`}>
@@ -84,7 +149,7 @@ const LibraryPanel = memo(function LibraryPanel({
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
             <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
               className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
-              <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
+              <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="a-z">A → Z</option><option value="z-a">Z → A</option><option value="group">By collection</option><option value="most-used">Most used</option><option value="manual">Manual</option>
             </select>
             <button type="button" onClick={lib.exportLib} className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
             {isWeb && typeof lib.recoverLegacyWebLibrary === 'function' && (
@@ -102,6 +167,11 @@ const LibraryPanel = memo(function LibraryPanel({
             </button>
           </div>
         </div>
+        {manualMode && (
+          <p className={`text-[11px] ${m.textMuted}`}>
+            Manual order is live. Drag cards or use the arrow controls to move them.
+          </p>
+        )}
         {lib.collections.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
@@ -128,22 +198,35 @@ const LibraryPanel = memo(function LibraryPanel({
         />
       )}
       <div className={`${containedPane ? 'flex-1 overflow-y-auto' : ''} p-3 flex flex-col gap-2`}>
-        {lib.filtered.length === 0 && !showImportPanel && (
+        {deferredFiltered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
             <p className={`text-sm ${m.textSub}`}>{lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
           </div>
         )}
-        {lib.filtered.map(entry => {
-          const manual = lib.sortBy === 'manual';
+        {visibleEntries.map((entry, index) => {
+          const manual = manualMode;
           const shareUrl = lib.shareId === entry.id ? lib.getShareUrl(entry) : null;
           return (
             <div key={entry.id}
+              style={manual ? undefined : {
+                contentVisibility: 'auto',
+                contain: 'layout paint style',
+                containIntrinsicSize: lib.expandedId === entry.id ? '720px' : '180px',
+              }}
               draggable={manual}
               onDragStart={e => { if (!manual) return; e.dataTransfer.setData('libraryEntryId', entry.id); lib.setDraggingLibraryId(entry.id); }}
-              onDragEnd={() => { lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
+              onDragEnd={() => { if (!manual) return; lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
               onDragOver={e => { if (!manual) return; e.preventDefault(); lib.setDragOverLibraryId(entry.id); }}
-              onDrop={e => { if (!manual) return; e.preventDefault(); lib.moveLibraryEntry(e.dataTransfer.getData('libraryEntryId'), entry.id); lib.setDragOverLibraryId(null); }}
+              onDrop={e => {
+                if (!manual) return;
+                e.preventDefault();
+                const sourceId = e.dataTransfer.getData('libraryEntryId');
+                const rect = e.currentTarget.getBoundingClientRect();
+                const position = e.clientY > rect.top + rect.height / 2 ? 'after' : 'before';
+                lib.moveLibraryEntry(sourceId, entry.id, position);
+                lib.setDragOverLibraryId(null);
+              }}
               className={`${m.surface} border ${editingId === entry.id ? 'border-violet-500 ring-1 ring-violet-500/30' : `${m.border} ${m.borderHov}`} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between px-3 py-2.5 gap-2">
                 <div className="flex-1 min-w-0">
@@ -162,14 +245,36 @@ const LibraryPanel = memo(function LibraryPanel({
                   )}
                   <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
                     {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
-                    <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
+                    <span>{formatDate(entry.createdAt)}</span>
                     {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
                     {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
-                    {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
+                    {extractVars(entry.enhanced || '').length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  {manual && <Ic n="GripVertical" size={12} className={m.textMuted} />}
+                  {manual && (
+                    <>
+                      <Ic n="GripVertical" size={12} className={m.textMuted} />
+                      <button
+                        type="button"
+                        aria-label={`Move ${entry.title} up`}
+                        disabled={index === 0}
+                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1)}
+                        className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors disabled:opacity-40`}
+                      >
+                        <Ic n="ChevronUp" size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Move ${entry.title} down`}
+                        disabled={index === visibleEntries.length - 1}
+                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1)}
+                        className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors disabled:opacity-40`}
+                      >
+                        <Ic n="ChevronDown" size={11} />
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => { loadEntry(entry); }}
@@ -179,7 +284,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }}
+                    onClick={() => { copy(entry.enhanced || entry.original || ''); lib.bumpUse(entry.id); }}
                     className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs font-semibold hover:text-violet-400 transition-colors`}
                   >
                     Copy
@@ -202,7 +307,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 </div>
               )}
               {lib.expandedId === entry.id && (
-                <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
+                <div className={`pl-lib-expand border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
                   <div className={`flex flex-wrap gap-2`}>
                     <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
                     <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
@@ -237,10 +342,10 @@ const LibraryPanel = memo(function LibraryPanel({
                       </div>
                     </div>
                   ))}
-                  {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
+                  {entry.notes && <div><p className={`text-xs ${m.notesText || m.textSub} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
                   {(entry.variants || []).length > 0 && (
                     <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                      {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
+                      {entry.variants.map((v) => <div key={v.label || v.id || v.content} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
                     </div>
                   )}
                   {(entry.versions || []).length > 0 && (
@@ -257,7 +362,7 @@ const LibraryPanel = memo(function LibraryPanel({
                       </div>
                       <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
                         <div className="flex items-center justify-between gap-3">
-                          <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
+                          <span>Latest snapshot: {formatDate(entry.versions[entry.versions.length - 1]?.savedAt, true)}</span>
                           <span className={m.textMuted}>Restore and compare in modal</span>
                         </div>
                       </div>

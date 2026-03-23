@@ -84,20 +84,20 @@ export default function useTestCases({ notify }) {
       const record = await saveTestCase(payload);
       await refreshTestCases();
       resetCaseForm();
-      notify(editingCaseId ? `Updated test case: ${record.title}` : `Saved test case: ${record.title}`);
+      notify(editingCaseId ? `Updated check: ${record.title}` : `Saved check: ${record.title}`);
     } catch (e) {
-      notify(e?.message || 'Unable to save test case');
+      notify(e?.message || 'Unable to save check');
     }
   };
 
   const removeCase = async (testCase) => {
-    if (!window.confirm(`Delete test case "${testCase.title}"?`)) return;
+    if (!window.confirm(`Delete check "${testCase.title}"?`)) return;
     try {
       await deleteTestCase(testCase.id);
       await refreshTestCases();
-      notify('Test case deleted');
+      notify('Check deleted');
     } catch {
-      notify('Unable to delete test case');
+      notify('Unable to delete check');
     }
   };
 

@@ -143,7 +143,93 @@
     return { data, text: output };
   }
 
+  async function requestAnthropicText({ apiKey, model, systemPrompt, userPrompt, maxOutputTokens = 300 }) {
+    const endpoint = 'https://api.anthropic.com/v1/messages';
+    const headers = {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'x-api-key': apiKey,
+    };
+    const payload = JSON.stringify({
+      model,
+      max_tokens: maxOutputTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: payload,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.error?.message || response.statusText || 'Anthropic request failed');
+    }
+
+    const text = (data?.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n')
+      .trim();
+    if (!text) throw new Error('Empty response from model');
+    return { data, text };
+  }
+
+  /**
+   * Attempt a request through /api/proxy (server-side key injection).
+   * Falls back to direct call if the proxy is unreachable (e.g. local file://).
+   */
+  async function proxyRequest({ provider, model, systemPrompt, userPrompt, maxOutputTokens = 300, text }) {
+    let targetUrl, headers, body;
+
+    if (provider === 'anthropic') {
+      targetUrl = 'https://api.anthropic.com/v1/messages';
+      headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+      body = JSON.stringify({ model, max_tokens: maxOutputTokens, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] });
+    } else if (provider === 'gemini') {
+      targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+      headers = { 'Content-Type': 'application/json' };
+      body = JSON.stringify({ model, system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ role: 'user', parts: [{ text: userPrompt }] }] });
+    } else {
+      targetUrl = 'https://api.openai.com/v1/responses';
+      headers = { 'Content-Type': 'application/json' };
+      body = JSON.stringify({ model, max_output_tokens: maxOutputTokens, input: [{ role: 'system', content: [{ type: 'input_text', text: systemPrompt }] }, { role: 'user', content: [{ type: 'input_text', text: userPrompt }] }], ...(text ? { text } : {}) });
+    }
+
+    const res = await fetch('/api/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUrl, headers, body }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error?.message || data?.error || res.statusText);
+
+    let output;
+    if (provider === 'anthropic') {
+      output = (data?.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+    } else if (provider === 'gemini') {
+      output = extractGeminiText(data);
+    } else {
+      output = extractText(data);
+    }
+    if (!output) throw new Error('Empty response from model');
+    return { data, text: output };
+  }
+
   async function requestText({ provider = DEFAULT_PROVIDER, apiKey, model, systemPrompt, userPrompt, maxOutputTokens = 300, text }) {
+    // Try proxy first (works on hosted Vercel deployments)
+    try {
+      return await proxyRequest({ provider, apiKey, model, systemPrompt, userPrompt, maxOutputTokens, text });
+    } catch {
+      // Proxy unavailable — fall through to direct calls with local API key
+    }
+
+    if (provider === 'anthropic') {
+      return requestAnthropicText({ apiKey, model, systemPrompt, userPrompt, maxOutputTokens });
+    }
     if (provider === 'gemini') {
       return requestGeminiText({ apiKey, model, systemPrompt, userPrompt, text });
     }

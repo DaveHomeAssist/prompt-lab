@@ -136,7 +136,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
             {run.provider}
           </span>
           <span className={`${m.textMuted} truncate`}>{run.model}</span>
-          <span className={`uppercase ${m.textMuted}`}>{run.mode === 'test-case' ? 'test' : run.mode}</span>
+          <span className={`uppercase ${m.textMuted}`}>{run.mode === 'test-case' ? 'check' : run.mode}</span>
           <span className={m.textMuted}>{formatLatency(run.latencyMs)}</span>
           {version && <span className="text-violet-400 font-semibold">{version}</span>}
         </div>
@@ -382,7 +382,7 @@ function TimelineContent({ m, prompt, copy, compact, pageScroll, onRerun }) {
           <option value="">All modes</option>
           <option value="enhance">Enhance</option>
           <option value="ab">A/B</option>
-          <option value="test-case">Test Case</option>
+          <option value="test-case">Check</option>
         </select>
         <select value={provider} onChange={e => setProvider(e.target.value)} aria-label="Filter by provider"
           className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>

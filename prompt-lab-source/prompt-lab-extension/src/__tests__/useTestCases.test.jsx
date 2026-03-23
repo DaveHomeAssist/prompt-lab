@@ -128,7 +128,7 @@ describe('useTestCases', () => {
     expect(result.current.caseTraits).toBe('');
     expect(result.current.caseExclusions).toBe('');
     expect(result.current.caseNotes).toBe('');
-    expect(notify).toHaveBeenCalledWith('Saved test case: New case');
+    expect(notify).toHaveBeenCalledWith('Saved check: New case');
   });
 
   it('saveCaseForPrompt with editingCaseId includes id and updatedAt', async () => {
@@ -171,7 +171,7 @@ describe('useTestCases', () => {
       notes: 'After edit',
       updatedAt: '2026-03-13T12:00:00.000Z',
     });
-    expect(notify).toHaveBeenCalledWith('Updated test case: Updated case');
+    expect(notify).toHaveBeenCalledWith('Updated check: Updated case');
   });
 
   it('removeCase with confirm=true calls deleteTestCase and refreshes', async () => {
@@ -186,10 +186,10 @@ describe('useTestCases', () => {
       await result.current.removeCase({ id: 'case-1', title: 'Delete me' });
     });
 
-    expect(window.confirm).toHaveBeenCalledWith('Delete test case "Delete me"?');
+    expect(window.confirm).toHaveBeenCalledWith('Delete check "Delete me"?');
     expect(deleteTestCase).toHaveBeenCalledWith('case-1');
     expect(listTestCases).toHaveBeenCalledTimes(2);
-    expect(notify).toHaveBeenCalledWith('Test case deleted');
+    expect(notify).toHaveBeenCalledWith('Check deleted');
   });
 
   it('removeCase with confirm=false does nothing', async () => {

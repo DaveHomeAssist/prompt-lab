@@ -8,7 +8,7 @@ const LOADED_PACKS_KEY = 'pl2-loaded-packs';
 /**
  * Transform a seed prompt into a Prompt Lab library entry.
  */
-function seedToEntry(prompt, library) {
+function seedToEntry(prompt, library, loadedAt) {
   return createPromptEntry({
     id: randomId(),
     title: prompt.title || 'Untitled',
@@ -25,10 +25,15 @@ function seedToEntry(prompt, library) {
       source: 'starter-library',
       packId: library.id,
       packName: library.name,
+      packLoadedAt: loadedAt,
       seedPromptId: prompt.id || '',
       category: prompt.category || null,
     },
-  });
+  }, { now: loadedAt });
+}
+
+function prioritizeCollection(currentCollections, nextCollection) {
+  return [nextCollection, ...currentCollections.filter((collection) => collection !== nextCollection)];
 }
 
 /**
@@ -39,11 +44,15 @@ export function getLoadedPacks() {
   return Array.isArray(stored) ? stored : [];
 }
 
+export function persistLoadedPacks(loadedPackIds) {
+  return saveJson(LOADED_PACKS_KEY, Array.isArray(loadedPackIds) ? loadedPackIds : []);
+}
+
 /**
  * Get all available starter libraries with their loaded status.
  */
-export function getStarterLibraries() {
-  const loaded = new Set(getLoadedPacks());
+export function getStarterLibraries(loadedPackIds = getLoadedPacks()) {
+  const loaded = new Set(Array.isArray(loadedPackIds) ? loadedPackIds : []);
   return (seedData.libraries || [])
     .filter(lib => Array.isArray(lib.prompts) && lib.prompts.length > 0)
     .map(lib => ({
@@ -61,15 +70,14 @@ export function getStarterLibraries() {
  *
  * @param {string} packId - The pack ID to load
  * @param {Array} currentLibrary - Current library entries
- * @param {function} setLibrary - State setter for library
  * @param {Array} currentCollections - Current collections
- * @param {function} setCollections - State setter for collections
- * @returns {{ count: number, collection: string } | null} Result or null if skipped
+ * @returns {{ count: number, collection: string, library: Array<object>, collections: Array<string>, loadedPackIds: Array<string> } | null} Result or null if skipped
  */
-export function loadStarterPack(packId, currentLibrary, setLibrary, currentCollections, setCollections) {
+export function loadStarterPack(packId, currentLibrary, currentCollections) {
   // 1. Locate pack in seed data
   const pack = (seedData.libraries || []).find(lib => lib.id === packId);
   if (!pack || !Array.isArray(pack.prompts) || pack.prompts.length === 0) return null;
+  const loadedAt = new Date().toISOString();
 
   // 2. Check if already loaded
   const loadedPacks = getLoadedPacks();
@@ -88,24 +96,35 @@ export function loadStarterPack(packId, currentLibrary, setLibrary, currentColle
   const newEntries = [];
   for (const prompt of pack.prompts) {
     if (prompt.id && existingSeeds.has(prompt.id)) continue;
-    const entry = seedToEntry(prompt, pack);
+    const entry = seedToEntry(prompt, pack, loadedAt);
     if (entry) newEntries.push(entry);
   }
 
+  const collections = prioritizeCollection(currentCollections, pack.name);
+
   if (newEntries.length === 0) {
     // All prompts already exist — just mark as loaded
-    saveJson(LOADED_PACKS_KEY, [...loadedPacks, packId]);
-    return { count: 0, collection: pack.name };
+    const loadedPackIds = [...loadedPacks, packId];
+    return {
+      count: 0,
+      collection: pack.name,
+      library: currentLibrary,
+      collections,
+      loadedPackIds,
+    };
   }
 
   // 5. Merge: new prompts first
-  setLibrary(prev => [...newEntries, ...prev]);
-
-  // 6. Add collection
-  setCollections(prev => [...new Set([...prev, pack.name])]);
+  const library = [...newEntries, ...currentLibrary];
 
   // 7. Update loaded packs
-  saveJson(LOADED_PACKS_KEY, [...loadedPacks, packId]);
+  const loadedPackIds = [...loadedPacks, packId];
 
-  return { count: newEntries.length, collection: pack.name };
+  return {
+    count: newEntries.length,
+    collection: pack.name,
+    library,
+    collections,
+    loadedPackIds,
+  };
 }

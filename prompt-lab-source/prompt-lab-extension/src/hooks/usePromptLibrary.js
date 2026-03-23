@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
@@ -10,7 +10,7 @@ import {
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
-import { getStarterLibraries, loadStarterPack as loadPack } from '../lib/seedTransform.js';
+import { getLoadedPacks, getStarterLibraries, loadStarterPack as loadPack } from '../lib/seedTransform.js';
 import {
   LEGACY_LIBRARY_CHECK_KEY,
   mergeCollections,
@@ -19,6 +19,22 @@ import {
   shouldAttemptLegacyWebMigration,
   isSeedOnlyLibrary,
 } from '../lib/legacyLibraryMigration.js';
+import { persistLoadedPacks } from '../lib/seedTransform.js';
+
+function getNewestSortTimestamp(entry) {
+  const sortValue = entry?.metadata?.packLoadedAt || entry?.updatedAt || entry?.updated_at || entry?.createdAt;
+  const parsed = Date.parse(sortValue || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function deriveCollectionsFromLibrary(entries) {
+  if (!Array.isArray(entries)) return [];
+  return [...new Set(
+    entries
+      .map((entry) => ensureString(entry?.collection).trim())
+      .filter(Boolean),
+  )];
+}
 
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
@@ -37,6 +53,8 @@ export default function usePromptLibrary(notify) {
   const [draggingLibraryId, setDraggingLibraryId] = useState(null);
   const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
+  const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
+  const [pendingLoadedStarterPackIds, setPendingLoadedStarterPackIds] = useState(null);
   const libraryRef = useRef(library);
   const collectionsRef = useRef(collections);
 
@@ -72,16 +90,29 @@ export default function usePromptLibrary(notify) {
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
     const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
+    const storedLoadedPackIds = getLoadedPacks();
+    const reconciledLoadedPackIds = storedLoadedPackIds.filter((packId) =>
+      initialLibrary.some((entry) => entry?.metadata?.packId === packId),
+    );
     const storedCollections = loadJson(storageKeys.collections, null);
+    const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
-      ? storedCollections.filter(item => typeof item === 'string' && item.trim())
-      : (!hasStoredLibrary ? ['Handoff Templates'] : []);
+      ? [...new Set([
+        ...storedCollections.filter(item => typeof item === 'string' && item.trim()),
+        ...derivedCollections,
+      ])]
+      : (!hasStoredLibrary ? ['Handoff Templates'] : derivedCollections);
 
     libraryRef.current = initialLibrary;
     collectionsRef.current = initialCollections;
     setLibrary(initialLibrary);
     setCollections(initialCollections);
+    setLoadedStarterPackIds(reconciledLoadedPackIds);
     setLibReady(true);
+
+    if (JSON.stringify(reconciledLoadedPackIds) !== JSON.stringify(storedLoadedPackIds)) {
+      persistLoadedPacks(reconciledLoadedPackIds);
+    }
 
     const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
     const shouldAttemptLegacyRecovery = shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)
@@ -112,11 +143,25 @@ export default function usePromptLibrary(notify) {
   }, [applyLegacyPayload, notify]);
 
   useEffect(() => {
-    if (libReady) saveJson(storageKeys.library, library);
-  }, [library, libReady]);
+    if (!libReady) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      const librarySaved = saveJson(storageKeys.library, library);
+      if (librarySaved && pendingLoadedStarterPackIds) {
+        const loadedPackIdsSaved = persistLoadedPacks(pendingLoadedStarterPackIds);
+        if (loadedPackIdsSaved) {
+          setPendingLoadedStarterPackIds(null);
+        }
+      }
+    }, 120);
+    return () => window.clearTimeout(timeoutId);
+  }, [library, libReady, pendingLoadedStarterPackIds]);
 
   useEffect(() => {
-    if (libReady) saveJson(storageKeys.collections, collections);
+    if (!libReady) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      saveJson(storageKeys.collections, collections);
+    }, 120);
+    return () => window.clearTimeout(timeoutId);
   }, [collections, libReady]);
 
   const updateLibraryEntry = (entryId, updater) => {
@@ -176,15 +221,31 @@ export default function usePromptLibrary(notify) {
     useCount: entry.useCount + 1,
   }));
 
-  const moveLibraryEntry = (sourceId, targetId) => {
+  const moveLibraryEntry = (sourceId, targetId, position = 'before') => {
     if (!sourceId || !targetId || sourceId === targetId) return;
     setLibrary(prev => {
       const from = prev.findIndex(entry => entry.id === sourceId);
-      const to = prev.findIndex(entry => entry.id === targetId);
-      if (from < 0 || to < 0 || from === to) return prev;
+      if (from < 0) return prev;
       const next = [...prev];
       const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
+      let insertAt = next.findIndex(entry => entry.id === targetId);
+      if (insertAt < 0) return prev;
+      if (position === 'after') insertAt += 1;
+      next.splice(insertAt, 0, moved);
+      return next;
+    });
+  };
+
+  const moveLibraryEntryByOffset = (entryId, offset) => {
+    if (!entryId || !Number.isFinite(offset) || offset === 0) return;
+    setLibrary(prev => {
+      const from = prev.findIndex(entry => entry.id === entryId);
+      if (from < 0) return prev;
+      const targetIndex = Math.max(0, Math.min(prev.length - 1, from + offset));
+      if (targetIndex === from) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(targetIndex, 0, moved);
       return next;
     });
   };
@@ -277,13 +338,23 @@ export default function usePromptLibrary(notify) {
           return;
         }
         setLibrary(prev => normalizeLibrary([...normalized, ...prev]));
+        setCollections(prev => [...new Set([...prev, ...deriveCollectionsFromLibrary(normalized)])]);
         notify(`Imported ${normalized.length} prompts!`);
       } catch {
         notify('Import failed');
+      } finally {
+        event.target.value = '';
       }
     };
+    reader.onerror = () => {
+      notify('Import failed while reading the file.');
+      event.target.value = '';
+    };
+    reader.onabort = () => {
+      notify('Import was cancelled.');
+      event.target.value = '';
+    };
     reader.readAsText(file);
-    event.target.value = '';
   };
 
   const getShareUrl = entry => {
@@ -292,13 +363,32 @@ export default function usePromptLibrary(notify) {
     return code ? `${window.location.origin}${window.location.pathname}#share=${code}` : null;
   };
 
-  const starterLibraries = getStarterLibraries();
+  const starterLibraries = useMemo(
+    () => getStarterLibraries(loadedStarterPackIds),
+    [loadedStarterPackIds],
+  );
 
   const loadStarterPack = useCallback((packId) => {
-    const result = loadPack(packId, libraryRef.current, setLibrary, collectionsRef.current, setCollections);
+    const result = loadPack(packId, libraryRef.current, collectionsRef.current);
+    if (!result) {
+      notify('Pack already loaded.');
+      return null;
+    }
+
+    const commitStarterPack = () => {
+      libraryRef.current = result.library;
+      collectionsRef.current = result.collections;
+      setLibrary(result.library);
+      setCollections(result.collections);
+      setLoadedStarterPackIds(result.loadedPackIds);
+      setPendingLoadedStarterPackIds(result.loadedPackIds);
+    };
+
+    startTransition(commitStarterPack);
+
     if (result && result.count > 0) {
       notify(`Loaded ${result.count} prompts into ${result.collection}`);
-    } else if (result && result.count === 0) {
+    } else if (result.count === 0) {
       notify('Pack already loaded.');
     }
     return result;
@@ -347,22 +437,44 @@ export default function usePromptLibrary(notify) {
     }
   }, [applyLegacyPayload, notify, recoveringLegacyLibrary]);
 
-  const allLibTags = [...new Set(library.flatMap(entry => entry.tags || []))];
-  const filtered = [...library]
-    .filter(entry => {
-      const query = search.toLowerCase();
-      const title = ensureString(entry.title).toLowerCase();
-      return (!query || title.includes(query) || (entry.tags || []).some(tag => tag.toLowerCase().includes(query)))
-        && (!activeTag || (entry.tags || []).includes(activeTag))
-        && (!activeCollection || entry.collection === activeCollection);
-    })
-    .sort((left, right) => {
-      if (sortBy === 'manual') return 0;
-      if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
-      if (sortBy === 'most-used') return right.useCount - left.useCount;
-      return new Date(right.createdAt) - new Date(left.createdAt);
-    });
-  const quickInject = [...library].sort((left, right) => right.useCount - left.useCount).slice(0, 5);
+  const allLibTags = useMemo(
+    () => [...new Set(library.flatMap(entry => entry.tags || []))],
+    [library],
+  );
+
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    return [...library]
+      .filter(entry => {
+        const title = ensureString(entry.title).toLowerCase();
+        return (!query || title.includes(query) || (entry.tags || []).some(tag => tag.toLowerCase().includes(query)))
+          && (!activeTag || (entry.tags || []).includes(activeTag))
+          && (!activeCollection || entry.collection === activeCollection);
+      })
+      .sort((left, right) => {
+        if (sortBy === 'manual') return 0;
+        if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
+        if (sortBy === 'most-used') return right.useCount - left.useCount;
+        if (sortBy === 'a-z') return (left.title || '').localeCompare(right.title || '');
+        if (sortBy === 'z-a') return (right.title || '').localeCompare(left.title || '');
+        if (sortBy === 'group') {
+          const lc = left.collection || '';
+          const rc = right.collection || '';
+          if (lc && !rc) return -1;
+          if (!lc && rc) return 1;
+          const cmp = lc.localeCompare(rc);
+          return cmp !== 0 ? cmp : (left.title || '').localeCompare(right.title || '');
+        }
+        const newestDelta = getNewestSortTimestamp(right) - getNewestSortTimestamp(left);
+        if (newestDelta !== 0) return newestDelta;
+        return new Date(right.createdAt) - new Date(left.createdAt);
+      });
+  }, [activeCollection, activeTag, library, search, sortBy]);
+
+  const quickInject = useMemo(
+    () => [...library].sort((left, right) => right.useCount - left.useCount).slice(0, 5),
+    [library],
+  );
 
   return {
     library, setLibrary, libReady, collections, setCollections,
@@ -370,7 +482,7 @@ export default function usePromptLibrary(notify) {
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
+    doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
     exportLib, importLib, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,

@@ -750,6 +750,7 @@
             <select id="provider-input">
               <option value="openai">OpenAI</option>
               <option value="gemini">Gemini</option>
+              <option value="anthropic">Anthropic</option>
             </select>
           </label>
           <label class="settings-field">
@@ -881,7 +882,12 @@ const PROVIDER_DEFAULTS = {
     textModel: 'gemini-2.5-flash',
     imageModel: 'gemini-2.5-flash-image',
     apiKeyPlaceholder: 'AIza...',
-  }
+  },
+  anthropic: {
+    textModel: 'claude-sonnet-4-20250514',
+    imageModel: '',
+    apiKeyPlaceholder: 'sk-ant-...',
+  },
 };
 
 function syncSettingsUI() {
@@ -904,7 +910,8 @@ function updateSettingsMeta() {
 
 function updateProviderLabels() {
   const provider = document.getElementById('provider-input').value || DEFAULT_SETTINGS.provider;
-  document.getElementById('api-key-label').textContent = provider === 'gemini' ? 'Gemini API Key' : 'OpenAI API Key';
+  const keyLabels = { openai: 'OpenAI API Key', gemini: 'Gemini API Key', anthropic: 'Anthropic API Key' };
+  document.getElementById('api-key-label').textContent = keyLabels[provider] || 'API Key';
   document.getElementById('api-key-input').placeholder = PROVIDER_DEFAULTS[provider].apiKeyPlaceholder;
   if (!document.getElementById('text-model-input').value.trim()) {
     document.getElementById('text-model-input').value = PROVIDER_DEFAULTS[provider].textModel;
@@ -1026,8 +1033,16 @@ function makeNodeEl(id) {
     (id === selectedId ? ' selected' : '') +
     (indirectMode && id !== selectedId && node.children?.length ? ' indirect-active' : '');
 
-  el.innerHTML = `<div class="node-label">${node.label}</div>` +
-    (node.axis ? `<div class="node-axis">${node.axis}</div>` : '');
+  const labelDiv = document.createElement('div');
+  labelDiv.className = 'node-label';
+  labelDiv.textContent = node.label;
+  el.appendChild(labelDiv);
+  if (node.axis) {
+    const axisDiv = document.createElement('div');
+    axisDiv.className = 'node-axis';
+    axisDiv.textContent = node.axis;
+    el.appendChild(axisDiv);
+  }
 
   // Collapsed badge
   if (!node.expanded && node.children?.length) {
@@ -1136,7 +1151,12 @@ function showAxisPicker(nodeId, anchorEl) {
   AXES.forEach(ax => {
     const opt = document.createElement('div');
     opt.className = 'axis-option';
-    opt.innerHTML = `<span>${ax.label}</span><span class="ao-sub">${ax.sub.split('/')[0].trim()}…</span>`;
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = ax.label;
+    const subSpan = document.createElement('span');
+    subSpan.className = 'ao-sub';
+    subSpan.textContent = ax.sub.split('/')[0].trim() + '…';
+    opt.append(labelSpan, subSpan);
     opt.onclick = () => { picker.classList.remove('visible'); expandByAxis(nodeId, ax); };
     opts.appendChild(opt);
   });
@@ -1293,16 +1313,30 @@ function getPath(id) {
 
 function updateBreadcrumb() {
   const bc = document.getElementById('breadcrumb');
+  bc.innerHTML = '';
   if (!selectedId) {
-    bc.innerHTML = '<span class="bc-item active" onclick="selectNode(\'root\')">Prompt Lab Workspace</span>';
+    const span = document.createElement('span');
+    span.className = 'bc-item active';
+    span.textContent = 'Prompt Lab Workspace';
+    span.onclick = () => selectNode('root');
+    bc.appendChild(span);
     return;
   }
   const path = getPath(selectedId);
-  bc.innerHTML = path.map((n, i) => {
+  path.forEach((n, i) => {
     const isLast = i === path.length - 1;
-    return `<span class="bc-item${isLast?' active':''}" onclick="selectNode('${n.id}')">${n.label}</span>` +
-      (isLast ? '' : '<span class="bc-sep"> › </span>');
-  }).join('');
+    const span = document.createElement('span');
+    span.className = 'bc-item' + (isLast ? ' active' : '');
+    span.textContent = n.label;
+    span.onclick = () => selectNode(n.id);
+    bc.appendChild(span);
+    if (!isLast) {
+      const sep = document.createElement('span');
+      sep.className = 'bc-sep';
+      sep.textContent = ' › ';
+      bc.appendChild(sep);
+    }
+  });
 }
 
 // ── PREVIEW PANEL ──────────────────────────────────────
@@ -1436,19 +1470,41 @@ function renderSavedLibrary() {
   savedNodes.forEach(item => {
     const row = document.createElement('div');
     row.className = 'saved-item';
-    row.innerHTML = `
-      <div class="saved-thumb">${item.imageURL ? `<img src="${item.imageURL}" alt="">` : 'Prompt<br>Only'}</div>
-      <div class="saved-body">
-        <div class="saved-label">${item.label}</div>
-        <div class="saved-sub">${(item.path || []).join(' › ')}</div>
-      </div>
-      <div class="saved-actions">
-        <div class="prev-btn" data-copy-id="${item.id}">Copy</div>
-        <div class="prev-btn" data-load-id="${item.id}">Load</div>
-      </div>
-    `;
-    row.querySelector('[data-copy-id]').onclick = () => navigator.clipboard.writeText(item.prompt);
-    row.querySelector('[data-load-id]').onclick = () => loadSavedNode(item.id);
+
+    const thumb = document.createElement('div');
+    thumb.className = 'saved-thumb';
+    if (item.imageURL) {
+      const img = document.createElement('img');
+      img.src = item.imageURL;
+      img.alt = '';
+      thumb.appendChild(img);
+    } else {
+      thumb.innerHTML = 'Prompt<br>Only';
+    }
+
+    const body = document.createElement('div');
+    body.className = 'saved-body';
+    const label = document.createElement('div');
+    label.className = 'saved-label';
+    label.textContent = item.label;
+    const sub = document.createElement('div');
+    sub.className = 'saved-sub';
+    sub.textContent = (item.path || []).join(' › ');
+    body.append(label, sub);
+
+    const actions = document.createElement('div');
+    actions.className = 'saved-actions';
+    const copyBtn = document.createElement('div');
+    copyBtn.className = 'prev-btn';
+    copyBtn.textContent = 'Copy';
+    copyBtn.onclick = () => navigator.clipboard.writeText(item.prompt);
+    const loadBtn = document.createElement('div');
+    loadBtn.className = 'prev-btn';
+    loadBtn.textContent = 'Load';
+    loadBtn.onclick = () => loadSavedNode(item.id);
+    actions.append(copyBtn, loadBtn);
+
+    row.append(thumb, body, actions);
     list.appendChild(row);
   });
 }

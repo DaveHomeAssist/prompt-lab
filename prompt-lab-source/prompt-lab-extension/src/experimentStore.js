@@ -191,7 +191,7 @@ export async function getEvalRunById(id) {
 export async function saveTestCase(record) {
   const normalized = normalizeTestCaseRecord(record);
   if (!normalized.promptId || !normalized.input.trim()) {
-    throw new Error('Test cases require a promptId and input.');
+    throw new Error('Save a check from a prompt with sample input first.');
   }
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {

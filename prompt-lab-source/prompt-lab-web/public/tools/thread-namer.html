@@ -620,6 +620,7 @@
         <select id="providerInput">
           <option value="openai">OpenAI</option>
           <option value="gemini">Gemini</option>
+          <option value="anthropic">Anthropic</option>
         </select>
       </label>
       <label class="settings-field">
@@ -1040,6 +1041,7 @@ const DEFAULT_SETTINGS = {
 const PROVIDER_DEFAULTS = {
   openai: { textModel: 'gpt-4.1-mini', apiKeyPlaceholder: 'sk-...' },
   gemini: { textModel: 'gemini-2.5-flash', apiKeyPlaceholder: 'AIza...' },
+  anthropic: { textModel: 'claude-sonnet-4-20250514', apiKeyPlaceholder: 'sk-ant-...' },
 };
 let settings = LocalOpenAIPrototype.loadSettings(SETTINGS_KEY, DEFAULT_SETTINGS);
 
@@ -1055,7 +1057,7 @@ function init() {
     const btn = document.createElement('button');
     btn.className = 'project-tab' + (key === activeProject ? ' active' : '');
     btn.dataset.key = key;
-    btn.innerHTML = `${proj.emoji} ${proj.label}`;
+    btn.textContent = `${proj.emoji} ${proj.label}`;
     btn.onclick = () => selectProject(key);
     tabsEl.appendChild(btn);
   });
@@ -1095,7 +1097,8 @@ function syncSettingsUI() {
 
 function updateProviderLabels() {
   const provider = document.getElementById('providerInput').value || DEFAULT_SETTINGS.provider;
-  document.getElementById('apiKeyLabel').textContent = provider === 'gemini' ? 'Gemini API Key' : 'OpenAI API Key';
+  const keyLabels = { openai: 'OpenAI API Key', gemini: 'Gemini API Key', anthropic: 'Anthropic API Key' };
+  document.getElementById('apiKeyLabel').textContent = keyLabels[provider] || 'API Key';
   document.getElementById('apiKeyInput').placeholder = PROVIDER_DEFAULTS[provider].apiKeyPlaceholder;
   if (!document.getElementById('textModelInput').value.trim()) {
     document.getElementById('textModelInput').value = PROVIDER_DEFAULTS[provider].textModel;
@@ -1144,7 +1147,16 @@ function renderTaxonomy() {
   proj.taxonomy.forEach(item => {
     const el = document.createElement('div');
     el.className = 'tax-item';
-    el.innerHTML = `<span class="tax-emoji">${item.e}</span><span class="tax-label">${item.l}</span>`;
+
+    const emoji = document.createElement('span');
+    emoji.className = 'tax-emoji';
+    emoji.textContent = item.e;
+
+    const label = document.createElement('span');
+    label.className = 'tax-label';
+    label.textContent = item.l;
+
+    el.append(emoji, label);
     grid.appendChild(el);
   });
 }
@@ -1193,7 +1205,8 @@ async function generate() {
 async function generateTitleText({ systemPrompt, userPrompt }) {
   if (!settings.apiKey) {
     document.getElementById('settingsCard').open = true;
-    throw new Error(`Add a ${settings.provider === 'gemini' ? 'Gemini' : 'OpenAI'} API key in Model Settings first.`);
+    const providerName = { openai: 'OpenAI', gemini: 'Gemini', anthropic: 'Anthropic' }[settings.provider] || 'an';
+    throw new Error(`Add ${providerName === 'an' ? 'an' : 'a ' + providerName} API key in Model Settings first.`);
   }
 
   const provider = settings.provider || DEFAULT_SETTINGS.provider;
@@ -1263,7 +1276,21 @@ function renderHistory() {
   sessionHistory.forEach((item, i) => {
     const el = document.createElement('div');
     el.className = 'history-item';
-    el.innerHTML = `<span class="h-project">${item.badge}</span><span class="h-title">${item.title}</span><button class="h-copy" onclick="copyHistoryItem(${i},this)">copy</button>`;
+
+    const badge = document.createElement('span');
+    badge.className = 'h-project';
+    badge.textContent = item.badge;
+
+    const title = document.createElement('span');
+    title.className = 'h-title';
+    title.textContent = item.title;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'h-copy';
+    copyBtn.textContent = 'copy';
+    copyBtn.onclick = function () { copyHistoryItem(i, this); };
+
+    el.append(badge, title, copyBtn);
     list.appendChild(el);
   });
 }

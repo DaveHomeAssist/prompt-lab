@@ -87,7 +87,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     const { matches } = scanSensitiveData({ payload });
 
     if (matches.length > 0) {
-      const message = `PII gate blocked test case: ${testCase.title}`;
+      const message = `PII gate blocked check: ${testCase.title}`;
       await saveEvalRun({
         promptId: testCase.promptId,
         promptTitle,
@@ -282,7 +282,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const loadCaseIntoEditor = (testCase) => {
     setRaw(testCase.input || '');
     setTab('editor');
-    notify(`Loaded test case: ${testCase.title}`);
+    notify(`Loaded sample input: ${testCase.title}`);
   };
 
   const runSingleCase = async (testCase, promptTitle) => {
@@ -297,10 +297,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       await runTestCaseJob(testCase, promptTitle);
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
       evalRunsHook.setShowEvalHistory(true);
-      notify(`Ran test case: ${testCase.title}`);
+      notify(`Ran check: ${testCase.title}`);
     } catch (caught) {
       const appError = normalizeError(caught, 'execution');
-      notify(appError.userMessage || `Failed test case: ${testCase.title}`);
+      notify(appError.userMessage || `Check failed: ${testCase.title}`);
       await evalRunsHook.refreshEvalRuns(testCase.promptId);
     } finally {
       testCasesHook.setRunningCases(false);
@@ -332,7 +332,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           currentLabel: testCase.title,
         });
       } catch (caught) {
-        logWarn(`test case batch: ${testCase.title}`, caught);
+        logWarn(`check batch: ${testCase.title}`, caught);
       }
     }
 
@@ -340,7 +340,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     evalRunsHook.setShowEvalHistory(true);
     testCasesHook.setRunningCases(false);
     setBatchProgress({ active: false, completed, total: cases.length, currentLabel: '' });
-    notify(`Ran ${completed}/${cases.length} test cases`);
+    notify(`Ran ${completed}/${cases.length} checks`);
   };
 
   const clearExecutionState = () => {
