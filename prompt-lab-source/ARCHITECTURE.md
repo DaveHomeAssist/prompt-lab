@@ -115,6 +115,40 @@ Provider-specific request behavior is routed through shared provider abstraction
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
 
+## Authentication (hosted web only)
+
+**Decision: Clerk** (`@clerk/clerk-react`)
+
+Auth applies only to the hosted web surface at `promptlab.tools/app/`. Extension and desktop shells remain unauthenticated and fully local.
+
+### Rationale
+
+- Clerk provides prebuilt React components (`<SignIn />`, `<SignUp />`, `<UserButton />`) compatible with Vite builds, minimizing custom UI work.
+- Prompts stay in localStorage — auth gates billing entitlements, not data access. This avoids a full-stack migration to a server database.
+- Clerk sessions are cookie-based and survive refresh and cross-device use without custom token management.
+- Stripe integration stays independent: webhook → Vercel KV keyed by Clerk `userId`. Clerk handles identity, Stripe handles billing, Vercel KV stores the mapping.
+- No impact on the shared-core architecture — Clerk is wrapped at the web shell level only (`prompt-lab-web/app/index.html`).
+
+### Auth-related API routes
+
+| Route | Purpose |
+|-------|---------|
+| `api/create-checkout-session.js` | Creates Stripe Checkout session for authenticated user |
+| `api/create-portal-session.js` | Creates Stripe Customer Portal session |
+| `api/webhook.js` | Handles Stripe webhook events, writes entitlements to Vercel KV |
+| `api/entitlements.js` | Returns feature map for authenticated user from Vercel KV |
+
+### Client hooks
+
+| Hook | Purpose |
+|------|---------|
+| `useCurrentUser()` | Thin wrapper around Clerk's `useUser()`, returns `{ userId, isSignedIn, isLoaded }` |
+| `useEntitlements()` | Calls `/api/entitlements`, caches in React context, exposes `can(featureKey)` |
+
+### Entitlement keys (test mode)
+
+`unlimited_library`, `advanced_compare`, `version_history`, `import_export`, `advanced_variables`
+
 ## Safety layers
 
 - Provider traffic is routed through controlled adapters
