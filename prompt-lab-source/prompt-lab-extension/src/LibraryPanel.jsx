@@ -306,79 +306,83 @@ const LibraryPanel = memo(function LibraryPanel({
                   <button type="button" onClick={() => copy(shareUrl || '')} className="ui-control px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
                 </div>
               )}
-              {lib.expandedId === entry.id && (
-                <div className={`pl-lib-expand border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
-                  <div className={`flex flex-wrap gap-2`}>
-                    <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
-                    <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
-                    <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
-                    <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
-                    <button type="button" onClick={() => {
-                      if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
-                        && !window.confirm('This shared link may include sensitive content. Continue?')) return;
-                      lib.setShareId(p => p === entry.id ? null : entry.id);
-                    }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share link</button>
-                    <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
-                  </div>
-                  <TestCasesPanel
-                    m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
-                    evalRuns={evalRuns} editingCaseId={editingCaseId}
-                    caseFormPromptId={caseFormPromptId}
-                    caseTitle={caseTitle} setCaseTitle={setCaseTitle}
-                    caseInput={caseInput} setCaseInput={setCaseInput}
-                    caseTraits={caseTraits} setCaseTraits={setCaseTraits}
-                    caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
-                    caseNotes={caseNotes} setCaseNotes={setCaseNotes}
-                    openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
-                    saveCaseForPrompt={saveCaseForPrompt}
-                    loadCaseIntoEditor={loadCaseIntoEditor}
-                    runSingleCase={runSingleCase} removeCase={removeCase}
-                  />
-                  {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
-                    <div key={lbl}>
-                      <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
-                      <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
-                        <MarkdownPreview text={txt || ''} className="text-xs" />
+              <div className={`pl-lib-detail-wrap${lib.expandedId === entry.id ? ' is-open' : ''}`}>
+                <div className="pl-lib-detail-inner">
+                  {lib.expandedId === entry.id && (
+                    <div className={`pl-lib-expand border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
+                      <div className={`flex flex-wrap gap-2`}>
+                        <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
+                        <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
+                        <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
+                        <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
+                        <button type="button" onClick={() => {
+                          if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+                            && !window.confirm('This shared link may include sensitive content. Continue?')) return;
+                          lib.setShareId(p => p === entry.id ? null : entry.id);
+                        }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share link</button>
+                        <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
                       </div>
-                    </div>
-                  ))}
-                  {entry.notes && <div><p className={`text-xs ${m.notesText || m.textSub} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
-                  {(entry.variants || []).length > 0 && (
-                    <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                      {entry.variants.map((v) => <div key={v.label || v.id || v.content} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
-                    </div>
-                  )}
-                  {(entry.versions || []).length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
+                      <TestCasesPanel
+                        m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
+                        evalRuns={evalRuns} editingCaseId={editingCaseId}
+                        caseFormPromptId={caseFormPromptId}
+                        caseTitle={caseTitle} setCaseTitle={setCaseTitle}
+                        caseInput={caseInput} setCaseInput={setCaseInput}
+                        caseTraits={caseTraits} setCaseTraits={setCaseTraits}
+                        caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
+                        caseNotes={caseNotes} setCaseNotes={setCaseNotes}
+                        openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
+                        saveCaseForPrompt={saveCaseForPrompt}
+                        loadCaseIntoEditor={loadCaseIntoEditor}
+                        runSingleCase={runSingleCase} removeCase={removeCase}
+                      />
+                      {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
+                        <div key={lbl}>
+                          <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
+                          <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
+                            <MarkdownPreview text={txt || ''} className="text-xs" />
+                          </div>
+                        </div>
+                      ))}
+                      {entry.notes && <div><p className={`text-xs ${m.notesText || m.textSub} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
+                      {(entry.variants || []).length > 0 && (
+                        <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
+                          {entry.variants.map((v) => <div key={v.label || v.id || v.content} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
+                        </div>
+                      )}
+                      {(entry.versions || []).length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
+                            <button
+                              onClick={() => lib.openVersionHistory(entry.id, 0)}
+                              className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1 rounded-lg px-1.5 py-0.5`}
+                            >
+                              <Ic n="GitBranch" size={9} />
+                              Open History
+                            </button>
+                          </div>
+                          <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Latest snapshot: {formatDate(entry.versions[entry.versions.length - 1]?.savedAt, true)}</span>
+                              <span className={m.textMuted}>Restore and compare in modal</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div className={`pt-1 border-t ${m.border}`}>
                         <button
-                          onClick={() => lib.openVersionHistory(entry.id, 0)}
-                          className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1 rounded-lg px-1.5 py-0.5`}
+                          type="button"
+                          onClick={() => lib.del(entry.id)}
+                          className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
                         >
-                          <Ic n="GitBranch" size={9} />
-                          Open History
+                          <Ic n="Trash2" size={11} />Delete Prompt
                         </button>
                       </div>
-                      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Latest snapshot: {formatDate(entry.versions[entry.versions.length - 1]?.savedAt, true)}</span>
-                          <span className={m.textMuted}>Restore and compare in modal</span>
-                        </div>
-                      </div>
                     </div>
                   )}
-                  <div className={`pt-1 border-t ${m.border}`}>
-                    <button
-                      type="button"
-                      onClick={() => lib.del(entry.id)}
-                      className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
-                    >
-                      <Ic n="Trash2" size={11} />Delete Prompt
-                    </button>
-                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

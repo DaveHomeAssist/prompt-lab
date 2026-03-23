@@ -157,6 +157,20 @@ textarea:disabled {
   overflow: hidden;
 }
 
+/* ── Library card slide-open ── */
+.pl-lib-detail-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+.pl-lib-detail-wrap.is-open {
+  grid-template-rows: 1fr;
+}
+.pl-lib-detail-wrap > .pl-lib-detail-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
