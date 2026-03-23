@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Prompt Lab Legacy Library Bridge</title>
+</head>
+<body>
+  <script>
+    (function legacyLibraryBridge() {
+      var REQUEST_TYPE = 'pl2:request-legacy-library';
+      var RESPONSE_TYPE = 'pl2:legacy-library-payload';
+      var ALLOWED_ORIGINS = new Set([
+        'https://promptlab.tools',
+        'https://www.promptlab.tools',
+        'https://prompt-lab-tawny.vercel.app'
+      ]);
+
+      function readJson(key) {
+        try {
+          var raw = window.localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      window.addEventListener('message', function onMessage(event) {
+        if (!ALLOWED_ORIGINS.has(event.origin)) return;
+        if (!event.data || event.data.type !== REQUEST_TYPE) return;
+        if (!event.source || typeof event.source.postMessage !== 'function') return;
+
+        var library = readJson('pl2-library');
+        var collections = readJson('pl2-collections');
+
+        event.source.postMessage({
+          type: RESPONSE_TYPE,
+          library: Array.isArray(library) ? library : [],
+          collections: Array.isArray(collections) ? collections : [],
+          sourceOrigin: window.location.origin
+        }, event.origin);
+      });
+    }());
+  </script>
+</body>
+</html>

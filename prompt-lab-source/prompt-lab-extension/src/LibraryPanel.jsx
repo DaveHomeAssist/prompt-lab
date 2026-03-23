@@ -57,6 +57,7 @@ const LibraryPanel = memo(function LibraryPanel({
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const containedPane = !isWeb || (showEditorPane && !compact);
 
   useEffect(() => {
     setSearchDraft(lib.search);
@@ -72,7 +73,7 @@ const LibraryPanel = memo(function LibraryPanel({
   }, [lib.search, lib.setSearch, searchDraft]);
 
   return (
-    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
+    <div className={`w-full min-w-0 flex flex-col ${containedPane ? 'overflow-hidden' : ''}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
@@ -86,6 +87,16 @@ const LibraryPanel = memo(function LibraryPanel({
               <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
             </select>
             <button type="button" onClick={lib.exportLib} className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
+            {isWeb && typeof lib.recoverLegacyWebLibrary === 'function' && (
+              <button
+                type="button"
+                onClick={() => lib.recoverLegacyWebLibrary({ force: true })}
+                disabled={lib.recoveringLegacyLibrary}
+                className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${lib.recoveringLegacyLibrary ? `${m.btn} ${m.textMuted} cursor-wait` : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}
+              >
+                {lib.recoveringLegacyLibrary ? 'Checking…' : 'Recover'}
+              </button>
+            )}
             <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>
@@ -116,7 +127,7 @@ const LibraryPanel = memo(function LibraryPanel({
           onClose={() => setShowImportPanel(false)}
         />
       )}
-      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
+      <div className={`${containedPane ? 'flex-1 overflow-y-auto' : ''} p-3 flex flex-col gap-2`}>
         {lib.filtered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />

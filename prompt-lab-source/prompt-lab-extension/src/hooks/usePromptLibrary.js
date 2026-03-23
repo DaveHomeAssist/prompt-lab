@@ -11,6 +11,14 @@ import {
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
 import { getStarterLibraries, loadStarterPack as loadPack } from '../lib/seedTransform.js';
+import {
+  LEGACY_LIBRARY_CHECK_KEY,
+  mergeCollections,
+  mergeLibraryEntries,
+  requestLegacyLibraryPayload,
+  shouldAttemptLegacyWebMigration,
+  isSeedOnlyLibrary,
+} from '../lib/legacyLibraryMigration.js';
 
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
@@ -28,19 +36,80 @@ export default function usePromptLibrary(notify) {
   const [renameValue, setRenameValue] = useState('');
   const [draggingLibraryId, setDraggingLibraryId] = useState(null);
   const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
+  const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
+  const libraryRef = useRef(library);
+  const collectionsRef = useRef(collections);
+
+  useEffect(() => { libraryRef.current = library; }, [library]);
+  useEffect(() => { collectionsRef.current = collections; }, [collections]);
+
+  const applyLegacyPayload = useCallback((payload) => {
+    if (!payload || !Array.isArray(payload.library)) {
+      return { importedCount: 0, reachable: false, hasLegacyLibrary: false };
+    }
+
+    const previousCollections = collectionsRef.current;
+    const libraryResult = mergeLibraryEntries(libraryRef.current, payload.library);
+    const nextCollections = Array.isArray(payload.collections) && payload.collections.length > 0
+      ? mergeCollections(previousCollections, payload.collections)
+      : previousCollections;
+
+    libraryRef.current = libraryResult.library;
+    collectionsRef.current = nextCollections;
+    setLibrary(libraryResult.library);
+    if (nextCollections !== previousCollections) {
+      setCollections(nextCollections);
+    }
+
+    return {
+      importedCount: libraryResult.importedCount,
+      reachable: true,
+      hasLegacyLibrary: payload.library.length > 0,
+    };
+  }, []);
 
   useEffect(() => {
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
-    setLibrary(normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS));
+    const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
     const storedCollections = loadJson(storageKeys.collections, null);
-    if (Array.isArray(storedCollections)) {
-      setCollections(storedCollections.filter(item => typeof item === 'string' && item.trim()));
-    } else if (!hasStoredLibrary) {
-      setCollections(['Handoff Templates']);
-    }
+    const initialCollections = Array.isArray(storedCollections)
+      ? storedCollections.filter(item => typeof item === 'string' && item.trim())
+      : (!hasStoredLibrary ? ['Handoff Templates'] : []);
+
+    libraryRef.current = initialLibrary;
+    collectionsRef.current = initialCollections;
+    setLibrary(initialLibrary);
+    setCollections(initialCollections);
     setLibReady(true);
-  }, []);
+
+    const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
+    const shouldAttemptLegacyRecovery = shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)
+      && !alreadyCheckedLegacy
+      && (!hasStoredLibrary || storedLibrary.length === 0 || isSeedOnlyLibrary(initialLibrary));
+
+    if (!shouldAttemptLegacyRecovery) return;
+
+    let cancelled = false;
+    setRecoveringLegacyLibrary(true);
+    requestLegacyLibraryPayload({ currentOrigin: window.location.origin })
+      .then((payload) => {
+        if (cancelled) return;
+        const result = applyLegacyPayload(payload);
+        if (!result.reachable) return;
+        saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+        if (result.importedCount > 0) {
+          notify(`Recovered ${result.importedCount} prompts from your legacy web library.`);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRecoveringLegacyLibrary(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyLegacyPayload, notify]);
 
   useEffect(() => {
     if (libReady) saveJson(storageKeys.library, library);
@@ -225,11 +294,6 @@ export default function usePromptLibrary(notify) {
 
   const starterLibraries = getStarterLibraries();
 
-  const libraryRef = useRef(library);
-  const collectionsRef = useRef(collections);
-  useEffect(() => { libraryRef.current = library; }, [library]);
-  useEffect(() => { collectionsRef.current = collections; }, [collections]);
-
   const loadStarterPack = useCallback((packId) => {
     const result = loadPack(packId, libraryRef.current, setLibrary, collectionsRef.current, setCollections);
     if (result && result.count > 0) {
@@ -239,6 +303,49 @@ export default function usePromptLibrary(notify) {
     }
     return result;
   }, [notify]);
+
+  const recoverLegacyWebLibrary = useCallback(async ({ force = false } = {}) => {
+    if (recoveringLegacyLibrary) return { importedCount: 0, reason: 'busy' };
+    if (!shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)) {
+      return { importedCount: 0, reason: 'unsupported' };
+    }
+
+    if (!force && loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true) {
+      return { importedCount: 0, reason: 'already-checked' };
+    }
+
+    setRecoveringLegacyLibrary(true);
+    try {
+      const payload = await requestLegacyLibraryPayload({ currentOrigin: window.location.origin });
+      const result = applyLegacyPayload(payload);
+      if (!result.reachable) {
+        notify('Legacy web library bridge is unavailable.');
+        return { importedCount: 0, reason: 'unreachable' };
+      }
+      saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+
+      if (!result.hasLegacyLibrary) {
+        notify('No legacy web library found.');
+        return { importedCount: 0, reason: 'empty' };
+      }
+
+      if (result.importedCount > 0) {
+        notify(`Recovered ${result.importedCount} prompts from your legacy web library.`);
+      } else {
+        notify('Legacy web library is already merged.');
+      }
+
+      return {
+        importedCount: result.importedCount,
+        reason: result.importedCount > 0 ? 'recovered' : 'already-merged',
+      };
+    } catch {
+      notify('Legacy web library recovery failed.');
+      return { importedCount: 0, reason: 'error' };
+    } finally {
+      setRecoveringLegacyLibrary(false);
+    }
+  }, [applyLegacyPayload, notify, recoveringLegacyLibrary]);
 
   const allLibTags = [...new Set(library.flatMap(entry => entry.tags || []))];
   const filtered = [...library]
@@ -266,6 +373,7 @@ export default function usePromptLibrary(notify) {
     doSave, del, bumpUse, moveLibraryEntry, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
     exportLib, importLib, getShareUrl,
+    recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject,
   };
