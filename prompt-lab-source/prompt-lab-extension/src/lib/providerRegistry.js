@@ -55,6 +55,42 @@ export function normalizeBaseUrl(baseUrl, fallback) {
   return raw.replace(/\/+$/, '');
 }
 
+function parseSseChunks(buffer, flush = false, pickText) {
+  const chunks = [];
+  const frames = buffer.split('\n\n');
+  const completeFrames = flush ? frames : frames.slice(0, -1);
+  const remainder = flush ? '' : (frames[frames.length - 1] || '');
+
+  for (const frame of completeFrames) {
+    const lines = frame.split('\n').filter((line) => line.startsWith('data:'));
+    for (const line of lines) {
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+      try {
+        const data = JSON.parse(payload);
+        const text = pickText(data);
+        if (text) chunks.push(text);
+      } catch {
+        // Ignore malformed intermediate frames.
+      }
+    }
+  }
+
+  return { buffer: remainder, chunks };
+}
+
+function parseAnthropicSse(buffer, flush = false) {
+  return parseSseChunks(buffer, flush, (data) => {
+    if (data?.type === 'content_block_delta') return data?.delta?.text || '';
+    if (data?.type === 'message_delta') return data?.delta?.text || '';
+    return '';
+  });
+}
+
+function parseOpenAiSse(buffer, flush = false) {
+  return parseSseChunks(buffer, flush, (data) => data?.choices?.[0]?.delta?.content || '');
+}
+
 // ── Provider descriptors ────────────────────────────────────────────
 
 const PROVIDERS = Object.freeze({
