@@ -5,6 +5,7 @@ import App from '../../prompt-lab-extension/src/App';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
 import { WebSlotProvider } from '../../prompt-lab-extension/src/WebSlotContext';
 import AuthGate, { WebUserButton } from './AuthGate';
+import { EntitlementProvider } from './useEntitlements';
 import '../../prompt-lab-extension/src/index.css';
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -46,9 +47,11 @@ function WebRoot() {
     >
       <ErrorBoundary>
         <AuthGate>
-          <WebSlotProvider value={{ UserButton: WebUserButton }}>
-            <App />
-          </WebSlotProvider>
+          <EntitlementProvider>
+            <WebSlotProvider value={{ UserButton: WebUserButton }}>
+              <App />
+            </WebSlotProvider>
+          </EntitlementProvider>
         </AuthGate>
       </ErrorBoundary>
     </ClerkProvider>
