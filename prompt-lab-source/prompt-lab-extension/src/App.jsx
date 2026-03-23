@@ -38,7 +38,17 @@ export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
-  const [showQuickInject, setShowQuickInject] = useState(true);
+  const [showQuickInject, setShowQuickInject] = useState(false);
+  const [showSetupCard, setShowSetupCard] = useState(() => {
+    try {
+      const stored = localStorage.getItem('pl2-provider-settings');
+      const dismissed = localStorage.getItem('pl2-setup-dismissed');
+      if (dismissed === 'true') return false;
+      if (!stored) return true;
+      const parsed = JSON.parse(stored);
+      return !parsed || !Object.values(parsed).some((v) => typeof v === 'string' && v.trim().length > 4);
+    } catch { return true; }
+  });
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
@@ -455,6 +465,30 @@ export default function App() {
                   )}
                 </div>
               )}
+              {showSetupCard && activeSection === 'create' && (
+                <div className={`${m.surface} border border-violet-500/30 rounded-lg p-3 flex items-start gap-3`}>
+                  <Ic n="Zap" size={16} className="text-violet-400 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-semibold ${m.text}`}>Get started</p>
+                    <p className={`text-xs ${m.textMuted} mt-0.5`}>Add an API key for at least one provider to start enhancing prompts.</p>
+                    <button
+                      type="button"
+                      onClick={openOptions}
+                      className="ui-control mt-2 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      Set Up Provider
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setShowSetupCard(false); try { localStorage.setItem('pl2-setup-dismissed', 'true'); } catch {} }}
+                    className={`${m.textMuted} hover:${m.text} shrink-0`}
+                    aria-label="Dismiss setup card"
+                  >
+                    <Ic n="X" size={12} />
+                  </button>
+                </div>
+              )}
               {/* Input */}
               <div>
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
@@ -529,64 +563,52 @@ export default function App() {
                 hasSavablePrompt={hasSavablePrompt}
                 enhanceShortcutLabel={`${primaryModKey}+Enter`}
               />
-              {(loading || batchProgress.active || optimisticSaveVisible) && (
+              {(loading || batchProgress.active || optimisticSaveVisible || (editingId && currentTestCases.length > 0)) && (
                 <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
-                  <div className="min-w-0">
-                    {loading ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
-                        </p>
-                      </>
-                    ) : batchProgress.active ? (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
-                        <p className={`text-xs ${m.textMuted} truncate`}>
-                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
-                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
-                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
-                      </>
+                  <div className={`flex items-center gap-3 min-w-0 text-xs ${m.textMuted} flex-wrap`}>
+                    {loading && (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                        {streaming ? 'Streaming…' : 'Preparing…'}
+                      </span>
+                    )}
+                    {batchProgress.active && (
+                      <span className="flex items-center gap-1.5">
+                        <Ic n="FlaskConical" size={10} className="text-blue-400" />
+                        {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total}
+                        {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
+                      </span>
+                    )}
+                    {!loading && !batchProgress.active && optimisticSaveVisible && (
+                      <span className="text-green-400">Save ready</span>
+                    )}
+                    {editingId && currentTestCases.length > 0 && !batchProgress.active && (
+                      <span className="flex items-center gap-1.5">
+                        <Ic n="FlaskConical" size={10} />
+                        {currentTestCases.length} {currentTestCases.length === 1 ? 'check' : 'checks'}
+                      </span>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {editingId && currentTestCases.length > 0 && !batchProgress.active && (
+                      <button onClick={runAllCases} disabled={loading || runningCases}
+                        className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
+                        Run All
+                      </button>
+                    )}
                     {hasSavablePrompt && !showSave && (
-                      <button
-                        type="button"
-                        onClick={() => openSavePanel()}
-                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
-                      >
-                        Save Draft
+                      <button type="button" onClick={() => openSavePanel()}
+                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500">
+                        Save
                       </button>
                     )}
                     {loading && (
-                      <button
-                        type="button"
-                        onClick={cancelEnhance}
-                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                      >
+                      <button type="button" onClick={cancelEnhance}
+                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}>
                         Cancel
                       </button>
                     )}
                   </div>
-                </div>
-              )}
-              {editingId && currentTestCases.length > 0 && (
-                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
-                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
-                    <Ic n="FlaskConical" size={10} />
-                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
-                  </span>
-                  <button onClick={runAllCases} disabled={loading || runningCases}
-                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
-                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
-                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
-                  </button>
                 </div>
               )}
               {error && (

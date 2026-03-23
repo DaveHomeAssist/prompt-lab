@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react';
 import Ic from './icons';
 import Toast from './Toast';
 import BugReportModal from './BugReportModal';
@@ -5,6 +6,50 @@ import VersionDiffModal from './VersionDiffModal';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import { isExtension } from './lib/platform.js';
 import { isGhostVar } from './promptUtils';
+
+/**
+ * Trap keyboard focus inside a modal dialog.
+ * Returns a ref to attach to the modal container element.
+ */
+function useFocusTrap(isOpen) {
+  const containerRef = useRef(null);
+  const previousFocus = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    previousFocus.current = document.activeElement;
+    const el = containerRef.current;
+    if (!el) return;
+    const focusable = el.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    );
+    if (focusable.length) focusable[0].focus();
+    return () => {
+      previousFocus.current?.focus?.();
+    };
+  }, [isOpen]);
+
+  const onKeyDown = useCallback((e) => {
+    if (e.key !== 'Tab') return;
+    const el = containerRef.current;
+    if (!el) return;
+    const focusable = [...el.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    )].filter((node) => !node.disabled);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, []);
+
+  return { containerRef, onKeyDown };
+}
 
 // ── Modal / overlay orchestration layer ─────────────────────────────────────
 // Pure extraction from App.jsx — no behaviour changes.
@@ -53,12 +98,16 @@ export default function ModalLayer({
     piiSummary,
   } = pii;
 
+  const varsTrap = useFocusTrap(showVarForm && !!pendingTemplate);
+  const settingsTrap = useFocusTrap(showSettings);
+  const piiTrap = useFocusTrap(!!piiWarning);
+
   return (
     <>
       {/* ══ MODALS ══ */}
       {showVarForm && pendingTemplate && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
+          <div ref={varsTrap.containerRef} onKeyDown={varsTrap.onKeyDown} className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
             <div className="flex justify-between items-center">
               <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
               <button type="button" onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
@@ -111,7 +160,7 @@ export default function ModalLayer({
 
       {showSettings && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
+          <div ref={settingsTrap.containerRef} onKeyDown={settingsTrap.onKeyDown} className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
             <div className="flex justify-between items-center">
               <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
               <button type="button" onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
@@ -244,7 +293,7 @@ export default function ModalLayer({
       {/* ══ PII WARNING MODAL ══ */}
       {piiWarning && (
         <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
-          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
+          <div ref={piiTrap.containerRef} onKeyDown={piiTrap.onKeyDown} className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
             <div className="flex justify-between items-center">
               <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
               <button type="button" onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
