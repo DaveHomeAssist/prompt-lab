@@ -37,6 +37,48 @@
       overflow-y: auto;
     }
   </style>
+  <script>
+    (function resetStaleLegacyRecoveryCheck() {
+      var CHECK_KEY = 'pl2-legacy-web-library-checked';
+      var LIBRARY_KEY = 'pl2-library';
+      var SEED_TITLES = new Set([
+        'Transcript Summary - Markdown',
+        'Transcript Summary - Strict JSON',
+        'Transcript Summary - High Recall',
+        'Transcript Summary - Engineering Brief',
+        'Transcript Summary - Ultra Concise',
+        'Code Review',
+        'Function Generator',
+        'Technical Blog Post',
+        'Email Drafter',
+        'Decision Matrix',
+        'Root Cause Analysis',
+        'Product Feature Spec',
+        'Brainstorm Facilitator',
+        'System Prompt Builder'
+      ]);
+
+      function loadJson(key) {
+        try {
+          var raw = window.localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch (_error) {
+          return null;
+        }
+      }
+
+      var library = loadJson(LIBRARY_KEY);
+      var isSeedOnly = Array.isArray(library)
+        && library.length === SEED_TITLES.size
+        && library.every(function isSeed(entry) {
+          return SEED_TITLES.has(String(entry && entry.title || '').trim());
+        });
+
+      if (!Array.isArray(library) || library.length === 0 || isSeedOnly) {
+        window.localStorage.removeItem(CHECK_KEY);
+      }
+    }());
+  </script>
 </head>
 <body>
   <div id="root"></div>

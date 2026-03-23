@@ -1,43 +1,41 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import {
-  scorePrompt,
-  ngramSimilarity, suggestTitleFromText,
+  wordDiff, scorePrompt,
+  isGhostVar, ngramSimilarity,
 } from './promptUtils';
-import { T, APP_VERSION } from './constants';
+import { ALL_TAGS, T, APP_VERSION } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
 import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
-import useExperiments from './hooks/useExperiments.js';
+import useABTest from './hooks/useABTest.js';
+import Toast from './Toast';
+import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
+import DesktopSettingsModal from './DesktopSettingsModal';
+import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
 import { isExtension } from './lib/platform.js';
 import {
+  SUBVIEWS,
   matchShortcut,
   buildCommandActions,
   filterCommands,
-  resolveTabState,
 } from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
-import HeaderNav from './HeaderNav';
 import EditorActions from './EditorActions';
-import ResultPane from './ResultPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import MarkdownPreview from './MarkdownPreview';
-import SavePanel from './SavePanel';
-import ModalLayer from './ModalLayer';
-import { clearPromptLabDraftParams, readPromptLabDraftParams } from './lib/promptLabBridge.js';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
-  const [showBugReport, setShowBugReport] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
   const [showQuickInject, setShowQuickInject] = useState(true);
   const [mdPreview, setMdPreview] = useState(false);
@@ -75,14 +73,14 @@ export default function App() {
 
   // ── Library hook ──
   const lib = useLibrary(notify);
-  const experiments = useExperiments({ notify });
+  const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──
   const editorState = useEditorState();
   const persistenceFlow = usePersistenceFlow({
     ui: {
       ...ui,
-      setABVariant: (side, promptText) => experiments.loadVariant(side, promptText),
+      setABVariant: (side, promptText) => abTest.loadVariant(side, promptText),
     },
     lib,
     editor: editorState,
@@ -135,12 +133,12 @@ export default function App() {
   const compact = viewportWidth < 720 || viewportHeight < 560;
   const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
-  const resultField = `w-full ${m.input} border rounded-xl p-4 text-base leading-7 resize-none focus:outline-none focus:border-violet-400 transition-colors placeholder-gray-400 ${m.text}`;
   const copyBtn = colorMode === 'dark'
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
-  const showEditorPane = tab !== 'editor' || effectiveEditorLayout !== 'library';
-  const showLibraryPane = tab !== 'editor' || effectiveEditorLayout !== 'editor';
+  const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
+  const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
+  const showLibraryPane = tab !== 'editor' || libraryOnlyMode || effectiveEditorLayout !== 'editor';
   const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? 'Cmd'
     : 'Ctrl';
@@ -162,13 +160,8 @@ export default function App() {
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
   const activeSection = primaryView === 'runs'
-    ? 'runs'
-    : (workspaceView === 'library' ? 'saved' : 'create');
-  const primaryTabs = [
-    { id: 'create', label: 'Create' },
-    { id: 'saved', label: 'Saved' },
-    { id: 'runs', label: 'Runs' },
-  ];
+    ? 'experiments'
+    : (workspaceView === 'library' ? 'library' : 'create');
   const createLayoutOptions = compact
     ? []
     : [
@@ -189,19 +182,10 @@ export default function App() {
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-  const hasEditorContent = Boolean(raw.trim() || enhanced.trim() || variants.length > 0 || notes.trim());
 
   useEffect(() => {
     if (tab !== 'editor') return;
-    if (workspaceView === 'composer') return;
-    if (editorLayout !== workspaceView) {
-      setEditorLayout(workspaceView);
-    }
-  }, [editorLayout, setEditorLayout, tab, workspaceView]);
-
-  useEffect(() => {
-    if (tab !== 'editor') return;
-    if (workspaceView === 'composer') return;
+    if (workspaceView === 'composer' || workspaceView === 'library') return;
     if (effectiveEditorLayout !== workspaceView) {
       setWorkspaceView(effectiveEditorLayout);
     }
@@ -227,12 +211,12 @@ export default function App() {
       setWorkspaceView('editor');
       return;
     }
-    if (nextSection === 'saved') {
+    if (nextSection === 'library') {
       setPrimaryView('create');
       setWorkspaceView('library');
       return;
     }
-    if (nextSection === 'runs') {
+    if (nextSection === 'experiments') {
       setPrimaryView('runs');
       setRunsView('compare');
     }
@@ -276,7 +260,6 @@ export default function App() {
           setShowCmdPalette(false);
           setShowShortcuts(false);
           setShowSettings(false);
-          setShowBugReport(false);
           closeSavePanel();
           lib.setShareId(null);
           lib.closeVersionHistory();
@@ -294,143 +277,25 @@ export default function App() {
     return () => window.removeEventListener('pl:open-settings', handler);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const incoming = readPromptLabDraftParams(window.location.search);
-    if (!incoming.hasPayload) return;
-
-    const nextTab = incoming.tab || 'editor';
-    const nextState = resolveTabState(nextTab);
-    setPrimaryView(nextState.primaryView);
-    if (nextState.workspaceView) setWorkspaceView(nextState.workspaceView);
-    if (nextState.runsView) setRunsView(nextState.runsView);
-
-    if (incoming.title) {
-      setSaveTitle(incoming.title.trim());
-    }
-
-    if (incoming.draft) {
-      setRaw(incoming.draft);
-      setEnhanced('');
-      setVariants([]);
-      setNotes('');
-      setShowSave(false);
-      setShowDiff(false);
-      if (!incoming.title) {
-        setSaveTitle(suggestTitleFromText(incoming.draft));
-      }
-    }
-
-    if (incoming.clipboard) {
-      notify('Draft copied from notes. Paste with Cmd/Ctrl+V.');
-    } else if (incoming.draft) {
-      notify(incoming.source ? `Draft imported from ${incoming.source}.` : 'Draft imported.');
-    }
-
-    clearPromptLabDraftParams();
-  }, [
-    notify,
-    setEnhanced,
-    setNotes,
-    setPrimaryView,
-    setRaw,
-    setRunsView,
-    setSaveTitle,
-    setShowDiff,
-    setShowSave,
-    setVariants,
-    setWorkspaceView,
-  ]);
-
-  const requestClearEditor = () => {
-    if (!hasEditorContent) {
-      clearEditor();
-      return;
-    }
-    if (!window.confirm('Clear the current draft, results, and notes?')) return;
-    clearEditor();
-    notify('Editor cleared.');
-  };
-
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) enhance(); closePalette(); },
     save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
-    clear: () => { requestClearEditor(); closePalette(); },
+    clear: () => { clearEditor(); closePalette(); },
     goEditor: () => { openSection('create'); closePalette(); },
-    goLibrary: () => { openSection('saved'); closePalette(); },
+    goLibrary: () => { openSection('library'); closePalette(); },
     goBuild: () => { openCreateView('composer'); closePalette(); },
-    goRuns: () => { openSection('runs'); closePalette(); },
+    goRuns: () => { openSection('experiments'); closePalette(); },
     goCompare: () => { openRunsView('compare'); closePalette(); },
     goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
     toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
     exportLib: () => { lib.exportLib(); closePalette(); },
     openSettings: () => { setShowSettings(true); closePalette(); },
-    reportBug: () => { setShowBugReport(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
   });
   const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
-  const currentSurface = primaryView === 'notebook'
-    ? 'Notebook'
-    : activeSection === 'runs'
-      ? `Runs / ${runsView === 'compare' ? 'Compare' : 'Timeline'}`
-      : workspaceView === 'composer'
-        ? 'Build'
-        : workspaceView === 'library'
-          ? 'Saved'
-          : 'Editor';
-  const piiSummary = piiWarning
-    ? Object.entries(
-        piiWarning.matches.reduce((acc, match) => {
-          const key = match.type || 'item';
-          acc[key] = (acc[key] || 0) + 1;
-          return acc;
-        }, {})
-      )
-        .map(([type, count]) => `${count} ${type.replace(/_/g, ' ')}`)
-        .join(', ')
-    : '';
-  const bugReportContext = {
-    appVersion: APP_VERSION,
-    environment: isExtension ? 'extension' : (isWeb ? 'web' : 'desktop'),
-    browser: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-    url: typeof window !== 'undefined' ? window.location.href : '',
-    viewPath: `${primaryView}/${workspaceView}/${runsView}`,
-    primaryView,
-    workspaceView,
-    runsView,
-    tab,
-    activeSection,
-    colorMode,
-    density,
-    enhanceMode: enhMode,
-    viewport: `${viewportWidth}x${viewportHeight}`,
-    librarySize: lib.library.length,
-    composerBlockCount: composerBlocks.length,
-    testCaseCount: currentTestCases.length,
-    lastError: typeof error === 'string' ? error : error?.userMessage || '',
-  };
-
-  const handleTabListKeyDown = (event, items, activeId, onActivate) => {
-    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
-    if (!Array.isArray(items) || items.length === 0) return;
-    event.preventDefault();
-    const currentIndex = Math.max(0, items.findIndex((item) => item.id === activeId));
-    let nextIndex = currentIndex;
-    if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % items.length;
-    if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + items.length) % items.length;
-    if (event.key === 'Home') nextIndex = 0;
-    if (event.key === 'End') nextIndex = items.length - 1;
-    const nextId = items[nextIndex]?.id;
-    if (!nextId) return;
-    onActivate(nextId);
-    requestAnimationFrame(() => {
-      const tabs = event.currentTarget.querySelectorAll('[role="tab"]');
-      tabs[nextIndex]?.focus();
-    });
-  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -439,32 +304,86 @@ export default function App() {
       <h1 className="sr-only">Prompt Lab</h1>
 
       {/* Header */}
-      <HeaderNav
-        m={m}
-        compact={compact}
-        colorMode={colorMode}
-        setColorMode={setColorMode}
-        primaryView={primaryView}
-        setPrimaryView={setPrimaryView}
-        workspaceView={workspaceView}
-        runsView={runsView}
-        tab={tab}
-        libraryCount={lib.library.length}
-        setShowCmdPalette={setShowCmdPalette}
-        setCmdQuery={setCmdQuery}
-        setShowBugReport={setShowBugReport}
-        setShowShortcuts={setShowShortcuts}
-        setShowSettings={setShowSettings}
-        openSection={openSection}
-        openCreateView={openCreateView}
-        openRunsView={openRunsView}
-        activeSection={activeSection}
-        primaryTabs={primaryTabs}
-        effectiveEditorLayout={effectiveEditorLayout}
-        setEditorLayout={setEditorLayout}
-        createLayoutOptions={createLayoutOptions}
-        handleTabListKeyDown={handleTabListKeyDown}
-      />
+      <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
+        <div className={`flex ${compact ? 'flex-col gap-2' : 'items-center justify-between gap-3'}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <Ic n="Wand2" size={15} className="text-violet-500" />
+                <span className="font-bold text-sm">Prompt Lab</span>
+                <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}</span>
+              </div>
+              <span className={`text-[11px] ${m.textMuted}`}>{lib.library.length} saved</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-violet-400 transition-colors`}>⌘K</button>
+              <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}>
+                {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
+              </button>
+              <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+              <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+            </div>
+          </div>
+        </div>
+        <div className={`flex items-center justify-between gap-2 mt-2 ${compact ? 'flex-col items-stretch' : ''}`}>
+          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label="Primary workspaces">
+            <div className="pl-scroll-row">
+            {[
+              ['create', 'Create'],
+              ['library', 'Library'],
+              ['experiments', 'Experiments'],
+            ].map(([id, label]) => (
+              <button key={id} type="button" onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
+                className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                {label}
+              </button>
+            ))}
+            </div>
+          </div>
+          <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} aria-label="Prompt Lab utilities">
+            <div className="pl-scroll-row">
+            <button type="button" onClick={() => openCreateView('composer')}
+              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${workspaceView === 'composer' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Build
+            </button>
+            <button type="button" onClick={() => setPrimaryView('notebook')}
+              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Notebook
+            </button>
+            </div>
+          </div>
+        </div>
+        <div className={`mt-2 ${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll' : ''}`} role="tablist" aria-label={activeSection === 'experiments' ? 'Experiment views' : primaryView === 'notebook' ? 'Notebook status' : 'Create workspace controls'}>
+          <div className="pl-scroll-row">
+          {activeSection === 'experiments' && (
+            <>
+              {SUBVIEWS.runs.map(({ id, label }) => (
+                <button key={id} type="button" onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
+                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
+          {primaryView === 'notebook' && (
+            <span className={`text-[11px] ${m.textMuted}`}>Multi-pad notes with library handoff</span>
+          )}
+          {activeSection === 'create' && createLayoutOptions.length > 0 && (
+            <>
+              {createLayoutOptions.map(([id, label]) => (
+                <button key={id} type="button" onClick={() => setEditorLayout(id)}
+                  className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                  {label}
+                </button>
+              ))}
+            </>
+          )}
+          {activeSection === 'library' && (
+            <span className={`text-[11px] ${m.textMuted}`}>Browse, filter, and reuse saved prompts</span>
+          )}
+          </div>
+        </div>
+      </header>
 
       <main role="tabpanel" aria-label={tab} className="pl-tab-panel flex-1 flex flex-col overflow-hidden">
       {/* ══ EDITOR TAB ══ */}
@@ -540,12 +459,12 @@ export default function App() {
                     <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
                     <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                       <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                        className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
                       <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                        className={`ui-control text-xs px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                        className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
                     </div>
                   </div>
-                  <span className={`text-xs ${m.textMuted}`} title={`${wc} words · ${raw.length} chars`}>~{score ? score.tokens : Math.round(raw.length / 4)} tok{wc ? ` · ${wc}w` : ''}</span>
+                  <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
                 {mdPreview ? (
                   <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
@@ -586,29 +505,12 @@ export default function App() {
                   {lintOpen && (
                     <div className="px-3 pb-3 flex flex-col gap-1.5">
                       {lintIssues.map(issue => (
-                        <div key={issue.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                  issue.severity === 'warning'
-                                    ? 'bg-amber-500/15 text-amber-300'
-                                    : issue.severity === 'error'
-                                      ? 'bg-red-500/15 text-red-300'
-                                      : 'bg-slate-500/15 text-slate-300'
-                                }`}>
-                                  {issue.severity}
-                                </span>
-                                <span className={`text-[11px] ${m.textMuted}`}>Line {issue.line}</span>
-                              </div>
-                              <p className={`mt-1 text-sm ${m.textBody}`}>{issue.message}</p>
-                              {issue.suggestedFix && (
-                                <p className={`mt-1 text-xs ${m.textMuted}`}>Suggested fix: {issue.suggestedFix}</p>
-                              )}
-                            </div>
-                            <button onClick={() => handleLintFix(issue.id)}
-                              className="shrink-0 text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors">Fix</button>
-                          </div>
+                        <div key={issue.id} className={`flex items-start justify-between gap-2 text-xs ${
+                          issue.severity === 'warning' ? 'text-yellow-400' : m.textAlt
+                        }`}>
+                          <span className="flex-1">{issue.message}</span>
+                          <button onClick={() => handleLintFix(issue.id)}
+                            className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline">Fix</button>
                         </div>
                       ))}
                     </div>
@@ -629,7 +531,6 @@ export default function App() {
                 onCancelEnhance={cancelEnhance}
                 loading={loading}
                 hasInput={Boolean(raw.trim())}
-                hasClearableContent={hasEditorContent}
                 runningCases={runningCases}
                 batchProgress={batchProgress}
                 testCaseCount={currentTestCases.length}
@@ -702,16 +603,6 @@ export default function App() {
                     <div className="min-w-0">
                       <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>Recovery</p>
                       <p className={`mt-1 text-sm font-semibold ${colorMode === 'dark' ? 'text-red-100' : 'text-red-800'}`}>{error.userMessage}</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${colorMode === 'dark' ? 'bg-red-500/15 text-red-200' : 'bg-red-100 text-red-700'}`}>
-                          {(error.category || 'unknown').replace(/_/g, ' ')}
-                        </span>
-                        {error.retryable && (
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${colorMode === 'dark' ? 'bg-amber-500/15 text-amber-200' : 'bg-amber-100 text-amber-700'}`}>
-                            Retryable
-                          </span>
-                        )}
-                      </div>
                     </div>
                     <Ic n="AlertTriangle" size={14} className={`${colorMode === 'dark' ? 'text-red-300' : 'text-red-600'} shrink-0 mt-0.5`} />
                   </div>
@@ -751,48 +642,269 @@ export default function App() {
                   </div>
                 </div>
               )}
-              <ResultPane
-                m={m}
-                compact={compact}
-                colorMode={colorMode}
-                loading={loading}
-                enhanced={enhanced}
-                setEnhanced={setEnhanced}
-                streaming={streaming}
-                streamPreview={streamPreview}
-                variants={variants}
-                notes={notes}
-                showNotes={showNotes}
-                resultTab={resultTab}
-                setResultTab={setResultTab}
-                enhMdPreview={enhMdPreview}
-                setEnhMdPreview={setEnhMdPreview}
-                activeResultTab={activeResultTab}
-                resultTabs={resultTabs}
-                resultField={resultField}
-                copyBtn={copyBtn}
-                raw={raw}
-                goldenVerdict={goldenVerdict}
-                goldenSimilarity={goldenSimilarity}
-                goldenThreshold={goldenThreshold}
-                goldenResponse={goldenResponse}
-                comparisonText={comparisonText}
-                comparisonSourceLabel={comparisonSourceLabel}
-                editingId={editingId}
-                latestEvalRun={latestEvalRun}
-                evalRuns={evalRuns}
-                showEvalHistory={showEvalHistory}
-                setShowEvalHistory={setShowEvalHistory}
-                showGoldenComparison={showGoldenComparison}
-                setShowGoldenComparison={setShowGoldenComparison}
-                handleTabListKeyDown={handleTabListKeyDown}
-                copy={copy}
-                setRaw={setRaw}
-                notify={notify}
-                pinGoldenResponse={lib.pinGoldenResponse}
-                clearGoldenResponse={lib.clearGoldenResponse}
-                setGoldenThreshold={lib.setGoldenThreshold}
-              />
+              <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
+              {/* Enhanced */}
+              {(loading || enhanced) && <>
+                {loading && !enhanced && (
+                  <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+                    <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
+                          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
+                            <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
+                            {streaming ? 'Streaming' : 'Preparing'}
+                          </span>
+                        </div>
+                        <p className={`mt-1 text-xs ${m.textMuted}`}>Output stays live while the request is in flight.</p>
+                      </div>
+                    </div>
+                    <div className="pl-skeleton-stack">
+                      <div className="pl-skeleton-line w-4/5" />
+                      <div className="pl-skeleton-line w-full" />
+                      <div className="pl-skeleton-line w-11/12" />
+                    </div>
+                    {streamPreview && (
+                      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs leading-relaxed whitespace-pre-wrap mt-3 max-h-56 overflow-y-auto`}>
+                        {streamPreview}
+                      </div>
+                    )}
+                  </div>
+                )}
+              {enhanced && <>
+                <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+                  <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
+                        {goldenVerdict && (
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                            {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      <p className={`mt-1 text-xs ${m.textMuted}`}>Review output, compare changes, and decide what to keep.</p>
+                    </div>
+                    <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
+                      {activeResultTab === 'improved' && (
+                        <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`} shrink-0`}>
+                          <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
+                        </button>
+                      )}
+                      {editingId && (
+                        <button
+                          onClick={() => lib.pinGoldenResponse(editingId, {
+                            text: enhanced,
+                            runId: latestEvalRun?.id,
+                            provider: latestEvalRun?.provider,
+                            model: latestEvalRun?.model,
+                          })}
+                          disabled={!enhanced.trim()}
+                          className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors shrink-0 ${
+                            enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
+                          }`}
+                        >
+                          <Ic n="Save" size={12} />Pin Golden
+                        </button>
+                      )}
+                      <button
+                        onClick={() => copy(enhanced)}
+                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
+                      ><Ic n="Copy" size={12} />Copy</button>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Result views">
+                    {resultTabs.map(({ id, label }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="tab"
+                        aria-selected={activeResultTab === id}
+                        onClick={() => {
+                          setResultTab(id);
+                          if (id !== 'improved') setEnhMdPreview(false);
+                        }}
+                        className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {activeResultTab === 'improved' && (
+                    enhMdPreview ? (
+                      <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
+                        <MarkdownPreview text={enhanced} />
+                      </div>
+                    ) : (
+                      <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
+                    )
+                  )}
+
+                  {activeResultTab === 'diff' && (
+                    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
+                      {wordDiff(raw, enhanced).map((d, i) => (
+                        <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {activeResultTab === 'variants' && variants.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      {variants.map((v, i) => (
+                        <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
+                          <div className="flex justify-between items-center mb-1 gap-3">
+                            <span className="text-xs font-bold text-violet-400">{v.label}</span>
+                            <div className="flex gap-3">
+                              <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
+                              <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
+                            </div>
+                          </div>
+                          <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{v.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {activeResultTab === 'notes' && showNotes && notes && (
+                    <div className={`${m.notesBg} border rounded-lg p-3`}>
+                      <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
+                      <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{notes}</p>
+                    </div>
+                  )}
+                </div>
+                <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                  <button type="button" onClick={() => setShowEvalHistory(p => !p)}
+                    className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>
+                    <span>{editingId ? `Run History (${evalRuns.length})` : `Recent Runs (${evalRuns.length})`}</span>
+                    <Ic n={showEvalHistory ? 'ChevronUp' : 'ChevronDown'} size={10} />
+                  </button>
+                  {showEvalHistory && evalRuns.length > 0 && (
+                    <div className="px-3 pb-3 flex flex-col gap-2 max-h-56 overflow-y-auto">
+                      {evalRuns.map((run) => (
+                        <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-semibold text-violet-400 truncate">{run.variantLabel || run.promptTitle}</span>
+                            <span className={m.textMuted}>{new Date(run.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                          </div>
+                          <div className={`flex flex-wrap gap-2 mb-1 ${m.textMuted}`}>
+                            <span className="uppercase">{run.mode}</span>
+                            <span>{run.provider}</span>
+                            <span>{run.model}</span>
+                            <span>{run.latencyMs}ms</span>
+                            {run.goldenScore != null && (
+                              <span className={`font-semibold ${run.goldenScore >= goldenThreshold ? 'text-emerald-400' : 'text-red-400'}`}>
+                                golden {Math.round(run.goldenScore * 100)}%
+                              </span>
+                            )}
+                          </div>
+                          <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
+                          {run.output && (
+                            <div className="mt-1 flex flex-wrap gap-3">
+                              <button onClick={() => copy(run.output, 'Run output copied')}
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-semibold transition-colors ${copyBtn}`}>
+                                <Ic n="Copy" size={10} />Copy output
+                              </button>
+                              {editingId && (
+                                <button
+                                  onClick={() => lib.pinGoldenResponse(editingId, {
+                                    text: run.output,
+                                    runId: run.id,
+                                    provider: run.provider,
+                                    model: run.model,
+                                  })}
+                                  className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 transition-colors font-semibold"
+                                >
+                                  <Ic n="Save" size={10} />Pin as Golden
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showEvalHistory && evalRuns.length === 0 && (
+                    <div className={`ui-empty-state px-3 pb-3 text-xs ${m.textMuted}`}>No saved runs yet.</div>
+                  )}
+                </div>
+                {editingId && goldenResponse && (
+                  <div className={`${m.surface} border ${m.border} rounded-lg`}>
+                    <button
+                      type="button"
+                      onClick={() => setShowGoldenComparison((p) => !p)}
+                      className={`w-full flex justify-between items-center px-3 py-2 text-xs font-semibold ${m.textSub} uppercase tracking-wider`}
+                    >
+                      <span>Golden Benchmark</span>
+                      <Ic n={showGoldenComparison ? 'ChevronUp' : 'ChevronDown'} size={10} />
+                    </button>
+                    {showGoldenComparison && (
+                      <div className="px-3 pb-3 flex flex-col gap-3">
+                        <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3`}>
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <div>
+                              <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">Pinned Golden</p>
+                              <p className={`text-xs ${m.textMuted} mt-1`}>
+                                {goldenResponse.provider || 'Unknown provider'}
+                                {goldenResponse.model ? ` · ${goldenResponse.model}` : ''}
+                                {goldenResponse.pinnedAt ? ` · ${new Date(goldenResponse.pinnedAt).toLocaleString()}` : ''}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => lib.clearGoldenResponse(editingId)}
+                              className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 transition-colors font-semibold"
+                            >
+                              <Ic n="Trash2" size={10} />Clear Golden
+                            </button>
+                          </div>
+                          <div className="flex items-center justify-between gap-3 mb-1">
+                            <span className={`text-xs ${m.textSub}`}>Similarity vs {comparisonSourceLabel.toLowerCase()}</span>
+                            <span className={`text-xs font-semibold ${goldenVerdict === 'fail' ? 'text-red-400' : 'text-emerald-400'}`}>
+                              {Math.round(goldenSimilarity * 100)}%
+                              {goldenVerdict && <span className="ml-1">({goldenVerdict})</span>}
+                            </span>
+                          </div>
+                          <div className={`relative w-full h-2 rounded-full overflow-hidden ${m.input} border ${m.border}`}>
+                            <div className={`h-full transition-all ${goldenVerdict === 'fail' ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.max(0, Math.min(100, goldenSimilarity * 100))}%` }} />
+                            <div className="absolute top-0 bottom-0 w-px bg-white/50" style={{ left: `${goldenThreshold * 100}%` }} title={`Threshold: ${Math.round(goldenThreshold * 100)}%`} />
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <label className={`text-xs ${m.textMuted}`}>Pass threshold</label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="range" min="0" max="100" step="5"
+                                value={Math.round(goldenThreshold * 100)}
+                                onChange={(e) => lib.setGoldenThreshold(editingId, Number(e.target.value) / 100)}
+                                className="w-20 h-1 accent-emerald-500"
+                              />
+                              <span className={`text-xs font-mono ${m.textSub} w-8 text-right`}>{Math.round(goldenThreshold * 100)}%</span>
+                            </div>
+                          </div>
+                        </div>
+                        {comparisonText ? (
+                          <div>
+                            <p className={`text-xs ${m.textSub} font-semibold mb-1 uppercase tracking-wider`}>
+                              Word Diff: Golden vs {comparisonSourceLabel}
+                            </p>
+                            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
+                              {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
+                                <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
+                                  {d.v}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <p className={`text-xs ${m.textMuted}`}>No enhanced output or eval run output is available to compare yet.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>}
+              </>}
+              </div>
             </div>
             </div>
           )}
@@ -829,91 +941,382 @@ export default function App() {
       )}
 
       {/* ══ A/B TEST TAB ══ */}
-      {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...experiments} /></div>}
+      {tab === 'abtest' && <div className="pl-tab-panel"><ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} /></div>}
 
-      {/* ══ PAD TAB (Notebook) ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} /></div>}
+      {/* ══ PAD TAB ══ */}
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
+        setRaw(content);
+        setEnhanced(content);
+        setSaveTitle(title);
+        setShowSave(true);
+        setTab('editor');
+        notify('Loaded into editor — save to library when ready.');
+      }} /></div>}
 
       {/* ══ HISTORY TAB ══ */}
       {tab === 'history' && <div className="pl-tab-panel"><RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} /></div>}
       </main>
 
-      <SavePanel
+      {showSave && (
+        <aside
+          className={`pl-modal-panel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="save-panel-title"
+        >
+          <div className={`flex items-start justify-between gap-3 border-b ${m.border} px-4 py-4`}>
+            <div>
+              <p id="save-panel-title" className={`text-sm font-semibold ${m.text}`}>
+                {saveTargetId ? 'Update Prompt' : 'Save to Library'}
+              </p>
+              <p className={`mt-1 text-xs ${m.textMuted}`}>
+                Keep editing in the background while you set title, collection, and tags.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={closeSavePanel}
+              className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
+              aria-label="Close save panel"
+            >
+              <Ic n="X" size={14} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Title</label>
+                <input
+                  autoFocus
+                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                  placeholder="Prompt title…"
+                  value={saveTitle}
+                  onChange={(e) => setSaveTitle(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <label className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
+                  {!showNewColl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewColl(true)}
+                      className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                    >
+                      <Ic n="Plus" size={11} />
+                      New
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <select
+                    value={saveCollection}
+                    onChange={(e) => setSaveCollection(e.target.value)}
+                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                  >
+                    <option value="">No Collection</option>
+                    {lib.collections.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {showNewColl && (
+                    <div className="flex gap-2">
+                      <input
+                        autoFocus
+                        className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                        placeholder="New collection name…"
+                        value={newCollName}
+                        onChange={(e) => setNewCollName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitNewCollection();
+                          if (e.key === 'Escape') {
+                            setNewCollName('');
+                            setShowNewColl(false);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={commitNewCollection}
+                        className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Tags</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_TAGS.map((t) => (
+                    <TagChip
+                      key={t}
+                      tag={t}
+                      selected={saveTags.includes(t)}
+                      onClick={() => setSaveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {saveTargetId && (
+                <div>
+                  <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Change Note</label>
+                  <input
+                    className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 ${m.text}`}
+                    placeholder="What changed? (optional)"
+                    value={changeNote}
+                    onChange={(e) => setChangeNote(e.target.value)}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={`border-t ${m.border} px-4 py-4`}>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => doSave()}
+                disabled={!canSavePanel}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
+              >
+                <Ic n="Save" size={12} />
+                Save {primaryModKey}+S
+              </button>
+              <button
+                type="button"
+                onClick={closeSavePanel}
+                className={`ui-control rounded-lg px-4 text-sm transition-colors ${m.btn} ${m.textBody}`}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* ══ MODALS ══ */}
+      {showVarForm && pendingTemplate && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-vars">
+            <div className="flex justify-between items-center">
+              <h2 id="modal-vars" className={`font-bold text-sm ${m.text}`}>Fill Template Variables</h2>
+              <button type="button" onClick={() => setShowVarForm(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+            </div>
+            <p className={`text-xs ${m.textAlt}`}>"{pendingTemplate.title}" contains template variables:</p>
+            <div className="flex flex-col gap-2">
+              {Object.keys(varVals).map(k => {
+                const inputDef = pendingTemplateInputMap[k];
+                const isSelect = inputDef?.type === 'select' && Array.isArray(inputDef.options) && inputDef.options.length > 0;
+                return (
+                <div key={k}>
+                  <label className="text-xs font-mono font-semibold text-violet-400 block mb-1">
+                    {inputDef?.label || `{{${k}}}`}
+                    {isGhostVar(k) && (
+                      <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-emerald-300">
+                        auto
+                      </span>
+                    )}
+                  </label>
+                  {isSelect ? (
+                    <select
+                      className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                      value={varVals[k]}
+                      onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))}
+                      aria-label={inputDef.label || k}
+                    >
+                      <option value="">{inputDef.placeholder || `Select ${inputDef.label || k}…`}</option>
+                      {inputDef.options.map((opt) => (
+                        <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                          {typeof opt === 'string' ? opt : (opt.label || opt.value)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input className={`w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+                      placeholder={inputDef?.placeholder || (isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`)}
+                      value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
+                  )}
+                </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={applyTemplate} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
+              <button onClick={skipTemplate} className={`px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSettings && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-40 p-4`}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
+            <div className="flex justify-between items-center">
+              <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
+              <button type="button" onClick={() => setShowSettings(false)} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+            </div>
+            <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
+              <span>Show enhancement notes</span>
+              <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-violet-500" />
+            </label>
+            <div>
+              <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Density</p>
+              <div className="flex gap-1">
+                {[['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']].map(([id, label]) => (
+                  <button key={id} type="button" onClick={() => setDensity(id)}
+                    className={`flex-1 text-xs px-2 py-1.5 rounded-lg transition-colors font-medium ${density === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {lib.collections.length > 0 && (
+              <div>
+                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Collections</p>
+                <div className="flex flex-col gap-1 max-h-36 overflow-y-auto">
+                  {lib.collections.map(c => (
+                    <div key={c} className="flex items-center justify-between">
+                      <span className={`text-xs ${m.textAlt} flex items-center gap-1`}><Ic n="FolderOpen" size={9} />{c}</span>
+                      <button onClick={() => lib.setCollections(p => p.filter(x => x !== c))} className={`text-xs ${m.textMuted} hover:text-red-400 transition-colors`}><Ic n="Trash2" size={11} /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button onClick={openOptions} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
+              🔑 Manage API Key (Options)
+            </button>
+            <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
+              <button onClick={lib.exportLib} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}><Ic n="Download" size={12} />Export Library</button>
+              <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={lib.importLib} className="hidden" /></label>
+              <button onClick={() => { if (window.confirm('Clear all prompts from the library?')) { lib.setLibrary([]); notify('Library cleared.'); } }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCmdPalette && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-start justify-center z-50 pt-20 p-4`} onClick={() => setShowCmdPalette(false)}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl w-full max-w-md overflow-hidden shadow-2xl`} onClick={e => e.stopPropagation()}>
+            <div className={`flex items-center gap-2 px-4 py-3 border-b ${m.border}`}>
+              <Ic n="Search" size={13} className={m.textSub} />
+              <input autoFocus className={`flex-1 bg-transparent text-sm ${m.text} focus:outline-none placeholder-gray-500`}
+                placeholder="Search commands…" value={cmdQuery} onChange={e => setCmdQuery(e.target.value)} />
+              <span className={`text-xs ${m.textSub} font-mono`}>ESC</span>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {filteredCmds.map((a, i) => (
+                <button key={i} onClick={a.action}
+                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm ${m.textBody} hover:bg-violet-600 hover:text-white transition-colors text-left`}>
+                  <span>{a.label}</span>
+                  {a.hint && <kbd className={`text-xs font-mono px-1.5 py-0.5 ${m.pill} rounded`}>{a.hint}</kbd>}
+                </button>
+              ))}
+              {filteredCmds.length === 0 && <div className={`ui-empty-state text-xs ${m.textMuted}`}>No commands found</div>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`} onClick={() => setShowShortcuts(false)}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm`} role="dialog" aria-modal="true" aria-labelledby="modal-shortcuts" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 id="modal-shortcuts" className={`font-bold text-sm ${m.text}`}>Keyboard Shortcuts</h2>
+              <button type="button" onClick={() => setShowShortcuts(false)} className={`${m.textSub} rounded-lg p-2 hover:bg-white/10 transition-colors`}><Ic n="X" size={14} /></button>
+            </div>
+            <div className="flex flex-col gap-4">
+              <div>
+                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Global</p>
+                <div className="flex flex-col gap-2.5">
+                  {[[`${primaryModKey} ↵`, 'Enhance prompt'], [`${primaryModKey} S`, 'Save prompt'], [`${primaryModKey} K`, 'Command palette'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-sm ${m.textBody}`}>{label}</span>
+                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Scratchpad (PadTab)</p>
+                <div className="flex flex-col gap-2.5">
+                  {[
+                    [`${primaryModKey} E`, 'Export / download pad'],
+                    [`${primaryModKey} ⇧ D`, 'Insert date separator'],
+                    [`${primaryModKey} ⇧ C`, 'Copy all content'],
+                    [`${primaryModKey} ⇧ X`, 'Clear pad'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className={`text-sm ${m.textBody}`}>{label}</span>
+                      <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <VersionDiffModal
+        entry={versionHistoryEntry}
+        selectedIndex={lib.diffVersionIdx}
+        onSelectIndex={lib.setDiffVersionIdx}
+        onClose={lib.closeVersionHistory}
+        onRestore={(version) => lib.restoreVersion(versionHistoryEntry?.id, version)}
         m={m}
-        compact={compact}
-        showSave={showSave}
-        closeSavePanel={closeSavePanel}
-        saveTargetId={saveTargetId}
-        saveTitle={saveTitle}
-        setSaveTitle={setSaveTitle}
-        saveCollection={saveCollection}
-        setSaveCollection={setSaveCollection}
-        saveTags={saveTags}
-        setSaveTags={setSaveTags}
-        changeNote={changeNote}
-        setChangeNote={setChangeNote}
-        newCollName={newCollName}
-        setNewCollName={setNewCollName}
-        showNewColl={showNewColl}
-        setShowNewColl={setShowNewColl}
-        collections={lib.collections}
-        commitNewCollection={commitNewCollection}
-        doSave={doSave}
-        canSavePanel={canSavePanel}
-        primaryModKey={primaryModKey}
       />
 
-      <ModalLayer
-        m={m}
-        compact={compact}
-        toast={toast}
-        setToast={setToast}
-        templateVars={{
-          showVarForm, setShowVarForm, pendingTemplate,
-          varVals, setVarVals, applyTemplate, skipTemplate,
-          pendingTemplateInputMap,
-        }}
-        settings={{
-          showSettings, setShowSettings,
-          showNotes, setShowNotes,
-          density, setDensity,
-          collections: lib.collections, setCollections: lib.setCollections,
-          setLibrary: lib.setLibrary,
-          exportLib: lib.exportLib, importLib: lib.importLib,
-          openOptions, notify,
-        }}
-        cmdPalette={{
-          showCmdPalette, setShowCmdPalette,
-          cmdQuery, setCmdQuery,
-          filteredCmds,
-        }}
-        shortcuts={{
-          showShortcuts, setShowShortcuts,
-          primaryModKey,
-        }}
-        pii={{
-          piiWarning, piiRedactAndSend, piiSendAnyway, piiCancel,
-          piiSummary,
-        }}
-        bugReport={{
-          showBugReport,
-          onCloseBugReport: () => setShowBugReport(false),
-          notify, isWeb, currentSurface,
-          bugReportContext, raw, enhanced, enhMode,
-        }}
-        versionDiff={{
-          entry: versionHistoryEntry,
-          selectedIndex: lib.diffVersionIdx,
-          onSelectIndex: lib.setDiffVersionIdx,
-          onClose: lib.closeVersionHistory,
-          onRestore: (version) => lib.restoreVersion(versionHistoryEntry?.id, version),
-        }}
-        desktopSettings={{
-          showDesktopSettings,
-          onCloseDesktopSettings: () => setShowDesktopSettings(false),
-          notify,
-        }}
-      />
+      {/* ══ PII WARNING MODAL ══ */}
+      {piiWarning && (
+        <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-50 p-4`}>
+          <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-md flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-pii">
+            <div className="flex justify-between items-center">
+              <h2 id="modal-pii" className={`font-bold text-sm ${m.text}`}>Sensitive Data Detected</h2>
+              <button type="button" onClick={piiCancel} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+            </div>
+            <p className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt:</p>
+            <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+              {piiWarning.matches.map(match => (
+                <div key={match.id} className={`text-xs ${m.textBody} flex items-center gap-2`}>
+                  <span className="text-yellow-400 font-semibold uppercase text-[10px]">{match.type}</span>
+                  <span className="font-mono truncate">{match.snippet.length > 32
+                    ? `${match.snippet.slice(0, 8)}...${match.snippet.slice(-6)}`
+                    : match.snippet}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={piiRedactAndSend}
+                className="flex-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg py-2 text-xs font-semibold transition-colors">
+                Redact & Send
+              </button>
+              <button onClick={piiSendAnyway}
+                className="flex-1 bg-amber-500 hover:bg-amber-400 text-gray-950 rounded-lg py-2 text-xs font-semibold transition-colors">
+                Send Anyway
+              </button>
+              <button onClick={piiCancel}
+                className={`px-3 ${m.btn} ${m.textBody} rounded-lg py-2 text-xs font-semibold transition-colors`}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <Toast message={toast} onDone={() => setToast(null)} />}
+      {!isExtension && (
+        <DesktopSettingsModal
+          show={showDesktopSettings}
+          onClose={() => setShowDesktopSettings(false)}
+          m={m}
+          notify={notify}
+        />
+      )}
       </div>
     </ThemeProvider>
   );
