@@ -32,17 +32,18 @@ export function saveSettings(settings) {
 }
 
 /**
- * In web demo mode the proxy injects real keys server-side,
- * but providers.js still checks for a truthy key before calling fetch.
- * Inject placeholders so the validation passes — the proxy overwrites them.
+ * On the hosted web surface the proxy injects server-side API keys,
+ * so provider-layer validation needs a truthy key to proceed.
+ * We use a 'proxy' sentinel so it's clear no real client key exists.
+ * On non-web surfaces this is a no-op — users supply their own keys (BYOK).
  */
-function withDemoKeys(settings, provider) {
+function withProxyKeys(settings, provider) {
   if (!IS_WEB) return settings;
   const s = { ...settings };
-  if (provider === 'anthropic' && !s.apiKey)            s.apiKey = 'demo';
-  if (provider === 'openai'    && !s.openaiApiKey)      s.openaiApiKey = 'demo';
-  if (provider === 'gemini'    && !s.geminiApiKey)       s.geminiApiKey = 'demo';
-  if (provider === 'openrouter' && !s.openrouterApiKey)  s.openrouterApiKey = 'demo';
+  if (provider === 'anthropic' && !s.apiKey)            s.apiKey = 'proxy';
+  if (provider === 'openai'    && !s.openaiApiKey)      s.openaiApiKey = 'proxy';
+  if (provider === 'gemini'    && !s.geminiApiKey)       s.geminiApiKey = 'proxy';
+  if (provider === 'openrouter' && !s.openrouterApiKey)  s.openrouterApiKey = 'proxy';
   return s;
 }
 
@@ -52,7 +53,7 @@ export async function callModelDirect(payload, { settingsOverride, onChunk, sign
   return callProvider({
     provider,
     payload,
-    settings: withDemoKeys(s, provider),
+    settings: withProxyKeys(s, provider),
     fetchImpl: getFetchImpl(provider),
     onChunk,
     signal,
