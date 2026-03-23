@@ -36,8 +36,6 @@ const ALLOWED_PATHS = new Map([
 ]);
 
 const STRIPPED_HEADERS = new Set([
-  'authorization',
-  'x-api-key',
   'cookie',
   'set-cookie',
   'host',
@@ -90,26 +88,8 @@ function clampMaxTokens(body) {
   return body;
 }
 
-function injectKey(url, headers) {
-  const parsed = new URL(url);
-  const host = parsed.hostname;
-
-  if (host === 'api.anthropic.com' && process.env.ANTHROPIC_API_KEY) {
-    headers['x-api-key'] = process.env.ANTHROPIC_API_KEY;
-  }
-  if (host === 'api.openai.com' && process.env.OPENAI_API_KEY) {
-    headers.Authorization = `Bearer ${process.env.OPENAI_API_KEY}`;
-  }
-  if (host === 'openrouter.ai' && process.env.OPENROUTER_API_KEY) {
-    headers.Authorization = `Bearer ${process.env.OPENROUTER_API_KEY}`;
-  }
-  if (host === 'generativelanguage.googleapis.com' && process.env.GEMINI_API_KEY) {
-    parsed.searchParams.set('key', process.env.GEMINI_API_KEY);
-    return { url: parsed.toString(), headers };
-  }
-
-  return { url, headers };
-}
+// BYOK passthrough — client supplies their own API keys.
+// No server-side key injection. Auth headers pass through directly.
 
 export default async function handler(request) {
   const origin = request.headers.get('origin') || '';
@@ -171,12 +151,10 @@ export default async function handler(request) {
     body = clampMaxTokens(body);
   }
 
-  const injected = injectKey(targetUrl, cleanHeaders);
-
   try {
-    const upstream = await fetch(injected.url, {
+    const upstream = await fetch(targetUrl, {
       method: 'POST',
-      headers: injected.headers,
+      headers: cleanHeaders,
       body: typeof body === 'string' ? body : JSON.stringify(body),
     });
 
