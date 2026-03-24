@@ -77,6 +77,15 @@ export default function App() {
   } = ui;
   const m = T[colorMode];
 
+  // ── Navigation hook (must precede any derived state that reads activeSection) ──
+  const nav = useNavigation({
+    primaryView, setPrimaryView,
+    workspaceView, setWorkspaceView,
+    runsView, setRunsView,
+    tab, setTab,
+  });
+  const { activeSection, openCreateView, openSection, openRunsView } = nav;
+
   // ── Library hook ──
   const lib = useLibrary(notify);
   const abTest = useABTest({ notify });
@@ -133,7 +142,7 @@ export default function App() {
   const kbFns = useRef({ enhance, doSave, openSavePanel });
   useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel }; });
 
-  // ── Derived (view-only) ──
+  // ── Derived state (no hooks below this line) ─────────────────────────────
   const score = scorePrompt(raw);
   const wc = typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0;
   const compact = viewportWidth < 720 || viewportHeight < 560;
@@ -162,15 +171,7 @@ export default function App() {
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;
-  // ── Navigation hook ──
-  const nav = useNavigation({
-    primaryView, setPrimaryView,
-    workspaceView, setWorkspaceView,
-    runsView, setRunsView,
-    tab, setTab,
-  });
-  const { activeSection, openCreateView, openSection, openRunsView } = nav;
-
+  // ── Derived (layout modes) ──
   const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
   const studioCreateMode = tab === 'editor' && activeSection === 'create';
   const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
