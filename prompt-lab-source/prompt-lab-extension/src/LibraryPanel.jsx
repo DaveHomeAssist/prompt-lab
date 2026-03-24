@@ -1,4 +1,4 @@
-import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, memo, useEffect, useState } from 'react';
 import Ic from './icons';
 import { extractVars, looksSensitive } from './promptUtils';
 import TagChip from './TagChip';
@@ -7,23 +7,12 @@ import MarkdownPreview from './MarkdownPreview';
 import DraftBadge from './DraftBadge.jsx';
 import PresetImportPanel from './PresetImportPanel.jsx';
 
-function formatDate(value, withTime = false) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return withTime ? d.toLocaleString() : d.toLocaleDateString();
-}
-
 function StarterPackCard({ pack, m, onLoad }) {
   const [loading, setLoading] = useState(false);
   const handleClick = async () => {
     if (pack.loaded || loading) return;
     setLoading(true);
-    await new Promise(resolve => {
-      const schedule = window.requestAnimationFrame || (cb => window.setTimeout(cb, 16));
-      schedule(() => resolve());
-    });
-    try { await Promise.resolve(onLoad(pack.id)); } finally { setLoading(false); }
+    try { onLoad(pack.id); } finally { setLoading(false); }
   };
   return (
     <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex items-start gap-3`}>
@@ -55,6 +44,7 @@ function StarterPackCard({ pack, m, onLoad }) {
  */
 const LibraryPanel = memo(function LibraryPanel({
   m, lib, compact, isWeb, showEditorPane,
+  effectiveEditorLayout, setEditorLayout,
   editingId, setSaveTitle,
   testCasesByPrompt, evalRuns, editingCaseId,
   caseFormPromptId,
@@ -67,78 +57,22 @@ const LibraryPanel = memo(function LibraryPanel({
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(32);
-  const rafRef = useRef(null);
-  const containedPane = !isWeb || (showEditorPane && !compact);
-  const manualMode = lib.sortBy === 'manual';
-  const deferredFiltered = useDeferredValue(lib.filtered);
-  const listEntries = manualMode ? lib.filtered : deferredFiltered;
-  const visibleEntries = useMemo(
-    () => (manualMode ? listEntries : listEntries.slice(0, visibleCount)),
-    [listEntries, manualMode, visibleCount],
-  );
 
   useEffect(() => {
     setSearchDraft(lib.search);
   }, [lib.search]);
 
   useEffect(() => {
-    if (searchDraft === lib.search) return undefined;
     const timeoutId = window.setTimeout(() => {
-      lib.setSearch(searchDraft);
+      if (searchDraft !== lib.search) {
+        lib.setSearch(searchDraft);
+      }
     }, 250);
     return () => window.clearTimeout(timeoutId);
   }, [lib.search, lib.setSearch, searchDraft]);
 
-  useEffect(() => {
-    if (rafRef.current != null) {
-      window.cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-
-    if (manualMode) {
-      setVisibleCount(lib.filtered.length);
-      return undefined;
-    }
-
-    const total = deferredFiltered.length;
-    const initialCount = Math.min(32, total);
-    setVisibleCount(initialCount);
-    if (total <= initialCount) return undefined;
-
-    const grow = () => {
-      setVisibleCount((current) => {
-        if (current >= total) return current;
-        const next = Math.min(current + 48, total);
-        if (next < total) {
-          rafRef.current = window.requestAnimationFrame(grow);
-        } else {
-          rafRef.current = null;
-        }
-        return next;
-      });
-    };
-
-    rafRef.current = window.requestAnimationFrame(grow);
-    return () => {
-      if (rafRef.current != null) {
-        window.cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, [deferredFiltered, lib.filtered.length, manualMode]);
-
-  useEffect(() => {
-    if (manualMode) return undefined;
-    if (lib.draggingLibraryId || lib.dragOverLibraryId) {
-      lib.setDraggingLibraryId(null);
-      lib.setDragOverLibraryId(null);
-    }
-    return undefined;
-  }, [lib, manualMode]);
-
   return (
-    <div className={`w-full min-w-0 flex flex-col ${containedPane ? 'overflow-hidden' : ''}`}>
+    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
@@ -149,25 +83,15 @@ const LibraryPanel = memo(function LibraryPanel({
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
             <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
               className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
-              <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="a-z">A → Z</option><option value="z-a">Z → A</option><option value="group">By collection</option><option value="most-used">Most used</option><option value="manual">Manual</option>
+              <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="a-z">A → Z</option><option value="z-a">Z → A</option><option value="group">By collection</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
             </select>
             <button type="button" onClick={lib.exportLib} className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
-            {isWeb && typeof lib.recoverLegacyWebLibrary === 'function' && (
-              <button
-                type="button"
-                onClick={() => lib.recoverLegacyWebLibrary({ force: true })}
-                disabled={lib.recoveringLegacyLibrary}
-                className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${lib.recoveringLegacyLibrary ? `${m.btn} ${m.textMuted} cursor-wait` : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}
-              >
-                {lib.recoveringLegacyLibrary ? 'Checking…' : 'Recover'}
-              </button>
-            )}
             <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>
           </div>
         </div>
-        {manualMode && (
+        {lib.sortBy === 'manual' && (
           <p className={`text-[11px] ${m.textMuted}`}>
             Manual order is live. Drag cards or use the arrow controls to move them.
           </p>
@@ -197,26 +121,33 @@ const LibraryPanel = memo(function LibraryPanel({
           onClose={() => setShowImportPanel(false)}
         />
       )}
-      <div className={`${containedPane ? 'flex-1 overflow-y-auto' : ''} p-3 flex flex-col gap-2`}>
-        {deferredFiltered.length === 0 && !showImportPanel && (
+      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
+        {lib.filtered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
             <p className={`text-sm ${m.textSub}`}>{lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
           </div>
         )}
-        {visibleEntries.map((entry, index) => {
-          const manual = manualMode;
+        {lib.filtered.map((entry, index) => {
+          const manual = lib.sortBy === 'manual';
           const shareUrl = lib.shareId === entry.id ? lib.getShareUrl(entry) : null;
+          const collectionLabel = entry.collection || 'Unassigned';
+          const previousCollectionLabel = index > 0 ? (lib.filtered[index - 1].collection || 'Unassigned') : null;
+          const showCollectionHeader = lib.sortBy === 'group' && collectionLabel !== previousCollectionLabel;
           return (
-            <div key={entry.id}
-              style={manual ? undefined : {
-                contentVisibility: 'auto',
-                contain: 'layout paint style',
-                containIntrinsicSize: lib.expandedId === entry.id ? '720px' : '180px',
-              }}
+            <Fragment key={entry.id}>
+              {showCollectionHeader && (
+                <div className={`flex items-center gap-2 ${index === 0 ? '' : 'pt-2'}`}>
+                  <span className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>
+                    {collectionLabel}
+                  </span>
+                  <div className={`flex-1 border-t ${m.border}`} />
+                </div>
+              )}
+            <div
               draggable={manual}
               onDragStart={e => { if (!manual) return; e.dataTransfer.setData('libraryEntryId', entry.id); lib.setDraggingLibraryId(entry.id); }}
-              onDragEnd={() => { if (!manual) return; lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
+              onDragEnd={() => { lib.setDraggingLibraryId(null); lib.setDragOverLibraryId(null); }}
               onDragOver={e => { if (!manual) return; e.preventDefault(); lib.setDragOverLibraryId(entry.id); }}
               onDrop={e => {
                 if (!manual) return;
@@ -245,10 +176,10 @@ const LibraryPanel = memo(function LibraryPanel({
                   )}
                   <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
                     {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
-                    <span>{formatDate(entry.createdAt)}</span>
+                    <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
                     {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
                     {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
-                    {extractVars(entry.enhanced || '').length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
+                    {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -259,7 +190,7 @@ const LibraryPanel = memo(function LibraryPanel({
                         type="button"
                         aria-label={`Move ${entry.title} up`}
                         disabled={index === 0}
-                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1)}
+                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, lib.filtered)}
                         className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors disabled:opacity-40`}
                       >
                         <Ic n="ChevronUp" size={11} />
@@ -267,8 +198,8 @@ const LibraryPanel = memo(function LibraryPanel({
                       <button
                         type="button"
                         aria-label={`Move ${entry.title} down`}
-                        disabled={index === visibleEntries.length - 1}
-                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1)}
+                        disabled={index === lib.filtered.length - 1}
+                        onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, lib.filtered)}
                         className={`ui-control px-1.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors disabled:opacity-40`}
                       >
                         <Ic n="ChevronDown" size={11} />
@@ -284,7 +215,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   </button>
                   <button
                     type="button"
-                    onClick={() => { copy(entry.enhanced || entry.original || ''); lib.bumpUse(entry.id); }}
+                    onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }}
                     className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs font-semibold hover:text-violet-400 transition-colors`}
                   >
                     Copy
@@ -306,84 +237,81 @@ const LibraryPanel = memo(function LibraryPanel({
                   <button type="button" onClick={() => copy(shareUrl || '')} className="ui-control px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
                 </div>
               )}
-              <div className={`pl-lib-detail-wrap${lib.expandedId === entry.id ? ' is-open' : ''}`}>
-                <div className="pl-lib-detail-inner">
-                  {lib.expandedId === entry.id && (
-                    <div className={`pl-lib-expand border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
-                      <div className={`flex flex-wrap gap-2`}>
-                        <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
-                        <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
-                        <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
-                        <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
-                        <button type="button" onClick={() => {
-                          if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
-                            && !window.confirm('This shared link may include sensitive content. Continue?')) return;
-                          lib.setShareId(p => p === entry.id ? null : entry.id);
-                        }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share link</button>
-                        <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
+              {lib.expandedId === entry.id && (
+                <div className={`border-t ${m.border} px-3 py-3 flex flex-col gap-3`}>
+                  <div className={`flex flex-wrap gap-2`}>
+                    <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
+                    <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
+                    <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
+                    <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
+                    <button type="button" onClick={() => {
+                      if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+                        && !window.confirm('This shared link may include sensitive content. Continue?')) return;
+                      lib.setShareId(p => p === entry.id ? null : entry.id);
+                    }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share link</button>
+                    <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
+                  </div>
+                  <TestCasesPanel
+                    m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
+                    evalRuns={evalRuns} editingCaseId={editingCaseId}
+                    caseFormPromptId={caseFormPromptId}
+                    caseTitle={caseTitle} setCaseTitle={setCaseTitle}
+                    caseInput={caseInput} setCaseInput={setCaseInput}
+                    caseTraits={caseTraits} setCaseTraits={setCaseTraits}
+                    caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
+                    caseNotes={caseNotes} setCaseNotes={setCaseNotes}
+                    openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
+                    saveCaseForPrompt={saveCaseForPrompt}
+                    loadCaseIntoEditor={loadCaseIntoEditor}
+                    runSingleCase={runSingleCase} removeCase={removeCase}
+                  />
+                  {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
+                    <div key={lbl}>
+                      <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
+                      <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
+                        <MarkdownPreview text={txt || ''} className="text-xs" />
                       </div>
-                      <TestCasesPanel
-                        m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
-                        evalRuns={evalRuns} editingCaseId={editingCaseId}
-                        caseFormPromptId={caseFormPromptId}
-                        caseTitle={caseTitle} setCaseTitle={setCaseTitle}
-                        caseInput={caseInput} setCaseInput={setCaseInput}
-                        caseTraits={caseTraits} setCaseTraits={setCaseTraits}
-                        caseExclusions={caseExclusions} setCaseExclusions={setCaseExclusions}
-                        caseNotes={caseNotes} setCaseNotes={setCaseNotes}
-                        openCaseForm={openCaseForm} resetCaseForm={resetCaseForm}
-                        saveCaseForPrompt={saveCaseForPrompt}
-                        loadCaseIntoEditor={loadCaseIntoEditor}
-                        runSingleCase={runSingleCase} removeCase={removeCase}
-                      />
-                      {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
-                        <div key={lbl}>
-                          <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
-                          <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
-                            <MarkdownPreview text={txt || ''} className="text-xs" />
-                          </div>
-                        </div>
-                      ))}
-                      {entry.notes && <div><p className={`text-xs ${m.notesText || m.textSub} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
-                      {(entry.variants || []).length > 0 && (
-                        <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                          {entry.variants.map((v) => <div key={v.label || v.id || v.content} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
-                        </div>
-                      )}
-                      {(entry.versions || []).length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
-                            <button
-                              onClick={() => lib.openVersionHistory(entry.id, 0)}
-                              className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1 rounded-lg px-1.5 py-0.5`}
-                            >
-                              <Ic n="GitBranch" size={9} />
-                              Open History
-                            </button>
-                          </div>
-                          <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
-                            <div className="flex items-center justify-between gap-3">
-                              <span>Latest snapshot: {formatDate(entry.versions[entry.versions.length - 1]?.savedAt, true)}</span>
-                              <span className={m.textMuted}>Restore and compare in modal</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div className={`pt-1 border-t ${m.border}`}>
+                    </div>
+                  ))}
+                  {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
+                  {(entry.variants || []).length > 0 && (
+                    <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
+                      {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
+                    </div>
+                  )}
+                  {(entry.versions || []).length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-blue-400 font-semibold uppercase tracking-wider flex items-center gap-1"><Ic n="Clock" size={9} />Version History ({entry.versions.length})</p>
                         <button
-                          type="button"
-                          onClick={() => lib.del(entry.id)}
-                          className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
+                          onClick={() => lib.openVersionHistory(entry.id, 0)}
+                          className={`text-xs ${m.textSub} hover:text-white transition-colors flex items-center gap-1 rounded-lg px-1.5 py-0.5`}
                         >
-                          <Ic n="Trash2" size={11} />Delete Prompt
+                          <Ic n="GitBranch" size={9} />
+                          Open History
                         </button>
+                      </div>
+                      <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs ${m.textAlt}`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Latest snapshot: {new Date(entry.versions[entry.versions.length - 1].savedAt).toLocaleString()}</span>
+                          <span className={m.textMuted}>Restore and compare in modal</span>
+                        </div>
                       </div>
                     </div>
                   )}
+                  <div className={`pt-1 border-t ${m.border}`}>
+                    <button
+                      type="button"
+                      onClick={() => lib.del(entry.id)}
+                      className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
+                    >
+                      <Ic n="Trash2" size={11} />Delete Prompt
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
+            </Fragment>
           );
         })}
         {lib.starterLibraries && lib.starterLibraries.some(p => !p.loaded) && (

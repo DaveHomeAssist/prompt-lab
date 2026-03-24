@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
+    copyPublicDir: false,
     rollupOptions: {
       input: {
         panel: resolve(__dirname, 'panel.html'),

@@ -11,14 +11,12 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useABTest from './hooks/useABTest.js';
-import useFirstRun from './hooks/useFirstRun.js';
 import Toast from './Toast';
 import TagChip from './TagChip';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
-import SetupCard from './SetupCard';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
@@ -33,25 +31,17 @@ import MainWorkspace from './MainWorkspace';
 import EditorActions from './EditorActions';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import MarkdownPreview from './MarkdownPreview';
-import { useWebSlot } from './WebSlotContext.jsx';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showGoldenComparison, setShowGoldenComparison] = useState(true);
-  const [showQuickInject, setShowQuickInject] = useState(false);
+  const [showQuickInject, setShowQuickInject] = useState(true);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
-  const isWeb = !isExtension && import.meta.env.VITE_WEB_MODE === 'true';
-  const { UserButton: WebUserButton } = useWebSlot();
-  const {
-    showSetupCard,
-    isFirstEverLaunch,
-    dismissSetupCard,
-    markFirstRunComplete,
-  } = useFirstRun();
+  const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const {
     viewportWidth,
     viewportHeight,
@@ -95,13 +85,7 @@ export default function App() {
     lib,
     editor: editorState,
   });
-  const executionFlow = useExecutionFlow({
-    ui,
-    lib,
-    editor: editorState,
-    persistence: persistenceFlow,
-    onEnhanceSuccess: markFirstRunComplete,
-  });
+  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
   const ed = {
     ...editorState,
     ...persistenceFlow,
@@ -152,9 +136,6 @@ export default function App() {
   const copyBtn = colorMode === 'dark'
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
-  const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
-  const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
-  const showLibraryPane = tab !== 'editor' || libraryOnlyMode || effectiveEditorLayout !== 'editor';
   const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? 'Cmd'
     : 'Ctrl';
@@ -178,12 +159,11 @@ export default function App() {
   const activeSection = primaryView === 'runs'
     ? 'experiments'
     : (workspaceView === 'library' ? 'library' : 'create');
-  const createLayoutOptions = compact
-    ? []
-    : [
-        ['editor', 'Focus'],
-        ['split', 'Dual Pane'],
-      ];
+  const libraryOnlyMode = tab === 'editor' && workspaceView === 'library';
+  const studioCreateMode = tab === 'editor' && activeSection === 'create';
+  const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
+  const showLibraryPane = tab !== 'editor' || libraryOnlyMode || (!studioCreateMode && effectiveEditorLayout !== 'editor');
+  const createLayoutOptions = [];
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
     { id: 'diff', label: 'Diff' },
@@ -201,7 +181,15 @@ export default function App() {
 
   useEffect(() => {
     if (tab !== 'editor') return;
-    if (workspaceView === 'composer' || workspaceView === 'library') return;
+    if (workspaceView === 'composer') return;
+    if (editorLayout !== workspaceView) {
+      setEditorLayout(workspaceView);
+    }
+  }, [editorLayout, setEditorLayout, tab, workspaceView]);
+
+  useEffect(() => {
+    if (tab !== 'editor') return;
+    if (workspaceView === 'composer') return;
     if (effectiveEditorLayout !== workspaceView) {
       setWorkspaceView(effectiveEditorLayout);
     }
@@ -338,7 +326,6 @@ export default function App() {
               </button>
               <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
               <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
-              {WebUserButton && <WebUserButton />}
             </div>
           </div>
         </div>
@@ -469,14 +456,6 @@ export default function App() {
                   )}
                 </div>
               )}
-              {showSetupCard && activeSection === 'create' && (
-                <SetupCard
-                  m={m}
-                  isFirstEver={isFirstEverLaunch}
-                  onOpenSettings={openOptions}
-                  onDismiss={dismissSetupCard}
-                />
-              )}
               {/* Input */}
               <div>
                 <div className={`flex justify-between items-center mb-1.5 ${compact ? 'gap-2 flex-wrap' : ''}`}>
@@ -489,17 +468,7 @@ export default function App() {
                         className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
                     </div>
                   </div>
-                  <span className={`text-xs ${m.textMuted} flex items-center gap-2`}>
-                    {wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}
-                    {score && (() => {
-                      const cnt = [score.role, score.task, score.format, score.constraints, score.context].filter(Boolean).length;
-                      return (
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>
-                          <Ic n={cnt >= 4 ? 'Check' : 'AlertTriangle'} size={8} />{cnt}/5
-                        </span>
-                      );
-                    })()}
-                  </span>
+                  <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
                 </div>
                 {mdPreview ? (
                   <div className={`${inp} overflow-y-auto`} style={{ minHeight: '12rem', maxHeight: '24rem' }}>
@@ -509,6 +478,26 @@ export default function App() {
                   <textarea rows={8} className={inp} placeholder="Paste or write your prompt here…" value={raw} onChange={e => setRaw(e.target.value)} />
                 )}
               </div>
+              {/* Scoring */}
+              {score && (() => {
+                const checks = [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]];
+                const cnt = checks.filter(c => c[1]).length;
+                return (
+                  <div className={`${m.surface} border ${m.border} rounded-lg p-3`}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Prompt Quality</span>
+                      <span className={`text-xs font-bold ${cnt >= 4 ? 'text-green-500' : cnt >= 2 ? 'text-yellow-500' : 'text-red-500'}`}>{cnt}/5</span>
+                    </div>
+                    <div className="flex gap-3 flex-wrap">
+                      {checks.map(([lbl, ok]) => (
+                        <span key={lbl} className={`flex items-center gap-1 text-xs ${ok ? m.scoreGood : m.scoreBad}`}>
+                          {ok ? <Ic n="Check" size={9} /> : <Ic n="X" size={9} />}{lbl}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {/* Lint Issues */}
               {lintIssues.length > 0 && (
                 <div className={`${m.surface} border ${m.border} rounded-lg`}>
@@ -533,6 +522,7 @@ export default function App() {
                 </div>
               )}
               {/* Mode + Enhance */}
+              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Enhance Lab</span>
               <EditorActions
                 m={m}
                 compact={compact}
@@ -551,52 +541,64 @@ export default function App() {
                 hasSavablePrompt={hasSavablePrompt}
                 enhanceShortcutLabel={`${primaryModKey}+Enter`}
               />
-              {(loading || batchProgress.active || optimisticSaveVisible || (editingId && currentTestCases.length > 0)) && (
+              {(loading || batchProgress.active || optimisticSaveVisible) && (
                 <div className={`${m.surface} border ${m.border} rounded-lg px-3 py-2 flex items-center justify-between gap-3`}>
-                  <div className={`flex items-center gap-3 min-w-0 text-xs ${m.textMuted} flex-wrap`}>
-                    {loading && (
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
-                        {streaming ? 'Streaming…' : 'Preparing…'}
-                      </span>
-                    )}
-                    {batchProgress.active && (
-                      <span className="flex items-center gap-1.5">
-                        <Ic n="FlaskConical" size={10} className="text-blue-400" />
-                        {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total}
-                        {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
-                      </span>
-                    )}
-                    {!loading && !batchProgress.active && optimisticSaveVisible && (
-                      <span className="text-green-400">Save ready</span>
-                    )}
-                    {editingId && currentTestCases.length > 0 && !batchProgress.active && (
-                      <span className="flex items-center gap-1.5">
-                        <Ic n="FlaskConical" size={10} />
-                        {currentTestCases.length} {currentTestCases.length === 1 ? 'check' : 'checks'}
-                      </span>
+                  <div className="min-w-0">
+                    {loading ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Generation Active</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {streaming ? 'Streaming response from provider…' : 'Preparing response…'}
+                        </p>
+                      </>
+                    ) : batchProgress.active ? (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Batch Progress</p>
+                        <p className={`text-xs ${m.textMuted} truncate`}>
+                          {Math.min(batchProgress.completed, batchProgress.total)}/{batchProgress.total} complete
+                          {batchProgress.currentLabel ? ` · ${batchProgress.currentLabel}` : ''}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Save Ready</p>
+                        <p className={`text-xs ${m.textMuted}`}>You can save this draft before the final result finishes.</p>
+                      </>
                     )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {editingId && currentTestCases.length > 0 && !batchProgress.active && (
-                      <button onClick={runAllCases} disabled={loading || runningCases}
-                        className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
-                        Run All
-                      </button>
-                    )}
                     {hasSavablePrompt && !showSave && (
-                      <button type="button" onClick={() => openSavePanel()}
-                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500">
-                        Save
+                      <button
+                        type="button"
+                        onClick={() => openSavePanel()}
+                        className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500"
+                      >
+                        Save Draft
                       </button>
                     )}
                     {loading && (
-                      <button type="button" onClick={cancelEnhance}
-                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}>
+                      <button
+                        type="button"
+                        onClick={cancelEnhance}
+                        className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                      >
                         Cancel
                       </button>
                     )}
                   </div>
+                </div>
+              )}
+              {editingId && currentTestCases.length > 0 && (
+                <div className={`flex items-center justify-between ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
+                  <span className={`text-xs ${m.textSub} flex items-center gap-1.5`}>
+                    <Ic n="FlaskConical" size={10} />
+                    {currentTestCases.length} test {currentTestCases.length === 1 ? 'case' : 'cases'}
+                  </span>
+                  <button onClick={runAllCases} disabled={loading || runningCases}
+                    className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
+                    {runningCases ? <span className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={10} />}
+                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
+                  </button>
                 </div>
               )}
               {error && (
@@ -1183,7 +1185,7 @@ export default function App() {
                   {lib.collections.map(c => (
                     <div key={c} className="flex items-center justify-between">
                       <span className={`text-xs ${m.textAlt} flex items-center gap-1`}><Ic n="FolderOpen" size={9} />{c}</span>
-                      <button onClick={() => lib.setCollections(p => p.filter(x => x !== c))} className={`text-xs ${m.textMuted} hover:text-red-400 transition-colors`}><Ic n="Trash2" size={11} /></button>
+                      <button type="button" onClick={() => lib.deleteCollection(c)} className={`text-xs ${m.textMuted} hover:text-red-400 transition-colors`}><Ic n="Trash2" size={11} /></button>
                     </div>
                   ))}
                 </div>
@@ -1195,7 +1197,7 @@ export default function App() {
             <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
               <button onClick={lib.exportLib} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}><Ic n="Download" size={12} />Export Library</button>
               <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={lib.importLib} className="hidden" /></label>
-              <button onClick={() => { if (window.confirm('Clear all prompts from the library?')) { lib.setLibrary([]); notify('Library cleared.'); } }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
+              <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) lib.clearLibrary(); }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
             </div>
           </div>
         </div>

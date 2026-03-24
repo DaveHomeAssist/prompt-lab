@@ -8,7 +8,7 @@ export default function MainWorkspace({
   libraryPane,
 }) {
   const dualPane = showEditorPane && showLibraryPane && !compact;
-  const gridCols = compact ? 'grid-cols-1' : 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]';
+  const gridCols = dualPane ? 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-1';
   const rootClass = (isWeb && !dualPane)
     ? `grid ${gridCols} min-h-0`
     : `grid ${gridCols} flex-1 min-h-0 overflow-hidden`;

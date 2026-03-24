@@ -1,4 +1,5 @@
 import seedData from '../data/promptlab-seed-libraries.json';
+import { mergeLibraryEntries } from './libraryMatching.js';
 import { createPromptEntry } from './promptSchema.js';
 import { loadJson, saveJson } from './storage.js';
 import { randomId } from './utils.js';
@@ -44,15 +45,11 @@ export function getLoadedPacks() {
   return Array.isArray(stored) ? stored : [];
 }
 
-export function persistLoadedPacks(loadedPackIds) {
-  return saveJson(LOADED_PACKS_KEY, Array.isArray(loadedPackIds) ? loadedPackIds : []);
-}
-
 /**
  * Get all available starter libraries with their loaded status.
  */
-export function getStarterLibraries(loadedPackIds = getLoadedPacks()) {
-  const loaded = new Set(Array.isArray(loadedPackIds) ? loadedPackIds : []);
+export function getStarterLibraries() {
+  const loaded = new Set(getLoadedPacks());
   return (seedData.libraries || [])
     .filter(lib => Array.isArray(lib.prompts) && lib.prompts.length > 0)
     .map(lib => ({
@@ -71,12 +68,13 @@ export function getStarterLibraries(loadedPackIds = getLoadedPacks()) {
  * @param {string} packId - The pack ID to load
  * @param {Array} currentLibrary - Current library entries
  * @param {Array} currentCollections - Current collections
- * @returns {{ count: number, collection: string, library: Array<object>, collections: Array<string>, loadedPackIds: Array<string> } | null} Result or null if skipped
+ * @returns {{ count: number, collection: string, library: Array<object>, collections: Array<string> } | null} Result or null if skipped
  */
 export function loadStarterPack(packId, currentLibrary, currentCollections) {
   // 1. Locate pack in seed data
   const pack = (seedData.libraries || []).find(lib => lib.id === packId);
   if (!pack || !Array.isArray(pack.prompts) || pack.prompts.length === 0) return null;
+
   const loadedAt = new Date().toISOString();
 
   // 2. Check if already loaded
@@ -101,30 +99,21 @@ export function loadStarterPack(packId, currentLibrary, currentCollections) {
   }
 
   const collections = prioritizeCollection(currentCollections, pack.name);
+  const mergeResult = mergeLibraryEntries(currentLibrary, newEntries, { prepend: true });
 
-  if (newEntries.length === 0) {
+  if (mergeResult.importedCount === 0) {
     // All prompts already exist — just mark as loaded
-    const loadedPackIds = [...loadedPacks, packId];
-    return {
-      count: 0,
-      collection: pack.name,
-      library: currentLibrary,
-      collections,
-      loadedPackIds,
-    };
+    saveJson(LOADED_PACKS_KEY, [...loadedPacks, packId]);
+    return { count: 0, collection: pack.name, library: currentLibrary, collections };
   }
 
-  // 5. Merge: new prompts first
-  const library = [...newEntries, ...currentLibrary];
-
   // 7. Update loaded packs
-  const loadedPackIds = [...loadedPacks, packId];
+  saveJson(LOADED_PACKS_KEY, [...loadedPacks, packId]);
 
   return {
-    count: newEntries.length,
+    count: mergeResult.importedCount,
     collection: pack.name,
-    library,
+    library: mergeResult.library,
     collections,
-    loadedPackIds,
   };
 }
