@@ -25,8 +25,8 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | ID | Severity | Status | Title | Notes |
 |----|----------|--------|-------|-------|
 | 001 | P2 | resolved | Composer still teaches drag first interaction | Fixed all help text strings; empty state and block hints now lead with Add/Move controls |
-| 002 | P2 | in-progress | Create workflow remains too vertically stacked | Layout is improved, but Create still carries too many stages in one scroll path |
-| 003 | P2 | in-progress | Experiments and run history are still split | A B flow and run analysis are improved but not fully unified |
+| 002 | P2 | resolved | Create workflow remains too vertically stacked | Phase 1 complete: extracted CreateEditorPane, collapsed scoring+lint strip, inline quick inject chips, merged status bar, compact context breadcrumb |
+| 003 | P2 | in-progress | Experiments and run history are still split | Unified under Evaluate with persistent timeline filters; stabilization and broader QA still pending |
 | 004 | P2 | resolved | Accessibility parity remains incomplete | Added aria-labels to theme/shortcuts/settings buttons; ThemeProvider now syncs body bg |
 | 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 | 006 | P2 | resolved | No diff viewer for A/B test outputs | Added DiffEngine.js, DiffPane.jsx, and Sync View button in ABTestTab |
@@ -37,3 +37,7 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-03-18] [PLB] [fix] Create privacy page and fix dead nav links across all docs pages
 [2026-03-18] [PLB] [fix] Prevent create pane action rows and diff output from overflowing at narrow widths
 [2026-03-24] [PLB] [docs] Add Create and Evaluate Phase 0 implementation brief and docs inventory entries
+[2026-03-24] [PLB] [fix] Persist Evaluate timeline filters and stabilize re-enhance mode imports
+[2026-03-24] [PLB] [test] Add hook coverage for library filters, quick-inject ranking, and collection cleanup
+[2026-03-24] [PLB] [test] Harden Evaluate navigation semantics with hook and header regression coverage
+[2026-03-24] [PLB] [refactor] Extract CreateEditorPane, compress Create vertical stack (Phase 1 complete)
