@@ -28,11 +28,18 @@ function makeEntry(overrides = {}) {
   });
 }
 
-function renderPersistenceFlow({ entry = null, raw = 'Raw draft', enhanced = 'Enhanced draft', doSaveImpl } = {}) {
+function renderPersistenceFlow({
+  entry = null,
+  raw = 'Raw draft',
+  enhanced = 'Enhanced draft',
+  doSaveImpl,
+  libOverrides = {},
+} = {}) {
   const notify = vi.fn();
   const setTab = vi.fn();
   const setABVariant = vi.fn();
   const bumpUse = vi.fn();
+  const trackRecentAccess = vi.fn();
   const doSave = vi.fn(doSaveImpl || ((payload) => ({
     id: payload.editingId || 'new-entry-id',
     title: payload.title || 'Saved Prompt',
@@ -49,7 +56,7 @@ function renderPersistenceFlow({ entry = null, raw = 'Raw draft', enhanced = 'En
 
     const flow = usePersistenceFlow({
       ui: { notify, setTab, setABVariant, tab: 'editor' },
-      lib: { library, doSave, bumpUse },
+      lib: { library, doSave, bumpUse, trackRecentAccess, ...libOverrides },
       editor: {
         raw: rawState,
         enhanced: enhancedState,
@@ -76,7 +83,7 @@ function renderPersistenceFlow({ entry = null, raw = 'Raw draft', enhanced = 'En
     };
   });
 
-  return { ...hook, notify, setTab, setABVariant, bumpUse, doSave, library };
+  return { ...hook, notify, setTab, setABVariant, bumpUse, trackRecentAccess, doSave, library };
 }
 
 describe('usePersistenceFlow', () => {
@@ -209,5 +216,50 @@ describe('usePersistenceFlow', () => {
     }));
     expect(result.current.editingId).toBe(null);
     expect(result.current.saveTargetId).toBe(null);
+  });
+
+  it('add_to_composer_tracks_recent_access_when_available', () => {
+    const entry = makeEntry({
+      title: 'Composer Target',
+      enhanced: 'Composer content',
+    });
+    const { result, bumpUse, trackRecentAccess, notify } = renderPersistenceFlow({ entry });
+
+    act(() => {
+      result.current.addToComposer(entry);
+    });
+
+    expect(result.current.composerBlocks).toHaveLength(1);
+    expect(result.current.composerBlocks[0]).toEqual(expect.objectContaining({
+      label: 'Composer Target',
+      content: 'Composer content',
+      sourceId: entry.id,
+    }));
+    expect(bumpUse).toHaveBeenCalledWith(entry.id);
+    expect(trackRecentAccess).toHaveBeenCalledWith(entry.id);
+    expect(notify).toHaveBeenCalledWith('Added to Composer!');
+  });
+
+  it('add_to_composer_tolerates_missing_library_callbacks', () => {
+    const entry = makeEntry({
+      title: 'Composer Fallback',
+      enhanced: 'Fallback content',
+    });
+    const { result, notify } = renderPersistenceFlow({
+      entry,
+      libOverrides: {
+        bumpUse: undefined,
+        trackRecentAccess: undefined,
+      },
+    });
+
+    expect(() => {
+      act(() => {
+        result.current.addToComposer(entry);
+      });
+    }).not.toThrow();
+
+    expect(result.current.composerBlocks).toHaveLength(1);
+    expect(notify).toHaveBeenCalledWith('Added to Composer!');
   });
 });

@@ -27,11 +27,22 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [showDiff, setShowDiff] = useState(false);
   const [showNewColl, setShowNewColl] = useState(false);
   const [newCollName, setNewCollName] = useState('');
-  const [varVals, setVarVals] = useState({});
+  const [varVals, setVarValsState] = useState({});
   const [showVarForm, setShowVarForm] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState(null);
   const [pendingTemplateTarget, setPendingTemplateTarget] = useState('editor');
   const templateLoadReqRef = useRef(0);
+  const activeEntryRef = useRef(null);
+  const varValsRef = useRef({});
+
+  const setVarVals = (valueOrUpdater) => {
+    const next = typeof valueOrUpdater === 'function'
+      ? valueOrUpdater(varValsRef.current)
+      : valueOrUpdater;
+    const normalized = next && typeof next === 'object' ? next : {};
+    varValsRef.current = normalized;
+    setVarValsState(normalized);
+  };
 
   useSessionRestore({ setRaw, setEnhanced, setVariants, setNotes, setTab, setEnhMode });
   useSessionSave({ raw, enhanced, variants, notes, tab, enhMode });
@@ -101,7 +112,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const openSavePanel = (entry = null) => {
     const explicitEntry = entry ? normalizeEntry(entry) : null;
-    const activeEntry = explicitEntry || (editingId ? lib.library.find((item) => item.id === editingId) || null : null);
+    const loadedEntry = editingId ? lib.library.find((item) => item.id === editingId) || null : null;
+    const activeEntry = explicitEntry || loadedEntry || activeEntryRef.current;
     const source = activeEntry?.enhanced || enhanced || raw;
     setSaveTitle(activeEntry?.title || suggestTitleFromText(source));
     setSaveTargetId(activeEntry?.id || null);
@@ -124,6 +136,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (!normalized) return;
 
     if (target === 'editor') {
+      activeEntryRef.current = normalized;
       setEditingId(normalized.id);
       setRaw(normalized.original);
       setEnhanced(normalized.enhanced);
@@ -136,8 +149,12 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       setSaveTargetId(null);
       setSaveSourceEntry(null);
       setShowDiff(false);
-      lib.bumpUse(normalized.id);
-      lib.trackRecentAccess(normalized.id);
+      if (typeof lib.bumpUse === 'function') {
+        lib.bumpUse(normalized.id);
+      }
+      if (typeof lib.trackRecentAccess === 'function') {
+        lib.trackRecentAccess(normalized.id);
+      }
       setTab('editor');
       notify('Loaded into editor!');
       return;
@@ -148,8 +165,12 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       const promptText = normalized.enhanced || normalized.original;
       if (!promptText.trim() || typeof setABVariant !== 'function') return;
       setABVariant(side, promptText);
-      lib.bumpUse(normalized.id);
-      lib.trackRecentAccess(normalized.id);
+      if (typeof lib.bumpUse === 'function') {
+        lib.bumpUse(normalized.id);
+      }
+      if (typeof lib.trackRecentAccess === 'function') {
+        lib.trackRecentAccess(normalized.id);
+      }
       setTab('abtest');
       notify(`Loaded ${normalized.title || 'prompt'} into Variant ${side.toUpperCase()}`);
     }
@@ -214,7 +235,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const applyTemplate = () => {
     if (!pendingTemplate) return;
-    applyTemplateWithVals(pendingTemplate, varVals, pendingTemplateTarget);
+    applyTemplateWithVals(pendingTemplate, varValsRef.current, pendingTemplateTarget);
     resetTemplateFlow();
   };
 
@@ -244,6 +265,17 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       changeNote,
     });
     if (saved?.id) {
+      activeEntryRef.current = {
+        ...(contentSource || activeEntryRef.current || {}),
+        id: saved.id,
+        title: saved.title || titleValue,
+        original: contentSource?.original ?? raw,
+        enhanced: contentSource?.enhanced ?? enhanced,
+        variants: contentSource?.variants ?? variants,
+        notes: contentSource?.notes ?? notes,
+        tags: saveTags,
+        collection: saveCollection,
+      };
       if (!contentSource) {
         setEditingId(saved.id);
       }
@@ -262,12 +294,18 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       ...prev,
       { id: crypto.randomUUID(), label: entry.title, content: entry.enhanced, sourceId: entry.id },
     ]);
-    lib.bumpUse(entry.id);
+    if (typeof lib.bumpUse === 'function') {
+      lib.bumpUse(entry.id);
+    }
+    if (typeof lib.trackRecentAccess === 'function') {
+      lib.trackRecentAccess(entry.id);
+    }
     notify('Added to Composer!');
   };
 
   const clearPersistenceState = () => {
     templateLoadReqRef.current += 1;
+    activeEntryRef.current = null;
     setShowSave(false);
     setEditingId(null);
     setSaveTargetId(null);

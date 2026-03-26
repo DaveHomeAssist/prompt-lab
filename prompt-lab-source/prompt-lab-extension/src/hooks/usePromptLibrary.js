@@ -305,8 +305,17 @@ export default function usePromptLibrary(notify) {
     }
     if (library.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
       && !window.confirm('Export may include sensitive prompt content. Continue?')) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(library, null, 2)], { type: 'application/json' }));
-    const anchor = Object.assign(document.createElement('a'), { href: url, download: 'prompt-library.json' });
+    const exportPayload = {
+      version: '1.7.0',
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      count: library.length,
+      library,
+      collections,
+    };
+    const url = URL.createObjectURL(new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' }));
+    const stamp = new Date().toISOString().slice(0, 10);
+    const anchor = Object.assign(document.createElement('a'), { href: url, download: `prompt-library-${stamp}.json` });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
