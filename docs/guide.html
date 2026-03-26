@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>How-To Guide — Prompt Lab</title>
-    <link rel="icon" type="image/svg+xml" href="../assets/icons/favicon/favicon.svg">
-    <link rel="icon" type="image/png" sizes="32x32" href="../assets/icons/favicon/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="../assets/icons/favicon/favicon-16.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="../assets/icons/favicon/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="../../../assets/icons/favicon/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="../../../assets/icons/favicon/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/icons/favicon/apple-touch-icon.png" />
 <meta name="description" content="Learn how to use Prompt Lab — enhance prompts, A/B test across providers, build modular compositions, and manage your prompt library.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -291,8 +290,15 @@ code {
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .wrapper { padding: 1.25rem 1rem 4rem; }
-  .top-bar nav a { font-size: 0.65rem; padding: 0.25rem 0.4rem; }
+  .top-bar nav a { font-size: 0.72rem; padding: 0.35rem 0.5rem; }
   section h2 { font-size: 1.3rem; }
+}
+
+@media (max-width: 480px) {
+  .wrapper { padding: 1rem 0.75rem 3rem; }
+  .top-bar nav { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .top-bar nav a { white-space: nowrap; flex-shrink: 0; }
+  section h2 { font-size: 1.2rem; }
 }
 </style>
 </head>
@@ -311,10 +317,6 @@ code {
       <a href="#variables">Variables</a>
       <a href="#settings">Settings</a>
       <a href="#shortcuts">Shortcuts</a>
-      <span style="border-left:1px solid var(--glass-border); height:1rem; margin:0 0.25rem;"></span>
-      <a href="./index.html">Home</a>
-      <a href="./setup.html">Setup</a>
-      <a href="./privacy.html">Privacy</a>
     </nav>
   </div>
 </div>
@@ -526,7 +528,7 @@ code {
       <li><strong>New</strong> — creates a new named pad (prompted for a name)</li>
       <li><strong>Rename</strong> — change the active pad's name</li>
       <li><strong>Delete</strong> — remove the active pad (disabled if only one remains)</li>
-      <li>Switch between pads using the tab bar at the top, or <kbd>&#8984;]</kbd> / <kbd>&#8984;[</kbd></li>
+      <li>Switch between pads using the sidebar list on the left</li>
     </ul>
   </div>
 
@@ -643,12 +645,10 @@ code {
 
   <div class="card">
     <h3>Scratchpad</h3>
+    <p style="margin-bottom:0.85rem; color:var(--surface-400);">Scratchpad shortcuts are limited to local text actions. Browser-reserved shortcuts like <kbd>&#8984;T</kbd>, <kbd>&#8984;W</kbd>, <kbd>&#8984;[</kbd>, and <kbd>&#8984;]</kbd> are intentionally not overridden.</p>
     <table class="shortcut-table">
       <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
       <tbody>
-        <tr><td><kbd>&#8984;]</kbd> / <kbd>&#8984;[</kbd></td><td>Next / previous pad</td></tr>
-        <tr><td><kbd>&#8984;T</kbd></td><td>New pad</td></tr>
-        <tr><td><kbd>&#8984;W</kbd></td><td>Delete active pad</td></tr>
         <tr><td><kbd>&#8984;E</kbd></td><td>Export / download pad</td></tr>
         <tr><td><kbd>&#8984;&#8679;D</kbd></td><td>Insert date separator</td></tr>
         <tr><td><kbd>&#8984;&#8679;C</kbd></td><td>Copy all content</td></tr>
@@ -677,7 +677,7 @@ code {
 <div style="text-align:center; margin-top:4rem;">
   <a href="#top" class="back-top">&uarr; Back to top</a>
   <p style="margin-top:1.5rem; font-size:0.78rem; color:var(--surface-500);">
-    Prompt Lab v1.5.0 &mdash; <a href="./index.html" style="color:var(--lab-violet-light); text-decoration:none;">Home</a> &middot; <a href="./setup.html" style="color:var(--lab-violet-light); text-decoration:none;">Setup</a> &middot; <a href="./privacy.html" style="color:var(--lab-violet-light); text-decoration:none;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" style="color:var(--lab-violet-light); text-decoration:none;">Source</a>
+    Prompt Lab v1.5.0 &mdash; <a href="/" style="color:var(--lab-violet-light); text-decoration:none;">Home</a> &middot; <a href="/setup" style="color:var(--lab-violet-light); text-decoration:none;">Setup</a> &middot; <a href="/privatepolicy" style="color:var(--lab-violet-light); text-decoration:none;">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab-provider-options" style="color:var(--lab-violet-light); text-decoration:none;">Source</a>
   </p>
 </div>
 
