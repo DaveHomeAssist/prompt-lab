@@ -312,7 +312,7 @@ describe('App', () => {
     expect(screen.getByTestId('app-header')).toBeInTheDocument();
   });
 
-  it('shows the new Create empty-state guidance before the first enhance run', () => {
+  it('shows the draft context before the first enhance run', () => {
     mocks.useEditorState.mockReturnValueOnce({
       ...useDefaultMock('useEditorState'),
       raw: 'Draft a support reply for a delayed shipment.',
@@ -320,9 +320,11 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Enhance a draft to unlock save, compare, and evaluation history.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Run Enhance' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open Compose' })).toBeInTheDocument();
+    expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Draft a support reply for a delayed shipment.')).toBeInTheDocument();
+    expect(screen.getByTestId('editor-actions')).toBeInTheDocument();
+    expect(screen.queryByText('Results')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Prompt title')).not.toBeInTheDocument();
   });
 
   it('shows the inline save bar next to generated results in Create mode', () => {
@@ -339,7 +341,7 @@ describe('App', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Save this result')).toBeInTheDocument();
+    expect(screen.getByText('Results')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument();
     expect(screen.getByLabelText('Prompt title')).toBeInTheDocument();

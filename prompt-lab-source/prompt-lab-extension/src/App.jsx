@@ -45,6 +45,7 @@ export default function App() {
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
+  const pageScroll = isWeb || isExtension;
   const {
     viewportWidth,
     viewportHeight,
@@ -144,7 +145,10 @@ export default function App() {
     () => (typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0),
     [raw],
   );
-  const compact = viewportWidth < 720 || viewportHeight < 560;
+  // The extension shell is always effectively compact. Letting it participate
+  // in desktop breakpoint switching causes narrow-panel layout oscillation,
+  // which is most visible in the Library view as repeated flicker.
+  const compact = isExtension || viewportWidth < 720 || viewportHeight < 560;
   const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const copyBtn = colorMode === 'dark'
@@ -198,18 +202,14 @@ export default function App() {
   useEffect(() => {
     if (tab !== 'editor') return;
     if (workspaceView === 'composer') return;
+
+    // Keep layout aligned to the active workspace section, but do not sync the
+    // other direction. Bi-directional syncing here causes editor/library
+    // ping-pong updates and visible flicker when opening the Library view.
     if (editorLayout !== workspaceView) {
       setEditorLayout(workspaceView);
     }
   }, [editorLayout, setEditorLayout, tab, workspaceView]);
-
-  useEffect(() => {
-    if (tab !== 'editor') return;
-    if (workspaceView === 'composer') return;
-    if (effectiveEditorLayout !== workspaceView) {
-      setWorkspaceView(effectiveEditorLayout);
-    }
-  }, [effectiveEditorLayout, setWorkspaceView, tab, workspaceView]);
 
   useEffect(() => {
     if (!enhanced.trim()) {
@@ -300,7 +300,11 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <ThemeProvider mode={colorMode}>
-      <div data-theme={colorMode} className={`min-h-screen ${m.bg} ${m.text} flex flex-col pl-density-${density}`} style={{ fontFamily: 'system-ui,sans-serif' }}>
+      <div
+        data-theme={colorMode}
+        className={`${isExtension ? 'h-screen overflow-y-auto' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
+        style={{ fontFamily: 'system-ui,sans-serif' }}
+      >
       <h1 className="sr-only">Prompt Lab</h1>
 
       <AppHeader
@@ -316,19 +320,20 @@ export default function App() {
         setShowShortcuts={setShowShortcuts} setShowSettings={setShowSettings}
       />
 
-      <main role="tabpanel" aria-label={tab} className="pl-tab-panel flex-1 flex flex-col overflow-hidden">
+      <main role="tabpanel" aria-label={tab} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <MainWorkspace
           m={m}
           compact={compact}
-          isWeb={isWeb}
+          pageScroll={pageScroll}
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
           editorPane={(
             <CreateEditorPane
               m={m}
               compact={compact}
+              pageScroll={pageScroll}
               colorMode={colorMode}
               quickInject={lib.quickInject}
               recentPrompts={lib.recentPrompts}
@@ -369,7 +374,7 @@ export default function App() {
           )}
           libraryPane={(
             <LibraryPanel
-              m={m} lib={lib} compact={compact} isWeb={isWeb}
+              m={m} lib={lib} compact={compact} isWeb={pageScroll}
               showEditorPane={showEditorPane}
               effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
               editingId={editingId} setSaveTitle={setSaveTitle}
@@ -395,13 +400,13 @@ export default function App() {
       {tab === 'composer' && (
         <div className="pl-tab-panel">
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={isWeb} />
+          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={pageScroll} />
         </div>
       )}
 
       {/* ══ EVALUATE SURFACE ══ */}
       {primaryView === 'runs' && (
-        <div className="pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden">
+        <div className={`pl-tab-panel flex h-full min-h-0 flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
           <div className={`border-b px-4 py-2 ${m.border} shrink-0`}>
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
             <p className={`mt-1 text-xs ${m.textMuted}`}>
@@ -412,16 +417,16 @@ export default function App() {
                     : 'Review enhance, test-case, and A/B runs across your saved workbench.')}
             </p>
           </div>
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
             {runsView === 'compare'
-              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={isWeb} {...abTest} />
-              : <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={isWeb} />}
+              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...abTest} />
+              : <RunTimelinePanel m={m} prompt={currentEntry} copy={copy} compact={compact} pageScroll={pageScroll} />}
           </div>
         </div>
       )}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={isWeb} onPromoteToLibrary={(title, content) => {
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
         setRaw(content);
         setEnhanced(content);
         setSaveTitle(title);

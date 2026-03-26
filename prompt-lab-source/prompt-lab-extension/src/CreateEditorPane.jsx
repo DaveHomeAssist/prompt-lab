@@ -26,6 +26,7 @@ import EditorActions from './EditorActions';
 export default function CreateEditorPane({
   m,
   compact,
+  pageScroll = false,
   colorMode,
   // Quick inject
   quickInject,
@@ -113,10 +114,19 @@ export default function CreateEditorPane({
     ? [['Role', score.role], ['Task', score.task], ['Format', score.format], ['Constraints', score.constraints], ['Context', score.context]]
     : [];
   const scoreCnt = scoreChecks.filter(c => c[1]).length;
+  const shellClass = pageScroll
+    ? 'pl-tab-panel min-h-0 flex flex-col'
+    : 'pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden';
+  const contentClass = pageScroll
+    ? 'p-4 flex flex-col gap-2'
+    : 'p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden';
+  const resultsClass = pageScroll
+    ? 'space-y-3'
+    : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
 
   return (
-    <div className="pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden">
-      <div className="p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden">
+    <div className={shellClass}>
+      <div className={contentClass}>
         {/* ── Context breadcrumb ── */}
         {showCreateContext && (
           <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
@@ -357,7 +367,7 @@ export default function CreateEditorPane({
         </div>
 
         {/* ── Scrollable results container ── */}
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 space-y-3">
+        <div className={resultsClass}>
           {/* Error (moved into scroll area so it doesn't eat fixed space) */}
           {error && (
             <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
@@ -730,4 +740,3 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
     </div>
   );
 }
-
