@@ -23,7 +23,7 @@ describe('useEvalRuns', () => {
       await result.current.refreshEvalRuns();
     });
 
-    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 12, promptId: 'prompt-1' });
+    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, promptId: 'prompt-1' });
   });
 
   it('refreshEvalRuns without promptId uses mode:\'enhance\' filter', async () => {
@@ -33,14 +33,14 @@ describe('useEvalRuns', () => {
       await result.current.refreshEvalRuns();
     });
 
-    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 12, mode: 'enhance' });
+    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, mode: 'enhance' });
   });
 
   it('effect triggers refresh when tab is editor', async () => {
     renderHook(() => useEvalRuns({ editingId: 'prompt-9', tab: 'editor' }));
 
     await waitFor(() => {
-      expect(listEvalRuns).toHaveBeenCalledWith({ limit: 12, promptId: 'prompt-9' });
+      expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, promptId: 'prompt-9' });
     });
   });
 });
