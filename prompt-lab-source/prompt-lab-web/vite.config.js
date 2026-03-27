@@ -9,6 +9,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // The web app imports source files from ../prompt-lab-extension/src.
+      // Alias runtime deps used by that sibling source to the web package's
+      // installed copy so isolated Vercel builds resolve them consistently.
+      'diff-match-patch': resolve(__dirname, 'node_modules/diff-match-patch/index.js'),
       react: resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
     },
