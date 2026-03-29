@@ -27,11 +27,19 @@ Consequences: what this unlocks or closes off
 Status: resolved
 Owner: Dave
 Date opened: 2026-03-25
-Date resolved: 2026-03-30
+Date resolved: 2026-03-29
 
-Decision: React Router hash mode
-Rationale: Works across all 3 surfaces (extension, web, desktop). Keeps deep links viable for QA and support. Extension context uses hash URLs naturally. Dave confirmed hash mode multiple times across sessions.
-Consequences: Unblocks Phase 5+ component work, new tab additions, and CI integration (frontend-review Phase 4). Next step: wire HashRouter into App.jsx.
+Context: PromptLab's internal navigation strategy needs to be locked before Phase 2 UI work begins. Two viable approaches are on the table.
+
+Options:
+- React Router hash mode (`/#/library`, `/#/evaluate`) — URL-based, shareable, predictable, compatible with MV3 extension context
+- State router (React state only, no URL changes) — simpler, no URL coupling, but harder to deep-link and debug
+
+Decision: Hash-based routing (`location.hash`). Routes: `#/library`, `#/create`, `#/evaluate`, `#/settings`.
+
+Rationale: VS Code webviews don't support pushState — hash routing is the only option that works identically across extension, desktop, and web. No framework dependency needed. Supports deep-linking (`#/evaluate/run/abc123`) and browser back/forward via hashchange. The web app is a demo surface, not the primary product, so clean URLs and SEO are not requirements.
+
+Consequences: Phase 2 UI work is unblocked. Create workflow can split into `#/create/prompt`, `#/create/config`, `#/create/run` to reduce verticality. No router library needed — reduces bundle size. If web app ever becomes the primary surface, can migrate to pushState later.
 
 ---
 
@@ -53,31 +61,36 @@ Consequences: Cluster cannot be deployed until this is confirmed and LAN IPs for
 
 ### [D-003] DaveLLM cluster — LAN IPs
 
-Status: open
+Status: open (partial)
 Owner: Dave
 Date opened: 2026-03-25
 
 Context: Orchestrator routing to cluster nodes requires static or known LAN IPs for GP66, Katana x2 (x2), and Duncan.
 
-Action needed: Run `ipconfig` on each Windows machine and record IPs. Assign static IPs via router DHCP reservation to prevent drift.
+Progress (2026-03-29):
+- Walter (MSI GP66 Leopard): 192.168.1.193 — confirmed up, Ollama status pending
+- Duncan (Windows PC): 192.168.1.243 — confirmed, Ollama running (gemma3:27b, gpt-oss:20b, gpt-oss:120b)
+- Home Assist (Dell Server): 192.168.1.215 — confirmed up (was .214, corrected)
+- Katana 1 + Katana 2: still offsite at Convention Center, IPs pending return
 
-Consequences: Hard blocker on DaveLLM cluster deployment.
+Action remaining: Confirm Ollama on Walter and Home Assist. Assign static IPs via router DHCP reservation. Collect Katana IPs on return.
+
+Consequences: Partially unblocked — Duncan is ready for cluster work. Full deployment blocked on remaining nodes.
 
 ---
 
 ### [D-004] Act Two Catering — Notion leads pipeline
 
-Status: open (in progress)
+Status: resolved
 Owner: Dave
 Date opened: 2026-03-26
+Date resolved: 2026-03-29
 
-Context: Quote form → Netlify Function → Notion API pipeline is fully architected. Blocked on two external actions.
+Context: Quote form → Netlify Function → Notion API pipeline is fully architected.
 
-Blocked on:
-- Create the Notion database for quote form submissions
-- Share the Notion integration key with the database
+Decision: Notion database created for quote form submissions with table, pipeline board, calendar, and form views. Integration key sharing still requires manual Notion token creation.
 
-Consequences: Leads pipeline cannot be wired until both are complete. P1 priority for Act Two.
+Consequences: Quote form backend delivery is wired (POST to /.netlify/functions/quote). Full leads pipeline functional.
 
 ---
 
@@ -220,5 +233,5 @@ Consequences: All System by Dave Notion Marketplace assets use this palette. Dis
 
 ---
 
-*Last updated: 2026-03-27*
+*Last updated: 2026-03-29*
 *Related: CLAUDE.md, PIPELINE.md, PROMPT_SYSTEM.md*
