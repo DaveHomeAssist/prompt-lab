@@ -40,7 +40,7 @@ No assumptions about cleanliness. Everything downstream must treat layer 1 as un
 
 ### Layer 2 — Normalization layer
 
-**This is the current build gap in PLB.**
+**This is the current build gap in PLB.** *(as of 2026-03-27 — see D-001 in DECISIONS.md)*
 
 Responsibilities:
 - Trim bullets to signal-only items

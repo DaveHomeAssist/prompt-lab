@@ -30,6 +30,25 @@ async function renderModal(props = {}) {
   delete globalThis.chrome;
   vi.doMock('../lib/platform.js', () => ({
     isExtension: false,
+    callModel: async (payload, options) => {
+      if (
+        typeof globalThis.chrome !== 'undefined' &&
+        typeof globalThis.chrome.runtime?.sendMessage === 'function'
+      ) {
+        return new Promise((resolve, reject) => {
+          globalThis.chrome.runtime.sendMessage(
+            { type: 'MODEL_REQUEST', payload },
+            (response) => {
+              if (!response) return reject(new Error('No response from background.'));
+              if (response.error) return reject(new Error(response.error));
+              resolve(response.data);
+            }
+          );
+        });
+      }
+      const { callModelDirect } = await import('../lib/desktopApi.js');
+      return callModelDirect(payload, options);
+    },
     loadProviderSettings,
     saveProviderSettings,
     listOllamaModels,
@@ -201,7 +220,7 @@ describe('DesktopSettingsModal', () => {
     expect(callModelDirect).toHaveBeenCalledWith(payload, undefined);
 
     vi.resetModules();
-    vi.unmock('../lib/desktopApi.js');
+    vi.doMock('../lib/desktopApi.js', async (importOriginal) => importOriginal());
     const callProvider = vi.fn().mockResolvedValue({ provider: 'openai', model: 'web-model' });
     const listModels = vi.fn();
     const normalizeProvider = vi.fn((provider) => provider || 'anthropic');
