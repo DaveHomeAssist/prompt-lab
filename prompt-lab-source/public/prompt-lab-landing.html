@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Prompt Lab is a multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.">
+<meta name="description" content="Prompt Lab is a prompt engineering workbench with an Anthropic-hosted web app plus multi-provider extension and desktop shells. Enhance, A/B test, compose, and compare prompts from one workspace.">
 <meta name="robots" content="index,follow">
 <meta property="og:title" content="Prompt Lab — Craft Better Prompts">
-<meta property="og:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
+<meta property="og:description" content="A prompt engineering workbench with an instant Anthropic web app and multi-provider extension and desktop shells.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://promptlab.tools/">
 <meta property="og:image" content="https://promptlab.tools/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Prompt Lab — Craft Better Prompts">
-<meta name="twitter:description" content="A multi-provider prompt engineering workbench for Chromium browsers. Enhance, A/B test, and compose prompts from a single panel.">
+<meta name="twitter:description" content="A prompt engineering workbench with an instant Anthropic web app and multi-provider extension and desktop shells.">
 <meta name="twitter:image" content="https://promptlab.tools/og-image.png">
 <title>Prompt Lab | AI Prompt Engineering Workbench</title>
 <link rel="icon" type="image/png" href="./hero-logo.png">
@@ -968,7 +968,7 @@ footer .lab-mark {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "Prompt Lab",
-  "description": "Multi-provider prompt engineering workbench. Enhance, A/B test, compose, and compare prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
+  "description": "Prompt engineering workbench with an Anthropic-hosted web app plus multi-provider extension and desktop shells.",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Chrome, Windows, macOS, Linux",
   "offers": {
@@ -998,7 +998,7 @@ footer .lab-mark {
     <a href="./setup.html">Setup</a>
     <a href="./privacy.html">Privacy</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
-    <a href="https://prompt-lab-tawny.vercel.app/app/" class="nav-cta">Open App</a>
+    <a href="https://promptlab.tools/app/" class="nav-cta">Open App</a>
   </div>
 </nav>
 
@@ -1010,11 +1010,11 @@ footer .lab-mark {
 
   <h1 class="hero-tagline"><span class="wordmark">Prompt Lab</span> &mdash; <span class="accent">Craft</span> better prompts.</h1>
   <p class="hero-sub">
-    A multi-provider prompt engineering workbench. Enhance, A/B test, and compose prompts across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama — in your browser or as a Chrome extension.
+    Start instantly with the hosted Anthropic app, then move into the extension or desktop shell for the full multi-provider workflow across Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
   </p>
 
   <div class="hero-cta-group">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
+    <a href="https://promptlab.tools/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
     <a href="#features" class="btn-secondary">Explore Features</a>
   </div>
 
@@ -1081,7 +1081,7 @@ footer .lab-mark {
         <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       </div>
       <h3 class="feature-name">Credential Isolation</h3>
-      <div class="feature-desc">API keys never leave the Manifest V3 service worker. The panel UI has zero access to your credentials — by architecture, not policy.</div>
+      <div class="feature-desc">The hosted web app can use a shared Anthropic key or your own Anthropic key. The extension isolates personal provider credentials inside a Manifest V3 service worker.</div>
     </div>
 
     <div class="feature-card reveal">
@@ -1107,8 +1107,8 @@ footer .lab-mark {
   <div class="demo-container">
     <div class="demo-text reveal">
       <div class="section-eyebrow">// under the hood</div>
-      <h2 class="section-title">One panel, five providers, zero config drift</h2>
-      <p>Every API call routes through a single service worker that translates your prompt into each provider's native format. Responses are normalized so the UI never needs to know which model answered.</p>
+      <h2 class="section-title">One workbench, shared provider layer, zero workflow drift</h2>
+      <p>The extension and desktop shells route directly to your configured providers. The hosted web app keeps the same authoring surface while defaulting to Anthropic for instant access.</p>
     </div>
 
     <div class="code-window reveal">
@@ -1182,7 +1182,7 @@ footer .lab-mark {
       <div class="step-number">1</div>
       <div class="step-content">
         <h3>Choose your path</h3>
-        <p>Try the <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener"">web app</a> instantly — no install required. Or grab the <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener">latest release</a>, unzip it, and load it as an unpacked extension at <code class="inline-code-chip">chrome://extensions</code>.</p>
+        <p>Try the <a href="https://promptlab.tools/app/" target="_blank" rel="noopener">web app</a> instantly in the hosted Anthropic workspace, or grab the <a href="https://github.com/DaveHomeAssist/prompt-lab/releases/latest" target="_blank" rel="noopener">latest release</a> and load the extension for the full multi-provider workflow.</p>
       </div>
     </div>
 
@@ -1190,7 +1190,7 @@ footer .lab-mark {
       <div class="step-number">2</div>
       <div class="step-content">
         <h3>Choose your provider</h3>
-        <p>Open Settings, pick a provider, enter your API key, and select a model from the dropdown — or type a slug for OpenRouter and Ollama.</p>
+        <p>On the hosted app, Anthropic is ready by default. On extension and desktop, open Settings to choose Anthropic, OpenAI, Gemini, OpenRouter, or local Ollama and enter your own key.</p>
       </div>
     </div>
 
@@ -1198,7 +1198,7 @@ footer .lab-mark {
       <div class="step-number">3</div>
       <div class="step-content">
         <h3>Test the connection</h3>
-        <p>Hit "Test Connection" to verify your API key with a live ping. Green means you're connected.</p>
+        <p>Use "Test Connection" when you add a personal provider key on extension or desktop, or when you want to validate a hosted Anthropic override.</p>
       </div>
     </div>
 
@@ -1217,7 +1217,7 @@ footer .lab-mark {
   <h2 class="section-title reveal">Ready to experiment?</h2>
   <p class="reveal">Stop guessing at prompts. Start engineering them.</p>
   <div class="hero-cta-group reveal reveal-static">
-    <a href="https://prompt-lab-tawny.vercel.app/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
+    <a href="https://promptlab.tools/app/" target="_blank" rel="noopener" class="btn-primary">Open Web App</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab#readme" target="_blank" rel="noreferrer noopener" class="btn-secondary">Install Extension</a>
   </div>
 </section>

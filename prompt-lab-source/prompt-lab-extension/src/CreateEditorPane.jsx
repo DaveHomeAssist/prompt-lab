@@ -110,6 +110,9 @@ export default function CreateEditorPane({
   setShowEvalHistory,
   // Stream
   streamPreview,
+  showDiffUpgradeHint = false,
+  onUnlockDiff,
+  runCasesLocked = false,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
@@ -344,6 +347,7 @@ export default function CreateEditorPane({
             testCaseCount={currentTestCases.length}
             hasSavablePrompt={hasSavablePrompt}
             enhanceShortcutLabel={`${primaryModKey}+Enter`}
+            runCasesLocked={runCasesLocked}
           />
 
           {/* Status + test cases merged indicator strip */}
@@ -399,7 +403,7 @@ export default function CreateEditorPane({
                   <button onClick={runAllCases} disabled={runningCases}
                     className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 disabled:opacity-40 font-semibold transition-colors">
                     {runningCases ? <span className="w-2.5 h-2.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" /> : <Ic n="FlaskConical" size={9} />}
-                    {batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All'}
+                    {runCasesLocked ? 'Run All Pro' : (batchProgress.active ? `${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}` : 'Run All')}
                   </button>
                 )}
               </div>
@@ -544,6 +548,20 @@ export default function CreateEditorPane({
                     </button>
                   ))}
                 </div>
+                {showDiffUpgradeHint && (
+                  <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${m.codeBlock} ${m.border}`}>
+                    <span className={m.textMuted}>Side-by-side diff is part of Prompt Lab Pro.</span>
+                    {typeof onUnlockDiff === 'function' && (
+                      <button
+                        type="button"
+                        onClick={onUnlockDiff}
+                        className="ml-2 font-semibold text-violet-400 transition-colors hover:text-violet-300"
+                      >
+                        Unlock Diff
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Inline save bar */}
                 {showInlineSaveBar && (

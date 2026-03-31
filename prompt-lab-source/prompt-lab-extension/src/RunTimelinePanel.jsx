@@ -33,6 +33,23 @@ const DEFAULT_EVALUATE_TIMELINE_FILTERS = Object.freeze({
   showModelCompare: false,
 });
 
+const MODE_LABELS = {
+  enhance: 'Enhance',
+  ab: 'A/B',
+  'test-case': 'Test Case',
+};
+const STATUS_LABELS = {
+  success: 'Success',
+  error: 'Error',
+  blocked: 'Blocked',
+};
+const DATE_RANGE_LABELS = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+  '': 'All time',
+};
+
 function validateTimelineFilters(value) {
   if (!value || typeof value !== 'object') {
     return { ...DEFAULT_EVALUATE_TIMELINE_FILTERS };
@@ -68,6 +85,20 @@ function resolveVersion(run, prompt) {
   if (!run.promptVersionId || !prompt?.versions?.length) return null;
   const idx = prompt.versions.findIndex(v => v.id === run.promptVersionId);
   return idx >= 0 ? `v${prompt.versions.length - idx}` : null;
+}
+
+function buildFilterBadges(filters) {
+  const items = [];
+  if (filters.mode) items.push(`Mode: ${MODE_LABELS[filters.mode] || filters.mode}`);
+  if (filters.provider) items.push(`Provider: ${filters.provider}`);
+  if (filters.model) items.push(`Model: ${filters.model}`);
+  if (filters.status) items.push(`Status: ${STATUS_LABELS[filters.status] || filters.status}`);
+  if (filters.dateRange !== DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange) {
+    items.push(`Range: ${DATE_RANGE_LABELS[filters.dateRange] || filters.dateRange}`);
+  }
+  if (filters.search) items.push(`Search: ${filters.search}`);
+  if (filters.showModelCompare) items.push('Model compare');
+  return items;
 }
 
 // ── Golden Trend Bar ──
@@ -350,7 +381,16 @@ export default function RunTimelinePanel({
   } = timelineFilters;
   const [compareSelectionIds, setCompareSelectionIds] = useState([]);
 
-  const { evalRuns, loading, hasMore, loadMore, updateRun } = useEvalRuns({
+  const {
+    evalRuns,
+    totalRuns,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    refreshEvalRuns,
+    updateRun,
+  } = useEvalRuns({
     promptId: prompt?.id || null,
     tab: 'history',
     limit: 20,
@@ -394,6 +434,12 @@ export default function RunTimelinePanel({
     || dateRange !== DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange
     || showModelCompare
   );
+  const filterBadges = useMemo(() => buildFilterBadges(timelineFilters), [timelineFilters]);
+  const showingSummary = totalRuns > evalRuns.length
+    ? `Showing ${evalRuns.length} of ${totalRuns} runs`
+    : `${totalRuns} run${totalRuns === 1 ? '' : 's'}`;
+  const showNoMatches = !loading && !error && evalRuns.length === 0 && hasActiveFilters;
+  const showEmptyState = !loading && !error && evalRuns.length === 0 && !hasActiveFilters;
 
   const setTimelineFilter = (key, value) => {
     setTimelineFilters((prev) => {
@@ -433,7 +479,7 @@ export default function RunTimelinePanel({
               {prompt?.title || 'All prompts · select a library entry to narrow this timeline'}
             </p>
           </div>
-          <span className={`text-xs ${m.textMuted}`}>{evalRuns.length} runs</span>
+          <span className={`text-xs ${m.textMuted}`}>{loading && evalRuns.length === 0 ? 'Loading…' : showingSummary}</span>
         </div>
 
         {/* Filters */}
@@ -489,6 +535,51 @@ export default function RunTimelinePanel({
           )}
         </div>
 
+        {(filterBadges.length > 0 || totalRuns > 0) && (
+          <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <p className={`text-[11px] font-semibold uppercase tracking-wider ${m.textSub}`}>
+                {showingSummary}
+              </p>
+              {hasActiveFilters && (
+                <span className={`text-[11px] ${m.textMuted}`}>
+                  Filtered view
+                </span>
+              )}
+            </div>
+            {filterBadges.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {filterBadges.map((badge) => (
+                  <span
+                    key={badge}
+                    className={`rounded-full border ${m.border} px-2 py-0.5 text-[11px] font-medium ${m.textAlt}`}
+                  >
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {error && (
+          <div role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-red-300">Evaluate timeline unavailable</p>
+                <p className="mt-1 text-xs text-red-100">{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => refreshEvalRuns(prompt?.id || null)}
+                className="ui-control rounded-lg border border-red-400/30 px-2.5 py-1 text-xs font-semibold text-red-100 transition-colors hover:border-red-300"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Golden Trend */}
         <GoldenTrendBar runs={evalRuns} m={m} />
 
@@ -518,7 +609,36 @@ export default function RunTimelinePanel({
         )}
 
         {/* Empty */}
-        {!loading && evalRuns.length === 0 && (
+        {showNoMatches && (
+          <div className={`${m.surface} border ${m.border} rounded-lg p-4 text-center`}>
+            <p className={`text-sm font-semibold ${m.text}`}>No runs match current filters.</p>
+            <p className={`mt-1 text-xs ${m.textMuted}`}>
+              {prompt
+                ? 'Reset the filters to see the rest of this prompt history, or generate a fresh run from Create.'
+                : 'Clear the filters to widen the timeline, or run a new prompt to generate a fresh result.'}
+            </p>
+            <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={resetTimelineFilters}
+                className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+              >
+                <Ic n="RotateCcw" size={11} />
+                Reset All Filters
+              </button>
+              <button
+                type="button"
+                onClick={onQuickStart}
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+              >
+                <Ic n="Wand2" size={11} />
+                {prompt ? 'Open Create' : 'Quick Start'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showEmptyState && (
           <div className={`${m.surface} border ${m.border} rounded-lg p-4 text-center`}>
             <p className={`text-sm font-semibold ${m.text}`}>
               {prompt ? 'No runs for this prompt yet.' : 'No evaluate runs yet.'}

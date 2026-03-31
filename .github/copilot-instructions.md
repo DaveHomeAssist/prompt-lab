@@ -12,7 +12,7 @@ The shared React application lives in `prompt-lab-source/prompt-lab-extension/sr
 
 ## Key Components & Data Flow
 
-- **Providers**: 5 LLM providers (Anthropic, OpenAI, Gemini, OpenRouter, Ollama) abstracted through `src/lib/providers.js` and `src/lib/providerRegistry.js`
+- **Providers**: Extension and desktop support Anthropic, OpenAI, Gemini, OpenRouter, and Ollama. The hosted web surface is currently Anthropic-only and routes through the shared-key proxy path in `api/proxy.js`.
 - **Prompt Library**: Versioned prompts with collections, tags, and metadata stored in local browser storage via `src/hooks/usePromptLibrary.js`
 - **Experiment Store**: A/B testing and eval runs persisted to IndexedDB via `src/experimentStore.js`
 - **PII Engine**: Automatic scanning and redaction using `src/lib/piiEngine.js` before API calls
@@ -25,7 +25,7 @@ The shared React application lives in `prompt-lab-source/prompt-lab-extension/sr
 cd prompt-lab-source/prompt-lab-extension
 npm install
 npm run dev          # Vite dev server at localhost:5173
-npm test             # Vitest + React Testing Library (52 tests)
+npm test             # Vitest + React Testing Library
 npm run test:e2e     # Playwright smoke tests after build
 npm run build        # Build to dist/ for Chrome loading
 ```
@@ -69,8 +69,8 @@ Prompts follow `src/lib/promptSchema.js` with:
 
 ### Provider Integration
 - All provider calls go through `src/lib/platform.js` abstractions
-- API keys stored per-platform (extension: chrome.storage, desktop/web: localStorage)
-- Ollama requests bypass proxy, connect direct to localhost
+- API keys stored per-platform (extension: chrome.storage, desktop: localStorage, hosted web: optional local Anthropic override)
+- Ollama requests stay on extension/desktop, not the hosted web surface
 - Error handling via `src/errorTaxonomy.js`
 
 ### UI Patterns
@@ -109,5 +109,4 @@ Prompts follow `src/lib/promptSchema.js` with:
 - `src/lib/providers.js` - Provider API implementations
 - `src/lib/promptSchema.js` - Data structure definitions
 - `ARCHITECTURE.md` - Detailed platform and runtime architecture
-- `ROADMAP.md` - Current priorities and platform strategy</content>
-<parameter name="filePath">/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab-provider-branch/.github/copilot-instructions.md
+- `ROADMAP.md` - Current priorities and platform strategy

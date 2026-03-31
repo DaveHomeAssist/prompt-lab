@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+import { deriveActiveSection, resolveSectionState } from '../lib/navigationRegistry.js';
 
 /**
  * useNavigation — wraps raw view state into a single, formalized navigation API.
@@ -12,11 +13,10 @@ export default function useNavigation({
   runsView, setRunsView,
   tab, setTab,
 }) {
-  const activeSection = useMemo(() => {
-    if (primaryView === 'runs') return 'evaluate';
-    if (workspaceView === 'library') return 'library';
-    return 'create';
-  }, [primaryView, workspaceView]);
+  const activeSection = useMemo(
+    () => deriveActiveSection(primaryView, workspaceView),
+    [primaryView, workspaceView],
+  );
 
   const openCreateView = useCallback((nextView) => {
     setPrimaryView('create');
@@ -24,20 +24,10 @@ export default function useNavigation({
   }, [setPrimaryView, setWorkspaceView]);
 
   const openSection = useCallback((nextSection) => {
-    if (nextSection === 'create') {
-      setPrimaryView('create');
-      setWorkspaceView('editor');
-      return;
-    }
-    if (nextSection === 'library') {
-      setPrimaryView('create');
-      setWorkspaceView('library');
-      return;
-    }
-    if (nextSection === 'evaluate' || nextSection === 'experiments') {
-      setPrimaryView('runs');
-      // Don't force runsView — preserve user's history/compare state
-    }
+    const nextState = resolveSectionState(nextSection);
+    if (nextState.primaryView) setPrimaryView(nextState.primaryView);
+    if (nextState.workspaceView) setWorkspaceView(nextState.workspaceView);
+    if (nextState.runsView) setRunsView(nextState.runsView);
   }, [setPrimaryView, setWorkspaceView, setRunsView]);
 
   const openRunsView = useCallback((nextView) => {

@@ -216,6 +216,17 @@ Consequences: Feature gating strategy needs to be defined — what lives behind 
 
 ---
 
+### [D-R06] PLB billing implementation path
+
+Status: resolved
+Date resolved: 2026-03-31
+
+Decision: Lemon Squeezy hosted checkout + license key activation/validation, with plan state cached locally in Prompt Lab storage.
+Rationale: The prior Stripe gateway was tightly coupled to Clerk auth, customer records, and server-side entitlements. Current Prompt Lab is local-storage-first and intentionally auth-light. Lemon Squeezy provides hosted checkout, an unsigned/signed customer portal, and a license API that fits extension, desktop, and hosted web surfaces without reintroducing a user account system.
+Consequences: Prompt Lab now depends on three billing API routes (`/api/billing/checkout`, `/api/billing/license`, `/api/billing/portal`) plus local `plan` and license state in app storage. Pro gating is implemented in the shared React shell for A/B testing, diff view, batch runs, collections, and exports. Revisit only if Prompt Lab adds a durable server-side user identity layer that justifies moving entitlement state back to the backend.
+
+---
+
 ### [D-R04] SAP hosting — GitHub Pages vs Vercel
 
 Status: resolved

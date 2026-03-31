@@ -21,11 +21,23 @@ const copyTargets = [
 const webPageTargets = [
   ['guide.html', 'guide.html'],
   ['setup.html', 'setup.html'],
+  ['prompt-embed.html', 'prompt-embed.html'],
+  ['privacy.html', 'privacy.html'],
 ];
 
 async function resetDocsDir() {
-  await rm(docsDir, { recursive: true, force: true });
   await mkdir(docsDir, { recursive: true });
+  const generatedTargets = [
+    ...copyTargets.map(([, toName]) => join(docsDir, toName)),
+    ...webPageTargets.map(([, toName]) => join(docsDir, toName)),
+    join(docsDir, 'fonts'),
+    join(docsDir, '.nojekyll'),
+    join(docsDir, 'CNAME'),
+  ];
+
+  for (const target of generatedTargets) {
+    await rm(target, { recursive: true, force: true });
+  }
 }
 
 async function copyTarget(fromName, toName) {

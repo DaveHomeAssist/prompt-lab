@@ -107,6 +107,7 @@ export default function useEvalRuns(optionsOrLegacy) {
 
   return {
     evalRuns,
+    totalRuns: total,
     showEvalHistory,
     setShowEvalHistory,
     refreshEvalRuns,

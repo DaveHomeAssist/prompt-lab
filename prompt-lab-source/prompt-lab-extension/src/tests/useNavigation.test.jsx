@@ -60,4 +60,15 @@ describe('useNavigation', () => {
     expect(legacy.setPrimaryView).toHaveBeenCalledWith('runs');
     expect(legacy.setRunsView).not.toHaveBeenCalled();
   });
+
+  it('routes the library section through the shared section-state mapping', () => {
+    const library = renderNavigation();
+
+    act(() => {
+      library.result.current.openSection('library');
+    });
+
+    expect(library.setPrimaryView).toHaveBeenCalledWith('create');
+    expect(library.setWorkspaceView).toHaveBeenCalledWith('library');
+  });
 });

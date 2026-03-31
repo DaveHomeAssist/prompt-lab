@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { resolveRouteState, stateToRoute } from '../lib/navigationRegistry.js';
 
 /**
  * useRouteSync — bidirectional sync between React Router hash routes
@@ -17,23 +18,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
  * It preserves the existing state model so all current code keeps working.
  */
 
-const ROUTE_TO_STATE = {
-  '/': { primaryView: 'create', workspaceView: 'editor' },
-  '/library': { primaryView: 'create', workspaceView: 'library' },
-  '/composer': { primaryView: 'create', workspaceView: 'composer' },
-  '/evaluate': { primaryView: 'runs', runsView: 'history' },
-  '/compare': { primaryView: 'runs', runsView: 'compare' },
-  '/pad': { primaryView: 'notebook' },
-};
-
-function stateToRoute(primaryView, workspaceView, runsView) {
-  if (primaryView === 'notebook') return '/pad';
-  if (primaryView === 'runs') return runsView === 'compare' ? '/compare' : '/evaluate';
-  if (workspaceView === 'library') return '/library';
-  if (workspaceView === 'composer') return '/composer';
-  return '/';
-}
-
 export default function useRouteSync({
   primaryView, setPrimaryView,
   workspaceView, setWorkspaceView,
@@ -45,7 +29,7 @@ export default function useRouteSync({
 
   // URL → state: on mount and browser back/forward
   useEffect(() => {
-    const mapping = ROUTE_TO_STATE[location.pathname];
+    const mapping = resolveRouteState(location.pathname);
     if (!mapping) return;
 
     suppressPush.current = true;

@@ -6,14 +6,14 @@ Prompt Lab is currently shipped as:
 
 - an MV3 side panel extension
 - a Tauri desktop app that reuses the shared frontend
-- a hosted web deployment split between the landing page on `promptlab.tools` and the currently public shared app at `https://prompt-lab-tawny.vercel.app/app/`
+- a hosted web deployment split between the landing page on `promptlab.tools` and the currently public shared app at `https://promptlab.tools/app/`
 
 Current shipped capabilities include:
 
 - prompt enhancement workflows
 - A/B testing
 - eval run history and test cases
-- five provider support
+- five provider support across extension and desktop, with an Anthropic-first hosted web surface
 - PII scanning
 - extension CI and desktop build CI
 
@@ -45,7 +45,7 @@ Platform priority ladder:
 3. **Native mobile apps** — only if demand justifies it
 4. **Public web app / PWA** — deferred until a backend is architecturally justified
 
-The hosted web app at `https://prompt-lab-tawny.vercel.app/app/` is a convenience surface for evaluation
+The hosted web app at `https://promptlab.tools/app/` is a convenience surface for evaluation
 and demo purposes. It is not the primary product and should not gate feature work.
 
 ## Next improvements under consideration

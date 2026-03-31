@@ -47,7 +47,7 @@ export function ThemeProvider({ mode = 'dark', children }) {
   }), [mode]);
 
   useEffect(() => {
-    document.body.style.background = mode === 'light' ? '#f9fafb' : '#030712';
+    document.body.style.background = mode === 'light' ? '#e2e8f0' : '#030712';
   }, [mode]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -56,4 +56,3 @@ export function ThemeProvider({ mode = 'dark', children }) {
 export function useThemeTokens() {
   return useContext(ThemeContext);
 }
-

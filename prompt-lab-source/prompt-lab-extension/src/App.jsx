@@ -12,6 +12,8 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useABTest from './hooks/useABTest.js';
+import useBillingState from './hooks/useBillingState.js';
+import useTelemetryState from './hooks/useTelemetryState.js';
 import Toast from './Toast';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
@@ -37,6 +39,7 @@ import SettingsModal from './modals/SettingsModal';
 import CommandPaletteModal from './modals/CommandPaletteModal';
 import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
+import BillingModal from './modals/BillingModal.jsx';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -54,6 +57,8 @@ Constraints:
 export default function App() {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingFeaturePrompt, setBillingFeaturePrompt] = useState(null);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
@@ -87,6 +92,8 @@ export default function App() {
     setCmdQuery,
   } = ui;
   const m = T[colorMode];
+  const telemetry = useTelemetryState({ notify });
+  const billing = useBillingState({ notify, telemetry });
 
   // ── Library hook ──
   const lib = useLibrary(notify);
@@ -107,7 +114,7 @@ export default function App() {
     ...editorState,
     ...persistenceFlow,
     ...executionFlow,
-    doSave: () => persistenceFlow.doSave(executionFlow.refreshEvalRuns),
+    doSave: (overrides = {}) => persistenceFlow.doSave(executionFlow.refreshEvalRuns, overrides),
     clearEditor: () => {
       executionFlow.clearExecutionState();
       persistenceFlow.clearPersistenceState();
@@ -141,6 +148,27 @@ export default function App() {
     hasSavablePrompt, currentTestCases,
   } = ed;
 
+  const openBilling = (featureId = null) => {
+    void telemetry.track('billing.modal_opened', {
+      featureId: featureId || 'general',
+      plan: billing.plan,
+      section: activeSection,
+    });
+    setBillingFeaturePrompt(featureId);
+    setShowBillingModal(true);
+  };
+  const closeBilling = () => {
+    setShowBillingModal(false);
+    setBillingFeaturePrompt(null);
+  };
+
+  const canUseCollections = billing.hasFeature('collections');
+  const canExportLibrary = billing.hasFeature('export');
+  const canRunBatchCases = billing.hasFeature('batchRuns');
+  const canUseDiffView = billing.hasFeature('diffView');
+  const canUseAbTesting = billing.hasFeature('abTesting');
+  const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '' };
+
   // Keep latest handler fns in a ref so the keydown effect never goes stale
   const kbFns = useRef({ enhance, doSave, openSavePanel });
   useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel }; });
@@ -152,9 +180,22 @@ export default function App() {
     tab, setTab,
   });
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
+  const openRunsViewWithBilling = (nextView) => {
+    if (nextView === 'compare' && !canUseAbTesting) {
+      openBilling('abTesting');
+      return;
+    }
+    openRunsView(nextView);
+  };
 
   // ── Sync hash routes ↔ nav state ──
   useRouteSync({ primaryView, setPrimaryView, workspaceView, setWorkspaceView, runsView, setRunsView });
+
+  useEffect(() => {
+    if (primaryView === 'runs' && runsView === 'compare' && !canUseAbTesting) {
+      setRunsView('history');
+    }
+  }, [canUseAbTesting, primaryView, runsView, setRunsView]);
 
   // ── Derived (view-only) ──
   const score = useMemo(() => scorePrompt(raw), [raw]);
@@ -201,7 +242,7 @@ export default function App() {
   const createLayoutOptions = [];
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
-    { id: 'diff', label: 'Diff' },
+    ...(canUseDiffView ? [{ id: 'diff', label: 'Diff' }] : []),
     ...(variants.length > 0 ? [{ id: 'variants', label: `Variants (${variants.length})` }] : []),
     ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
   ];
@@ -215,6 +256,31 @@ export default function App() {
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
+
+  const appOpenTrackedRef = useRef(false);
+  const lastSectionRef = useRef('');
+
+  useEffect(() => {
+    if (appOpenTrackedRef.current) return;
+    appOpenTrackedRef.current = true;
+    void telemetry.track('app.opened', {
+      section: activeSection,
+      surface: telemetry.surface,
+      libraryCount: lib.library.length,
+      plan: billing.plan,
+    });
+  }, [activeSection, billing.plan, lib.library.length, telemetry]);
+
+  useEffect(() => {
+    if (!activeSection || lastSectionRef.current === activeSection) return;
+    lastSectionRef.current = activeSection;
+    void telemetry.track('navigation.section_changed', {
+      section: activeSection,
+      runsView,
+      workspaceView,
+      plan: billing.plan,
+    });
+  }, [activeSection, billing.plan, runsView, telemetry, workspaceView]);
 
   useEffect(() => {
     if (tab !== 'editor') return;
@@ -289,24 +355,92 @@ export default function App() {
 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
-  const CMD_ACTIONS = buildCommandActions({
-    enhance: () => { if (!loading && raw.trim()) enhance(); closePalette(); },
-    save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
-    clear: () => { clearEditor(); closePalette(); },
-    goEditor: () => { openSection('create'); closePalette(); },
-    goLibrary: () => { openSection('library'); closePalette(); },
-    goBuild: () => { openCreateView('composer'); closePalette(); },
-    goRuns: () => { openSection('evaluate'); closePalette(); },
-    goCompare: () => { openRunsView('compare'); closePalette(); },
-    goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
-    toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
-    exportLib: () => { lib.exportLib(); closePalette(); },
-    openSettings: () => { setShowSettings(true); closePalette(); },
-    openOptions: () => { openOptions(); closePalette(); },
-    showShortcuts: () => { setShowShortcuts(true); closePalette(); },
-  });
-  const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
-  const quickSave = () => persistenceFlow.doSave(executionFlow.refreshEvalRuns, { titleOverride: suggestedSaveTitle });
+  const handleEnhanceRequest = () => {
+    void telemetry.track('editor.enhance_requested', {
+      mode: enhMode,
+      inputLength: raw.length,
+      wordCount: wc,
+      editing: Boolean(editingId),
+      plan: billing.plan,
+    });
+    enhance();
+  };
+  const handleExportLibrary = () => {
+    if (canExportLibrary) {
+      void telemetry.track('library.export_requested', {
+        promptCount: lib.library.length,
+        plan: billing.plan,
+      });
+      lib.exportLib();
+      return;
+    }
+    void telemetry.track('billing.feature_blocked', {
+      featureId: 'export',
+      plan: billing.plan,
+    });
+    openBilling('export');
+  };
+  const handleLoadEntry = async (entry, source = 'library') => {
+    void telemetry.track('library.prompt_loaded', {
+      source,
+      hasCollection: Boolean(entry?.collection),
+      plan: billing.plan,
+    });
+    await loadEntry(entry);
+  };
+  const handleAddToComposer = (entry) => {
+    void telemetry.track('composer.block_added', {
+      source: 'library',
+      plan: billing.plan,
+    });
+    addToComposer(entry);
+  };
+  const quickSave = () => {
+    const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+    const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
+      titleOverride: suggestedSaveTitle,
+      ...saveFlowOverrides,
+    });
+    if (saved?.id) {
+      void telemetry.track('library.prompt_saved', {
+        plan: billing.plan,
+        via: 'inline',
+        isVersion: Boolean(saveTargetId),
+        hasCollection: Boolean(trackedCollection),
+      });
+    }
+    return saved;
+  };
+  const handleRunCases = () => {
+    if (!canRunBatchCases) {
+      void telemetry.track('billing.feature_blocked', {
+        featureId: 'batchRuns',
+        plan: billing.plan,
+      });
+      openBilling('batchRuns');
+      return;
+    }
+    void telemetry.track('evaluate.batch_runs_requested', {
+      testCaseCount: currentTestCases.length,
+      plan: billing.plan,
+    });
+    runAllCases();
+  };
+  const handleSendToABTest = (entry, side) => {
+    if (!canUseAbTesting) {
+      void telemetry.track('billing.feature_blocked', {
+        featureId: 'abTesting',
+        plan: billing.plan,
+      });
+      openBilling('abTesting');
+      return;
+    }
+    void telemetry.track('evaluate.abtest_prompt_sent', {
+      side,
+      plan: billing.plan,
+    });
+    sendEntryToABTest(entry, side);
+  };
   const handleReEnhance = (modeId) => {
     setEnhMode(modeId);
     setResultTab('improved');
@@ -314,6 +448,7 @@ export default function App() {
     enhanceWithMode(modeId);
   };
   const handleEvaluateQuickStart = () => {
+    void telemetry.track('evaluate.quick_start_requested', { plan: billing.plan });
     if (currentEntry || raw.trim()) {
       openSection('create');
       notify(currentEntry
@@ -327,9 +462,35 @@ export default function App() {
     notify('Loaded a starter prompt into Create. Enhance it to generate your first saved run.');
   };
   const handleEvaluateOpenCompare = () => {
-    openRunsView('compare');
+    if (!canUseAbTesting) {
+      void telemetry.track('billing.feature_blocked', {
+        featureId: 'abTesting',
+        plan: billing.plan,
+      });
+      openBilling('abTesting');
+      return;
+    }
+    void telemetry.track('evaluate.compare_opened', { plan: billing.plan });
+    openRunsViewWithBilling('compare');
     notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
   };
+  const CMD_ACTIONS = buildCommandActions({
+    enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
+    save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
+    clear: () => { clearEditor(); closePalette(); },
+    goEditor: () => { openSection('create'); closePalette(); },
+    goLibrary: () => { openSection('library'); closePalette(); },
+    goBuild: () => { openCreateView('composer'); closePalette(); },
+    goRuns: () => { openSection('evaluate'); closePalette(); },
+    goCompare: () => { openRunsViewWithBilling('compare'); closePalette(); },
+    goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
+    toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
+    exportLib: () => { handleExportLibrary(); closePalette(); },
+    openSettings: () => { setShowSettings(true); closePalette(); },
+    openOptions: () => { openOptions(); closePalette(); },
+    showShortcuts: () => { setShowShortcuts(true); closePalette(); },
+  });
+  const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -345,13 +506,16 @@ export default function App() {
         m={m} compact={compact} libraryCount={lib.library.length}
         colorMode={colorMode} setColorMode={setColorMode}
         activeSection={activeSection} openSection={openSection}
-        openCreateView={openCreateView} openRunsView={openRunsView}
+        openCreateView={openCreateView} openRunsView={openRunsViewWithBilling}
         primaryView={primaryView} setPrimaryView={setPrimaryView}
         workspaceView={workspaceView} runsView={runsView}
         effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
         createLayoutOptions={createLayoutOptions}
         setShowCmdPalette={setShowCmdPalette} setCmdQuery={setCmdQuery}
         setShowShortcuts={setShowShortcuts} setShowSettings={setShowSettings}
+        billingPlan={billing.plan}
+        billingLabel={billing.planLabel}
+        openBilling={openBilling}
       />
 
       <main role="tabpanel" aria-label={tab} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
@@ -371,7 +535,7 @@ export default function App() {
               colorMode={colorMode}
               quickInject={lib.quickInject}
               recentPrompts={lib.recentPrompts}
-              loadEntry={loadEntry}
+              loadEntry={(entry) => handleLoadEntry(entry, 'create')}
               copy={copy}
               bumpUse={lib.bumpUse}
               showCreateContext={showCreateContext}
@@ -386,7 +550,7 @@ export default function App() {
               wc={wc} score={score} inp={inp}
               lintIssues={lintIssues} lintOpen={lintOpen} setLintOpen={setLintOpen} handleLintFix={handleLintFix}
               enhMode={enhMode} setEnhMode={setEnhMode}
-              enhance={enhance} runAllCases={runAllCases} clearEditor={clearEditor} cancelEnhance={cancelEnhance}
+              enhance={handleEnhanceRequest} runAllCases={handleRunCases} clearEditor={clearEditor} cancelEnhance={cancelEnhance}
               loading={loading} runningCases={runningCases} batchProgress={batchProgress}
               currentTestCases={currentTestCases} hasSavablePrompt={hasSavablePrompt} primaryModKey={primaryModKey}
               streaming={streaming} optimisticSaveVisible={optimisticSaveVisible} showSave={showSave}
@@ -405,6 +569,9 @@ export default function App() {
               variants={variants} showNotes={showNotes} notes={notes}
               evalRuns={evalRuns} showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
               streamPreview={streamPreview}
+              showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
+              onUnlockDiff={() => openBilling('diffView')}
+              runCasesLocked={!canRunBatchCases}
             />
           )}
           libraryPane={(
@@ -424,8 +591,11 @@ export default function App() {
               saveCaseForPrompt={saveCaseForPrompt}
               loadCaseIntoEditor={loadCaseIntoEditor}
               runSingleCase={runSingleCase} removeCase={removeCase}
-              loadEntry={loadEntry} addToComposer={addToComposer}
-              openSavePanel={openSavePanel} sendToABTest={sendEntryToABTest} copy={copy}
+              loadEntry={handleLoadEntry} addToComposer={handleAddToComposer}
+              openSavePanel={openSavePanel} sendToABTest={handleSendToABTest} copy={copy}
+              canUseCollections={canUseCollections}
+              canExportLibrary={canExportLibrary}
+              openBilling={openBilling}
             />
           )}
         />
@@ -453,8 +623,26 @@ export default function App() {
             </p>
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
-            {runsView === 'compare'
+            {runsView === 'compare' && canUseAbTesting
               ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...abTest} />
+              : runsView === 'compare'
+                ? (
+                  <div className="flex h-full items-center justify-center p-6">
+                    <div className={`${m.surface} ${m.border} max-w-md rounded-2xl border p-5 text-center`}>
+                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is part of Prompt Lab Pro.</p>
+                      <p className={`mt-2 text-xs leading-relaxed ${m.textMuted}`}>
+                        Unlock head-to-head prompt runs, saved winners, and compare history with a Prompt Lab Pro plan.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => openBilling('abTesting')}
+                        className="ui-control mt-4 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                      >
+                        Upgrade to Pro
+                      </button>
+                    </div>
+                  </div>
+                )
               : (
                 <RunTimelinePanel
                   m={m}
@@ -492,7 +680,21 @@ export default function App() {
           showNewColl={showNewColl} setShowNewColl={setShowNewColl}
           newCollName={newCollName} setNewCollName={setNewCollName}
           commitNewCollection={commitNewCollection}
-          doSave={doSave} closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
+          doSave={() => {
+            const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+            const saved = doSave(saveFlowOverrides);
+            if (saved?.id) {
+              void telemetry.track('library.prompt_saved', {
+                plan: billing.plan,
+                via: 'save-panel',
+                isVersion: Boolean(saveTargetId),
+                hasCollection: Boolean(trackedCollection),
+              });
+            }
+            return saved;
+          }} closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
+          canUseCollections={canUseCollections}
+          onRequestCollectionsUpgrade={() => openBilling('collections')}
         />
       )}
 
@@ -511,8 +713,13 @@ export default function App() {
           m={m} showNotes={showNotes} setShowNotes={setShowNotes}
           density={density} setDensity={setDensity}
           collections={lib.collections} deleteCollection={lib.deleteCollection}
-          exportLib={lib.exportLib} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
+          exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
+          billing={billing}
+          openBilling={openBilling}
+          canUseCollections={canUseCollections}
+          canExportLibrary={canExportLibrary}
+          telemetry={telemetry}
         />
       )}
 
@@ -525,6 +732,15 @@ export default function App() {
 
       {showShortcuts && (
         <ShortcutsModal m={m} primaryModKey={primaryModKey} onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {showBillingModal && (
+        <BillingModal
+          m={m}
+          billing={billing}
+          requestedFeature={billingFeaturePrompt}
+          onClose={closeBilling}
+        />
       )}
 
       <VersionDiffModal

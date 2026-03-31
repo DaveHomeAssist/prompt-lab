@@ -7,6 +7,8 @@ export const storageKeys = Object.freeze({
   mode: 'pl2-mode',
   pad: 'pl2-pad',
   experimentHistory: 'pl2-experiment-history',
+  billing: 'pl2-billing',
+  telemetry: 'pl2-telemetry',
 });
 
 export function loadJson(key, fallback = null) {

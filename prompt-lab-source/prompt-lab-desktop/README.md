@@ -2,7 +2,7 @@
 
 Prompt Lab Desktop is a Tauri 2 shell around the shared Prompt Lab React frontend. It reuses `../prompt-lab-extension/src/` so the desktop app stays aligned with:
 
-- the hosted web app at `https://prompt-lab-tawny.vercel.app/app/`
+- the hosted web app at `https://promptlab.tools/app/`
 - the MV3 browser extension in `prompt-lab-extension/`
 
 ## Prerequisites

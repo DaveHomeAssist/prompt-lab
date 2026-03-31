@@ -2,7 +2,7 @@
 
 Prompt Lab Extension is the MV3 side-panel shell for Prompt Lab. It shares its React frontend with:
 
-- the hosted web app at `https://prompt-lab-tawny.vercel.app/app/`
+- the hosted web app at `https://promptlab.tools/app/`
 - the Tauri desktop shell in `prompt-lab-desktop/`
 
 The extension remains the browser-native workflow for users who want Prompt Lab docked beside the page they are already using.

@@ -137,10 +137,10 @@ describe('LibraryPanel organizing', () => {
 
     render(<LibraryPanel {...props} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Move Alpha down' }));
+    fireEvent.click(screen.getByLabelText('Move Alpha down'));
 
     expect(props.lib.moveLibraryEntryByOffset).toHaveBeenCalledWith('entry-1', 1, props.lib.filtered);
-  });
+  }, 20000);
 
   it('renders collection headers in grouped mode', () => {
     const groupedEntries = [

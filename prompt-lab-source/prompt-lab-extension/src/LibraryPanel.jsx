@@ -54,9 +54,15 @@ const LibraryPanel = memo(function LibraryPanel({
   openCaseForm, resetCaseForm, saveCaseForPrompt,
   loadCaseIntoEditor, runSingleCase, removeCase,
   loadEntry, addToComposer, openSavePanel, sendToABTest, copy,
+  canUseCollections = true,
+  canExportLibrary = true,
+  openBilling,
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
+  const primaryStarterPack = unloadedStarterPacks[0] || null;
+  const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
 
   useEffect(() => {
     setSearchDraft(lib.search);
@@ -70,6 +76,13 @@ const LibraryPanel = memo(function LibraryPanel({
     }, 250);
     return () => window.clearTimeout(timeoutId);
   }, [lib.search, lib.setSearch, searchDraft]);
+
+  const clearLibraryFilters = () => {
+    setSearchDraft('');
+    lib.setSearch('');
+    lib.setActiveTag(null);
+    lib.setActiveCollection(null);
+  };
 
   return (
     <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
@@ -85,7 +98,13 @@ const LibraryPanel = memo(function LibraryPanel({
               className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
               <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="a-z">A → Z</option><option value="z-a">Z → A</option><option value="group">By collection</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
             </select>
-            <button type="button" onClick={lib.exportLib} className={`ui-control px-2.5 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors ${compact ? 'flex-1 py-1.5' : ''}`}>Export</button>
+            <button
+              type="button"
+              onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}
+              className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${compact ? 'flex-1 py-1.5' : ''} ${canExportLibrary ? `${m.btn} ${m.textAlt}` : 'border border-violet-500/40 bg-violet-500/12 text-violet-200'}`}
+            >
+              {canExportLibrary ? 'Export' : 'Export Pro'}
+            </button>
             <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>
@@ -96,7 +115,7 @@ const LibraryPanel = memo(function LibraryPanel({
             Manual order is live. Drag cards or use the arrow controls to move them.
           </p>
         )}
-        {lib.collections.length > 0 && (
+        {canUseCollections && lib.collections.length > 0 && (
           <div className="flex gap-1 flex-wrap">
             <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
             {lib.collections.map(c => (
@@ -105,6 +124,14 @@ const LibraryPanel = memo(function LibraryPanel({
                 <Ic n="FolderOpen" size={9} />{c}
               </button>
             ))}
+          </div>
+        )}
+        {!canUseCollections && lib.collections.length > 0 && (
+          <div className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${m.codeBlock} ${m.border} ${m.textMuted}`}>
+            Collection filters are available on Prompt Lab Pro.
+            <button type="button" onClick={() => openBilling?.('collections')} className="ml-2 text-violet-400 hover:text-violet-300 transition-colors">
+              Unlock
+            </button>
           </div>
         )}
         {lib.allLibTags.length > 0 && (
@@ -125,7 +152,41 @@ const LibraryPanel = memo(function LibraryPanel({
         {lib.filtered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
-            <p className={`text-sm ${m.textSub}`}>{lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}</p>
+            <p className={`text-sm font-semibold ${m.textSub}`}>
+              {lib.library.length === 0 ? 'No saved prompts yet.' : 'No results found.'}
+            </p>
+            <p className={`mt-1 max-w-sm text-xs leading-relaxed ${m.textMuted}`}>
+              {lib.library.length === 0
+                ? 'Load a starter library, import a pack, or save your current draft to seed the workspace.'
+                : 'Your current search, tag, or collection filters are hiding every saved prompt.'}
+            </p>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {lib.library.length === 0 && primaryStarterPack && (
+                <button
+                  type="button"
+                  onClick={() => lib.loadStarterPack(primaryStarterPack.id)}
+                  className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                >
+                  Load {primaryStarterPack.name}
+                </button>
+              )}
+              {lib.library.length > 0 && hasLibraryFilters && (
+                <button
+                  type="button"
+                  onClick={clearLibraryFilters}
+                  className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                >
+                  Clear Filters
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowImportPanel(true)}
+                className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+              >
+                Import Pack
+              </button>
+            </div>
           </div>
         )}
         {lib.filtered.map((entry, index) => {

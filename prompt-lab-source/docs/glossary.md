@@ -24,7 +24,7 @@ The Tauri 2 desktop shell in `prompt-lab-desktop/` that loads the shared fronten
 
 ### hosted web app
 
-The deployed web application served publicly at `https://prompt-lab-tawny.vercel.app/app/`.
+The deployed web application served publicly at `https://promptlab.tools/app/`.
 
 ### public landing page
 

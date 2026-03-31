@@ -253,6 +253,9 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const titleValue = Object.prototype.hasOwnProperty.call(overrides, 'titleOverride')
       ? overrides.titleOverride
       : saveTitle;
+    const collectionValue = Object.prototype.hasOwnProperty.call(overrides, 'collectionOverride')
+      ? overrides.collectionOverride
+      : saveCollection;
     const saved = lib.doSave({
       raw: contentSource?.original ?? raw,
       enhanced: contentSource?.enhanced ?? enhanced,
@@ -260,7 +263,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       notes: contentSource?.notes ?? notes,
       tags: saveTags,
       title: titleValue,
-      collection: saveCollection,
+      collection: collectionValue,
       editingId: targetId,
       changeNote,
     });
@@ -274,7 +277,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         variants: contentSource?.variants ?? variants,
         notes: contentSource?.notes ?? notes,
         tags: saveTags,
-        collection: saveCollection,
+        collection: collectionValue,
       };
       if (!contentSource) {
         setEditingId(saved.id);

@@ -1,5 +1,27 @@
 # Prompt Lab — Version History
 
+## v1.7.0 — 2026-03-30
+
+Runtime and release-hygiene follow-up after the shared frontend rollout.
+
+### UX and navigation
+
+- Centralized tab, route, and section state mapping in `src/lib/navigationRegistry.js` so `useUiState`, `useNavigation`, and `useRouteSync` share one navigation contract.
+- Improved Evaluate feedback states with filter summary chips, explicit no-match handling, and retryable error messaging.
+- Improved Library empty states with starter-pack and clear-filter CTAs instead of passive placeholders.
+
+### Hosted web and public docs
+
+- Standardized hosted web references on `https://promptlab.tools/app/`.
+- Updated public landing and repo docs to reflect the current hosted Anthropic-first web flow versus the full multi-provider extension and desktop surfaces.
+
+### Tooling and release hygiene
+
+- Switched Vitest to the `threads` pool for stable jsdom execution under Node 22.
+- Updated landing publish checks to include `privacy.html` and `prompt-embed.html`.
+- Restored version parity between the desktop Cargo package and the shared frontend packages at `v1.7.0`.
+- Removed stale tracked files from the ignored `prompt-lab-web/dist/` tree.
+
 ## v1.5.0 — 2026-03-13
 
 Shared frontend, hosted web target, desktop target, and release infrastructure update.
@@ -8,10 +30,10 @@ Shared frontend, hosted web target, desktop target, and release infrastructure u
 
 - Prompt Lab now ships as:
   - an MV3 Chrome/Vivaldi side panel extension
-  - a hosted web app deployed at `https://prompt-lab-tawny.vercel.app/app/`
+  - a hosted web app deployed at `https://promptlab.tools/app/`
   - a Tauri 2 desktop app
 - The desktop app loads the shared frontend from `prompt-lab-extension/src/` through a relative import in `prompt-lab-desktop/index.html`.
-- The hosted web app loads the same shared frontend through `prompt-lab-web/app/index.html` and is currently exposed publicly at `https://prompt-lab-tawny.vercel.app/app/`.
+- The hosted web app loads the same shared frontend through `prompt-lab-web/app/index.html` and is currently exposed publicly at `https://promptlab.tools/app/`.
 - Desktop-specific provider settings use `localStorage` key `pl2-provider-settings`, while the extension continues to use `chrome.storage.local`.
 
 ### Runtime and platform work
@@ -41,7 +63,7 @@ Shared frontend, hosted web target, desktop target, and release infrastructure u
 ### Notes
 
 - Desktop currently shares the extension frontend directly rather than maintaining a separate UI fork.
-- The current public website is split between a landing page on `promptlab.tools/` and the shared app at `https://prompt-lab-tawny.vercel.app/app/`.
+- The current public website is split between a landing page on `promptlab.tools/` and the shared app at `https://promptlab.tools/app/`.
 - Test coverage was reorganized during the shared frontend / desktop transition. The current maintained extension suite is 49 tests across 8 suites.
 - Chrome Web Store review materials are still incomplete; see `CWS_SUBMISSION_CHECKLIST.md`.
 - A Vite warning remains about `desktopApi.js` being both dynamically and statically imported. It does not block current builds.

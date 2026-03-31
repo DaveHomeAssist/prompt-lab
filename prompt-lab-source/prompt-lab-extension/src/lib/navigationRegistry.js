@@ -44,6 +44,17 @@ export function deriveTab(primaryView, workspaceView, runsView) {
 }
 
 /**
+ * Derive the active top-level section shown in the header.
+ * Notebook keeps the Create section selected because it has its own
+ * dedicated toggle outside the main section tabs.
+ */
+export function deriveActiveSection(primaryView, workspaceView) {
+  if (primaryView === 'runs') return 'evaluate';
+  if (workspaceView === 'library') return 'library';
+  return 'create';
+}
+
+/**
  * Given a target tab name, return the state updates needed.
  * Returns { primaryView, workspaceView?, runsView? }.
  */
@@ -62,6 +73,50 @@ export function resolveTabState(nextTab) {
     default:
       return { primaryView: 'create', workspaceView: 'editor' };
   }
+}
+
+/**
+ * Given a high-level section id, return the state updates needed.
+ * `experiments` remains as a supported alias for legacy callers.
+ */
+export function resolveSectionState(nextSection) {
+  switch (nextSection) {
+    case 'library':
+      return { primaryView: 'create', workspaceView: 'library' };
+    case 'evaluate':
+    case 'experiments':
+      return { primaryView: 'runs' };
+    case 'create':
+    default:
+      return { primaryView: 'create', workspaceView: 'editor' };
+  }
+}
+
+const ROUTE_TO_STATE = Object.freeze({
+  '/': { primaryView: 'create', workspaceView: 'editor' },
+  '/library': { primaryView: 'create', workspaceView: 'library' },
+  '/composer': { primaryView: 'create', workspaceView: 'composer' },
+  '/evaluate': { primaryView: 'runs', runsView: 'history' },
+  '/compare': { primaryView: 'runs', runsView: 'compare' },
+  '/pad': { primaryView: 'notebook' },
+});
+
+/**
+ * Resolve a route pathname to the corresponding navigation state.
+ */
+export function resolveRouteState(pathname) {
+  return ROUTE_TO_STATE[pathname] || null;
+}
+
+/**
+ * Resolve the canonical route for the current navigation state.
+ */
+export function stateToRoute(primaryView, workspaceView, runsView) {
+  if (primaryView === 'notebook') return '/pad';
+  if (primaryView === 'runs') return runsView === 'compare' ? '/compare' : '/evaluate';
+  if (workspaceView === 'library') return '/library';
+  if (workspaceView === 'composer') return '/composer';
+  return '/';
 }
 
 // ── Keyboard shortcuts ──────────────────────────────────────────────

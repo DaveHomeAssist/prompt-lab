@@ -8,6 +8,7 @@ export default function SavePanel({
   changeNote, setChangeNote, collections,
   showNewColl, setShowNewColl, newCollName, setNewCollName,
   commitNewCollection, doSave, closeSavePanel, canSavePanel,
+  canUseCollections = true, onRequestCollectionsUpgrade,
 }) {
   return (
     <aside
@@ -53,7 +54,7 @@ export default function SavePanel({
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <label className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
-              {!showNewColl && (
+              {canUseCollections && !showNewColl && (
                 <button
                   type="button"
                   onClick={() => setShowNewColl(true)}
@@ -64,41 +65,58 @@ export default function SavePanel({
                 </button>
               )}
             </div>
-            <div className="flex flex-col gap-2">
-              <select
-                value={saveCollection}
-                onChange={(e) => setSaveCollection(e.target.value)}
-                className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
-              >
-                <option value="">No Collection</option>
-                {collections.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              {showNewColl && (
-                <div className="flex gap-2">
-                  <input
-                    autoFocus
-                    className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
-                    placeholder="New collection name…"
-                    value={newCollName}
-                    onChange={(e) => setNewCollName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') commitNewCollection();
-                      if (e.key === 'Escape') {
-                        setNewCollName('');
-                        setShowNewColl(false);
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={commitNewCollection}
-                    className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
-                  >
-                    Add
-                  </button>
-                </div>
-              )}
-            </div>
+            {canUseCollections ? (
+              <div className="flex flex-col gap-2">
+                <select
+                  value={saveCollection}
+                  onChange={(e) => setSaveCollection(e.target.value)}
+                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                >
+                  <option value="">No Collection</option>
+                  {collections.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {showNewColl && (
+                  <div className="flex gap-2">
+                    <input
+                      autoFocus
+                      className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                      placeholder="New collection name…"
+                      value={newCollName}
+                      onChange={(e) => setNewCollName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') commitNewCollection();
+                        if (e.key === 'Escape') {
+                          setNewCollName('');
+                          setShowNewColl(false);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={commitNewCollection}
+                      className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className={`${m.codeBlock} rounded-lg border px-3 py-2 text-xs leading-relaxed ${m.border} ${m.textMuted}`}>
+                Collections are part of Prompt Lab Pro. Save to the library now, then upgrade when you want grouped prompt sets.
+                {typeof onRequestCollectionsUpgrade === 'function' && (
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={onRequestCollectionsUpgrade}
+                      className="ui-control rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-500"
+                    >
+                      Unlock Collections
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>

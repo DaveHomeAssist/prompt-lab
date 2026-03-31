@@ -168,4 +168,54 @@ describe('LibraryPanel actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
     expect(screen.queryByTestId('preset-import-panel')).not.toBeInTheDocument();
   });
+
+  it('offers a starter-pack CTA when the library is empty', () => {
+    const loadStarterPack = vi.fn();
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        filtered: [],
+        library: [],
+        expandedId: null,
+        loadStarterPack,
+        starterLibraries: [
+          { id: 'pack-1', name: 'Ops Pack', description: 'Starter prompts', icon: 'A', promptCount: 3, loaded: false },
+        ],
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load Ops Pack' }));
+
+    expect(loadStarterPack).toHaveBeenCalledWith('pack-1');
+  });
+
+  it('clears search and facet filters from the no-results state', () => {
+    const setSearch = vi.fn();
+    const setActiveTag = vi.fn();
+    const setActiveCollection = vi.fn();
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        search: 'ops',
+        activeTag: 'ops',
+        activeCollection: 'Launch',
+        setSearch,
+        setActiveTag,
+        setActiveCollection,
+        filtered: [],
+        library: [makeEntry()],
+        expandedId: null,
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Filters' }));
+
+    expect(setSearch).toHaveBeenCalledWith('');
+    expect(setActiveTag).toHaveBeenCalledWith(null);
+    expect(setActiveCollection).toHaveBeenCalledWith(null);
+  });
 });

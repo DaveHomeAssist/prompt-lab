@@ -8,7 +8,7 @@ Multi-provider prompt side panel with enhance, A/B testing, library, composer, a
 
 Prompt Lab is a prompt engineering workspace that lives in your browser side panel.
 
-This Chrome Web Store listing is for the extension workflow. Prompt Lab also has a hosted web app at `https://prompt-lab-tawny.vercel.app/app/`, but the side-panel version is optimized for in-browser use while you work.
+This Chrome Web Store listing is for the extension workflow. Prompt Lab also has a hosted web app at `https://promptlab.tools/app/`, but the side-panel version is optimized for in-browser use while you work.
 
 Use it to refine prompts, compare variants, save reusable prompt assets, and switch between providers without leaving the page you are already working on.
 

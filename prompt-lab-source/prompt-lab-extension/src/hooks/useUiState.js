@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import usePersistedState from '../usePersistedState.js';
+import { deriveTab, resolveTabState } from '../lib/navigationRegistry.js';
 
 export default function useUiState() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 420));
@@ -19,38 +20,13 @@ export default function useUiState() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [cmdQuery, setCmdQuery] = useState('');
 
-  const tab = (() => {
-    if (primaryView === 'notebook') return 'pad';
-    if (primaryView === 'runs') return runsView === 'compare' ? 'abtest' : 'history';
-    if (workspaceView === 'composer') return 'composer';
-    return 'editor';
-  })();
+  const tab = deriveTab(primaryView, workspaceView, runsView);
 
   const setTab = (nextTab) => {
-    if (nextTab === 'editor') {
-      setPrimaryView('create');
-      setWorkspaceView('editor');
-      return;
-    }
-    if (nextTab === 'composer') {
-      setPrimaryView('create');
-      setWorkspaceView('composer');
-      return;
-    }
-    if (nextTab === 'abtest') {
-      setPrimaryView('runs');
-      setRunsView('compare');
-      return;
-    }
-    if (nextTab === 'history') {
-      setPrimaryView('runs');
-      setRunsView('history');
-      return;
-    }
-    if (nextTab === 'pad') {
-      setPrimaryView('notebook');
-      return;
-    }
+    const nextState = resolveTabState(nextTab);
+    if (nextState.primaryView) setPrimaryView(nextState.primaryView);
+    if (nextState.workspaceView) setWorkspaceView(nextState.workspaceView);
+    if (nextState.runsView) setRunsView(nextState.runsView);
   };
 
   useEffect(() => {

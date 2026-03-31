@@ -68,10 +68,12 @@ describe('RunTimelinePanel', () => {
           latencyMs: 560,
         },
       ],
+      totalRuns: 2,
       loading: false,
       error: null,
       hasMore: false,
       loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
       updateRun: vi.fn(),
     });
   });
@@ -96,6 +98,8 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByLabelText('Filter by date range')).toHaveValue('90d');
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('latency');
     expect(screen.getByText('Model Comparison (latest per model)')).toBeInTheDocument();
+    expect(screen.getByText('Filtered view')).toBeInTheDocument();
+    expect(screen.getByText('Mode: A/B')).toBeInTheDocument();
   });
 
   it('persists filter edits and supports resetting them', async () => {
@@ -135,10 +139,12 @@ describe('RunTimelinePanel', () => {
 
     useEvalRunsMock.mockReturnValue({
       evalRuns: [],
+      totalRuns: 0,
       loading: false,
       error: null,
       hasMore: false,
       loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
       updateRun: vi.fn(),
     });
 
@@ -159,10 +165,12 @@ describe('RunTimelinePanel', () => {
 
     useEvalRunsMock.mockReturnValue({
       evalRuns: [],
+      totalRuns: 0,
       loading: false,
       error: null,
       hasMore: false,
       loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
       updateRun: vi.fn(),
     });
 
@@ -178,5 +186,57 @@ describe('RunTimelinePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Create' }));
 
     expect(onQuickStart).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a no-match state when filters are active but no runs match', () => {
+    localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
+      mode: '',
+      provider: '',
+      model: '',
+      status: '',
+      dateRange: '30d',
+      search: 'regression',
+      showModelCompare: false,
+    }));
+
+    useEvalRunsMock.mockReturnValue({
+      evalRuns: [],
+      totalRuns: 0,
+      loading: false,
+      error: null,
+      hasMore: false,
+      loadMore: vi.fn(),
+      refreshEvalRuns: vi.fn(),
+      updateRun: vi.fn(),
+    });
+
+    renderPanel();
+
+    expect(screen.getByText('No runs match current filters.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset All Filters' })).toBeInTheDocument();
+  });
+
+  it('renders an error banner and retries the timeline fetch', () => {
+    const refreshEvalRuns = vi.fn();
+
+    useEvalRunsMock.mockReturnValue({
+      evalRuns: [],
+      totalRuns: 0,
+      loading: false,
+      error: 'IndexedDB unavailable',
+      hasMore: false,
+      loadMore: vi.fn(),
+      refreshEvalRuns,
+      updateRun: vi.fn(),
+    });
+
+    renderPanel();
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Evaluate timeline unavailable');
+    expect(screen.getByRole('alert')).toHaveTextContent('IndexedDB unavailable');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    expect(refreshEvalRuns).toHaveBeenCalledTimes(1);
   });
 });

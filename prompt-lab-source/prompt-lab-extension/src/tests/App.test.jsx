@@ -208,6 +208,8 @@ vi.mock('../lib/navigationRegistry.js', () => ({
   matchShortcut: vi.fn(() => null),
   buildCommandActions: vi.fn(() => []),
   filterCommands: vi.fn(() => []),
+  resolveRouteState: vi.fn(() => null),
+  stateToRoute: vi.fn(() => '/'),
 }));
 
 vi.mock('../theme/ThemeProvider.jsx', () => ({

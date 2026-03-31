@@ -12,9 +12,10 @@
 
 - Shared frontend source lives in `prompt-lab-extension/src/`.
 - The Chrome extension packages that source into an MV3 side panel build.
-- The hosted web deployment serves a landing page at `promptlab.tools/` and the shared app at `https://prompt-lab-tawny.vercel.app/app/`.
+- The hosted web deployment serves a landing page at `promptlab.tools/` and the shared app at `https://promptlab.tools/app/`.
 - The Tauri desktop app loads the same `main.jsx` entry through `prompt-lab-desktop/index.html`.
-- Supported providers are Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
+- Extension and desktop support Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
+- Hosted web currently defaults to Anthropic and can use a shared hosted key or a user-supplied Anthropic key.
 
 ## Notable changes in this release
 
@@ -28,11 +29,10 @@
 
 ## Verification snapshot
 
-- `npm test` in `prompt-lab-extension/`: pass, 49 tests
-- `npm run build` in `prompt-lab-extension/`: pass
-- `npm run build` in `prompt-lab-desktop/`: pass
-- `npx tauri build --bundles app` in `prompt-lab-desktop/`: pass on macOS
-- `npx tauri build --bundles dmg` in `prompt-lab-desktop/`: pass on macOS
+- `npm test` in `prompt-lab-extension/`: run with Node 22 using the Vitest `threads` pool
+- `npm run build` in `prompt-lab-extension/`: current release target
+- `npm run build` in `prompt-lab-web/`: current release target
+- `npm run build` in `prompt-lab-desktop/`: shared frontend validation target
 
 ## CI snapshot
 

@@ -7,7 +7,7 @@
  *   node scripts/preflight.mjs --quick  # skip tests (build + validate only)
  */
 import { execSync } from 'node:child_process';
-import { readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +16,8 @@ const sourceDir = resolve(scriptDir, '..');
 const repoDir   = resolve(sourceDir, '..');
 const extDir    = join(sourceDir, 'prompt-lab-extension');
 const webDir    = join(sourceDir, 'prompt-lab-web');
+const desktopDir = join(sourceDir, 'prompt-lab-desktop');
+const cargoTomlPath = join(desktopDir, 'src-tauri', 'Cargo.toml');
 const docsDir   = join(repoDir, 'docs');
 const quick     = process.argv.includes('--quick');
 
@@ -38,10 +40,14 @@ function warn(label, detail) {
 
 function run(cmd, cwd) {
   try {
-    execSync(cmd, { cwd, stdio: 'pipe', timeout: 120_000 });
-    return { ok: true };
+    const stdout = execSync(cmd, { cwd, stdio: 'pipe', timeout: 120_000 });
+    return { ok: true, stdout: stdout?.toString?.() || '' };
   } catch (err) {
-    return { ok: false, stderr: err.stderr?.toString().slice(-500) || '' };
+    return {
+      ok: false,
+      stdout: err.stdout?.toString?.() || '',
+      stderr: err.stderr?.toString().slice(-500) || '',
+    };
   }
 }
 
@@ -147,7 +153,8 @@ async function checkBundleSize() {
 // ── 8. LANDING PAGE ASSETS ──
 async function checkLandingAssets() {
   const required = ['index.html', 'fonts', 'hero-logo.png', 'og-image.png'];
-  const optional = ['guide.html', 'setup.html', 'templates'];
+  const docsPages = ['guide.html', 'setup.html', 'prompt-embed.html', 'privacy.html'];
+  const optional = ['templates'];
 
   for (const name of required) {
     try {
@@ -155,6 +162,15 @@ async function checkLandingAssets() {
       pass(`docs/${name}`, 'Present');
     } catch {
       fail(`docs/${name}`, 'Missing from landing deploy');
+    }
+  }
+
+  for (const name of docsPages) {
+    try {
+      await stat(join(docsDir, name));
+      pass(`docs/${name}`, 'Present');
+    } catch {
+      fail(`docs/${name}`, 'Missing from landing publish');
     }
   }
 
@@ -184,6 +200,16 @@ async function checkVersions() {
       versions.push({ path: p.replace(repoDir + '/', ''), version: '???' });
     }
   }
+  try {
+    const cargoToml = await readFile(cargoTomlPath, 'utf8');
+    const match = cargoToml.match(/^version = "([^"]+)"/m);
+    versions.push({
+      path: cargoTomlPath.replace(repoDir + '/', ''),
+      version: match?.[1] || '???',
+    });
+  } catch {
+    versions.push({ path: cargoTomlPath.replace(repoDir + '/', ''), version: '???' });
+  }
   const allSame = versions.every(v => v.version === versions[0].version);
   if (allSame) {
     pass('Version consistency', `All packages at v${versions[0].version}`);
@@ -191,6 +217,31 @@ async function checkVersions() {
     const detail = versions.map(v => `${v.path}: ${v.version}`).join(', ');
     warn('Version consistency', `Mismatch — ${detail}`);
   }
+}
+
+function checkTrackedIgnoredArtifacts() {
+  const result = run("git ls-files 'prompt-lab-source/prompt-lab-web/dist/**'", repoDir);
+  if (!result.ok) {
+    warn('Tracked ignored artifacts', 'Could not inspect tracked dist files');
+    return;
+  }
+
+  const trackedEntries = result.stdout.trim().split('\n').filter(Boolean);
+  const existingEntries = trackedEntries.filter((entry) => {
+    try {
+      execSync(`test -e "${entry}"`, { cwd: repoDir, stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  if (existingEntries.length === 0) {
+    pass('Tracked ignored artifacts', 'No tracked files under ignored web dist/');
+    return;
+  }
+
+  warn('Tracked ignored artifacts', `Tracked files remain under ignored web dist/: ${existingEntries.join(', ')}`);
 }
 
 // ── REPORT ──
@@ -237,6 +288,7 @@ async function main() {
   await checkBundleSize();
   await checkLandingAssets();
   await checkVersions();
+  checkTrackedIgnoredArtifacts();
   printReport();
 }
 

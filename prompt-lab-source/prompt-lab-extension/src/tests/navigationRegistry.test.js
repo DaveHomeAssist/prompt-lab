@@ -3,8 +3,12 @@ import {
   PRIMARY_VIEWS,
   SUBVIEWS,
   SHORTCUTS,
+  deriveActiveSection,
   deriveTab,
+  resolveSectionState,
   resolveTabState,
+  resolveRouteState,
+  stateToRoute,
   matchShortcut,
   buildCommandActions,
   filterCommands,
@@ -57,6 +61,29 @@ describe('navigationRegistry', () => {
       );
       expect(derived).toBe(tab);
     }
+  });
+
+  it('derives the correct header section from view state', () => {
+    expect(deriveActiveSection('create', 'editor')).toBe('create');
+    expect(deriveActiveSection('create', 'library')).toBe('library');
+    expect(deriveActiveSection('runs', 'editor')).toBe('evaluate');
+    expect(deriveActiveSection('notebook', 'editor')).toBe('create');
+  });
+
+  it('resolves section ids and route paths through the shared contract', () => {
+    expect(resolveSectionState('create')).toEqual({ primaryView: 'create', workspaceView: 'editor' });
+    expect(resolveSectionState('library')).toEqual({ primaryView: 'create', workspaceView: 'library' });
+    expect(resolveSectionState('evaluate')).toEqual({ primaryView: 'runs' });
+    expect(resolveSectionState('experiments')).toEqual({ primaryView: 'runs' });
+
+    expect(resolveRouteState('/library')).toEqual({ primaryView: 'create', workspaceView: 'library' });
+    expect(resolveRouteState('/compare')).toEqual({ primaryView: 'runs', runsView: 'compare' });
+    expect(resolveRouteState('/unknown')).toBe(null);
+
+    expect(stateToRoute('create', 'editor', 'history')).toBe('/');
+    expect(stateToRoute('create', 'library', 'history')).toBe('/library');
+    expect(stateToRoute('runs', 'editor', 'compare')).toBe('/compare');
+    expect(stateToRoute('notebook', 'editor', 'history')).toBe('/pad');
   });
 
   // ── Cmd/Ctrl+K ────────────────────────────────────────────────────

@@ -24,9 +24,9 @@ export default defineConfig({
     include: ['src/__tests__/**/*.test.{js,jsx}', 'src/tests/**/*.test.{js,jsx}'],
     // Smoke tests run via `npm run test:desktop` — keep them out of the unit pool
     exclude: ['tests/desktop-smoke.test.mjs', 'node_modules/**'],
-    // Favor the most conservative process model for local stability.
-    // This is slower, but avoids the extra deadlock surface area we kept hitting.
-    pool: 'forks',
+    // jsdom is stable under threads on Node 22; the forked pool hit repeated
+    // bootstrap failures in cssstyle/jsdom before test collection completed.
+    pool: 'threads',
     fileParallelism: false,
     maxWorkers: 1,
     minWorkers: 1,
