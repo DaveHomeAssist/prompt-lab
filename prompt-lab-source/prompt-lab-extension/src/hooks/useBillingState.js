@@ -46,12 +46,22 @@ async function parseErrorMessage(response, fallback) {
   return fallback;
 }
 
-export default function useBillingState({ notify, telemetry }) {
+export default function useBillingState({ notify, telemetry, clerkUser, clerkGetToken }) {
   const [state, setState] = useState(() => normalizeBillingState(
     loadJson(storageKeys.billing, createDefaultBillingState()),
   ));
   const [busyAction, setBusyAction] = useState('');
   const apiBase = getBillingApiBase();
+
+  // Sync Clerk identity into billing state when available
+  useEffect(() => {
+    if (!clerkUser) return;
+    const email = clerkUser.primaryEmailAddress?.emailAddress;
+    const clerkId = clerkUser.id;
+    if (email && email !== state.customerEmail) {
+      setState((prev) => normalizeBillingState({ ...prev, customerEmail: email, clerkUserId: clerkId }));
+    }
+  }, [clerkUser, state.customerEmail]);
 
   useEffect(() => {
     saveJson(storageKeys.billing, state);
@@ -61,8 +71,17 @@ export default function useBillingState({ notify, telemetry }) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
+      // Attach Clerk session token when available
+      const headers = { ...(init?.headers || {}) };
+      if (clerkGetToken) {
+        try {
+          const token = await clerkGetToken();
+          if (token) headers.Authorization = `Bearer ${token}`;
+        } catch { /* Proceed without auth token */ }
+      }
       const response = await fetch(`${apiBase}${path}`, {
         ...init,
+        headers,
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -77,7 +96,7 @@ export default function useBillingState({ notify, telemetry }) {
     } finally {
       clearTimeout(timeoutId);
     }
-  }, [apiBase]);
+  }, [apiBase, clerkGetToken]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
     if (!state.customerEmail && !state.customerId) return false;

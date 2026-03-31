@@ -9,6 +9,7 @@ export default function AppHeader({
   effectiveEditorLayout, setEditorLayout, createLayoutOptions,
   setShowCmdPalette, setCmdQuery, setShowShortcuts, setShowSettings,
   billingPlan, billingLabel, openBilling,
+  clerkUserButton,
 }) {
   const createModeButtons = [
     { id: 'editor', label: 'Write', action: () => openSection('create'), active: primaryView === 'create' && workspaceView !== 'composer' },
@@ -62,6 +63,7 @@ export default function AppHeader({
           </button>
           <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Keyboard" size={13} /></button>
           <button type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-violet-400 transition-colors`}><Ic n="Settings" size={13} /></button>
+          {clerkUserButton && <div className="ml-1">{clerkUserButton}</div>}
         </div>
       </div>
       <div className={`mt-2 flex items-center gap-2 ${compact ? 'flex-wrap' : ''}`}>

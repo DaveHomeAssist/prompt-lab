@@ -54,7 +54,7 @@ Constraints:
 - sound precise, not hypey`;
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function App() {
+export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
@@ -93,7 +93,7 @@ export default function App() {
   } = ui;
   const m = T[colorMode];
   const telemetry = useTelemetryState({ notify });
-  const billing = useBillingState({ notify, telemetry });
+  const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
 
   // ── Library hook ──
   const lib = useLibrary(notify);
@@ -516,6 +516,7 @@ export default function App() {
         billingPlan={billing.plan}
         billingLabel={billing.planLabel}
         openBilling={openBilling}
+        clerkUserButton={clerkUser ? clerkUserButton : null}
       />
 
       <main role="tabpanel" aria-label={tab} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>

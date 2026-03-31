@@ -153,6 +153,7 @@ export async function createCheckout(config, {
   period = 'monthly',
   email = '',
   source = 'app',
+  clerkUserId = '',
   deviceId = '',
   sessionId = '',
   surface = '',
@@ -183,6 +184,7 @@ export async function createCheckout(config, {
     ...(deviceId ? { device_id: deviceId } : {}),
     ...(sessionId ? { session_id: sessionId } : {}),
     ...(contactEmail ? { contact_email: contactEmail } : {}),
+    ...(clerkUserId ? { clerk_user_id: clerkUserId } : {}),
   };
 
   for (const [key, value] of Object.entries(metadata)) {

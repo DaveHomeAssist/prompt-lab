@@ -23,6 +23,7 @@ export default async function handler(request) {
       period,
       email: typeof body?.email === 'string' ? body.email.trim() : '',
       source: typeof body?.source === 'string' && body.source.trim() ? body.source.trim() : 'app',
+      clerkUserId: typeof body?.clerkUserId === 'string' ? body.clerkUserId.trim() : '',
       deviceId: typeof body?.deviceId === 'string' ? body.deviceId.trim() : '',
       sessionId: typeof body?.sessionId === 'string' ? body.sessionId.trim() : '',
       surface: typeof body?.surface === 'string' ? body.surface.trim() : '',

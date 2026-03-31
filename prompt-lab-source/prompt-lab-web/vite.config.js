@@ -16,6 +16,7 @@ export default defineConfig({
       react: resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
       'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom'),
+      '@clerk/clerk-react': resolve(__dirname, 'node_modules/@clerk/clerk-react'),
     },
   },
   build: {
