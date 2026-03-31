@@ -36,13 +36,13 @@ export const patterns = Object.freeze({
     label: 'API key / token',
     description: 'Looks like an API credential or token.',
     placeholder: 'API_KEY',
-    regex: /\b(sk-[A-Za-z0-9]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z\-_]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{12,})\b/gi,
+    regex: /\b(sk-[A-Za-z0-9]{16,128}|gh[pousr]_[A-Za-z0-9]{20,80}|AIza[0-9A-Za-z\-_]{20,60}|xox[baprs]-[A-Za-z0-9-]{10,80}|(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{12,128}?)\b/gi,
   }),
   secret_value: Object.freeze({
     label: 'Secret-looking value',
     description: 'Looks like a password or secret assignment.',
     placeholder: 'SECRET',
-    regex: /\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?([A-Za-z0-9+/_\-]{10,})["']?/gi,
+    regex: /\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?([A-Za-z0-9+/_\-]{10,128}?)["']?/gi,
     extract: (match) => match[1] || match[0],
   }),
 });

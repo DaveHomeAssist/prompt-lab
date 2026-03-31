@@ -2,6 +2,10 @@
 
 export const APP_VERSION = '1.7.0';
 
+export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-20250514';
+export const DEFAULT_ENHANCE_MAX_TOKENS = 4096;
+export const DEFAULT_ENHANCE_TEMPERATURE = 0.4;
+
 export const TAG_COLORS = {
   Writing: 'bg-blue-600', Code: 'bg-green-600', Research: 'bg-purple-600',
   Analysis: 'bg-yellow-600', Creative: 'bg-pink-600', System: 'bg-red-600',

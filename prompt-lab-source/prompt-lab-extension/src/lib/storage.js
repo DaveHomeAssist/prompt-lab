@@ -26,7 +26,11 @@ export function saveJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
     return true;
   } catch (e) {
-    logWarn(`saveJson "${key}"`, e);
+    if (e?.name === 'QuotaExceededError') {
+      logWarn(`saveJson "${key}" — storage quota exceeded. Data may not be saved.`);
+    } else {
+      logWarn(`saveJson "${key}"`, e);
+    }
     return false;
   }
 }

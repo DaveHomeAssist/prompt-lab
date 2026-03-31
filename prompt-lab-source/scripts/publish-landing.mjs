@@ -1,17 +1,19 @@
-import { cp, mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceDir = resolve(scriptDir, '..');
 const repoDir = resolve(sourceDir, '..');
-const publicDir = join(sourceDir, 'public');
+const legacyLandingFile = join(sourceDir, 'public', 'prompt-lab-landing.html');
+const webDir = join(sourceDir, 'prompt-lab-web');
+const webIndexHtml = join(webDir, 'index.html');
 const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
-  ['prompt-lab-landing.html', 'index.html'],
   ['hero-logo.png', 'hero-logo.png'],
+  ['landing-product-shot.png', 'landing-product-shot.png'],
   ['og-image.png', 'og-image.png'],
   ['robots.txt', 'robots.txt'],
   ['sitemap.xml', 'sitemap.xml'],
@@ -23,6 +25,7 @@ const webPageTargets = [
   ['setup.html', 'setup.html'],
   ['prompt-embed.html', 'prompt-embed.html'],
   ['privacy.html', 'privacy.html'],
+  ['tools.html', 'tools.html'],
 ];
 
 async function resetDocsDir() {
@@ -40,12 +43,16 @@ async function resetDocsDir() {
   }
 }
 
+async function copyLandingIndex() {
+  await cp(webIndexHtml, join(docsDir, 'index.html'));
+}
+
 async function copyTarget(fromName, toName) {
-  await cp(join(publicDir, fromName), join(docsDir, toName));
+  await cp(join(webPublicDir, fromName), join(docsDir, toName));
 }
 
 async function copyFontsDir() {
-  const sourceFontsDir = join(publicDir, 'fonts');
+  const sourceFontsDir = join(webPublicDir, 'fonts');
   const targetFontsDir = join(docsDir, 'fonts');
   const sourceStats = await stat(sourceFontsDir);
 
@@ -65,19 +72,43 @@ async function writeCname() {
 }
 
 async function validatePublicInputs() {
+  await stat(webIndexHtml);
+
   for (const [fromName] of copyTargets) {
-    await stat(join(publicDir, fromName));
+    await stat(join(webPublicDir, fromName));
   }
 
-  const entries = await readdir(publicDir);
-  if (!entries.includes('prompt-lab-landing.html')) {
-    throw new Error('Landing source file is missing from public/');
+  const entries = await readdir(webPublicDir);
+  if (!entries.includes('hero-logo.png')) {
+    throw new Error('Expected landing public assets in prompt-lab-web/public/');
+  }
+}
+
+async function warnOnLegacyLandingDrift() {
+  try {
+    await stat(legacyLandingFile);
+  } catch {
+    return;
+  }
+
+  const [legacyHtml, webHtml] = await Promise.all([
+    readFile(legacyLandingFile, 'utf8'),
+    readFile(webIndexHtml, 'utf8'),
+  ]);
+
+  if (legacyHtml !== webHtml) {
+    console.warn(
+      '[publish-landing] prompt-lab-web/index.html is canonical. public/prompt-lab-landing.html differs and is no longer published.',
+    );
   }
 }
 
 async function main() {
   await validatePublicInputs();
+  await warnOnLegacyLandingDrift();
   await resetDocsDir();
+
+  await copyLandingIndex();
 
   for (const [fromName, toName] of copyTargets) {
     await copyTarget(fromName, toName);

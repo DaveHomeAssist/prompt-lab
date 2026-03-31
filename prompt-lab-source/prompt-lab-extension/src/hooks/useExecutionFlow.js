@@ -7,7 +7,7 @@ import {
   isTransientError,
   ngramSimilarity,
 } from '../promptUtils';
-import { ALL_TAGS, buildSystemPrompt } from '../constants';
+import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
@@ -69,9 +69,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const buildEnhancePayloadFor = (inputText, modeId = enhMode) => {
     return {
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      temperature: 0.4,
+      model: DEFAULT_ENHANCE_MODEL,
+      max_tokens: DEFAULT_ENHANCE_MAX_TOKENS,
+      temperature: DEFAULT_ENHANCE_TEMPERATURE,
       system: buildSystemPrompt(modeId, ALL_TAGS),
       messages: [{ role: 'user', content: inputText }],
       responseFormat: 'json',

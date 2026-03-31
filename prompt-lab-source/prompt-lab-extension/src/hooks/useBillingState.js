@@ -58,11 +58,25 @@ export default function useBillingState({ notify, telemetry }) {
   }, [state]);
 
   const requestBilling = useCallback(async (path, init) => {
-    const response = await fetch(`${apiBase}${path}`, init);
-    if (!response.ok) {
-      throw new Error(await parseErrorMessage(response, 'Billing request failed.'));
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    try {
+      const response = await fetch(`${apiBase}${path}`, {
+        ...init,
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        throw new Error(await parseErrorMessage(response, 'Billing request failed.'));
+      }
+      return response.json();
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        throw new Error('Billing request timed out. Please try again.');
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
-    return response.json();
   }, [apiBase]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
