@@ -24,7 +24,7 @@ export default function EditorActions({
     : 'Run Cases';
   const refineButtonClass = 'ui-control min-w-[10rem] flex-[999_1_15rem] flex items-center justify-center gap-2 bg-orange-500/90 hover:bg-orange-400 disabled:opacity-40 text-white rounded-lg px-3 py-2 text-sm font-semibold transition-colors';
   const runCasesButtonClass = runCasesLocked
-    ? 'border border-violet-500/40 bg-violet-500/12 text-violet-100 hover:bg-violet-500/18'
+    ? 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18'
     : 'border border-amber-400/35 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25 disabled:opacity-40';
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -75,14 +75,15 @@ export default function EditorActions({
         onClick={onRunCases}
         disabled={loading || runningCases || testCaseCount === 0}
         aria-busy={runningCases}
+        aria-label={runCasesLocked ? `${batchLabel} Pro` : batchLabel}
         title={runCasesLocked ? 'Batch runs are part of Prompt Lab Pro.' : undefined}
         className={`ui-control min-w-[8rem] flex-[0_1_9rem] flex items-center justify-center gap-1 px-3 rounded-lg py-2 text-xs font-semibold transition-colors ${runCasesButtonClass}`}
       >
         {runningCases
-          ? <span className={`w-3.5 h-3.5 border-2 ${runCasesLocked ? 'border-violet-100' : 'border-amber-100'} border-t-transparent rounded-full animate-spin`} />
+          ? <span className={`w-3.5 h-3.5 border-2 ${runCasesLocked ? 'border-orange-100' : 'border-amber-100'} border-t-transparent rounded-full animate-spin`} />
           : <Ic n="FlaskConical" size={12} />}
         <span className="truncate">{batchLabel}</span>
-        {runCasesLocked && <span className="rounded-full bg-violet-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Pro</span>}
+        {runCasesLocked && <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-orange-50">Pro</span>}
       </button>
       <button
         type="button"

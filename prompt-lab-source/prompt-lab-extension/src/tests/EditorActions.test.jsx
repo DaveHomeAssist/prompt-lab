@@ -62,4 +62,19 @@ describe('EditorActions', () => {
       'text-amber-100'
     );
   });
+
+  it('keeps the locked Pro action inside the warm shared accent system', () => {
+    render(<EditorActions {...baseProps} runCasesLocked />);
+
+    expect(screen.getByRole('button', { name: /run cases pro/i })).toHaveClass(
+      'border',
+      'border-orange-400/35',
+      'bg-orange-500/12',
+      'text-orange-100'
+    );
+    expect(screen.getByText('Pro')).toHaveClass(
+      'bg-orange-500/20',
+      'text-orange-50'
+    );
+  });
 });
