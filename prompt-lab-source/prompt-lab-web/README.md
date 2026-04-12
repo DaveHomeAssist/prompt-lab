@@ -14,7 +14,11 @@ The `/app/` shell reuses the same frontend source as the extension and desktop a
 
 Provider API requests from the hosted app route through a Vercel Edge Function at `/api/proxy` to bypass CORS. The hosted surface currently supports Anthropic only: it can use the shared hosted key when configured, or a user-supplied Anthropic key. Extension and desktop remain the full multi-provider surfaces, including local Ollama access.
 
+The app can also submit structured bug reports through `/api/bug-report`. That route expects `NOTION_TOKEN` and `NOTION_BUG_REPORT_PARENT_PAGE_ID` in the Vercel project environment. `VITE_BUG_REPORT_ENDPOINT` is optional when you want the UI to post somewhere other than the default hosted endpoint during local development.
+
 ## Dev setup
+
+Use Node `20.19.x` LTS or `22.12+` before running the hosted web build.
 
 ```bash
 npm install

@@ -18,9 +18,9 @@ The idea: instead of switching between different UIs to compare how local vs. cl
 
 **How to try it:**
 
-- Web app: https://prompt-lab-tawny.vercel.app/app/ (works in any browser)
+- Web app: https://promptlab.tools/app/ (works in any browser)
 - Chrome extension: install from the setup page for a persistent side panel
-- Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
+- Source: https://github.com/DaveHomeAssist/prompt-lab
 
 For Ollama, just set your base URL in settings (defaults to `localhost:11434`). Any model you've pulled shows up in the model dropdown.
 

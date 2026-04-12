@@ -33,13 +33,15 @@ describe('useTestCases', () => {
     confirmSpy.mockRestore();
   });
 
-  it('initial state has empty testCasesByPrompt', () => {
+  it('initial state has empty testCasesByPrompt', async () => {
     const { result } = renderHook(() => useTestCases({ notify }));
+
+    await waitFor(() => expect(listTestCases).toHaveBeenCalledTimes(1));
 
     expect(result.current.testCasesByPrompt).toEqual({});
   });
 
-  it('openCaseForm sets caseFormPromptId and populates fields for existing case', () => {
+  it('openCaseForm sets caseFormPromptId and populates fields for existing case', async () => {
     const existingCase = {
       id: 'case-1',
       title: 'Regression',
@@ -49,6 +51,8 @@ describe('useTestCases', () => {
       notes: 'Keep short',
     };
     const { result } = renderHook(() => useTestCases({ notify }));
+
+    await waitFor(() => expect(listTestCases).toHaveBeenCalledTimes(1));
 
     act(() => {
       result.current.openCaseForm('prompt-1', existingCase);
@@ -63,7 +67,7 @@ describe('useTestCases', () => {
     expect(result.current.caseNotes).toBe('Keep short');
   });
 
-  it('resetCaseForm clears all fields', () => {
+  it('resetCaseForm clears all fields', async () => {
     const existingCase = {
       id: 'case-1',
       title: 'Regression',
@@ -73,6 +77,8 @@ describe('useTestCases', () => {
       notes: 'Keep short',
     };
     const { result } = renderHook(() => useTestCases({ notify }));
+
+    await waitFor(() => expect(listTestCases).toHaveBeenCalledTimes(1));
 
     act(() => {
       result.current.openCaseForm('prompt-1', existingCase);

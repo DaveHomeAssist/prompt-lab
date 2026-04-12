@@ -18,7 +18,7 @@
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
   "engines": {
-    "node": "20.x"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",
@@ -27,7 +27,20 @@
     "react-router-dom": "^7.13.2"
   },
   "overrides": {
-    "@rolldown/pluginutils": "1.0.0-rc.9"
+    "@rolldown/pluginutils": "1.0.0-rc.9",
+    "picomatch": "2.3.2",
+    "fast-glob": {
+      "picomatch": "2.3.2"
+    },
+    "tinyglobby": {
+      "picomatch": "4.0.4"
+    },
+    "vite": {
+      "picomatch": "4.0.4"
+    },
+    "vitest": {
+      "picomatch": "4.0.4"
+    }
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
@@ -40,7 +53,7 @@
     "jsdom": "^28.1.0",
     "postcss": "8.4.49",
     "tailwindcss": "3.4.17",
-    "vite": "^7.3.1",
+    "vite": "^7.3.2",
     "vitest": "~3.2.4"
   }
 }

@@ -25,8 +25,8 @@ After months of pasting prompts between ChatGPT, Claude, and Gemini tabs to comp
 
 **Links:**
 
-- Try it: https://prompt-lab-tawny.vercel.app/app/
+- Try it: https://promptlab.tools/app/
 - Starter templates: https://promptlab.tools/templates/ (importable JSON — code review, tech writing, API docs)
-- Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
+- Source: https://github.com/DaveHomeAssist/prompt-lab
 
 Would love feedback from anyone doing structured prompt optimization — what's missing from your workflow?

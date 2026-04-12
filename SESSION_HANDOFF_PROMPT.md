@@ -15,7 +15,7 @@
   - hosted web app with Vercel routing and edge proxy
 - Live URLs:
   - landing/docs surface: `https://promptlab.tools/`
-  - hosted app surface: `https://prompt-lab-tawny.vercel.app/app/`
+  - hosted app surface: `https://promptlab.tools/app/`
 
 ## 2. Current Objective
 
@@ -49,7 +49,7 @@
   - public landing/docs
 - Hosted web deployment uses a Vercel edge proxy for provider traffic.
 - Live landing domain is `https://promptlab.tools/`.
-- Live hosted app URL is `https://prompt-lab-tawny.vercel.app/app/`.
+- Live hosted app URL is `https://promptlab.tools/app/`.
 - Current git status shows dirty files:
   - modified: `docs/index.html`
   - modified: `prompt-lab-source/public/prompt-lab-landing.html`
@@ -59,7 +59,7 @@
 - Current landing/docs edits are moving metadata and links away from the old `prompt-lab-provider-options` / GitHub Pages identity and toward:
   - `https://promptlab.tools/`
   - `https://github.com/DaveHomeAssist/prompt-lab`
-  - `https://prompt-lab-tawny.vercel.app/app/`
+  - `https://promptlab.tools/app/`
 
 ## 5. Guardrails
 
@@ -78,7 +78,7 @@
   - hosted web app
   - landing/docs
   - providers: Anthropic, OpenAI, Gemini, OpenRouter, Ollama
-- Treat `promptlab.tools` as the authoritative landing/docs URL and `prompt-lab-tawny.vercel.app/app/` as the authoritative hosted app URL unless the repo proves otherwise.
+- Treat `promptlab.tools` as the authoritative landing/docs URL and `promptlab.tools/app/` as the authoritative hosted app URL unless the repo proves otherwise.
 - Personalities only relevant here:
   - repo-local Prompt Lab guidance in `PROMPT_LAB_AGENT.md`
   - current repo report in `CURRENT_PROJECT_REPORT.md`
@@ -135,7 +135,7 @@ Repo context:
   - public landing/docs
 - Live URLs:
   - https://promptlab.tools/
-  - https://prompt-lab-tawny.vercel.app/app/
+  - https://promptlab.tools/app/
 
 Inspect first:
 - /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md

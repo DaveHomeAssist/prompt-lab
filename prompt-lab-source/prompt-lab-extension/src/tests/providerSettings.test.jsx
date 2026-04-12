@@ -26,6 +26,7 @@ const theme = {
 async function renderModal(props = {}) {
   const onClose = vi.fn();
   const notify = vi.fn();
+  const initialLoadCallCount = loadProviderSettings.mock.calls.length;
   vi.resetModules();
   delete globalThis.chrome;
   vi.doMock('../lib/platform.js', () => ({
@@ -64,6 +65,9 @@ async function renderModal(props = {}) {
       {...props}
     />
   );
+  await waitFor(() => {
+    expect(loadProviderSettings).toHaveBeenCalledTimes(initialLoadCallCount + 1);
+  });
   return { ...view, onClose, notify };
 }
 

@@ -24,7 +24,7 @@ Prompt Lab is a prompt engineering workbench for iterating, testing, and managin
 | Surface | URL / Location |
 |---------|---------------|
 | Landing page | https://promptlab.tools/ |
-| Web app (demo) | https://prompt-lab-tawny.vercel.app/app/ |
+| Web app (demo) | https://promptlab.tools/app/ |
 | Chrome extension | Chrome Web Store (submission pending) |
 | Desktop app | Local build (macOS verified) |
 

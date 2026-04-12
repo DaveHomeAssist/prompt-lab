@@ -19,6 +19,7 @@ export default function SettingsModal({
   canUseCollections = true,
   canExportLibrary = true,
   telemetry,
+  onReportBug,
 }) {
   const [telemetryEnabled, setTelemetryEnabled] = useState(telemetry?.telemetryEnabled !== false);
   const [contactEmail, setContactEmail] = useState(telemetry?.contactEmail || '');
@@ -134,6 +135,9 @@ export default function SettingsModal({
         )}
         <button onClick={openOptions} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-violet-400 font-semibold transition-colors`}>
           🔑 Manage API Key (Options)
+        </button>
+        <button type="button" onClick={onReportBug} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}>
+          <Ic n="FileText" size={12} />Report a Bug
         </button>
         <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
           <button onClick={canExportLibrary ? exportLib : () => openBilling?.('export')} className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 transition-colors ${canExportLibrary ? `${m.btn} ${m.textBody}` : 'border border-violet-500/40 bg-violet-500/12 text-violet-200'}`}><Ic n="Download" size={12} />{canExportLibrary ? 'Export Library' : 'Export Library (Pro)'}</button>

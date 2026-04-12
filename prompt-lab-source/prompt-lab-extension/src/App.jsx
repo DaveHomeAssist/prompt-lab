@@ -4,7 +4,7 @@ import {
   ngramSimilarity,
   suggestTitleFromText,
 } from './promptUtils';
-import { T } from './constants';
+import { APP_VERSION, T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
 import useNavigation from './hooks/useNavigation.js';
@@ -27,6 +27,7 @@ import {
   matchShortcut,
   buildCommandActions,
   filterCommands,
+  stateToRoute,
 } from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
 import CreateEditorPane from './CreateEditorPane';
@@ -34,6 +35,7 @@ import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
 import useRouteSync from './hooks/useRouteSync.js';
 import SavePanel from './SavePanel';
+import BugReportModal from './BugReportModal';
 import TemplateVariablesModal from './modals/TemplateVariablesModal';
 import SettingsModal from './modals/SettingsModal';
 import CommandPaletteModal from './modals/CommandPaletteModal';
@@ -57,6 +59,7 @@ Constraints:
 export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
+  const [showBugReport, setShowBugReport] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [billingFeaturePrompt, setBillingFeaturePrompt] = useState(null);
   const [mdPreview, setMdPreview] = useState(false);
@@ -256,6 +259,27 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
+  const currentRoute = stateToRoute(primaryView, workspaceView, runsView);
+  const bugReportSurface = isExtension
+    ? 'Extension Panel'
+    : (isWeb ? 'Hosted Web App' : 'Desktop App');
+  const lastErrorMessage = typeof error === 'string'
+    ? error
+    : (error?.userMessage || error?.message || '');
+  const bugReportContext = {
+    activeSection,
+    appVersion: APP_VERSION,
+    browser: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    colorMode,
+    density,
+    environment: isExtension ? 'extension' : (isWeb ? 'web' : 'desktop'),
+    lastError: lastErrorMessage,
+    runsView,
+    url: typeof window !== 'undefined' ? window.location.href : '',
+    viewPath: currentRoute,
+    viewport: `${viewportWidth}x${viewportHeight}`,
+    workspaceView,
+  };
 
   const appOpenTrackedRef = useRef(false);
   const lastSectionRef = useRef('');
@@ -336,6 +360,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           setShowCmdPalette(false);
           setShowShortcuts(false);
           setShowSettings(false);
+          setShowBugReport(false);
           closeSavePanel();
           lib.setShareId(null);
           lib.closeVersionHistory();
@@ -487,6 +512,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     toggleTheme: () => { setColorMode(p => p === 'dark' ? 'light' : 'dark'); closePalette(); },
     exportLib: () => { handleExportLibrary(); closePalette(); },
     openSettings: () => { setShowSettings(true); closePalette(); },
+    reportBug: () => { setShowBugReport(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
   });
@@ -721,6 +747,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
+          onReportBug={() => {
+            setShowSettings(false);
+            setShowBugReport(true);
+          }}
         />
       )}
 
@@ -733,6 +763,21 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
 
       {showShortcuts && (
         <ShortcutsModal m={m} primaryModKey={primaryModKey} onClose={() => setShowShortcuts(false)} />
+      )}
+
+      {showBugReport && (
+        <BugReportModal
+          show={showBugReport}
+          onClose={() => setShowBugReport(false)}
+          m={m}
+          notify={notify}
+          isWeb={isWeb}
+          defaultSurface={bugReportSurface}
+          appContext={bugReportContext}
+          raw={raw}
+          enhanced={enhanced}
+          enhMode={enhMode}
+        />
       )}
 
       {showBillingModal && (

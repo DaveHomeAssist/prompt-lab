@@ -163,7 +163,7 @@ export function buildCommandActions(handlers) {
   const {
     enhance, save, clear,
     goEditor, goLibrary, goBuild, goRuns, goCompare, goNotebook,
-    toggleTheme, exportLib, openSettings, openOptions, showShortcuts,
+    toggleTheme, exportLib, openSettings, reportBug, openOptions, showShortcuts,
   } = handlers;
 
   return [
@@ -179,6 +179,7 @@ export function buildCommandActions(handlers) {
     { label: 'Toggle Light / Dark', hint: '', action: toggleTheme },
     { label: 'Export Library', hint: '', action: exportLib },
     { label: 'Open Settings', hint: '', action: openSettings },
+    { label: 'Report Bug', hint: '', action: reportBug },
     { label: 'Extension Options (API Key)', hint: '', action: openOptions },
     { label: 'Show Keyboard Shortcuts', hint: '?', action: showShortcuts },
   ].filter((entry) => typeof entry.action === 'function');

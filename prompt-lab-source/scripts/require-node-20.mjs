@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 
-const REQUIRED_MAJOR = 20;
-const [major] = process.versions.node.split('.').map(Number);
+const [major, minor] = process.versions.node.split('.').map(Number);
 
-if (major !== REQUIRED_MAJOR) {
+const isSupported =
+  (major === 20 && minor >= 19) ||
+  major > 22 ||
+  (major === 22 && minor >= 12);
+
+if (!isSupported) {
   console.warn(
-    `[prompt-lab] Node ${REQUIRED_MAJOR}.x is recommended. Current runtime: ${process.versions.node}.`
+    `[prompt-lab] Supported Node runtimes are 20.19+ or 22.12+. Current runtime: ${process.versions.node}.`
   );
   console.warn(
-    '[prompt-lab] Unsupported Node versions can cause local Vite builds to hang after emitting dist output.'
+    '[prompt-lab] Newer Vite releases require a newer Node floor than plain "20.x".'
   );
   console.warn(
-    '[prompt-lab] Use Node 20 before running build/deploy tasks. If you use a version manager, switch in the repo root first.'
+    '[prompt-lab] Use Node 20.19.x LTS in this repo unless you have a specific reason to run 22.12+.'
   );
 }

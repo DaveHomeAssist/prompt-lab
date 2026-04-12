@@ -14,7 +14,7 @@
   - Vitest
 - Live surfaces:
   - Public landing page: `https://promptlab.tools/`
-  - Hosted web app: `https://prompt-lab-tawny.vercel.app/app/`
+  - Hosted web app: `https://promptlab.tools/app/`
 
 ## What Prompt Lab Is
 
