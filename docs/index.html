@@ -1,757 +1,1741 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Prompt Lab — Sharpen every prompt | AI prompt improver</title>
-<meta name="description" content="Prompt Lab improves, expands, and compares your AI prompts in seconds. See exactly what changed and why." />
-<meta name="robots" content="index,follow" />
-<meta name="theme-color" content="#0F0F0D" />
-<link rel="canonical" href="https://promptlab.tools/" />
-<link rel="icon" type="image/png" href="https://promptlab.tools/hero-logo.png" />
-<meta property="og:title" content="Prompt Lab — Sharpen every prompt | AI prompt improver" />
-<meta property="og:description" content="Prompt Lab improves, expands, and compares your AI prompts in seconds. See exactly what changed and why." />
-<meta property="og:type" content="website" />
-<meta property="og:url" content="https://promptlab.tools/" />
-<meta property="og:image" content="https://promptlab.tools/og-image.png" />
-<meta property="og:site_name" content="Prompt Lab" />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Prompt Lab — Sharpen every prompt | AI prompt improver" />
-<meta name="twitter:description" content="Prompt Lab improves, expands, and compares your AI prompts in seconds. See exactly what changed and why." />
-<meta name="twitter:image" content="https://promptlab.tools/og-image.png" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,400;1,9..144,400&family=DM+Sans:opsz,wght@9..40,300;9..40,500&display=swap" rel="stylesheet" />
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Prompt Lab",
-  "url": "https://promptlab.tools/",
-  "description": "Prompt Lab improves, expands, and compares AI prompts in a single workspace across web, extension, and desktop surfaces.",
-  "applicationCategory": "BusinessApplication",
-  "operatingSystem": "Web, Chrome, Desktop",
-  "offers": {
-    "@type": "Offer",
-    "price": "0",
-    "priceCurrency": "USD"
-  }
-}
-</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Lab — Every prompt, sharpened</title>
+<meta name="description" content="The multi-provider prompt engineering workspace. Enhance, compare, and perfect your prompts across Claude, GPT-4, Gemini, and more.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-.skip-link{position:absolute;top:-100%;left:16px;background:var(--teal);color:var(--bg);padding:8px 16px;border-radius:0 0 6px 6px;font-size:13px;font-weight:500;z-index:200;text-decoration:none;transition:top .15s}
-.skip-link:focus{top:0}
-:root{
-  --bg:#0F0F0D;--bg2:#161614;--bg3:#1D1D1A;--bg4:#252522;
-  --ink:#EDEAE0;--ink2:#A8A49A;--ink3:#6A6660;
-  --gold:#C9A84C;--goldd:#7A6330;
-  --teal:#3DBFA0;--teald:#1A6655;
-  --border:rgba(237,234,224,0.08);--border2:rgba(237,234,224,0.14);
-  --fd:'Fraunces',Georgia,serif;
-  --fb:'DM Sans',system-ui,sans-serif;
-  --fm:'DM Mono',monospace;
-}
-body{background:var(--bg);color:var(--ink);font-family:var(--fb);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+/* ========== RESET & FOUNDATIONS ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 32px;height:56px;border-bottom:1px solid var(--border);background:rgba(15,15,13,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);will-change:transform}
-.nav-logo{display:flex;align-items:center;gap:9px;font-family:var(--fm);font-size:13px;color:var(--ink);text-decoration:none}
-.nav-links{display:flex;align-items:center;gap:28px;list-style:none}
-.nav-links a{font-size:13px;color:var(--ink2);text-decoration:none;transition:color .15s}
-.nav-links a:hover{color:var(--ink)}
-.nav-links a.nav-resource{color:var(--ink3);font-size:12px}
-.nav-links a.nav-resource:hover{color:var(--ink2)}
-.nav-cta{display:flex;align-items:center;gap:10px}
-.btn-ghost{font-size:13px;color:var(--ink2);background:transparent;border:1px solid var(--border2);border-radius:6px;padding:7px 16px;cursor:pointer;font-family:var(--fb);text-decoration:none;transition:color .15s,border-color .15s}
-.btn-ghost:hover{color:var(--ink);border-color:var(--ink2)}
-.btn-nav-cta{font-size:13px;font-weight:500;color:var(--bg);background:var(--ink);border:none;border-radius:6px;padding:8px 18px;cursor:pointer;font-family:var(--fb);text-decoration:none;transition:opacity .15s;white-space:nowrap}
-.btn-nav-cta:hover{opacity:.88}
-
-/* HERO */
-.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:120px 24px 80px;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;top:-10%;left:50%;transform:translateX(-50%);width:900px;height:600px;background:radial-gradient(ellipse at center,rgba(201,168,76,.06) 0%,transparent 70%);pointer-events:none}
-.hero::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(237,234,224,0.035) 1px,transparent 1px),linear-gradient(90deg,rgba(237,234,224,0.035) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;mask-image:radial-gradient(ellipse at center,black 20%,transparent 65%);-webkit-mask-image:radial-gradient(ellipse at center,black 20%,transparent 65%)}
-.hero-inner{position:relative;z-index:1;max-width:740px;text-align:center}
-.hero-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--fm);font-size:11px;color:var(--gold);border:1px solid var(--goldd);border-radius:100px;padding:4px 12px;margin-bottom:32px;letter-spacing:.05em;animation:fadeup .6s ease both}
-.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulsedot 2s ease-in-out infinite}
-@keyframes pulsedot{0%,100%{opacity:1}50%{opacity:.3}}
-.hero-h1{font-family:var(--fd);font-size:clamp(44px,7.5vw,84px);font-weight:400;line-height:1.05;color:var(--ink);letter-spacing:-.025em;margin-bottom:24px;animation:fadeup .6s .1s ease both}
-.hero-h1 em{font-style:italic;color:var(--gold)}
-.hero-sub{font-size:17px;color:var(--ink2);line-height:1.65;max-width:500px;margin:0 auto 40px;font-weight:300;animation:fadeup .6s .2s ease both}
-.hero-actions{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:64px;animation:fadeup .6s .3s ease both}
-.btn-hero{font-size:14px;font-weight:500;color:var(--bg);background:var(--ink);border:none;border-radius:8px;padding:12px 26px;min-height:44px;cursor:pointer;font-family:var(--fb);text-decoration:none;transition:opacity .15s;display:inline-flex;align-items:center}
-.btn-hero:hover{opacity:.88}
-.btn-hero-ghost{font-size:14px;color:var(--ink2);background:transparent;border:1px solid var(--border2);border-radius:8px;padding:12px 26px;min-height:44px;cursor:pointer;font-family:var(--fb);text-decoration:none;transition:color .15s,border-color .15s;display:inline-flex;align-items:center}
-.btn-hero-ghost:hover{color:var(--ink);border-color:var(--ink2)}
-
-/* DEMO WIDGET */
-.demo-widget{width:100%;max-width:700px;background:var(--bg2);border:1px solid var(--border2);border-radius:14px;overflow:hidden;animation:fadeup .6s .4s ease both;box-shadow:0 0 0 1px rgba(0,0,0,.4),0 32px 80px rgba(0,0,0,.5)}
-.demo-titlebar{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--bg3)}
-.demo-dots{display:flex;gap:6px}
-.demo-dot{width:10px;height:10px;border-radius:50%}
-.demo-dot:nth-child(1){background:#FF5F57}
-.demo-dot:nth-child(2){background:#FEBC2E}
-.demo-dot:nth-child(3){background:#28C840}
-.demo-title-text{font-family:var(--fm);font-size:11px;color:var(--ink3);margin:0 auto}
-.demo-body{display:grid;grid-template-columns:1fr 1fr}
-.demo-col{padding:16px}
-.demo-col:first-child{border-right:1px solid var(--border)}
-.demo-col-label{font-family:var(--fm);font-size:12px;color:var(--ink3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
-.demo-input{width:100%;min-height:100px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--ink);font-family:var(--fb);resize:none;outline:none;transition:border-color .15s}
-.demo-input:focus{border-color:var(--border2)}
-.demo-input::placeholder{color:var(--ink3)}
-.demo-output-box{min-height:100px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.6;color:var(--ink2);font-family:var(--fb)}
-.demo-output-text{color:var(--ink)}
-.demo-cursor{display:inline-block;width:2px;height:13px;background:var(--teal);vertical-align:middle;margin-left:1px;animation:blink 1s step-end infinite}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
-.demo-footer{display:flex;align-items:center;justify-content:space-between;padding:6px 16px 10px;border-top:1px solid var(--border);background:var(--bg3);gap:8px}
-.demo-footer-left{display:flex;flex-direction:column;gap:2px}
-.demo-mode-tabs{display:flex;gap:4px}
-.demo-tab{font-family:var(--fm);font-size:11px;padding:5px 10px;border-radius:5px;border:1px solid transparent;color:var(--ink3);cursor:pointer;background:transparent;transition:all .15s;min-height:32px}
-.demo-tab.active{background:var(--bg4);border-color:var(--border2);color:var(--ink)}
-.demo-tab:hover:not(.active){color:var(--ink2)}
-.demo-tab-hint{font-size:11px;color:var(--ink3);font-family:var(--fb);line-height:1.3;min-height:16px;padding:0 2px}
-.demo-run-btn{font-family:var(--fm);font-size:12px;font-weight:500;color:var(--bg);background:var(--teal);border:none;border-radius:6px;padding:8px 16px;min-height:44px;cursor:pointer;transition:opacity .15s;white-space:nowrap;flex-shrink:0}
-.demo-run-btn:hover{opacity:.88}
-.demo-run-btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* PROOF STRIP */
-.proof-strip{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;justify-content:center;gap:56px;flex-wrap:wrap;background:var(--bg2)}
-.proof-item{display:flex;flex-direction:column;align-items:center;gap:2px}
-.proof-num{font-family:var(--fd);font-size:26px;font-weight:400;color:var(--ink);letter-spacing:-.02em}
-.proof-label{font-family:var(--fm);font-size:12px;color:var(--ink3);letter-spacing:.06em;text-transform:uppercase}
-
-/* SECTIONS */
-.wrap{max-width:1080px;margin:0 auto;padding:100px 24px;content-visibility:auto;contain-intrinsic-size:auto 600px}
-.eyebrow{font-family:var(--fm);font-size:12px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
-.sec-h2{font-family:var(--fd);font-size:clamp(32px,4.5vw,54px);font-weight:400;line-height:1.08;color:var(--ink);letter-spacing:-.022em;margin-bottom:16px}
-.sec-h2 em{font-style:italic;color:var(--gold)}
-.sec-sub{font-size:16px;color:var(--ink2);font-weight:300;max-width:480px;line-height:1.65;margin-bottom:56px}
-
-/* FEATURE GRID */
-.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:14px;overflow:hidden}
-.feature-card{background:var(--bg2);padding:32px 28px;transition:background .2s}
-.feature-card:hover{background:var(--bg3)}
-.feature-icon{width:36px;height:36px;border-radius:8px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:16px}
-.feature-title{font-size:15px;font-weight:500;color:var(--ink);margin-bottom:8px}
-.feature-desc{font-size:13px;color:var(--ink2);line-height:1.65;font-weight:300}
-
-/* WORKFLOW */
-.workflow-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
-.workflow-step{display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--border);opacity:.45;transition:opacity .3s;cursor:pointer;user-select:none}
-.workflow-step:last-child{border-bottom:none}
-.workflow-step.active{opacity:1}
-.workflow-step:hover:not(.active){opacity:.65}
-.step-num{font-family:var(--fm);font-size:11px;color:var(--gold);margin-top:3px;flex-shrink:0;width:24px}
-.step-title{font-size:15px;font-weight:500;color:var(--ink);margin-bottom:5px}
-.step-desc{font-size:13px;color:var(--ink2);line-height:1.6;font-weight:300}
-.workflow-visual{background:var(--bg2);border:1px solid var(--border2);border-radius:12px;padding:24px;min-height:320px;display:flex;flex-direction:column;gap:12px}
-.wv-label{font-family:var(--fm);font-size:12px;color:var(--ink3);letter-spacing:.07em;text-transform:uppercase}
-.wv-prompt{background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:12px;color:var(--ink2);line-height:1.6}
-.wv-arrow{text-align:center;font-family:var(--fm);font-size:11px;color:var(--teal)}
-.wv-diff{background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:12px;line-height:1.7;flex:1}
-.diff-add{background:rgba(61,191,160,.15);color:var(--teal);border-radius:2px;padding:0 2px}
-.diff-rem{background:rgba(201,80,80,.15);color:#E07070;text-decoration:line-through;border-radius:2px;padding:0 2px}
-
-/* TESTIMONIALS */
-.testimonial-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.testimonial-card{background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--goldd);border-radius:12px;padding:24px}
-.testimonial-text{font-family:var(--fd);font-size:15px;font-style:italic;color:var(--ink2);line-height:1.65;margin-bottom:18px;font-weight:300}
-.testimonial-author{display:flex;align-items:center;gap:10px}
-.testimonial-avatar{width:32px;height:32px;border-radius:50%;background:var(--bg4);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:11px;color:var(--ink2);flex-shrink:0}
-.testimonial-name{font-size:12px;font-style:normal;font-weight:500;color:var(--ink)}
-.testimonial-role{font-size:11px;color:var(--ink3)}
-.cta-repeat{margin-top:32px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
-.cta-repeat-copy{max-width:420px;font-size:14px;color:var(--ink2);font-weight:300;line-height:1.65}
-
-/* PRICING */
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.pricing-card{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:32px 28px;display:flex;flex-direction:column;gap:8px;transition:border-color .2s}
-.pricing-card:hover{border-color:rgba(237,234,224,.25)}
-.pricing-card.featured{border-color:var(--goldd);background:linear-gradient(160deg,var(--bg3) 0%,var(--bg2) 100%)}
-.pricing-tier{font-family:var(--fm);font-size:11px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
-.pricing-tier.gold{color:var(--gold)}
-.pricing-price{font-family:var(--fd);font-size:40px;font-weight:400;color:var(--ink);letter-spacing:-.03em;line-height:1}
-.pricing-period{font-size:13px;color:var(--ink3);margin-left:2px}
-.pricing-desc{font-size:13px;color:var(--ink2);font-weight:300;line-height:1.55;margin-top:4px;padding-top:16px;border-top:1px solid var(--border)}
-.pricing-features{list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:4px;flex:1}
-.pricing-feature{font-size:12px;color:var(--ink2);display:flex;gap:8px;align-items:flex-start}
-.pricing-feature::before{content:'→';font-family:var(--fm);color:var(--teal);flex-shrink:0;font-size:11px;margin-top:1px}
-.pricing-cta{margin-top:24px;display:block;text-align:center;font-size:13px;font-weight:500;padding:10px;border-radius:7px;text-decoration:none;transition:opacity .15s}
-.pricing-cta.dark{background:var(--ink);color:var(--bg)}
-.pricing-cta.outlined{border:1px solid var(--border2);color:var(--ink2)}
-.pricing-cta:hover{opacity:.82}
-
-/* EXT CTA */
-.ext-section{padding:80px 24px;text-align:center;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2);position:relative;overflow:hidden}
-.ext-section::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:300px;background:radial-gradient(ellipse,rgba(61,191,160,.06) 0%,transparent 70%);pointer-events:none}
-.ext-inner{position:relative;z-index:1;max-width:520px;margin:0 auto}
-.ext-badge{display:inline-block;font-family:var(--fm);font-size:11px;color:var(--teal);border:1px solid var(--teald);border-radius:100px;padding:4px 12px;margin-bottom:24px;letter-spacing:.05em}
-.ext-h2{font-family:var(--fd);font-size:clamp(28px,4vw,44px);font-weight:400;color:var(--ink);letter-spacing:-.022em;line-height:1.1;margin-bottom:16px}
-.ext-sub{font-size:15px;color:var(--ink2);font-weight:300;line-height:1.6;margin-bottom:32px}
-.ext-browsers{display:flex;align-items:center;justify-content:center;gap:10px;font-family:var(--fm);font-size:11px;color:var(--ink3);margin-top:16px}
-
-/* FOOTER */
-footer{padding:48px 32px 32px;border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:40px;flex-wrap:wrap}
-.footer-brand{display:flex;flex-direction:column;gap:10px}
-.footer-logo{display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:13px;color:var(--ink);text-decoration:none}
-.footer-tagline{font-size:12px;color:var(--ink3);font-weight:300;max-width:220px;line-height:1.5}
-.footer-links{display:flex;gap:48px;flex-wrap:wrap}
-.footer-col-title{font-family:var(--fm);font-size:12px;color:var(--ink3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
-.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:8px}
-.footer-col a{font-size:13px;color:var(--ink2);text-decoration:none;transition:color .15s}
-.footer-col a:hover{color:var(--ink)}
-.footer-bottom{padding:20px 32px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.footer-copy{font-family:var(--fm);font-size:11px;color:var(--ink3)}
-.footer-copy a{color:inherit;text-decoration:none}
-.footer-copy a:hover{color:var(--ink2)}
-
-/* REVEAL */
-.reveal{opacity:0;transform:translateY(20px);transition:opacity .55s ease,transform .55s ease}
-.reveal.visible{opacity:1;transform:translateY(0)}
-
-/* ANIMATIONS */
-@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
-
-/* FOCUS STYLES */
-:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:4px}
-a:focus:not(:focus-visible),button:focus:not(:focus-visible),textarea:focus:not(:focus-visible){outline:none}
-
-/* REDUCED MOTION */
-@media(prefers-reduced-motion:reduce){
-  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition:none!important}
-  html{scroll-behavior:auto!important}
-  .reveal{opacity:1;transform:none}
-}
-/* HAMBURGER */
-.hamburger{display:none;background:none;border:none;color:var(--ink);cursor:pointer;padding:10px;margin-right:-10px;min-width:44px;min-height:44px;align-items:center;justify-content:center}
-.hamburger svg{display:block}
-.mobile-menu{display:none;position:fixed;top:56px;left:0;right:0;bottom:0;background:rgba(15,15,13,0.97);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);z-index:99;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:40px 24px}
-.mobile-menu.open{display:flex}
-.mobile-menu a{font-size:18px;color:var(--ink2);text-decoration:none;padding:12px 24px;min-height:44px;display:flex;align-items:center;transition:color .15s}
-.mobile-menu a:hover,.mobile-menu a:focus{color:var(--ink)}
-.mobile-menu .btn-hero{font-size:15px;margin-top:16px;padding:14px 28px}
-.mobile-menu .btn-ghost{font-size:15px;padding:12px 24px;min-height:44px;display:flex;align-items:center}
-
-/* RESPONSIVE */
-@media(max-width:768px){
-  nav{padding:0 16px}
-  .nav-links{display:none}
-  .hamburger{display:flex}
-  .nav-cta{display:none}
-  .feature-grid,.pricing-grid,.testimonial-grid{grid-template-columns:1fr}
-  .workflow-grid{grid-template-columns:1fr}
-  .demo-body{grid-template-columns:1fr}
-  .demo-col:first-child{border-right:none;border-bottom:1px solid var(--border)}
-  .wrap{padding:64px 16px}
-  footer{padding:40px 16px 24px;flex-direction:column}
-  .footer-links{gap:32px}
-  .footer-bottom{padding:16px;flex-direction:column;gap:8px}
-  .proof-strip{gap:24px;padding:16px}
-  .proof-item{min-width:calc(50% - 24px)}
-  .demo-tab{min-height:44px;padding:8px 14px;font-size:12px}
-  .demo-run-btn{min-height:44px;padding:10px 18px}
-  .demo-footer{flex-wrap:wrap;padding:10px 16px 14px}
-  .demo-footer-left{width:100%}
-  .pricing-cta{min-height:44px;display:flex;align-items:center;justify-content:center}
-  .ext-section{padding:56px 16px}
-  .hero{padding:100px 16px 56px}
-  .hero-sub{font-size:15px}
-  .sec-sub{font-size:15px}
-}
-@media(max-width:480px){
-  .hero{padding:80px 12px 40px;min-height:auto}
-  .hero-h1{font-size:clamp(32px,9vw,44px);margin-bottom:16px}
-  .hero-sub{font-size:14px;margin-bottom:28px}
-  .hero-badge{font-size:10px;padding:4px 10px;margin-bottom:20px}
-  .hero-actions{flex-direction:column;gap:10px;margin-bottom:40px}
-  .hero-actions .btn-hero,.hero-actions .btn-hero-ghost{width:100%;justify-content:center}
-  .demo-widget{border-radius:10px}
-  .demo-col{padding:12px}
-  .demo-input{min-height:80px;font-size:13px}
-  .demo-output-box{min-height:80px;font-size:13px}
-  .wrap{padding:48px 12px}
-  .sec-h2{font-size:clamp(26px,7vw,32px);margin-bottom:12px}
-  .sec-sub{font-size:14px;margin-bottom:36px}
-  .proof-strip{gap:16px;padding:14px 12px}
-  .proof-num{font-size:22px}
-  .proof-label{font-size:10px}
-  .feature-card{padding:24px 20px}
-  .testimonial-card{padding:20px}
-  .pricing-card{padding:24px 20px}
-  .workflow-step{gap:14px;padding:18px 0}
-  .workflow-visual{padding:18px;min-height:auto}
-  footer{padding:32px 12px 20px}
-  .footer-links{flex-direction:column;gap:24px}
-  .footer-bottom{padding:12px}
-  .ext-section{padding:40px 12px}
-  .ext-h2{font-size:clamp(24px,6vw,28px)}
-  .ext-sub{font-size:14px}
+:root {
+  --bg-void: #06060A;
+  --bg-primary: #0A0A0F;
+  --bg-elevated: #101018;
+  --bg-surface: #16161F;
+  --bg-hover: #1C1C28;
+  --text-primary: #F0EDE6;
+  --text-secondary: #8A8A96;
+  --text-tertiary: #5A5A68;
+  --accent: #E8512F;
+  --accent-bright: #FF6B47;
+  --accent-glow: rgba(232, 81, 47, 0.15);
+  --accent-subtle: rgba(232, 81, 47, 0.08);
+  --gold: #C4A44A;
+  --gold-subtle: rgba(196, 164, 74, 0.12);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-body: 'Outfit', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
 }
 
-/* LANDING REFINEMENTS */
-.hero{min-height:calc(100vh - 56px);padding:112px 24px 44px}
-.hero::before{top:-6%;width:min(1120px,84vw);height:740px;background:radial-gradient(ellipse at center,rgba(201,168,76,.08) 0%,rgba(61,191,160,.035) 36%,transparent 72%)}
-.hero::after{background-size:40px 40px}
-.hero-inner{max-width:1120px;width:100%}
-.hero-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:56px;align-items:center}
-.hero-copy{text-align:left;max-width:520px}
-.hero-sub{margin:0 0 32px}
-.hero-actions{justify-content:flex-start;margin-bottom:28px}
-.hero-stage{position:relative;padding:28px;border:1px solid var(--border2);border-radius:26px;background:linear-gradient(180deg,rgba(29,29,26,.94) 0%,rgba(15,15,13,.98) 100%);box-shadow:0 28px 90px rgba(0,0,0,.45)}
-.hero-stage::before{content:'';position:absolute;inset:16px;background:linear-gradient(180deg,rgba(237,234,224,.03),transparent 45%);border:1px solid rgba(237,234,224,.05);border-radius:18px;pointer-events:none}
-.hero-stage-label{position:relative;z-index:1;display:inline-flex;align-items:center;gap:10px;font-family:var(--fm);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding:6px 12px;border:1px solid var(--goldd);border-radius:999px;background:rgba(15,15,13,.72)}
-.hero-stage-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 4px rgba(61,191,160,.12)}
-.hero-signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;max-width:520px}
-.hero-signal{padding:14px 16px;border:1px solid var(--border2);border-radius:14px;background:linear-gradient(180deg,rgba(29,29,26,.95) 0%,rgba(18,18,16,.88) 100%);box-shadow:inset 0 1px 0 rgba(237,234,224,.03)}
-.hero-signal-kicker{display:block;margin-bottom:6px;font-family:var(--fm);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--gold)}
-.hero-signal-copy{display:block;font-size:13px;line-height:1.5;color:var(--ink2)}
-.demo-widget{position:relative;z-index:1;max-width:none;margin-top:18px;background:rgba(22,22,20,.96)}
-
-.proof-strip{max-width:1120px;margin:0 auto;padding:1px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border2);border-radius:18px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.28)}
-.proof-item{min-height:96px;align-items:flex-start;justify-content:flex-start;padding:20px 18px;text-align:left;background:linear-gradient(180deg,rgba(29,29,26,.92) 0%,rgba(20,20,18,.98) 100%)}
-.proof-num{font-size:22px;line-height:1.1}
-.proof-label{font-size:11px;line-height:1.45;color:var(--ink3);max-width:180px}
-
-.wrap{max-width:1120px;padding:84px 32px;position:relative}
-#features,#workflow,section[aria-label="Testimonials"],#pricing{border:1px solid var(--border);border-radius:30px;box-shadow:0 24px 70px rgba(0,0,0,.18)}
-#features{background:linear-gradient(180deg,rgba(36,33,27,.96) 0%,rgba(21,21,19,.99) 100%)}
-#workflow{background:linear-gradient(180deg,rgba(17,33,29,.84) 0%,rgba(19,20,18,.99) 100%)}
-section[aria-label="Testimonials"]{background:linear-gradient(180deg,rgba(38,31,20,.82) 0%,rgba(20,19,17,.99) 100%)}
-#pricing{background:linear-gradient(180deg,rgba(31,27,21,.96) 0%,rgba(20,19,17,.99) 100%)}
-
-.feature-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;background:transparent;border:none;border-radius:0;overflow:visible}
-.feature-card{grid-column:span 2;padding:30px 24px;border:1px solid rgba(237,234,224,.14);border-radius:18px;background:linear-gradient(180deg,rgba(34,32,28,.94) 0%,rgba(24,24,21,.98) 100%);position:relative;transition:background .2s,transform .2s,border-color .2s}
-.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,rgba(201,168,76,.45),transparent)}
-.feature-card:hover{background:linear-gradient(180deg,rgba(40,37,31,.99) 0%,rgba(28,27,23,.99) 100%);border-color:rgba(237,234,224,.22);transform:translateY(-3px)}
-.feature-card:first-child,.feature-card:nth-child(5){grid-column:span 3}
-.feature-card:first-child .feature-title,.feature-card:nth-child(5) .feature-title{font-size:18px}
-.feature-card:first-child .feature-desc,.feature-card:nth-child(5) .feature-desc{font-size:13px;max-width:44ch}
-
-.workflow-grid{gap:32px;padding:22px;border:1px solid rgba(237,234,224,.12);border-radius:24px;background:rgba(18,20,18,.44)}
-.workflow-step{padding:18px 18px 18px 0;border-bottom:1px solid rgba(237,234,224,.08)}
-.workflow-step.active{opacity:1;padding:18px;border-radius:16px;border:1px solid rgba(61,191,160,.16);background:linear-gradient(90deg,rgba(61,191,160,.11) 0%,rgba(61,191,160,0) 80%)}
-.workflow-visual{min-height:360px;box-shadow:inset 0 1px 0 rgba(237,234,224,.03),0 18px 44px rgba(0,0,0,.25)}
-
-.testimonial-grid{gap:20px}
-.testimonial-card{border-left:1px solid rgba(237,234,224,.16);background:linear-gradient(180deg,rgba(31,29,24,.96) 0%,rgba(21,21,19,.99) 100%)}
-.testimonial-card:nth-child(2){border-color:rgba(201,168,76,.42);background:linear-gradient(180deg,rgba(41,34,22,.98) 0%,rgba(23,22,18,.99) 100%);transform:translateY(-18px)}
-
-.pricing-grid{gap:18px}
-.pricing-card{border-color:rgba(237,234,224,.16);background:linear-gradient(180deg,rgba(32,30,25,.97) 0%,rgba(22,22,19,.99) 100%);box-shadow:0 18px 40px rgba(0,0,0,.16)}
-.pricing-card.featured{background:linear-gradient(160deg,rgba(51,42,27,.99) 0%,rgba(31,29,23,.99) 100%);box-shadow:0 24px 52px rgba(0,0,0,.24)}
-
-.ext-section{padding:88px 24px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(21,23,21,.98) 0%,rgba(16,17,15,.98) 100%)}
-.ext-browsers{gap:10px;flex-wrap:wrap}
-.ext-browsers span{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;border:1px solid var(--border2);border-radius:999px;background:rgba(29,29,26,.75);font-family:var(--fm);font-size:11px;color:var(--ink2)}
-
-@media (max-width:1080px){
-  .hero-grid{grid-template-columns:1fr;gap:36px}
-  .hero-copy{max-width:none;text-align:center}
-  .hero-sub{margin:0 auto 32px}
-  .hero-actions{justify-content:center}
-  .hero-signals{margin:0 auto;max-width:680px}
-  .proof-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .feature-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .feature-card,.feature-card:first-child,.feature-card:nth-child(5){grid-column:span 1}
-  .workflow-grid{grid-template-columns:1fr}
-  .testimonial-card:nth-child(2){transform:none}
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-@media (max-width:760px){
-  .hero{padding:96px 18px 28px}
-  .hero-stage{padding:18px}
-  .hero-signals{grid-template-columns:1fr}
-  .proof-strip{grid-template-columns:1fr}
-  .proof-item{min-height:auto}
-  .wrap{padding:72px 20px}
-  #features,#workflow,section[aria-label="Testimonials"],#pricing{border-radius:22px}
-  .feature-grid,.pricing-grid,.testimonial-grid{grid-template-columns:1fr}
-  .workflow-grid{padding:18px}
-  .ext-section{padding:72px 20px}
+body {
+  font-family: var(--font-body);
+  background: var(--bg-void);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
 }
+
+/* Grain overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+a { color: inherit; text-decoration: none; }
+button { border: none; background: none; cursor: pointer; font-family: inherit; color: inherit; }
+img { display: block; max-width: 100%; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+.container--narrow { max-width: 900px; margin: 0 auto; padding: 0 32px; }
+
+/* ========== SCROLL REVEAL ========== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ========== NAV ========== */
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 16px 0;
+  transition: background 0.4s, backdrop-filter 0.4s;
+}
+.nav.scrolled {
+  background: rgba(6, 6, 10, 0.8);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+.nav-logo-mark {
+  width: 28px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: white;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.nav-link {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+  letter-spacing: 0.01em;
+}
+.nav-link:hover { color: var(--text-primary); }
+.nav-cta {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-void);
+  transition: opacity 0.2s, transform 0.15s;
+}
+.nav-cta:hover { opacity: 0.9; transform: translateY(-1px); }
+.nav-version {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  letter-spacing: 0.03em;
+}
+
+/* Mobile nav toggle */
+.nav-toggle {
+  display: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+}
+.nav-toggle span {
+  display: block;
+  width: 20px;
+  height: 1.5px;
+  background: var(--text-primary);
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+/* ========== HERO ========== */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 140px 0 80px;
+  overflow: hidden;
+}
+
+/* Hero background effects */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+  animation: heroGlow 8s ease-in-out infinite alternate;
+}
+.hero-bg::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -15%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(ellipse, var(--gold-subtle) 0%, transparent 70%);
+  animation: heroGlow 10s ease-in-out infinite alternate-reverse;
+}
+@keyframes heroGlow {
+  0% { opacity: 0.5; transform: scale(1); }
+  100% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Grid background */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 40%, black 20%, transparent 80%);
+}
+
+.hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--border-hover);
+  border-radius: 100px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out-expo) 0.2s forwards;
+}
+.hero-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.hero-headline {
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 8vw, 7rem);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+  max-width: 800px;
+}
+.hero-headline span {
+  display: block;
+  opacity: 0;
+  animation: fadeUp 0.9s var(--ease-out-expo) forwards;
+}
+.hero-headline span:nth-child(1) { animation-delay: 0.3s; }
+.hero-headline span:nth-child(2) { animation-delay: 0.45s; }
+.hero-headline .hero-italic {
+  font-style: italic;
+  color: var(--accent-bright);
+  position: relative;
+}
+/* Text sharpen effect */
+.hero-headline .hero-italic {
+  filter: blur(0px);
+  animation: fadeUp 0.9s var(--ease-out-expo) 0.45s forwards, sharpen 1.2s ease-out 0.5s forwards;
+}
+@keyframes sharpen {
+  0% { filter: blur(6px); opacity: 0.6; }
+  100% { filter: blur(0px); opacity: 1; }
+}
+
+.hero-sub {
+  font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+  color: var(--text-secondary);
+  max-width: 520px;
+  line-height: 1.65;
+  font-weight: 300;
+  margin-bottom: 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out-expo) 0.6s forwards;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.8s var(--ease-out-expo) 0.75s forwards;
+}
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all 0.2s;
+  letter-spacing: 0.01em;
+}
+.btn-primary:hover {
+  background: var(--accent-bright);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--accent-glow);
+}
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border: 1px solid var(--border-hover);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  font-weight: 400;
+  border-radius: 10px;
+  transition: all 0.2s;
+}
+.btn-secondary:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+  background: var(--accent-subtle);
+}
+
+/* ========== PROOF STRIP ========== */
+.proof {
+  padding: 80px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 48px;
+  text-align: center;
+}
+.proof-item {}
+.proof-number {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 8px;
+  letter-spacing: -0.03em;
+}
+.proof-number .accent { color: var(--accent); }
+.proof-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ========== FEATURES ========== */
+.features {
+  padding: 140px 0;
+}
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 20px;
+}
+.section-heading {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  margin-bottom: 24px;
+  max-width: 600px;
+}
+.section-sub {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 500px;
+  line-height: 1.65;
+  font-weight: 300;
+  margin-bottom: 80px;
+}
+
+/* Feature rows — alternating layout */
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 64px;
+  align-items: center;
+  margin-bottom: 120px;
+}
+.feature-row:last-child { margin-bottom: 0; }
+.feature-row.reverse .feature-text { order: 2; }
+.feature-row.reverse .feature-visual { order: 1; }
+
+.feature-text {}
+.feature-tag {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.feature-tag::before {
+  content: '';
+  width: 16px;
+  height: 1px;
+  background: var(--accent);
+}
+.feature-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.feature-desc {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.7;
+  font-weight: 300;
+  margin-bottom: 24px;
+  max-width: 440px;
+}
+.feature-bullets {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.feature-bullets li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.feature-bullets li::before {
+  content: '→';
+  color: var(--accent);
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* Feature visual — mock UI */
+.feature-visual {
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+}
+.feature-visual-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.feature-visual-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.feature-visual-dot:nth-child(1) { background: #FF5F57; }
+.feature-visual-dot:nth-child(2) { background: #FFBD2E; }
+.feature-visual-dot:nth-child(3) { background: #28C840; }
+.feature-visual-chrome-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+}
+.feature-visual-body {
+  padding: 24px;
+  height: calc(100% - 42px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mock UI elements */
+.mock-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 10px;
+}
+.mock-tab {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+.mock-tab.active {
+  background: var(--accent-subtle);
+  color: var(--accent);
+  border: 1px solid rgba(232, 81, 47, 0.2);
+}
+.mock-line {
+  height: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+.mock-line.short { width: 60%; }
+.mock-line.medium { width: 80%; }
+.mock-line.accent { background: var(--accent-subtle); }
+.mock-diff {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+.mock-diff-panel {
+  flex: 1;
+  background: var(--bg-primary);
+  border-radius: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+.mock-diff-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+.mock-diff-line {
+  height: 6px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+}
+.mock-diff-line.del { background: rgba(255, 80, 80, 0.15); }
+.mock-diff-line.add { background: rgba(80, 255, 120, 0.15); }
+.mock-diff-line.neutral { background: var(--bg-surface); }
+
+/* Models grid in feature visual */
+.mock-models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  flex: 1;
+}
+.mock-model-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mock-model-name {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-primary);
+  letter-spacing: 0.03em;
+}
+.mock-model-provider {
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+}
+.mock-model-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-surface);
+  margin-top: auto;
+}
+.mock-model-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ========== INTERACTIVE DEMO ========== */
+.demo-section {
+  padding: 140px 0;
+  position: relative;
+}
+.demo-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  height: 100%;
+  background: var(--bg-elevated);
+  z-index: 0;
+}
+.demo-wrapper {
+  position: relative;
+  z-index: 1;
+}
+.demo-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.demo-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.5);
+  max-width: 880px;
+  margin: 0 auto;
+}
+.demo-chrome {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.demo-chrome-dots {
+  display: flex;
+  gap: 6px;
+}
+.demo-chrome-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.demo-chrome-dot:nth-child(1) { background: #FF5F57; }
+.demo-chrome-dot:nth-child(2) { background: #FFBD2E; }
+.demo-chrome-dot:nth-child(3) { background: #28C840; }
+.demo-chrome-title {
+  flex: 1;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+.demo-modes {
+  display: flex;
+  gap: 4px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.demo-mode {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 7px 14px;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.demo-mode:hover { color: var(--text-secondary); background: var(--bg-hover); }
+.demo-mode.active {
+  background: var(--accent);
+  color: white;
+}
+.demo-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 320px;
+}
+.demo-panel {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+.demo-panel + .demo-panel {
+  border-left: 1px solid var(--border);
+}
+.demo-panel-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.demo-panel-label .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.demo-panel-label .dot.input-dot { background: var(--text-tertiary); }
+.demo-panel-label .dot.output-dot { background: var(--accent); }
+.demo-textarea {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+}
+.demo-output {
+  flex: 1;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+.demo-output .added {
+  background: rgba(80, 255, 120, 0.08);
+  border-bottom: 1px solid rgba(80, 255, 120, 0.25);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+.demo-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+.demo-run {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 8px 20px;
+  background: var(--accent);
+  color: white;
+  border-radius: 8px;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.demo-run:hover {
+  background: var(--accent-bright);
+  transform: translateY(-1px);
+}
+.demo-hint {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.02em;
+}
+
+/* ========== BENTO GRID ========== */
+.bento {
+  padding: 140px 0;
+}
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.bento-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  transition: border-color 0.3s, transform 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.bento-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-4px);
+}
+.bento-card.span-2 { grid-column: span 2; }
+.bento-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--accent-subtle);
+  border: 1px solid rgba(232, 81, 47, 0.15);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+.bento-icon svg {
+  width: 20px;
+  height: 20px;
+  stroke: var(--accent);
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bento-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.bento-desc {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* ========== PRICING ========== */
+.pricing {
+  padding: 140px 0;
+  position: relative;
+}
+.pricing-header {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.pricing-header .section-heading { margin-left: auto; margin-right: auto; }
+.pricing-header .section-sub { margin-left: auto; margin-right: auto; }
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.pricing-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s, border-color 0.3s;
+}
+.pricing-card:hover {
+  transform: translateY(-4px);
+}
+.pricing-card.featured {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(232, 81, 47, 0.05) 0%, var(--bg-elevated) 100%);
+  position: relative;
+}
+.pricing-popular {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: white;
+  background: var(--accent);
+  padding: 4px 14px;
+  border-radius: 20px;
+}
+.pricing-tier {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+.pricing-price {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+.pricing-price .currency { font-size: 1.5rem; vertical-align: top; margin-right: 2px; }
+.pricing-period {
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  margin-bottom: 28px;
+}
+.pricing-features {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+  flex: 1;
+}
+.pricing-features li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+.pricing-features li::before {
+  content: '✓';
+  color: var(--accent);
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+.pricing-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-align: center;
+  transition: all 0.2s;
+  letter-spacing: 0.01em;
+}
+.pricing-btn.outline {
+  border: 1px solid var(--border-hover);
+  color: var(--text-primary);
+}
+.pricing-btn.outline:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-tertiary);
+}
+.pricing-btn.filled {
+  background: var(--accent);
+  color: white;
+}
+.pricing-btn.filled:hover {
+  background: var(--accent-bright);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+/* ========== FINAL CTA ========== */
+.cta-section {
+  padding: 140px 0;
+  text-align: center;
+  position: relative;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 400px;
+  background: radial-gradient(ellipse, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-heading {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+  position: relative;
+}
+.cta-heading em {
+  font-style: italic;
+  color: var(--accent-bright);
+}
+.cta-sub {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-weight: 300;
+  margin-bottom: 40px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+/* ========== FOOTER ========== */
+.footer {
+  border-top: 1px solid var(--border);
+  padding: 64px 0 40px;
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: 2fr repeat(3, 1fr);
+  gap: 48px;
+  margin-bottom: 48px;
+}
+.footer-brand {}
+.footer-logo {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.footer-tagline {
+  font-size: 0.9rem;
+  color: var(--text-tertiary);
+  max-width: 280px;
+  line-height: 1.6;
+  font-weight: 300;
+}
+.footer-col-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+.footer-links {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footer-links a {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text-primary); }
+.footer-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+.footer-bottom-links {
+  display: flex;
+  gap: 24px;
+}
+.footer-bottom-links a {
+  color: var(--text-tertiary);
+  transition: color 0.2s;
+}
+.footer-bottom-links a:hover { color: var(--text-secondary); }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 900px) {
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .feature-row.reverse .feature-text { order: 1; }
+  .feature-row.reverse .feature-visual { order: 2; }
+  .feature-visual { aspect-ratio: 16/10; }
+  .bento-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .bento-card.span-2 { grid-column: span 2; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .proof-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
+}
+
+@media (max-width: 640px) {
+  .container, .container--narrow { padding: 0 20px; }
+  .hero { padding: 120px 0 60px; min-height: auto; }
+  .hero-headline { font-size: 2.8rem; }
+  .nav-links { display: none; }
+  .nav-toggle { display: flex; }
+  .features, .demo-section, .bento, .pricing, .cta-section { padding: 80px 0; }
+  .section-heading { font-size: 1.8rem; }
+  .demo-body { grid-template-columns: 1fr; }
+  .demo-panel + .demo-panel {
+    border-left: none;
+    border-top: 1px solid var(--border);
+  }
+  .bento-grid { grid-template-columns: 1fr; }
+  .bento-card.span-2 { grid-column: span 1; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .feature-row { margin-bottom: 80px; }
+  .proof-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
+  .hero-actions { flex-direction: column; align-items: flex-start; }
+}
+
+/* ========== MOBILE NAV OVERLAY ========== */
+.mobile-nav {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(6, 6, 10, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+.mobile-nav.open { display: flex; }
+.mobile-nav a {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+.mobile-nav a:hover { color: var(--accent); }
 </style>
 </head>
 <body>
 
-<a href="#main-content" class="skip-link">Skip to main content</a>
-<nav aria-label="Main navigation">
-  <a href="https://promptlab.tools/" class="nav-logo">
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-      <path d="M8 3v6.5L3.5 16h13L12 9.5V3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="7" cy="14.5" r="1.2" fill="currentColor" opacity="0.5"/>
-      <circle cx="12" cy="13.5" r="0.8" fill="currentColor" opacity="0.35"/>
-    </svg>
-    prompt lab
-  </a>
-  <ul class="nav-links">
-    <li><a href="#features">Features</a></li>
-    <li><a href="#workflow">How it works</a></li>
-    <li><a href="#pricing">Pricing</a></li>
-    <li><a href="https://promptlab.tools/guide.html" class="nav-resource">Docs ↗</a></li>
-  </ul>
-  <div class="nav-cta">
-    <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-ghost">Sign in</a>
-    <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-nav-cta">Open app &rarr;</a>
+<!-- ===== NAV ===== -->
+<nav class="nav" id="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-mark">PL</div>
+      Prompt Lab
+    </a>
+    <div class="nav-links">
+      <span class="nav-version">v1.7</span>
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#demo" class="nav-link">Demo</a>
+      <a href="#pricing" class="nav-link">Pricing</a>
+      <a href="https://promptlab.tools/guide" class="nav-link" target="_blank">Docs</a>
+      <a href="https://promptlab.tools/app" class="nav-cta">Open app →</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
-  <button class="hamburger" aria-label="Open menu" aria-expanded="false" id="hamburgerBtn">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
-  </button>
 </nav>
-<div class="mobile-menu" id="mobileMenu" role="dialog" aria-label="Mobile navigation">
-  <a href="#features">Features</a>
-  <a href="#workflow">How it works</a>
-  <a href="#pricing">Pricing</a>
-  <a href="https://promptlab.tools/guide.html">Docs</a>
-  <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-ghost">Sign in</a>
-  <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-hero">Open app &rarr;</a>
+
+<!-- Mobile nav -->
+<div class="mobile-nav" id="mobileNav">
+  <a href="#features" onclick="closeMobileNav()">Features</a>
+  <a href="#demo" onclick="closeMobileNav()">Demo</a>
+  <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
+  <a href="https://promptlab.tools/guide" target="_blank" onclick="closeMobileNav()">Docs</a>
+  <a href="https://promptlab.tools/app" class="btn-primary" onclick="closeMobileNav()">Open app</a>
 </div>
 
-<main id="main-content">
+<!-- ===== HERO ===== -->
 <section class="hero">
-  <div class="hero-inner">
-    <div class="hero-grid">
-      <div class="hero-copy">
-        <div class="hero-badge"><span class="badge-dot"></span>v1.7 &mdash; Library export, Evaluate timeline, Quick resume</div>
-        <h1 class="hero-h1">Every prompt,<br><em>sharpened</em>.</h1>
-        <p class="hero-sub">Prompt Lab improves, expands, and compares your AI prompts in seconds &mdash; so you spend less time wrestling with language and more time getting results.</p>
-        <div class="hero-actions">
-          <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-hero">Improve your first prompt &rarr;</a>
-          <a href="#features" class="btn-hero-ghost">See how it works</a>
-        </div>
+  <div class="hero-bg">
+    <div class="hero-grid"></div>
+  </div>
+  <div class="container hero-content">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      v1.7 — Library export · Evaluate timeline · Quick resume
+    </div>
+    <h1 class="hero-headline">
+      <span>Every prompt,</span>
+      <span><span class="hero-italic">sharpened.</span></span>
+    </h1>
+    <p class="hero-sub">
+      The multi-provider workspace for prompt engineering. Enhance, compare, and iterate across Claude, GPT-4o, Gemini, and local models — then ship with confidence.
+    </p>
+    <div class="hero-actions">
+      <a href="https://promptlab.tools/app" class="btn-primary">
+        Improve your first prompt
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#demo" class="btn-secondary">See it in action</a>
+    </div>
+  </div>
+</section>
 
-        <div class="hero-signals" aria-label="Prompt Lab highlights">
-          <div class="hero-signal"><span class="hero-signal-kicker">Diff-first</span><span class="hero-signal-copy">See exactly what changed instead of trusting black-box rewrites.</span></div>
-          <div class="hero-signal"><span class="hero-signal-kicker">Compare models</span><span class="hero-signal-copy">Run the same idea across providers and keep the better version.</span></div>
-          <div class="hero-signal"><span class="hero-signal-kicker">Local-first</span><span class="hero-signal-copy">Your library, exports, and run history stay fast and close to hand.</span></div>
-          <div class="hero-signal"><span class="hero-signal-kicker">Extension-ready</span><span class="hero-signal-copy">Improve prompts inside the tools you already use, not in a side doc.</span></div>
-        </div>
+<!-- ===== PROOF STRIP ===== -->
+<section class="proof reveal">
+  <div class="container">
+    <div class="proof-grid">
+      <div class="proof-item">
+        <div class="proof-number" data-count="7"><span class="accent">7</span></div>
+        <div class="proof-label">Enhancement modes</div>
       </div>
-
-      <div class="hero-stage">
-        <div class="hero-stage-label">Live lab preview</div>
-        <div class="demo-widget">
-          <div class="demo-titlebar">
-            <div class="demo-dots">
-              <div class="demo-dot"></div><div class="demo-dot"></div><div class="demo-dot"></div>
-            </div>
-            <div class="demo-title-text">promptlab.tools &mdash; live demo</div>
-          </div>
-          <div class="demo-body">
-            <div class="demo-col">
-              <label for="demoInput" class="demo-col-label">Input</label>
-              <textarea class="demo-input" id="demoInput" aria-label="Enter your prompt" placeholder="Paste a prompt to improve&hellip;">Write a product description for headphones.</textarea>
-            </div>
-            <div class="demo-col">
-              <div class="demo-col-label">Example output</div>
-              <div class="demo-output-box" id="demoOutput" role="region" aria-live="polite" aria-label="Improved prompt output"><span style="color:var(--ink3);font-size:12px;">Hit Improve to see the magic &darr;</span></div>
-            </div>
-          </div>
-          <div class="demo-footer">
-            <div class="demo-footer-left">
-              <div class="demo-mode-tabs" role="tablist" aria-label="Improvement mode">
-                <button class="demo-tab active" data-mode="improve" role="tab" aria-selected="true">improve</button>
-                <button class="demo-tab" data-mode="expand" role="tab" aria-selected="false">expand</button>
-                <button class="demo-tab" data-mode="clean" role="tab" aria-selected="false">clean</button>
-              </div>
-              <div class="demo-tab-hint" id="demoTabHint" aria-live="polite">Sharpen clarity without changing intent</div>
-            </div>
-            <button class="demo-run-btn" id="demoRunBtn" aria-label="Run improve demo">See it improve &rarr;</button>
-          </div>
-        </div>
+      <div class="proof-item">
+        <div class="proof-number" data-count="5"><span class="accent">5</span></div>
+        <div class="proof-label">AI providers</div>
+      </div>
+      <div class="proof-item">
+        <div class="proof-number">100<span class="accent">%</span></div>
+        <div class="proof-label">Local storage</div>
+      </div>
+      <div class="proof-item">
+        <div class="proof-number"><span class="accent">0</span>ms</div>
+        <div class="proof-label">Data sent to us</div>
       </div>
     </div>
   </div>
 </section>
 
-<section class="proof-strip" aria-label="Social proof metrics">
-  <div class="proof-item"><span class="proof-num">Diff view</span><span class="proof-label">Word-level edits help you learn why the prompt got stronger.</span></div>
-  <div class="proof-item"><span class="proof-num">5 providers</span><span class="proof-label">Claude, GPT, Gemini, local models, and side-by-side comparisons.</span></div>
-  <div class="proof-item"><span class="proof-num">Library export</span><span class="proof-label">Keep the prompts worth reusing instead of rebuilding from memory.</span></div>
-  <div class="proof-item"><span class="proof-num">Browser-ready</span><span class="proof-label">Use the same workflow in the web app or directly inside chat surfaces.</span></div>
-</section>
-
-<section class="wrap" id="features">
-  <p class="eyebrow reveal">Features</p>
-  <h2 class="sec-h2 reveal">Built for people who<br>take prompts <em>seriously</em>.</h2>
-  <p class="sec-sub reveal">One workspace. Four modes. Every model.</p>
-  <div class="feature-grid reveal">
-    <div class="feature-card"><div class="feature-icon">&#10024;</div><div class="feature-title">Improve</div><div class="feature-desc">Sharpens clarity, adds specificity, and restructures for better AI outputs without losing your intent. Get noticeably better results from the same model in one click.</div></div>
-    <div class="feature-card"><div class="feature-icon">&#129514;</div><div class="feature-title">A/B Compare</div><div class="feature-desc">Run the same prompt across two models side by side. See scores, diffs, and pick the winner instantly. Stop guessing which model fits your use case.</div></div>
-    <div class="feature-card"><div class="feature-icon">&#128208;</div><div class="feature-title">Diff view</div><div class="feature-desc">Word-level highlighting shows exactly what changed and why. Build prompt intuition faster than reading ten blog posts about prompt engineering.</div></div>
-    <div class="feature-card"><div class="feature-icon">&#128218;</div><div class="feature-title">Prompt library</div><div class="feature-desc">Save, tag, and search your best prompts. Load any saved prompt back into the workspace in one click. Never rewrite a good prompt from scratch again.</div></div>
-    <div class="feature-card"><div class="feature-icon">&#9889;</div><div class="feature-title">Multi-model router</div><div class="feature-desc">A single provider interface across Claude, GPT-4o, Gemini, and local models &mdash; route everything from one place. Switch providers without changing your workflow.</div></div>
-    <div class="feature-card"><div class="feature-icon">&#128305;</div><div class="feature-title">Chrome extension</div><div class="feature-desc">Improve prompts directly inside ChatGPT, Claude.ai, and Gemini without switching tabs. Your prompt library travels with you.</div></div>
-  </div>
-</section>
-
-<section class="wrap" id="workflow">
-  <p class="eyebrow reveal">How it works</p>
-  <h2 class="sec-h2 reveal">Idea to <em>output</em><br>in one screen.</h2>
-  <p class="sec-sub reveal">No copy-pasting between tools. One panel for input, one for output, one for controls.</p>
-  <div class="workflow-grid reveal">
-    <div id="workflowSteps">
-      <div class="workflow-step active" data-step="0"><span class="step-num">01</span><div><div class="step-title">Paste your prompt</div><div class="step-desc">Drop in any prompt &mdash; rough draft, something not working, or a blank slate to build from.</div></div></div>
-      <div class="workflow-step" data-step="1"><span class="step-num">02</span><div><div class="step-title">Choose a mode</div><div class="step-desc">Improve for clarity, Expand to add depth, Rewrite from scratch, or Clean to tighten what you have.</div></div></div>
-      <div class="workflow-step" data-step="2"><span class="step-num">03</span><div><div class="step-title">Review the diff</div><div class="step-desc">Word-level changes highlight exactly what Prompt Lab changed and why. Accept, tweak, or run again.</div></div></div>
-      <div class="workflow-step" data-step="3"><span class="step-num">04</span><div><div class="step-title">Use or save</div><div class="step-desc">Copy the improved prompt, loop it back as new input, or save it to your library for later.</div></div></div>
+<!-- ===== FEATURES ===== -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Capabilities</div>
+      <h2 class="section-heading">One workspace.<br>Every tool you need.</h2>
+      <p class="section-sub">Prompt Lab packs a full prompt engineering toolkit into a single interface — no tab switching, no copy-pasting between tools.</p>
     </div>
-    <div class="workflow-visual">
-      <div class="wv-label">Before</div>
-      <div class="wv-prompt">Write a product description for headphones.</div>
-      <div class="wv-arrow">&darr; improve</div>
-      <div class="wv-label">After &mdash; diff view</div>
-      <div class="wv-diff"><span class="diff-rem">Write</span> <span class="diff-add">Craft</span> a <span class="diff-add">compelling, conversion-focused</span> product description for <span class="diff-add">premium noise-canceling</span> headphones <span class="diff-add">targeting remote workers who need sustained focus. Highlight battery life, comfort for all-day wear, and microphone quality for calls. Tone: confident and direct.</span></div>
+
+    <!-- Feature 1: Enhance -->
+    <div class="feature-row reveal">
+      <div class="feature-text">
+        <div class="feature-tag">Enhance</div>
+        <h3 class="feature-title">Sharpen clarity without changing intent</h3>
+        <p class="feature-desc">Seven enhancement modes transform rough ideas into precision prompts. Improve structure, expand detail, clean noise, or tighten focus — all while preserving your original meaning.</p>
+        <ul class="feature-bullets">
+          <li>Improve, Expand, Shorten, Fix, Simplify, Formalize, and Custom modes</li>
+          <li>Word-level diff view shows exactly what changed and why</li>
+          <li>One-click accept or iterate further</li>
+        </ul>
+      </div>
+      <div class="feature-visual">
+        <div class="feature-visual-chrome">
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <span class="feature-visual-chrome-title">enhance mode</span>
+        </div>
+        <div class="feature-visual-body">
+          <div class="mock-tabs">
+            <div class="mock-tab active">Improve</div>
+            <div class="mock-tab">Expand</div>
+            <div class="mock-tab">Shorten</div>
+            <div class="mock-tab">Fix</div>
+          </div>
+          <div class="mock-diff">
+            <div class="mock-diff-panel">
+              <div class="mock-diff-label">Original</div>
+              <div class="mock-diff-line neutral" style="width:90%"></div>
+              <div class="mock-diff-line del" style="width:75%"></div>
+              <div class="mock-diff-line neutral" style="width:85%"></div>
+              <div class="mock-diff-line del" style="width:60%"></div>
+              <div class="mock-diff-line neutral" style="width:70%"></div>
+            </div>
+            <div class="mock-diff-panel">
+              <div class="mock-diff-label">Enhanced</div>
+              <div class="mock-diff-line neutral" style="width:90%"></div>
+              <div class="mock-diff-line add" style="width:80%"></div>
+              <div class="mock-diff-line neutral" style="width:85%"></div>
+              <div class="mock-diff-line add" style="width:95%"></div>
+              <div class="mock-diff-line add" style="width:55%"></div>
+              <div class="mock-diff-line neutral" style="width:70%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature 2: A/B Compare -->
+    <div class="feature-row reverse reveal">
+      <div class="feature-text">
+        <div class="feature-tag">Compare</div>
+        <h3 class="feature-title">A/B test across any model</h3>
+        <p class="feature-desc">Send the same prompt to two different providers and see the responses side-by-side. Find the right model for every use case — without leaving the workspace.</p>
+        <ul class="feature-bullets">
+          <li>Claude, GPT-4o, Gemini, OpenRouter, and Ollama</li>
+          <li>Side-by-side response comparison</li>
+          <li>Evaluate and track results over time</li>
+        </ul>
+      </div>
+      <div class="feature-visual">
+        <div class="feature-visual-chrome">
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <span class="feature-visual-chrome-title">a/b compare</span>
+        </div>
+        <div class="feature-visual-body">
+          <div class="mock-models">
+            <div class="mock-model-card">
+              <div class="mock-model-name">Claude 3.5 Sonnet</div>
+              <div class="mock-model-provider">Anthropic</div>
+              <div class="mock-line" style="width:90%; margin-top: 8px;"></div>
+              <div class="mock-line short"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:92%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">GPT-4o</div>
+              <div class="mock-model-provider">OpenAI</div>
+              <div class="mock-line medium" style="margin-top: 8px;"></div>
+              <div class="mock-line" style="width:70%"></div>
+              <div class="mock-line short"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:78%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">Gemini 1.5 Pro</div>
+              <div class="mock-model-provider">Google</div>
+              <div class="mock-line" style="width:85%; margin-top: 8px;"></div>
+              <div class="mock-line" style="width:65%"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:85%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">Llama 3.1 70B</div>
+              <div class="mock-model-provider">Ollama (local)</div>
+              <div class="mock-line short" style="margin-top: 8px;"></div>
+              <div class="mock-line" style="width:75%"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:70%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature 3: Library -->
+    <div class="feature-row reveal">
+      <div class="feature-text">
+        <div class="feature-tag">Library</div>
+        <h3 class="feature-title">Save once, use everywhere</h3>
+        <p class="feature-desc">Build a personal library of battle-tested prompts. Tag, search, and compose from your best work. Export to JSON anytime — your prompts belong to you.</p>
+        <ul class="feature-bullets">
+          <li>Full-text search across your entire library</li>
+          <li>Compose complex prompts from saved fragments</li>
+          <li>JSON export for portability and version control</li>
+        </ul>
+      </div>
+      <div class="feature-visual">
+        <div class="feature-visual-chrome">
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <span class="feature-visual-chrome-title">prompt library</span>
+        </div>
+        <div class="feature-visual-body" style="gap: 10px;">
+          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
+            <div style="width:8px; height:8px; border-radius:3px; background:var(--accent); flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div class="mock-model-name" style="margin-bottom:3px;">Code Review System Prompt</div>
+              <div class="mock-model-provider">engineering · saved 2d ago</div>
+            </div>
+            <div class="mock-model-provider">1.2k tokens</div>
+          </div>
+          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
+            <div style="width:8px; height:8px; border-radius:3px; background:var(--gold); flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div class="mock-model-name" style="margin-bottom:3px;">Email Tone Matcher</div>
+              <div class="mock-model-provider">writing · saved 5d ago</div>
+            </div>
+            <div class="mock-model-provider">840 tokens</div>
+          </div>
+          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
+            <div style="width:8px; height:8px; border-radius:3px; background:#28C840; flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div class="mock-model-name" style="margin-bottom:3px;">Data Analysis Chain</div>
+              <div class="mock-model-provider">research · saved 1w ago</div>
+            </div>
+            <div class="mock-model-provider">2.1k tokens</div>
+          </div>
+          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
+            <div style="width:8px; height:8px; border-radius:3px; background:#5B8DEF; flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div class="mock-model-name" style="margin-bottom:3px;">API Documentation Generator</div>
+              <div class="mock-model-provider">engineering · saved 2w ago</div>
+            </div>
+            <div class="mock-model-provider">960 tokens</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="wrap" aria-label="Testimonials">
-  <p class="eyebrow reveal">What people say</p>
-  <h2 class="sec-h2 reveal">Prompt engineers<br>love <em>the diff view</em>.</h2>
-  <div class="testimonial-grid reveal">
-    <article class="testimonial-card"><blockquote class="testimonial-text">"The diff view alone is worth it. I can see exactly what changed and why &mdash; it's how I actually learned to write better prompts."</blockquote><footer class="testimonial-author"><div class="testimonial-avatar" aria-hidden="true">MR</div><div><cite class="testimonial-name">Maya R.</cite><div class="testimonial-role">AI Product Lead</div></div></footer></article>
-    <article class="testimonial-card"><blockquote class="testimonial-text">"I run every draft through Improve before I use it. Takes five seconds and the quality difference is immediately obvious."</blockquote><footer class="testimonial-author"><div class="testimonial-avatar" aria-hidden="true">JK</div><div><cite class="testimonial-name">James K.</cite><div class="testimonial-role">Freelance Developer</div></div></footer></article>
-    <article class="testimonial-card"><blockquote class="testimonial-text">"The A/B compare mode changed how my team evaluates models. We run the same prompts across GPT-4o and Claude before choosing."</blockquote><footer class="testimonial-author"><div class="testimonial-avatar" aria-hidden="true">SL</div><div><cite class="testimonial-name">Sara L.</cite><div class="testimonial-role">ML Engineer</div></div></footer></article>
-  </div>
-  <div class="cta-repeat reveal">
-    <p class="cta-repeat-copy">Ready to test Prompt Lab on a real draft? Start free and see the diff on your first prompt.</p>
-    <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="btn-hero">Start for free &rarr;</a>
-  </div>
-</section>
-
-<section class="wrap" id="pricing">
-  <p class="eyebrow reveal">Pricing</p>
-  <h2 class="sec-h2 reveal">Simple. <em>No surprises.</em></h2>
-  <p class="sec-sub reveal">Start free. Upgrade when you need more.</p>
-  <div class="pricing-grid reveal">
-    <div class="pricing-card">
-      <div class="pricing-tier">Free</div>
-      <div class="pricing-price">$0<span class="pricing-period"> forever</span></div>
-      <p class="pricing-desc">Everything you need to improve prompts. No card required.</p>
-      <ul class="pricing-features">
-        <li class="pricing-feature">Improve, Expand, Rewrite, Clean</li>
-        <li class="pricing-feature">Prompt library with export</li>
-        <li class="pricing-feature">Chrome extension</li>
-        <li class="pricing-feature">10 demo runs per day</li>
-      </ul>
-      <a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home" class="pricing-cta outlined">Start for free</a>
+<!-- ===== INTERACTIVE DEMO ===== -->
+<section class="demo-section" id="demo">
+  <div class="container demo-wrapper">
+    <div class="demo-header reveal">
+      <div class="section-label">Try it</div>
+      <h2 class="section-heading" style="margin-left:auto;margin-right:auto;">See the difference in real time</h2>
+      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Paste any rough prompt and watch Prompt Lab transform it.</p>
     </div>
-    <div class="pricing-card featured">
-      <div class="pricing-tier gold">Pro</div>
-      <div class="pricing-price">$9<span class="pricing-period"> /mo</span></div>
-      <p class="pricing-desc">Unlimited runs, A/B testing, Multi-model router, run history, diff export, and priority model access.</p>
-      <ul class="pricing-features">
-        <li class="pricing-feature">Everything in Free</li>
-        <li class="pricing-feature">Unlimited improvements</li>
-        <li class="pricing-feature">A/B compare across models</li>
-        <li class="pricing-feature">Multi-model router support</li>
-        <li class="pricing-feature">Run history + diff export</li>
-      </ul>
-      <a href="mailto:hi@promptlab.tools?subject=Prompt%20Lab%20Pro" class="pricing-cta dark">Get Pro &rarr;</a>
-    </div>
-    <div class="pricing-card">
-      <div class="pricing-tier">Annual</div>
-      <div class="pricing-price">$100<span class="pricing-period"> /yr</span></div>
-      <p class="pricing-desc">Everything in Pro at a discount. Lock in the best rate.</p>
-      <ul class="pricing-features">
-        <li class="pricing-feature">Everything in Pro</li>
-        <li class="pricing-feature">Save $8 vs monthly</li>
-        <li class="pricing-feature">Priority support</li>
-        <li class="pricing-feature">Early access to new features</li>
-      </ul>
-      <a href="mailto:hi@promptlab.tools?subject=Prompt%20Lab%20Annual" class="pricing-cta outlined">Go annual</a>
+    <div class="demo-container reveal reveal-delay-1">
+      <div class="demo-chrome">
+        <div class="demo-chrome-dots">
+          <div class="demo-chrome-dot"></div>
+          <div class="demo-chrome-dot"></div>
+          <div class="demo-chrome-dot"></div>
+        </div>
+        <div class="demo-chrome-title">prompt lab</div>
+      </div>
+      <div class="demo-modes">
+        <button class="demo-mode active" data-mode="improve">Improve</button>
+        <button class="demo-mode" data-mode="expand">Expand</button>
+        <button class="demo-mode" data-mode="shorten">Shorten</button>
+        <button class="demo-mode" data-mode="formalize">Formalize</button>
+        <button class="demo-mode" data-mode="simplify">Simplify</button>
+      </div>
+      <div class="demo-body">
+        <div class="demo-panel">
+          <div class="demo-panel-label"><span class="dot input-dot"></span> Your prompt</div>
+          <textarea class="demo-textarea" id="demoInput" spellcheck="false">Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.</textarea>
+        </div>
+        <div class="demo-panel">
+          <div class="demo-panel-label"><span class="dot output-dot"></span> Enhanced</div>
+          <div class="demo-output" id="demoOutput"></div>
+        </div>
+      </div>
+      <div class="demo-footer">
+        <span class="demo-hint">⌘ + Enter to enhance</span>
+        <button class="demo-run" id="demoRun">Enhance →</button>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="ext-section">
-  <div class="ext-inner">
-    <div class="ext-badge">Chrome + Vivaldi</div>
-    <h2 class="ext-h2">Improve prompts<br>wherever you type.</h2>
-    <p class="ext-sub">The Prompt Lab extension brings the Improve button directly into ChatGPT, Claude.ai, and Gemini &mdash; no tab switching, no copy-pasting. It uses the same account and prompt library as the web app.</p>
-    <a href="https://promptlab.tools/setup.html" class="btn-hero" style="display:inline-block;" aria-label="View Prompt Lab extension setup guide">View extension setup &rarr;</a>
-    <div class="ext-browsers"><span>Chrome</span><span>Vivaldi</span><span>Brave</span><span>Edge</span></div>
+<!-- ===== BENTO GRID ===== -->
+<section class="bento">
+  <div class="container">
+    <div class="reveal" style="margin-bottom: 64px;">
+      <div class="section-label">And more</div>
+      <h2 class="section-heading">Everything else<br>you'd expect.</h2>
+    </div>
+    <div class="bento-grid">
+      <div class="bento-card span-2 reveal">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
+        </div>
+        <div class="bento-title">Chrome &amp; Vivaldi Extension</div>
+        <div class="bento-desc">Enhance prompts directly inside ChatGPT, Claude, or any AI interface. The side panel keeps your workflow in context — no tab switching required. Works on Chrome, Vivaldi, Brave, and Edge.</div>
+      </div>
+      <div class="bento-card reveal reveal-delay-1">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="bento-title">Prompt Composer</div>
+        <div class="bento-desc">Build complex prompts from reusable fragments. Chain system prompts, context blocks, and instructions into composable templates.</div>
+      </div>
+      <div class="bento-card reveal reveal-delay-1">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <div class="bento-title">PII Scanner</div>
+        <div class="bento-desc">Catch personal data before you send. Automatic detection and optional redaction of names, emails, phone numbers, and more.</div>
+      </div>
+      <div class="bento-card reveal reveal-delay-2">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <div class="bento-title">Prompt Linting</div>
+        <div class="bento-desc">Automated quality checks flag ambiguity, missing context, and common anti-patterns before you hit send.</div>
+      </div>
+      <div class="bento-card reveal reveal-delay-2">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <div class="bento-title">Scratchpad</div>
+        <div class="bento-desc">A distraction-free workspace for drafting, brainstorming, and iterating on prompts before you commit.</div>
+      </div>
+      <div class="bento-card reveal reveal-delay-3">
+        <div class="bento-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="bento-title">Eval History</div>
+        <div class="bento-desc">Track every test run with timestamps, model versions, and scored results. See how your prompts improve over time.</div>
+      </div>
+    </div>
   </div>
 </section>
-</main>
 
-<footer>
-  <div class="footer-brand">
-    <a href="https://promptlab.tools/" class="footer-logo">
-      <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M8 3v6.5L3.5 16h13L12 9.5V3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="14.5" r="1.2" fill="currentColor" opacity="0.5"/></svg>
-      prompt lab
-    </a>
-    <p class="footer-tagline">Sharpen every prompt. Ship better AI.</p>
+<!-- ===== PRICING ===== -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="pricing-header reveal">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-heading">Start free. Scale when ready.</h2>
+      <p class="section-sub">No credit card required. Your prompts stay local — always.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card reveal">
+        <div class="pricing-tier">Free</div>
+        <div class="pricing-price"><span class="currency">$</span>0</div>
+        <div class="pricing-period">Forever free</div>
+        <ul class="pricing-features">
+          <li>All 7 enhancement modes</li>
+          <li>Multi-model provider switching</li>
+          <li>Prompt library with search</li>
+          <li>Chrome extension</li>
+          <li>100% local storage</li>
+        </ul>
+        <a href="https://promptlab.tools/app" class="pricing-btn outline">Get started free</a>
+      </div>
+      <div class="pricing-card featured reveal reveal-delay-1">
+        <div class="pricing-popular">Most popular</div>
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price"><span class="currency">$</span>9</div>
+        <div class="pricing-period">per month</div>
+        <ul class="pricing-features">
+          <li>Everything in Free</li>
+          <li>A/B Compare with eval scoring</li>
+          <li>Prompt Composer templates</li>
+          <li>PII scanner + auto-redaction</li>
+          <li>Advanced linting rules</li>
+          <li>Priority support</li>
+        </ul>
+        <a href="https://promptlab.tools/app" class="pricing-btn filled">Get Pro →</a>
+      </div>
+      <div class="pricing-card reveal reveal-delay-2">
+        <div class="pricing-tier">Annual</div>
+        <div class="pricing-price"><span class="currency">$</span>100</div>
+        <div class="pricing-period">per year — save $8</div>
+        <ul class="pricing-features">
+          <li>Everything in Pro</li>
+          <li>2 months free</li>
+          <li>Early access to new features</li>
+          <li>Roadmap input</li>
+        </ul>
+        <a href="https://promptlab.tools/app" class="pricing-btn outline">Go annual</a>
+      </div>
+    </div>
   </div>
-  <div class="footer-links">
-    <div class="footer-col"><div class="footer-col-title">Product</div><ul><li><a href="https://promptlab.tools/app/?utm_source=promptlab_tools&utm_medium=landing&utm_campaign=promptlab-home">Open app</a></li><li><a href="#features">Features</a></li><li><a href="#pricing">Pricing</a></li><li><a href="https://promptlab.tools/setup.html">Setup</a></li></ul></div>
-    <div class="footer-col"><div class="footer-col-title">Docs</div><ul><li><a href="https://promptlab.tools/guide.html">Getting started</a></li><li><a href="https://promptlab.tools/setup.html">Extension setup</a></li><li><a href="https://promptlab.tools/prompt-embed.html">Prompt Embed</a></li><li><a href="https://promptlab.tools/privacy.html">Privacy</a></li></ul></div>
-    <div class="footer-col"><div class="footer-col-title">Company</div><ul><li><a href="https://github.com/DaveHomeAssist/prompt-lab">GitHub</a></li><li><a href="https://twitter.com/promptlabtools">Twitter</a></li><li><a href="mailto:hi@promptlab.tools">Contact</a></li></ul></div>
+</section>
+
+<!-- ===== FINAL CTA ===== -->
+<section class="cta-section">
+  <div class="container">
+    <div class="reveal">
+      <h2 class="cta-heading">Your prompts deserve<br><em>better.</em></h2>
+      <p class="cta-sub">Join thousands of engineers, writers, and researchers who ship better AI — starting with better prompts.</p>
+      <a href="https://promptlab.tools/app" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;">
+        Try Prompt Lab free
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">
+          <div class="nav-logo-mark" style="width:22px;height:22px;font-size:0.6rem;border-radius:5px;">PL</div>
+          Prompt Lab
+        </div>
+        <p class="footer-tagline">The prompt engineering workspace built for people who care about craft.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Product</div>
+        <ul class="footer-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="https://promptlab.tools/app">Open App</a></li>
+          <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/CHANGELOG.md" target="_blank">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Resources</div>
+        <ul class="footer-links">
+          <li><a href="https://promptlab.tools/guide">Documentation</a></li>
+          <li><a href="https://promptlab.tools/setup">Extension Setup</a></li>
+          <li><a href="https://promptlab.tools/guide">API Providers</a></li>
+          <li><a href="https://promptlab.tools/guide">Prompt Guide</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Company</div>
+        <ul class="footer-links">
+          <li><a href="https://systembydave.com" target="_blank">System by Dave</a></li>
+          <li><a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank">GitHub</a></li>
+          <li><a href="https://twitter.com/promptlabtools" target="_blank">Twitter</a></li>
+          <li><a href="mailto:hi@promptlab.tools">Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; 2025 Prompt Lab. All rights reserved.</span>
+      <div class="footer-bottom-links">
+        <a href="https://promptlab.tools/privacy">Privacy</a>
+        <a href="https://promptlab.tools/privacy">Terms</a>
+      </div>
+    </div>
   </div>
 </footer>
-<div class="footer-bottom">
-  <span class="footer-copy">&copy; 2026 Prompt Lab &middot; promptlab.tools</span>
-  <span class="footer-copy"><a href="https://promptlab.tools/privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a></span>
-</div>
 
 <script>
-// ── source of truth: promptlab.tools public landing page ──────
-// CSS/JS are inline for GitHub Pages / Netlify Drop compatibility.
-// Do not mirror this file; edit here and redeploy.
+// ===== NAV SCROLL =====
+const nav = document.getElementById('nav');
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
 
-const DEMO_OUTPUTS={
-  improve:"Craft a compelling, conversion-focused product description for premium noise-canceling headphones targeting remote workers who need sustained focus. Highlight battery life, comfort for all-day wear, and microphone quality for calls. Tone: confident and direct. Length: 80-120 words.",
-  expand:"Write a detailed product description for noise-canceling headphones designed for remote workers and frequent travelers. Include: (1) key features: active noise cancellation level, battery life in hours, driver size, connectivity options; (2) target use cases: deep work, commuting, video calls; (3) differentiating details vs. competitors; (4) a clear value proposition sentence. Tone: authoritative yet approachable. Format: short intro paragraph followed by a bullet feature list, ending with a CTA.",
-  clean:"Write a product description for noise-canceling headphones designed for remote workers."
-};
-
-const MODE_HINTS={
-  improve:"Sharpen clarity without changing intent",
-  expand:"Add depth, context, and structure",
-  clean:"Tighten and remove filler"
-};
-
-const MODE_BTN_LABELS={
-  improve:"See it improve \u2192",
-  expand:"See it expand \u2192",
-  clean:"See it clean \u2192"
-};
-
-const prefersReducedMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-let currentMode="improve",isRunning=false,hasRunOnce=false;
-
-function trackLandingEvent(eventName,mode){
-  if(typeof window.gtag==="function"){
-    window.gtag("event",eventName,{event_category:"engagement",event_label:mode,mode});
-  }
-  if(typeof window.plausible==="function"){
-    window.plausible(eventName,{props:{mode}});
-  }
+// ===== MOBILE NAV =====
+const toggle = document.getElementById('navToggle');
+const mobileNav = document.getElementById('mobileNav');
+toggle.addEventListener('click', () => {
+  mobileNav.classList.toggle('open');
+  document.body.style.overflow = mobileNav.classList.contains('open') ? 'hidden' : '';
+});
+function closeMobileNav() {
+  mobileNav.classList.remove('open');
+  document.body.style.overflow = '';
 }
 
-// ── Tab switching ─────────────────────────────────────────────
-document.querySelectorAll(".demo-tab").forEach(t=>{
-  t.addEventListener("click",()=>{
-    document.querySelectorAll(".demo-tab").forEach(x=>{x.classList.remove("active");x.setAttribute("aria-selected","false")});
-    t.classList.add("active");
-    t.setAttribute("aria-selected","true");
-    currentMode=t.dataset.mode;
-    document.getElementById("demoTabHint").textContent=MODE_HINTS[currentMode];
-    const btn=document.getElementById("demoRunBtn");
-    btn.textContent=MODE_BTN_LABELS[currentMode];
-    btn.setAttribute("aria-label","Run "+currentMode+" demo");
-    trackLandingEvent("promptlab_demo_mode_click",currentMode);
-  });
-});
-
-// ── Demo run ──────────────────────────────────────────────────
-document.getElementById("demoRunBtn").addEventListener("click",()=>{
-  if(isRunning)return;
-  isRunning=true;hasRunOnce=true;
-  trackLandingEvent("promptlab_demo_run_click",currentMode);
-  const btn=document.getElementById("demoRunBtn"),out=document.getElementById("demoOutput");
-  btn.disabled=true;btn.textContent="...";
-  const text=DEMO_OUTPUTS[currentMode];
-  out.textContent="";
-  const textNode=document.createElement("span");
-  textNode.className="demo-output-text";
-
-  if(prefersReducedMotion){
-    textNode.textContent=text;
-    out.appendChild(textNode);
-    isRunning=false;btn.disabled=false;
-    btn.textContent=MODE_BTN_LABELS[currentMode];
-    return;
-  }
-
-  let i=0;
-  const cursor=document.createElement("span");
-  cursor.className="demo-cursor";
-  out.appendChild(textNode);
-  out.appendChild(cursor);
-
-  const iv=setInterval(()=>{
-    if(i>=text.length){
-      clearInterval(iv);
-      cursor.remove();
-      textNode.textContent=text;
-      isRunning=false;btn.disabled=false;
-      btn.textContent=MODE_BTN_LABELS[currentMode];
-      return;
-    }
-    textNode.textContent=text.slice(0,i+1);
-    i+=Math.floor(Math.random()*3)+1;
-  },20);
-});
-
-// ── Workflow steps: click-to-select + pauseable auto-rotation ─
-const steps=document.querySelectorAll(".workflow-step");
-let activeStep=0,stepPaused=false,stepTimer=null;
-
-function activateStep(idx){
-  steps[activeStep].classList.remove("active");
-  activeStep=idx;
-  steps[activeStep].classList.add("active");
-}
-
-steps.forEach((s,i)=>{
-  s.addEventListener("click",()=>{
-    stepPaused=true;
-    if(stepTimer){clearInterval(stepTimer);stepTimer=null;}
-    activateStep(i);
-  });
-});
-
-if(!prefersReducedMotion){
-  stepTimer=setInterval(()=>{
-    if(stepPaused)return;
-    activateStep((activeStep+1)%steps.length);
-  },2800);
-}
-
-// ── Scroll reveals ────────────────────────────────────────────
-const revealEls=document.querySelectorAll(".reveal");
-let revealCount=0;
-const revealObserver=new IntersectionObserver((entries)=>{
-  entries.forEach((e,i)=>{
-    if(e.isIntersecting){
-      setTimeout(()=>e.target.classList.add("visible"),i*80);
-      revealObserver.unobserve(e.target);
-      revealCount++;
-      if(revealCount>=revealEls.length) revealObserver.disconnect();
+// ===== SCROLL REVEAL =====
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
     }
   });
-},{threshold:.12});
-revealEls.forEach(el=>revealObserver.observe(el));
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
 
-// ── Mobile hamburger menu ──────────────────────────────────────
-const hamburgerBtn=document.getElementById("hamburgerBtn");
-const mobileMenu=document.getElementById("mobileMenu");
-if(hamburgerBtn&&mobileMenu){
-  hamburgerBtn.addEventListener("click",()=>{
-    const isOpen=mobileMenu.classList.toggle("open");
-    hamburgerBtn.setAttribute("aria-expanded",isOpen);
-    document.body.style.overflow=isOpen?"hidden":"";
-    // Swap icon between hamburger and X
-    hamburgerBtn.innerHTML=isOpen
-      ?'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>'
-      :'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
-    hamburgerBtn.setAttribute("aria-label",isOpen?"Close menu":"Open menu");
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ===== DEMO INTERACTION =====
+const modes = document.querySelectorAll('.demo-mode');
+const demoInput = document.getElementById('demoInput');
+const demoOutput = document.getElementById('demoOutput');
+const demoRun = document.getElementById('demoRun');
+
+const demoData = {
+  improve: {
+    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
+    output: `Write a Python CLI script that accepts a CSV file path as input and generates data visualizations from its contents.\n\n<span class="added">Requirements:</span>\n<span class="added">1. Accept file path via command-line argument using argparse</span>\n<span class="added">2. Validate the file exists and is valid CSV before processing</span>\n<span class="added">3. Auto-detect numeric columns and generate appropriate chart types:</span>\n<span class="added">   — Bar charts for categorical comparisons</span>\n<span class="added">   — Line charts for time-series data</span>\n<span class="added">   — Scatter plots for numeric correlations</span>\n<span class="added">4. Save charts as PNG files in an output directory</span>\n<span class="added">5. Use try/except with descriptive error messages for:</span>\n<span class="added">   — Missing files, malformed CSV, empty datasets</span>\n\n<span class="added">Use pandas for data handling and matplotlib for visualization.</span>\n<span class="added">Include a --preview flag to display charts before saving.</span>`
+  },
+  expand: {
+    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
+    output: `Write a Python script that reads a CSV file and generates <span class="added">a comprehensive set of</span> data visualizations.\n\n<span class="added">Input Handling:</span>\n<span class="added">— Accept CSV file path as a CLI argument (argparse)</span>\n<span class="added">— Support optional flags: --output-dir, --format (png/svg/pdf), --dpi, --style</span>\n<span class="added">— Validate file exists, is readable, and contains valid CSV data</span>\n<span class="added">— Handle encoding issues (UTF-8 with BOM, Latin-1 fallback)</span>\n\n<span class="added">Chart Generation:</span>\n<span class="added">— Automatically profile each column (numeric, categorical, datetime)</span>\n<span class="added">— Generate distribution histograms for numeric columns</span>\n<span class="added">— Create bar charts for categorical columns (top 20 values)</span>\n<span class="added">— Plot time-series line charts when datetime index is detected</span>\n<span class="added">— Build correlation heatmap for all numeric pairs</span>\n<span class="added">— Create a summary dashboard combining key charts</span>\n\n<span class="added">Error Handling:</span>\n<span class="added">— FileNotFoundError: descriptive message with path suggestion</span>\n<span class="added">— EmptyDataError: warn and exit gracefully</span>\n<span class="added">— ParserError: report the problematic row number</span>\n<span class="added">— Log all warnings to stderr, results to stdout</span>`
+  },
+  shorten: {
+    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
+    output: `<span class="added">Python CLI script: CSV → auto-generated charts (bar, line, scatter).</span>\n\n<span class="added">Requirements: argparse input, pandas processing, matplotlib output.</span>\n<span class="added">Auto-detect column types. Save PNGs. Graceful error handling for missing/malformed files.</span>`
+  },
+  formalize: {
+    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
+    output: `<span class="added">Develop a Python application that ingests CSV datasets and produces statistical visualizations.</span>\n\n<span class="added">Functional Requirements:</span>\n<span class="added">— The application shall accept a CSV file path via command-line interface</span>\n<span class="added">— The application shall perform column-type inference and select appropriate chart types</span>\n<span class="added">— The application shall implement comprehensive error handling with descriptive diagnostics</span>\n<span class="added">— The application shall output charts in configurable raster or vector formats</span>\n\n<span class="added">Technical Specifications:</span>\n<span class="added">— Language: Python 3.10+</span>\n<span class="added">— Dependencies: pandas, matplotlib, argparse (stdlib)</span>\n<span class="added">— Error handling: structured exception hierarchy with logging</span>`
+  },
+  simplify: {
+    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
+    output: `<span class="added">Make a simple Python script that:</span>\n<span class="added">1. Takes a CSV filename as input</span>\n<span class="added">2. Reads it with pandas</span>\n<span class="added">3. Makes a chart for each number column using matplotlib</span>\n<span class="added">4. Saves the charts as images</span>\n\n<span class="added">If the file is missing or broken, print a helpful error message instead of crashing.</span>\n\n<span class="added">Keep it under 50 lines. No classes needed — just functions.</span>`
+  }
+};
+
+let currentMode = 'improve';
+let isTyping = false;
+
+modes.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (isTyping) return;
+    modes.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+    demoInput.value = demoData[currentMode].input;
+    demoOutput.innerHTML = '';
   });
-  // Close menu when a link is clicked
-  mobileMenu.querySelectorAll("a").forEach(a=>{
-    a.addEventListener("click",()=>{
-      mobileMenu.classList.remove("open");
-      hamburgerBtn.setAttribute("aria-expanded","false");
-      document.body.style.overflow="";
-      hamburgerBtn.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>';
-      hamburgerBtn.setAttribute("aria-label","Open menu");
-    });
+});
+
+async function typeOutput(html) {
+  isTyping = true;
+  demoRun.textContent = 'Enhancing...';
+  demoOutput.innerHTML = '';
+
+  // Parse HTML to extract text and tags
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = html.replace(/\\n/g, '\n');
+  const fullHTML = tempDiv.innerHTML;
+
+  let i = 0;
+  const speed = 8;
+
+  return new Promise(resolve => {
+    function type() {
+      if (i < fullHTML.length) {
+        // Skip HTML tags
+        if (fullHTML[i] === '<') {
+          const closeIdx = fullHTML.indexOf('>', i);
+          i = closeIdx + 1;
+        } else {
+          i++;
+        }
+        demoOutput.innerHTML = fullHTML.substring(0, i);
+        // Find the proper closing point for any open tags
+        const tempCheck = document.createElement('div');
+        tempCheck.innerHTML = fullHTML.substring(0, i);
+        demoOutput.innerHTML = tempCheck.innerHTML;
+
+        setTimeout(type, speed + Math.random() * 12);
+      } else {
+        demoOutput.innerHTML = fullHTML;
+        isTyping = false;
+        demoRun.textContent = 'Enhance →';
+        resolve();
+      }
+    }
+    type();
   });
 }
+
+demoRun.addEventListener('click', () => {
+  if (isTyping) return;
+  typeOutput(demoData[currentMode].output);
+});
+
+// Keyboard shortcut
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (!isTyping) typeOutput(demoData[currentMode].output);
+  }
+});
+
+// ===== SMOOTH ANCHOR SCROLL =====
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', (e) => {
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
 </script>
 </body>
 </html>
