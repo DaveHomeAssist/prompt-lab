@@ -35,25 +35,31 @@ Practical implication:
 
 ## Remaining Unresolved Issues And Risks
 
-### 1. Deployment has not happened yet
+### 1. Production deployment has not happened yet
 
-Local builds are green, but the live app has not been updated with these patch changes.
+Local builds are green and a preview deployment now exists, but the live production app has not been updated with these patch changes.
 
 Risk:
 - production still reflects pre-patch behavior until a deployment is performed
 
-Current blocker:
-- `prompt-lab-source/.vercel/project.json` is missing, so the repo's deploy wrapper cannot target the linked Vercel project until `vercel link` is run from `prompt-lab-source/`
+Current state:
+- `vercel link` has been restored in `prompt-lab-source/`
+- preview deployment is ready at `https://prompt-f2med1hcd-daves-projects-7059ba1c.vercel.app`
+- the preview is protected behind Vercel preview auth, so unauthenticated smoke checks only see the 401 wrapper
 
 ### 2. Bug-report flow still needs hosted/manual verification
 
 The new bug-report endpoint and modal are implemented and unit-tested, but the full hosted path still needs a real environment check.
 
 Open checks:
-- `NOTION_TOKEN` is configured
-- `NOTION_BUG_REPORT_PARENT_PAGE_ID` is configured
+- `NOTION_TOKEN` is configured in Vercel
+- `NOTION_BUG_REPORT_PARENT_PAGE_ID` is configured in Vercel
 - hosted endpoint accepts a real submission
 - failure UX is acceptable when env vars are missing or Notion rejects the write
+
+Current blocker:
+- `NOTION_TOKEN` is not present in the Vercel env list for `prompt-lab`
+- `NOTION_BUG_REPORT_PARENT_PAGE_ID` is not present in the Vercel env list for `prompt-lab`
 
 ### 3. Test warnings remain
 
@@ -92,9 +98,10 @@ Outstanding:
 
 1. Create a dedicated patch branch from the current local state.
 2. Commit the security patch, bug-report feature, warning cleanup, and doc cleanup as one intentional patch set or as two small commits.
-3. Run `vercel link` from `prompt-lab-source/` so the existing deploy wrapper has a project to target.
-4. Deploy the hosted web app from the supported `Node 20.19+` environment.
-5. Re-compare the deployed `/app/` output against a fresh local build after deployment.
+3. Preview deploy from the supported `Node 20.19+` environment.
+4. Add `NOTION_TOKEN` and `NOTION_BUG_REPORT_PARENT_PAGE_ID` to the Vercel project environment.
+5. Re-run preview verification after the bug-report envs are present.
+6. Promote to production only after preview verification is complete.
 
 ### Before Calling The Patch Fully Shipped
 
