@@ -130,6 +130,14 @@ export default function CreateEditorPane({
   const resultsClass = pageScroll
     ? 'space-y-3'
     : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
+  const accentTextClass = 'text-orange-400';
+  const accentHoverTextClass = 'hover:text-orange-300';
+  const accentSolidClass = 'bg-orange-500/90 text-white hover:bg-orange-400';
+  const accentTabClass = 'bg-orange-500/90 text-white';
+  const accentFieldClass = 'border-orange-400/35';
+  const accentBadgeClass = 'bg-amber-500/15 text-amber-100';
+  const hasDraftInput = Boolean(raw.trim());
+  const showWorkbenchEmptyState = !loading && !enhanced && !error;
   const syncRawCursor = (target) => {
     if (!target || typeof updateCursor !== 'function') return;
     updateCursor(target.selectionStart ?? 0, target.selectionEnd ?? target.selectionStart ?? 0);
@@ -156,7 +164,7 @@ export default function CreateEditorPane({
         {/* ── Context breadcrumb ── */}
         {showCreateContext && (
           <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
-            <span className="text-[10px] text-violet-400 uppercase tracking-widest font-bold">
+            <span className={`text-[10px] uppercase tracking-widest font-bold ${accentTextClass}`}>
               {currentEntry ? 'Editing' : 'Draft'}
             </span>
             {currentEntry?.collection && (
@@ -172,7 +180,7 @@ export default function CreateEditorPane({
                 <button
                   type="button"
                   onClick={() => openSection('library')}
-                  className={`text-[10px] font-semibold transition-colors ${m.textAlt} hover:text-violet-400`}
+                  className={`text-[10px] font-semibold transition-colors ${m.textAlt} ${accentHoverTextClass}`}
                 >
                   View in Library
                 </button>
@@ -181,7 +189,7 @@ export default function CreateEditorPane({
                 <button
                   type="button"
                   onClick={() => openSavePanel()}
-                  className="text-[10px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                  className={`text-[10px] font-semibold transition-colors ${accentTextClass} ${accentHoverTextClass}`}
                 >
                   Library Details
                 </button>
@@ -202,7 +210,7 @@ export default function CreateEditorPane({
                 key={entry.id}
                 type="button"
                 onClick={() => loadEntry(entry)}
-                className={`inline-flex items-center ${m.codeBlock} border ${m.border} rounded-md px-2 py-1 cursor-pointer transition-colors hover:border-violet-400`}
+                className={`inline-flex items-center ${m.codeBlock} border ${m.border} rounded-md px-2 py-1 cursor-pointer transition-colors hover:border-orange-400/60`}
                 title={entry.title}
               >
                 <span className={`text-[11px] ${m.textBody} truncate max-w-[10rem]`}>
@@ -226,14 +234,14 @@ export default function CreateEditorPane({
                 <button
                   type="button"
                   onClick={() => { copy(entry.enhanced, `Copied: ${entry.title}`); bumpUse(entry.id); }}
-                  className={`text-[10px] font-semibold transition-colors ${m.textAlt} hover:text-violet-400`}
+                  className={`text-[10px] font-semibold transition-colors ${m.textAlt} ${accentHoverTextClass}`}
                 >
                   Copy
                 </button>
                 <button
                   type="button"
                   onClick={() => loadEntry(entry)}
-                  className="text-[10px] font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                  className={`text-[10px] font-semibold transition-colors ${accentTextClass} ${accentHoverTextClass}`}
                 >
                   Load
                 </button>
@@ -249,9 +257,9 @@ export default function CreateEditorPane({
               <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
               <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                 <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                  className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                  className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
                 <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                  className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                  className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Preview</button>
               </div>
             </div>
             <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
@@ -319,7 +327,7 @@ export default function CreateEditorPane({
                 <button
                   type="button"
                   onClick={() => handleLintQuickFix(issue.id)}
-                  className="shrink-0 text-violet-400 hover:text-violet-300 text-xs underline"
+                  className="shrink-0 text-amber-300 hover:text-amber-200 text-xs underline"
                 >
                   {getLintQuickFixMeta(issue.id)?.label || 'Quick Fix'}
                 </button>
@@ -356,7 +364,7 @@ export default function CreateEditorPane({
               <div className="flex items-center gap-3 min-w-0 text-[11px]">
                 {loading && (
                   <span className={`flex items-center gap-1.5 ${m.textSub}`}>
-                    <span className="w-2.5 h-2.5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="w-2.5 h-2.5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
                     {streaming ? 'Streaming…' : 'Preparing…'}
                   </span>
                 )}
@@ -440,7 +448,7 @@ export default function CreateEditorPane({
                   <button
                     type="button"
                     onClick={() => enhance()}
-                    className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                    className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidClass}`}
                   >
                     <Ic n="RefreshCw" size={11} />
                     Try Again
@@ -460,6 +468,41 @@ export default function CreateEditorPane({
             </div>
           )}
 
+          {showWorkbenchEmptyState && (
+            <div className={`${m.surface} border ${m.border} rounded-xl p-4`}>
+              <div className={`flex items-start justify-between gap-3 ${compact ? 'flex-col' : ''}`}>
+                <div className="min-w-0">
+                  <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${accentTextClass}`}>Workbench flow</p>
+                  <h2 className={`mt-2 text-lg font-semibold ${m.text}`}>
+                    {hasDraftInput ? 'Draft in the editor. Refine when ready.' : 'Start with a draft or load a starter.'}
+                  </h2>
+                  <p className={`mt-1 text-sm ${m.textMuted}`}>
+                    {hasDraftInput
+                      ? 'Run one pass to tighten the draft, then save the keepers to Library and evaluate them side by side.'
+                      : 'Use a Quick starter above or paste your own draft. Prompt Lab keeps the write-refine-save loop in one place.'}
+                  </p>
+                </div>
+                <span className={`inline-flex items-center rounded-full border border-amber-400/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${accentBadgeClass}`}>
+                  {primaryModKey}+Enter to refine
+                </span>
+              </div>
+              <div className={`mt-4 grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Start</p>
+                  <p className={`mt-1 text-sm ${m.text}`}>Load a Quick starter or paste a draft.</p>
+                </div>
+                <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Refine</p>
+                  <p className={`mt-1 text-sm ${m.text}`}>Generate a tighter version with the mode that fits the task.</p>
+                </div>
+                <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
+                  <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Keep</p>
+                  <p className={`mt-1 text-sm ${m.text}`}>Save strong versions to Library and run cases when you need proof.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Enhanced results */}
           {(loading || enhanced) && <>
             {loading && !enhanced && (
@@ -467,9 +510,9 @@ export default function CreateEditorPane({
                 <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
-                      <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300">
-                        <span className="h-1.5 w-1.5 rounded-full bg-violet-300 animate-pulse" />
+                      <span className={`text-xs uppercase tracking-widest font-semibold ${accentTextClass}`}>Results</span>
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${accentBadgeClass}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-200 animate-pulse" />
                         {streaming ? 'Streaming' : 'Preparing'}
                       </span>
                     </div>
@@ -493,7 +536,7 @@ export default function CreateEditorPane({
                 <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs text-violet-400 uppercase tracking-widest font-semibold">Results</span>
+                      <span className={`text-xs uppercase tracking-widest font-semibold ${accentTextClass}`}>Results</span>
                       {goldenVerdict && (
                         <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
                           {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
@@ -504,7 +547,7 @@ export default function CreateEditorPane({
                   </div>
                   <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
                     {activeResultTab === 'improved' && (
-                      <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? 'text-violet-400' : `${m.textSub} hover:text-white`} shrink-0`}>
+                      <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? accentTextClass : `${m.textSub} hover:text-white`} shrink-0`}>
                         <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
                       </button>
                     )}
@@ -542,7 +585,7 @@ export default function CreateEditorPane({
                         setResultTab(id);
                         if (id !== 'improved') setEnhMdPreview(false);
                       }}
-                      className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}
+                      className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? accentTabClass : `${m.btn} ${m.textAlt}`}`}
                     >
                       {label}
                     </button>
@@ -555,7 +598,7 @@ export default function CreateEditorPane({
                       <button
                         type="button"
                         onClick={onUnlockDiff}
-                        className="ml-2 font-semibold text-violet-400 transition-colors hover:text-violet-300"
+                        className="ml-2 font-semibold text-amber-300 transition-colors hover:text-amber-200"
                       >
                         Unlock Diff
                       </button>
@@ -573,7 +616,7 @@ export default function CreateEditorPane({
                       <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
                       <input
                         id="inline-save-title"
-                        className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text} min-w-0 flex-1`}
+                        className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-orange-400 ${m.text} min-w-0 flex-1`}
                         placeholder={suggestedSaveTitle}
                         value={saveTitle}
                         onChange={(e) => setSaveTitle(e.target.value)}
@@ -601,11 +644,11 @@ export default function CreateEditorPane({
 
                 {activeResultTab === 'improved' && (
                   enhMdPreview ? (
-                    <div className={`${inp} border-violet-500/40 overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
+                    <div className={`${inp} ${accentFieldClass} overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
                       <MarkdownPreview text={enhanced} />
                     </div>
                   ) : (
-                    <textarea rows={5} className={`${inp} border-violet-500/40`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
+                    <textarea rows={5} className={`${inp} ${accentFieldClass}`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
                   )
                 )}
 
@@ -622,9 +665,9 @@ export default function CreateEditorPane({
                     {variants.map((v, i) => (
                       <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
                         <div className="flex justify-between items-center mb-1 gap-3">
-                          <span className="text-xs font-bold text-violet-400">{v.label}</span>
+                          <span className={`text-xs font-bold ${accentTextClass}`}>{v.label}</span>
                           <div className="flex gap-3">
-                            <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} hover:text-violet-400 transition-colors`}>Use</button>
+                            <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}>Use</button>
                             <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
                           </div>
                         </div>
@@ -654,7 +697,7 @@ export default function CreateEditorPane({
                     {evalRuns.map((run) => (
                       <div key={run.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 text-xs`}>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <span className="font-semibold text-violet-400 truncate">{run.variantLabel || run.promptTitle}</span>
+                          <span className={`font-semibold truncate ${accentTextClass}`}>{run.variantLabel || run.promptTitle}</span>
                           <span className={m.textMuted}>{new Date(run.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                         </div>
                         <div className={`flex flex-wrap gap-2 mb-1 ${m.textMuted}`}>

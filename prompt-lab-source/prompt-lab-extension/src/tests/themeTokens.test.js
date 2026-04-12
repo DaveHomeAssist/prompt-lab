@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { T } from '../constants.js';
+import { MODES, T } from '../constants.js';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const cssPath = path.resolve(testDir, '../index.css');
@@ -32,5 +32,17 @@ describe('shared brand tokens', () => {
     expect(T.dark.btn).toBe('bg-white/[0.04] hover:bg-white/[0.08]');
     expect(T.dark.scoreGood).toBe('text-green-400');
     expect(T.dark.diffAdd).toBe('bg-green-900/60 text-green-200');
+  });
+
+  it('uses plain-text enhancement mode labels that match the refined product voice', () => {
+    expect(MODES.map((mode) => mode.label)).toEqual([
+      'Balanced',
+      'Claude',
+      'ChatGPT',
+      'Image Gen',
+      'Code Gen',
+      'Concise',
+      'Detailed',
+    ]);
   });
 });

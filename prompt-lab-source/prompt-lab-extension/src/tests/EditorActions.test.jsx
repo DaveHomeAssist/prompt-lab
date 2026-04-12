@@ -34,12 +34,32 @@ describe('EditorActions', () => {
 
     expect(screen.getByRole('button', { name: /reset draft/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /enhance cmd\+enter/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /refine prompt cmd\+enter/i })).toBeInTheDocument();
   });
 
   it('shows cancel while enhance is in flight', () => {
     render(<EditorActions {...baseProps} loading />);
 
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+  });
+
+  it('uses clean mode labels without emoji prefixes and shared ember/gold action styling', () => {
+    render(<EditorActions {...baseProps} />);
+
+    expect(screen.getByRole('option', { name: 'Balanced' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Claude' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'ChatGPT' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: '⚖️ Balanced' })).not.toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: /refine prompt cmd\+enter/i })).toHaveClass(
+      'bg-orange-500/90',
+      'hover:bg-orange-400'
+    );
+    expect(screen.getByRole('button', { name: /run cases/i })).toHaveClass(
+      'border',
+      'border-amber-400/35',
+      'bg-amber-500/15',
+      'text-amber-100'
+    );
   });
 });

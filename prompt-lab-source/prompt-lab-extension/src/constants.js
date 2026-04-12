@@ -28,37 +28,37 @@ const INTENT_POLICY = [
 export const MODES = [
   {
     id: 'balanced',
-    label: '⚖️ Balanced',
+    label: 'Balanced',
     sys: 'Improve clarity and specificity. Add role, task, format, or constraints only when genuinely absent and needed for execution. Prefer minimal changes over aggressive restructuring. If the prompt is already clear, make only light adjustments.',
   },
   {
     id: 'claude',
-    label: '🟣 Claude',
+    label: 'Claude',
     sys: 'Optimize for Anthropic Claude models. Use XML tags (<instructions>, <context>, <output>) to structure the prompt where helpful. Make the output format explicit. Use direct, clear instructions. Avoid system-message tricks that only work on other models.',
   },
   {
     id: 'chatgpt',
-    label: '🟢 ChatGPT',
+    label: 'ChatGPT',
     sys: 'Optimize for OpenAI GPT-4/o models. Use system/user message structure idioms. Add chain-of-thought prompting ("think step by step") where it improves accuracy. Use JSON output format where appropriate. Avoid XML tags.',
   },
   {
     id: 'image',
-    label: '🎨 Image Gen',
+    label: 'Image Gen',
     sys: 'Optimize for image generation models (DALL-E, Midjourney, Stable Diffusion). Add style, artistic medium, lighting, composition, camera angle, aspect ratio, and quality modifiers where missing. Keep the subject description faithful to the user\'s intent. Do not change what the user wants to see — only improve how it is described for the model.',
   },
   {
     id: 'code',
-    label: '💻 Code Gen',
+    label: 'Code Gen',
     sys: 'Optimize for code generation. Specify language, framework, and runtime where inferrable. Clarify input/output types, error handling expectations, and coding style. Add edge case notes only when they are likely to cause bugs. Do not add requirements the user did not ask for.',
   },
   {
     id: 'concise',
-    label: '✂️ Concise',
+    label: 'Concise',
     sys: 'Make the prompt as short and direct as possible. Remove filler words, redundant instructions, and unnecessary politeness. Preserve all intent, meaning, and constraints exactly. Do not add anything new. The goal is compression, not expansion.',
   },
   {
     id: 'detailed',
-    label: '📝 Detailed',
+    label: 'Detailed',
     sys: 'Expand the prompt with richer context, concrete examples, explicit edge cases, and clear constraints. Ground every addition in what the user actually asked for — do not introduce new goals, audiences, or requirements. The expansion should make the existing intent more executable, not change the intent.',
   },
 ];
