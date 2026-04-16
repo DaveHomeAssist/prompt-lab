@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CreateEditorPane from '../CreateEditorPane.jsx';
 
@@ -115,6 +115,10 @@ function renderPane(overrides = {}) {
       showNotes={false}
       notes=""
       evalRuns={[]}
+      libraryCount={1}
+      evalRunCount={0}
+      onLoadQuickStartPrompt={noop}
+      onOpenEvaluate={noop}
       showEvalHistory={false}
       setShowEvalHistory={noop}
       streamPreview=""
@@ -154,5 +158,55 @@ describe('CreateEditorPane', () => {
     expect(screen.getByText('Start with a draft or load a starter.')).toBeInTheDocument();
     expect(screen.getByText('Ctrl+Enter to refine')).toBeInTheDocument();
     expect(screen.getByText(/Save strong versions to Library/i)).toBeInTheDocument();
+  });
+
+  it('shows an activation runway with a starter-draft action for first-run users', () => {
+    const onLoadQuickStartPrompt = vi.fn();
+
+    renderPane({
+      currentEntry: null,
+      suggestedSaveTitle: 'Untitled prompt',
+      raw: '',
+      wc: 0,
+      error: null,
+      enhanced: '',
+      editingId: null,
+      goldenResponse: null,
+      libraryCount: 0,
+      evalRunCount: 0,
+      onLoadQuickStartPrompt,
+      showDiffUpgradeHint: false,
+    });
+
+    expect(screen.getByText('Activation runway')).toBeInTheDocument();
+    expect(screen.getByText('0/3 milestones')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load Starter Draft' }));
+
+    expect(onLoadQuickStartPrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('guides saved-but-unreviewed users toward Evaluate', () => {
+    const onOpenEvaluate = vi.fn();
+
+    renderPane({
+      currentEntry: null,
+      suggestedSaveTitle: 'Untitled prompt',
+      raw: 'Draft prompt body',
+      error: null,
+      enhanced: '',
+      editingId: null,
+      goldenResponse: null,
+      libraryCount: 1,
+      evalRunCount: 0,
+      onOpenEvaluate,
+      showDiffUpgradeHint: false,
+    });
+
+    expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
+
+    expect(onOpenEvaluate).toHaveBeenCalledTimes(1);
   });
 });

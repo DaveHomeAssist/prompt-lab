@@ -461,6 +461,17 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     openSection('create');
     notify('Loaded a starter prompt into Create. Enhance it to generate your first saved run.');
   };
+  const handleWorkbenchOpenEvaluate = () => {
+    void telemetry.track('workbench.activation_evaluate_opened', {
+      plan: billing.plan,
+      libraryCount: lib.library.length,
+      evalRunCount: evalRuns.length,
+    });
+    openRunsViewWithBilling('history');
+    notify(evalRuns.length > 0
+      ? 'Opened Evaluate. Review recent runs and compare the winners.'
+      : 'Opened Evaluate. Your first run will appear here after you refine and save a prompt.');
+  };
   const handleEvaluateOpenCompare = () => {
     if (!canUseAbTesting) {
       void telemetry.track('billing.feature_blocked', {
@@ -568,7 +579,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               comparisonText={comparisonText} comparisonSourceLabel={comparisonSourceLabel}
               lib={lib}
               variants={variants} showNotes={showNotes} notes={notes}
-              evalRuns={evalRuns} showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
+              evalRuns={evalRuns} libraryCount={lib.library.length} evalRunCount={evalRuns.length}
+              onLoadQuickStartPrompt={handleEvaluateQuickStart}
+              onOpenEvaluate={handleWorkbenchOpenEvaluate}
+              showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
               streamPreview={streamPreview}
               showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
               onUnlockDiff={() => openBilling('diffView')}

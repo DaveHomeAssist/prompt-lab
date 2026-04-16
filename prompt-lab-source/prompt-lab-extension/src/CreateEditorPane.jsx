@@ -106,6 +106,10 @@ export default function CreateEditorPane({
   notes,
   // Run history
   evalRuns,
+  libraryCount = 0,
+  evalRunCount = 0,
+  onLoadQuickStartPrompt,
+  onOpenEvaluate,
   showEvalHistory,
   setShowEvalHistory,
   // Stream
@@ -137,7 +141,51 @@ export default function CreateEditorPane({
   const accentFieldClass = 'border-orange-400/35';
   const accentBadgeClass = 'bg-amber-500/15 text-amber-100';
   const hasDraftInput = Boolean(raw.trim());
+  const hasActivationDraft = hasDraftInput || Boolean(currentEntry);
   const showWorkbenchEmptyState = !loading && !enhanced && !error;
+  const activationMilestones = [
+    {
+      label: 'Draft ready',
+      description: hasActivationDraft
+        ? 'A prompt is already in play in the workbench.'
+        : 'Load a starter or paste a draft to begin.',
+      complete: hasActivationDraft,
+    },
+    {
+      label: 'Saved prompt',
+      description: libraryCount > 0
+        ? 'Library has at least one reusable prompt.'
+        : 'Save a strong prompt so it becomes reusable.',
+      complete: libraryCount > 0,
+    },
+    {
+      label: 'Run reviewed',
+      description: evalRunCount > 0
+        ? 'Evaluate already has proof to inspect.'
+        : 'Open Evaluate after the first saved run lands.',
+      complete: evalRunCount > 0,
+    },
+  ];
+  const completedActivationMilestones = activationMilestones.filter((step) => step.complete).length;
+  const activationPrimaryAction = !hasActivationDraft
+    ? {
+        label: 'Load Starter Draft',
+        onClick: onLoadQuickStartPrompt,
+        helper: 'Load a starter prompt and move straight into the refine loop.',
+      }
+    : libraryCount === 0
+      ? {
+          label: 'Save First Prompt',
+          onClick: openSavePanel,
+          helper: 'Turn this draft into a reusable library entry before you evaluate it.',
+        }
+      : evalRunCount === 0
+        ? {
+            label: 'Open Evaluate',
+            onClick: onOpenEvaluate,
+            helper: 'Review your first run and keep the strongest version.',
+          }
+        : null;
   const syncRawCursor = (target) => {
     if (!target || typeof updateCursor !== 'function') return;
     updateCursor(target.selectionStart ?? 0, target.selectionEnd ?? target.selectionStart ?? 0);
@@ -498,6 +546,40 @@ export default function CreateEditorPane({
                 <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
                   <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Keep</p>
                   <p className={`mt-1 text-sm ${m.text}`}>Save strong versions to Library and run cases when you need proof.</p>
+                </div>
+              </div>
+              <div className={`mt-4 rounded-xl border ${accentFieldClass} ${m.codeBlock} p-3`}>
+                <div className={`flex items-start justify-between gap-3 ${compact ? 'flex-col' : ''}`}>
+                  <div className="min-w-0">
+                    <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${accentTextClass}`}>Activation runway</p>
+                    <h3 className={`mt-2 text-base font-semibold ${m.text}`}>{completedActivationMilestones}/3 milestones</h3>
+                    <p className={`mt-1 text-sm ${m.textMuted}`}>
+                      {activationPrimaryAction?.helper || 'The first-run loop is complete. Keep iterating, comparing, and saving stronger prompts.'}
+                    </p>
+                  </div>
+                  {activationPrimaryAction && typeof activationPrimaryAction.onClick === 'function' && (
+                    <button
+                      type="button"
+                      onClick={activationPrimaryAction.onClick}
+                      className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidClass}`}
+                    >
+                      <Ic n={activationPrimaryAction.label === 'Open Evaluate' ? 'FlaskConical' : 'Wand2'} size={11} />
+                      {activationPrimaryAction.label}
+                    </button>
+                  )}
+                </div>
+                <div className={`mt-3 grid gap-2 ${compact ? 'grid-cols-1' : 'grid-cols-3'}`}>
+                  {activationMilestones.map((step) => (
+                    <div key={step.label} className={`rounded-lg border px-3 py-2 ${step.complete ? 'border-orange-400/35 bg-orange-500/10' : `${m.border} ${m.surface}`}`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${step.complete ? 'bg-orange-500/90 text-white' : `${m.btn} ${m.textMuted}`}`}>
+                          {step.complete ? '✓' : '·'}
+                        </span>
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${step.complete ? accentTextClass : m.textSub}`}>{step.label}</p>
+                      </div>
+                      <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>{step.description}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
