@@ -1,3 +1,5 @@
+import { fetchWithTimeout } from './billingNetwork.js';
+
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 const DEFAULT_SUCCESS_URL = 'https://promptlab.tools/app/?billing=success';
 const DEFAULT_CANCEL_URL = 'https://promptlab.tools/app/?billing=cancelled';
@@ -96,13 +98,15 @@ function hasRedis(config) {
 async function redisCommand(config, command, args = [], bodyValue = null) {
   const path = [command.toLowerCase(), ...args.map((value) => encodeURIComponent(String(value)))].join('/');
   const url = `${config.redisUrl}/${path}`;
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: bodyValue == null ? 'GET' : 'POST',
     headers: {
       Authorization: `Bearer ${config.redisToken}`,
       ...(bodyValue == null ? {} : { 'Content-Type': 'text/plain;charset=UTF-8' }),
     },
     ...(bodyValue == null ? {} : { body: String(bodyValue) }),
+  }, {
+    timeoutMessage: 'Billing storage request timed out.',
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.error) {
@@ -131,7 +135,7 @@ async function stripeRequest(config, path, { method = 'GET', body = null } = {})
     throw new Error('Stripe billing is not configured.');
   }
 
-  const response = await fetch(`${STRIPE_API_BASE}/${path.replace(/^\/+/, '')}`, {
+  const response = await fetchWithTimeout(`${STRIPE_API_BASE}/${path.replace(/^\/+/, '')}`, {
     method,
     headers: {
       Authorization: `Bearer ${config.secretKey}`,
@@ -140,6 +144,8 @@ async function stripeRequest(config, path, { method = 'GET', body = null } = {})
     ...(body == null ? {} : {
       body: body instanceof URLSearchParams ? body.toString() : String(body),
     }),
+  }, {
+    timeoutMessage: 'Stripe billing request timed out.',
   });
 
   const payload = await parseJsonSafe(response);

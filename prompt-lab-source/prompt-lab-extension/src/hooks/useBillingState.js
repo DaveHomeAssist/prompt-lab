@@ -10,12 +10,16 @@ import {
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
 const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
+const OFFLINE_RETRY_AFTER_MS = 15 * 60 * 1000;
 
 function shouldRevalidate(state) {
   if (!state.customerEmail && !state.customerId) return false;
   const lastValidated = Date.parse(state.lastValidatedAt || '');
   if (!Number.isFinite(lastValidated)) return true;
-  return (Date.now() - lastValidated) > REVALIDATE_AFTER_MS;
+  const retryWindow = state.status === 'offline' || state.status === 'error'
+    ? OFFLINE_RETRY_AFTER_MS
+    : REVALIDATE_AFTER_MS;
+  return (Date.now() - lastValidated) > retryWindow;
 }
 
 function normalizeResponseState(payload, previousState) {
@@ -128,6 +132,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       setState((prev) => normalizeBillingState({
         ...prev,
         status: prev.plan === 'pro' ? 'offline' : 'error',
+        lastValidatedAt: new Date().toISOString(),
         validationError: error.message || 'Could not verify billing.',
       }));
       if (!silent) notify?.(error.message || 'Could not verify billing.');

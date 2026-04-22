@@ -83,6 +83,29 @@ describe('useBillingState', () => {
     expect(result.current.hasFeature('export')).toBe(true);
   });
 
+  it('backs off silent billing retries after an offline validation failure', async () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'pro',
+      status: 'active',
+      customerEmail: 'user@example.com',
+      customerId: 'cus_123',
+      lastValidatedAt: new Date(Date.now() - (8 * 60 * 60 * 1000)).toISOString(),
+    }));
+
+    global.fetch = vi.fn(async () => {
+      throw new Error('Billing service unavailable.');
+    });
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn() }));
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('offline');
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(Date.now() - Date.parse(result.current.lastValidatedAt)).toBeLessThan(5000);
+  });
+
   it('includes Clerk identity when starting hosted checkout', async () => {
     const clerkUser = {
       id: 'user_123',

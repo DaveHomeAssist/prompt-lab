@@ -1,0 +1,15 @@
+/.DS_Store
+/.git
+/.vercel
+/assets
+/docs
+/html pages
+/prototypes
+prompt-lab-source/.vercel
+prompt-lab-source/node_modules
+prompt-lab-source/**/node_modules
+prompt-lab-source/prompt-lab-desktop/dist
+prompt-lab-source/prompt-lab-desktop/src-tauri/target
+prompt-lab-source/prompt-lab-web/dist
+prompt-lab-source/prompt-lab-extension/dist
+prompt-lab-source/_archive

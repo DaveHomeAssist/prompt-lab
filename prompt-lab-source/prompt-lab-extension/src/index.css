@@ -232,6 +232,117 @@ textarea:disabled {
 .md-preview em { font-style: italic; }
 .md-preview a { color: #a78bfa; text-decoration: underline; }
 
+/* Clerk hosted auth surfaces */
+.cl-card,
+.cl-userButtonPopoverCard,
+.cl-userPreview,
+.cl-profileSectionContent,
+.cl-navbar,
+.cl-pageScrollBox {
+  background-color: rgba(2, 6, 23, 0.94);
+  color: #f8fafc;
+}
+
+.cl-card,
+.cl-userButtonPopoverCard,
+.cl-profileSectionContent {
+  border-color: rgba(51, 65, 85, 0.9);
+}
+
+.cl-headerTitle,
+.cl-userPreviewMainIdentifier,
+.cl-profileSectionTitleText,
+.cl-navbarButton,
+.cl-userButtonPopoverActionButton {
+  color: #f8fafc;
+}
+
+.cl-headerSubtitle,
+.cl-userPreviewSecondaryIdentifier,
+.cl-dividerText,
+.cl-footerActionText,
+.cl-formFieldHintText,
+.cl-identityPreviewText,
+.cl-formResendCodeLink,
+.cl-userButtonPopoverFooter,
+.cl-userButtonPopoverFooter a,
+.cl-footer {
+  color: #cbd5e1;
+}
+
+.cl-dividerLine,
+.cl-userPreview,
+.cl-userButtonPopoverFooter,
+.cl-navbar {
+  border-color: rgba(51, 65, 85, 0.9);
+}
+
+.cl-formFieldLabel {
+  color: #e5e7eb;
+}
+
+.cl-formFieldInput {
+  background-color: #162033;
+  color: #f8fafc;
+  border-color: rgba(71, 85, 105, 0.95);
+}
+
+.cl-formFieldInput::placeholder {
+  color: #94a3b8;
+}
+
+.cl-formFieldInput:focus,
+.cl-formFieldInput:focus-visible {
+  border-color: #a78bfa;
+  box-shadow: 0 0 0 1px #a78bfa, 0 0 0 4px rgba(167, 139, 250, 0.2);
+}
+
+.cl-socialButtonsBlockButton,
+.cl-alternativeMethodsBlockButton {
+  background-color: #0f172a;
+  border-color: rgba(71, 85, 105, 0.9);
+  color: #f8fafc;
+}
+
+.cl-socialButtonsBlockButton:hover,
+.cl-alternativeMethodsBlockButton:hover {
+  background-color: #162033;
+  border-color: rgba(100, 116, 139, 0.95);
+}
+
+.cl-socialButtonsBlockButtonText,
+.cl-alternativeMethodsBlockButtonText,
+.cl-formFieldAction,
+.cl-footerActionLink {
+  color: #f8fafc;
+}
+
+.cl-socialButtonsProviderIcon {
+  color: #e2e8f0;
+}
+
+.cl-formButtonPrimary {
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  color: #ffffff;
+}
+
+.cl-formButtonPrimary:hover,
+.cl-formButtonPrimary:focus-visible {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+}
+
+.cl-badge {
+  background-color: rgba(148, 163, 184, 0.14);
+  border-color: rgba(148, 163, 184, 0.24);
+  color: #e2e8f0;
+}
+
+.cl-userButtonPopoverActionButton:hover,
+.cl-navbarButton:hover {
+  background-color: rgba(15, 23, 42, 0.9);
+  color: #ffffff;
+}
+
 /* ── Density modes ── */
 .pl-density-compact {
   --pl-spacing: 0.5;

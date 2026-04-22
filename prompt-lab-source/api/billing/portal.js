@@ -1,4 +1,4 @@
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs' };
 
 import {
   buildStripeConfig,
@@ -7,6 +7,7 @@ import {
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { isBillingTimeoutError } from '../_lib/billingNetwork.js';
 import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
 
 export default async function handler(request) {
@@ -36,6 +37,7 @@ export default async function handler(request) {
       customerEmail: payload.customerEmail,
     });
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Could not create billing portal session.' }, 400);
+    const status = isBillingTimeoutError(error) ? 504 : 400;
+    return jsonResponse({ error: error.message || 'Could not create billing portal session.' }, status);
   }
 }

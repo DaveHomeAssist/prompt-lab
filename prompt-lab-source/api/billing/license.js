@@ -1,4 +1,4 @@
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs' };
 
 import {
   buildStripeConfig,
@@ -7,6 +7,7 @@ import {
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { isBillingTimeoutError } from '../_lib/billingNetwork.js';
 import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
 
 function readString(value) {
@@ -63,6 +64,9 @@ export default async function handler(request) {
     });
   } catch (error) {
     const message = error.message || 'Billing request failed.';
+    if (isBillingTimeoutError(error)) {
+      return jsonResponse({ error: message }, 504);
+    }
     const status = /No active Prompt Lab Pro subscription/i.test(message) ? 404 : 400;
     return jsonResponse({ error: message }, status);
   }

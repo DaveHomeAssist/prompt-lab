@@ -22,6 +22,7 @@ const ENV_KEYS = [
   'STRIPE_CHECKOUT_SUCCESS_URL',
   'STRIPE_CHECKOUT_CANCEL_URL',
   'STRIPE_PORTAL_RETURN_URL',
+  'PROMPTLAB_BILLING_TIMEOUT_MS',
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -205,4 +206,26 @@ test('billing portal returns the configured portal url', async () => {
   assert.equal(response.status, 200);
   const payload = await response.json();
   assert.equal(payload.url, 'https://billing.stripe.com/session/test_123');
+});
+
+test('billing license fails fast when Stripe lookup hangs', async () => {
+  process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+  process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
+  process.env.STRIPE_YEARLY_PRICE_ID = 'price_yearly';
+  process.env.PROMPTLAB_BILLING_TIMEOUT_MS = '25';
+
+  globalThis.fetch = async () => new Promise(() => {});
+
+  const handler = await loadHandler(licenseUrl);
+  const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+      customerEmail: 'user@example.com',
+    }),
+  }));
+
+  assert.equal(response.status, 504);
+  assert.match(await response.text(), /timed out/i);
 });

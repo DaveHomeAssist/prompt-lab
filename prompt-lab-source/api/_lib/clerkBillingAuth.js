@@ -1,4 +1,5 @@
 import { verifyToken } from '@clerk/backend';
+import { fetchWithTimeout, withTimeout } from './billingNetwork.js';
 
 const DEFAULT_AUTHORIZED_PARTIES = ['https://promptlab.tools'];
 const DEFAULT_CLERK_API_URL = 'https://api.clerk.com/v1';
@@ -48,11 +49,13 @@ function readBearerToken(request) {
 }
 
 async function fetchClerkUser(userId, config) {
-  const response = await fetch(`${config.apiUrl}/users/${encodeURIComponent(userId)}`, {
+  const response = await fetchWithTimeout(`${config.apiUrl}/users/${encodeURIComponent(userId)}`, {
     headers: {
       Authorization: `Bearer ${config.secretKey}`,
       'Content-Type': 'application/json',
     },
+  }, {
+    timeoutMessage: 'Clerk user lookup timed out.',
   });
   if (!response.ok) {
     throw new Error('Could not load Clerk user.');
@@ -75,13 +78,12 @@ export function buildAuthorizedParties(request, config = buildClerkBillingConfig
     ...config.authorizedParties,
   ]);
 
+  // Keep the allowlist bound to the deployed app origin plus explicit config.
+  // Trusting caller-controlled Origin/Referer headers would re-allow hostile
+  // subdomains and defeat Clerk's subdomain leak protection.
   const requestOrigin = normalizeOrigin(request.url);
-  const headerOrigin = normalizeOrigin(request.headers.get('origin'));
-  const refererOrigin = normalizeOrigin(request.headers.get('referer'));
 
   if (requestOrigin) parties.add(requestOrigin);
-  if (headerOrigin) parties.add(headerOrigin);
-  if (refererOrigin) parties.add(refererOrigin);
 
   return Array.from(parties);
 }
@@ -115,10 +117,12 @@ export async function resolveClerkBillingIdentity(
   }
 
   try {
-    const verifiedToken = await verifyTokenFn(token, {
+    const verifiedToken = await withTimeout(() => verifyTokenFn(token, {
       secretKey: config.secretKey,
       ...(config.jwtKey ? { jwtKey: config.jwtKey } : {}),
       authorizedParties: buildAuthorizedParties(request, config),
+    }), {
+      timeoutMessage: 'Clerk token verification timed out.',
     });
 
     const userId = String(verifiedToken?.sub || '').trim();
@@ -126,7 +130,9 @@ export async function resolveClerkBillingIdentity(
       throw new Error('Clerk token is missing a user id.');
     }
 
-    const clerkUser = await fetchUserFn(userId, config);
+    const clerkUser = await withTimeout(() => fetchUserFn(userId, config), {
+      timeoutMessage: 'Clerk user lookup timed out.',
+    });
     const customerEmail = getPrimaryEmail(clerkUser);
     if (!customerEmail) {
       throw new Error('Clerk user does not have a primary email address.');

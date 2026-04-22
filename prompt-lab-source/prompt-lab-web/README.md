@@ -36,10 +36,10 @@ For local proxy testing, install the Vercel CLI and use `vercel dev` instead of 
 
 Hosted auth and billing related envs:
 
-- `VITE_CLERK_PUBLISHABLE_KEY` enables Clerk sign in on the hosted web shell
-- `CLERK_SECRET_KEY` enables server side Clerk token verification for hosted billing routes
+- `VITE_CLERK_PUBLISHABLE_KEY` enables Clerk sign in on the hosted web shell. Use the production instance `pk_live_...` key in Vercel production.
+- `CLERK_SECRET_KEY` enables server side Clerk token verification for hosted billing routes. Use the matching production `sk_live_...` key in Vercel production.
 - `CLERK_JWT_KEY` is optional when you want networkless Clerk token verification
-- `CLERK_AUTHORIZED_PARTIES` is optional comma separated origin allowlist for hosted billing bearer tokens
+- `CLERK_AUTHORIZED_PARTIES` is an explicit comma separated origin allowlist for hosted billing bearer tokens. In production set this to `https://promptlab.tools`. Add localhost origins explicitly for local `vercel dev` if needed.
 - `STRIPE_SECRET_KEY` enables Stripe checkout, portal, and subscription lookup
 - `STRIPE_MONTHLY_PRICE_ID` or `STRIPE_PRICE_ID` sets the monthly Prompt Lab Pro Stripe price
 - `STRIPE_YEARLY_PRICE_ID` sets the annual Prompt Lab Pro Stripe price
@@ -73,6 +73,8 @@ npm run deploy:prod
 ```
 
 The deploy helper temporarily mirrors the linked `.vercel/project.json` from `prompt-lab-source/` to the repo root so Vercel uses the existing `prompt-lab` project with the correct root directory.
+
+For Clerk production cutover, also enable Clerk's Allowed Subdomains setting for `promptlab.tools` unless you intentionally need wildcard subdomain auth, then deploy certificates after DNS is green.
 
 ## Key files
 
