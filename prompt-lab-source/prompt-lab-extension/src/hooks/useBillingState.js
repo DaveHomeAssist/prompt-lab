@@ -9,18 +9,8 @@ import {
 } from '../lib/billing.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
-const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
-const OFFLINE_RETRY_AFTER_MS = 15 * 60 * 1000;
-
-function shouldRevalidate(state) {
-  if (!state.customerEmail && !state.customerId) return false;
-  const lastValidated = Date.parse(state.lastValidatedAt || '');
-  if (!Number.isFinite(lastValidated)) return true;
-  const retryWindow = state.status === 'offline' || state.status === 'error'
-    ? OFFLINE_RETRY_AFTER_MS
-    : REVALIDATE_AFTER_MS;
-  return (Date.now() - lastValidated) > retryWindow;
-}
+const REQUEST_TIMEOUT_MS = 8_000;
+const ACCOUNT_BILLING_COPY = 'Sign in on promptlab.tools to manage billing.';
 
 function normalizeResponseState(payload, previousState) {
   return normalizeBillingState({
@@ -72,24 +62,31 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [state]);
 
   const requestBilling = useCallback(async (path, init) => {
+    if (!clerkGetToken) {
+      throw new Error(ACCOUNT_BILLING_COPY);
+    }
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      // Attach Clerk session token when available
       const headers = { ...(init?.headers || {}) };
-      if (clerkGetToken) {
-        try {
-          const token = await clerkGetToken();
-          if (token) headers.Authorization = `Bearer ${token}`;
-        } catch { /* Proceed without auth token */ }
+      const token = await clerkGetToken();
+      if (!token) {
+        throw new Error(ACCOUNT_BILLING_COPY);
       }
+      headers.Authorization = `Bearer ${token}`;
       const response = await fetch(`${apiBase}${path}`, {
         ...init,
         headers,
         signal: controller.signal,
       });
       if (!response.ok) {
-        throw new Error(await parseErrorMessage(response, 'Billing request failed.'));
+        const fallback =
+          path === '/billing/license' && (response.status === 403 || response.status === 503)
+            ? 'Hosted billing validation is temporarily unavailable.'
+            : response.status === 429
+              ? 'Too many billing requests. Please wait and try again.'
+              : 'Billing request failed.';
+        throw new Error(await parseErrorMessage(response, fallback));
       }
       return response.json();
     } catch (err) {
@@ -112,8 +109,6 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'validate',
-          customerEmail: state.customerEmail || undefined,
-          customerId: state.customerId || undefined,
         }),
       });
 
@@ -142,11 +137,6 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     }
   }, [notify, requestBilling, state]);
 
-  useEffect(() => {
-    if (!shouldRevalidate(state)) return;
-    refreshLicense({ silent: true });
-  }, [refreshLicense, state]);
-
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || '').trim().toLowerCase();
     if (!customerEmail) throw new Error('Enter the billing email used for your Prompt Lab Pro purchase.');
@@ -158,8 +148,6 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'activate',
-          customerEmail,
-          customerId: state.customerId || undefined,
         }),
       });
       const nextState = normalizeResponseState(payload, {
@@ -223,16 +211,13 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     }
   }, [notify, requestBilling, state.customerEmail, telemetry]);
 
-  const openManagePurchases = useCallback(async (overrides = {}) => {
+  const openManagePurchases = useCallback(async () => {
     setBusyAction('portal');
     try {
       const payload = await requestBilling('/billing/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: overrides?.customerId || state.customerId || undefined,
-          customerEmail: overrides?.customerEmail || state.customerEmail || undefined,
-        }),
+        body: JSON.stringify({}),
       });
       if (!payload?.url) {
         throw new Error('Billing portal is not configured.');
@@ -243,7 +228,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     } finally {
       setBusyAction('');
     }
-  }, [requestBilling, state.customerEmail, state.customerId, state.plan, telemetry]);
+  }, [requestBilling, state.plan, telemetry]);
 
   const billing = useMemo(() => ({
     ...state,

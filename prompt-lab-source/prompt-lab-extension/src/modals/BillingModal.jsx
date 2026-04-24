@@ -3,12 +3,14 @@ import Ic from '../icons';
 import { BILLING_FEATURES, getFeatureMeta } from '../lib/billing.js';
 
 const FEATURE_LIST = Object.values(BILLING_FEATURES);
+const HOSTED_BILLING_URL = 'https://promptlab.tools/app/';
 
 export default function BillingModal({ m, billing, requestedFeature, onClose }) {
   const [accessEmail, setAccessEmail] = useState(billing.customerEmail || '');
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
   const hasClerkIdentity = Boolean(billing.clerkUserId);
+  const requiresPromptLabAccount = !hasClerkIdentity;
 
   useEffect(() => {
     setAccessEmail(billing.customerEmail || '');
@@ -65,6 +67,10 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
     }
   }
 
+  function handleOpenHostedBilling() {
+    window.open(HOSTED_BILLING_URL, '_blank', 'noopener,noreferrer');
+  }
+
   return (
     <div className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
       <div
@@ -87,7 +93,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
                 ? `${feature.description} Upgrade to Pro or sync an existing purchase to keep going.`
                 : hasClerkIdentity
                   ? 'Use Clerk Billing to start Prompt Lab Pro. Stripe handles payment processing underneath, and your signed in account keeps subscription state in sync.'
-                  : 'Start Prompt Lab Pro checkout, then sync access on this device using the billing email if needed.'}
+                  : 'Billing actions are currently limited to signed in Prompt Lab accounts while the public billing endpoints stay locked down.'}
             </p>
           </div>
           <button
@@ -122,57 +128,60 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
           <button
             type="button"
             onClick={() => handleCheckout('monthly')}
-            disabled={billing.busyAction === 'checkout:monthly'}
+            disabled={requiresPromptLabAccount || billing.busyAction === 'checkout:monthly'}
             className="ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
             <div className="mt-1 text-xs text-violet-100">
-              {hasClerkIdentity ? '$9/month via Clerk Billing' : '$9/month'}
+              {hasClerkIdentity ? '$9/month via Clerk Billing' : 'Sign in on the web to start checkout'}
             </div>
           </button>
           <button
             type="button"
             onClick={() => handleCheckout('annual')}
-            disabled={billing.busyAction === 'checkout:annual'}
+            disabled={requiresPromptLabAccount || billing.busyAction === 'checkout:annual'}
             className="ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40"
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">$100/year, best value</div>
+            <div className="mt-1 text-xs text-emerald-200">
+              {hasClerkIdentity ? '$100/year, best value' : 'Signed in account required'}
+            </div>
           </button>
         </div>
 
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">
             <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>
-              {hasClerkIdentity ? 'Billing access' : 'Billing email'}
+              {hasClerkIdentity ? 'Billing access' : 'Prompt Lab account'}
             </p>
             <button
               type="button"
-              onClick={handleManagePurchases}
+              onClick={requiresPromptLabAccount ? handleOpenHostedBilling : handleManagePurchases}
               disabled={billing.busyAction === 'portal'}
               className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
             >
               <Ic n="ArrowRight" size={11} />
-              Manage Purchases
+              {requiresPromptLabAccount ? 'Open Account Billing' : 'Manage Purchases'}
             </button>
           </div>
           <div className="mt-2 flex flex-col gap-2">
             <input
               value={accessEmail}
               onChange={(event) => setAccessEmail(event.target.value)}
-              placeholder={hasClerkIdentity ? 'Billing email for fallback device sync' : 'Enter the billing email used for checkout'}
+              placeholder={hasClerkIdentity ? 'Billing email for fallback device sync' : 'Sign in on promptlab.tools to manage billing'}
+              disabled={requiresPromptLabAccount}
               className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-violet-500 focus:outline-none`}
             />
             <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
               {hasClerkIdentity
                 ? 'Your signed in account keeps subscription state in sync. The billing email remains available as a fallback for local device activation.'
-                : 'Prompt Lab syncs Pro access locally after you confirm the billing email used for checkout.'}
+                : 'Sign in on promptlab.tools to start checkout, sync access, or open the billing portal.'}
             </p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={handleActivate}
-                disabled={!accessEmail.trim() || billing.busyAction === 'activate'}
+                disabled={requiresPromptLabAccount || !accessEmail.trim() || billing.busyAction === 'activate'}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
               >
                 {hasClerkIdentity ? 'Sync Device Access' : 'Sync Purchase'}
@@ -180,7 +189,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
               <button
                 type="button"
                 onClick={handleRefresh}
-                disabled={(!billing.customerEmail && !billing.customerId) || billing.busyAction === 'validate'}
+                disabled={requiresPromptLabAccount || (!billing.customerEmail && !billing.customerId) || billing.busyAction === 'validate'}
                 className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
               >
                 Refresh Status
