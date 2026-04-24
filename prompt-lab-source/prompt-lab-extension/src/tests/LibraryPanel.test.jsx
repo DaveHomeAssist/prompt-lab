@@ -218,4 +218,30 @@ describe('LibraryPanel actions', () => {
     expect(setActiveTag).toHaveBeenCalledWith(null);
     expect(setActiveCollection).toHaveBeenCalledWith(null);
   });
+
+  it('uses an internal scroll region for the hosted split-pane library', () => {
+    const props = makeProps({
+      isWeb: true,
+      compact: false,
+      showEditorPane: true,
+      lib: { ...makeProps().lib, expandedId: null },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByTestId('library-scroll-region').className).toContain('overflow-y-auto');
+  });
+
+  it('does not force an internal scroll region for the full-width hosted library', () => {
+    const props = makeProps({
+      isWeb: true,
+      compact: false,
+      showEditorPane: false,
+      lib: { ...makeProps().lib, expandedId: null },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByTestId('library-scroll-region').className).not.toContain('overflow-y-auto');
+  });
 });

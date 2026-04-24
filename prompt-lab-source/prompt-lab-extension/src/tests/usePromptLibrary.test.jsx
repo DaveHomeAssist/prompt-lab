@@ -82,4 +82,62 @@ describe('usePromptLibrary', () => {
     expect(result.current.library.find((entry) => entry.id === 'entry-2')?.collection).toBe('Launch');
     expect(notify).toHaveBeenCalledWith('Removed collection: Ops');
   });
+
+  it('saving an existing prompt persists the updated entry immediately', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({
+        id: 'entry-1',
+        title: 'Alpha',
+        original: 'Original text',
+        enhanced: 'Enhanced text',
+        tags: ['alpha'],
+      }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library).toHaveLength(1);
+    });
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave({
+        raw: 'Updated original',
+        enhanced: 'Updated enhanced',
+        variants: [],
+        notes: 'Updated notes',
+        tags: ['alpha', 'beta'],
+        title: 'Updated Alpha',
+        collection: 'Ops',
+        editingId: 'entry-1',
+        changeNote: 'Refined wording',
+      });
+    });
+
+    expect(saved).toEqual({ id: 'entry-1', title: 'Updated Alpha' });
+    expect(result.current.library[0]).toMatchObject({
+      id: 'entry-1',
+      title: 'Updated Alpha',
+      original: 'Updated original',
+      enhanced: 'Updated enhanced',
+      notes: 'Updated notes',
+      collection: 'Ops',
+      tags: ['alpha', 'beta'],
+    });
+
+    const persisted = JSON.parse(localStorage.getItem(storageKeys.library) || '[]');
+    expect(persisted[0]).toMatchObject({
+      id: 'entry-1',
+      title: 'Updated Alpha',
+      original: 'Updated original',
+      enhanced: 'Updated enhanced',
+      notes: 'Updated notes',
+      collection: 'Ops',
+      tags: ['alpha', 'beta'],
+    });
+    expect(notify).toHaveBeenCalledWith('Prompt updated!');
+  });
 });

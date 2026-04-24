@@ -7,7 +7,7 @@ export default function SavePanel({
   saveCollection, setSaveCollection, saveTags, setSaveTags,
   changeNote, setChangeNote, collections,
   showNewColl, setShowNewColl, newCollName, setNewCollName,
-  commitNewCollection, doSave, closeSavePanel, canSavePanel,
+  commitNewCollection, doSave, saveAsNewPrompt, closeSavePanel, canSavePanel,
   canUseCollections = true, onRequestCollectionsUpgrade,
 }) {
   return (
@@ -158,6 +158,16 @@ export default function SavePanel({
             <Ic n="Save" size={12} />
             {saveTargetId ? 'Save Version' : 'Save to Library'} {primaryModKey}+S
           </button>
+          {saveTargetId && (
+            <button
+              type="button"
+              onClick={() => saveAsNewPrompt?.()}
+              disabled={!canSavePanel}
+              className="ui-control rounded-lg px-4 text-sm font-semibold transition-colors bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40"
+            >
+              Save as New Prompt
+            </button>
+          )}
           <button
             type="button"
             onClick={closeSavePanel}

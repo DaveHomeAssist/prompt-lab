@@ -436,6 +436,23 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     }
     return saved;
   };
+  const saveAsNewPrompt = () => {
+    const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+    const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
+      targetId: null,
+      titleOverride: (saveTitle || suggestedSaveTitle).trim() || suggestedSaveTitle,
+      ...saveFlowOverrides,
+    });
+    if (saved?.id) {
+      void telemetry.track('library.prompt_saved', {
+        plan: billing.plan,
+        via: 'save-panel-duplicate',
+        isVersion: false,
+        hasCollection: Boolean(trackedCollection),
+      });
+    }
+    return saved;
+  };
   const handleRunCases = () => {
     if (!canRunBatchCases) {
       void telemetry.track('billing.feature_blocked', {
@@ -719,7 +736,9 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               });
             }
             return saved;
-          }} closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
+          }}
+          saveAsNewPrompt={saveAsNewPrompt}
+          closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
           canUseCollections={canUseCollections}
           onRequestCollectionsUpgrade={() => openBilling('collections')}
         />

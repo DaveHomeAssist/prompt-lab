@@ -284,11 +284,13 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       }
       setSaveTitle(saved.title || titleValue);
       if (typeof onSaved === 'function') onSaved(saved.id);
+      setSaveTargetId(null);
+      setSaveSourceEntry(null);
+      setChangeNote('');
+      setShowSave(false);
+      return saved;
     }
-    setSaveTargetId(null);
-    setSaveSourceEntry(null);
-    setChangeNote('');
-    setShowSave(false);
+    notify('Save failed. Nothing was written to your library.');
     return saved;
   };
 

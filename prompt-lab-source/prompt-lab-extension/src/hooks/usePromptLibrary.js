@@ -164,13 +164,17 @@ export default function usePromptLibrary(notify) {
 
   const updateLibraryEntry = (entryId, updater) => {
     let changed = false;
-    setLibrary(prev => prev.map(entry => {
+    const nextLibrary = libraryRef.current.map((entry) => {
       if (entry.id !== entryId) return entry;
       const next = updater(entry);
       if (!next || next === entry) return entry;
       changed = true;
       return next;
-    }));
+    });
+    if (changed) {
+      libraryRef.current = nextLibrary;
+      setLibrary(nextLibrary);
+    }
     return changed;
   };
 
@@ -188,11 +192,17 @@ export default function usePromptLibrary(notify) {
 
     if (editingId) {
       let savedTitle = cleanTitle;
-      updateLibraryEntry(editingId, entry => {
+      const changed = updateLibraryEntry(editingId, entry => {
         const next = updatePromptEntry(entry, payload, { source: 'manual_save', changeNote: ensureString(changeNote) });
         savedTitle = next?.title || savedTitle;
         return next;
       });
+      if (changed) {
+        const persisted = saveJson(storageKeys.library, libraryRef.current);
+        if (!persisted) {
+          notify('Prompt updated in memory, but local storage failed. It may not persist after refresh.');
+        }
+      }
       notify('Prompt updated!');
       return { id: editingId, title: savedTitle };
     }
@@ -203,7 +213,13 @@ export default function usePromptLibrary(notify) {
       versions: [],
       testCases: [],
     });
-    setLibrary(prev => [entry, ...prev]);
+    const nextLibrary = [entry, ...libraryRef.current];
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
+    const persisted = saveJson(storageKeys.library, nextLibrary);
+    if (!persisted) {
+      notify('Saved in memory, but local storage failed. It may not persist after refresh.');
+    }
     notify('Saved!');
     return { id: entry.id, title: entry.title };
   };

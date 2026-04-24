@@ -63,6 +63,7 @@ const LibraryPanel = memo(function LibraryPanel({
   const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
   const primaryStarterPack = unloadedStarterPacks[0] || null;
   const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
+  const usePaneScroll = !isWeb || (showEditorPane && !compact);
 
   useEffect(() => {
     setSearchDraft(lib.search);
@@ -85,7 +86,7 @@ const LibraryPanel = memo(function LibraryPanel({
   };
 
   return (
-    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
+    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex min-h-0 flex-col ${usePaneScroll ? 'overflow-hidden' : ''}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
@@ -158,7 +159,10 @@ const LibraryPanel = memo(function LibraryPanel({
           onClose={() => setShowImportPanel(false)}
         />
       )}
-      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
+      <div
+        data-testid="library-scroll-region"
+        className={`${usePaneScroll ? 'flex-1 min-h-0 overflow-y-auto' : ''} p-3 flex flex-col gap-2`}
+      >
         {lib.filtered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />

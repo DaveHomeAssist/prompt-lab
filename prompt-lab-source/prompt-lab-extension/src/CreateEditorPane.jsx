@@ -387,7 +387,7 @@ export default function CreateEditorPane({
                     onClick={() => openSavePanel()}
                     className="text-[10px] font-semibold text-green-400 hover:text-green-300 transition-colors"
                   >
-                    Save to Library
+                    {currentEntry ? 'Save New Version' : 'Save to Library'}
                   </button>
                 )}
                 {loading && (

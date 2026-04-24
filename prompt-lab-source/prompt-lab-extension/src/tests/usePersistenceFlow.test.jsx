@@ -162,6 +162,27 @@ describe('usePersistenceFlow', () => {
     expect(result.current.editingId).toBe('new-generated-id');
   });
 
+  it('failed_save_stays_open_and_warns', () => {
+    const { result, notify } = renderPersistenceFlow({
+      doSaveImpl: () => null,
+    });
+
+    act(() => {
+      result.current.openSavePanel();
+      result.current.setSaveTitle('Unsaved Prompt');
+    });
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave();
+    });
+
+    expect(saved).toBeNull();
+    expect(result.current.showSave).toBe(true);
+    expect(result.current.saveTitle).toBe('Unsaved Prompt');
+    expect(notify).toHaveBeenCalledWith('Save failed. Nothing was written to your library.');
+  });
+
   it('open_save_panel_prefills_from_active_entry', () => {
     const entry = makeEntry({
       title: 'Canonical Prompt',
@@ -216,6 +237,42 @@ describe('usePersistenceFlow', () => {
     }));
     expect(result.current.editingId).toBe(null);
     expect(result.current.saveTargetId).toBe(null);
+  });
+
+  it('target_id_override_null_saves_as_new_prompt_even_when_editing_existing_entry', () => {
+    const entry = makeEntry({
+      id: 'entry-existing',
+      title: 'Existing Prompt',
+      original: 'Existing original',
+      enhanced: 'Existing enhanced',
+    });
+    const { result, doSave } = renderPersistenceFlow({
+      entry,
+      raw: 'New raw draft',
+      enhanced: 'New enhanced draft',
+      doSaveImpl: (payload) => ({ id: payload.editingId || 'new-duplicate-id', title: payload.title || 'Duplicate Prompt' }),
+    });
+
+    act(() => {
+      result.current.applyEntry(entry);
+      result.current.setRaw('New raw draft');
+      result.current.setEnhanced('New enhanced draft');
+      result.current.openSavePanel();
+      result.current.setSaveTitle('Duplicate Prompt');
+    });
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave(() => {}, { targetId: null, titleOverride: 'Duplicate Prompt' });
+    });
+
+    expect(doSave).toHaveBeenCalledWith(expect.objectContaining({
+      editingId: null,
+      raw: 'New raw draft',
+      enhanced: 'New enhanced draft',
+      title: 'Duplicate Prompt',
+    }));
+    expect(saved).toEqual({ id: 'new-duplicate-id', title: 'Duplicate Prompt' });
   });
 
   it('add_to_composer_tracks_recent_access_when_available', () => {
