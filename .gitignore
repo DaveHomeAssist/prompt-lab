@@ -25,3 +25,6 @@ brand-assets/
 legacy/
 prototypes/
 patches/
+
+# Local-only host / infra operations notes (private details)
+prompt-lab-source/docs/dominic-host-operations.md
