@@ -17,3 +17,6 @@ archives/
 
 brand-assets/
 .vercel
+
+# Browser automation caches
+.playwright-mcp/
