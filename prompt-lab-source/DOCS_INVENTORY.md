@@ -11,7 +11,7 @@ Updated: 2026-04-22
 - `prompt-lab-web/index.html` is the authoring source for the public landing page.
 - `prompt-lab-web/public/` is the preferred authoring source for auxiliary public HTML docs where a source copy exists.
 - `../docs/` is the published public-docs/static-site copy, not the preferred authoring location.
-- Root operational docs like `../CURRENT_PROJECT_REPORT.md` and `../SESSION_HANDOFF_PROMPT.md` are working context artifacts, not canonical product docs.
+- Root operational docs like `../docs/CURRENT_PROJECT_REPORT.md` and `../docs/SESSION_HANDOFF_PROMPT.md` are working context artifacts, not canonical product docs.
 
 ## Canonical Repo Docs
 
@@ -92,11 +92,11 @@ Updated: 2026-04-22
 
 | Path | Scope | Status | Notes |
 |---|---|---|---|
-| `../CURRENT_PROJECT_REPORT.md` | Current-state project report | Working | Current repo-state handoff and Perplexity-ready context. |
-| `../PROJECT_CONTEXT.md` | Durable repo-local context map | Working | Consolidated onboarding and handoff context spanning repo layout, runtime surfaces, backend seams, and known doc drift. |
-| `../PROMPT_LAB_AGENT.md` | Stable repo-local agent prompt | Working | Prompt Lab-specific operating rules for AI assistants. |
-| `../SESSION_INIT_PROMPT.md` | New-session bootstrap prompt | Working | Paste-ready repo-specific session initializer. |
-| `../SESSION_HANDOFF_PROMPT.md` | Current session handoff prompt | Working | Current repo handoff prompt for fresh AI sessions. |
+| `../docs/CURRENT_PROJECT_REPORT.md` | Current-state project report | Working | Current repo-state handoff and Perplexity-ready context. |
+| `../docs/PROJECT_CONTEXT.md` | Durable repo-local context map | Working | Consolidated onboarding and handoff context spanning repo layout, runtime surfaces, backend seams, and known doc drift. |
+| `../docs/PROMPT_LAB_AGENT.md` | Stable repo-local agent prompt | Working | Prompt Lab-specific operating rules for AI assistants. |
+| `../docs/SESSION_INIT_PROMPT.md` | New-session bootstrap prompt | Working | Paste-ready repo-specific session initializer. |
+| `../docs/SESSION_HANDOFF_PROMPT.md` | Current session handoff prompt | Working | Current repo handoff prompt for fresh AI sessions. |
 
 ## Historical but retained
 
@@ -104,8 +104,8 @@ Updated: 2026-04-22
 |---|---|---|---|
 | `prompt-lab-extension/EXECUTION_PRD_V1.4.md` | Implementation planning | Historical | Keep for design context; not the source of truth for current behavior. |
 | `prompt-lab-extension/BUG_PATCH_REPORT.md` | One-off remediation report | Historical | Useful for audit trail, but superseded by version history. |
-| `../IMPLEMENTATION_PLAN.md` | Execution tracker | Historical | Useful release context, but not the canonical description of current system behavior. |
-| `../V1.6.0_NOTES.md` | Version notes | Historical | Snapshot release notes; keep for context, not as a live product spec. |
+| `../docs/IMPLEMENTATION_PLAN.md` | Execution tracker | Historical | Useful release context, but not the canonical description of current system behavior. |
+| `../docs/V1.6.0_NOTES.md` | Version notes | Historical | Snapshot release notes; keep for context, not as a live product spec. |
 | `_archive/DEPRECATED.md` | Archive marker | Historical | Indicates archived material under `_archive/`. |
 | `_archive/PROPOSAL_V1.3.1.md` | Older proposal | Historical | Snapshot only; do not use for current architecture decisions. |
 | `_archive/QA_LANDING_PAGE.md` | Earlier landing-page QA pack | Historical | Checklist from the older standalone marketing-site phase. |

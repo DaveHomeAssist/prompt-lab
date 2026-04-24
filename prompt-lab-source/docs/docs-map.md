@@ -82,11 +82,11 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 
 ### AI / operational handoff context
 
-- `../../PROJECT_CONTEXT.md`
-- `../../CURRENT_PROJECT_REPORT.md`
-- `../../PROMPT_LAB_AGENT.md`
-- `../../SESSION_INIT_PROMPT.md`
-- `../../SESSION_HANDOFF_PROMPT.md`
+- `../../docs/PROJECT_CONTEXT.md`
+- `../../docs/CURRENT_PROJECT_REPORT.md`
+- `../../docs/PROMPT_LAB_AGENT.md`
+- `../../docs/SESSION_INIT_PROMPT.md`
+- `../../docs/SESSION_HANDOFF_PROMPT.md`
 
 These are working-context files, not canonical product documentation.
 
