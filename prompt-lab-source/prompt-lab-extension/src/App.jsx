@@ -6,6 +6,7 @@ import {
 } from './promptUtils';
 import { APP_VERSION, T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
+import useLibraryTweaks from './hooks/useLibraryTweaks.js';
 import useUiState from './hooks/useUiState.js';
 import useNavigation from './hooks/useNavigation.js';
 import useEditorState from './hooks/useEditorState.js';
@@ -100,6 +101,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
 
   // ── Library hook ──
   const lib = useLibrary(notify);
+  const libraryTweaks = useLibraryTweaks();
   const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──
@@ -640,6 +642,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               canUseCollections={canUseCollections}
               canExportLibrary={canExportLibrary}
               openBilling={openBilling}
+              tw={libraryTweaks.tw}
             />
           )}
         />
