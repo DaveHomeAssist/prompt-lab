@@ -12,6 +12,12 @@ export const storageKeys = Object.freeze({
   libraryDensity: 'pl2-density',
   libraryAccent: 'pl2-accent',
   librarySignature: 'pl2-signature',
+  // Prompt Packs v1 uses a NEW key (not the spec's `pl2-loaded-packs`)
+  // because that name is already taken by the legacy starter-pack tracker
+  // in lib/seedTransform.js — flat string[] of pack ids. Reusing the
+  // legacy key would silently clobber starter-pack state on first import.
+  // Documented in lib/packs/store.js header.
+  packsV1: 'pl2-packs-v1',
 });
 
 export function loadJson(key, fallback = null) {
