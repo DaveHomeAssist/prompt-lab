@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useLibraryTweaks from '../hooks/useLibraryTweaks.js';
 import {
   DEFAULT_LIBRARY_TWEAKS,
@@ -104,5 +104,29 @@ describe('useLibraryTweaks', () => {
     expect(result.current.values.density).toBe(DEFAULT_LIBRARY_TWEAKS.density);
     expect(JSON.parse(localStorage.getItem(storageKeys.libraryDensity)))
       .toBe(DEFAULT_LIBRARY_TWEAKS.density);
+  });
+
+  it('fires onChange(axis, from, to) only when the validated value actually changes', () => {
+    const onChange = vi.fn();
+    const { result } = renderHook(() => useLibraryTweaks({ onChange }));
+
+    // No-op write (same value as current default) — must not emit.
+    act(() => result.current.setDensity(DEFAULT_LIBRARY_TWEAKS.density));
+    expect(onChange).not.toHaveBeenCalled();
+
+    // Real change — emits with axis + from + to.
+    act(() => result.current.setAccent('citrus'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('accent', DEFAULT_LIBRARY_TWEAKS.accent, 'citrus');
+
+    // Invalid value coerced to current — no emit (the validated `next`
+    // equals the previous validated value).
+    act(() => result.current.setSignature('not-a-signature'));
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    // Subsequent real change emits again with the new from/to.
+    act(() => result.current.setAccent('forest'));
+    expect(onChange).toHaveBeenCalledTimes(2);
+    expect(onChange).toHaveBeenLastCalledWith('accent', 'citrus', 'forest');
   });
 });

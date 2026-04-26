@@ -101,7 +101,14 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
 
   // ── Library hook ──
   const lib = useLibrary(notify);
-  const libraryTweaks = useLibraryTweaks();
+  const libraryTweaks = useLibraryTweaks({
+    // PROPOSED event name — analytics owner has final naming rights before
+    // it lands in the warehouse. Kept as one event with `axis` discriminator
+    // to match the existing `domain.verb_in_past_tense` convention.
+    onChange: (axis, from, to) => {
+      void telemetry?.track?.('library.tweak_changed', { axis, from, to });
+    },
+  });
   const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──
@@ -412,6 +419,11 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       source,
       hasCollection: Boolean(entry?.collection),
       plan: billing.plan,
+      // Steady-state distribution of v2 visual presets — pairs with the
+      // library.tweak_changed transition events.
+      density: libraryTweaks.values.density,
+      accent: libraryTweaks.values.accent,
+      signature: libraryTweaks.values.signature,
     });
     await loadEntry(entry);
   };
