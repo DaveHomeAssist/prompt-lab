@@ -8,7 +8,7 @@
 
 I built Prompt Lab because I was tired of keeping five AI tabs open to test the same prompt across different models.
 
-It's a prompt engineering workbench that runs as a web app (https://prompt-lab-tawny.vercel.app/app/) or Chrome extension. You bring your own API keys — they stay in localStorage, never touch a server.
+It's a prompt engineering workbench that runs as a web app (https://promptlab.tools/app/) or unpacked Chrome/Vivaldi extension. You bring your own API keys; in hosted web mode provider requests pass through a narrow Vercel proxy for CORS, and Prompt Lab does not persist prompts or keys server-side.
 
 What it does:
 
@@ -19,8 +19,8 @@ What it does:
 - **Golden Response** — pin a reference output and diff future iterations against it
 - **5 providers** — Anthropic, OpenAI, Gemini, OpenRouter, Ollama (local models)
 
-No backend. No account. No telemetry. The entire thing runs client-side.
+No account required for the editor. Prompt text, model responses, and provider keys stay local unless you explicitly send a provider request. Usage insights are lightweight and exclude prompt text, model responses, and keys.
 
-Built with React, Vite, Tailwind. Source is on GitHub: https://github.com/DaveHomeAssist/prompt-lab-provider-options
+Built with React, Vite, Tailwind. Source is on GitHub: https://github.com/DaveHomeAssist/prompt-lab
 
 I'd love feedback on the workflow — especially from anyone doing systematic prompt optimization.

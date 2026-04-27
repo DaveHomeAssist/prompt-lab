@@ -4,11 +4,18 @@
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
   "rewrites": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "mobile.promptlab.tools" }],
+      "destination": "/mobile/index.html"
+    },
     { "source": "/tools", "destination": "/tools.html" },
     { "source": "/templates", "destination": "/templates/index.html" },
     { "source": "/privacy", "destination": "/privacy.html" },
     { "source": "/guide", "destination": "/guide.html" },
     { "source": "/setup", "destination": "/setup.html" },
+    { "source": "/mobile", "destination": "/mobile/index.html" },
+    { "source": "/mobile/", "destination": "/mobile/index.html" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
