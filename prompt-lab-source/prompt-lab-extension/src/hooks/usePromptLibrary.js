@@ -10,6 +10,7 @@ import {
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
+import { normalizeTagList } from '../lib/tagSchema.js';
 import {
   getLoadedPacks,
   getStarterLibraries,
@@ -182,7 +183,7 @@ export default function usePromptLibrary(notify) {
       enhanced: ensureString(enhanced).trim() ? ensureString(enhanced) : ensureString(raw),
       variants: Array.isArray(variants) ? variants : [],
       notes: ensureString(notes),
-      tags: Array.isArray(tags) ? tags.filter(tag => typeof tag === 'string' && tag.trim()) : [],
+      tags: normalizeTagList(tags),
       collection: ensureString(collection),
     };
 
@@ -494,7 +495,7 @@ export default function usePromptLibrary(notify) {
   }, [applyLegacyPayload, notify, recoveringLegacyLibrary]);
 
   const allLibTags = useMemo(
-    () => [...new Set(library.flatMap(entry => entry.tags || []))],
+    () => normalizeTagList(library.flatMap(entry => entry.tags || [])),
     [library],
   );
 
