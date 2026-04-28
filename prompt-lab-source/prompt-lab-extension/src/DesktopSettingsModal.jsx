@@ -160,6 +160,14 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     : ollama.tone === 'error'
       ? 'text-red-400'
       : m.textMuted;
+  const apiKeyConnectionError = connection.tone === 'error' && /API key/i.test(connection.message || '')
+    ? connection.message
+    : '';
+  const anthropicKeyError = !isHostedWeb && settings.provider === 'anthropic' ? apiKeyConnectionError : '';
+  const openaiKeyError = settings.provider === 'openai' ? apiKeyConnectionError : '';
+  const geminiKeyError = settings.provider === 'gemini' ? apiKeyConnectionError : '';
+  const openrouterKeyError = settings.provider === 'openrouter' ? apiKeyConnectionError : '';
+  const ollamaBaseUrlError = settings.provider === 'ollama' && ollama.tone === 'error' ? ollama.message : '';
 
   return (
     <div
@@ -231,8 +239,15 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   placeholder={isHostedWeb ? 'Optional personal override' : 'sk-ant-...'}
                   value={settings.apiKey}
                   onChange={event => updateSetting('apiKey', event.target.value)}
+                  aria-invalid={Boolean(anthropicKeyError)}
+                  aria-describedby={anthropicKeyError ? 'desktop-anthropic-key-error' : undefined}
                   className={inputClass}
                 />
+                {anthropicKeyError && (
+                  <div id="desktop-anthropic-key-error" role="alert" className="text-xs text-red-400 mt-1">
+                    {anthropicKeyError}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
@@ -261,8 +276,15 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   type="password"
                   value={settings.openaiApiKey}
                   onChange={event => updateSetting('openaiApiKey', event.target.value)}
+                  aria-invalid={Boolean(openaiKeyError)}
+                  aria-describedby={openaiKeyError ? 'desktop-openai-key-error' : undefined}
                   className={inputClass}
                 />
+                {openaiKeyError && (
+                  <div id="desktop-openai-key-error" role="alert" className="text-xs text-red-400 mt-1">
+                    {openaiKeyError}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
@@ -284,8 +306,15 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   type="password"
                   value={settings.geminiApiKey}
                   onChange={event => updateSetting('geminiApiKey', event.target.value)}
+                  aria-invalid={Boolean(geminiKeyError)}
+                  aria-describedby={geminiKeyError ? 'desktop-gemini-key-error' : undefined}
                   className={inputClass}
                 />
+                {geminiKeyError && (
+                  <div id="desktop-gemini-key-error" role="alert" className="text-xs text-red-400 mt-1">
+                    {geminiKeyError}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
@@ -307,8 +336,15 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   type="password"
                   value={settings.openrouterApiKey}
                   onChange={event => updateSetting('openrouterApiKey', event.target.value)}
+                  aria-invalid={Boolean(openrouterKeyError)}
+                  aria-describedby={openrouterKeyError ? 'desktop-openrouter-key-error' : undefined}
                   className={inputClass}
                 />
+                {openrouterKeyError && (
+                  <div id="desktop-openrouter-key-error" role="alert" className="text-xs text-red-400 mt-1">
+                    {openrouterKeyError}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
@@ -330,8 +366,15 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   type="text"
                   value={settings.ollamaBaseUrl}
                   onChange={event => updateSetting('ollamaBaseUrl', event.target.value)}
+                  aria-invalid={Boolean(ollamaBaseUrlError)}
+                  aria-describedby={ollamaBaseUrlError ? 'desktop-ollama-base-url-error' : undefined}
                   className={inputClass}
                 />
+                {ollamaBaseUrlError && (
+                  <div id="desktop-ollama-base-url-error" role="alert" className="text-xs text-red-400 mt-1">
+                    {ollamaBaseUrlError}
+                  </div>
+                )}
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
@@ -351,7 +394,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                 >
                   {isRefreshingModels ? 'Refreshing...' : 'Refresh Models'}
                 </button>
-                <span className={`text-xs ${ollamaStatusClass}`}>{ollama.message || 'Load available local models'}</span>
+                <span role={ollama.tone === 'error' && !ollamaBaseUrlError ? 'alert' : undefined} className={`text-xs ${ollamaStatusClass}`}>{ollama.message || 'Load available local models'}</span>
               </div>
               {ollamaModels.length > 0 && (
                 <label className="block space-y-1">
@@ -373,7 +416,11 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           )}
 
           <div className={`space-y-3 border-t ${m.border} pt-4`}>
-            {connection.message && <p className={`text-sm ${statusClass}`}>{connection.message}</p>}
+            {connection.message && (
+              <p role={connection.tone === 'error' && !apiKeyConnectionError ? 'alert' : undefined} className={`text-sm ${statusClass}`}>
+                {connection.message}
+              </p>
+            )}
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"

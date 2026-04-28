@@ -95,6 +95,11 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
         : !readyToImport
           ? 'Paste or drop a preset pack to enable'
           : undefined;
+  const presetSourceErrorIds = [
+    preview.parseError ? 'preset-source-error' : null,
+    preview.validation?.errors?.length > 0 ? 'preset-validation-error' : null,
+  ].filter(Boolean).join(' ');
+  const presetSourceHasError = Boolean(presetSourceErrorIds);
 
   const handleSourceText = (value, label = '') => {
     setSourceText(value);
@@ -240,11 +245,13 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
         value={sourceText}
         onChange={(event) => handleSourceText(event.target.value, sourceLabel)}
         placeholder='Paste preset pack JSON…'
+        aria-invalid={presetSourceHasError}
+        aria-describedby={presetSourceErrorIds || undefined}
         className={`min-h-[9rem] w-full ${m.input} border rounded-xl px-3 py-2 text-xs leading-relaxed focus:outline-none focus:border-violet-500 ${m.text}`}
       />
 
       {preview.parseError && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <div id="preset-source-error" role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2">
           <div className="flex items-center gap-2">
             <DraftBadge tone="danger">Invalid JSON</DraftBadge>
             <p className="text-xs text-rose-200">{preview.parseError}</p>
@@ -272,7 +279,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       )}
 
       {preview.validation?.errors?.length > 0 && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <div id="preset-validation-error" role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2">
           <div className="mb-2 flex items-center gap-2">
             <DraftBadge tone="danger">Fix before import</DraftBadge>
           </div>

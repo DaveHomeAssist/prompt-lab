@@ -29,6 +29,8 @@ export default function TestCasesPanel({
   loadCaseIntoEditor, runSingleCase, removeCase,
 }) {
   const isFormOpen = caseFormPromptId === entry.id;
+  const caseInputError = isFormOpen && !caseInput.trim() ? 'Test cases require a promptId and input.' : '';
+  const caseInputErrorId = 'test-case-input-error';
 
   return (
     <div>
@@ -56,7 +58,14 @@ export default function TestCasesPanel({
             placeholder="Representative prompt input..."
             value={caseInput}
             onChange={(e) => setCaseInput(e.target.value)}
+            aria-invalid={Boolean(caseInputError)}
+            aria-describedby={caseInputError ? caseInputErrorId : undefined}
           />
+          {caseInputError && (
+            <div id={caseInputErrorId} role="alert" className="text-rose-300 text-xs mt-1">
+              {caseInputError}
+            </div>
+          )}
           <input
             className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
             placeholder="Expected traits (comma separated)"
