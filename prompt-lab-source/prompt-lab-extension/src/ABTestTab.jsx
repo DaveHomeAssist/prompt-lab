@@ -27,6 +27,7 @@ export default function ABTestTab({
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
   const bothReady = Boolean(abA.response && !abA.error && abB.response && !abB.error);
+  const runBothTitle = abA.loading || abB.loading ? 'A run is already in progress' : undefined;
 
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
@@ -34,7 +35,7 @@ export default function ABTestTab({
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
-          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
+          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading} title={runBothTitle}
             className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run Both
           </button>
@@ -69,12 +70,19 @@ export default function ABTestTab({
         </div>
       )}
       <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : ''}`}>
-        {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => (
+        {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => {
+          const runTitle = state.loading
+            ? 'A run is already in progress'
+            : !state.prompt.trim()
+              ? 'Type a prompt to enable'
+              : undefined;
+
+          return (
           <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
               <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
               <div className="flex gap-2">
-                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()}
+                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()} title={runTitle}
                   className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
                   {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                 </button>
@@ -110,7 +118,8 @@ export default function ABTestTab({
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       <div className={`border-t ${m.border} shrink-0`}>
         <button type="button" onClick={() => setShowRuns(p => !p)}
