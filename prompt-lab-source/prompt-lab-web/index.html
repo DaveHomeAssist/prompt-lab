@@ -1140,6 +1140,22 @@ img { display: block; max-width: 100%; }
   transition: color 0.2s;
 }
 .mobile-nav a:hover { color: var(--accent); }
+
+/* ========== TOUCH-AWARE NAV TAP TARGETS ========== */
+/* Bump nav anchors to 44x44 on touch devices so phone-landscape and tablet-touch
+   meet the Apple HIG / WCAG 2.5.5 floor. Scoped to (hover: none) and (pointer:
+   coarse) so desktop mouse layouts stay visually compact. */
+@media (hover: none) and (pointer: coarse) {
+  .nav a,
+  .mobile-nav a {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 </style>
 </head>
 <body>
