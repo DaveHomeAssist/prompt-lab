@@ -18,6 +18,7 @@
     { "source": "/mobile/", "destination": "/mobile/index.html" },
     { "source": "/app", "destination": "/app/index.html" },
     { "source": "/app/(.*)", "destination": "/app/index.html" },
+    { "source": "/embed", "destination": "/prompt-embed.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "headers": [

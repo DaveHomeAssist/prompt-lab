@@ -102,6 +102,24 @@ describe('usePromptLibrary', () => {
     expect(notify).toHaveBeenCalledWith('Removed collection: Ops');
   });
 
+  it('normalizes stored tags and canonicalizes known aliases', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({ id: 'entry-1', title: 'One', tags: ['code', 'CODING', ' Code '] }),
+      makeEntry({ id: 'entry-2', title: 'Two', tags: ['analysis', 'ANALYTICAL'] }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+    });
+
+    expect(result.current.library[0].tags).toEqual(['Code']);
+    expect(result.current.library[1].tags).toEqual(['Analysis']);
+    expect(result.current.allLibTags).toEqual(['Code', 'Analysis']);
+  });
+
   it('marks the legacy library bridge as checked when recovery is unreachable', async () => {
     legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(null);
 

@@ -12,6 +12,7 @@ export default defineConfig({
       // (in CI, only prompt-lab-desktop/node_modules is installed)
       react: resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
+      'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom'),
     },
   },
   build: {

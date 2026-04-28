@@ -1,4 +1,5 @@
 import { ensureString, normalizeVariant, randomId, safeDate } from './utils.js';
+import { normalizeTagList } from './tagSchema.js';
 
 const MAX_PROMPT_VERSIONS = 25;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
@@ -324,7 +325,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     enhanced: content.enhanced,
     variants: content.variants,
     notes: content.notes,
-    tags: normalizeStringList(entry.tags),
+    tags: normalizeTagList(entry.tags),
     collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
     updatedAt,
