@@ -29,10 +29,8 @@ const DEFAULT_SETTINGS = {
 export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [ollamaModels, setOllamaModels] = useState([]);
-  const [ollamaStatus, setOllamaStatus] = useState('');
-  const [ollamaStatusType, setOllamaStatusType] = useState('neutral');
-  const [connectionStatus, setConnectionStatus] = useState('');
-  const [connectionStatusType, setConnectionStatusType] = useState('neutral');
+  const [ollama, setOllama] = useState({ message: '', tone: 'neutral' });
+  const [connection, setConnection] = useState({ message: '', tone: 'neutral' });
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
@@ -44,10 +42,8 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   useEffect(() => {
     if (!show) return;
     let cancelled = false;
-    setConnectionStatus('');
-    setConnectionStatusType('neutral');
-    setOllamaStatus('');
-    setOllamaStatusType('neutral');
+    setConnection({ message: '', tone: 'neutral' });
+    setOllama({ message: '', tone: 'neutral' });
     setOllamaModels([]);
     loadProviderSettings()
       .then((stored) => {
@@ -72,6 +68,18 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
       cancelled = true;
     };
   }, [isHostedWeb, show]);
+
+  useEffect(() => {
+    if (connection.tone !== 'success') return;
+    const t = setTimeout(() => setConnection({ message: '', tone: 'neutral' }), 3000);
+    return () => clearTimeout(t);
+  }, [connection]);
+
+  useEffect(() => {
+    if (ollama.tone !== 'success') return;
+    const t = setTimeout(() => setOllama({ message: '', tone: 'neutral' }), 3000);
+    return () => clearTimeout(t);
+  }, [ollama]);
 
   const currentModel = useMemo(() => {
     switch (settings.provider) {
@@ -98,19 +106,16 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   async function handleSave() {
     try {
       await saveProviderSettings(settings);
-      setConnectionStatus('Settings saved.');
-      setConnectionStatusType('success');
+      setConnection({ message: 'Settings saved.', tone: 'success' });
       notify?.('Provider settings saved');
     } catch (error) {
-      setConnectionStatus(error?.message || 'Failed to save settings.');
-      setConnectionStatusType('error');
+      setConnection({ message: error?.message || 'Failed to save settings.', tone: 'error' });
     }
   }
 
   async function handleRefreshModels() {
     setIsRefreshingModels(true);
-    setOllamaStatus('');
-    setOllamaStatusType('neutral');
+    setOllama({ message: '', tone: 'neutral' });
     try {
       const models = await listOllamaModels(settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl);
       setOllamaModels(models);
@@ -118,12 +123,10 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
       if (modelNames.length > 0 && !modelNames.includes(settings.ollamaModel)) {
         updateSetting('ollamaModel', modelNames[0]);
       }
-      setOllamaStatus(`${modelNames.length} model${modelNames.length === 1 ? '' : 's'} found`);
-      setOllamaStatusType('success');
+      setOllama({ message: `${modelNames.length} model${modelNames.length === 1 ? '' : 's'} found`, tone: 'success' });
     } catch (error) {
       setOllamaModels([]);
-      setOllamaStatus(error?.message || 'Failed to load models');
-      setOllamaStatusType('error');
+      setOllama({ message: error?.message || 'Failed to load models', tone: 'error' });
     } finally {
       setIsRefreshingModels(false);
     }
@@ -131,33 +134,30 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
 
   async function handleTestConnection() {
     setIsTestingConnection(true);
-    setConnectionStatus('');
-    setConnectionStatusType('neutral');
+    setConnection({ message: '', tone: 'neutral' });
     try {
       await testProviderConnection({
         model: currentModel,
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Say "ok"' }],
       }, settings);
-      setConnectionStatus('Connected!');
-      setConnectionStatusType('success');
+      setConnection({ message: 'Connected!', tone: 'success' });
     } catch (error) {
-      setConnectionStatus(error?.message || 'Connection failed.');
-      setConnectionStatusType('error');
+      setConnection({ message: error?.message || 'Connection failed.', tone: 'error' });
     } finally {
       setIsTestingConnection(false);
     }
   }
 
-  const statusClass = connectionStatusType === 'success'
+  const statusClass = connection.tone === 'success'
     ? 'text-emerald-400'
-    : connectionStatusType === 'error'
+    : connection.tone === 'error'
       ? 'text-red-400'
       : m.textMuted;
 
-  const ollamaStatusClass = ollamaStatusType === 'success'
+  const ollamaStatusClass = ollama.tone === 'success'
     ? 'text-emerald-400'
-    : ollamaStatusType === 'error'
+    : ollama.tone === 'error'
       ? 'text-red-400'
       : m.textMuted;
 
@@ -351,7 +351,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                 >
                   {isRefreshingModels ? 'Refreshing...' : 'Refresh Models'}
                 </button>
-                <span className={`text-xs ${ollamaStatusClass}`}>{ollamaStatus || 'Load available local models'}</span>
+                <span className={`text-xs ${ollamaStatusClass}`}>{ollama.message || 'Load available local models'}</span>
               </div>
               {ollamaModels.length > 0 && (
                 <label className="block space-y-1">
@@ -373,7 +373,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           )}
 
           <div className={`space-y-3 border-t ${m.border} pt-4`}>
-            {connectionStatus && <p className={`text-sm ${statusClass}`}>{connectionStatus}</p>}
+            {connection.message && <p className={`text-sm ${statusClass}`}>{connection.message}</p>}
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
