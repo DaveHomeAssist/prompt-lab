@@ -7,6 +7,7 @@ import {
   mergeCollections,
   mergeLibraryEntries,
   parseLegacyLibraryPayload,
+  shouldAttemptLegacyWebMigration,
 } from '../lib/legacyLibraryMigration.js';
 
 describe('legacyLibraryMigration', () => {
@@ -65,5 +66,11 @@ describe('legacyLibraryMigration', () => {
       collections: ['Recovered'],
       sourceOrigin: 'https://prompt-lab-tawny.vercel.app',
     });
+  });
+
+  it('skips automatic legacy migration attempts on localhost preview origins', () => {
+    expect(shouldAttemptLegacyWebMigration('http://localhost:4176', 'http:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('http://127.0.0.1:4176', 'http:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('https://promptlab-preview.example.com', 'https:')).toBe(true);
   });
 });

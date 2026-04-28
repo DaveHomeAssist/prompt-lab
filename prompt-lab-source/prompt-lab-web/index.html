@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Lab — Every prompt, sharpened</title>
-<meta name="description" content="The multi-provider prompt engineering workspace. Enhance, compare, and perfect your prompts across Claude, GPT-4, Gemini, and more.">
+<title>Prompt Lab - Write sharper prompts. Keep the winners.</title>
+<meta name="description" content="Prompt Lab gives you one serious workspace to write, improve, save, and evaluate prompts across Claude, GPT-4o, Gemini, OpenRouter, and local models.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -355,6 +355,20 @@ img { display: block; max-width: 100%; }
   border-color: var(--text-tertiary);
   color: var(--text-primary);
   background: var(--accent-subtle);
+}
+.btn-tertiary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  transition: color 0.2s, background 0.2s;
+}
+.btn-tertiary:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 /* ========== PROOF STRIP ========== */
@@ -1126,6 +1140,22 @@ img { display: block; max-width: 100%; }
   transition: color 0.2s;
 }
 .mobile-nav a:hover { color: var(--accent); }
+
+/* ========== TOUCH-AWARE NAV TAP TARGETS ========== */
+/* Bump nav anchors to 44x44 on touch devices so phone-landscape and tablet-touch
+   meet the Apple HIG / WCAG 2.5.5 floor. Scoped to (hover: none) and (pointer:
+   coarse) so desktop mouse layouts stay visually compact. */
+@media (hover: none) and (pointer: coarse) {
+  .nav a,
+  .mobile-nav a {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 </style>
 </head>
 <body>
@@ -1139,11 +1169,11 @@ img { display: block; max-width: 100%; }
     </a>
     <div class="nav-links">
       <span class="nav-version">v1.7</span>
-      <a href="#features" class="nav-link">Features</a>
-      <a href="#demo" class="nav-link">Demo</a>
+      <a href="#workflow" class="nav-link">Workflow</a>
+      <a href="#demo" class="nav-link">Try it</a>
       <a href="#pricing" class="nav-link">Pricing</a>
-      <a href="https://promptlab.tools/guide" class="nav-link" target="_blank">Docs</a>
-      <a href="https://promptlab.tools/app" class="nav-cta">Open app →</a>
+      <a href="https://promptlab.tools/guide.html" class="nav-link" target="_blank">Docs</a>
+      <a href="https://promptlab.tools/app" class="nav-cta">Open PromptLab &rarr;</a>
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Menu">
       <span></span><span></span><span></span>
@@ -1153,11 +1183,11 @@ img { display: block; max-width: 100%; }
 
 <!-- Mobile nav -->
 <div class="mobile-nav" id="mobileNav">
-  <a href="#features" onclick="closeMobileNav()">Features</a>
-  <a href="#demo" onclick="closeMobileNav()">Demo</a>
+  <a href="#workflow" onclick="closeMobileNav()">Workflow</a>
+  <a href="#demo" onclick="closeMobileNav()">Try it</a>
   <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
-  <a href="https://promptlab.tools/guide" target="_blank" onclick="closeMobileNav()">Docs</a>
-  <a href="https://promptlab.tools/app" class="btn-primary" onclick="closeMobileNav()">Open app</a>
+  <a href="https://promptlab.tools/guide.html" target="_blank" onclick="closeMobileNav()">Docs</a>
+  <a href="https://promptlab.tools/app" class="btn-primary" onclick="closeMobileNav()">Open PromptLab</a>
 </div>
 
 <!-- ===== HERO ===== -->
@@ -1168,21 +1198,22 @@ img { display: block; max-width: 100%; }
   <div class="container hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      v1.7 — Library export · Evaluate timeline · Quick resume
+      v1.7 - Workbench &middot; Library &middot; Evaluate
     </div>
     <h1 class="hero-headline">
-      <span>Every prompt,</span>
-      <span><span class="hero-italic">sharpened.</span></span>
+      <span>Write sharper prompts.</span>
+      <span><span class="hero-italic">Keep the winners.</span></span>
     </h1>
     <p class="hero-sub">
-      The multi-provider workspace for prompt engineering. Enhance, compare, and iterate across Claude, GPT-4o, Gemini, and local models — then ship with confidence.
+      Prompt Lab gives you one serious workspace to write, improve, save, and evaluate prompts across Claude, GPT-4o, Gemini, OpenRouter, and local models.
     </p>
     <div class="hero-actions">
       <a href="https://promptlab.tools/app" class="btn-primary">
-        Improve your first prompt
+        Open PromptLab
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <a href="#demo" class="btn-secondary">See it in action</a>
+      <a href="https://promptlab.tools/setup.html" class="btn-secondary">Extension setup</a>
+      <a href="#workflow" class="btn-tertiary">See how it works</a>
     </div>
   </div>
 </section>
@@ -1197,39 +1228,39 @@ img { display: block; max-width: 100%; }
       </div>
       <div class="proof-item">
         <div class="proof-number" data-count="5"><span class="accent">5</span></div>
-        <div class="proof-label">AI providers</div>
+        <div class="proof-label">Providers supported</div>
       </div>
       <div class="proof-item">
-        <div class="proof-number">100<span class="accent">%</span></div>
-        <div class="proof-label">Local storage</div>
+        <div class="proof-number"><span class="accent">JSON</span></div>
+        <div class="proof-label">Library-backed workflow</div>
       </div>
       <div class="proof-item">
-        <div class="proof-number"><span class="accent">0</span>ms</div>
-        <div class="proof-label">Data sent to us</div>
+        <div class="proof-number"><span class="accent">Local</span></div>
+        <div class="proof-label">Prompts kept local-first</div>
       </div>
     </div>
   </div>
 </section>
 
 <!-- ===== FEATURES ===== -->
-<section class="features" id="features">
+<section class="features" id="workflow">
   <div class="container">
     <div class="reveal">
-      <div class="section-label">Capabilities</div>
-      <h2 class="section-heading">One workspace.<br>Every tool you need.</h2>
-      <p class="section-sub">Prompt Lab packs a full prompt engineering toolkit into a single interface — no tab switching, no copy-pasting between tools.</p>
+      <div class="section-label">Workflow</div>
+      <h2 class="section-heading">Workbench, Library, Evaluate.</h2>
+      <p class="section-sub">Prompt Lab is built around one repeatable loop: sharpen the prompt, keep the version that works, and test it against real model output.</p>
     </div>
 
-    <!-- Feature 1: Enhance -->
+    <!-- Feature 1: Workbench -->
     <div class="feature-row reveal">
       <div class="feature-text">
-        <div class="feature-tag">Enhance</div>
-        <h3 class="feature-title">Sharpen clarity without changing intent</h3>
-        <p class="feature-desc">Seven enhancement modes transform rough ideas into precision prompts. Improve structure, expand detail, clean noise, or tighten focus — all while preserving your original meaning.</p>
+        <div class="feature-tag">Workbench</div>
+        <h3 class="feature-title">Sharpen the prompt without losing the point</h3>
+        <p class="feature-desc">Use the workbench to turn rough instructions into usable prompts with fast iteration, visible diffs, and enhancement modes that keep the original intent intact.</p>
         <ul class="feature-bullets">
-          <li>Improve, Expand, Shorten, Fix, Simplify, Formalize, and Custom modes</li>
+          <li>Seven enhancement modes inside one working surface</li>
           <li>Word-level diff view shows exactly what changed and why</li>
-          <li>One-click accept or iterate further</li>
+          <li>One-click accept, copy, or iterate further</li>
         </ul>
       </div>
       <div class="feature-visual">
@@ -1237,7 +1268,7 @@ img { display: block; max-width: 100%; }
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">enhance mode</span>
+          <span class="feature-visual-chrome-title">workbench</span>
         </div>
         <div class="feature-visual-body">
           <div class="mock-tabs">
@@ -1269,16 +1300,16 @@ img { display: block; max-width: 100%; }
       </div>
     </div>
 
-    <!-- Feature 2: A/B Compare -->
+    <!-- Feature 2: Evaluate -->
     <div class="feature-row reverse reveal">
       <div class="feature-text">
-        <div class="feature-tag">Compare</div>
-        <h3 class="feature-title">A/B test across any model</h3>
-        <p class="feature-desc">Send the same prompt to two different providers and see the responses side-by-side. Find the right model for every use case — without leaving the workspace.</p>
+        <div class="feature-tag">Evaluate</div>
+        <h3 class="feature-title">Compare runs instead of guessing</h3>
+        <p class="feature-desc">Run the same prompt across providers, compare outputs side-by-side, and keep a visible record of what actually worked before you reuse it.</p>
         <ul class="feature-bullets">
           <li>Claude, GPT-4o, Gemini, OpenRouter, and Ollama</li>
           <li>Side-by-side response comparison</li>
-          <li>Evaluate and track results over time</li>
+          <li>Evaluate runs and track results over time</li>
         </ul>
       </div>
       <div class="feature-visual">
@@ -1286,7 +1317,7 @@ img { display: block; max-width: 100%; }
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">a/b compare</span>
+          <span class="feature-visual-chrome-title">evaluate</span>
         </div>
         <div class="feature-visual-body">
           <div class="mock-models">
@@ -1331,11 +1362,11 @@ img { display: block; max-width: 100%; }
     <div class="feature-row reveal">
       <div class="feature-text">
         <div class="feature-tag">Library</div>
-        <h3 class="feature-title">Save once, use everywhere</h3>
-        <p class="feature-desc">Build a personal library of battle-tested prompts. Tag, search, and compose from your best work. Export to JSON anytime — your prompts belong to you.</p>
+        <h3 class="feature-title">Keep the prompts worth reusing</h3>
+        <p class="feature-desc">Save the prompts that earn a second life. Search them later, reuse fragments, and export them whenever you want your system outside the app.</p>
         <ul class="feature-bullets">
           <li>Full-text search across your entire library</li>
-          <li>Compose complex prompts from saved fragments</li>
+          <li>Compose longer prompts from saved fragments</li>
           <li>JSON export for portability and version control</li>
         </ul>
       </div>
@@ -1344,7 +1375,7 @@ img { display: block; max-width: 100%; }
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
           <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">prompt library</span>
+          <span class="feature-visual-chrome-title">library</span>
         </div>
         <div class="feature-visual-body" style="gap: 10px;">
           <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
@@ -1389,9 +1420,9 @@ img { display: block; max-width: 100%; }
 <section class="demo-section" id="demo">
   <div class="container demo-wrapper">
     <div class="demo-header reveal">
-      <div class="section-label">Try it</div>
-      <h2 class="section-heading" style="margin-left:auto;margin-right:auto;">See the difference in real time</h2>
-      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Paste any rough prompt and watch Prompt Lab transform it.</p>
+      <div class="section-label">Workbench</div>
+      <h2 class="section-heading" style="margin-left:auto;margin-right:auto;">See the workbench in motion</h2>
+      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Paste a rough prompt and watch Prompt Lab turn it into a cleaner, more reusable version.</p>
     </div>
     <div class="demo-container reveal reveal-delay-1">
       <div class="demo-chrome">
@@ -1415,13 +1446,13 @@ img { display: block; max-width: 100%; }
           <textarea class="demo-textarea" id="demoInput" spellcheck="false">Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.</textarea>
         </div>
         <div class="demo-panel">
-          <div class="demo-panel-label"><span class="dot output-dot"></span> Enhanced</div>
+          <div class="demo-panel-label"><span class="dot output-dot"></span> Refined</div>
           <div class="demo-output" id="demoOutput"></div>
         </div>
       </div>
       <div class="demo-footer">
-        <span class="demo-hint">⌘ + Enter to enhance</span>
-        <button class="demo-run" id="demoRun">Enhance →</button>
+        <span class="demo-hint">Cmd + Enter to refine</span>
+        <button class="demo-run" id="demoRun">Refine →</button>
       </div>
     </div>
   </div>
@@ -1431,23 +1462,23 @@ img { display: block; max-width: 100%; }
 <section class="bento">
   <div class="container">
     <div class="reveal" style="margin-bottom: 64px;">
-      <div class="section-label">And more</div>
-      <h2 class="section-heading">Everything else<br>you'd expect.</h2>
+      <div class="section-label">Where it fits</div>
+      <h2 class="section-heading">Built for the rest<br>of the workflow.</h2>
     </div>
     <div class="bento-grid">
       <div class="bento-card span-2 reveal">
         <div class="bento-icon">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
         </div>
-        <div class="bento-title">Chrome &amp; Vivaldi Extension</div>
-        <div class="bento-desc">Enhance prompts directly inside ChatGPT, Claude, or any AI interface. The side panel keeps your workflow in context — no tab switching required. Works on Chrome, Vivaldi, Brave, and Edge.</div>
+        <div class="bento-title">Browser extension</div>
+        <div class="bento-desc">Keep Prompt Lab beside ChatGPT, Claude, or any AI interface when you want the workbench in context. Works on Chrome, Vivaldi, Brave, and Edge.</div>
       </div>
       <div class="bento-card reveal reveal-delay-1">
         <div class="bento-icon">
           <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </div>
-        <div class="bento-title">Prompt Composer</div>
-        <div class="bento-desc">Build complex prompts from reusable fragments. Chain system prompts, context blocks, and instructions into composable templates.</div>
+        <div class="bento-title">Compose</div>
+        <div class="bento-desc">Build longer prompts from reusable fragments in the same system as your saved library and workbench drafts.</div>
       </div>
       <div class="bento-card reveal reveal-delay-1">
         <div class="bento-icon">
@@ -1467,15 +1498,15 @@ img { display: block; max-width: 100%; }
         <div class="bento-icon">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
-        <div class="bento-title">Scratchpad</div>
-        <div class="bento-desc">A distraction-free workspace for drafting, brainstorming, and iterating on prompts before you commit.</div>
+        <div class="bento-title">Notebook</div>
+        <div class="bento-desc">Keep rough notes, snippets, and scratch work nearby without polluting the prompt versions that actually matter.</div>
       </div>
       <div class="bento-card reveal reveal-delay-3">
         <div class="bento-icon">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
-        <div class="bento-title">Eval History</div>
-        <div class="bento-desc">Track every test run with timestamps, model versions, and scored results. See how your prompts improve over time.</div>
+        <div class="bento-title">Run timeline</div>
+        <div class="bento-desc">Track every evaluation with timestamps, provider context, and scored results so your wins stay legible over time.</div>
       </div>
     </div>
   </div>
@@ -1486,8 +1517,8 @@ img { display: block; max-width: 100%; }
   <div class="container">
     <div class="pricing-header reveal">
       <div class="section-label">Pricing</div>
-      <h2 class="section-heading">Start free. Scale when ready.</h2>
-      <p class="section-sub">No credit card required. Your prompts stay local — always.</p>
+      <h2 class="section-heading">Start free. Upgrade when useful.</h2>
+      <p class="section-sub">No credit card required for the editor. Prompts and libraries stay in local browser storage unless you choose to call a provider.</p>
     </div>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
@@ -1498,8 +1529,8 @@ img { display: block; max-width: 100%; }
           <li>All 7 enhancement modes</li>
           <li>Multi-model provider switching</li>
           <li>Prompt library with search</li>
-          <li>Chrome extension</li>
-          <li>100% local storage</li>
+          <li>Extension setup guide</li>
+          <li>Local browser storage</li>
         </ul>
         <a href="https://promptlab.tools/app" class="pricing-btn outline">Get started free</a>
       </div>
@@ -1516,7 +1547,7 @@ img { display: block; max-width: 100%; }
           <li>Advanced linting rules</li>
           <li>Priority support</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn filled">Get Pro →</a>
+        <a href="https://promptlab.tools/app" class="pricing-btn filled">Open upgrade flow →</a>
       </div>
       <div class="pricing-card reveal reveal-delay-2">
         <div class="pricing-tier">Annual</div>
@@ -1528,7 +1559,7 @@ img { display: block; max-width: 100%; }
           <li>Early access to new features</li>
           <li>Roadmap input</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn outline">Go annual</a>
+        <a href="https://promptlab.tools/app" class="pricing-btn outline">Open annual option</a>
       </div>
     </div>
   </div>
@@ -1538,10 +1569,10 @@ img { display: block; max-width: 100%; }
 <section class="cta-section">
   <div class="container">
     <div class="reveal">
-      <h2 class="cta-heading">Your prompts deserve<br><em>better.</em></h2>
-      <p class="cta-sub">Join thousands of engineers, writers, and researchers who ship better AI — starting with better prompts.</p>
+      <h2 class="cta-heading">Build a prompt workflow,<br><em>not a prompt pile.</em></h2>
+      <p class="cta-sub">Open Prompt Lab on the web, install the extension when you want it beside the page, and keep the prompts that actually earn their place.</p>
       <a href="https://promptlab.tools/app" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;">
-        Try Prompt Lab free
+        Open PromptLab
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </div>
@@ -1557,24 +1588,24 @@ img { display: block; max-width: 100%; }
           <div class="nav-logo-mark" style="width:22px;height:22px;font-size:0.6rem;border-radius:5px;">PL</div>
           Prompt Lab
         </div>
-        <p class="footer-tagline">The prompt engineering workspace built for people who care about craft.</p>
+        <p class="footer-tagline">The prompt engineering workspace for people who want a workflow they can actually reuse.</p>
       </div>
       <div>
         <div class="footer-col-title">Product</div>
         <ul class="footer-links">
-          <li><a href="#features">Features</a></li>
+          <li><a href="#workflow">Workflow</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="https://promptlab.tools/app">Open App</a></li>
-          <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/CHANGELOG.md" target="_blank">Changelog</a></li>
+          <li><a href="https://promptlab.tools/app">Open PromptLab</a></li>
+          <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/prompt-lab-source/prompt-lab-extension/VERSION_HISTORY.md" target="_blank">Changelog</a></li>
         </ul>
       </div>
       <div>
         <div class="footer-col-title">Resources</div>
         <ul class="footer-links">
-          <li><a href="https://promptlab.tools/guide">Documentation</a></li>
-          <li><a href="https://promptlab.tools/setup">Extension Setup</a></li>
-          <li><a href="https://promptlab.tools/guide">API Providers</a></li>
-          <li><a href="https://promptlab.tools/guide">Prompt Guide</a></li>
+          <li><a href="https://promptlab.tools/guide.html">Documentation</a></li>
+          <li><a href="https://promptlab.tools/setup.html">Extension Setup</a></li>
+          <li><a href="https://promptlab.tools/guide.html">API Providers</a></li>
+          <li><a href="https://promptlab.tools/guide.html">Prompt Guide</a></li>
         </ul>
       </div>
       <div>
@@ -1582,16 +1613,15 @@ img { display: block; max-width: 100%; }
         <ul class="footer-links">
           <li><a href="https://systembydave.com" target="_blank">System by Dave</a></li>
           <li><a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank">GitHub</a></li>
-          <li><a href="https://twitter.com/promptlabtools" target="_blank">Twitter</a></li>
           <li><a href="mailto:hi@promptlab.tools">Contact</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>&copy; 2025 Prompt Lab. All rights reserved.</span>
+      <span>&copy; 2026 Prompt Lab. All rights reserved.</span>
       <div class="footer-bottom-links">
         <a href="https://promptlab.tools/privacy">Privacy</a>
-        <a href="https://promptlab.tools/privacy">Terms</a>
+        <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank">Source</a>
       </div>
     </div>
   </div>
@@ -1674,7 +1704,7 @@ modes.forEach(btn => {
 
 async function typeOutput(html) {
   isTyping = true;
-  demoRun.textContent = 'Enhancing...';
+  demoRun.textContent = 'Refining...';
   demoOutput.innerHTML = '';
 
   // Parse HTML to extract text and tags
@@ -1705,7 +1735,7 @@ async function typeOutput(html) {
       } else {
         demoOutput.innerHTML = fullHTML;
         isTyping = false;
-        demoRun.textContent = 'Enhance →';
+        demoRun.textContent = 'Refine →';
         resolve();
       }
     }

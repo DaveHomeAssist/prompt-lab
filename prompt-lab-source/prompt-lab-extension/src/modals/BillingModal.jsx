@@ -64,6 +64,15 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
     }
   }
 
+  async function handleOwnerAccess() {
+    try {
+      setLocalError('');
+      await billing.activateOwnerAccess();
+    } catch (error) {
+      setLocalError(error.message || 'Could not enable owner access.');
+    }
+  }
+
   return (
     <div className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
       <div
@@ -135,6 +144,26 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             <div className="mt-1 text-xs text-emerald-200">$100/year, best value</div>
           </button>
         </div>
+
+        {billing.ownerAccessAvailable && billing.plan !== 'pro' && (
+          <div className={`mt-4 rounded-xl border p-3 ${m.surface} ${m.border}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className={`text-sm font-semibold ${m.text}`}>Owner access</p>
+                <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
+                  Local desktop/dev builds can unlock Pro without Stripe.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleOwnerAccess}
+                className="ui-control rounded-lg bg-orange-500/90 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-400"
+              >
+                Enable Owner Pro
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">

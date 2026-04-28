@@ -8,6 +8,9 @@ import {
   parseJsonBody,
   persistTelemetryEvent,
 } from './_lib/telemetryStore.js';
+import { assertProductionConfig } from './_lib/assertProductionConfig.js';
+
+assertProductionConfig();
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();

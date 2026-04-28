@@ -28,37 +28,37 @@ const INTENT_POLICY = [
 export const MODES = [
   {
     id: 'balanced',
-    label: '⚖️ Balanced',
+    label: 'Balanced',
     sys: 'Improve clarity and specificity. Add role, task, format, or constraints only when genuinely absent and needed for execution. Prefer minimal changes over aggressive restructuring. If the prompt is already clear, make only light adjustments.',
   },
   {
     id: 'claude',
-    label: '🟣 Claude',
+    label: 'Claude',
     sys: 'Optimize for Anthropic Claude models. Use XML tags (<instructions>, <context>, <output>) to structure the prompt where helpful. Make the output format explicit. Use direct, clear instructions. Avoid system-message tricks that only work on other models.',
   },
   {
     id: 'chatgpt',
-    label: '🟢 ChatGPT',
+    label: 'ChatGPT',
     sys: 'Optimize for OpenAI GPT-4/o models. Use system/user message structure idioms. Add chain-of-thought prompting ("think step by step") where it improves accuracy. Use JSON output format where appropriate. Avoid XML tags.',
   },
   {
     id: 'image',
-    label: '🎨 Image Gen',
+    label: 'Image Gen',
     sys: 'Optimize for image generation models (DALL-E, Midjourney, Stable Diffusion). Add style, artistic medium, lighting, composition, camera angle, aspect ratio, and quality modifiers where missing. Keep the subject description faithful to the user\'s intent. Do not change what the user wants to see — only improve how it is described for the model.',
   },
   {
     id: 'code',
-    label: '💻 Code Gen',
+    label: 'Code Gen',
     sys: 'Optimize for code generation. Specify language, framework, and runtime where inferrable. Clarify input/output types, error handling expectations, and coding style. Add edge case notes only when they are likely to cause bugs. Do not add requirements the user did not ask for.',
   },
   {
     id: 'concise',
-    label: '✂️ Concise',
+    label: 'Concise',
     sys: 'Make the prompt as short and direct as possible. Remove filler words, redundant instructions, and unnecessary politeness. Preserve all intent, meaning, and constraints exactly. Do not add anything new. The goal is compression, not expansion.',
   },
   {
     id: 'detailed',
-    label: '📝 Detailed',
+    label: 'Detailed',
     sys: 'Expand the prompt with richer context, concrete examples, explicit edge cases, and clear constraints. Ground every addition in what the user actually asked for — do not introduce new goals, audiences, or requirements. The expansion should make the existing intent more executable, not change the intent.',
   },
 ];
@@ -446,18 +446,18 @@ Return only the system prompt, ready to paste.`,
 
 export const T = {
   dark: {
-    bg: 'bg-gray-950', surface: 'bg-gray-900', border: 'border-gray-800', borderHov: 'hover:border-gray-700',
-    input: 'bg-gray-900 border-gray-700', text: 'text-gray-100', textSub: 'text-gray-500', textMuted: 'text-gray-600',
-    textBody: 'text-gray-300', textAlt: 'text-gray-400', btn: 'bg-gray-800 hover:bg-gray-700',
-    header: 'bg-gray-900/95 backdrop-blur-sm border-gray-800', modalBg: 'bg-black/70', modal: 'bg-gray-900 border-gray-700',
-    notesBg: 'bg-amber-950/40 border-amber-900/50', notesText: 'text-amber-400', codeBlock: 'bg-gray-950',
+    bg: 'bg-[#06060a]', surface: 'bg-[#101018]', border: 'border-white/10', borderHov: 'hover:border-white/20',
+    input: 'bg-[#14141d] border-white/10', text: 'text-[#f0ede6]', textSub: 'text-[#b3afaa]', textMuted: 'text-[#7c7a76]',
+    textBody: 'text-[#d7d2cb]', textAlt: 'text-[#c7c2bb]', btn: 'bg-white/[0.04] hover:bg-white/[0.08]',
+    header: 'bg-[#0a0a0f]/95 backdrop-blur-sm border-white/10', modalBg: 'bg-black/70', modal: 'bg-[#101018] border-white/10',
+    notesBg: 'bg-[#c4a44a]/10 border-[#c4a44a]/25', notesText: 'text-[#d4bc73]', codeBlock: 'bg-[#06060a]',
     dangerBtn: 'bg-red-950 hover:bg-red-900 text-red-400',
     dangerGhost: 'border border-red-900/70 bg-transparent text-red-300 hover:border-red-500/60 hover:bg-red-950/40',
     scoreGood: 'text-green-400', scoreBad: 'text-gray-700',
     diffAdd: 'bg-green-900/60 text-green-200', diffDel: 'bg-red-900/60 text-red-300 line-through opacity-60', diffEq: 'text-gray-300',
-    draggable: 'bg-gray-800 border-gray-700 hover:border-violet-500',
-    dropZone: 'border-gray-700 border-dashed bg-gray-900/30', dropOver: 'border-violet-500 border-dashed bg-violet-950/20',
-    composedBlock: 'bg-gray-800 border-gray-700', pill: 'bg-gray-800 text-gray-300',
+    draggable: 'bg-[#14141d] border-white/10 hover:border-orange-400/50',
+    dropZone: 'border-white/10 border-dashed bg-white/[0.02]', dropOver: 'border-orange-400/50 border-dashed bg-orange-500/10',
+    composedBlock: 'bg-[#14141d] border-white/10', pill: 'bg-white/[0.04] text-[#d7d2cb]',
   },
   light: {
     bg: 'bg-slate-100', surface: 'bg-white', border: 'border-slate-300', borderHov: 'hover:border-slate-400',
@@ -469,8 +469,8 @@ export const T = {
     dangerGhost: 'border border-red-200 bg-white text-red-700 hover:border-red-300 hover:bg-red-50',
     scoreGood: 'text-emerald-700', scoreBad: 'text-slate-400',
     diffAdd: 'bg-emerald-100 text-emerald-800', diffDel: 'bg-red-100 text-red-600 line-through', diffEq: 'text-slate-700',
-    draggable: 'bg-white border-slate-200 hover:border-violet-400',
-    dropZone: 'border-slate-300 border-dashed bg-slate-100/60', dropOver: 'border-violet-400 border-dashed bg-violet-100/70',
+    draggable: 'bg-white border-slate-200 hover:border-orange-400',
+    dropZone: 'border-slate-300 border-dashed bg-slate-100/60', dropOver: 'border-orange-400 border-dashed bg-orange-100/70',
     composedBlock: 'bg-white border-slate-200', pill: 'bg-slate-100 text-slate-700',
   },
 };

@@ -151,6 +151,7 @@ export default function SavePanel({
         <div className="flex gap-2">
           <button
             type="button"
+            data-testid="save-to-library"
             onClick={() => doSave()}
             disabled={!canSavePanel}
             className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"

@@ -83,7 +83,12 @@ describe('shouldAttemptLegacyWebMigration', () => {
   });
 
   it('returns true for http protocol', () => {
-    expect(shouldAttemptLegacyWebMigration('http://localhost:5173', 'http:')).toBe(true);
+    expect(shouldAttemptLegacyWebMigration('http://my-dev.example.com', 'http:')).toBe(true);
+  });
+
+  it('returns false for localhost dev origins', () => {
+    expect(shouldAttemptLegacyWebMigration('http://localhost:5173', 'http:')).toBe(false);
+    expect(shouldAttemptLegacyWebMigration('http://127.0.0.1:5173', 'http:')).toBe(false);
   });
 
   it('returns false for legacy origin itself', () => {

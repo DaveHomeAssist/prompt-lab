@@ -1,7 +1,23 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { storageKeys } from '../lib/storage.js';
+
+const legacyBridgeMocks = vi.hoisted(() => ({
+  requestLegacyLibraryPayload: vi.fn(),
+  shouldAttemptLegacyWebMigration: vi.fn(() => true),
+}));
+
+vi.mock('../lib/legacyLibraryMigration.js', async () => {
+  const actual = await vi.importActual('../lib/legacyLibraryMigration.js');
+  return {
+    ...actual,
+    requestLegacyLibraryPayload: legacyBridgeMocks.requestLegacyLibraryPayload,
+    shouldAttemptLegacyWebMigration: legacyBridgeMocks.shouldAttemptLegacyWebMigration,
+  };
+});
+
+import usePromptLibrary from '../hooks/usePromptLibrary.js';
+import { LEGACY_LIBRARY_CHECK_KEY } from '../lib/legacyLibraryMigration.js';
 
 function makeEntry(overrides = {}) {
   return {
@@ -23,6 +39,9 @@ function makeEntry(overrides = {}) {
 describe('usePromptLibrary', () => {
   beforeEach(() => {
     localStorage.clear();
+    legacyBridgeMocks.requestLegacyLibraryPayload.mockReset();
+    legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockReset();
+    legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockReturnValue(true);
   });
 
   it('filters by collection and tag, sorts by most used, and derives quick inject entries', async () => {
@@ -99,5 +118,44 @@ describe('usePromptLibrary', () => {
     expect(result.current.library[0].tags).toEqual(['Code']);
     expect(result.current.library[1].tags).toEqual(['Analysis']);
     expect(result.current.allLibTags).toEqual(['Code', 'Analysis']);
+  });
+
+  it('marks the legacy library bridge as checked when recovery is unreachable', async () => {
+    legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(null);
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.recoveringLegacyLibrary).toBe(false);
+    });
+
+    expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(LEGACY_LIBRARY_CHECK_KEY)).toBe(JSON.stringify(true));
+    expect(notify).not.toHaveBeenCalledWith(expect.stringContaining('Recovered'));
+  });
+
+  it('does not retry the legacy bridge on rerender when notify changes identity', async () => {
+    legacyBridgeMocks.requestLegacyLibraryPayload.mockImplementation(
+      () => new Promise(() => {})
+    );
+
+    const { result, rerender } = renderHook(
+      ({ notify }) => usePromptLibrary(notify),
+      { initialProps: { notify: vi.fn() } },
+    );
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+    });
+    expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      rerender({ notify: vi.fn() });
+      await Promise.resolve();
+    });
+
+    expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
   });
 });

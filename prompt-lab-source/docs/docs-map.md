@@ -27,6 +27,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
+- `next-3-sprints-plan.md`
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `glossary.md`
@@ -71,6 +72,7 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 ### Internal audits and technical notes
 
 - `create-evaluate-restructure-plan.md`
+- `next-3-sprints-plan.md`
 - `UX_AUDIT_2026-03-17.md`
 - `DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md`
 - `SCRATCHPAD_SHORTCUTS.md`

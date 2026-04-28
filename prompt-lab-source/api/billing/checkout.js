@@ -2,16 +2,22 @@ export const config = { runtime: 'edge' };
 
 import {
   buildStripeConfig,
+  corsRejectionResponse,
   createCheckout,
   jsonResponse,
   optionsResponse,
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
+import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
+
+assertProductionConfig();
 
 export default async function handler(request) {
-  if (request.method === 'OPTIONS') return optionsResponse();
+  if (request.method === 'OPTIONS') return optionsResponse(request);
+  const corsRejection = corsRejectionResponse(request);
+  if (corsRejection) return corsRejection;
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405);
+    return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
   }
 
   const body = await parseJsonBody(request);
@@ -31,7 +37,7 @@ export default async function handler(request) {
     });
 
     if (!result.checkoutUrl) {
-      return jsonResponse({ error: 'Stripe did not return a checkout URL.' }, 502);
+      return jsonResponse({ error: 'Stripe did not return a checkout URL.' }, 502, {}, request);
     }
 
     return jsonResponse({
@@ -40,8 +46,8 @@ export default async function handler(request) {
       period: result.period,
       priceId: result.priceId,
       checkoutSessionId: result.checkoutSessionId,
-    });
+    }, 200, {}, request);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Could not create checkout.' }, 500);
+    return jsonResponse({ error: error.message || 'Could not create checkout.' }, 500, {}, request);
   }
 }

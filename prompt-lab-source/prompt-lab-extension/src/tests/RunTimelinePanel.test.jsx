@@ -150,8 +150,11 @@ describe('RunTimelinePanel', () => {
 
     renderPanel({ onQuickStart, onOpenCompare });
 
+    expect(screen.getByText('Evaluate deck')).toBeInTheDocument();
+    expect(screen.getByText('Compare saved runs and keep the winners.')).toBeInTheDocument();
     expect(screen.getByText('No evaluate runs yet.')).toBeInTheDocument();
     expect(screen.getByText('Quick Start loads a starter prompt into Create so you can generate your first saved run.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quick Start' })).toHaveClass('bg-orange-500/90', 'hover:bg-orange-400');
 
     fireEvent.click(screen.getByRole('button', { name: 'Quick Start' }));
     fireEvent.click(screen.getByRole('button', { name: 'Open Compare' }));

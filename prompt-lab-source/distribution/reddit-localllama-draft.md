@@ -14,13 +14,13 @@ The idea: instead of switching between different UIs to compare how local vs. cl
 - A/B test a local model against a cloud model side-by-side (e.g., Llama 3 vs. Claude)
 - Template variables — write a prompt once with `{{placeholders}}`, fill them differently per run
 - Version history with diff — see exactly what changed when you tweak a prompt
-- Everything runs client-side. No backend, no accounts, no data leaves your machine
+- Extension and Ollama runs can stay fully local; hosted web mode uses a narrow proxy for cloud-provider calls and does not persist prompts or keys server-side
 
 **How to try it:**
 
-- Web app: https://prompt-lab-tawny.vercel.app/app/ (works in any browser)
-- Chrome extension: install from the setup page for a persistent side panel
-- Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
+- Web app: https://promptlab.tools/app/ (works in any browser)
+- Chrome/Vivaldi extension: follow the setup page for the unpacked side-panel build
+- Source: https://github.com/DaveHomeAssist/prompt-lab
 
 For Ollama, just set your base URL in settings (defaults to `localhost:11434`). Any model you've pulled shows up in the model dropdown.
 

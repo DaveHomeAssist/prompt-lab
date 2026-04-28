@@ -87,11 +87,11 @@ describe('DesktopSettingsModal', () => {
 
   afterEach(() => {
     vi.resetModules();
-    vi.unmock('../lib/platform.js');
-    vi.unmock('../lib/desktopApi.js');
-    vi.unmock('../lib/providers.js');
-    vi.unmock('../lib/providerRegistry.js');
-    vi.unmock('../lib/proxyFetch.js');
+    vi.doUnmock('../lib/platform.js');
+    vi.doUnmock('../lib/desktopApi.js');
+    vi.doUnmock('../lib/providers.js');
+    vi.doUnmock('../lib/providerRegistry.js');
+    vi.doUnmock('../lib/proxyFetch.js');
     vi.unstubAllEnvs();
   });
 
@@ -211,7 +211,7 @@ describe('DesktopSettingsModal', () => {
       messages: [{ role: 'user', content: 'hello' }],
     };
 
-    vi.unmock('../lib/platform.js');
+    vi.doUnmock('../lib/platform.js');
     vi.resetModules();
     globalThis.chrome = {
       runtime: {

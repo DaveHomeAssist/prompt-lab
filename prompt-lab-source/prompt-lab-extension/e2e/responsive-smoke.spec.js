@@ -8,9 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const extensionPath = path.resolve(__dirname, '..', 'dist');
 
 const viewports = [
-  { name: 'desktop', width: 1280, height: 900 },
-  { name: 'mobile-portrait', width: 430, height: 932 },
-  { name: 'mobile-landscape', width: 915, height: 412 },
+  { name: 'mobile-400', width: 400, height: 860 },
+  { name: 'tablet-768', width: 768, height: 900 },
 ];
 
 async function launchMockedExtension(viewport) {
@@ -71,37 +70,29 @@ async function launchMockedExtension(viewport) {
 }
 
 for (const viewport of viewports) {
-  test(`editor, library, scratchpad, and A/B surfaces hold at ${viewport.name}`, async () => {
+  test(`core controls are visible and operable at ${viewport.width}px`, async () => {
     const { page, cleanup } = await launchMockedExtension(viewport);
 
     try {
-      await page.getByPlaceholder(/Paste or write your prompt here/i).fill('Make this prompt better');
-      await page.getByRole('button', { name: /Enhance/i }).click();
+      await page.getByTestId('telemetry-deny').click();
+      await expect(page.getByTestId('prompt-input')).toBeVisible();
+      await expect(page.getByTestId('refine-action')).toBeVisible();
+      await expect(page.getByTestId('upgrade-trigger')).toBeVisible();
+      await expect(page.getByTestId('pro-gated-action')).toBeVisible();
+
+      await page.getByTestId('prompt-input').fill(`Responsive prompt for ${viewport.name}`);
+      await page.getByTestId('refine-action').click();
 
       await expect.poll(() => page.evaluate(() => window.__promptLabRequests.length)).toBe(1);
-      await expect(page.getByText('Enhanced')).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByTestId('output-panel')).toContainText('Improved prompt for responsive smoke test', { timeout: 15_000 });
+      await expect(page.getByTestId('save-to-library').last()).toBeVisible();
+      const savedBefore = Number((await page.getByTestId('library-count').innerText()).match(/\d+/)?.[0] || '0');
+      await page.getByTestId('save-to-library').last().click();
+      await expect(page.getByTestId('library-count')).toContainText(`${savedBefore + 1} saved`);
 
-      const activeCopyButton = page.getByRole('button', { name: /^Copy$/ }).first();
-      await expect(activeCopyButton).toBeVisible();
-      await expect(activeCopyButton).toBeEnabled();
-
-      await page.getByRole('button', { name: /^Library$/ }).click();
-      await expect(page.getByText('Transcript Summary - Markdown')).toBeVisible();
-
-      await page.getByRole('tab', { name: 'Scratchpad' }).click();
-      const scratchpad = page.locator('#plPadArea');
-      await expect(scratchpad).toBeVisible();
-      await scratchpad.fill(`Scratchpad smoke test for ${viewport.name}`);
-      await expect(page.getByText(/Saved|Saving/i)).toBeVisible({ timeout: 5_000 });
-
-      await page.getByRole('tab', { name: 'A/B Test' }).click();
-      if (viewport.width < 720 || viewport.height < 560) {
-        await expect(page.getByRole('button', { name: /Variant A/ })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Variant B/ })).toBeVisible();
-      } else {
-        await expect(page.getByText(/^Variant A$/)).toBeVisible();
-        await expect(page.getByText(/^Variant B$/)).toBeVisible();
-      }
+      await page.getByTestId('nav-library').click();
+      await expect(page.getByTestId('library-search')).toBeVisible();
+      await page.getByTestId('library-search').fill('responsive');
     } finally {
       await cleanup();
     }

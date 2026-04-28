@@ -191,6 +191,25 @@ describe('LibraryPanel actions', () => {
     expect(loadStarterPack).toHaveBeenCalledWith('pack-1');
   });
 
+  it('renders a library intro deck with saved counts and ready packs', () => {
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        starterLibraries: [
+          { id: 'pack-1', name: 'Ops Pack', description: 'Starter prompts', icon: 'A', promptCount: 3, loaded: false },
+        ],
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByText('Library deck')).toBeInTheDocument();
+    expect(screen.getByText('Saved prompts and starter packs.')).toBeInTheDocument();
+    expect(screen.getByText('1 saved')).toBeInTheDocument();
+    expect(screen.getByText('1 visible')).toBeInTheDocument();
+    expect(screen.getByText('1 ready pack')).toBeInTheDocument();
+  });
+
   it('clears search and facet filters from the no-results state', () => {
     const setSearch = vi.fn();
     const setActiveTag = vi.fn();

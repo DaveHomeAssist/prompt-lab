@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -299,6 +299,8 @@ vi.mock('../modals/PiiWarningModal.jsx', () => ({
 
 import App from '../App.jsx';
 
+const originalFetch = global.fetch;
+
 function useDefaultMock(name) {
   const mock = mocks[name];
   return mock.getMockImplementation()();
@@ -307,6 +309,16 @@ function useDefaultMock(name) {
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    localStorage.clear();
   });
 
   it('renders the editor shell without reading navigation state before initialization', () => {
@@ -315,6 +327,20 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Prompt Lab' })).toBeInTheDocument();
     expect(mocks.useNavigation).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('app-header')).toBeInTheDocument();
+  });
+
+  it('shows first-run telemetry consent and waits for consent before sending events', async () => {
+    render(<MemoryRouter><App /></MemoryRouter>);
+
+    expect(screen.getByRole('button', { name: 'Allow analytics' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'No thanks' })).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Allow analytics' })).not.toBeInTheDocument();
+    });
   });
 
   it('shows the draft context before the first enhance run', () => {

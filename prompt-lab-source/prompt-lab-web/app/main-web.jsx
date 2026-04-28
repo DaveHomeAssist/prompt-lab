@@ -67,14 +67,25 @@ function AuthGate() {
 }
 
 if (!CLERK_KEY) {
-  console.error('Missing VITE_CLERK_PUBLISHABLE_KEY — falling back to unauthenticated mode.');
-  ReactDOM.createRoot(document.getElementById('root')).render(
-    <ErrorBoundary>
-      <HashRouter>
-        <App />
-      </HashRouter>
-    </ErrorBoundary>
-  );
+  if (import.meta.env.DEV) {
+    console.warn('[PromptLab] Clerk key missing - running unauthenticated in dev mode');
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ErrorBoundary>
+        <HashRouter>
+          <App />
+        </HashRouter>
+      </ErrorBoundary>
+    );
+  } else {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      <ErrorBoundary>
+        <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+          <h1>Configuration Error</h1>
+          <p>Authentication is not configured. Please contact support.</p>
+        </div>
+      </ErrorBoundary>
+    );
+  }
 } else {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>

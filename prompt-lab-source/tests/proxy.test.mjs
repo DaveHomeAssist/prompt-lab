@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const sourceDir = path.resolve(testDir, '..');
 const proxyModuleUrl = pathToFileURL(
-  path.resolve(process.cwd(), 'prompt-lab-source/api/proxy.js'),
+  path.join(sourceDir, 'api', 'proxy.js'),
 ).href;
 
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -157,4 +159,43 @@ test('proxy enforces the shared-key daily limit', async () => {
   }));
   assert.equal(second.status, 429);
   assert.match(await second.text(), /daily hosted demo limit reached/i);
+});
+
+test('proxy returns upstream streaming bodies without buffering them first', async () => {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
+
+  const encoder = new TextEncoder();
+  globalThis.fetch = async () => new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"type":"content_block_delta","delta":{"text":"Copy-ready"}}\n\n'));
+      },
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    },
+  );
+
+  const handler = await loadHandler();
+  const response = await Promise.race([
+    handler(makeRequest({
+      headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+      body: {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        stream: true,
+        messages: [{ role: 'user', content: 'hello' }],
+      },
+    })),
+    new Promise((resolve) => setTimeout(() => resolve('timeout'), 100)),
+  ]);
+
+  assert.notEqual(response, 'timeout');
+  assert.equal(response.headers.get('Content-Type'), 'text/event-stream');
+  const reader = response.body.getReader();
+  const first = await reader.read();
+  await reader.cancel();
+  assert.equal(new TextDecoder().decode(first.value), 'data: {"type":"content_block_delta","delta":{"text":"Copy-ready"}}\n\n');
 });

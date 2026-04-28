@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 export default defineConfig({
+  appType: 'mpa',
   plugins: [react()],
   define: {
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
@@ -26,6 +27,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         app: resolve(__dirname, 'app/index.html'),
+        mobile: resolve(__dirname, 'mobile/index.html'),
       },
     },
   },

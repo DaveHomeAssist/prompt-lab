@@ -28,7 +28,7 @@ function StarterPackCard({ pack, m, onLoad }) {
             ? `${m.btn} text-green-500 cursor-default`
             : loading
               ? `${m.btn} ${m.textMuted} cursor-wait`
-              : 'bg-violet-600 hover:bg-violet-500 text-white'
+              : 'bg-orange-500/90 hover:bg-orange-400 text-white'
         }`}>
         {pack.loaded ? 'Loaded \u2713' : loading ? 'Loading\u2026' : 'Load'}
       </button>
@@ -63,6 +63,15 @@ const LibraryPanel = memo(function LibraryPanel({
   const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
   const primaryStarterPack = unloadedStarterPacks[0] || null;
   const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
+  const savedPromptCount = lib.library.length;
+  const visiblePromptCount = lib.filtered.length;
+  const readyPackCount = unloadedStarterPacks.length;
+  const accentTextClass = 'text-orange-300';
+  const accentFocusClass = 'focus:border-orange-400';
+  const accentSolidButtonClass = 'bg-orange-500/90 hover:bg-orange-400 text-white';
+  const accentSoftButtonClass = 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18';
+  const accentPanelClass = 'border border-orange-400/20 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10';
+  const accentToggleActiveClass = 'bg-orange-500/90 text-white';
 
   useEffect(() => {
     setSearchDraft(lib.search);
@@ -90,7 +99,7 @@ const LibraryPanel = memo(function LibraryPanel({
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
             <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
-            <input className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
+            <input data-testid="library-search" className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${accentFocusClass} ${m.text}`}
               placeholder="Search…" value={searchDraft} onChange={e => setSearchDraft(e.target.value)} />
           </div>
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
@@ -101,7 +110,7 @@ const LibraryPanel = memo(function LibraryPanel({
             <button
               type="button"
               onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}
-              className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${compact ? 'flex-1 py-1.5' : ''} ${canExportLibrary ? `${m.btn} ${m.textAlt}` : 'border border-violet-500/40 bg-violet-500/12 text-violet-200'}`}
+              className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${compact ? 'flex-1 py-1.5' : ''} ${canExportLibrary ? `${m.btn} ${m.textAlt}` : accentSoftButtonClass}`}
             >
               {canExportLibrary ? 'Export' : 'Export Pro'}
             </button>
@@ -115,7 +124,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 {lib.recoveringLegacyLibrary ? 'Checking...' : 'Recover'}
               </button>
             )}
-            <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
+            <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>
           </div>
@@ -127,10 +136,10 @@ const LibraryPanel = memo(function LibraryPanel({
         )}
         {canUseCollections && lib.collections.length > 0 && (
           <div className="flex gap-1 flex-wrap">
-            <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>All</button>
+            <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`}`}>All</button>
             {lib.collections.map(c => (
               <button key={c} type="button" onClick={() => lib.setActiveCollection(p => p === c ? null : c)}
-                className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${lib.activeCollection === c ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${lib.activeCollection === c ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`}`}>
                 <Ic n="FolderOpen" size={9} />{c}
               </button>
             ))}
@@ -139,7 +148,7 @@ const LibraryPanel = memo(function LibraryPanel({
         {!canUseCollections && lib.collections.length > 0 && (
           <div className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${m.codeBlock} ${m.border} ${m.textMuted}`}>
             Collection filters are available on Prompt Lab Pro.
-            <button type="button" onClick={() => openBilling?.('collections')} className="ml-2 text-violet-400 hover:text-violet-300 transition-colors">
+            <button type="button" onClick={() => openBilling?.('collections')} className="ml-2 text-orange-300 hover:text-orange-200 transition-colors">
               Unlock
             </button>
           </div>
@@ -158,7 +167,48 @@ const LibraryPanel = memo(function LibraryPanel({
           onClose={() => setShowImportPanel(false)}
         />
       )}
-      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-2`}>
+      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-3`}>
+        <section className={`${m.surface} ${accentPanelClass} rounded-xl p-4`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${accentTextClass}`}>Library deck</p>
+              <h2 className={`mt-1 text-sm font-semibold ${m.text}`}>Saved prompts and starter packs.</h2>
+              <p className={`mt-1 max-w-xl text-xs leading-relaxed ${m.textMuted}`}>
+                Build a durable prompt shelf with reusable drafts, polished variants, and starter packs that are ready for the next workbench run.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {primaryStarterPack && (
+                <button
+                  type="button"
+                  onClick={() => lib.loadStarterPack(primaryStarterPack.id)}
+                  className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidButtonClass}`}
+                >
+                  Load starter pack
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowImportPanel(true)}
+                className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSoftButtonClass}`}
+              >
+                Import Pack
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              [`${savedPromptCount} saved`, 'Prompt entries in your library'],
+              [`${visiblePromptCount} visible`, hasLibraryFilters ? 'Current filters applied' : 'Visible in this view'],
+              [`${readyPackCount} ready pack${readyPackCount === 1 ? '' : 's'}`, 'Starter packs still available to load'],
+            ].map(([label, helper]) => (
+              <div key={label} className={`${m.codeBlock} ${m.border} rounded-lg border px-3 py-2.5`}>
+                <p className={`text-sm font-semibold ${m.text}`}>{label}</p>
+                <p className={`mt-1 text-[11px] leading-relaxed ${m.textMuted}`}>{helper}</p>
+              </div>
+            ))}
+          </div>
+        </section>
         {lib.filtered.length === 0 && !showImportPanel && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
@@ -175,7 +225,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 <button
                   type="button"
                   onClick={() => lib.loadStarterPack(primaryStarterPack.id)}
-                  className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                  className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidButtonClass}`}
                 >
                   Load {primaryStarterPack.name}
                 </button>
@@ -184,7 +234,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 <button
                   type="button"
                   onClick={clearLibraryFilters}
-                  className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                  className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSolidButtonClass}`}
                 >
                   Clear Filters
                 </button>
@@ -192,7 +242,7 @@ const LibraryPanel = memo(function LibraryPanel({
               <button
                 type="button"
                 onClick={() => setShowImportPanel(true)}
-                className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+                className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSoftButtonClass}`}
               >
                 Import Pack
               </button>
@@ -229,14 +279,14 @@ const LibraryPanel = memo(function LibraryPanel({
                 lib.moveLibraryEntry(sourceId, entry.id, position);
                 lib.setDragOverLibraryId(null);
               }}
-              className={`${m.surface} border ${editingId === entry.id ? 'border-violet-500 ring-1 ring-violet-500/30' : `${m.border} ${m.borderHov}`} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-violet-500' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
+              className={`${m.surface} border ${editingId === entry.id ? 'border-orange-400/60 ring-1 ring-orange-400/30' : `${m.border} ${m.borderHov}`} rounded-lg overflow-hidden transition-colors ${manual ? 'cursor-grab active:cursor-grabbing' : ''} ${lib.dragOverLibraryId === entry.id ? 'border-orange-400/60' : ''} ${lib.draggingLibraryId === entry.id ? 'opacity-50' : ''}`}>
               <div className="flex items-start justify-between px-3 py-2.5 gap-2">
                 <div className="flex-1 min-w-0">
                   {lib.renamingId === entry.id ? (
                     <div className="flex gap-1.5">
                       <input autoFocus value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
-                        className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none focus:border-violet-500 ${m.text}`} />
-                      <button type="button" onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className="ui-control px-2 py-1 text-xs bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">Save</button>
+                        className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${accentFocusClass} ${m.text}`} />
+                      <button type="button" onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className={`ui-control px-2 py-1 text-xs rounded-lg transition-colors ${accentSolidButtonClass}`}>Save</button>
                       <button type="button" onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }} className={`ui-control px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
                     </div>
                   ) : (
@@ -248,7 +298,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>
                     {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
                     <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
-                    {entry.useCount > 0 && <span className="text-violet-400">{entry.useCount}×</span>}
+                    {entry.useCount > 0 && <span className="text-orange-300">{entry.useCount}×</span>}
                     {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
                     {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                   </div>
@@ -280,14 +330,14 @@ const LibraryPanel = memo(function LibraryPanel({
                   <button
                     type="button"
                     onClick={() => { loadEntry(entry); }}
-                    className={`ui-control px-2.5 py-1 rounded ${m.btn} text-violet-400 text-xs font-semibold transition-colors`}
+                    className={`ui-control px-2.5 py-1 rounded ${accentSoftButtonClass} text-xs font-semibold transition-colors`}
                   >
                     Use
                   </button>
                   <button
                     type="button"
                     onClick={() => { copy(entry.enhanced); lib.bumpUse(entry.id); }}
-                    className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs font-semibold hover:text-violet-400 transition-colors`}
+                    className={`ui-control px-2.5 py-1 rounded ${m.btn} ${m.textAlt} text-xs font-semibold hover:text-orange-300 transition-colors`}
                   >
                     Copy
                   </button>
@@ -305,7 +355,7 @@ const LibraryPanel = memo(function LibraryPanel({
               {lib.shareId === entry.id && (
                 <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
                   <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
-                  <button type="button" onClick={() => copy(shareUrl || '')} className="ui-control px-2 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-medium transition-colors">Copy URL</button>
+                  <button type="button" onClick={() => copy(shareUrl || '')} className={`ui-control px-2 py-1 rounded-lg text-xs font-medium transition-colors ${accentSolidButtonClass}`}>Copy URL</button>
                 </div>
               )}
               {lib.expandedId === entry.id && (
@@ -336,7 +386,7 @@ const LibraryPanel = memo(function LibraryPanel({
                     loadCaseIntoEditor={loadCaseIntoEditor}
                     runSingleCase={runSingleCase} removeCase={removeCase}
                   />
-                  {[['Original', m.textSub, entry.original], ['Enhanced', 'text-violet-400', entry.enhanced]].map(([lbl, col, txt]) => (
+                  {[['Original', m.textSub, entry.original], ['Enhanced', accentTextClass, entry.enhanced]].map(([lbl, col, txt]) => (
                     <div key={lbl}>
                       <p className={`text-xs ${col} font-semibold mb-1 uppercase tracking-wider`}>{lbl}</p>
                       <div className={`text-xs ${m.textBody} leading-relaxed ${m.codeBlock} rounded-lg p-2`}>
@@ -347,7 +397,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   {entry.notes && <div><p className={`text-xs ${m.notesText} font-semibold mb-1 uppercase tracking-wider`}>Notes</p><p className={`text-xs ${m.textAlt} leading-relaxed`}>{entry.notes}</p></div>}
                   {(entry.variants || []).length > 0 && (
                     <div><p className={`text-xs ${m.textSub} font-semibold mb-1.5 uppercase tracking-wider`}>Variants</p>
-                      {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-violet-400 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
+                      {entry.variants.map((v, i) => <div key={i} className="mb-1.5"><span className="text-xs text-orange-300 font-bold">{v.label}: </span><span className={`text-xs ${m.textAlt}`}>{v.content}</span></div>)}
                     </div>
                   )}
                   {(entry.versions || []).length > 0 && (

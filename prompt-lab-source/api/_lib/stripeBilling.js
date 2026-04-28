@@ -20,28 +20,67 @@ function readBooleanEnv(name, fallback = false) {
 }
 
 export function createCorsHeaders(extraHeaders = {}) {
+  const origin = readStringEnv('PROMPTLAB_WEB_ORIGIN', 'VITE_PROMPTLAB_WEB_ORIGIN') || 'https://promptlab.tools';
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Stripe-Signature',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type, Stripe-Signature',
+    Vary: 'Origin',
     ...extraHeaders,
   };
 }
 
-export function jsonResponse(body, status = 200, extraHeaders = {}) {
-  return new Response(JSON.stringify(body), {
-    status,
+function requestOrigin(request) {
+  if (typeof request?.headers?.get !== 'function') return '';
+  return String(request.headers.get('Origin') || request.headers.get('origin') || '').trim();
+}
+
+export function isAllowedCorsOrigin(origin) {
+  const value = String(origin || '').trim();
+  if (!value) return true;
+  const productionOrigin = readStringEnv('PROMPTLAB_WEB_ORIGIN', 'VITE_PROMPTLAB_WEB_ORIGIN') || 'https://promptlab.tools';
+  if (value === productionOrigin) return true;
+  if (value.startsWith('chrome-extension://')) return true;
+  if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(value)) return true;
+  return false;
+}
+
+function corsHeadersForRequest(request, extraHeaders = {}) {
+  const origin = requestOrigin(request);
+  return createCorsHeaders({
+    ...(origin && isAllowedCorsOrigin(origin) ? { 'Access-Control-Allow-Origin': origin } : {}),
+    ...extraHeaders,
+  });
+}
+
+export function corsRejectionResponse(request) {
+  const origin = requestOrigin(request);
+  if (isAllowedCorsOrigin(origin)) return null;
+  return new Response(JSON.stringify({ error: 'Origin is not allowed.' }), {
+    status: 403,
     headers: {
       'Content-Type': 'application/json',
-      ...createCorsHeaders(extraHeaders),
+      ...createCorsHeaders({ 'Access-Control-Allow-Origin': 'null' }),
     },
   });
 }
 
-export function optionsResponse() {
+export function jsonResponse(body, status = 200, extraHeaders = {}, request = null) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(request ? corsHeadersForRequest(request, extraHeaders) : createCorsHeaders(extraHeaders)),
+    },
+  });
+}
+
+export function optionsResponse(request = null) {
+  const rejection = request ? corsRejectionResponse(request) : null;
+  if (rejection) return rejection;
   return new Response(null, {
     status: 204,
-    headers: createCorsHeaders(),
+    headers: request ? corsHeadersForRequest(request) : createCorsHeaders(),
   });
 }
 
@@ -58,7 +97,7 @@ function buildStripeStorageConfig() {
     redisUrl: readStringEnv('KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL').replace(/\/+$/, ''),
     redisToken: readStringEnv('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'),
     storagePrefix: readStringEnv('PROMPTLAB_BILLING_PREFIX') || DEFAULT_STORAGE_PREFIX,
-    consoleFallback: readBooleanEnv('PROMPTLAB_BILLING_CONSOLE_FALLBACK', true),
+    consoleFallback: readBooleanEnv('PROMPTLAB_BILLING_CONSOLE_FALLBACK', false),
   };
 }
 
@@ -213,6 +252,72 @@ export async function findCustomerByEmail(config, customerEmail) {
   return payload?.data?.find((customer) => !customer?.deleted) || null;
 }
 
+function escapeStripeSearchValue(value) {
+  return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function customerMatchesClerkUser(customer, clerkUserId) {
+  const id = String(clerkUserId || '').trim();
+  if (!id) return false;
+  const metadata = customer?.metadata || {};
+  return metadata.clerkUserId === id || metadata.clerk_user_id === id;
+}
+
+export async function findCustomerByClerkUserId(config, clerkUserId) {
+  const id = String(clerkUserId || '').trim();
+  if (!id) return null;
+  const query = `metadata['clerkUserId']:'${escapeStripeSearchValue(id)}' OR metadata['clerk_user_id']:'${escapeStripeSearchValue(id)}'`;
+  const payload = await stripeRequest(config, `customers/search?limit=1&query=${encodeURIComponent(query)}`);
+  return payload?.data?.find((customer) => !customer?.deleted && customerMatchesClerkUser(customer, id)) || null;
+}
+
+async function updateCustomerClerkMetadata(config, customer, clerkUserId) {
+  if (!customer?.id || !clerkUserId || customerMatchesClerkUser(customer, clerkUserId)) return customer;
+  const params = new URLSearchParams();
+  params.set('metadata[clerkUserId]', clerkUserId);
+  params.set('metadata[clerk_user_id]', clerkUserId);
+  return stripeRequest(config, `customers/${encodeURIComponent(customer.id)}`, {
+    method: 'POST',
+    body: params,
+  });
+}
+
+async function createStripeCustomer(config, { clerkUserId = '', clerkEmail = '' } = {}) {
+  const email = normalizeEmail(clerkEmail);
+  const id = String(clerkUserId || '').trim();
+  if (!id || !email) {
+    throw new Error('A verified Clerk user and email are required to create a Stripe customer.');
+  }
+
+  const params = new URLSearchParams();
+  params.set('email', email);
+  params.set('metadata[clerkUserId]', id);
+  params.set('metadata[clerk_user_id]', id);
+
+  return stripeRequest(config, 'customers', {
+    method: 'POST',
+    body: params,
+  });
+}
+
+export async function getOrCreateStripeCustomer(config, { clerkUserId = '', clerkEmail = '' } = {}) {
+  const id = String(clerkUserId || '').trim();
+  const email = normalizeEmail(clerkEmail);
+  if (!id || !email) {
+    throw new Error('A verified Clerk identity is required for billing.');
+  }
+
+  const metadataCustomer = await findCustomerByClerkUserId(config, id);
+  if (metadataCustomer) return metadataCustomer;
+
+  const emailCustomer = await findCustomerByEmail(config, email);
+  if (emailCustomer) {
+    return updateCustomerClerkMetadata(config, emailCustomer, id);
+  }
+
+  return createStripeCustomer(config, { clerkUserId: id, clerkEmail: email });
+}
+
 export async function getCustomerById(config, customerId) {
   const id = String(customerId || '').trim();
   if (!id) return null;
@@ -309,6 +414,12 @@ export async function lookupBilling(config, { customerId = '', customerEmail = '
   return normalizeBillingRecord({ customer, subscriptions, config });
 }
 
+export async function lookupBillingForClerk(config, { clerkUserId = '', clerkEmail = '' } = {}) {
+  const customer = await getOrCreateStripeCustomer(config, { clerkUserId, clerkEmail });
+  const subscriptions = await listSubscriptions(config, customer.id);
+  return normalizeBillingRecord({ customer, subscriptions, config });
+}
+
 export async function createPortalSession(config, { customerId = '', customerEmail = '' } = {}) {
   const customer = await getCustomerById(config, customerId) || await findCustomerByEmail(config, customerEmail);
   if (!customer?.id) {
@@ -328,6 +439,28 @@ export async function createPortalSession(config, { customerId = '', customerEma
     url: payload?.url || '',
     customerId: customer.id,
     customerEmail: normalizeEmail(customer.email || customerEmail),
+  };
+}
+
+export async function createPortalSessionForClerk(config, { clerkUserId = '', clerkEmail = '' } = {}) {
+  const customer = await findCustomerByClerkUserId(config, clerkUserId);
+  if (!customer?.id) {
+    throw new Error('No Stripe customer is bound to this signed-in account.');
+  }
+
+  const params = new URLSearchParams();
+  params.set('customer', customer.id);
+  params.set('return_url', config.portalReturnUrl);
+
+  const payload = await stripeRequest(config, 'billing_portal/sessions', {
+    method: 'POST',
+    body: params,
+  });
+
+  return {
+    url: payload?.url || '',
+    customerId: customer.id,
+    customerEmail: normalizeEmail(customer.email || clerkEmail),
   };
 }
 
@@ -428,6 +561,10 @@ export async function persistStripeWebhookRecord(record, config = buildStripeCon
       await redisCommand(config, 'sadd', [`${prefix}:subscriptions`, record.subscriptionId]);
     }
     return { ok: true, mode: 'redis' };
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Durable billing storage is required in production. Configure KV_REST_API_URL/KV_REST_API_TOKEN or UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN.');
   }
 
   if (config.consoleFallback) {

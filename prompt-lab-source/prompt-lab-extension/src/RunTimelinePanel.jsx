@@ -49,6 +49,11 @@ const DATE_RANGE_LABELS = {
   '90d': 'Last 90 days',
   '': 'All time',
 };
+const ACCENT_TEXT_CLASS = 'text-orange-300';
+const ACCENT_SOLID_BUTTON_CLASS = 'bg-orange-500/90 hover:bg-orange-400 text-white';
+const ACCENT_SOFT_BUTTON_CLASS = 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18';
+const ACCENT_FOCUS_CLASS = 'focus:border-orange-400';
+const ACCENT_PANEL_CLASS = 'border border-orange-400/20 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10';
 
 function validateTimelineFilters(value) {
   if (!value || typeof value !== 'object') {
@@ -117,7 +122,7 @@ function GoldenTrendBar({ runs, m }) {
         ))}
       </div>
       <div className={`flex gap-4 text-xs ${m.textMuted}`}>
-        <span>Latest: <strong className="text-violet-400">{Math.round(scores[0] * 100)}%</strong></span>
+        <span>Latest: <strong className={ACCENT_TEXT_CLASS}>{Math.round(scores[0] * 100)}%</strong></span>
         <span>Avg: <strong>{Math.round(avg * 100)}%</strong></span>
         <span>Best: <strong className="text-emerald-400">{Math.round(best * 100)}%</strong></span>
       </div>
@@ -182,7 +187,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
   };
 
   return (
-    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${isCompareSelected ? 'ring-2 ring-violet-500' : ''}`}>
+    <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${isCompareSelected ? 'ring-2 ring-orange-400/60' : ''}`}>
       {/* Meta row */}
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -192,7 +197,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
           <span className={`${m.textMuted} truncate`}>{run.model}</span>
           <span className={`uppercase ${m.textMuted}`}>{run.mode === 'test-case' ? 'test' : run.mode}</span>
           <span className={m.textMuted}>{formatLatency(run.latencyMs)}</span>
-          {version && <span className="text-violet-400 font-semibold">{version}</span>}
+          {version && <span className={`${ACCENT_TEXT_CLASS} font-semibold`}>{version}</span>}
         </div>
         <span className={`${m.textMuted} whitespace-nowrap`}>{formatTime(run.createdAt)}</span>
       </div>
@@ -209,7 +214,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
             {expanded ? run.output : (run.output.slice(0, 200) + (run.output.length > 200 ? '…' : ''))}
           </button>
           {run.output.length > 200 && (
-            <button type="button" onClick={() => setExpanded(p => !p)} className="text-violet-400 hover:text-violet-300 font-semibold mt-0.5">
+            <button type="button" onClick={() => setExpanded(p => !p)} className="text-orange-300 hover:text-orange-200 font-semibold mt-0.5">
               {expanded ? 'Collapse' : 'Expand'}
             </button>
           )}
@@ -231,12 +236,12 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
         )}
 
         <button type="button" onClick={cycleVerdict}
-          className={`px-2 py-0.5 rounded border font-semibold transition-colors ${run.verdict ? VERDICT_STYLES[run.verdict] : `${m.border} ${m.textMuted} hover:border-violet-400`}`}>
+          className={`px-2 py-0.5 rounded border font-semibold transition-colors ${run.verdict ? VERDICT_STYLES[run.verdict] : `${m.border} ${m.textMuted} hover:border-orange-400/60`}`}>
           {run.verdict || 'unrated'}
         </button>
 
         <button type="button" onClick={() => onSelectCompare(run)}
-          className={`px-2 py-0.5 rounded border font-semibold transition-colors ${isCompareSelected ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted} hover:border-violet-400`}`}>
+          className={`px-2 py-0.5 rounded border font-semibold transition-colors ${isCompareSelected ? 'border-orange-400/60 text-orange-200' : `${m.border} ${m.textMuted} hover:border-orange-400/60`}`}>
           Compare
         </button>
 
@@ -254,7 +259,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
           <input type="text" value={localNotes} onChange={e => setLocalNotes(e.target.value)}
             onBlur={saveNotes} onKeyDown={e => e.key === 'Enter' && saveNotes()}
             autoFocus
-            className={`w-full text-xs ${m.input} border rounded px-2 py-1 focus:outline-none focus:border-violet-500`}
+            className={`w-full text-xs ${m.input} border rounded px-2 py-1 focus:outline-none ${ACCENT_FOCUS_CLASS}`}
             placeholder="Add notes…" />
         ) : (
           <button type="button" onClick={() => { setLocalNotes(run.notes || ''); setEditingNotes(true); }}
@@ -402,7 +407,7 @@ export default function RunTimelinePanel({
     dateRange,
   });
 
-  const copyBtn = 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300';
+  const copyBtn = 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:border-orange-300';
 
   // Derive available providers from data
   const availableProviders = useMemo(() => {
@@ -483,34 +488,80 @@ export default function RunTimelinePanel({
           <span className={`text-xs ${m.textMuted}`}>{loading && evalRuns.length === 0 ? 'Loading…' : showingSummary}</span>
         </div>
 
+        <section className={`${m.surface} ${ACCENT_PANEL_CLASS} rounded-xl p-4`}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${ACCENT_TEXT_CLASS}`}>Evaluate deck</p>
+              <h2 className={`mt-1 text-sm font-semibold ${m.text}`}>Compare saved runs and keep the winners.</h2>
+              <p className={`mt-1 max-w-xl text-xs leading-relaxed ${m.textMuted}`}>
+                {prompt
+                  ? 'Track how this prompt performs across versions, models, and notes without losing the thread of what changed.'
+                  : 'Review output quality, latency, and verdicts in one place so strong runs rise above the noise.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={onQuickStart}
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOLID_BUTTON_CLASS}`}
+              >
+                <Ic n="Wand2" size={11} />
+                Open Workbench
+              </button>
+              {!prompt && (
+                <button
+                  type="button"
+                  onClick={onOpenCompare}
+                  className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOFT_BUTTON_CLASS}`}
+                >
+                  <Ic n="GitBranch" size={11} />
+                  Compare View
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {[
+              [showingSummary, 'Runs available in the current timeline view'],
+              [`${compareSelectionIds.length}/2 compare ready`, compareSelectionIds.length > 0 ? 'Select one more run to open side-by-side compare' : 'Pick two runs to unlock compare mode'],
+              [`${filterBadges.length} filter${filterBadges.length === 1 ? '' : 's'} active`, hasActiveFilters ? 'Narrowed to a focused slice of history' : 'Showing the broader evaluation picture'],
+            ].map(([label, helper]) => (
+              <div key={label} className={`${m.codeBlock} ${m.border} rounded-lg border px-3 py-2.5`}>
+                <p className={`text-sm font-semibold ${m.text}`}>{label}</p>
+                <p className={`mt-1 text-[11px] leading-relaxed ${m.textMuted}`}>{helper}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Filters */}
         <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg p-2`}>
           <select value={mode} onChange={e => setTimelineFilter('mode', e.target.value)} aria-label="Filter by mode"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="">All modes</option>
             <option value="enhance">Enhance</option>
             <option value="ab">A/B</option>
             <option value="test-case">Test Case</option>
           </select>
           <select value={provider} onChange={e => setTimelineFilter('provider', e.target.value)} aria-label="Filter by provider"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="">All providers</option>
             {availableProviders.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
           <select value={model} onChange={e => setTimelineFilter('model', e.target.value)} aria-label="Filter by model"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="">All models</option>
             {availableModels.map(item => <option key={item} value={item}>{item}</option>)}
           </select>
           <select value={status} onChange={e => setTimelineFilter('status', e.target.value)} aria-label="Filter by status"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="">All statuses</option>
             <option value="success">Success</option>
             <option value="error">Error</option>
             <option value="blocked">Blocked</option>
           </select>
           <select value={dateRange} onChange={e => setTimelineFilter('dateRange', e.target.value)} aria-label="Filter by date range"
-            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500`}>
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="7d">Last 7 days</option>
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
@@ -518,10 +569,10 @@ export default function RunTimelinePanel({
           </select>
           <input type="search" value={search} onChange={e => setTimelineFilter('search', e.target.value)}
             placeholder="Search runs…"
-            className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none focus:border-violet-500 placeholder-gray-400`} />
+            className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS} placeholder-gray-400`} />
           {canToggleModelCompare && (
             <button type="button" onClick={() => setTimelineFilter('showModelCompare', !showModelCompare)}
-              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-violet-500 text-violet-400' : `${m.border} ${m.textMuted}`}`}>
+              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${showModelCompare ? 'border-orange-400/60 text-orange-200' : `${m.border} ${m.textMuted}`}`}>
               Compare Models
             </button>
           )}
@@ -529,7 +580,7 @@ export default function RunTimelinePanel({
             <button
               type="button"
               onClick={resetTimelineFilters}
-              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}
+              className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${m.border} ${m.textMuted} hover:border-orange-400/60 hover:text-orange-200`}
             >
               Reset Filters
             </button>
@@ -622,7 +673,7 @@ export default function RunTimelinePanel({
               <button
                 type="button"
                 onClick={resetTimelineFilters}
-                className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOLID_BUTTON_CLASS}`}
               >
                 <Ic n="RotateCcw" size={11} />
                 Reset All Filters
@@ -653,7 +704,7 @@ export default function RunTimelinePanel({
               <button
                 type="button"
                 onClick={onQuickStart}
-                className="ui-control inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+                className={`ui-control inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${ACCENT_SOLID_BUTTON_CLASS}`}
               >
                 <Ic n="Wand2" size={11} />
                 {prompt ? 'Open Create' : 'Quick Start'}
@@ -680,7 +731,7 @@ export default function RunTimelinePanel({
         {/* Load More */}
         {hasMore && (
           <button type="button" onClick={loadMore}
-            className={`w-full py-2 text-xs font-semibold rounded-lg border transition-colors ${m.border} ${m.textMuted} hover:border-violet-400 hover:text-violet-400`}>
+            className={`w-full py-2 text-xs font-semibold rounded-lg border transition-colors ${m.border} ${m.textMuted} hover:border-orange-400/60 hover:text-orange-200`}>
             Load more
           </button>
         )}

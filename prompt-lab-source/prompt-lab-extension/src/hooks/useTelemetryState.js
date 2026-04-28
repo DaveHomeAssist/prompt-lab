@@ -11,18 +11,60 @@ import {
   sanitizeTelemetryContext,
 } from '../lib/telemetry.js';
 
+const TELEMETRY_CONSENT_KEY = 'pl_telemetry_consent';
+
+function loadConsentState() {
+  try {
+    const value = localStorage.getItem(TELEMETRY_CONSENT_KEY);
+    return value === 'granted' || value === 'denied' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveConsentState(value) {
+  try {
+    if (value === 'granted' || value === 'denied') {
+      localStorage.setItem(TELEMETRY_CONSENT_KEY, value);
+    } else {
+      localStorage.removeItem(TELEMETRY_CONSENT_KEY);
+    }
+  } catch {
+    // Consent remains in React state for this session if storage is unavailable.
+  }
+}
+
 export default function useTelemetryState({ notify }) {
   const [state, setState] = useState(() => normalizeTelemetryState(
     loadJson(storageKeys.telemetry, createDefaultTelemetryState()),
   ));
+  const [consentGiven, setConsentGiven] = useState(() => loadConsentState());
   const [busyAction, setBusyAction] = useState('');
   const [sessionId] = useState(() => createSessionId());
   const apiBase = getTelemetryApiBase();
   const surface = getTelemetrySurface();
+  const telemetryAllowed = consentGiven === 'granted';
 
   useEffect(() => {
     saveJson(storageKeys.telemetry, state);
   }, [state]);
+
+  useEffect(() => {
+    setState((prev) => {
+      const nextPendingEvents = telemetryAllowed ? prev.pendingEvents : [];
+      if (
+        prev.telemetryEnabled === telemetryAllowed &&
+        nextPendingEvents.length === prev.pendingEvents.length
+      ) {
+        return prev;
+      }
+      return normalizeTelemetryState({
+        ...prev,
+        telemetryEnabled: telemetryAllowed,
+        pendingEvents: nextPendingEvents,
+      });
+    });
+  }, [telemetryAllowed]);
 
   const sendPayload = useCallback(async (payload) => {
     const response = await fetch(`${apiBase}/telemetry`, {
@@ -46,7 +88,7 @@ export default function useTelemetryState({ notify }) {
   }, [apiBase]);
 
   const flushPending = useCallback(async () => {
-    if (!state.telemetryEnabled || state.pendingEvents.length === 0) return;
+    if (!telemetryAllowed || !state.telemetryEnabled || state.pendingEvents.length === 0) return;
 
     setBusyAction('flush');
     try {
@@ -64,16 +106,16 @@ export default function useTelemetryState({ notify }) {
     } finally {
       setBusyAction('');
     }
-  }, [sendPayload, state.pendingEvents, state.telemetryEnabled]);
+  }, [sendPayload, state.pendingEvents, state.telemetryEnabled, telemetryAllowed]);
 
   useEffect(() => {
-    if (state.telemetryEnabled && state.pendingEvents.length > 0) {
+    if (telemetryAllowed && state.telemetryEnabled && state.pendingEvents.length > 0) {
       flushPending();
     }
-  }, [flushPending, state.pendingEvents.length, state.telemetryEnabled]);
+  }, [flushPending, state.pendingEvents.length, state.telemetryEnabled, telemetryAllowed]);
 
   const track = useCallback(async (event, context = {}) => {
-    if (!state.telemetryEnabled) return false;
+    if (!telemetryAllowed || !state.telemetryEnabled) return false;
 
     const envelope = buildTelemetryEnvelope(state, sessionId, event, sanitizeTelemetryContext(context));
     try {
@@ -92,16 +134,25 @@ export default function useTelemetryState({ notify }) {
       }));
       return false;
     }
-  }, [sendPayload, sessionId, state]);
+  }, [sendPayload, sessionId, state, telemetryAllowed]);
 
   const updatePreferences = useCallback(async ({ telemetryEnabled, contactEmail }) => {
+    const nextConsent = telemetryEnabled ? 'granted' : 'denied';
+    saveConsentState(nextConsent);
+    setConsentGiven(nextConsent);
     const nextState = normalizeTelemetryState({
       ...state,
       telemetryEnabled,
       contactEmail,
+      pendingEvents: telemetryEnabled ? state.pendingEvents : [],
     });
 
     setState(nextState);
+    if (!telemetryEnabled) {
+      notify?.('Insights preferences updated.');
+      return true;
+    }
+
     setBusyAction('preferences');
     try {
       await sendPayload(buildTelemetryIdentityPayload(nextState, sessionId, {
@@ -131,8 +182,29 @@ export default function useTelemetryState({ notify }) {
     }
   }, [notify, sendPayload, sessionId, state]);
 
+  const grantConsent = useCallback(() => {
+    saveConsentState('granted');
+    setConsentGiven('granted');
+    setState((prev) => normalizeTelemetryState({
+      ...prev,
+      telemetryEnabled: true,
+    }));
+  }, []);
+
+  const denyConsent = useCallback(() => {
+    saveConsentState('denied');
+    setConsentGiven('denied');
+    setState((prev) => normalizeTelemetryState({
+      ...prev,
+      telemetryEnabled: false,
+      pendingEvents: [],
+      lastError: '',
+    }));
+  }, []);
+
   const telemetry = useMemo(() => ({
     ...state,
+    consentGiven,
     busyAction,
     sessionId,
     surface,
@@ -140,7 +212,9 @@ export default function useTelemetryState({ notify }) {
     track,
     flushPending,
     updatePreferences,
-  }), [busyAction, flushPending, sessionId, state, surface, track, updatePreferences]);
+    grantConsent,
+    denyConsent,
+  }), [busyAction, consentGiven, denyConsent, flushPending, grantConsent, sessionId, state, surface, track, updatePreferences]);
 
   return telemetry;
 }

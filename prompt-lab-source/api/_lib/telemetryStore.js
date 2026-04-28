@@ -54,7 +54,7 @@ export function buildTelemetryConfig() {
     redisUrl: readStringEnv('KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL').replace(/\/+$/, ''),
     redisToken: readStringEnv('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'),
     prefix: readStringEnv('PROMPTLAB_TELEMETRY_PREFIX') || DEFAULT_PREFIX,
-    consoleFallback: readBooleanEnv('PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK', true),
+    consoleFallback: readBooleanEnv('PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK', process.env.NODE_ENV !== 'production'),
   };
 }
 
@@ -77,6 +77,10 @@ export function normalizeTelemetryEvent(payload = {}, fallbackEvent = '') {
 }
 
 export async function persistTelemetryEvent(event, config = buildTelemetryConfig()) {
+  if (process.env.NODE_ENV === 'production' && !hasRedis(config)) {
+    return { ok: true, mode: 'disabled' };
+  }
+
   const mode = hasRedis(config) ? 'redis' : (config.consoleFallback ? 'console' : 'noop');
   const payload = JSON.stringify(event);
 

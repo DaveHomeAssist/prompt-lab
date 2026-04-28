@@ -25,9 +25,9 @@ describe('MainWorkspace layout', () => {
     expect(screen.queryByText('Library pane')).not.toBeInTheDocument();
   });
 
-  it('uses the two-column grid only when both panes are active', () => {
+  it('uses an editor-first weighted split when both panes are active', () => {
     const { container } = renderWorkspace({ showLibraryPane: true });
-    expect(container.firstChild.className).toContain('grid-cols-[minmax(0,1fr)_minmax(0,1fr)]');
+    expect(container.firstChild.className).toContain('grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]');
     expect(screen.getByText('Editor pane')).toBeInTheDocument();
     expect(screen.getByText('Library pane')).toBeInTheDocument();
   });

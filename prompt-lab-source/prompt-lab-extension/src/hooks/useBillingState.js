@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   canAccessFeature,
+  createOwnerBillingState,
   createDefaultBillingState,
   describeBillingStatus,
   getBillingApiBase,
   getPlanLabel,
+  isOwnerAccessAvailable,
   normalizeBillingState,
 } from '../lib/billing.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
@@ -12,6 +14,7 @@ import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
 
 function shouldRevalidate(state) {
+  if (state.status === 'owner') return false;
   if (!state.customerEmail && !state.customerId) return false;
   const lastValidated = Date.parse(state.lastValidatedAt || '');
   if (!Number.isFinite(lastValidated)) return true;
@@ -71,13 +74,18 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
-      // Attach Clerk session token when available
+      const requiresAuth = path === '/billing/license' || path === '/billing/portal';
       const headers = { ...(init?.headers || {}) };
+      let token = '';
       if (clerkGetToken) {
         try {
-          const token = await clerkGetToken();
-          if (token) headers.Authorization = `Bearer ${token}`;
-        } catch { /* Proceed without auth token */ }
+          token = await clerkGetToken();
+        } catch { /* Surface a consistent auth error below. */ }
+      }
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      } else if (requiresAuth) {
+        throw new Error('Sign in to Prompt Lab before syncing billing.');
       }
       const response = await fetch(`${apiBase}${path}`, {
         ...init,
@@ -99,6 +107,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [apiBase, clerkGetToken]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
+    if (state.status === 'owner') return true;
     if (!state.customerEmail && !state.customerId) return false;
 
     if (!silent) setBusyAction('validate');
@@ -108,8 +117,6 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'validate',
-          customerEmail: state.customerEmail || undefined,
-          customerId: state.customerId || undefined,
         }),
       });
 
@@ -143,9 +150,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [refreshLicense, state]);
 
   const activateLicense = useCallback(async (customerEmailInput) => {
-    const customerEmail = String(customerEmailInput || '').trim().toLowerCase();
-    if (!customerEmail) throw new Error('Enter the Stripe billing email for your Prompt Lab Pro purchase.');
-
+    const customerEmail = String(customerEmailInput || state.customerEmail || '').trim().toLowerCase();
     setBusyAction('activate');
     try {
       const payload = await requestBilling('/billing/license', {
@@ -153,8 +158,6 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'activate',
-          customerEmail,
-          customerId: state.customerId || undefined,
         }),
       });
       const nextState = normalizeResponseState(payload, {
@@ -183,6 +186,18 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     } finally {
       setBusyAction('');
     }
+  }, [notify, telemetry]);
+
+  const activateOwnerAccess = useCallback(async () => {
+    if (!isOwnerAccessAvailable()) {
+      throw new Error('Owner access is only available in local desktop/dev builds.');
+    }
+
+    const nextState = createOwnerBillingState();
+    setState(nextState);
+    notify?.('Owner Pro access enabled on this device.');
+    telemetry?.track?.('billing.owner_access_activated', { plan: 'pro', status: 'owner' });
+    return nextState;
   }, [notify, telemetry]);
 
   const startCheckout = useCallback(async (period, source = 'billing-modal', metadata = {}, overrides = {}) => {
@@ -223,10 +238,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       const payload = await requestBilling('/billing/portal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: overrides?.customerId || state.customerId || undefined,
-          customerEmail: overrides?.customerEmail || state.customerEmail || undefined,
-        }),
+        body: JSON.stringify({}),
       });
       if (!payload?.url) {
         throw new Error('Billing portal is not configured.');
@@ -246,12 +258,14 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     planLabel: getPlanLabel(state),
     statusCopy: describeBillingStatus(state),
     hasFeature: (featureId) => canAccessFeature(state.plan, featureId),
+    ownerAccessAvailable: isOwnerAccessAvailable(),
+    activateOwnerAccess,
     refreshLicense,
     activateLicense,
     deactivateLicense,
     startCheckout,
     openManagePurchases,
-  }), [activateLicense, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, state]);
+  }), [activateLicense, activateOwnerAccess, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, state]);
 
   return billing;
 }

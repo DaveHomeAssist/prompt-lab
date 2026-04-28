@@ -6,7 +6,7 @@
 
 After months of pasting prompts between ChatGPT, Claude, and Gemini tabs to compare results, I built a tool to do it properly.
 
-**Prompt Lab** is a workbench for prompt engineers who want to iterate systematically instead of guessing. It runs as a web app or Chrome extension — no backend, no account, your API keys stay in your browser.
+**Prompt Lab** is a workbench for prompt engineers who want to iterate systematically instead of guessing. It runs as a web app or unpacked Chrome/Vivaldi extension. No account is required for the editor, and Prompt Lab does not persist your prompts or provider keys server-side.
 
 **Core workflow:**
 
@@ -25,8 +25,8 @@ After months of pasting prompts between ChatGPT, Claude, and Gemini tabs to comp
 
 **Links:**
 
-- Try it: https://prompt-lab-tawny.vercel.app/app/
+- Try it: https://promptlab.tools/app/
 - Starter templates: https://promptlab.tools/templates/ (importable JSON — code review, tech writing, API docs)
-- Source: https://github.com/DaveHomeAssist/prompt-lab-provider-options
+- Source: https://github.com/DaveHomeAssist/prompt-lab
 
 Would love feedback from anyone doing structured prompt optimization — what's missing from your workflow?

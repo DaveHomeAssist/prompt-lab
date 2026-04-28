@@ -9,6 +9,7 @@ export const LEGACY_LIBRARY_CHECK_KEY = 'pl2-legacy-web-library-checked';
 
 const REQUEST_TYPE = 'pl2:request-legacy-library';
 const RESPONSE_TYPE = 'pl2:legacy-library-payload';
+const LOCAL_PREVIEW_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 export { getLibraryEntrySignature, mergeLibraryEntries };
 
@@ -33,7 +34,16 @@ export function isSeedOnlyLibrary(library) {
 }
 
 export function shouldAttemptLegacyWebMigration(currentOrigin = '', protocol = '') {
-  return /^https?:$/i.test(protocol) && currentOrigin && currentOrigin !== LEGACY_WEB_APP_ORIGIN;
+  if (!/^https?:$/i.test(protocol) || !currentOrigin || currentOrigin === LEGACY_WEB_APP_ORIGIN) {
+    return false;
+  }
+
+  try {
+    const hostname = new URL(currentOrigin).hostname;
+    return !LOCAL_PREVIEW_HOSTNAMES.has(hostname);
+  } catch {
+    return false;
+  }
 }
 
 export function parseLegacyLibraryPayload(messageData) {

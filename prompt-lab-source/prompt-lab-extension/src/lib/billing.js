@@ -2,6 +2,7 @@ import { isExtension } from './platform.js';
 
 export const PLAN_FREE = 'free';
 export const PLAN_PRO = 'pro';
+export const BILLING_STATUS_OWNER = 'owner';
 
 export const BILLING_FEATURES = Object.freeze({
   abTesting: {
@@ -32,6 +33,18 @@ export const BILLING_FEATURES = Object.freeze({
 });
 
 const PRO_FEATURES = new Set(Object.keys(BILLING_FEATURES));
+const ownerAccessEnabled = typeof import.meta !== 'undefined' && (
+  import.meta.env?.MODE === 'test' ||
+  (
+    !isExtension &&
+    (import.meta.env?.DEV || import.meta.env?.VITE_PROMPTLAB_OWNER_ACCESS === 'true')
+  )
+);
+const ownerEmail = (
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_PROMPTLAB_OWNER_EMAIL
+    ? String(import.meta.env.VITE_PROMPTLAB_OWNER_EMAIL)
+    : 'dave@promptlab.tools'
+).trim().toLowerCase();
 
 export function createDefaultBillingState() {
   return {
@@ -48,6 +61,22 @@ export function createDefaultBillingState() {
     validationError: '',
     manageUrl: '',
   };
+}
+
+export function isOwnerAccessAvailable() {
+  return ownerAccessEnabled;
+}
+
+export function createOwnerBillingState() {
+  return normalizeBillingState({
+    plan: PLAN_PRO,
+    status: BILLING_STATUS_OWNER,
+    billingPeriod: BILLING_STATUS_OWNER,
+    productName: 'Prompt Lab Pro',
+    customerEmail: ownerEmail,
+    customerName: 'Dave',
+    lastValidatedAt: new Date().toISOString(),
+  });
 }
 
 export function normalizeBillingState(value = {}) {
@@ -104,6 +133,8 @@ export function getBillingApiBase() {
 
 export function describeBillingStatus(state) {
   switch (state.status) {
+    case BILLING_STATUS_OWNER:
+      return 'Owner Pro access is active on this device.';
     case 'active':
       return 'Prompt Lab Pro is active for this Stripe billing email.';
     case 'trialing':
@@ -129,6 +160,7 @@ export function describeBillingStatus(state) {
 
 export function getPlanLabel(state) {
   if (state.plan === PLAN_PRO) {
+    if (state.status === BILLING_STATUS_OWNER || state.billingPeriod === BILLING_STATUS_OWNER) return 'Owner Pro';
     return state.billingPeriod === 'annual' ? 'Pro Annual' : 'Pro Monthly';
   }
   return 'Free';

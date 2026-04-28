@@ -47,12 +47,13 @@ function renderHeader(overrides = {}) {
 }
 
 describe('AppHeader', () => {
-  it('shows Create, Library, and Evaluate as the primary workspaces', () => {
+  it('shows Workbench, Library, and Evaluate as the primary workspaces', () => {
     renderHeader();
 
-    expect(screen.getByRole('tab', { name: 'Create' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Workbench' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Library' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Evaluate' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Create' })).not.toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Experiments' })).not.toBeInTheDocument();
   });
 
@@ -70,5 +71,33 @@ describe('AppHeader', () => {
 
     expect(screen.getByRole('tab', { name: 'Compare' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'History' })).toBeInTheDocument();
+  });
+
+  it('shows a workbench-oriented utility label instead of the old create workbench copy', () => {
+    renderHeader();
+
+    expect(screen.getByText('Prompt engineering workbench')).toBeInTheDocument();
+    expect(screen.queryByText('Create workbench')).not.toBeInTheDocument();
+  });
+
+  it('uses the shared ember accent for active shell controls', () => {
+    renderHeader();
+
+    expect(screen.getByRole('tab', { name: 'Workbench' })).toHaveClass(
+      'border',
+      'border-orange-400/50',
+      'bg-orange-500/15',
+      'text-orange-50'
+    );
+    expect(screen.getByRole('button', { name: 'Write' })).toHaveClass(
+      'border',
+      'border-orange-400/50',
+      'bg-orange-500/15',
+      'text-orange-50'
+    );
+    expect(screen.getByRole('button', { name: 'Upgrade' })).toHaveClass(
+      'bg-orange-500/90',
+      'hover:bg-orange-400'
+    );
   });
 });

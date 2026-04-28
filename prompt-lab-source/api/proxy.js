@@ -373,7 +373,6 @@ export default async function handler(request) {
       body: sanitizedBody.body,
     });
 
-    const responseBody = await upstream.arrayBuffer();
     const responseHeaders = {
       'Content-Type': upstream.headers.get('Content-Type') || 'application/json',
       'Access-Control-Allow-Origin': '*',
@@ -394,6 +393,14 @@ export default async function handler(request) {
       }
     }
 
+    if (upstream.body) {
+      return new Response(upstream.body, {
+        status: upstream.status,
+        headers: responseHeaders,
+      });
+    }
+
+    const responseBody = await upstream.arrayBuffer();
     return new Response(responseBody, {
       status: upstream.status,
       headers: responseHeaders,

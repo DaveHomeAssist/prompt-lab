@@ -59,7 +59,7 @@ docs/                     # Published public docs/static site copy
 |---------|-----|------|
 | Public landing page | `https://promptlab.tools/` | Vercel |
 | Hosted web app | `https://promptlab.tools/app/` | Vercel |
-| Chrome / Vivaldi extension | Production — MV3 side panel | Chrome Web Store |
+| Chrome / Vivaldi extension | MV3 side panel, local/unpacked build; store submission materials in draft | Local build / Chrome Web Store review prep |
 | macOS desktop | Tauri 2 — `.app` / `.dmg` | Local build |
 | Windows desktop | Tauri 2 — `.exe` / `.msi` | Local build |
 | Linux desktop | Tauri 2 — `.deb` / `.AppImage` | Local build |
@@ -85,6 +85,7 @@ docs/                     # Published public docs/static site copy
 
 - Landing: https://promptlab.tools/
 - Web app: https://promptlab.tools/app/
+- Source release tag: `v1.7.0` is pushed to GitHub. The GitHub Releases page may lag behind tags because only packaged desktop previews are promoted there today.
 
 ## Conventions
 

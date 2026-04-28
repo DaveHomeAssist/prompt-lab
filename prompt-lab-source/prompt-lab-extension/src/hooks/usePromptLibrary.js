@@ -73,9 +73,16 @@ export default function usePromptLibrary(notify) {
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
   const collectionsRef = useRef(collections);
+  const notifyRef = useRef(notify);
+  const legacyRecoveryAttemptedRef = useRef(false);
 
   useEffect(() => { libraryRef.current = library; }, [library]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
+  useEffect(() => { notifyRef.current = notify; }, [notify]);
+
+  const markLegacyLibraryChecked = useCallback(() => {
+    saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+  }, []);
 
   const applyLegacyPayload = useCallback((payload) => {
     if (!payload || !Array.isArray(payload.library)) {
@@ -122,20 +129,22 @@ export default function usePromptLibrary(notify) {
     const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
     const shouldAttemptLegacyRecovery = shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)
       && !alreadyCheckedLegacy
+      && !legacyRecoveryAttemptedRef.current
       && (!hasStoredLibrary || storedLibrary.length === 0 || isSeedOnlyLibrary(initialLibrary));
 
     if (!shouldAttemptLegacyRecovery) return undefined;
 
     let cancelled = false;
+    legacyRecoveryAttemptedRef.current = true;
     setRecoveringLegacyLibrary(true);
     requestLegacyLibraryPayload({ currentOrigin: window.location.origin })
       .then((payload) => {
         if (cancelled) return;
         const result = applyLegacyPayload(payload);
+        markLegacyLibraryChecked();
         if (!result.reachable) return;
-        saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
         if (result.importedCount > 0) {
-          notify(`Recovered ${result.importedCount} prompts from your legacy web library.`);
+          notifyRef.current?.(`Recovered ${result.importedCount} prompts from your legacy web library.`);
         }
       })
       .finally(() => {
@@ -145,7 +154,7 @@ export default function usePromptLibrary(notify) {
     return () => {
       cancelled = true;
     };
-  }, [applyLegacyPayload, notify]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked]);
 
   useEffect(() => {
     if (!libReady) return undefined;
@@ -466,10 +475,11 @@ export default function usePromptLibrary(notify) {
       const payload = await requestLegacyLibraryPayload({ currentOrigin: window.location.origin });
       const result = applyLegacyPayload(payload);
       if (!result.reachable) {
+        markLegacyLibraryChecked();
         notify('Legacy web library bridge is unavailable.');
         return { importedCount: 0, reason: 'unreachable' };
       }
-      saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+      markLegacyLibraryChecked();
 
       if (!result.hasLegacyLibrary) {
         notify('No legacy web library found.');
@@ -492,7 +502,7 @@ export default function usePromptLibrary(notify) {
     } finally {
       setRecoveringLegacyLibrary(false);
     }
-  }, [applyLegacyPayload, notify, recoveringLegacyLibrary]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked, notify, recoveringLegacyLibrary]);
 
   const allLibTags = useMemo(
     () => normalizeTagList(library.flatMap(entry => entry.tags || [])),

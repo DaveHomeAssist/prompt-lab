@@ -8,7 +8,7 @@
  */
 import { execSync } from 'node:child_process';
 import { readFile, readdir, stat } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -194,21 +194,21 @@ async function checkVersions() {
   const versions = [];
   for (const p of pkgs) {
     try {
-      const { default: pkg } = await import(p, { with: { type: 'json' } });
-      versions.push({ path: p.replace(repoDir + '/', ''), version: pkg.version });
+      const pkg = JSON.parse(await readFile(p, 'utf8'));
+      versions.push({ path: relative(repoDir, p), version: pkg.version || '???' });
     } catch {
-      versions.push({ path: p.replace(repoDir + '/', ''), version: '???' });
+      versions.push({ path: relative(repoDir, p), version: '???' });
     }
   }
   try {
     const cargoToml = await readFile(cargoTomlPath, 'utf8');
     const match = cargoToml.match(/^version = "([^"]+)"/m);
     versions.push({
-      path: cargoTomlPath.replace(repoDir + '/', ''),
+      path: relative(repoDir, cargoTomlPath),
       version: match?.[1] || '???',
     });
   } catch {
-    versions.push({ path: cargoTomlPath.replace(repoDir + '/', ''), version: '???' });
+    versions.push({ path: relative(repoDir, cargoTomlPath), version: '???' });
   }
   const allSame = versions.every(v => v.version === versions[0].version);
   if (allSame) {

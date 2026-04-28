@@ -94,6 +94,12 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   const m = T[colorMode];
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
+  const telemetryConsentPending = telemetry.consentGiven == null;
+  const trackTelemetry = (event, context = {}) => {
+    if (telemetry.consentGiven !== 'granted') return false;
+    void telemetry.track(event, context);
+    return true;
+  };
 
   // ── Library hook ──
   const lib = useLibrary(notify);
@@ -149,7 +155,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   } = ed;
 
   const openBilling = (featureId = null) => {
-    void telemetry.track('billing.modal_opened', {
+    trackTelemetry('billing.modal_opened', {
       featureId: featureId || 'general',
       plan: billing.plan,
       section: activeSection,
@@ -262,8 +268,9 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
 
   useEffect(() => {
     if (appOpenTrackedRef.current) return;
+    if (telemetry.consentGiven !== 'granted') return;
     appOpenTrackedRef.current = true;
-    void telemetry.track('app.opened', {
+    trackTelemetry('app.opened', {
       section: activeSection,
       surface: telemetry.surface,
       libraryCount: lib.library.length,
@@ -272,9 +279,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   }, [activeSection, billing.plan, lib.library.length, telemetry]);
 
   useEffect(() => {
+    if (telemetry.consentGiven !== 'granted') return;
     if (!activeSection || lastSectionRef.current === activeSection) return;
     lastSectionRef.current = activeSection;
-    void telemetry.track('navigation.section_changed', {
+    trackTelemetry('navigation.section_changed', {
       section: activeSection,
       runsView,
       workspaceView,
@@ -356,7 +364,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
   const handleEnhanceRequest = () => {
-    void telemetry.track('editor.enhance_requested', {
+    trackTelemetry('editor.enhance_requested', {
       mode: enhMode,
       inputLength: raw.length,
       wordCount: wc,
@@ -367,21 +375,21 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   };
   const handleExportLibrary = () => {
     if (canExportLibrary) {
-      void telemetry.track('library.export_requested', {
+      trackTelemetry('library.export_requested', {
         promptCount: lib.library.length,
         plan: billing.plan,
       });
       lib.exportLib();
       return;
     }
-    void telemetry.track('billing.feature_blocked', {
+    trackTelemetry('billing.feature_blocked', {
       featureId: 'export',
       plan: billing.plan,
     });
     openBilling('export');
   };
   const handleLoadEntry = async (entry, source = 'library') => {
-    void telemetry.track('library.prompt_loaded', {
+    trackTelemetry('library.prompt_loaded', {
       source,
       hasCollection: Boolean(entry?.collection),
       plan: billing.plan,
@@ -389,7 +397,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     await loadEntry(entry);
   };
   const handleAddToComposer = (entry) => {
-    void telemetry.track('composer.block_added', {
+    trackTelemetry('composer.block_added', {
       source: 'library',
       plan: billing.plan,
     });
@@ -402,7 +410,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       ...saveFlowOverrides,
     });
     if (saved?.id) {
-      void telemetry.track('library.prompt_saved', {
+      trackTelemetry('library.prompt_saved', {
         plan: billing.plan,
         via: 'inline',
         isVersion: Boolean(saveTargetId),
@@ -413,14 +421,14 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   };
   const handleRunCases = () => {
     if (!canRunBatchCases) {
-      void telemetry.track('billing.feature_blocked', {
+      trackTelemetry('billing.feature_blocked', {
         featureId: 'batchRuns',
         plan: billing.plan,
       });
       openBilling('batchRuns');
       return;
     }
-    void telemetry.track('evaluate.batch_runs_requested', {
+    trackTelemetry('evaluate.batch_runs_requested', {
       testCaseCount: currentTestCases.length,
       plan: billing.plan,
     });
@@ -428,14 +436,14 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   };
   const handleSendToABTest = (entry, side) => {
     if (!canUseAbTesting) {
-      void telemetry.track('billing.feature_blocked', {
+      trackTelemetry('billing.feature_blocked', {
         featureId: 'abTesting',
         plan: billing.plan,
       });
       openBilling('abTesting');
       return;
     }
-    void telemetry.track('evaluate.abtest_prompt_sent', {
+    trackTelemetry('evaluate.abtest_prompt_sent', {
       side,
       plan: billing.plan,
     });
@@ -448,7 +456,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     enhanceWithMode(modeId);
   };
   const handleEvaluateQuickStart = () => {
-    void telemetry.track('evaluate.quick_start_requested', { plan: billing.plan });
+    trackTelemetry('evaluate.quick_start_requested', { plan: billing.plan });
     if (currentEntry || raw.trim()) {
       openSection('create');
       notify(currentEntry
@@ -461,16 +469,27 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     openSection('create');
     notify('Loaded a starter prompt into Create. Enhance it to generate your first saved run.');
   };
+  const handleWorkbenchOpenEvaluate = () => {
+    trackTelemetry('workbench.activation_evaluate_opened', {
+      plan: billing.plan,
+      libraryCount: lib.library.length,
+      evalRunCount: evalRuns.length,
+    });
+    openRunsViewWithBilling('history');
+    notify(evalRuns.length > 0
+      ? 'Opened Evaluate. Review recent runs and compare the winners.'
+      : 'Opened Evaluate. Your first run will appear here after you refine and save a prompt.');
+  };
   const handleEvaluateOpenCompare = () => {
     if (!canUseAbTesting) {
-      void telemetry.track('billing.feature_blocked', {
+      trackTelemetry('billing.feature_blocked', {
         featureId: 'abTesting',
         plan: billing.plan,
       });
       openBilling('abTesting');
       return;
     }
-    void telemetry.track('evaluate.compare_opened', { plan: billing.plan });
+    trackTelemetry('evaluate.compare_opened', { plan: billing.plan });
     openRunsViewWithBilling('compare');
     notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
   };
@@ -518,6 +537,34 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
         openBilling={openBilling}
         clerkUserButton={clerkUser ? clerkUserButton : null}
       />
+
+      {telemetryConsentPending && (
+        <div className={`${m.surface} ${m.border} border-b px-4 py-3`}>
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className={`text-sm ${m.text}`}>
+              Help improve Prompt Lab with lightweight usage analytics.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                data-testid="telemetry-allow"
+                onClick={telemetry.grantConsent}
+                className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+              >
+                Allow analytics
+              </button>
+              <button
+                type="button"
+                data-testid="telemetry-deny"
+                onClick={telemetry.denyConsent}
+                className={`ui-control rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${m.border} ${m.textSub} hover:bg-white/[0.06]`}
+              >
+                No thanks
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main role="tabpanel" aria-label={tab} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
       {/* ══ EDITOR TAB ══ */}
@@ -568,7 +615,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               comparisonText={comparisonText} comparisonSourceLabel={comparisonSourceLabel}
               lib={lib}
               variants={variants} showNotes={showNotes} notes={notes}
-              evalRuns={evalRuns} showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
+              evalRuns={evalRuns} libraryCount={lib.library.length} evalRunCount={evalRuns.length}
+              onLoadQuickStartPrompt={handleEvaluateQuickStart}
+              onOpenEvaluate={handleWorkbenchOpenEvaluate}
+              showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
               streamPreview={streamPreview}
               showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
               onUnlockDiff={() => openBilling('diffView')}
@@ -685,7 +735,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
             const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
             const saved = doSave(saveFlowOverrides);
             if (saved?.id) {
-              void telemetry.track('library.prompt_saved', {
+              trackTelemetry('library.prompt_saved', {
                 plan: billing.plan,
                 via: 'save-panel',
                 isVersion: Boolean(saveTargetId),
