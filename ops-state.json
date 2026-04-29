@@ -4,21 +4,15 @@
     "name": "PromptLab"
   },
   "status": "warn",
-  "freshness": "stale",
-  "updatedAt": "2026-04-24T15:59:42.002Z",
-  "summary": "v1.7.0 · three shell architecture · branch canonical-tools-restore · dirty tree · 1 open issue",
+  "freshness": "fresh",
+  "updatedAt": "2026-04-29T02:23:58.245Z",
+  "summary": "v1.7.0 · three shell architecture · branch patch/2026-04-abtest-union · dirty tree · 1 open issue",
   "recommendations": [
     {
       "priority": "P2",
       "title": "Stabilize working tree",
       "reason": "PromptLab has many uncommitted changes, so ops status should be reviewed before release.",
       "command": "git status --short"
-    },
-    {
-      "priority": "P2",
-      "title": "Refresh project activity",
-      "reason": "Latest commit activity is outside the freshness window.",
-      "command": null
     }
   ],
   "sections": [
@@ -102,7 +96,7 @@
       "items": [
         {
           "label": "Branch",
-          "value": "canonical-tools-restore",
+          "value": "patch/2026-04-abtest-union",
           "status": "warn"
         },
         {
@@ -146,7 +140,7 @@
     },
     {
       "label": "Branch",
-      "value": "canonical-tools-restore",
+      "value": "patch/2026-04-abtest-union",
       "status": "warn"
     },
     {
@@ -258,8 +252,8 @@
     "schemaVersion": 1,
     "root": ".",
     "sourceRoot": "prompt-lab-source",
-    "lastCommitAt": "2026-04-22T04:15:10-04:00",
-    "lastCommitAgeMinutes": 3345,
+    "lastCommitAt": "2026-04-28T22:20:03-04:00",
+    "lastCommitAgeMinutes": 4,
     "staleAfterMinutes": 1440
   }
 }
