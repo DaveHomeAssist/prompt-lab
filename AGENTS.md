@@ -35,7 +35,8 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 ## Documentation Maintenance
 
 - Issues are tracked in this `AGENTS.md` table
-- Current session log entries go in `/Users/daverobertson/Desktop/Code/90-governance/docs/today.csv`
+- Current Prompt Lab session log entries go in `/Users/daverobertson/Desktop/Code/90-governance/docs/promptlab-today.csv`
+- Cross project aggregate entries may also be mirrored in `/Users/daverobertson/Desktop/Code/90-governance/docs/today.csv`
 - The inline session log below is retired and kept only as a pointer
 - Vercel incident report: `docs/incidents/prompt-lab-vercel-billing-incident-2026-04-29.md`
 - Historical release gate note: `docs/release-gate-classification-2026-04-24.md`
@@ -58,6 +59,6 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 
 ## Session Log
 
-This inline log is retired. Current session entries live in `/Users/daverobertson/Desktop/Code/90-governance/docs/today.csv` per the workspace logging standard.
+This inline log is retired. Current Prompt Lab session entries live in `/Users/daverobertson/Desktop/Code/90-governance/docs/promptlab-today.csv`.
 
 Historical entries remain in git history before commit `57b8aef`.
