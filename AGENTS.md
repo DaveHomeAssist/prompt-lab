@@ -31,7 +31,8 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 | 006 | P2 | resolved | No diff viewer for A/B test outputs | Added DiffEngine.js, DiffPane.jsx, and Sync View button in ABTestTab |
 | 007 | P1 | open | Release gate blocked by mixed dirty docs | Node runtime pinned to 22.x and local installs repaired; dirty tree ownership and npm audit findings remain before a clean release gate |
-| 008 | P1 | resolved | Vercel spend containment is proved | Verified production deployment dpl_3pNQMR7exsdS1fb1KJod5SC8Gv73 on promptlab.tools; project unpaused, Node 22.x, Fluid false, elastic false, billing and provider proxy envs closed; live billing checkout returned 503 in 1 ms with timeout=false log |
+| 008 | P1 | resolved | Vercel spend containment is proved | Verified production deployment dpl_AJyJPKC5agM6N1CN2KtezPY9ypxR on promptlab.tools; project unpaused, Node 22.x, Fluid false, elastic false, billing and provider proxy envs closed; live billing checkout returned 503 with timeout=false log |
+| 009 | P1 | resolved | Vercel cost incident prevention captured | Incident report lives at docs/incidents/prompt-lab-vercel-billing-incident-2026-04-29.md; future Vercel production, API, billing, telemetry, webhook, or unpause work must use the workspace Vercel API and Cost Safety Standard plus the vercel-cost-guard skill |
 
 ## Session Log
 
