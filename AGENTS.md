@@ -19,6 +19,28 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 - Keep provider support abstracted so UI and execution flows are not hard wired to one model vendor
 - Separate authoring, library, experiments, and notebook concerns even when they share one shell
 - Persist prompt, run, and settings state locally to keep the tool fast and offline tolerant where possible
+- Treat hosted Vercel compute as opt in. Static app delivery is acceptable; public API routes, billing, provider proxy, telemetry persistence, webhooks, and bug report writes require explicit cost review before release
+
+## Current Operations
+
+- Production domain: `promptlab.tools`
+- Last verified production deployment: `dpl_AJyJPKC5agM6N1CN2KtezPY9ypxR`
+- Last verified deployed source commit: `93ea5cb70dc22231272f5b911d3f6c6451d70522`
+- Local branch contains commits after the deployed source. Do not assume local docs, desktop, or tracker changes are deployed
+- Hosted billing, hosted provider proxy, hosted shared key, and telemetry persistence are intentionally disabled
+- Public API routes can still create Vercel invocation and log cost if bots or users hit them
+- Do not push this branch without deciding the Vercel preview build cost strategy
+- Home OS has separate dirty files under `/Users/daverobertson/Code/active/home-os`; do not mix those changes into Prompt Lab
+
+## Documentation Maintenance
+
+- Issues are tracked in this `AGENTS.md` table
+- Current session log entries go in `/Users/daverobertson/Desktop/Code/90-governance/docs/today.csv`
+- The inline session log below is retired and kept only as a pointer
+- Vercel incident report: `docs/incidents/prompt-lab-vercel-billing-incident-2026-04-29.md`
+- Historical release gate note: `docs/release-gate-classification-2026-04-24.md`
+- Vercel refund support draft: `docs/vercel-billing-refund-request-2026-04-28.md`
+- For Vercel production, API route, billing, provider proxy, telemetry, webhook, or unpause work, use the root Vercel API and Cost Safety Standard and the `vercel-cost-guard` skill before making any fix claim
 
 ## Issue Tracker
 
