@@ -35,6 +35,10 @@ const ENV_KEYS = [
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
+test.beforeEach(() => {
+  process.env.BILLING_ENABLED = 'true';
+});
+
 function resetEnv() {
   for (const key of ENV_KEYS) {
     if (typeof ORIGINAL_ENV[key] === 'undefined') {

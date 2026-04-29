@@ -1,4 +1,3 @@
-import { verifyToken } from '@clerk/backend';
 import { fetchWithTimeout, withTimeout } from './billingNetwork.js';
 
 const DEFAULT_AUTHORIZED_PARTIES = ['https://promptlab.tools'];
@@ -63,6 +62,14 @@ async function fetchClerkUser(userId, config) {
   return response.json();
 }
 
+async function loadVerifyToken() {
+  const clerkBackend = await import('@clerk/backend');
+  if (typeof clerkBackend.verifyToken !== 'function') {
+    throw new Error('Clerk token verification is unavailable in this runtime.');
+  }
+  return clerkBackend.verifyToken;
+}
+
 export function buildClerkBillingConfig() {
   return {
     secretKey: readStringEnv('CLERK_SECRET_KEY'),
@@ -92,7 +99,7 @@ export async function resolveClerkBillingIdentity(
   request,
   {
     config = buildClerkBillingConfig(),
-    verifyTokenFn = verifyToken,
+    verifyTokenFn = loadVerifyToken,
     fetchUserFn = fetchClerkUser,
   } = {},
 ) {
@@ -117,7 +124,13 @@ export async function resolveClerkBillingIdentity(
   }
 
   try {
-    const verifiedToken = await withTimeout(() => verifyTokenFn(token, {
+    const loadedVerifyToken = verifyTokenFn === loadVerifyToken
+      ? await withTimeout(() => loadVerifyToken(), {
+          timeoutMessage: 'Clerk token verifier load timed out.',
+        })
+      : verifyTokenFn;
+
+    const verifiedToken = await withTimeout(() => loadedVerifyToken(token, {
       secretKey: config.secretKey,
       ...(config.jwtKey ? { jwtKey: config.jwtKey } : {}),
       authorizedParties: buildAuthorizedParties(request, config),

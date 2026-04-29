@@ -195,8 +195,8 @@ function getForcedOpenRoutes() {
   return new Set(readCsvEnv('BILLING_CIRCUIT_OPEN_ROUTES', 'BILLING_FORCE_OPEN_ROUTES'));
 }
 
-function isBillingEnabled() {
-  return readBooleanEnv('BILLING_ENABLED', true);
+export function isBillingEnabled() {
+  return readBooleanEnv('BILLING_ENABLED', false);
 }
 
 function getCircuitRecordFromMemory(route) {
@@ -336,6 +336,38 @@ export async function enforceBillingRouteControls({ request, route, identity }) 
         'Retry-After': String(limited.retryAfterSeconds),
       }),
       limited,
+    };
+  }
+
+  return {
+    requestId,
+    clientIp,
+    status: 200,
+    response: null,
+  };
+}
+
+export async function enforceBillingAvailability({ request, route }) {
+  const requestId = getRequestId(request);
+  const clientIp = getClientIp(request);
+
+  if (!isBillingEnabled()) {
+    return {
+      requestId,
+      clientIp,
+      status: 503,
+      response: jsonResponse({ error: BILLING_DISABLED_MESSAGE }, 503),
+    };
+  }
+
+  const circuit = await getCircuitRecord(route);
+  if (circuit) {
+    return {
+      requestId,
+      clientIp,
+      status: 503,
+      response: jsonResponse({ error: BILLING_DISABLED_MESSAGE }, 503),
+      circuit,
     };
   }
 

@@ -102,6 +102,18 @@ export default function useTelemetryState({ notify }) {
     });
 
     setState(nextState);
+    if (!nextState.telemetryEnabled) {
+      setState((prev) => ({
+        ...prev,
+        telemetryEnabled: false,
+        contactEmail: nextState.contactEmail,
+        pendingEvents: [],
+        lastError: '',
+      }));
+      notify?.('Insights preferences updated.');
+      return true;
+    }
+
     setBusyAction('preferences');
     try {
       await sendPayload(buildTelemetryIdentityPayload(nextState, sessionId, {

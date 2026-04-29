@@ -14,10 +14,14 @@ export const HOSTED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 
 const IS_WEB = typeof import.meta !== 'undefined'
   && import.meta.env?.VITE_WEB_MODE === 'true';
+const HOSTED_PROXY_ENABLED = IS_WEB
+  && import.meta.env?.VITE_HOSTED_PROXY_ENABLED === 'true';
+const HOSTED_SHARED_KEY_ENABLED = HOSTED_PROXY_ENABLED
+  && import.meta.env?.VITE_HOSTED_SHARED_KEY_ENABLED === 'true';
 
 function getFetchImpl(provider) {
   if (!IS_WEB || provider === 'ollama') return globalThis.fetch;
-  return createProxyFetch();
+  return HOSTED_PROXY_ENABLED ? createProxyFetch() : globalThis.fetch;
 }
 
 function normalizeHostedSettings(settings = {}) {
@@ -52,7 +56,9 @@ export function saveSettings(settings) {
 function withDemoKeys(settings, provider) {
   if (!IS_WEB) return settings;
   const s = { ...settings };
-  if (provider === HOSTED_PROVIDER && !s.apiKey) s.apiKey = HOSTED_KEY_PLACEHOLDER;
+  if (HOSTED_SHARED_KEY_ENABLED && provider === HOSTED_PROVIDER && !s.apiKey) {
+    s.apiKey = HOSTED_KEY_PLACEHOLDER;
+  }
   return s;
 }
 

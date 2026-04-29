@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const proxyModuleUrl = pathToFileURL(
-  path.resolve(process.cwd(), 'prompt-lab-source/api/proxy.js'),
-).href;
+const testDir = path.dirname(fileURLToPath(import.meta.url));
+const sourceDir = path.resolve(testDir, '..');
+const proxyModuleUrl = pathToFileURL(path.join(sourceDir, 'api', 'proxy.js')).href;
 
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
@@ -14,6 +14,8 @@ const ENV_KEYS = [
   'HOSTED_MAX_TOKENS',
   'HOSTED_DEMO_DAILY_LIMIT',
   'HOSTED_BURST_LIMIT',
+  'HOSTED_PROXY_ENABLED',
+  'HOSTED_SHARED_KEY_ENABLED',
   'KV_REST_API_URL',
   'KV_REST_API_TOKEN',
   'UPSTASH_REDIS_REST_URL',
@@ -66,6 +68,8 @@ test.afterEach(() => {
 test('proxy preserves user auth and only injects the shared key when auth is missing', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
 
   const captured = [];
   globalThis.fetch = async (_url, init) => {
@@ -105,6 +109,8 @@ test('proxy locks hosted traffic to Anthropic and clamps models and token budget
   process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-4-20250514';
   process.env.HOSTED_MAX_TOKENS = '1024';
   process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
 
   const captured = [];
   globalThis.fetch = async (_url, init) => {
@@ -139,6 +145,8 @@ test('proxy locks hosted traffic to Anthropic and clamps models and token budget
 test('proxy enforces the shared-key daily limit', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_DEMO_DAILY_LIMIT = '1';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
 
   globalThis.fetch = async () => new Response(JSON.stringify({ ok: true }), {
     status: 200,
@@ -157,4 +165,35 @@ test('proxy enforces the shared-key daily limit', async () => {
   }));
   assert.equal(second.status, 429);
   assert.match(await second.text(), /daily hosted demo limit reached/i);
+});
+
+test('proxy is closed by default', async () => {
+  globalThis.fetch = async () => {
+    throw new Error('upstream should not run while proxy is disabled');
+  };
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': 'user-key' },
+  }));
+
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /proxy is disabled/i);
+});
+
+test('proxy rejects shared-key traffic unless shared access is explicitly enabled', async () => {
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'false';
+
+  globalThis.fetch = async () => {
+    throw new Error('upstream should not run for shared-key traffic');
+  };
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+
+  assert.equal(response.status, 401);
+  assert.match(await response.text(), /own Anthropic key/i);
 });

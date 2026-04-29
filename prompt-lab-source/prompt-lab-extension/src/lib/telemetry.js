@@ -5,7 +5,7 @@ export const TELEMETRY_EVENT_LIMIT = 25;
 
 export function createDefaultTelemetryState() {
   return {
-    telemetryEnabled: true,
+    telemetryEnabled: false,
     contactEmail: '',
     deviceId: createDeviceId(),
     pendingEvents: [],
@@ -16,10 +16,11 @@ export function createDefaultTelemetryState() {
 
 export function normalizeTelemetryState(value = {}) {
   const fallback = createDefaultTelemetryState();
+  const hasTelemetryPreference = Object.prototype.hasOwnProperty.call(value || {}, 'telemetryEnabled');
   return {
     ...fallback,
     ...(value && typeof value === 'object' ? value : {}),
-    telemetryEnabled: value?.telemetryEnabled !== false,
+    telemetryEnabled: hasTelemetryPreference ? value.telemetryEnabled === true : fallback.telemetryEnabled,
     contactEmail: typeof value?.contactEmail === 'string' ? value.contactEmail.trim() : '',
     deviceId: typeof value?.deviceId === 'string' && value.deviceId.trim()
       ? value.deviceId.trim()

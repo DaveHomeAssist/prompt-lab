@@ -18,7 +18,7 @@
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": "22.x"
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",

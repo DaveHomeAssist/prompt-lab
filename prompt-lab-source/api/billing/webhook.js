@@ -8,8 +8,9 @@ import {
   persistStripeWebhookRecord,
   verifyStripeSignature,
 } from '../_lib/stripeBilling.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
-export default async function handler(request) {
+export async function webhookHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405);
@@ -36,3 +37,5 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Could not process webhook.' }, 400);
   }
 }
+
+export default createNodeCompatibleHandler(webhookHandler);

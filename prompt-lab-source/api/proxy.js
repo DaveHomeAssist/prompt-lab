@@ -18,6 +18,12 @@ function readIntEnv(name, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function readBooleanEnv(name, fallback = false) {
+  const raw = process.env[name];
+  if (typeof raw !== 'string' || !raw.trim()) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(raw.trim().toLowerCase());
+}
+
 function readListEnv(name, fallback) {
   const raw = process.env[name];
   if (!raw) return fallback;
@@ -42,6 +48,14 @@ function getDemoDailyLimit() {
 
 function getHostedMaxTokens() {
   return readIntEnv('HOSTED_MAX_TOKENS', DEFAULT_MAX_TOKENS);
+}
+
+function isHostedProxyEnabled() {
+  return readBooleanEnv('HOSTED_PROXY_ENABLED', false);
+}
+
+function isHostedSharedKeyEnabled() {
+  return readBooleanEnv('HOSTED_SHARED_KEY_ENABLED', false);
 }
 
 function pruneMap(map, now) {
@@ -293,6 +307,10 @@ export default async function handler(request) {
     return jsonResponse({ error: 'Method not allowed' }, 405);
   }
 
+  if (!isHostedProxyEnabled()) {
+    return jsonResponse({ error: 'Hosted provider proxy is disabled.' }, 503);
+  }
+
   const clientIp =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
     || request.headers.get('x-real-ip')
@@ -331,6 +349,10 @@ export default async function handler(request) {
   }
 
   const auth = resolveAuth(headers);
+
+  if (auth.usingSharedKey && !isHostedSharedKeyEnabled()) {
+    return jsonResponse({ error: 'Add your own Anthropic key to run models in hosted Prompt Lab.' }, 401);
+  }
 
   let demoState = null;
   if (auth.usingSharedKey) {

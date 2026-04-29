@@ -8,12 +8,14 @@ import {
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
 import {
+  enforceBillingAvailability,
   enforceBillingRouteControls,
   logBillingRouteResult,
   recordBillingRouteFailure,
 } from '../_lib/billingControls.js';
 import { isBillingTimeoutError } from '../_lib/billingNetwork.js';
 import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
 const AUTH_REQUIRED_MESSAGE = 'Sign in to manage Prompt Lab billing.';
 
@@ -23,6 +25,7 @@ export function createCheckoutHandler(
     enforceControls = enforceBillingRouteControls,
     recordRouteFailure = recordBillingRouteFailure,
     logResult = logBillingRouteResult,
+    enforceAvailability = enforceBillingAvailability,
   } = {},
 ) {
   return async function handler(request) {
@@ -41,6 +44,16 @@ export function createCheckoutHandler(
     try {
       const body = await parseJsonBody(request);
       period = body?.period === 'annual' ? 'annual' : 'monthly';
+      controlState = await enforceAvailability({
+        request,
+        route: 'checkout',
+      });
+      if (controlState.response) {
+        status = controlState.status;
+        note = 'guard-blocked';
+        return controlState.response;
+      }
+
       clerkIdentity = await resolveIdentity(request);
       if (!clerkIdentity.isAuthenticated) {
         status = 401;
@@ -110,4 +123,4 @@ export function createCheckoutHandler(
   };
 }
 
-export default createCheckoutHandler();
+export default createNodeCompatibleHandler(createCheckoutHandler());

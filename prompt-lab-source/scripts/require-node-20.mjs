@@ -2,19 +2,14 @@
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 
-const isSupported =
-  (major === 20 && minor >= 19) ||
-  major > 22 ||
-  (major === 22 && minor >= 12);
+const isSupported = major === 22 && minor >= 12;
 
 if (!isSupported) {
-  console.warn(
-    `[prompt-lab] Supported Node runtimes are 20.19+ or 22.12+. Current runtime: ${process.versions.node}.`
+  console.error(
+    `[prompt-lab] Supported Node runtime is 22.12+. Current runtime: ${process.versions.node}.`
   );
-  console.warn(
-    '[prompt-lab] Newer Vite releases require a newer Node floor than plain "20.x".'
+  console.error(
+    '[prompt-lab] Use the Homebrew Node 22 binary on this machine: PATH=/opt/homebrew/opt/node@22/bin:$PATH'
   );
-  console.warn(
-    '[prompt-lab] Use Node 20.19.x LTS in this repo unless you have a specific reason to run 22.12+.'
-  );
+  process.exitCode = 1;
 }

@@ -11,6 +11,10 @@ import {
 
 const IS_WEB = typeof import.meta !== 'undefined'
   && import.meta.env?.VITE_WEB_MODE === 'true';
+const HOSTED_PROXY_ENABLED = IS_WEB
+  && import.meta.env?.VITE_HOSTED_PROXY_ENABLED === 'true';
+const HOSTED_SHARED_KEY_ENABLED = HOSTED_PROXY_ENABLED
+  && import.meta.env?.VITE_HOSTED_SHARED_KEY_ENABLED === 'true';
 
 const DEFAULT_SETTINGS = {
   provider: 'anthropic',
@@ -188,8 +192,9 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
               <div className={`space-y-2 rounded-xl border p-3 ${m.border} ${m.btn}`}>
                 <p className={`text-sm font-semibold ${m.text}`}>Hosted access</p>
                 <p className={`text-xs ${m.textMuted}`}>
-                  Hosted Prompt Lab is currently locked to Anthropic. The shared hosted key is used
-                  automatically when you leave the personal key field blank.
+                  {HOSTED_SHARED_KEY_ENABLED
+                    ? 'Hosted Prompt Lab is locked to Anthropic. The shared hosted key is used automatically when you leave the personal key field blank.'
+                    : 'Hosted Prompt Lab is locked to Anthropic. Model calls use your personal key directly from this browser; the hosted server proxy is off.'}
                 </p>
               </div>
               <label className="block space-y-1">
@@ -224,11 +229,11 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
             <>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>
-                  {isHostedWeb ? 'Personal API Key (optional)' : 'API Key'}
+                  {isHostedWeb && HOSTED_SHARED_KEY_ENABLED ? 'Personal API Key (optional)' : 'API Key'}
                 </span>
                 <input
                   type="password"
-                  placeholder={isHostedWeb ? 'Optional personal override' : 'sk-ant-...'}
+                  placeholder={isHostedWeb && HOSTED_SHARED_KEY_ENABLED ? 'Optional personal override' : 'sk-ant-...'}
                   value={settings.apiKey}
                   onChange={event => updateSetting('apiKey', event.target.value)}
                   className={inputClass}

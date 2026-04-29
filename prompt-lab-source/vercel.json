@@ -3,6 +3,11 @@
   "installCommand": "npm install && cd prompt-lab-web && npm install",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     { "source": "/tools", "destination": "/tools.html" },
     { "source": "/tools/index.html", "destination": "/tools.html" },

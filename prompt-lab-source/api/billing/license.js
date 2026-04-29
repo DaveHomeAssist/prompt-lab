@@ -8,12 +8,14 @@ import {
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
 import {
+  enforceBillingAvailability,
   enforceBillingRouteControls,
   logBillingRouteResult,
   recordBillingRouteFailure,
 } from '../_lib/billingControls.js';
 import { isBillingTimeoutError } from '../_lib/billingNetwork.js';
 import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
 function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -27,6 +29,7 @@ export function createLicenseHandler(
     enforceControls = enforceBillingRouteControls,
     recordRouteFailure = recordBillingRouteFailure,
     logResult = logBillingRouteResult,
+    enforceAvailability = enforceBillingAvailability,
   } = {},
 ) {
   return async function handler(request) {
@@ -50,6 +53,16 @@ export function createLicenseHandler(
         status = 400;
         note = 'invalid-action';
         return jsonResponse({ error: 'Unknown billing action.' }, 400);
+      }
+
+      controlState = await enforceAvailability({
+        request,
+        route: 'license',
+      });
+      if (controlState.response) {
+        status = controlState.status;
+        note = 'guard-blocked';
+        return controlState.response;
       }
 
       clerkIdentity = await resolveIdentity(request);
@@ -123,4 +136,4 @@ export function createLicenseHandler(
   };
 }
 
-export default createLicenseHandler();
+export default createNodeCompatibleHandler(createLicenseHandler());

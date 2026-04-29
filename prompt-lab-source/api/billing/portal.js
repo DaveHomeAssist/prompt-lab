@@ -8,12 +8,14 @@ import {
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
 import {
+  enforceBillingAvailability,
   enforceBillingRouteControls,
   logBillingRouteResult,
   recordBillingRouteFailure,
 } from '../_lib/billingControls.js';
 import { isBillingTimeoutError } from '../_lib/billingNetwork.js';
 import { resolveClerkBillingIdentity } from '../_lib/clerkBillingAuth.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
 const AUTH_REQUIRED_MESSAGE = 'Sign in to manage Prompt Lab billing.';
 
@@ -23,6 +25,7 @@ export function createPortalHandler(
     enforceControls = enforceBillingRouteControls,
     recordRouteFailure = recordBillingRouteFailure,
     logResult = logBillingRouteResult,
+    enforceAvailability = enforceBillingAvailability,
   } = {},
 ) {
   return async function handler(request) {
@@ -39,6 +42,16 @@ export function createPortalHandler(
     let controlState = { requestId: '', clientIp: '' };
     try {
       await parseJsonBody(request);
+      controlState = await enforceAvailability({
+        request,
+        route: 'portal',
+      });
+      if (controlState.response) {
+        status = controlState.status;
+        note = 'guard-blocked';
+        return controlState.response;
+      }
+
       clerkIdentity = await resolveIdentity(request);
       if (!clerkIdentity.isAuthenticated) {
         status = 401;
@@ -94,4 +107,4 @@ export function createPortalHandler(
   };
 }
 
-export default createPortalHandler();
+export default createNodeCompatibleHandler(createPortalHandler());

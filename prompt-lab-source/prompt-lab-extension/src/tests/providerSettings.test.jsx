@@ -181,7 +181,7 @@ describe('DesktopSettingsModal', () => {
     });
   });
 
-  it('hosted_web_mode_locks_provider_to_anthropic_and_makes_api_key_optional', async () => {
+  it('hosted_web_mode_locks_provider_to_anthropic_and_requires_personal_key_by_default', async () => {
     vi.stubEnv('VITE_WEB_MODE', 'true');
     loadProviderSettings.mockResolvedValueOnce({
       provider: 'openai',
@@ -196,7 +196,7 @@ describe('DesktopSettingsModal', () => {
     expect(screen.queryByRole('combobox', { name: 'Provider' })).not.toBeInTheDocument();
     expect(await screen.findByText('Hosted access')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Anthropic (hosted default)')).toBeDisabled();
-    expect(screen.getByLabelText('Personal API Key (optional)')).toHaveValue('');
+    expect(screen.getByLabelText('API Key')).toHaveValue('');
     expect(screen.getByRole('textbox', { name: 'Model' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -278,9 +278,9 @@ describe('DesktopSettingsModal', () => {
       settings: expect.objectContaining({
         provider: 'anthropic',
         anthropicModel: 'claude-sonnet-4-20250514',
-        apiKey: expect.any(String),
       }),
-      fetchImpl: expect.any(Function),
+      fetchImpl: globalThis.fetch,
     }));
+    expect(callProvider.mock.calls[0][0].settings.apiKey).toBeUndefined();
   });
 });

@@ -1,3 +1,5 @@
+import { createNodeCompatibleHandler } from './_lib/nodeHandler.js';
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -86,7 +88,7 @@ function detailsParagraph(label, value) {
   };
 }
 
-export default async function handler(request) {
+export async function bugReportHandler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -207,3 +209,5 @@ export default async function handler(request) {
     return json({ error: error?.message || 'Bug report failed' }, 500);
   }
 }
+
+export default createNodeCompatibleHandler(bugReportHandler);
