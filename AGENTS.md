@@ -48,3 +48,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-06-06] [PLB] [fix] Restore docs lint pass and desktop isolated build dependency resolution
 [2026-06-06] [PLB] [test] Verify docs check, web build, isolated desktop build, and local static route smoke
 [2026-06-06] [PLB] [ci] Include macOS universal Tauri bundle paths in artifact uploads
+[2026-06-06] [PLB] [build] Verify local Windows Tauri MSI/NSIS packaging and sync Cargo lock version
