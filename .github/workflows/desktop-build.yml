@@ -96,8 +96,16 @@ jobs:
           path: |
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.dmg
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.app
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.app.tar.gz
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.deb
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.AppImage
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.exe
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/**/*.msi
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.dmg
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.app
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.app.tar.gz
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.deb
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.AppImage
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.exe
+            prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.msi
           if-no-files-found: warn

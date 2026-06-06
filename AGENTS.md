@@ -47,3 +47,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-06-06] [PLB] [fix] Add privatepolicy redirect, publish static mobile fallbacks, and prevent mobile canvas state 404s
 [2026-06-06] [PLB] [fix] Restore docs lint pass and desktop isolated build dependency resolution
 [2026-06-06] [PLB] [test] Verify docs check, web build, isolated desktop build, and local static route smoke
+[2026-06-06] [PLB] [ci] Include macOS universal Tauri bundle paths in artifact uploads
