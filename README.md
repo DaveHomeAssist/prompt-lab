@@ -37,7 +37,7 @@ npm install && cargo tauri dev
 
 ## Structure
 
-```
+```text
 prompt-lab-source/
   prompt-lab-extension/   # Shared frontend + Chrome extension build
     src/                  # React source (shared between extension and desktop/web)
@@ -83,8 +83,8 @@ docs/                     # Published public docs/static site copy
 
 ## Links
 
-- Landing: https://promptlab.tools/
-- Web app: https://promptlab.tools/app/
+- Landing: <https://promptlab.tools/>
+- Web app: <https://promptlab.tools/app/>
 - Source release tag: `v1.7.0` is pushed to GitHub. The GitHub Releases page may lag behind tags because only packaged desktop previews are promoted there today.
 
 ## Conventions

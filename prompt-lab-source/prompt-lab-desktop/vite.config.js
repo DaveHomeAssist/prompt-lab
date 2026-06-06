@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       // Force shared extension source to resolve deps from desktop node_modules
       // (in CI, only prompt-lab-desktop/node_modules is installed)
+      'diff-match-patch': resolve(__dirname, 'node_modules/diff-match-patch/index.js'),
       react: resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
       'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom'),
