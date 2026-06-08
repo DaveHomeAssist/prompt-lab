@@ -5,7 +5,7 @@ import {
   detectDuplicates,
   detectEmptyPrompts,
   importPresetPack,
-  validatePresetPack,
+  preparePresetPackImport,
 } from './lib/presetImport.js';
 import { ensureString } from './lib/utils.js';
 
@@ -56,17 +56,21 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
 
     try {
       const parsed = JSON.parse(text);
-      const validation = validatePresetPack(parsed);
+      const prepared = preparePresetPackImport(parsed);
+      const pack = prepared.pack;
+      const validation = prepared.validation;
       return {
-        pack: parsed,
+        pack,
+        sourceLabel: prepared.sourceLabel,
         parseError: '',
         validation,
-        duplicates: validation.valid ? detectDuplicates(parsed.presets, lib.library) : [],
-        emptyPrompts: validation.valid ? detectEmptyPrompts(parsed.presets) : [],
+        duplicates: validation.valid ? detectDuplicates(pack.presets, lib.library) : [],
+        emptyPrompts: validation.valid ? detectEmptyPrompts(pack.presets) : [],
       };
     } catch (error) {
       return {
         pack: null,
+        sourceLabel: '',
         parseError: error instanceof Error ? error.message : 'Invalid JSON.',
         validation: null,
         duplicates: [],
@@ -122,10 +126,11 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
           <div className="flex items-center gap-2">
             <p className={`text-sm font-semibold ${m.text}`}>Import Preset Pack</p>
             {hasDraft && <DraftBadge>{sourceLabel ? `Draft · ${sourceLabel}` : 'Draft JSON'}</DraftBadge>}
+            {preview.sourceLabel && <DraftBadge>{preview.sourceLabel}</DraftBadge>}
             {readyToImport && <DraftBadge tone="success">{presetCount} preset{presetCount === 1 ? '' : 's'}</DraftBadge>}
           </div>
           <p className={`text-xs ${m.textMuted}`}>
-            Drop a `.json` pack or paste pack JSON to preview warnings, duplicates, and skipped prompts before merge.
+            Drop a `.json` preset pack, library export, starter library, or prompt array to preview warnings before merge.
           </p>
         </div>
         <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
@@ -185,7 +190,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       >
         <div className="flex flex-col items-center gap-2">
           <Ic n="Upload" size={18} className={m.textSub} />
-          <p className={`text-sm font-medium ${m.text}`}>Drop preset pack JSON here</p>
+          <p className={`text-sm font-medium ${m.text}`}>Drop import JSON here</p>
           <p className={`text-xs ${m.textMuted}`}>File import and pasted JSON use the same preview path.</p>
         </div>
       </div>
@@ -193,7 +198,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       <textarea
         value={sourceText}
         onChange={(event) => handleSourceText(event.target.value, sourceLabel)}
-        placeholder='Paste preset pack JSON…'
+        placeholder='Paste preset pack or library JSON...'
         className={`min-h-[9rem] w-full ${m.input} border rounded-xl px-3 py-2 text-xs leading-relaxed focus:outline-none focus:border-violet-500 ${m.text}`}
       />
 

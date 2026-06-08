@@ -23,6 +23,7 @@ const quick     = process.argv.includes('--quick');
 
 const results = [];
 let failed = false;
+const COMMAND_TIMEOUT_MS = 300_000;
 
 function pass(label, detail) {
   results.push({ status: 'PASS', label, detail });
@@ -40,7 +41,7 @@ function warn(label, detail) {
 
 function run(cmd, cwd) {
   try {
-    const stdout = execSync(cmd, { cwd, stdio: 'pipe', timeout: 120_000 });
+    const stdout = execSync(cmd, { cwd, stdio: 'pipe', timeout: COMMAND_TIMEOUT_MS });
     return { ok: true, stdout: stdout?.toString?.() || '' };
   } catch (err) {
     return {

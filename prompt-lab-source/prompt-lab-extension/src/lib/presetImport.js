@@ -7,6 +7,13 @@ const PACK_REQUIRED_FIELDS = ['version', 'type', 'id', 'title', 'presets'];
 const PRESET_REQUIRED_FIELDS = ['id', 'title', 'prompt'];
 const PRESET_WARNING_FIELDS = ['summary', 'tags', 'category'];
 const TITLE_SIMILARITY_THRESHOLD = 0.65;
+const SOURCE_LABELS = Object.freeze({
+  'preset-pack': 'Preset pack',
+  'library-export': 'Library export',
+  'starter-library-bundle': 'Starter library bundle',
+  'starter-library': 'Starter library',
+  'prompt-array': 'Prompt array',
+});
 
 function isObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -20,8 +27,22 @@ function hasOwn(value, key) {
   return Object.prototype.hasOwnProperty.call(value, key);
 }
 
+function stringValue(value) {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  return '';
+}
+
 function normalizePromptText(value) {
   return ensureString(value).replace(/\s+/g, ' ').trim();
+}
+
+function slugify(value, fallback = 'prompt-import') {
+  const slug = stringValue(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug || fallback;
 }
 
 function summarizeItem(item) {
@@ -133,6 +154,252 @@ function makeImportedId(baseId, usedIds) {
   return nextId;
 }
 
+function normalizeStringList(value) {
+  return Array.isArray(value)
+    ? value.map((item) => stringValue(item).trim()).filter(Boolean)
+    : [];
+}
+
+function firstString(...values) {
+  for (const value of values) {
+    const text = stringValue(value).trim();
+    if (text) return text;
+  }
+  return '';
+}
+
+function extractPromptBody(item) {
+  return firstString(item?.prompt, item?.enhanced, item?.original, item?.content, item?.text);
+}
+
+function extractSummary(item, fallback = '') {
+  return firstString(item?.summary, item?.notes, item?.description, item?.metadata?.purpose, fallback);
+}
+
+function extractCategory(item, fallback = '') {
+  return firstString(item?.collection, item?.category, fallback);
+}
+
+function extractStatus(item) {
+  return firstString(item?.status, item?.metadata?.status);
+}
+
+function extractPlatforms(item) {
+  const fromPlatforms = normalizeStringList(item?.platforms);
+  if (fromPlatforms.length) return fromPlatforms;
+  return normalizeStringList(item?.metadata?.compatibility);
+}
+
+function extractMetadata(item, extras = {}) {
+  const metadata = isObject(item?.metadata) ? item.metadata : {};
+  return {
+    ...metadata,
+    ...extras,
+  };
+}
+
+function makePresetId(item, index, prefix) {
+  const sourceId = stringValue(item?.id).trim();
+  if (sourceId) return sourceId;
+  const titleSlug = slugify(item?.title || item?.name, '');
+  return titleSlug ? `${prefix}-${titleSlug}` : `${prefix}-preset-${index + 1}`;
+}
+
+function coercePromptToPreset(item, index, options = {}) {
+  if (!isObject(item)) return null;
+  const prefix = options.prefix || 'import';
+  const title = firstString(item.title, item.name, `Imported Prompt ${index + 1}`);
+  const prompt = extractPromptBody(item);
+  return {
+    id: makePresetId(item, index, prefix),
+    title,
+    prompt,
+    original: firstString(item.original, prompt),
+    enhanced: firstString(item.enhanced, prompt),
+    summary: extractSummary(item, options.summary),
+    tags: normalizeStringList(item.tags),
+    category: options.forceCollection ? stringValue(options.collection) : extractCategory(item, options.collection),
+    status: extractStatus(item),
+    platforms: extractPlatforms(item),
+    inputs: Array.isArray(item.inputs) ? item.inputs : [],
+    variants: Array.isArray(item.variants) ? item.variants : [],
+    versions: Array.isArray(item.versions) ? item.versions : [],
+    testCases: Array.isArray(item.testCases) ? item.testCases : [],
+    goldenResponse: isObject(item.goldenResponse) ? item.goldenResponse : null,
+    goldenThreshold: item.goldenThreshold,
+    useCount: Number.isFinite(item.useCount) ? item.useCount : 0,
+    lastAccessedAt: item.lastAccessedAt || null,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt || item.updated_at,
+    metadata: extractMetadata(item, options.metadata),
+  };
+}
+
+function makePack({ id, title, version, description, presets }, sourceType, warnings = []) {
+  return {
+    sourceType,
+    sourceLabel: SOURCE_LABELS[sourceType] || 'Import source',
+    warnings,
+    errors: presets.length
+      ? []
+      : [`${SOURCE_LABELS[sourceType] || 'Import source'} did not contain any importable prompts.`],
+    pack: {
+      version: stringValue(version).trim() || '1.0.0',
+      type: presetPackSchema.type,
+      id: slugify(id || title, 'prompt-import'),
+      title: stringValue(title).trim() || 'Prompt Import',
+      description: stringValue(description),
+      presets,
+    },
+  };
+}
+
+function coerceLibraryExport(json) {
+  const prefix = slugify(json.id || json.title || 'library-export', 'library-export');
+  const title = firstString(json.title, json.name, 'Prompt Library Export');
+  const presets = asArray(json.library)
+    .map((entry, index) => coercePromptToPreset(entry, index, {
+      prefix,
+      collection: stringValue(entry?.collection),
+      metadata: {
+        source: 'library-export',
+        exportedAt: stringValue(json.exportedAt),
+      },
+    }))
+    .filter(Boolean);
+  return makePack({
+    id: firstString(json.id, 'prompt-library-export'),
+    title,
+    version: firstString(json.version, json.schemaVersion),
+    description: firstString(json.description, `Imported from a Prompt Lab library export with ${presets.length} prompt${presets.length === 1 ? '' : 's'}.`),
+    presets,
+  }, 'library-export');
+}
+
+function coerceStarterLibrary(library, sourceType = 'starter-library') {
+  const packId = firstString(library.id, library.name, 'starter-library');
+  const packName = firstString(library.name, library.title, 'Starter Library');
+  const prompts = asArray(library.prompts);
+  const presets = prompts
+    .map((prompt, index) => coercePromptToPreset(prompt, index, {
+      prefix: slugify(packId, 'starter-library'),
+      collection: packName,
+      forceCollection: true,
+      summary: `Starter prompt from ${packName}.`,
+      metadata: {
+        source: 'starter-library',
+        packId,
+        packName,
+        seedPromptId: stringValue(prompt?.id),
+        category: stringValue(prompt?.category) || null,
+      },
+    }))
+    .filter(Boolean);
+  return makePack({
+    id: packId,
+    title: packName,
+    version: firstString(library.version, library.format_version, '1.0.0'),
+    description: stringValue(library.description),
+    presets,
+  }, sourceType);
+}
+
+function coerceStarterBundle(json) {
+  const bundleTitle = firstString(json.title, json.name, json.meta?.source, 'Starter Library Bundle');
+  const bundleId = firstString(json.id, slugify(bundleTitle, 'starter-library-bundle'));
+  const presets = asArray(json.libraries).flatMap((library) => {
+    const prepared = coerceStarterLibrary(library, 'starter-library-bundle');
+    return asArray(prepared.pack?.presets);
+  });
+  return makePack({
+    id: bundleId,
+    title: bundleTitle,
+    version: firstString(json.version, json.meta?.format_version, '1.0.0'),
+    description: stringValue(json.description),
+    presets,
+  }, 'starter-library-bundle');
+}
+
+function coercePromptArray(json) {
+  const presets = asArray(json)
+    .map((entry, index) => coercePromptToPreset(entry, index, { prefix: 'prompt-array' }))
+    .filter(Boolean);
+  return makePack({
+    id: 'prompt-array-import',
+    title: 'Prompt Array Import',
+    version: '1.0.0',
+    description: `Imported from a raw array with ${presets.length} prompt${presets.length === 1 ? '' : 's'}.`,
+    presets,
+  }, 'prompt-array');
+}
+
+/**
+ * Normalize supported import sources into the documented preset-pack shape.
+ *
+ * @param {unknown} json
+ * @returns {{ pack: object | null, sourceType: string, sourceLabel: string, errors: string[], warnings: string[] }}
+ */
+export function normalizePresetPackSource(json) {
+  if (Array.isArray(json)) {
+    return coercePromptArray(json);
+  }
+
+  if (!isObject(json)) {
+    return {
+      pack: null,
+      sourceType: 'unsupported',
+      sourceLabel: 'Unsupported JSON',
+      errors: [`${describeSchemaTitle()} expects a top-level object or an array of prompts.`],
+      warnings: [],
+    };
+  }
+
+  if (Array.isArray(json.library)) {
+    return coerceLibraryExport(json);
+  }
+
+  if (Array.isArray(json.libraries)) {
+    return coerceStarterBundle(json);
+  }
+
+  if (Array.isArray(json.prompts)) {
+    return coerceStarterLibrary(json);
+  }
+
+  return {
+    pack: json,
+    sourceType: 'preset-pack',
+    sourceLabel: SOURCE_LABELS['preset-pack'],
+    errors: [],
+    warnings: [],
+  };
+}
+
+/**
+ * Prepare an import source for preview/import with schema validation applied.
+ *
+ * @param {unknown} json
+ * @returns {{ pack: object | null, sourceType: string, sourceLabel: string, validation: { valid: boolean, errors: string[], warnings: string[] } }}
+ */
+export function preparePresetPackImport(json) {
+  const source = normalizePresetPackSource(json);
+  const validation = source.pack
+    ? validatePresetPack(source.pack)
+    : { valid: false, errors: [], warnings: [] };
+  const errors = [...source.errors, ...validation.errors];
+  const warnings = [...source.warnings, ...validation.warnings];
+  return {
+    pack: source.pack,
+    sourceType: source.sourceType,
+    sourceLabel: source.sourceLabel,
+    validation: {
+      valid: errors.length === 0,
+      errors,
+      warnings,
+    },
+  };
+}
+
 /**
  * Compute area and format breakdown stats for a preset array.
  * @param {Array<object>} presets
@@ -173,12 +440,22 @@ export function buildImportEntries(pack, skipIds = new Set(), replaceMap = new M
     const entry = createPromptEntry({
       id: replaceMap.has(presetId) ? replaceMap.get(presetId) : undefined,
       title: ensureString(preset.title).trim() || 'Untitled',
-      original: promptText,
-      enhanced: promptText,
+      original: ensureString(preset.original) || promptText,
+      enhanced: ensureString(preset.enhanced) || promptText,
+      variants: Array.isArray(preset.variants) ? preset.variants : [],
       notes: ensureString(preset.summary),
       tags: Array.isArray(preset.tags) ? preset.tags.filter(Boolean) : [],
       collection: ensureString(preset.category),
+      versions: Array.isArray(preset.versions) ? preset.versions : [],
+      testCases: Array.isArray(preset.testCases) ? preset.testCases : [],
+      goldenResponse: preset.goldenResponse || null,
+      goldenThreshold: preset.goldenThreshold,
+      useCount: Number.isFinite(preset.useCount) ? preset.useCount : 0,
+      lastAccessedAt: preset.lastAccessedAt || null,
+      createdAt: preset.createdAt,
+      updatedAt: preset.updatedAt,
       metadata: {
+        ...(isObject(preset.metadata) ? preset.metadata : {}),
         owner: ensureString(pack?.title),
         purpose: ensureString(preset.summary),
         status: isDraft ? 'draft' : ensureString(preset.status) || 'active',
@@ -334,7 +611,8 @@ export async function importPresetPack(pack, storageAdapter) {
     throw new Error('storageAdapter.save is required.');
   }
 
-  const validation = validatePresetPack(pack);
+  const prepared = preparePresetPackImport(pack);
+  const validation = prepared.validation;
   if (!validation.valid) {
     return {
       imported: [],
@@ -343,20 +621,21 @@ export async function importPresetPack(pack, storageAdapter) {
     };
   }
 
+  const normalizedPack = prepared.pack;
   const existingLibrary = normalizeLibrary(await readExistingLibrary(storageAdapter));
-  const conflicts = detectDuplicates(pack.presets, existingLibrary);
+  const conflicts = detectDuplicates(normalizedPack.presets, existingLibrary);
   const exactMatchIds = new Set(
     conflicts
       .filter((item) => item.reason === 'prompt-exact-match')
       .map((item) => item.a.id)
   );
-  const emptyIds = new Set(detectEmptyPrompts(pack.presets).map((preset) => ensureString(preset.id)));
+  const emptyIds = new Set(detectEmptyPrompts(normalizedPack.presets).map((preset) => ensureString(preset.id)));
   const usedIds = new Set(existingLibrary.map((entry) => entry.id));
   const mergedLibrary = [...existingLibrary];
   const imported = [];
   const skipped = [];
 
-  asArray(pack.presets).forEach((preset) => {
+  asArray(normalizedPack.presets).forEach((preset) => {
     const presetId = ensureString(preset.id);
     if (emptyIds.has(presetId)) {
       skipped.push({ id: presetId, title: ensureString(preset.title), reason: 'empty-prompt' });
@@ -380,21 +659,31 @@ export async function importPresetPack(pack, storageAdapter) {
     const entry = createPromptEntry({
       id: resolvedId,
       title: ensureString(preset.title).trim(),
-      original: ensureString(preset.prompt),
-      enhanced: ensureString(preset.prompt),
+      original: ensureString(preset.original) || ensureString(preset.prompt),
+      enhanced: ensureString(preset.enhanced) || ensureString(preset.prompt),
+      variants: Array.isArray(preset.variants) ? preset.variants : [],
       notes: ensureString(preset.summary),
       tags: Array.isArray(preset.tags) ? preset.tags : [],
       collection: ensureString(preset.category),
       inputs: normalizePresetInputs(preset.inputs),
+      versions: Array.isArray(preset.versions) ? preset.versions : [],
+      testCases: Array.isArray(preset.testCases) ? preset.testCases : [],
+      goldenResponse: preset.goldenResponse || null,
+      goldenThreshold: preset.goldenThreshold,
+      useCount: Number.isFinite(preset.useCount) ? preset.useCount : 0,
+      lastAccessedAt: preset.lastAccessedAt || null,
+      createdAt: preset.createdAt,
+      updatedAt: preset.updatedAt,
       metadata: {
-        owner: ensureString(pack.title),
-        purpose: ensureString(pack.id),
+        ...(isObject(preset.metadata) ? preset.metadata : {}),
+        owner: ensureString(normalizedPack.title),
+        purpose: ensureString(preset.summary) || ensureString(normalizedPack.id),
         status: ensureString(preset.status),
-        compatibility: [],
+        compatibility: Array.isArray(preset.platforms) ? preset.platforms : [],
         riskLevel: '',
       },
-      schema_version: ensureString(pack.version),
-      version: ensureString(pack.version),
+      schema_version: ensureString(normalizedPack.version),
+      version: ensureString(normalizedPack.version),
     });
 
     mergedLibrary.push(entry);
@@ -408,5 +697,7 @@ export async function importPresetPack(pack, storageAdapter) {
     imported,
     skipped,
     conflicts,
+    sourceType: prepared.sourceType,
+    sourceLabel: prepared.sourceLabel,
   };
 }

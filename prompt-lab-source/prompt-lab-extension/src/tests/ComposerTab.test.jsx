@@ -75,17 +75,15 @@ function renderComposer(overrides = {}) {
 describe('ComposerTab', () => {
   it('surfaces starter and specialized groupings with differentiated add buttons', () => {
     const { addToComposer, library } = renderComposer();
-    const popularButtons = screen.getAllByRole('button', { name: 'Add Popular' });
-    const starterButtons = screen.getAllByRole('button', { name: 'Add Starter' });
-    const blockButtons = screen.getAllByRole('button', { name: 'Add Block' });
+    const addPopularButtons = screen.getAllByRole('button', { name: 'Add Popular' });
 
     expect(screen.getAllByText('Start Here').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Specialized Library').length).toBeGreaterThan(0);
-    expect(popularButtons.length).toBeGreaterThan(0);
-    expect(starterButtons.length).toBeGreaterThan(0);
-    expect(blockButtons.length).toBeGreaterThan(0);
+    expect(addPopularButtons.length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Add Starter' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Add Block' }).length).toBeGreaterThan(0);
 
-    fireEvent.click(popularButtons[0]);
+    fireEvent.click(addPopularButtons[0]);
 
     expect(addToComposer).toHaveBeenCalledWith(library[0]);
   });

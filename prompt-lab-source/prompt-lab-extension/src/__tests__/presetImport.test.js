@@ -3,6 +3,7 @@ import {
   detectDuplicates,
   detectEmptyPrompts,
   importPresetPack,
+  preparePresetPackImport,
   validatePresetPack,
 } from '../lib/presetImport.js';
 
@@ -54,6 +55,107 @@ describe('validatePresetPack', () => {
       expect.stringContaining('missing optional field: tags'),
       expect.stringContaining('missing optional field: category'),
     ]));
+  });
+});
+
+describe('preparePresetPackImport', () => {
+  it('coerces exported library JSON into a preset pack', () => {
+    const exportPayload = {
+      version: '1.7.0',
+      schemaVersion: 1,
+      exportedAt: '2026-06-08T12:00:00.000Z',
+      library: [
+        {
+          id: 'saved-one',
+          title: 'Saved Prompt',
+          original: 'Original saved prompt',
+          enhanced: 'Enhanced saved prompt',
+          notes: 'Saved notes',
+          tags: ['ops'],
+          collection: 'Operations',
+        },
+      ],
+    };
+
+    const result = preparePresetPackImport(exportPayload);
+
+    expect(result.sourceType).toBe('library-export');
+    expect(result.validation.valid).toBe(true);
+    expect(result.pack).toEqual(expect.objectContaining({
+      type: 'prompt-pack',
+      title: 'Prompt Library Export',
+      presets: [
+        expect.objectContaining({
+          id: 'saved-one',
+          title: 'Saved Prompt',
+          prompt: 'Enhanced saved prompt',
+          original: 'Original saved prompt',
+          enhanced: 'Enhanced saved prompt',
+          summary: 'Saved notes',
+          category: 'Operations',
+          tags: ['ops'],
+        }),
+      ],
+    }));
+  });
+
+  it('coerces starter-library bundles into collection-backed presets', () => {
+    const bundle = {
+      meta: { format_version: '1.0' },
+      libraries: [
+        {
+          id: 'lib_show_ops',
+          name: 'Show Ops',
+          prompts: [
+            {
+              id: 'run-sheet',
+              title: 'Run Sheet Builder',
+              category: 'production',
+              tags: ['show'],
+              prompt: 'Build a show run sheet.',
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = preparePresetPackImport(bundle);
+
+    expect(result.sourceType).toBe('starter-library-bundle');
+    expect(result.validation.valid).toBe(true);
+    expect(result.pack.presets).toEqual([
+      expect.objectContaining({
+        id: 'run-sheet',
+        title: 'Run Sheet Builder',
+        prompt: 'Build a show run sheet.',
+        category: 'Show Ops',
+        metadata: expect.objectContaining({
+          source: 'starter-library',
+          packId: 'lib_show_ops',
+          seedPromptId: 'run-sheet',
+          category: 'production',
+        }),
+      }),
+    ]);
+  });
+
+  it('coerces raw prompt arrays into importable presets', () => {
+    const result = preparePresetPackImport([
+      {
+        id: 42,
+        title: 'Raw Prompt',
+        enhanced: 'Prompt body from an array.',
+        collection: 'Raw Imports',
+      },
+    ]);
+
+    expect(result.sourceType).toBe('prompt-array');
+    expect(result.validation.valid).toBe(true);
+    expect(result.pack.presets[0]).toEqual(expect.objectContaining({
+      id: '42',
+      prompt: 'Prompt body from an array.',
+      category: 'Raw Imports',
+    }));
   });
 });
 
@@ -200,5 +302,85 @@ describe('importPresetPack', () => {
     expect(result.imported).toEqual([]);
     expect(result.skipped).not.toEqual([]);
     expect(save).not.toHaveBeenCalled();
+  });
+
+  it('imports Prompt Lab library export files through the pack importer', async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const result = await importPresetPack({
+      version: '1.7.0',
+      exportedAt: '2026-06-08T12:00:00.000Z',
+      library: [
+        {
+          id: 'exported-one',
+          title: 'Exported Prompt',
+          original: 'Old text',
+          enhanced: 'Prompt text from export',
+          notes: 'Exported notes',
+          tags: ['export'],
+          collection: 'Exports',
+        },
+      ],
+    }, {
+      load: async () => [],
+      save,
+    });
+
+    expect(result.sourceType).toBe('library-export');
+    expect(result.imported).toEqual([
+      expect.objectContaining({ id: 'exported-one', title: 'Exported Prompt' }),
+    ]);
+    expect(save).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'exported-one',
+        title: 'Exported Prompt',
+        original: 'Old text',
+        enhanced: 'Prompt text from export',
+        notes: 'Exported notes',
+        collection: 'Exports',
+        tags: ['export'],
+        metadata: expect.objectContaining({
+          source: 'library-export',
+          owner: 'Prompt Library Export',
+        }),
+      }),
+    ]));
+  });
+
+  it('imports a single starter library JSON file through the pack importer', async () => {
+    const save = vi.fn().mockResolvedValue(true);
+    const result = await importPresetPack({
+      id: 'lib_field_ops',
+      name: 'Field Ops',
+      prompts: [
+        {
+          id: 'field-check',
+          title: 'Field Check',
+          category: 'verification',
+          tags: ['field'],
+          prompt: 'Build a field verification checklist.',
+        },
+      ],
+    }, {
+      load: async () => [],
+      save,
+    });
+
+    expect(result.sourceType).toBe('starter-library');
+    expect(result.imported).toEqual([
+      expect.objectContaining({ id: 'field-check', title: 'Field Check' }),
+    ]);
+    expect(save).toHaveBeenCalledWith(expect.arrayContaining([
+      expect.objectContaining({
+        title: 'Field Check',
+        collection: 'Field Ops',
+        enhanced: 'Build a field verification checklist.',
+        metadata: expect.objectContaining({
+          source: 'starter-library',
+          packId: 'lib_field_ops',
+          seedPromptId: 'field-check',
+          category: 'verification',
+        }),
+      }),
+    ]));
   });
 });

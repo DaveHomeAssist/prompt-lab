@@ -69,7 +69,7 @@ describe('PresetImportPanel', () => {
       />
     );
 
-    fireEvent.change(screen.getByPlaceholderText('Paste preset pack JSON…'), {
+    fireEvent.change(screen.getByPlaceholderText('Paste preset pack or library JSON...'), {
       target: { value: JSON.stringify(buildPack()) },
     });
 
@@ -91,6 +91,56 @@ describe('PresetImportPanel', () => {
             type: 'select',
           }),
         ],
+      }),
+    ]));
+  });
+
+  it('previews and imports exported library JSON through the pack panel', async () => {
+    const setLibrary = vi.fn();
+    const setCollections = vi.fn();
+    const exportedLibrary = {
+      version: '1.7.0',
+      exportedAt: '2026-06-08T12:00:00.000Z',
+      library: [
+        {
+          id: 'exported-nav',
+          title: 'Exported Navigation Prompt',
+          original: 'Original body',
+          enhanced: 'Imported exported body',
+          notes: 'Exported summary',
+          collection: 'Exports',
+          tags: ['export'],
+        },
+      ],
+    };
+
+    render(
+      <PresetImportPanel
+        m={makeTheme()}
+        lib={{
+          library: [],
+          setLibrary,
+          setCollections,
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Paste preset pack or library JSON...'), {
+      target: { value: JSON.stringify(exportedLibrary) },
+    });
+
+    expect(screen.getByText('Library export')).toBeInTheDocument();
+    expect(screen.getByText('Exported Navigation Prompt')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Import Presets/i }));
+
+    await waitFor(() => expect(setLibrary).toHaveBeenCalledTimes(1));
+    expect(setCollections.mock.calls[0][0]([])).toEqual(['Exports']);
+    expect(setLibrary.mock.calls[0][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        title: 'Exported Navigation Prompt',
+        enhanced: 'Imported exported body',
+        collection: 'Exports',
       }),
     ]));
   });
