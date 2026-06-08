@@ -3,6 +3,9 @@
   "installCommand": "echo 'skip'",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
+  "redirects": [
+    { "source": "/privatepolicy", "destination": "/privacy.html", "permanent": true }
+  ],
   "rewrites": [
     {
       "source": "/",

@@ -43,3 +43,9 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-03-24] [PLB] [refactor] Extract CreateEditorPane, compress Create vertical stack (Phase 1 complete)
 [2026-03-31] [PLB] [fix] Keep Evaluate model-compare toggle visible when persisted state stays active on filtered timelines
 [2026-03-31] [PLB] [test] Expand Evaluate hook coverage for filters, pagination, and run patch updates
+[2026-06-06] [PLB] [ops] Create latest-main route/CI greenline worktree from origin/main b61f254
+[2026-06-06] [PLB] [fix] Add privatepolicy redirect, publish static mobile fallbacks, and prevent mobile canvas state 404s
+[2026-06-06] [PLB] [fix] Restore docs lint pass and desktop isolated build dependency resolution
+[2026-06-06] [PLB] [test] Verify docs check, web build, isolated desktop build, and local static route smoke
+[2026-06-06] [PLB] [ci] Include macOS universal Tauri bundle paths in artifact uploads
+[2026-06-06] [PLB] [build] Verify local Windows Tauri MSI/NSIS packaging and sync Cargo lock version

@@ -10,6 +10,7 @@ const webDir = join(sourceDir, 'prompt-lab-web');
 const webIndexHtml = join(webDir, 'index.html');
 const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const webTemplatesDir = join(webPublicDir, 'templates');
+const webMobileDir = join(webPublicDir, 'mobile');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
@@ -35,6 +36,8 @@ async function resetDocsDir() {
     ...copyTargets.map(([, toName]) => join(docsDir, toName)),
     ...webPageTargets.map(([, toName]) => join(docsDir, toName)),
     join(docsDir, 'templates'),
+    join(docsDir, 'mobile'),
+    join(docsDir, 'privatepolicy.html'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
     join(docsDir, 'CNAME'),
@@ -75,12 +78,64 @@ async function copyTemplatesDir() {
   }
 }
 
+async function copyMobileDir() {
+  try {
+    const mobileStats = await stat(webMobileDir);
+    if (!mobileStats.isDirectory()) return;
+
+    const targetMobileDir = join(docsDir, 'mobile');
+    await cp(webMobileDir, targetMobileDir, { recursive: true });
+    await rm(join(targetMobileDir, 'standalone.html'), { force: true });
+    await writeFile(
+      join(targetMobileDir, 'index.html'),
+      `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PromptLab Mobile Prototype</title>
+  <meta http-equiv="refresh" content="0; url=./prototype.html">
+  <link rel="canonical" href="https://promptlab.tools/mobile/prototype.html">
+</head>
+<body>
+  <p><a href="./prototype.html">Open the PromptLab Mobile prototype</a></p>
+</body>
+</html>
+`,
+      'utf8',
+    );
+  } catch {
+    // Mobile remains optional; skip when the static fallback directory does not exist.
+  }
+}
+
 async function writeNoJekyll() {
   await writeFile(join(docsDir, '.nojekyll'), '', 'utf8');
 }
 
 async function writeCname() {
   await writeFile(join(docsDir, 'CNAME'), 'promptlab.tools\n', 'utf8');
+}
+
+async function writeLegacyPrivacyRedirect() {
+  await writeFile(
+    join(docsDir, 'privatepolicy.html'),
+    `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prompt Lab Privacy Policy</title>
+  <meta http-equiv="refresh" content="0; url=./privacy.html">
+  <link rel="canonical" href="https://promptlab.tools/privacy.html">
+</head>
+<body>
+  <p><a href="./privacy.html">Open the Prompt Lab privacy policy</a></p>
+</body>
+</html>
+`,
+    'utf8',
+  );
 }
 
 async function validatePublicInputs() {
@@ -128,6 +183,7 @@ async function main() {
 
   await copyFontsDir();
   await copyTemplatesDir();
+  await copyMobileDir();
 
   // Copy web pages (guide, setup)
   for (const [fromName, toName] of webPageTargets) {
@@ -142,6 +198,7 @@ async function main() {
 
   await writeNoJekyll();
   await writeCname();
+  await writeLegacyPrivacyRedirect();
 
   console.log(`Landing site published to ${docsDir}`);
 }

@@ -1,11 +1,18 @@
 {
   "globs": [
-    "../*.md",
-    "./*.md",
-    "./docs/**/*.md",
+    "../README.md",
+    "../AGENTS.md",
+    "./ARCHITECTURE.md",
+    "./DOCS_INVENTORY.md",
+    "./ROADMAP.md",
+    "./NOTION_DOCS_AGENT.md",
+    "./docs/docs-map.md",
+    "./docs/docs-style-guide.md",
+    "./docs/glossary.md",
     "./prompt-lab-extension/*.md",
     "./prompt-lab-desktop/*.md",
     "./prompt-lab-web/*.md",
+    "!./prompt-lab-extension/EXECUTION_PRD_V1.4.md",
     "!./_archive/**"
   ],
   "config": {
