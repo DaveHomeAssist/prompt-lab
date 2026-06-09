@@ -233,6 +233,11 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [notify, requestBilling, state.customerEmail, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
+    if (state.status === 'owner' || state.billingPeriod === 'owner') {
+      notify?.('Owner Pro access is managed by Prompt Lab owner settings.');
+      return false;
+    }
+
     setBusyAction('portal');
     try {
       const payload = await requestBilling('/billing/portal', {
@@ -249,7 +254,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     } finally {
       setBusyAction('');
     }
-  }, [requestBilling, state.customerEmail, state.customerId, state.plan, telemetry]);
+  }, [notify, requestBilling, state.billingPeriod, state.customerEmail, state.customerId, state.plan, state.status, telemetry]);
 
   const billing = useMemo(() => ({
     ...state,

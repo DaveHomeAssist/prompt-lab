@@ -132,6 +132,12 @@ export function getBillingApiBase() {
 }
 
 export function describeBillingStatus(state) {
+  if (state.billingPeriod === BILLING_STATUS_OWNER) {
+    return state.status === BILLING_STATUS_OWNER
+      ? 'Owner Pro access is active on this device.'
+      : 'Owner Pro access is active for this signed-in account.';
+  }
+
   switch (state.status) {
     case BILLING_STATUS_OWNER:
       return 'Owner Pro access is active on this device.';

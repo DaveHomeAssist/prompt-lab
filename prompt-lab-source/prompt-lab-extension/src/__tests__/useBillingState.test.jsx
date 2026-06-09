@@ -99,4 +99,30 @@ describe('useBillingState', () => {
     });
     expect(notify).toHaveBeenCalledWith('Owner Pro access enabled on this device.');
   });
+
+  it('labels server owner Pro access and does not open a Stripe portal', async () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'pro',
+      status: 'active',
+      billingPeriod: 'owner',
+      customerEmail: 'owner@example.com',
+      lastValidatedAt: new Date().toISOString(),
+    }));
+    global.fetch = vi.fn();
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => useBillingState({ notify }));
+
+    expect(result.current.planLabel).toBe('Owner Pro');
+    expect(result.current.statusCopy).toBe('Owner Pro access is active for this signed-in account.');
+    expect(result.current.hasFeature('abTesting')).toBe(true);
+
+    await act(async () => {
+      await result.current.openManagePurchases();
+    });
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(window.open).not.toHaveBeenCalled();
+    expect(notify).toHaveBeenCalledWith('Owner Pro access is managed by Prompt Lab owner settings.');
+  });
 });
