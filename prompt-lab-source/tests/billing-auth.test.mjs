@@ -19,6 +19,8 @@ const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
+  'PROMPTLAB_OWNER_CLERK_USER_IDS',
+  'PROMPTLAB_OWNER_EMAILS',
   'STRIPE_SECRET_KEY',
   'STRIPE_MONTHLY_PRICE_ID',
   'STRIPE_YEARLY_PRICE_ID',
@@ -244,6 +246,65 @@ test('billing license uses the verified Clerk identity instead of the posted ema
     assert.equal(payload.customerEmail, 'user-a@example.com');
     assert.equal(payload.subscriptionId, 'sub_a');
     assert.equal(calls.some((call) => call.url.includes('user-b%40example.com') || call.url.includes('cus_b')), false);
+  } finally {
+    await jwks.close();
+  }
+});
+
+test('billing license grants owner Pro by verified Clerk email before Stripe lookup', async () => {
+  const jwks = await createJwksHarness();
+  process.env.PROMPTLAB_OWNER_EMAILS = 'owner@example.com,dave@promptlab.tools';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not be queried for owner email entitlement.');
+  };
+
+  try {
+    const handler = await loadHandler(licenseUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_owner', email: 'owner@example.com' })}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'validate' }),
+    }));
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.plan, 'pro');
+    assert.equal(payload.status, 'active');
+    assert.equal(payload.billingPeriod, 'owner');
+    assert.equal(payload.customerEmail, 'owner@example.com');
+    assert.equal(payload.owner, true);
+  } finally {
+    await jwks.close();
+  }
+});
+
+test('billing license grants owner Pro by verified Clerk user id before Stripe lookup', async () => {
+  const jwks = await createJwksHarness();
+  process.env.PROMPTLAB_OWNER_CLERK_USER_IDS = 'user_owner';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not be queried for owner user entitlement.');
+  };
+
+  try {
+    const handler = await loadHandler(licenseUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_owner', email: 'private@example.com' })}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ action: 'activate' }),
+    }));
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.plan, 'pro');
+    assert.equal(payload.billingPeriod, 'owner');
+    assert.equal(payload.customerEmail, 'private@example.com');
+    assert.equal(payload.owner, true);
   } finally {
     await jwks.close();
   }

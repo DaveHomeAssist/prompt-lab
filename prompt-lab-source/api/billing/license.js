@@ -8,6 +8,7 @@ import {
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
 import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js';
+import { lookupOwnerEntitlement } from '../_lib/ownerEntitlements.js';
 
 assertProductionConfig();
 
@@ -46,6 +47,17 @@ export default async function handler(request) {
   }
 
   try {
+    const ownerEntitlement = lookupOwnerEntitlement({
+      clerkUserId: auth.clerkUserId,
+      clerkEmail: auth.clerkEmail,
+    });
+    if (ownerEntitlement) {
+      return jsonResponse({
+        ok: true,
+        ...ownerEntitlement,
+      }, 200, {}, request);
+    }
+
     const payload = await lookupBillingForClerk(buildStripeConfig(), {
       clerkUserId: auth.clerkUserId,
       clerkEmail: auth.clerkEmail,

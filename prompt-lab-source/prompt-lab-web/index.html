@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Lab - Write sharper prompts. Keep the winners.</title>
-<meta name="description" content="Prompt Lab gives you one serious workspace to write, improve, save, and evaluate prompts across Claude, GPT-4o, Gemini, OpenRouter, and local models.">
+<title>Prompt Lab - Build, import, and evaluate prompt systems.</title>
+<meta name="description" content="Prompt Lab is a local-first prompt engineering workspace for drafting prompts, importing packs, saving libraries, composing reusable blocks, and evaluating runs across web, extension, and desktop surfaces.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -40,6 +40,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 body {
@@ -1105,6 +1106,16 @@ img { display: block; max-width: 100%; }
   .nav-toggle { display: flex; }
   .features, .demo-section, .bento, .pricing, .cta-section { padding: 80px 0; }
   .section-heading { font-size: 1.8rem; }
+  .demo-modes {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    padding: 12px;
+  }
+  .demo-mode {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    text-align: center;
+  }
   .demo-body { grid-template-columns: 1fr; }
   .demo-panel + .demo-panel {
     border-left: none;
@@ -1198,14 +1209,14 @@ img { display: block; max-width: 100%; }
   <div class="container hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      v1.7 - Workbench &middot; Library &middot; Evaluate
+      v1.7 - Import packs &middot; Compose &middot; Evaluate
     </div>
     <h1 class="hero-headline">
-      <span>Write sharper prompts.</span>
-      <span><span class="hero-italic">Keep the winners.</span></span>
+      <span>Prompt Lab</span>
+      <span><span class="hero-italic">Prompt engineering workspace.</span></span>
     </h1>
     <p class="hero-sub">
-      Prompt Lab gives you one serious workspace to write, improve, save, and evaluate prompts across Claude, GPT-4o, Gemini, OpenRouter, and local models.
+      Draft, import, save, compose, and evaluate prompts in one local-first system. Use the hosted app, load the extension, or keep a desktop build nearby when repeatable prompt work matters.
     </p>
     <div class="hero-actions">
       <a href="https://promptlab.tools/app" class="btn-primary">
@@ -1227,12 +1238,12 @@ img { display: block; max-width: 100%; }
         <div class="proof-label">Enhancement modes</div>
       </div>
       <div class="proof-item">
-        <div class="proof-number" data-count="5"><span class="accent">5</span></div>
-        <div class="proof-label">Providers supported</div>
+        <div class="proof-number"><span class="accent">3</span></div>
+        <div class="proof-label">Web, extension, desktop surfaces</div>
       </div>
       <div class="proof-item">
-        <div class="proof-number"><span class="accent">JSON</span></div>
-        <div class="proof-label">Library-backed workflow</div>
+        <div class="proof-number"><span class="accent">Import</span></div>
+        <div class="proof-label">Packs, exports, starter libraries</div>
       </div>
       <div class="proof-item">
         <div class="proof-number"><span class="accent">Local</span></div>
@@ -1247,19 +1258,19 @@ img { display: block; max-width: 100%; }
   <div class="container">
     <div class="reveal">
       <div class="section-label">Workflow</div>
-      <h2 class="section-heading">Workbench, Library, Evaluate.</h2>
-      <p class="section-sub">Prompt Lab is built around one repeatable loop: sharpen the prompt, keep the version that works, and test it against real model output.</p>
+      <h2 class="section-heading">Create, Library, Evaluate.</h2>
+      <p class="section-sub">Prompt Lab is built around one repeatable loop: shape the prompt, keep the version that works, and test the result when you need proof.</p>
     </div>
 
     <!-- Feature 1: Workbench -->
     <div class="feature-row reveal">
       <div class="feature-text">
         <div class="feature-tag">Workbench</div>
-        <h3 class="feature-title">Sharpen the prompt without losing the point</h3>
-        <p class="feature-desc">Use the workbench to turn rough instructions into usable prompts with fast iteration, visible diffs, and enhancement modes that keep the original intent intact.</p>
+        <h3 class="feature-title">Sharpen drafts without losing the point</h3>
+        <p class="feature-desc">Use the workbench to turn rough instructions into usable prompts with fast iteration, quality checks, and enhancement modes that keep the original intent intact.</p>
         <ul class="feature-bullets">
           <li>Seven enhancement modes inside one working surface</li>
-          <li>Word-level diff view shows exactly what changed and why</li>
+          <li>Prompt scoring and lint checks surface weak spots early</li>
           <li>One-click accept, copy, or iterate further</li>
         </ul>
       </div>
@@ -1304,12 +1315,12 @@ img { display: block; max-width: 100%; }
     <div class="feature-row reverse reveal">
       <div class="feature-text">
         <div class="feature-tag">Evaluate</div>
-        <h3 class="feature-title">Compare runs instead of guessing</h3>
-        <p class="feature-desc">Run the same prompt across providers, compare outputs side-by-side, and keep a visible record of what actually worked before you reuse it.</p>
+        <h3 class="feature-title">Review runs instead of guessing</h3>
+        <p class="feature-desc">Keep evaluation history visible, compare variants when the workflow needs proof, and preserve the model context behind every result you reuse.</p>
         <ul class="feature-bullets">
-          <li>Claude, GPT-4o, Gemini, OpenRouter, and Ollama</li>
-          <li>Side-by-side response comparison</li>
-          <li>Evaluate runs and track results over time</li>
+          <li>Run timeline with provider, model, latency, and status</li>
+          <li>A/B Compare and side-by-side diff available in Pro</li>
+          <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter, and Ollama</li>
         </ul>
       </div>
       <div class="feature-visual">
@@ -1362,12 +1373,12 @@ img { display: block; max-width: 100%; }
     <div class="feature-row reveal">
       <div class="feature-text">
         <div class="feature-tag">Library</div>
-        <h3 class="feature-title">Keep the prompts worth reusing</h3>
-        <p class="feature-desc">Save the prompts that earn a second life. Search them later, reuse fragments, and export them whenever you want your system outside the app.</p>
+        <h3 class="feature-title">Keep and import the prompts worth reusing</h3>
+        <p class="feature-desc">Save the prompts that earn a second life. Import Prompt Lab exports, starter libraries, or raw prompt arrays, then search and reuse the strongest blocks later.</p>
         <ul class="feature-bullets">
+          <li>Import preset packs, library exports, and starter bundles</li>
           <li>Full-text search across your entire library</li>
           <li>Compose longer prompts from saved fragments</li>
-          <li>JSON export for portability and version control</li>
         </ul>
       </div>
       <div class="feature-visual">
@@ -1491,8 +1502,8 @@ img { display: block; max-width: 100%; }
         <div class="bento-icon">
           <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         </div>
-        <div class="bento-title">Prompt Linting</div>
-        <div class="bento-desc">Automated quality checks flag ambiguity, missing context, and common anti-patterns before you hit send.</div>
+        <div class="bento-title">Pack Import</div>
+        <div class="bento-desc">Load preset packs, exported libraries, starter bundles, and raw prompt arrays through one preview-and-merge flow.</div>
       </div>
       <div class="bento-card reveal reveal-delay-2">
         <div class="bento-icon">
@@ -1518,7 +1529,7 @@ img { display: block; max-width: 100%; }
     <div class="pricing-header reveal">
       <div class="section-label">Pricing</div>
       <h2 class="section-heading">Start free. Upgrade when useful.</h2>
-      <p class="section-sub">No credit card required for the editor. Prompts and libraries stay in local browser storage unless you choose to call a provider.</p>
+      <p class="section-sub">No credit card required for the editor. Prompts and libraries stay in local browser storage unless you choose to call a provider or sync billing.</p>
     </div>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
@@ -1527,8 +1538,9 @@ img { display: block; max-width: 100%; }
         <div class="pricing-period">Forever free</div>
         <ul class="pricing-features">
           <li>All 7 enhancement modes</li>
-          <li>Multi-model provider switching</li>
           <li>Prompt library with search</li>
+          <li>Preset pack and library import</li>
+          <li>Composer for saved prompt blocks</li>
           <li>Extension setup guide</li>
           <li>Local browser storage</li>
         </ul>
@@ -1541,11 +1553,11 @@ img { display: block; max-width: 100%; }
         <div class="pricing-period">per month</div>
         <ul class="pricing-features">
           <li>Everything in Free</li>
-          <li>A/B Compare with eval scoring</li>
-          <li>Prompt Composer templates</li>
-          <li>PII scanner + auto-redaction</li>
-          <li>Advanced linting rules</li>
-          <li>Priority support</li>
+          <li>A/B Compare in Evaluate</li>
+          <li>Side-by-side diff viewer</li>
+          <li>Batch test-case runs</li>
+          <li>Collections for grouped libraries</li>
+          <li>JSON library export</li>
         </ul>
         <a href="https://promptlab.tools/app" class="pricing-btn filled">Open upgrade flow →</a>
       </div>
@@ -1570,7 +1582,7 @@ img { display: block; max-width: 100%; }
   <div class="container">
     <div class="reveal">
       <h2 class="cta-heading">Build a prompt workflow,<br><em>not a prompt pile.</em></h2>
-      <p class="cta-sub">Open Prompt Lab on the web, install the extension when you want it beside the page, and keep the prompts that actually earn their place.</p>
+      <p class="cta-sub">Open Prompt Lab on the web, install the extension when you want it beside the page, and keep a library that can move with you.</p>
       <a href="https://promptlab.tools/app" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;">
         Open PromptLab
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -1588,7 +1600,7 @@ img { display: block; max-width: 100%; }
           <div class="nav-logo-mark" style="width:22px;height:22px;font-size:0.6rem;border-radius:5px;">PL</div>
           Prompt Lab
         </div>
-        <p class="footer-tagline">The prompt engineering workspace for people who want a workflow they can actually reuse.</p>
+        <p class="footer-tagline">The prompt engineering workspace for people who want reusable prompts, portable libraries, and a workflow they can trust.</p>
       </div>
       <div>
         <div class="footer-col-title">Product</div>
