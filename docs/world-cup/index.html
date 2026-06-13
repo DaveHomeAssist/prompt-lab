@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup 2026 Bracket Predictor — Prompt Lab</title>
+<meta name="description" content="Pick every knockout match, build your path to the final, and see your champion at a glance. A fast, no-login World Cup 2026 bracket predictor with auto-save and shareable links.">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#020617">
+<meta property="og:title" content="World Cup 2026 Bracket Predictor">
+<meta property="og:description" content="Pick every knockout match, build your path to the final, and see your champion at a glance.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://promptlab.tools/world-cup/">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="World Cup 2026 Bracket Predictor">
+<meta name="twitter:description" content="Pick every knockout match, build your path to the final, and see your champion at a glance.">
+<meta name="twitter:image" content="https://promptlab.tools/og-image.png">
+<link rel="canonical" href="https://promptlab.tools/world-cup/">
+<link rel="icon" type="image/png" href="../hero-logo.png">
+<link rel="apple-touch-icon" href="../hero-logo.png">
+<link rel="preload" href="../fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('../fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('../fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --lab-violet: #7C3AED;
+  --lab-violet-light: #A78BFA;
+  --lab-indigo: #818CF8;
+  --lab-teal: #2DD4BF;
+  --lab-amber: #FBBF24;
+  --lab-rose: #FB7185;
+  --surface-950: #020617;
+  --surface-900: #0F172A;
+  --surface-800: #1E293B;
+  --surface-700: #334155;
+  --surface-500: #64748B;
+  --surface-400: #94A3B8;
+  --surface-300: #CBD5E1;
+  --surface-200: #E2E8F0;
+  --surface-100: #F1F5F9;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-hover: rgba(255, 255, 255, 0.07);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(124, 58, 237, 0.24), transparent 32%),
+    linear-gradient(180deg, #081122 0%, var(--surface-950) 45%, #030712 100%);
+  color: var(--surface-200);
+  font-family: var(--font-body);
+  line-height: 1.6;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(124, 58, 237, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 58, 237, 0.04) 1px, transparent 1px);
+  background-size: 52px 52px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.shell {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 4rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--surface-100);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--lab-violet), var(--lab-indigo));
+  color: white;
+  font-size: 0.95rem;
+}
+
+.topbar nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.topbar nav a {
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  color: var(--surface-300);
+  text-decoration: none;
+  font-size: 0.86rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.topbar nav a:hover,
+.topbar nav a:focus-visible {
+  background: var(--glass-hover);
+  color: var(--surface-100);
+  outline: none;
+}
+
+.hero {
+  padding: 3.5rem 0 1.5rem;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.38rem 0.72rem;
+  border: 1px solid rgba(167, 139, 250, 0.26);
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--lab-violet-light);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero h1 {
+  margin-top: 1.2rem;
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 6vw, 4.2rem);
+  line-height: 0.98;
+  color: var(--surface-100);
+}
+
+.hero p {
+  width: min(680px, 100%);
+  margin: 1.1rem auto 0;
+  color: var(--surface-400);
+  font-size: clamp(1rem, 2vw, 1.14rem);
+}
+
+.meta-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.1rem;
+  margin: 1.4rem auto 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--surface-400);
+}
+
+.meta-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--lab-teal);
+}
+
+.hero-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 1.75rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.8rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--lab-violet), var(--lab-indigo));
+  color: white;
+}
+
+.btn-secondary {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: var(--glass-border);
+  color: var(--surface-100);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: var(--glass-border);
+  color: var(--surface-300);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Info blocks */
+.panel {
+  margin-top: 1.4rem;
+  padding: 1.3rem 1.4rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.68));
+  backdrop-filter: blur(12px);
+}
+
+.panel-label {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lab-teal);
+}
+
+.panel h2 {
+  color: var(--surface-100);
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+.panel p {
+  margin-top: 0.7rem;
+  color: var(--surface-300);
+  font-size: 0.96rem;
+}
+
+.panel p + p {
+  margin-top: 0.5rem;
+}
+
+.panel a {
+  color: var(--lab-violet-light);
+}
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.how-step {
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(2, 6, 23, 0.4);
+}
+
+.how-step strong {
+  display: block;
+  color: var(--lab-violet-light);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.3rem;
+}
+
+.how-step span {
+  color: var(--surface-300);
+  font-size: 0.9rem;
+}
+
+.note {
+  margin-top: 1.4rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-left: 3px solid var(--lab-amber);
+  border-radius: var(--radius-md);
+  background: rgba(251, 191, 36, 0.06);
+  color: var(--surface-300);
+  font-size: 0.9rem;
+}
+
+.note strong {
+  color: var(--lab-amber);
+}
+
+.updated {
+  margin-top: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--surface-500);
+  text-align: center;
+}
+
+/* Champion summary (sticky) */
+.summary {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.6rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.55);
+}
+
+.summary-champ {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.summary-trophy {
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.summary-text {
+  min-width: 0;
+}
+
+.summary-text .label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--surface-500);
+}
+
+.summary-text .champ-name {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--surface-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.summary-text .champ-name.empty {
+  color: var(--surface-500);
+  font-weight: 600;
+}
+
+.summary-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 180px;
+  flex: 1 1 180px;
+  max-width: 320px;
+}
+
+.summary-progress .count {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--surface-400);
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--lab-teal), var(--lab-indigo));
+  transition: width 0.25s ease;
+}
+
+.summary-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.summary-actions .btn {
+  min-height: 2.4rem;
+  padding: 0.5rem 0.95rem;
+  font-size: 0.85rem;
+}
+
+/* Round tabs (mobile-first navigation) */
+.round-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 1.4rem;
+  padding: 0.4rem;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.round-tabs::-webkit-scrollbar { display: none; }
+
+.round-tab {
+  flex: 1 0 auto;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--surface-400);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.round-tab .tab-sub {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 400;
+  color: var(--surface-500);
+}
+
+.round-tab:hover { color: var(--surface-100); }
+
+.round-tab.active {
+  background: linear-gradient(135deg, var(--lab-violet), var(--lab-indigo));
+  color: white;
+}
+
+.round-tab.active .tab-sub,
+.round-tab.complete .tab-sub { color: rgba(255, 255, 255, 0.75); }
+
+.round-tab.complete:not(.active) {
+  color: var(--lab-teal);
+}
+
+/* Bracket */
+.bracket-wrap {
+  margin-top: 1.2rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+}
+
+.bracket {
+  display: flex;
+  gap: 1.1rem;
+  min-width: max-content;
+  padding: 0.25rem;
+}
+
+.round-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 0.75rem;
+  min-width: 200px;
+}
+
+.round-col-head {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--surface-500);
+  text-align: center;
+  padding-bottom: 0.2rem;
+}
+
+.match {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0.45rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.match.is-final {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: rgba(2, 6, 23, 0.45);
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.slot:hover {
+  background: rgba(124, 58, 237, 0.16);
+}
+
+.slot.empty {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.slot.empty:hover { background: rgba(2, 6, 23, 0.45); }
+
+.slot.picked {
+  background: rgba(45, 212, 191, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(45, 212, 191, 0.4);
+}
+
+.slot.eliminated {
+  opacity: 0.4;
+}
+
+.slot-seed {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--surface-500);
+  min-width: 1.6rem;
+}
+
+.slot-name {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--surface-100);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slot-name:focus {
+  outline: none;
+  border-bottom: 1px dashed var(--lab-violet-light);
+}
+
+.slot.empty .slot-name {
+  color: var(--surface-500);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.slot-check {
+  color: var(--lab-teal);
+  font-size: 0.85rem;
+  opacity: 0;
+}
+
+.slot.picked .slot-check { opacity: 1; }
+
+/* confidence chip */
+.conf {
+  margin-top: 2px;
+  align-self: flex-end;
+  display: none;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(2, 6, 23, 0.5);
+  color: var(--surface-400);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.match.decided .conf { display: inline-flex; }
+
+.conf[data-level="safe"] { color: var(--lab-teal); border-color: rgba(45, 212, 191, 0.4); }
+.conf[data-level="tossup"] { color: var(--lab-amber); border-color: rgba(251, 191, 36, 0.4); }
+.conf[data-level="upset"] { color: var(--lab-rose); border-color: rgba(251, 113, 133, 0.45); }
+
+.champion-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 190px;
+}
+
+.champion-card {
+  padding: 1.2rem 1rem;
+  text-align: center;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.12), rgba(15, 23, 42, 0.7));
+}
+
+.champion-card .trophy { font-size: 2.2rem; }
+
+.champion-card .label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lab-amber);
+  margin-top: 0.3rem;
+}
+
+.champion-card .name {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--surface-100);
+  margin-top: 0.3rem;
+  word-break: break-word;
+}
+
+.champion-card .name.empty {
+  color: var(--surface-500);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%) translateY(140%);
+  z-index: 60;
+  padding: 0.8rem 1.2rem;
+  border: 1px solid rgba(45, 212, 191, 0.4);
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.96);
+  color: var(--surface-100);
+  font-size: 0.9rem;
+  box-shadow: 0 12px 40px rgba(2, 6, 23, 0.6);
+  transition: transform 0.3s ease;
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+.footer {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+  text-align: center;
+  color: var(--surface-500);
+  font-size: 0.9rem;
+}
+
+.footer a { color: var(--surface-400); }
+
+@media (max-width: 860px) {
+  .how-grid { grid-template-columns: 1fr; }
+
+  .summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .summary-progress { max-width: none; }
+
+  /* Mobile: show one round at a time via tabs */
+  .bracket-wrap.mobile { overflow-x: hidden; }
+
+  .bracket-wrap.mobile .bracket {
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .bracket-wrap.mobile .round-col {
+    min-width: 0;
+    width: 100%;
+    justify-content: flex-start;
+    display: none;
+  }
+
+  .bracket-wrap.mobile .round-col.active {
+    display: flex;
+  }
+
+  .bracket-wrap.mobile .champion-col {
+    min-width: 0;
+    width: 100%;
+    display: none;
+  }
+
+  .bracket-wrap.mobile .champion-col.active {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    width: min(100vw - 1rem, 1180px);
+    padding-top: 0.5rem;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero { padding-top: 2.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="https://promptlab.tools/">
+        <span class="brand-mark">PL</span>
+        <span>Prompt Lab</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="https://promptlab.tools/">Home</a>
+        <a href="https://promptlab.tools/tools.html">Tools</a>
+        <a href="https://promptlab.tools/world-cup/" aria-current="page">World Cup</a>
+        <a href="https://promptlab.tools/templates/">Templates</a>
+        <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noreferrer noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="eyebrow">⚽ FIFA World Cup 2026</div>
+        <h1>World Cup 2026 Bracket Predictor</h1>
+        <p>Pick every knockout match, build your path to the final, and see your champion at a glance.</p>
+        <div class="meta-row" aria-label="Tournament facts">
+          <span><span class="meta-dot"></span>48 teams</span>
+          <span><span class="meta-dot"></span>12 groups</span>
+          <span><span class="meta-dot"></span>32-team knockout</span>
+          <span><span class="meta-dot"></span>Final: July 19, 2026</span>
+        </div>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#bracket">Start Picking</a>
+          <button class="btn btn-secondary" type="button" id="hero-share">Share Bracket</button>
+          <button class="btn btn-ghost" type="button" id="hero-reset">Reset Bracket</button>
+        </div>
+      </section>
+
+      <!-- How this works -->
+      <section class="panel" aria-labelledby="how-title">
+        <span class="panel-label">How this works</span>
+        <h2 id="how-title">From 48 teams to one champion</h2>
+        <p>
+          The 2026 World Cup expands to 48 teams in 12 groups. The top two from each group advance,
+          plus the eight best third-place teams — creating a 32-team knockout bracket that runs all the
+          way to the final.
+        </p>
+        <div class="how-grid">
+          <div class="how-step">
+            <strong>1 · Pick winners</strong>
+            <span>Tap a team in any match to send it through to the next round.</span>
+          </div>
+          <div class="how-step">
+            <strong>2 · Build the path</strong>
+            <span>Each pick auto-fills the next round. Change a pick and the rounds below it reset.</span>
+          </div>
+          <div class="how-step">
+            <strong>3 · Crown a champion</strong>
+            <span>Win the final to lock in your champion, then share or save your bracket.</span>
+          </div>
+        </div>
+        <div class="note">
+          <strong>Format note:</strong> Bracket paths involving third-place teams depend on the final
+          group-stage combinations. This predictor uses the published 48-team → 32-team knockout
+          structure and may update as official standings finalize. Seed names below are editable
+          placeholders — tap any team name to rename it to the real qualifier.
+        </div>
+        <div class="updated" id="last-updated">Last updated: June 13, 2026</div>
+      </section>
+
+      <!-- Sticky champion summary -->
+      <section class="summary" id="summary" aria-label="Bracket summary">
+        <div class="summary-champ">
+          <span class="summary-trophy" aria-hidden="true">🏆</span>
+          <div class="summary-text">
+            <div class="label">My champion</div>
+            <div class="champ-name empty" id="summary-champ-name">Not picked yet</div>
+          </div>
+        </div>
+        <div class="summary-progress">
+          <div class="count">
+            <span>Bracket progress</span>
+            <span id="progress-label">0 / 31 picks</span>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        </div>
+        <div class="summary-actions">
+          <button class="btn btn-secondary" type="button" id="share-btn">Share</button>
+          <button class="btn btn-ghost" type="button" id="copy-summary-btn">Copy summary</button>
+          <button class="btn btn-ghost" type="button" id="reset-btn">Reset</button>
+        </div>
+      </section>
+
+      <!-- Round tabs (mobile-first) -->
+      <div class="round-tabs" id="round-tabs" role="tablist" aria-label="Knockout rounds"></div>
+
+      <!-- Bracket -->
+      <div class="bracket-wrap" id="bracket-wrap">
+        <div class="bracket" id="bracket"></div>
+      </div>
+
+      <p class="updated" style="margin-top:1.5rem">
+        Tip: your picks auto-save in this browser. Use <strong>Share</strong> to copy a link that
+        rebuilds your exact bracket anywhere.
+      </p>
+    </main>
+
+    <footer class="footer">
+      A free, no-login mini-tool from <a href="https://promptlab.tools/">Prompt Lab</a> ·
+      Local-first &amp; framework-free. Not affiliated with FIFA.
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---- Configuration -------------------------------------------------------
+  var STORAGE_KEY = 'wc2026-bracket-v1';
+  var DEFAULT_TEAMS = [
+    'Argentina','Australia','France','Nigeria','Brazil','South Korea','England','Senegal',
+    'Spain','Japan','Portugal','Ghana','Germany','Morocco','Netherlands','Ecuador',
+    'USA','Wales','Belgium','Saudi Arabia','Croatia','Iran','Mexico','Tunisia',
+    'Italy','Cameroon','Uruguay','Switzerland','Colombia','Denmark','Poland','Egypt'
+  ];
+  // Round definitions: number of matches per round, from R32 to Final.
+  var ROUNDS = [
+    { key: 'r32',   name: 'Round of 32', short: 'R32', matches: 16 },
+    { key: 'r16',   name: 'Round of 16', short: 'R16', matches: 8 },
+    { key: 'qf',    name: 'Quarter-finals', short: 'QF', matches: 4 },
+    { key: 'sf',    name: 'Semi-finals', short: 'SF', matches: 2 },
+    { key: 'final', name: 'Final', short: 'Final', matches: 1 }
+  ];
+  var TOTAL_MATCHES = 31; // 16 + 8 + 4 + 2 + 1
+  var CONF_LEVELS = ['', 'safe', 'tossup', 'upset'];
+  var CONF_LABELS = { '': 'Confidence?', safe: 'Safe pick', tossup: 'Toss-up', upset: 'Upset' };
+
+  // ---- State ---------------------------------------------------------------
+  // teams: array of 32 names. picks: map "round:match" -> winning team index (0..31).
+  // Storing the team identity (not the slot 0/1) means that when an earlier-round
+  // result changes, downstream picks referencing the removed team auto-invalidate,
+  // i.e. "change a pick and the rounds below it reset".
+  // conf: map "round:match" -> confidence level string.
+  var state = { teams: DEFAULT_TEAMS.slice(), picks: {}, conf: {} };
+  var activeRound = 0;
+  var isMobile = false;
+
+  // ---- Persistence / encoding ---------------------------------------------
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  function loadLocal() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) applyState(JSON.parse(raw));
+    } catch (e) {}
+  }
+
+  function applyState(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (Array.isArray(obj.teams) && obj.teams.length === 32) {
+      state.teams = obj.teams.map(function (t) { return String(t).slice(0, 24); });
+    }
+    state.picks = (obj.picks && typeof obj.picks === 'object') ? obj.picks : {};
+    state.conf = (obj.conf && typeof obj.conf === 'object') ? obj.conf : {};
+  }
+
+  function encodeState() {
+    try {
+      var json = JSON.stringify(state);
+      return btoa(unescape(encodeURIComponent(json)))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    } catch (e) { return ''; }
+  }
+
+  function decodeState(s) {
+    try {
+      s = s.replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) s += '=';
+      return JSON.parse(decodeURIComponent(escape(atob(s))));
+    } catch (e) { return null; }
+  }
+
+  function loadFromUrl() {
+    var m = window.location.search.match(/[?&]b=([^&]+)/);
+    if (!m) return false;
+    var obj = decodeState(m[1]);
+    if (obj) { applyState(obj); return true; }
+    return false;
+  }
+
+  // ---- Bracket resolution --------------------------------------------------
+  function id(round, match) { return round + ':' + match; }
+
+  // Returns { name, seed, idx } for a slot, or null if undetermined.
+  function getSlotTeam(round, match, slot) {
+    if (round === 0) {
+      var idx = match * 2 + slot;
+      return { name: state.teams[idx], seed: idx + 1, idx: idx };
+    }
+    return getWinner(round - 1, match * 2 + slot);
+  }
+
+  // Returns the validated winner of a match, or null. A stored pick is only valid
+  // if its team currently occupies one of the match's two slots.
+  function getWinner(round, match) {
+    var tid = state.picks[id(round, match)];
+    if (tid == null) return null;
+    var a = getSlotTeam(round, match, 0);
+    var b = getSlotTeam(round, match, 1);
+    if (a && a.idx === tid) return a;
+    if (b && b.idx === tid) return b;
+    return null;
+  }
+
+  function getChampion() { return getWinner(ROUNDS.length - 1, 0); }
+
+  // Drop any stored picks (and their confidence tags) that no longer resolve to a
+  // valid winner, e.g. after an upstream result changed.
+  function prune() {
+    for (var r = 0; r < ROUNDS.length; r++) {
+      for (var m = 0; m < ROUNDS[r].matches; m++) {
+        var key = id(r, m);
+        if (state.picks[key] == null) continue;
+        if (!getWinner(r, m)) { delete state.picks[key]; delete state.conf[key]; }
+      }
+    }
+  }
+
+  function countPicks() {
+    var n = 0;
+    for (var r = 0; r < ROUNDS.length; r++) {
+      for (var m = 0; m < ROUNDS[r].matches; m++) {
+        if (getWinner(r, m)) n++;
+      }
+    }
+    return n;
+  }
+
+  function roundComplete(round) {
+    for (var m = 0; m < ROUNDS[round].matches; m++) {
+      if (!getWinner(round, m)) return false;
+    }
+    return true;
+  }
+
+  // ---- Actions -------------------------------------------------------------
+  function pickWinner(round, match, slot) {
+    var team = getSlotTeam(round, match, slot);
+    if (!team) return; // can't pick an undetermined slot
+    state.picks[id(round, match)] = team.idx;
+    prune();
+    save();
+    render();
+  }
+
+  function cycleConfidence(round, match) {
+    var key = id(round, match);
+    if (!getWinner(round, match)) return;
+    var cur = state.conf[key] || '';
+    var next = CONF_LEVELS[(CONF_LEVELS.indexOf(cur) + 1) % CONF_LEVELS.length];
+    if (next) state.conf[key] = next; else delete state.conf[key];
+    save();
+    render();
+  }
+
+  function renameTeam(idx, name) {
+    name = (name || '').trim().slice(0, 24) || DEFAULT_TEAMS[idx];
+    state.teams[idx] = name;
+    save();
+    render();
+  }
+
+  function resetBracket() {
+    if (!confirm('Reset every pick and restore the default team names? This cannot be undone.')) return;
+    state = { teams: DEFAULT_TEAMS.slice(), picks: {}, conf: {} };
+    activeRound = 0;
+    // Clear shared-state param from the URL so a refresh doesn't restore it.
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+    save();
+    render();
+    toast('Bracket reset');
+  }
+
+  // ---- Sharing -------------------------------------------------------------
+  function shareUrl() {
+    return window.location.origin + window.location.pathname + '?b=' + encodeState();
+  }
+
+  function doShare() {
+    var url = shareUrl();
+    if (navigator.share) {
+      navigator.share({ title: 'My World Cup 2026 bracket', url: url }).catch(function () {});
+      return;
+    }
+    copyText(url, 'Share link copied to clipboard');
+  }
+
+  function summaryText() {
+    var lines = ['My World Cup 2026 Bracket Prediction', ''];
+    var champ = getChampion();
+    lines.push('🏆 Champion: ' + (champ ? champ.name : '—'));
+    var f0 = getSlotTeam(ROUNDS.length - 1, 0, 0);
+    var f1 = getSlotTeam(ROUNDS.length - 1, 0, 1);
+    if (f0 || f1) {
+      lines.push('🥈 Final: ' + (f0 ? f0.name : '—') + ' vs ' + (f1 ? f1.name : '—'));
+    }
+    // Semi-finalists
+    var semis = [];
+    for (var m = 0; m < ROUNDS[2].matches; m++) {
+      var w = getWinner(2, m);
+      if (w) semis.push(w.name);
+    }
+    if (semis.length) lines.push('Final four: ' + semis.join(', '));
+    lines.push('');
+    lines.push('Build yours: ' + shareUrl());
+    return lines.join('\n');
+  }
+
+  function copySummary() {
+    copyText(summaryText(), 'Bracket summary copied to clipboard');
+  }
+
+  function copyText(text, msg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { toast(msg); }, function () { fallbackCopy(text, msg); });
+    } else {
+      fallbackCopy(text, msg);
+    }
+  }
+
+  function fallbackCopy(text, msg) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); toast(msg); } catch (e) { toast('Copy failed — select manually'); }
+    document.body.removeChild(ta);
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2400);
+  }
+
+  // ---- Rendering -----------------------------------------------------------
+  var bracketEl = document.getElementById('bracket');
+  var tabsEl = document.getElementById('round-tabs');
+  var wrapEl = document.getElementById('bracket-wrap');
+
+  function makeSlot(round, match, slot) {
+    var team = getSlotTeam(round, match, slot);
+    var div = document.createElement('div');
+    div.className = 'slot';
+    var winner = getWinner(round, match);
+
+    if (!team) {
+      div.className += ' empty';
+      div.innerHTML = '<span class="slot-seed"></span><span class="slot-name">Awaiting winner</span>';
+      return div;
+    }
+
+    if (winner) {
+      if (winner.idx === team.idx) div.className += ' picked';
+      else div.className += ' eliminated';
+    }
+
+    var seed = document.createElement('span');
+    seed.className = 'slot-seed';
+    seed.textContent = round === 0 ? ('#' + team.seed) : '';
+
+    var name;
+    if (round === 0) {
+      name = document.createElement('input');
+      name.className = 'slot-name';
+      name.type = 'text';
+      name.value = team.name;
+      name.setAttribute('aria-label', 'Team name, seed ' + team.seed);
+      name.addEventListener('focus', function () { name.select(); });
+      name.addEventListener('click', function (e) { e.stopPropagation(); });
+      name.addEventListener('change', function () { renameTeam(team.idx, name.value); });
+      name.addEventListener('keydown', function (e) { if (e.key === 'Enter') name.blur(); });
+    } else {
+      name = document.createElement('span');
+      name.className = 'slot-name';
+      name.textContent = team.name;
+    }
+
+    var check = document.createElement('span');
+    check.className = 'slot-check';
+    check.textContent = '✓';
+    check.setAttribute('aria-hidden', 'true');
+
+    div.appendChild(seed);
+    div.appendChild(name);
+    div.appendChild(check);
+
+    div.addEventListener('click', function () { pickWinner(round, match, slot); });
+    return div;
+  }
+
+  function makeMatch(round, match) {
+    var wrap = document.createElement('div');
+    wrap.className = 'match';
+    if (round === ROUNDS.length - 1) wrap.className += ' is-final';
+    if (getWinner(round, match)) wrap.className += ' decided';
+
+    wrap.appendChild(makeSlot(round, match, 0));
+    wrap.appendChild(makeSlot(round, match, 1));
+
+    var level = state.conf[id(round, match)] || '';
+    var conf = document.createElement('button');
+    conf.type = 'button';
+    conf.className = 'conf';
+    conf.setAttribute('data-level', level);
+    conf.textContent = CONF_LABELS[level];
+    conf.title = 'Tag this pick: Safe → Toss-up → Upset';
+    conf.addEventListener('click', function (e) { e.stopPropagation(); cycleConfidence(round, match); });
+    wrap.appendChild(conf);
+
+    return wrap;
+  }
+
+  function renderBracket() {
+    bracketEl.innerHTML = '';
+    for (var r = 0; r < ROUNDS.length; r++) {
+      var col = document.createElement('div');
+      col.className = 'round-col';
+      col.setAttribute('data-round', r);
+      if (r === activeRound) col.className += ' active';
+
+      var head = document.createElement('div');
+      head.className = 'round-col-head';
+      head.textContent = ROUNDS[r].name;
+      col.appendChild(head);
+
+      for (var m = 0; m < ROUNDS[r].matches; m++) {
+        col.appendChild(makeMatch(r, m));
+      }
+      bracketEl.appendChild(col);
+    }
+
+    // Champion column
+    var cc = document.createElement('div');
+    cc.className = 'champion-col';
+    cc.setAttribute('data-round', ROUNDS.length); // shown with Final tab
+    if (activeRound === ROUNDS.length - 1) cc.className += ' active';
+    var champ = getChampion();
+    cc.innerHTML =
+      '<div class="champion-card">' +
+        '<div class="trophy" aria-hidden="true">🏆</div>' +
+        '<div class="label">Champion</div>' +
+        '<div class="name ' + (champ ? '' : 'empty') + '">' +
+          (champ ? escapeHtml(champ.name) : 'Win the final to crown a champion') +
+        '</div>' +
+      '</div>';
+    bracketEl.appendChild(cc);
+  }
+
+  function renderTabs() {
+    tabsEl.innerHTML = '';
+    ROUNDS.forEach(function (rd, i) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'round-tab' + (i === activeRound ? ' active' : '') + (roundComplete(i) ? ' complete' : '');
+      btn.setAttribute('role', 'tab');
+      btn.setAttribute('aria-selected', i === activeRound ? 'true' : 'false');
+      var done = 0;
+      for (var m = 0; m < rd.matches; m++) if (getWinner(i, m)) done++;
+      btn.innerHTML = '<span>' + rd.short + '</span><span class="tab-sub">' + done + '/' + rd.matches + '</span>';
+      btn.addEventListener('click', function () {
+        activeRound = i;
+        render();
+        if (isMobile) wrapEl.scrollIntoView({ block: 'start' });
+      });
+      tabsEl.appendChild(btn);
+    });
+  }
+
+  function renderSummary() {
+    var champ = getChampion();
+    var nameEl = document.getElementById('summary-champ-name');
+    if (champ) { nameEl.textContent = champ.name; nameEl.className = 'champ-name'; }
+    else { nameEl.textContent = 'Not picked yet'; nameEl.className = 'champ-name empty'; }
+
+    var n = countPicks();
+    document.getElementById('progress-label').textContent = n + ' / ' + TOTAL_MATCHES + ' picks';
+    document.getElementById('progress-fill').style.width = (n / TOTAL_MATCHES * 100) + '%';
+  }
+
+  function render() {
+    renderTabs();
+    renderBracket();
+    renderSummary();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // ---- Responsive ----------------------------------------------------------
+  function syncMobile() {
+    var mq = window.matchMedia('(max-width: 860px)');
+    isMobile = mq.matches;
+    wrapEl.classList.toggle('mobile', isMobile);
+  }
+
+  // ---- Wire up -------------------------------------------------------------
+  document.getElementById('share-btn').addEventListener('click', doShare);
+  document.getElementById('hero-share').addEventListener('click', doShare);
+  document.getElementById('copy-summary-btn').addEventListener('click', copySummary);
+  document.getElementById('reset-btn').addEventListener('click', resetBracket);
+  document.getElementById('hero-reset').addEventListener('click', resetBracket);
+  window.addEventListener('resize', function () { syncMobile(); });
+
+  // Init: URL state takes priority, else local storage.
+  if (!loadFromUrl()) loadLocal();
+  prune();
+  syncMobile();
+  render();
+})();
+</script>
+</body>
+</html>
