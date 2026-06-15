@@ -23,6 +23,11 @@ describe('piiEngine', () => {
     );
   });
 
+  it('detects AWS access key identifiers as API keys', () => {
+    const { findings } = scanForPII('AWS key AKIAIOSFODNN7EXAMPLE');
+    expect(findings.some((finding) => finding.type === 'api_key')).toBe(true);
+  });
+
   it('validates credit cards with Luhn', () => {
     expect(scanForPII('4111 1111 1111 1111').findings.some((finding) => finding.type === 'credit_card')).toBe(true);
     expect(scanForPII('4111 1111 1111 1112').findings.some((finding) => finding.type === 'credit_card')).toBe(false);
