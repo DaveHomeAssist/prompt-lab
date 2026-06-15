@@ -8,6 +8,10 @@ const CORS_HEADERS = {
 
 const NOTION_API_URL = 'https://api.notion.com/v1/pages';
 const MAX_BLOCK_TEXT = 1800;
+const BUG_REPORT_DISABLED_MESSAGE = 'Bug reporting is temporarily unavailable.';
+const BUG_REPORT_RATE_LIMIT_MESSAGE = 'Too many bug report submissions. Please wait and try again.';
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const rateLimitWindows = new Map();
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -88,6 +92,57 @@ function detailsParagraph(label, value) {
   };
 }
 
+function readStringEnv(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
+
+function readBooleanEnv(name, fallback = false) {
+  const value = readStringEnv(name);
+  if (!value) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
+function readIntEnv(name, fallback) {
+  const value = Number.parseInt(readStringEnv(name), 10);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function getClientIp(request) {
+  const forwardedFor = request.headers.get('x-forwarded-for') || request.headers.get('X-Forwarded-For') || '';
+  const firstForwarded = forwardedFor.split(',')[0]?.trim();
+  if (firstForwarded) return firstForwarded;
+  const realIp = request.headers.get('x-real-ip') || request.headers.get('X-Real-IP') || '';
+  return realIp.trim() || 'unknown';
+}
+
+function isBugReportingEnabled() {
+  return readBooleanEnv('PROMPTLAB_BUG_REPORTS_ENABLED', false);
+}
+
+function checkBugReportRateLimit(request) {
+  const limit = readIntEnv('PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN', 3);
+  const now = Date.now();
+  const clientIp = getClientIp(request);
+  let entry = rateLimitWindows.get(clientIp);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+    rateLimitWindows.set(clientIp, entry);
+  }
+  entry.count += 1;
+
+  if (rateLimitWindows.size > 500) {
+    for (const [key, value] of rateLimitWindows) {
+      if (!value || now >= value.resetAt) rateLimitWindows.delete(key);
+    }
+  }
+
+  return entry.count <= limit;
+}
+
 export async function bugReportHandler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -97,11 +152,19 @@ export async function bugReportHandler(request) {
     return json({ error: 'Method not allowed' }, 405);
   }
 
+  if (!isBugReportingEnabled()) {
+    return json({ error: BUG_REPORT_DISABLED_MESSAGE }, 503);
+  }
+
   const notionToken = process.env.NOTION_TOKEN;
   const parentPageId = process.env.NOTION_BUG_REPORT_PARENT_PAGE_ID;
 
   if (!notionToken || !parentPageId) {
     return json({ error: 'Bug reporting is not configured.' }, 503);
+  }
+
+  if (!checkBugReportRateLimit(request)) {
+    return json({ error: BUG_REPORT_RATE_LIMIT_MESSAGE }, 429);
   }
 
   try {

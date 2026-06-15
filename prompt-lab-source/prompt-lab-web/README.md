@@ -16,7 +16,7 @@ Provider API requests from the hosted app route through a Vercel Edge Function a
 
 When `VITE_CLERK_PUBLISHABLE_KEY` is present, the hosted app wraps the shared frontend in Clerk authentication. The shared billing flow then attaches Clerk identity to checkout, portal, and license validation requests, and the hosted billing routes verify the Clerk bearer token server side before trusting account-bound billing actions. Stripe continues to handle payment processing underneath.
 
-The app can also submit structured bug reports through `/api/bug-report`. That route expects `NOTION_TOKEN` and `NOTION_BUG_REPORT_PARENT_PAGE_ID` in the Vercel project environment. `VITE_BUG_REPORT_ENDPOINT` is optional when you want the UI to post somewhere other than the default hosted endpoint during local development.
+The app can also submit structured bug reports through `/api/bug-report`. That route is closed by default and requires `PROMPTLAB_BUG_REPORTS_ENABLED=true`, `NOTION_TOKEN`, and `NOTION_BUG_REPORT_PARENT_PAGE_ID` in the Vercel project environment. `PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN` optionally tunes the per-IP submission limit. `VITE_BUG_REPORT_ENDPOINT` is optional when you want the UI to post somewhere other than the default hosted endpoint during local development.
 
 ## Dev setup
 
@@ -44,7 +44,9 @@ Hosted auth and billing related envs:
 - `STRIPE_MONTHLY_PRICE_ID` or `STRIPE_PRICE_ID` sets the monthly Prompt Lab Pro Stripe price
 - `STRIPE_YEARLY_PRICE_ID` sets the annual Prompt Lab Pro Stripe price
 - `STRIPE_WEBHOOK_SECRET` validates the Stripe webhook endpoint at `/api/billing/webhook`
-- `NOTION_TOKEN` enables the hosted bug report endpoint
+- `PROMPTLAB_BUG_REPORTS_ENABLED=true` explicitly enables the hosted bug report endpoint
+- `PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN` sets the per-IP bug report limit, defaulting to 3 per minute
+- `NOTION_TOKEN` allows the hosted bug report endpoint to write to Notion when bug reports are enabled
 - `NOTION_BUG_REPORT_PARENT_PAGE_ID` sets the Notion destination for hosted bug reports
 
 ## Build
