@@ -8,16 +8,17 @@ export default defineConfig({
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
   },
   resolve: {
-    alias: {
+    alias: [
       // The web app imports source files from ../prompt-lab-extension/src.
-      // Alias runtime deps used by that sibling source to the web package's
-      // installed copy so isolated Vercel builds resolve them consistently.
-      'diff-match-patch': resolve(__dirname, 'node_modules/diff-match-patch/index.js'),
-      react: resolve(__dirname, 'node_modules/react'),
-      'react-dom': resolve(__dirname, 'node_modules/react-dom'),
-      'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom'),
-      '@clerk/clerk-react': resolve(__dirname, 'node_modules/@clerk/clerk-react'),
-    },
+      // Force shared runtime deps to resolve from the web package.
+      { find: /^diff-match-patch$/, replacement: resolve(__dirname, 'node_modules/diff-match-patch/index.js') },
+      { find: /^react$/, replacement: resolve(__dirname, 'node_modules/react/index.js') },
+      { find: /^react-dom$/, replacement: resolve(__dirname, 'node_modules/react-dom/index.js') },
+      { find: /^react-router-dom$/, replacement: resolve(__dirname, 'node_modules/react-router-dom/dist/index.mjs') },
+      { find: /^react-router$/, replacement: resolve(__dirname, 'node_modules/react-router/dist/development/index.mjs') },
+      { find: /^react-router\/dom$/, replacement: resolve(__dirname, 'node_modules/react-router/dist/development/dom-export.mjs') },
+      { find: /^@clerk\/clerk-react$/, replacement: resolve(__dirname, 'node_modules/@clerk/clerk-react/dist/index.mjs') },
+    ],
   },
   build: {
     outDir: 'dist',

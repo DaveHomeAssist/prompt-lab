@@ -9,7 +9,9 @@
   "scripts": {
     "check:node": "node scripts/require-node-20.mjs",
     "dev": "npm run check:node && npm run dev --prefix prompt-lab-extension",
+    "deps:repair": "npm run check:node && node scripts/repair-shell-deps.mjs",
     "build": "npm run check:node && npm run build --prefix prompt-lab-extension",
+    "build:smoke": "npm run check:node && npm run toolchain:check && node scripts/build-smoke.mjs",
     "test": "npm run check:node && npm test --prefix prompt-lab-extension",
     "docs:lint": "npm run check:node && markdownlint-cli2",
     "docs:check": "npm run docs:lint",
@@ -21,12 +23,13 @@
     "deploy:prod": "npm run check:node && node scripts/vercel-deploy.mjs --prod",
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
-    "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
+    "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs",
+    "toolchain:check": "npm run check:node && node scripts/check-build-toolchain.mjs"
   },
   "dependencies": {
-    "@clerk/backend": "^3.2.10"
+    "@clerk/backend": "^3.4.7"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.18.1"
+    "markdownlint-cli2": "^0.22.1"
   }
 }
