@@ -6,9 +6,24 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://promptlab.tools/tools.html</loc>
+    <loc>https://promptlab.tools/tools</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://promptlab.tools/script-agent</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://promptlab.tools/prompt-explorer</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://promptlab.tools/thread-namer</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
   <url>
     <loc>https://promptlab.tools/guide.html</loc>
