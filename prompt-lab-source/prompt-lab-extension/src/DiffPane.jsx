@@ -4,16 +4,16 @@ import { computeDiff, isIdentical, deltaToMarkdown, EQUAL, INSERT, DELETE } from
 
 function DiffTokens({ delta, side, m }) {
   return (
-    <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words`}>
+    <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
       {delta.map((d, i) => {
         if (side === 'A') {
           if (d.type === INSERT) return null;
           const cls = d.type === DELETE ? m.diffDel : m.diffEq;
-          return <span key={i} className={`${cls} px-0.5 rounded`}>{d.text}</span>;
+          return <span key={i} className={`${cls} px-0.5 rounded [overflow-wrap:anywhere]`}>{d.text}</span>;
         }
         if (d.type === DELETE) return null;
         const cls = d.type === INSERT ? m.diffAdd : m.diffEq;
-        return <span key={i} className={`${cls} px-0.5 rounded`}>{d.text}</span>;
+        return <span key={i} className={`${cls} px-0.5 rounded [overflow-wrap:anywhere]`}>{d.text}</span>;
       })}
     </div>
   );

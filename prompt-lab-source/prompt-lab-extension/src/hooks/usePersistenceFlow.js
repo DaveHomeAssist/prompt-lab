@@ -334,6 +334,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     saveTags, setSaveTags,
     saveCollection, setSaveCollection,
     changeNote, setChangeNote,
+    setRaw,
+    setEnhanced,
     showDiff, setShowDiff,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,

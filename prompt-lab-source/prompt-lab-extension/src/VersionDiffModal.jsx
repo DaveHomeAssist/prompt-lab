@@ -6,11 +6,11 @@ import { getPromptSnapshot } from './lib/promptSchema.js';
 function DiffTokens({ fromText, toText, m }) {
   const segments = wordDiff(fromText, toText);
   return (
-    <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words`}>
+    <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
       {segments.map((segment, index) => (
         <span
           key={`${segment.t}-${index}`}
-          className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}
+          className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 [overflow-wrap:anywhere]`}
         >
           {segment.v}
         </span>

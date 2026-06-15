@@ -342,14 +342,16 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
             Copy Comparison
           </button>
         </div>
-        {diffSegments.map((segment, index) => (
-          <span
-            key={`${segment.t}-${index}`}
-            className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}
-          >
-            {segment.v}
-          </span>
-        ))}
+        <div className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          {diffSegments.map((segment, index) => (
+            <span
+              key={`${segment.t}-${index}`}
+              className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}
+            >
+              {segment.v}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );

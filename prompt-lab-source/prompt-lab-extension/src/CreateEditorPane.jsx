@@ -783,9 +783,9 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
               <p className={`text-xs ${m.textSub} font-semibold mb-1 uppercase tracking-wider`}>
                 Word Diff: Golden vs {comparisonSourceLabel}
               </p>
-              <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
+              <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
                 {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
-                  <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
+                  <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>
                     {d.v}
                   </span>
                 ))}
