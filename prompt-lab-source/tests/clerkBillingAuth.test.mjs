@@ -78,6 +78,31 @@ test('resolveClerkBillingIdentity verifies the Clerk token and loads the primary
   assert.deepEqual(buildAuthorizedParties(request).sort(), verifiedOptions.authorizedParties.sort());
 });
 
+test('resolveClerkBillingIdentity authenticates Clerk users without a primary email', async () => {
+  const { resolveClerkBillingIdentity } = await loadModule();
+  process.env.CLERK_SECRET_KEY = 'sk_test_123';
+
+  const result = await resolveClerkBillingIdentity(new Request('https://promptlab.tools/api/billing/status', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer token_123',
+      Origin: 'https://promptlab.tools',
+    },
+  }), {
+    verifyTokenFn: async () => ({ sub: 'user_github' }),
+    fetchUserFn: async (userId) => ({
+      id: userId,
+      primaryEmailAddressId: '',
+      emailAddresses: [],
+    }),
+  });
+
+  assert.equal(result.hasBearerToken, true);
+  assert.equal(result.isAuthenticated, true);
+  assert.equal(result.userId, 'user_github');
+  assert.equal(result.customerEmail, '');
+});
+
 test('buildAuthorizedParties ignores caller supplied origins and keeps an explicit allowlist', async () => {
   const { buildAuthorizedParties } = await loadModule();
 

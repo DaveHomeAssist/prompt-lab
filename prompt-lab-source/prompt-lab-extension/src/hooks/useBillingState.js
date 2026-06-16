@@ -13,6 +13,21 @@ const REQUEST_TIMEOUT_MS = 8_000;
 const ACCOUNT_BILLING_COPY = 'Sign in on promptlab.tools to manage billing.';
 const BILLING_STATUS_PATH = '/billing/status';
 
+function readClerkEmail(clerkUser) {
+  const directEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  if (typeof directEmail === 'string' && directEmail.trim()) return directEmail.trim();
+
+  const primaryId = typeof clerkUser?.primaryEmailAddressId === 'string'
+    ? clerkUser.primaryEmailAddressId
+    : '';
+  const emailAddresses = Array.isArray(clerkUser?.emailAddresses) ? clerkUser.emailAddresses : [];
+  const primaryEmail = emailAddresses.find((item) => item?.id === primaryId)?.emailAddress;
+  if (typeof primaryEmail === 'string' && primaryEmail.trim()) return primaryEmail.trim();
+
+  const firstEmail = emailAddresses.find((item) => typeof item?.emailAddress === 'string' && item.emailAddress.trim())?.emailAddress;
+  return typeof firstEmail === 'string' ? firstEmail.trim() : '';
+}
+
 function normalizeResponseState(payload, previousState) {
   return normalizeBillingState({
     ...previousState,
@@ -51,10 +66,14 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   // Sync Clerk identity into billing state when available
   useEffect(() => {
     if (!clerkUser) return;
-    const email = clerkUser.primaryEmailAddress?.emailAddress;
-    const clerkId = clerkUser.id;
-    if (email && (email !== state.customerEmail || clerkId !== state.clerkUserId)) {
-      setState((prev) => normalizeBillingState({ ...prev, customerEmail: email, clerkUserId: clerkId }));
+    const email = readClerkEmail(clerkUser);
+    const clerkId = typeof clerkUser.id === 'string' ? clerkUser.id.trim() : '';
+    if (clerkId && (email !== state.customerEmail || clerkId !== state.clerkUserId)) {
+      setState((prev) => normalizeBillingState({
+        ...prev,
+        ...(email ? { customerEmail: email } : {}),
+        clerkUserId: clerkId,
+      }));
     }
   }, [clerkUser, state.clerkUserId, state.customerEmail]);
 
@@ -101,7 +120,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [apiBase, clerkGetToken]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
-    if (!state.customerEmail && !state.customerId) return false;
+    if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
 
     if (!silent) setBusyAction('validate');
     try {
@@ -140,7 +159,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || '').trim().toLowerCase();
-    if (!customerEmail) throw new Error('Enter the billing email used for your Prompt Lab Pro purchase.');
+    if (!customerEmail && !state.clerkUserId) {
+      throw new Error('Enter the billing email used for your Prompt Lab Pro purchase.');
+    }
 
     setBusyAction('activate');
     try {
@@ -153,7 +174,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       });
       const nextState = normalizeResponseState(payload, {
         ...state,
-        customerEmail,
+        customerEmail: customerEmail || state.customerEmail,
       });
       setState(nextState);
       notify?.('Prompt Lab Pro synced to this device.');

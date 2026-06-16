@@ -147,9 +147,6 @@ export async function resolveClerkBillingIdentity(
       timeoutMessage: 'Clerk user lookup timed out.',
     });
     const customerEmail = getPrimaryEmail(clerkUser);
-    if (!customerEmail) {
-      throw new Error('Clerk user does not have a primary email address.');
-    }
 
     return {
       hasBearerToken: true,

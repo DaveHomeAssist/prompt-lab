@@ -66,6 +66,70 @@ describe('useBillingState', () => {
     });
   });
 
+  it('syncs Clerk user id even when no email is exposed', async () => {
+    const clerkUser = {
+      id: 'user_github',
+      primaryEmailAddress: null,
+      emailAddresses: [],
+    };
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkUser }));
+
+    await waitFor(() => {
+      expect(result.current.clerkUserId).toBe('user_github');
+      expect(result.current.customerEmail).toBe('');
+    });
+  });
+
+  it('syncs owner Pro with only a Clerk user id', async () => {
+    const clerkUser = {
+      id: 'user_github',
+      primaryEmailAddress: null,
+      emailAddresses: [],
+    };
+    const clerkGetToken = vi.fn(async () => 'token_123');
+    const requests = [];
+
+    global.fetch = vi.fn(async (_url, init) => {
+      requests.push({
+        url: String(_url),
+        headers: init.headers,
+        body: JSON.parse(init.body),
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        plan: 'pro',
+        status: 'active',
+        billingPeriod: 'owner',
+        customerId: 'clerk:user_github',
+        subscriptionId: 'owner-entitlement',
+        entitlement: 'owner',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => useBillingState({ notify, clerkUser, clerkGetToken }));
+
+    await waitFor(() => {
+      expect(result.current.clerkUserId).toBe('user_github');
+    });
+
+    await act(async () => {
+      await result.current.activateLicense('');
+    });
+
+    expect(requests[0].url).toContain('/billing/status');
+    expect(requests[0].headers.Authorization).toBe('Bearer token_123');
+    expect(requests[0].body).toEqual({ action: 'activate' });
+    expect(result.current.plan).toBe('pro');
+    expect(result.current.billingPeriod).toBe('owner');
+    expect(result.current.customerId).toBe('clerk:user_github');
+    expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
+  });
+
   it('keeps cached Pro access when account billing auth is unavailable', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',

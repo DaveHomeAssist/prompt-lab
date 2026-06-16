@@ -181,7 +181,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
               <button
                 type="button"
                 onClick={handleActivate}
-                disabled={requiresPromptLabAccount || !accessEmail.trim() || billing.busyAction === 'activate'}
+                disabled={requiresPromptLabAccount || (!accessEmail.trim() && !billing.clerkUserId) || billing.busyAction === 'activate'}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
               >
                 {hasClerkIdentity ? 'Sync Device Access' : 'Sync Purchase'}
@@ -189,7 +189,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
               <button
                 type="button"
                 onClick={handleRefresh}
-                disabled={requiresPromptLabAccount || (!billing.customerEmail && !billing.customerId) || billing.busyAction === 'validate'}
+                disabled={requiresPromptLabAccount || (!billing.customerEmail && !billing.customerId && !billing.clerkUserId) || billing.busyAction === 'validate'}
                 className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
               >
                 Refresh Status
