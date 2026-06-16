@@ -38,6 +38,7 @@ function normalizeResponseState(payload, previousState) {
     priceId: payload.priceId || previousState.priceId,
     billingPeriod: payload.billingPeriod || previousState.billingPeriod,
     productName: payload.productName || previousState.productName,
+    clerkUserId: payload.clerkUserId || previousState.clerkUserId,
     customerEmail: payload.customerEmail || previousState.customerEmail,
     customerName: payload.customerName || previousState.customerName,
     manageUrl: payload.manageUrl || previousState.manageUrl,

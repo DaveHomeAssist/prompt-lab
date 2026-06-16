@@ -32,13 +32,64 @@ function normalizeEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
 }
 
-function getPrimaryEmail(user) {
-  const primaryId = String(user?.primaryEmailAddressId || '').trim();
-  const addresses = Array.isArray(user?.emailAddresses) ? user.emailAddresses : [];
-  const primary =
-    addresses.find((item) => String(item?.id || '').trim() === primaryId)
-    || addresses.find((item) => normalizeEmail(item?.emailAddress));
-  return normalizeEmail(primary?.emailAddress || '');
+function normalizeUsername(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase();
+}
+
+function uniqueNormalized(values, normalize) {
+  const seen = new Set();
+  const output = [];
+  for (const value of values) {
+    const normalized = normalize(value);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    output.push(normalized);
+  }
+  return output;
+}
+
+function getEmailAddressValue(item) {
+  return item?.emailAddress || item?.email_address || item?.email || item?.identifier || '';
+}
+
+function getEmailAddressId(item) {
+  return String(item?.id || item?.emailAddressId || item?.email_address_id || '').trim();
+}
+
+function getEmailAddresses(user) {
+  if (Array.isArray(user?.emailAddresses)) return user.emailAddresses;
+  if (Array.isArray(user?.email_addresses)) return user.email_addresses;
+  return [];
+}
+
+function getExternalAccounts(user) {
+  if (Array.isArray(user?.externalAccounts)) return user.externalAccounts;
+  if (Array.isArray(user?.external_accounts)) return user.external_accounts;
+  return [];
+}
+
+function getEmailCandidates(user) {
+  const primaryId = String(user?.primaryEmailAddressId || user?.primary_email_address_id || '').trim();
+  const addresses = getEmailAddresses(user);
+  const primary = addresses.find((item) => getEmailAddressId(item) === primaryId);
+  const externalAccounts = getExternalAccounts(user);
+
+  return uniqueNormalized([
+    getEmailAddressValue(primary),
+    ...addresses.map(getEmailAddressValue),
+    ...externalAccounts.map(getEmailAddressValue),
+  ], normalizeEmail);
+}
+
+function getUsernameCandidates(user) {
+  const externalAccounts = getExternalAccounts(user);
+  return uniqueNormalized([
+    user?.username,
+    ...externalAccounts.map((item) => item?.username || item?.providerUsername || item?.provider_username),
+  ], normalizeUsername);
 }
 
 function readBearerToken(request) {
@@ -146,13 +197,18 @@ export async function resolveClerkBillingIdentity(
     const clerkUser = await withTimeout(() => fetchUserFn(userId, config), {
       timeoutMessage: 'Clerk user lookup timed out.',
     });
-    const customerEmail = getPrimaryEmail(clerkUser);
+    const emails = getEmailCandidates(clerkUser);
+    const usernames = getUsernameCandidates(clerkUser);
+    const customerEmail = emails[0] || '';
 
     return {
       hasBearerToken: true,
       isAuthenticated: true,
       userId,
       customerEmail,
+      emails,
+      username: usernames[0] || '',
+      usernames,
       verifiedToken,
       clerkUser,
     };

@@ -35,6 +35,7 @@ const ENV_KEYS = [
   'BILLING_CIRCUIT_OPEN_ROUTES',
   'PROMPTLAB_PRO_OWNER_EMAILS',
   'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
+  'PROMPTLAB_PRO_OWNER_USERNAMES',
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -244,6 +245,35 @@ test('billing license grants configured owner email permanent Pro without Stripe
   assert.equal(payload.entitlement, 'owner');
 });
 
+test('billing license grants owner Pro from any verified Clerk email candidate', async () => {
+  process.env.PROMPTLAB_PRO_OWNER_EMAILS = 'owner@example.com';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not run for an owner entitlement.');
+  };
+
+  const { createLicenseHandler } = await loadHandler(licenseUrl);
+  const handler = createLicenseHandler({
+    resolveIdentity: async () => createAuthenticatedIdentity({
+      userId: 'user_owner',
+      customerEmail: 'secondary@example.com',
+      emails: ['secondary@example.com', 'Owner@Example.com'],
+    }),
+  });
+  const response = await handler(new Request('https://promptlab.tools/api/billing/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+    }),
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.plan, 'pro');
+  assert.equal(payload.customerEmail, 'secondary@example.com');
+  assert.equal(payload.entitlement, 'owner');
+});
+
 test('billing license grants configured owner Clerk user ID permanent Pro', async () => {
   process.env.PROMPTLAB_PRO_OWNER_CLERK_USER_IDS = 'user_github';
   globalThis.fetch = async () => {
@@ -269,6 +299,39 @@ test('billing license grants configured owner Clerk user ID permanent Pro', asyn
   const payload = await response.json();
   assert.equal(payload.plan, 'pro');
   assert.equal(payload.customerId, 'clerk:user_github');
+  assert.equal(payload.entitlement, 'owner');
+});
+
+test('billing license grants configured owner username permanent Pro', async () => {
+  process.env.BILLING_ENABLED = 'false';
+  process.env.PROMPTLAB_PRO_OWNER_USERNAMES = 'daverobertson9353';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not run for an owner entitlement.');
+  };
+
+  const { createLicenseHandler } = await loadHandler(licenseUrl);
+  const handler = createLicenseHandler({
+    resolveIdentity: async () => createAuthenticatedIdentity({
+      userId: 'user_github',
+      customerEmail: '',
+      username: 'DaveRobertson9353',
+      usernames: ['DaveHomeAssist'],
+    }),
+  });
+  const response = await handler(new Request('https://promptlab.tools/api/billing/status', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+    }),
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.plan, 'pro');
+  assert.equal(payload.customerId, 'clerk:user_github');
+  assert.equal(payload.clerkUserId, 'user_github');
+  assert.equal(payload.customerEmail, '');
   assert.equal(payload.entitlement, 'owner');
 });
 

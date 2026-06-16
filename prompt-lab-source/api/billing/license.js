@@ -45,6 +45,25 @@ function normalizeEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
 }
 
+function normalizeUsername(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^@+/, '')
+    .toLowerCase();
+}
+
+function uniqueValues(values, normalize) {
+  const seen = new Set();
+  const output = [];
+  for (const value of values) {
+    const normalized = normalize(value);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    output.push(normalized);
+  }
+  return output;
+}
+
 function resolveOwnerEntitlement(clerkIdentity) {
   const ownerEmails = new Set(
     readCsvEnv('PROMPTLAB_PRO_OWNER_EMAILS', 'PROMPTLAB_OWNER_EMAILS')
@@ -56,12 +75,26 @@ function resolveOwnerEntitlement(clerkIdentity) {
       .map(readString)
       .filter(Boolean),
   );
-  const customerEmail = normalizeEmail(clerkIdentity?.customerEmail);
+  const ownerUsernames = new Set(
+    readCsvEnv('PROMPTLAB_PRO_OWNER_USERNAMES', 'PROMPTLAB_OWNER_USERNAMES')
+      .map(normalizeUsername)
+      .filter(Boolean),
+  );
+  const emails = uniqueValues([
+    clerkIdentity?.customerEmail,
+    ...(Array.isArray(clerkIdentity?.emails) ? clerkIdentity.emails : []),
+  ], normalizeEmail);
+  const usernames = uniqueValues([
+    clerkIdentity?.username,
+    ...(Array.isArray(clerkIdentity?.usernames) ? clerkIdentity.usernames : []),
+  ], normalizeUsername);
+  const customerEmail = emails[0] || '';
   const clerkUserId = readString(clerkIdentity?.userId);
-  const matchedByEmail = customerEmail && ownerEmails.has(customerEmail);
+  const matchedByEmail = emails.some((email) => ownerEmails.has(email));
   const matchedByUserId = clerkUserId && ownerUserIds.has(clerkUserId);
+  const matchedByUsername = usernames.some((username) => ownerUsernames.has(username));
 
-  if (!matchedByEmail && !matchedByUserId) return null;
+  if (!matchedByEmail && !matchedByUserId && !matchedByUsername) return null;
 
   return {
     ok: true,
@@ -72,6 +105,7 @@ function resolveOwnerEntitlement(clerkIdentity) {
     productName: 'Prompt Lab Pro',
     customerId: clerkUserId ? `clerk:${clerkUserId}` : OWNER_ENTITLEMENT_ID,
     customerEmail,
+    clerkUserId,
     customerName: 'Owner',
     subscriptionId: OWNER_ENTITLEMENT_ID,
     manageUrl: OWNER_MANAGE_URL,

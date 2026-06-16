@@ -78,6 +78,45 @@ test('resolveClerkBillingIdentity verifies the Clerk token and loads the primary
   assert.deepEqual(buildAuthorizedParties(request).sort(), verifiedOptions.authorizedParties.sort());
 });
 
+test('resolveClerkBillingIdentity reads Clerk REST email and username fields', async () => {
+  const { resolveClerkBillingIdentity } = await loadModule();
+  process.env.CLERK_SECRET_KEY = 'sk_test_123';
+
+  const result = await resolveClerkBillingIdentity(new Request('https://promptlab.tools/api/billing/status', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer token_123',
+      Origin: 'https://promptlab.tools',
+    },
+  }), {
+    verifyTokenFn: async () => ({ sub: 'user_owner' }),
+    fetchUserFn: async (userId) => ({
+      id: userId,
+      username: 'DaveRobertson9353',
+      primary_email_address_id: 'email_primary',
+      email_addresses: [
+        { id: 'email_secondary', email_address: 'secondary@example.com' },
+        { id: 'email_primary', email_address: 'Owner@Example.com' },
+      ],
+      external_accounts: [
+        { username: 'DaveHomeAssist', email_address: 'github@example.com' },
+      ],
+    }),
+  });
+
+  assert.equal(result.hasBearerToken, true);
+  assert.equal(result.isAuthenticated, true);
+  assert.equal(result.userId, 'user_owner');
+  assert.equal(result.customerEmail, 'owner@example.com');
+  assert.deepEqual(result.emails, [
+    'owner@example.com',
+    'secondary@example.com',
+    'github@example.com',
+  ]);
+  assert.equal(result.username, 'daverobertson9353');
+  assert.deepEqual(result.usernames, ['daverobertson9353', 'davehomeassist']);
+});
+
 test('resolveClerkBillingIdentity authenticates Clerk users without a primary email', async () => {
   const { resolveClerkBillingIdentity } = await loadModule();
   process.env.CLERK_SECRET_KEY = 'sk_test_123';

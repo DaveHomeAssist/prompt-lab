@@ -137,6 +137,7 @@ export function describeBillingStatus(state) {
 
 export function getPlanLabel(state) {
   if (state.plan === PLAN_PRO) {
+    if (state.billingPeriod === 'owner') return 'Pro Owner';
     return state.billingPeriod === 'annual' ? 'Pro Annual' : 'Pro Monthly';
   }
   return 'Free';
