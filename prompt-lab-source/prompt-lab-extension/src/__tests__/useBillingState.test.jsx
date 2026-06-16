@@ -81,7 +81,7 @@ describe('useBillingState', () => {
     });
   });
 
-  it('syncs owner Pro with only a Clerk user id', async () => {
+  it('syncs owner Pro automatically with only a Clerk user id', async () => {
     const clerkUser = {
       id: 'user_github',
       primaryEmailAddress: null,
@@ -114,20 +114,16 @@ describe('useBillingState', () => {
     const { result } = renderHook(() => useBillingState({ notify, clerkUser, clerkGetToken }));
 
     await waitFor(() => {
-      expect(result.current.clerkUserId).toBe('user_github');
-    });
-
-    await act(async () => {
-      await result.current.activateLicense('');
+      expect(result.current.plan).toBe('pro');
     });
 
     expect(requests[0].url).toContain('/billing/status');
     expect(requests[0].headers.Authorization).toBe('Bearer token_123');
-    expect(requests[0].body).toEqual({ action: 'activate' });
-    expect(result.current.plan).toBe('pro');
+    expect(requests[0].body).toEqual({ action: 'validate' });
+    expect(result.current.clerkUserId).toBe('user_github');
     expect(result.current.billingPeriod).toBe('owner');
     expect(result.current.customerId).toBe('clerk:user_github');
-    expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it('keeps cached Pro access when account billing auth is unavailable', async () => {
@@ -185,12 +181,11 @@ describe('useBillingState', () => {
     expect(Date.now() - Date.parse(result.current.lastValidatedAt)).toBeLessThan(5000);
   });
 
-  it('does not perform background billing validation on mount', async () => {
+  it('silently syncs signed in account billing on mount', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
-      plan: 'pro',
-      status: 'active',
+      plan: 'free',
+      status: 'free',
       customerEmail: 'user@example.com',
-      customerId: 'cus_123',
       lastValidatedAt: new Date(Date.now() - (8 * 60 * 60 * 1000)).toISOString(),
     }));
 
@@ -203,19 +198,26 @@ describe('useBillingState', () => {
       ok: true,
       plan: 'pro',
       status: 'active',
+      billingPeriod: 'owner',
+      customerId: 'clerk:user_123',
+      subscriptionId: 'owner-entitlement',
+      entitlement: 'owner',
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     }));
 
-    renderHook(() => useBillingState({ notify: vi.fn(), clerkUser, clerkGetToken }));
+    const notify = vi.fn();
+    const { result } = renderHook(() => useBillingState({ notify, clerkUser, clerkGetToken }));
 
-    await act(async () => {
-      await Promise.resolve();
+    await waitFor(() => {
+      expect(result.current.plan).toBe('pro');
     });
 
-    expect(clerkGetToken).not.toHaveBeenCalled();
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(clerkGetToken).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.billingPeriod).toBe('owner');
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it('sends an account scoped validate payload during manual refresh', async () => {

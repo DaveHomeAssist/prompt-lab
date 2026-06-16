@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   canAccessFeature,
   createDefaultBillingState,
@@ -61,6 +61,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     loadJson(storageKeys.billing, createDefaultBillingState()),
   ));
   const [busyAction, setBusyAction] = useState('');
+  const autoSyncKeyRef = useRef('');
   const apiBase = getBillingApiBase();
 
   // Sync Clerk identity into billing state when available
@@ -118,6 +119,33 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       clearTimeout(timeoutId);
     }
   }, [apiBase, clerkGetToken]);
+
+  useEffect(() => {
+    if (!clerkGetToken || !state.clerkUserId || state.plan === 'pro') return undefined;
+    if (autoSyncKeyRef.current === state.clerkUserId) return undefined;
+    autoSyncKeyRef.current = state.clerkUserId;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const payload = await requestBilling(BILLING_STATUS_PATH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'validate',
+          }),
+        });
+        if (cancelled) return;
+        setState((prev) => normalizeResponseState(payload, prev));
+      } catch {
+        // Keep account sync quiet on load; manual Sync/Refresh surfaces errors.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clerkGetToken, requestBilling, state.clerkUserId, state.plan]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
     if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
