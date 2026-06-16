@@ -272,6 +272,34 @@ test('billing license grants configured owner Clerk user ID permanent Pro', asyn
   assert.equal(payload.entitlement, 'owner');
 });
 
+test('billing owner entitlement bypasses disabled Stripe billing', async () => {
+  process.env.BILLING_ENABLED = 'false';
+  process.env.PROMPTLAB_PRO_OWNER_EMAILS = 'owner@example.com';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not run for an owner entitlement.');
+  };
+
+  const { createLicenseHandler } = await loadHandler(licenseUrl);
+  const handler = createLicenseHandler({
+    resolveIdentity: async () => createAuthenticatedIdentity({
+      userId: 'user_owner',
+      customerEmail: 'owner@example.com',
+    }),
+  });
+  const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+    }),
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.plan, 'pro');
+  assert.equal(payload.entitlement, 'owner');
+});
+
 test('billing portal returns the configured portal url', async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   process.env.STRIPE_PORTAL_RETURN_URL = 'https://promptlab.tools/app/';

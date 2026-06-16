@@ -111,33 +111,11 @@ export function createLicenseHandler(
         return jsonResponse({ error: 'Unknown billing action.' }, 400);
       }
 
-      controlState = await enforceAvailability({
-        request,
-        route: 'license',
-      });
-      if (controlState.response) {
-        status = controlState.status;
-        note = 'guard-blocked';
-        return controlState.response;
-      }
-
       clerkIdentity = await resolveIdentity(request);
       if (!clerkIdentity.isAuthenticated) {
         status = 401;
         note = 'auth-required';
         return jsonResponse({ error: AUTH_REQUIRED_MESSAGE }, 401);
-      }
-
-      controlState = await enforceControls({
-        request,
-        route: 'license',
-        action,
-        identity: clerkIdentity,
-      });
-      if (controlState.response) {
-        status = controlState.status;
-        note = status === 429 ? 'rate-limited' : 'guard-blocked';
-        return controlState.response;
       }
 
       if (action === 'deactivate') {
@@ -153,6 +131,28 @@ export function createLicenseHandler(
         status = 200;
         note = 'owner-entitlement';
         return jsonResponse(ownerEntitlement);
+      }
+
+      controlState = await enforceAvailability({
+        request,
+        route: 'license',
+      });
+      if (controlState.response) {
+        status = controlState.status;
+        note = 'guard-blocked';
+        return controlState.response;
+      }
+
+      controlState = await enforceControls({
+        request,
+        route: 'license',
+        action,
+        identity: clerkIdentity,
+      });
+      if (controlState.response) {
+        status = controlState.status;
+        note = status === 429 ? 'rate-limited' : 'guard-blocked';
+        return controlState.response;
       }
 
       const payload = await lookupBilling(buildStripeConfig(), {
