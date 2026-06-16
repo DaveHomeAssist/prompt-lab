@@ -44,6 +44,8 @@ Hosted auth and billing related envs:
 - `STRIPE_MONTHLY_PRICE_ID` or `STRIPE_PRICE_ID` sets the monthly Prompt Lab Pro Stripe price
 - `STRIPE_YEARLY_PRICE_ID` sets the annual Prompt Lab Pro Stripe price
 - `STRIPE_WEBHOOK_SECRET` validates the Stripe webhook endpoint at `/api/billing/webhook`
+- `PROMPTLAB_PRO_OWNER_EMAILS` is a comma separated allowlist of authenticated Clerk emails that should permanently receive Prompt Lab Pro without Stripe lookup
+- `PROMPTLAB_PRO_OWNER_CLERK_USER_IDS` is a comma separated allowlist of Clerk user IDs for owner Pro access when a provider account does not expose the expected email
 - `PROMPTLAB_BUG_REPORTS_ENABLED=true` explicitly enables the hosted bug report endpoint
 - `PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN` sets the per-IP bug report limit, defaulting to 3 per minute
 - `NOTION_TOKEN` allows the hosted bug report endpoint to write to Notion when bug reports are enabled

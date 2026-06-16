@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 export default defineConfig({
-  plugins: [react()],
+  esbuild: {
+    jsx: 'automatic',
+  },
   define: {
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
   },

@@ -5,7 +5,7 @@
   },
   "status": "warn",
   "freshness": "fresh",
-  "updatedAt": "2026-04-29T02:23:58.245Z",
+  "updatedAt": "2026-06-15T12:50:14.072Z",
   "summary": "v1.7.0 · three shell architecture · branch patch/2026-04-abtest-union · dirty tree · 1 open issue",
   "recommendations": [
     {
@@ -252,8 +252,8 @@
     "schemaVersion": 1,
     "root": ".",
     "sourceRoot": "prompt-lab-source",
-    "lastCommitAt": "2026-04-28T22:20:03-04:00",
-    "lastCommitAgeMinutes": 4,
+    "lastCommitAt": "2026-06-15T01:27:21-04:00",
+    "lastCommitAgeMinutes": 443,
     "staleAfterMinutes": 1440
   }
 }

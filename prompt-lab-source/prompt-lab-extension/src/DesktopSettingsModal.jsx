@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Ic from './icons';
-import { DEFAULTS } from './lib/providerRegistry.js';
+import { DEFAULTS, normalizeAnthropicModel } from './lib/providerRegistry.js';
 import {
   isExtension,
   listOllamaModels,
@@ -58,7 +58,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           };
           if (isHostedWeb) {
             nextSettings.provider = 'anthropic';
-            nextSettings.anthropicModel = nextSettings.anthropicModel || DEFAULT_SETTINGS.anthropicModel;
+            nextSettings.anthropicModel = normalizeAnthropicModel(nextSettings.anthropicModel || DEFAULT_SETTINGS.anthropicModel);
           }
           setSettings(nextSettings);
         }

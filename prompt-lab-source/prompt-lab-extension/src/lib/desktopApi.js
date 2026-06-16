@@ -5,7 +5,7 @@
  * All provider logic lives in ./providers.js (shared with the extension).
  */
 import { callProvider, listOllamaModels as listModels } from './providers.js';
-import { DEFAULTS, normalizeProvider } from './providerRegistry.js';
+import { DEFAULTS, normalizeAnthropicModel, normalizeProvider } from './providerRegistry.js';
 import { createProxyFetch } from './proxyFetch.js';
 
 const SETTINGS_KEY = 'pl2-provider-settings';
@@ -29,7 +29,7 @@ function normalizeHostedSettings(settings = {}) {
   return {
     ...settings,
     provider: HOSTED_PROVIDER,
-    anthropicModel: settings.anthropicModel || DEFAULTS.anthropicModel,
+    anthropicModel: normalizeAnthropicModel(settings.anthropicModel || DEFAULTS.anthropicModel),
   };
 }
 

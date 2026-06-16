@@ -2,7 +2,13 @@ export const config = { runtime: 'edge' };
 
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
-const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-20250514'];
+const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const DEFAULT_ANTHROPIC_OPUS_MODEL = 'claude-opus-4-8';
+const DEFAULT_ALLOWED_MODELS = [DEFAULT_ANTHROPIC_MODEL];
+const ANTHROPIC_MODEL_ALIASES = Object.freeze({
+  'claude-sonnet-4-20250514': DEFAULT_ANTHROPIC_MODEL,
+  'claude-opus-4-20250514': DEFAULT_ANTHROPIC_OPUS_MODEL,
+});
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
@@ -34,8 +40,21 @@ function readListEnv(name, fallback) {
   return parsed.length > 0 ? parsed : fallback;
 }
 
+function uniqueList(values) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function normalizeAnthropicModel(model) {
+  const raw = typeof model === 'string' ? model.trim() : '';
+  if (!raw) return DEFAULT_ANTHROPIC_MODEL;
+  return ANTHROPIC_MODEL_ALIASES[raw] || raw;
+}
+
 function getAllowedModels() {
-  return readListEnv('HOSTED_ALLOWED_ANTHROPIC_MODELS', DEFAULT_ALLOWED_MODELS);
+  const configured = readListEnv('HOSTED_ALLOWED_ANTHROPIC_MODELS', DEFAULT_ALLOWED_MODELS)
+    .map(normalizeAnthropicModel);
+  const allowedModels = uniqueList(configured);
+  return allowedModels.length > 0 ? allowedModels : DEFAULT_ALLOWED_MODELS;
 }
 
 function getBurstLimit() {
@@ -248,7 +267,7 @@ function sanitizeAnthropicBody(rawBody) {
 
   const allowedModels = getAllowedModels();
   const defaultModel = allowedModels[0];
-  const requestedModel = typeof payload.model === 'string' ? payload.model.trim() : '';
+  const requestedModel = normalizeAnthropicModel(payload.model);
   const hostedMaxTokens = Math.max(1, getHostedMaxTokens());
   const requestedMaxTokens = Number(payload.max_tokens);
 

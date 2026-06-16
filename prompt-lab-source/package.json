@@ -24,10 +24,12 @@
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
     "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs",
-    "toolchain:check": "npm run check:node && node scripts/check-build-toolchain.mjs"
+    "toolchain:check": "npm run check:node && node scripts/check-build-toolchain.mjs",
+    "daily-status": "npm run check:node && node ../tools/daily-status/run.mjs",
+    "daily-status:deep": "npm run check:node && node ../tools/daily-status/run.mjs --deep --net"
   },
   "dependencies": {
-    "@clerk/backend": "^3.4.7"
+    "@clerk/backend": "^3.7.0"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.22.1"

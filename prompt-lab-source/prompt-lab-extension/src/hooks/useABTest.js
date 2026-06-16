@@ -4,6 +4,7 @@ import { extractTextFromAnthropic, isTransientError } from '../promptUtils.js';
 import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
+import { DEFAULT_ENHANCE_MODEL } from '../constants.js';
 
 const EMPTY_VARIANT = { status: 'idle', prompt: '' };
 
@@ -63,7 +64,7 @@ export default function useABTest({ notify }) {
     setter({ status: 'loading', prompt: state.prompt });
     try {
       const data = await callWithRetry({
-        model: 'claude-sonnet-4-20250514',
+        model: DEFAULT_ENHANCE_MODEL,
         max_tokens: 800,
         messages: [{ role: 'user', content: state.prompt }],
       });

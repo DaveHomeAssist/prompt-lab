@@ -3,6 +3,8 @@ import {
   DEFAULT_PROVIDER,
   toAnthropicMessages,
   normalizeBaseUrl,
+  normalizeAnthropicModel,
+  normalizeOpenRouterModel,
   normalizeProvider,
   toChatMessages,
   toGeminiContents,
@@ -36,7 +38,7 @@ export async function callAnthropic(payload, settings = {}, fetchImpl = globalTh
   }
 
   const requestBody = {
-    model: settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel,
+    model: normalizeAnthropicModel(settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel),
     max_tokens: payload?.max_tokens || 1500,
     messages: toAnthropicMessages(payload),
     stream: false,
@@ -165,7 +167,7 @@ export async function callOpenRouter(payload, settings = {}, fetchImpl = globalT
   }
 
   const requestBody = {
-    model: settings.openrouterModel || payload?.model || DEFAULTS.openrouterModel,
+    model: normalizeOpenRouterModel(settings.openrouterModel || payload?.model || DEFAULTS.openrouterModel),
     max_tokens: payload.max_tokens || 1500,
     messages: toChatMessages(payload),
   };

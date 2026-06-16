@@ -1,11 +1,12 @@
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 // Desktop Vite config — resolves shared source from the extension project.
 // No symlinks needed; works on Windows, macOS, and Linux.
 export default defineConfig({
-  plugins: [react()],
+  esbuild: {
+    jsx: 'automatic',
+  },
   resolve: {
     alias: [
       // Force shared extension source to resolve frontend deps from desktop node_modules.

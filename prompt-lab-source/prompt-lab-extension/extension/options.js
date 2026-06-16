@@ -322,7 +322,7 @@ function getActiveModel() {
     case 'gemini': return els.geminiModel.value;
     case 'openrouter': return els.openrouterModel.value.trim() || DEFAULTS.openrouterModel;
     case 'ollama': return getOllamaModelValue();
-    default: return 'claude-sonnet-4-20250514';
+    default: return DEFAULTS.anthropicModel;
   }
 }
 

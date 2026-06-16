@@ -32,6 +32,8 @@ const ENV_KEYS = [
   'BILLING_LICENSE_USER_LIMIT_PER_MIN',
   'BILLING_PORTAL_USER_LIMIT_PER_MIN',
   'BILLING_CIRCUIT_OPEN_ROUTES',
+  'PROMPTLAB_PRO_OWNER_EMAILS',
+  'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -208,6 +210,65 @@ test('billing sync rejects an email with no active Prompt Lab Pro subscription',
 
   assert.equal(response.status, 404);
   assert.match(await response.text(), /No active Prompt Lab Pro subscription/i);
+});
+
+test('billing license grants configured owner email permanent Pro without Stripe lookup', async () => {
+  process.env.PROMPTLAB_PRO_OWNER_EMAILS = 'owner@example.com';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not run for an owner entitlement.');
+  };
+
+  const { createLicenseHandler } = await loadHandler(licenseUrl);
+  const handler = createLicenseHandler({
+    resolveIdentity: async () => createAuthenticatedIdentity({
+      userId: 'user_owner',
+      customerEmail: 'owner@example.com',
+    }),
+  });
+  const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+    }),
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.plan, 'pro');
+  assert.equal(payload.status, 'active');
+  assert.equal(payload.billingPeriod, 'owner');
+  assert.equal(payload.customerEmail, 'owner@example.com');
+  assert.equal(payload.subscriptionId, 'owner-entitlement');
+  assert.equal(payload.entitlement, 'owner');
+});
+
+test('billing license grants configured owner Clerk user ID permanent Pro', async () => {
+  process.env.PROMPTLAB_PRO_OWNER_CLERK_USER_IDS = 'user_github';
+  globalThis.fetch = async () => {
+    throw new Error('Stripe should not run for an owner entitlement.');
+  };
+
+  const { createLicenseHandler } = await loadHandler(licenseUrl);
+  const handler = createLicenseHandler({
+    resolveIdentity: async () => createAuthenticatedIdentity({
+      userId: 'user_github',
+      customerEmail: 'github-private@example.com',
+    }),
+  });
+  const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+    }),
+  }));
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.plan, 'pro');
+  assert.equal(payload.customerId, 'clerk:user_github');
+  assert.equal(payload.entitlement, 'owner');
 });
 
 test('billing portal returns the configured portal url', async () => {

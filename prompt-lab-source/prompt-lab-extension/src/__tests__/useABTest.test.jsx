@@ -30,7 +30,7 @@ vi.mock('../experimentStore.js', () => ({
 function anthropicResponse(text, extra = {}) {
   return {
     provider: 'anthropic',
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     content: [{ text }],
     ...extra,
   };
@@ -88,12 +88,12 @@ describe('useABTest', () => {
     });
 
     expect(callModel).toHaveBeenNthCalledWith(1, {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'Prompt A' }],
     });
     expect(callModel).toHaveBeenNthCalledWith(2, {
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'Prompt B' }],
     });
@@ -109,7 +109,7 @@ describe('useABTest', () => {
       input: 'Prompt A',
       output: 'Response for A',
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       latencyMs: expect.any(Number),
     }));
     expect(saveEvalRun).toHaveBeenNthCalledWith(2, expect.objectContaining({
@@ -119,7 +119,7 @@ describe('useABTest', () => {
       input: 'Prompt B',
       output: 'Response for B',
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       latencyMs: expect.any(Number),
     }));
   });

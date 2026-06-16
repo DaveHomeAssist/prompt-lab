@@ -20,13 +20,16 @@ const sharedVersions = {
     'react-router-dom': '7.13.2',
   },
   devDependencies: {
-    '@vitejs/plugin-react': '5.2.0',
     autoprefixer: '10.4.20',
     postcss: '8.4.49',
     tailwindcss: '3.4.17',
     vite: '7.3.2',
   },
 };
+
+const forbiddenDeps = [
+  '@vitejs/plugin-react',
+];
 
 const errors = [];
 
@@ -48,6 +51,19 @@ function checkPackage(shell, pkg, lock) {
       }
     }
   }
+
+  for (const name of forbiddenDeps) {
+    for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+      if (pkg[section]?.[name] != null) {
+        errors.push(`${shell} package.json ${section}.${name}: expected absent, got ${pkg[section][name]}`);
+      }
+    }
+
+    const locked = lock.packages?.[`node_modules/${name}`]?.version;
+    if (locked != null) {
+      errors.push(`${shell} package-lock.json ${name}: expected absent, got ${locked}`);
+    }
+  }
 }
 
 function checkInstalled(shell) {
@@ -66,6 +82,13 @@ function checkInstalled(shell) {
       if (actual !== expected) {
         errors.push(`${shell} node_modules ${name}: expected ${expected}, got ${actual}`);
       }
+    }
+  }
+
+  for (const name of forbiddenDeps) {
+    const packageJsonPath = join(modulesDir, name, 'package.json');
+    if (existsSync(packageJsonPath)) {
+      errors.push(`${shell} node_modules ${name}: expected absent`);
     }
   }
 }

@@ -67,6 +67,32 @@ export function normalizeBaseUrl(baseUrl, fallback) {
   return raw.replace(/\/+$/, '');
 }
 
+export const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-4-6';
+export const ANTHROPIC_DEFAULT_OPUS_MODEL = 'claude-opus-4-8';
+export const OPENROUTER_DEFAULT_MODEL = `anthropic/${ANTHROPIC_DEFAULT_MODEL}`;
+
+const ANTHROPIC_MODEL_ALIASES = Object.freeze({
+  'claude-sonnet-4-20250514': ANTHROPIC_DEFAULT_MODEL,
+  'claude-opus-4-20250514': ANTHROPIC_DEFAULT_OPUS_MODEL,
+});
+
+const OPENROUTER_MODEL_ALIASES = Object.freeze({
+  'anthropic/claude-sonnet-4-20250514': OPENROUTER_DEFAULT_MODEL,
+  'anthropic/claude-opus-4-20250514': `anthropic/${ANTHROPIC_DEFAULT_OPUS_MODEL}`,
+});
+
+export function normalizeAnthropicModel(model) {
+  const raw = typeof model === 'string' ? model.trim() : '';
+  if (!raw) return ANTHROPIC_DEFAULT_MODEL;
+  return ANTHROPIC_MODEL_ALIASES[raw] || raw;
+}
+
+export function normalizeOpenRouterModel(model) {
+  const raw = typeof model === 'string' ? model.trim() : '';
+  if (!raw) return OPENROUTER_DEFAULT_MODEL;
+  return OPENROUTER_MODEL_ALIASES[raw] || raw;
+}
+
 // ── SSE stream parsers ─────────────────────────────────────────────
 
 function parseSseChunks(buffer, flush = false, pickText) {
@@ -112,7 +138,7 @@ const PROVIDERS = Object.freeze({
   anthropic: {
     id: 'anthropic',
     label: 'Anthropic',
-    defaultModel: 'claude-sonnet-4-20250514',
+    defaultModel: ANTHROPIC_DEFAULT_MODEL,
     apiKeyField: 'apiKey',
     modelField: 'anthropicModel',
     settingsKeys: ['apiKey', 'anthropicModel'],
@@ -121,7 +147,7 @@ const PROVIDERS = Object.freeze({
     endpoint: 'https://api.anthropic.com/v1/messages',
 
     resolveModel(payload, settings) {
-      return settings.anthropicModel || payload?.model || this.defaultModel;
+      return normalizeAnthropicModel(settings.anthropicModel || payload?.model || this.defaultModel);
     },
 
     buildHeaders(settings) {
@@ -321,7 +347,7 @@ const PROVIDERS = Object.freeze({
   openrouter: {
     id: 'openrouter',
     label: 'OpenRouter',
-    defaultModel: 'anthropic/claude-sonnet-4-20250514',
+    defaultModel: OPENROUTER_DEFAULT_MODEL,
     apiKeyField: 'openrouterApiKey',
     modelField: 'openrouterModel',
     settingsKeys: ['openrouterApiKey', 'openrouterModel'],
@@ -330,7 +356,7 @@ const PROVIDERS = Object.freeze({
     endpoint: 'https://openrouter.ai/api/v1/chat/completions',
 
     resolveModel(payload, settings) {
-      return settings.openrouterModel || payload?.model || this.defaultModel;
+      return normalizeOpenRouterModel(settings.openrouterModel || payload?.model || this.defaultModel);
     },
 
     buildHeaders(settings) {

@@ -69,7 +69,7 @@ describe('runEmitter', () => {
     const ctx = startRun({
       run_type: 'enhance',
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
     });
 
     expect(starts).toHaveLength(1);
@@ -82,7 +82,7 @@ describe('runEmitter', () => {
     expect(payload.started_at).toBeGreaterThan(0);
     expect(payload.ended_at).toBe(null);
     expect(payload.provider).toBe('anthropic');
-    expect(payload.model).toBe('claude-sonnet-4-20250514');
+    expect(payload.model).toBe('claude-sonnet-4-6');
 
     // Context object has the IDs
     expect(ctx.run_id).toBe('id-1');
@@ -172,7 +172,7 @@ describe('runEmitter', () => {
 
     const result = recordBlockedRun({
       run_type: 'enhance',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       reason: 'PII detected',
     });
 

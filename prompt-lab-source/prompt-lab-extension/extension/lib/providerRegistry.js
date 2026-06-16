@@ -1,13 +1,26 @@
 export const DEFAULT_PROVIDER = 'anthropic';
+export const ANTHROPIC_DEFAULT_MODEL = 'claude-sonnet-4-6';
+export const ANTHROPIC_DEFAULT_OPUS_MODEL = 'claude-opus-4-8';
+export const OPENROUTER_DEFAULT_MODEL = `anthropic/${ANTHROPIC_DEFAULT_MODEL}`;
+
+const ANTHROPIC_MODEL_ALIASES = Object.freeze({
+  'claude-sonnet-4-20250514': ANTHROPIC_DEFAULT_MODEL,
+  'claude-opus-4-20250514': ANTHROPIC_DEFAULT_OPUS_MODEL,
+});
+
+const OPENROUTER_MODEL_ALIASES = Object.freeze({
+  'anthropic/claude-sonnet-4-20250514': OPENROUTER_DEFAULT_MODEL,
+  'anthropic/claude-opus-4-20250514': `anthropic/${ANTHROPIC_DEFAULT_OPUS_MODEL}`,
+});
 
 export const DEFAULTS = Object.freeze({
   provider: DEFAULT_PROVIDER,
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
-  anthropicModel: 'claude-sonnet-4-20250514',
+  anthropicModel: ANTHROPIC_DEFAULT_MODEL,
   openaiModel: 'gpt-4o',
   geminiModel: 'gemini-2.5-flash',
-  openrouterModel: 'anthropic/claude-sonnet-4-20250514',
+  openrouterModel: OPENROUTER_DEFAULT_MODEL,
 });
 
 export const VALID_PROVIDERS = Object.freeze([
@@ -39,6 +52,18 @@ export function normalizeProvider(provider) {
 export function normalizeBaseUrl(baseUrl, fallback = DEFAULTS.ollamaBaseUrl) {
   const raw = String(baseUrl || fallback).trim();
   return raw.replace(/\/+$/, '');
+}
+
+export function normalizeAnthropicModel(model) {
+  const raw = typeof model === 'string' ? model.trim() : '';
+  if (!raw) return ANTHROPIC_DEFAULT_MODEL;
+  return ANTHROPIC_MODEL_ALIASES[raw] || raw;
+}
+
+export function normalizeOpenRouterModel(model) {
+  const raw = typeof model === 'string' ? model.trim() : '';
+  if (!raw) return OPENROUTER_DEFAULT_MODEL;
+  return OPENROUTER_MODEL_ALIASES[raw] || raw;
 }
 
 export function anthropicBlocksToText(content) {

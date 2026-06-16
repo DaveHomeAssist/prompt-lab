@@ -2,7 +2,7 @@
 
 export const APP_VERSION = '1.7.0';
 
-export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-20250514';
+export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-6';
 export const DEFAULT_ENHANCE_MAX_TOKENS = 4096;
 export const DEFAULT_ENHANCE_TEMPERATURE = 0.4;
 

@@ -77,7 +77,7 @@ describe('DesktopSettingsModal', () => {
     loadProviderSettings.mockResolvedValue({
       provider: 'anthropic',
       apiKey: 'sk-ant',
-      anthropicModel: 'claude-sonnet-4-20250514',
+      anthropicModel: 'claude-sonnet-4-6',
       openaiApiKey: 'sk-openai',
       openaiModel: 'gpt-4o',
       ollamaBaseUrl: 'http://localhost:11434',
@@ -197,6 +197,7 @@ describe('DesktopSettingsModal', () => {
     expect(await screen.findByText('Hosted access')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Anthropic (hosted default)')).toBeDisabled();
     expect(screen.getByLabelText('API Key')).toHaveValue('');
+    expect(screen.getByRole('textbox', { name: 'Model' })).toHaveValue('claude-sonnet-4-6');
     expect(screen.getByRole('textbox', { name: 'Model' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -204,7 +205,7 @@ describe('DesktopSettingsModal', () => {
     await waitFor(() => {
       expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
         provider: 'anthropic',
-        anthropicModel: 'claude-sonnet-4-20250514',
+        anthropicModel: 'claude-sonnet-4-6',
       }));
     });
   });
@@ -262,7 +263,8 @@ describe('DesktopSettingsModal', () => {
       listOllamaModels: listModels,
     }));
     vi.doMock('../lib/providerRegistry.js', () => ({
-      DEFAULTS: { anthropicModel: 'claude-sonnet-4-20250514' },
+      DEFAULTS: { anthropicModel: 'claude-sonnet-4-6' },
+      normalizeAnthropicModel: vi.fn((model) => model || 'claude-sonnet-4-6'),
       normalizeProvider,
     }));
     localStorage.setItem('pl2-provider-settings', JSON.stringify({
@@ -277,7 +279,7 @@ describe('DesktopSettingsModal', () => {
       payload,
       settings: expect.objectContaining({
         provider: 'anthropic',
-        anthropicModel: 'claude-sonnet-4-20250514',
+        anthropicModel: 'claude-sonnet-4-6',
       }),
       fetchImpl: globalThis.fetch,
     }));

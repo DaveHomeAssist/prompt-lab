@@ -22,6 +22,62 @@ function readString(value) {
 }
 
 const AUTH_REQUIRED_MESSAGE = 'Sign in to manage Prompt Lab billing.';
+const OWNER_ENTITLEMENT_ID = 'owner-entitlement';
+const OWNER_MANAGE_URL = 'https://promptlab.tools/app/';
+
+function splitCsv(value) {
+  return String(value || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function readCsvEnv(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (typeof value === 'string' && value.trim()) return splitCsv(value);
+  }
+  return [];
+}
+
+function normalizeEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
+}
+
+function resolveOwnerEntitlement(clerkIdentity) {
+  const ownerEmails = new Set(
+    readCsvEnv('PROMPTLAB_PRO_OWNER_EMAILS', 'PROMPTLAB_OWNER_EMAILS')
+      .map(normalizeEmail)
+      .filter(Boolean),
+  );
+  const ownerUserIds = new Set(
+    readCsvEnv('PROMPTLAB_PRO_OWNER_CLERK_USER_IDS', 'PROMPTLAB_OWNER_CLERK_USER_IDS')
+      .map(readString)
+      .filter(Boolean),
+  );
+  const customerEmail = normalizeEmail(clerkIdentity?.customerEmail);
+  const clerkUserId = readString(clerkIdentity?.userId);
+  const matchedByEmail = customerEmail && ownerEmails.has(customerEmail);
+  const matchedByUserId = clerkUserId && ownerUserIds.has(clerkUserId);
+
+  if (!matchedByEmail && !matchedByUserId) return null;
+
+  return {
+    ok: true,
+    plan: 'pro',
+    status: 'active',
+    billingPeriod: 'owner',
+    priceId: OWNER_ENTITLEMENT_ID,
+    productName: 'Prompt Lab Pro',
+    customerId: clerkUserId ? `clerk:${clerkUserId}` : OWNER_ENTITLEMENT_ID,
+    customerEmail,
+    customerName: 'Owner',
+    subscriptionId: OWNER_ENTITLEMENT_ID,
+    manageUrl: OWNER_MANAGE_URL,
+    entitlement: 'owner',
+  };
+}
 
 export function createLicenseHandler(
   {
@@ -90,6 +146,13 @@ export function createLicenseHandler(
           ok: true,
           deactivated: true,
         });
+      }
+
+      const ownerEntitlement = resolveOwnerEntitlement(clerkIdentity);
+      if (ownerEntitlement) {
+        status = 200;
+        note = 'owner-entitlement';
+        return jsonResponse(ownerEntitlement);
       }
 
       const payload = await lookupBilling(buildStripeConfig(), {
