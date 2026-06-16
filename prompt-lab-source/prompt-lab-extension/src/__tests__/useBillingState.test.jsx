@@ -164,6 +164,7 @@ describe('useBillingState', () => {
 
     global.fetch = vi.fn(async (_url, init) => {
       requests.push({
+        url: String(_url),
         headers: init.headers,
         body: JSON.parse(init.body),
       });
@@ -192,6 +193,7 @@ describe('useBillingState', () => {
     });
 
     expect(requests[0].headers.Authorization).toBe('Bearer token_123');
+    expect(requests[0].url).toContain('/billing/status');
     expect(requests[0].body).toEqual({ action: 'validate' });
   });
 

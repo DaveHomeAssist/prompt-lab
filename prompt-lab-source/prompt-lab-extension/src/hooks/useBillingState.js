@@ -11,6 +11,7 @@ import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 const ACCOUNT_BILLING_COPY = 'Sign in on promptlab.tools to manage billing.';
+const BILLING_STATUS_PATH = '/billing/status';
 
 function normalizeResponseState(payload, previousState) {
   return normalizeBillingState({
@@ -81,7 +82,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       });
       if (!response.ok) {
         const fallback =
-          path === '/billing/license' && (response.status === 403 || response.status === 503)
+          path === BILLING_STATUS_PATH && (response.status === 403 || response.status === 503)
             ? 'Hosted billing validation is temporarily unavailable.'
             : response.status === 429
               ? 'Too many billing requests. Please wait and try again.'
@@ -104,7 +105,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
     if (!silent) setBusyAction('validate');
     try {
-      const payload = await requestBilling('/billing/license', {
+      const payload = await requestBilling(BILLING_STATUS_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -143,7 +144,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
     setBusyAction('activate');
     try {
-      const payload = await requestBilling('/billing/license', {
+      const payload = await requestBilling(BILLING_STATUS_PATH, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

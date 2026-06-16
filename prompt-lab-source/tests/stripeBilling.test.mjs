@@ -12,6 +12,7 @@ function billingModuleUrl(fileName) {
 
 const checkoutUrl = billingModuleUrl('checkout.js');
 const licenseUrl = billingModuleUrl('license.js');
+const statusUrl = billingModuleUrl('status.js');
 const portalUrl = billingModuleUrl('portal.js');
 const controlsUrl = pathToFileURL(path.join(sourceDir, 'api', '_lib', 'billingControls.js')).href;
 
@@ -496,6 +497,21 @@ test('billing routes emit the structured log format', async () => {
 test('billing sync rejects unauthenticated requests', async () => {
   const { default: handler } = await loadHandler(licenseUrl);
   const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'validate',
+      customerEmail: 'user@example.com',
+    }),
+  }));
+
+  assert.equal(response.status, 401);
+  assert.match(await response.text(), /Sign in to manage Prompt Lab billing/i);
+});
+
+test('billing status route aliases license validation', async () => {
+  const { default: handler } = await loadHandler(statusUrl);
+  const response = await handler(new Request('https://promptlab.tools/api/billing/status', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
