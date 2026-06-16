@@ -234,6 +234,46 @@ describe('useExecutionFlow', () => {
     expect(savedRuns).toHaveLength(0);
   });
 
+  it('enhance_error_surfaces_hosted_proxy_disabled_message', async () => {
+    const proxyError = new Error('Hosted provider proxy is disabled.');
+    proxyError.status = 503;
+    callModel.mockRejectedValueOnce(proxyError);
+    const { result } = renderExecutionFlow({ raw: 'Run through hosted proxy' });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(result.current.error).toEqual(expect.objectContaining({
+      name: 'AppError',
+      category: 'platform',
+      userMessage: 'Hosted provider proxy is disabled.',
+      retryable: false,
+      source: 'Prompt Lab hosted proxy',
+    }));
+    expect(result.current.error.actions).toContain('open_provider_settings');
+    expect(result.current.error.actions).not.toContain('retry');
+  });
+
+  it('enhance_error_classifies_browser_cors_failure_as_network', async () => {
+    callModel.mockRejectedValueOnce(new Error(
+      "Access to fetch at 'https://clerk.promptlab.tools/v1/client/sessions' from origin 'https://promptlab.tools' has been blocked by CORS policy."
+    ));
+    const { result } = renderExecutionFlow({ raw: 'Refresh auth session' });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(result.current.error).toEqual(expect.objectContaining({
+      name: 'AppError',
+      category: 'network',
+      retryable: true,
+    }));
+    expect(result.current.error.userMessage).toMatch(/could not reach execution/i);
+    expect(result.current.error.actions).toContain('retry');
+  });
+
   it('retry_creates_new_eval_run', async () => {
     callModel
       .mockResolvedValueOnce({

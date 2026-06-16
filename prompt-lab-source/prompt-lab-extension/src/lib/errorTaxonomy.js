@@ -44,6 +44,8 @@ export const ErrorCategory = Object.freeze({
   UNKNOWN:    'unknown',
 });
 
+const HOSTED_PROXY_SOURCE = 'Prompt Lab hosted proxy';
+
 // ── AppError ────────────────────────────────────────────────────────
 export class AppError extends Error {
   /**
@@ -81,6 +83,13 @@ export class AppError extends Error {
           : ['Retry the request.', 'Check provider status and settings.'];
       case ErrorCategory.VALIDATION:
         return ['Check your input and try again.'];
+      case ErrorCategory.STORAGE:
+        return ['Retry after local storage is available.', 'Clear old Prompt Lab data only if the issue persists.'];
+      case ErrorCategory.PLATFORM:
+        if (this.source === HOSTED_PROXY_SOURCE) {
+          return ['Add a personal Anthropic key in provider settings.', 'Enable the hosted provider proxy before using shared hosted runs.'];
+        }
+        return ['Check the current app shell and provider settings.'];
       default:
         return ['Retry the request.', 'Check provider status and settings.'];
     }
@@ -96,6 +105,8 @@ export class AppError extends Error {
         return ['retry'];
       case ErrorCategory.PROVIDER:
         return this.retryable ? ['retry', 'open_provider_settings'] : ['open_provider_settings'];
+      case ErrorCategory.PLATFORM:
+        return this.source === HOSTED_PROXY_SOURCE ? ['open_provider_settings'] : [];
       default:
         return this.retryable ? ['retry'] : [];
     }
@@ -175,6 +186,17 @@ export function platformError(source, detail) {
   });
 }
 
+export function hostedProxyError(detail, status) {
+  return new AppError({
+    category: ErrorCategory.PLATFORM,
+    userMessage: detail || 'Hosted provider proxy is unavailable.',
+    debugMessage: detail || 'Hosted provider proxy is unavailable.',
+    retryable: false,
+    source: HOSTED_PROXY_SOURCE,
+    status,
+  });
+}
+
 export function unknownError(source, detail) {
   return new AppError({
     category: ErrorCategory.UNKNOWN,
@@ -198,6 +220,16 @@ export function normalizeError(err, source = 'unknown') {
   const msg = rawMessage.toLowerCase();
   const status = err?.status;
 
+  if (
+    msg.includes('hosted provider proxy is disabled')
+    || msg.includes('hosted anthropic key is not configured')
+    || msg.includes('hosted provider key is unavailable')
+    || msg.includes('add your own anthropic key')
+    || msg.includes('daily hosted demo limit reached')
+  ) {
+    return hostedProxyError(rawMessage, status);
+  }
+
   // Auth
   if (msg.includes('api key') || msg.includes('unauthorized') || status === 401 || status === 403) {
     return authError(source, err?.message);
@@ -209,7 +241,17 @@ export function normalizeError(err, source = 'unknown') {
   }
 
   // Network
-  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('timeout') || msg.includes('dns') || msg.includes('econnrefused')) {
+  if (
+    msg.includes('failed to fetch')
+    || msg.includes('fetch failed')
+    || msg.includes('network')
+    || msg.includes('timeout')
+    || msg.includes('dns')
+    || msg.includes('cors')
+    || msg.includes('err_name_not_resolved')
+    || msg.includes('err_failed')
+    || msg.includes('econnrefused')
+  ) {
     return networkError(source, rawMessage);
   }
 

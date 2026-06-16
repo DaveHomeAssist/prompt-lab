@@ -11,6 +11,7 @@ export function createProxyFetch(proxyUrl = '/api/proxy') {
     const res = await fetch(proxyUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: init.signal,
       body: JSON.stringify({
         targetUrl: url.toString(),
         headers,

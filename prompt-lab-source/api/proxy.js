@@ -233,6 +233,14 @@ function jsonResponse(body, status, extraHeaders = {}) {
   });
 }
 
+function targetHostFromString(value) {
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return '';
+  }
+}
+
 function validateTargetUrl(targetUrl) {
   let parsed;
   try {
@@ -311,6 +319,26 @@ function injectServerKey(url, headers, usingSharedKey) {
 }
 
 export default async function handler(request) {
+  const startedAt = Date.now();
+  const writeProxyLog = (status, note, extra = {}) => {
+    const line = JSON.stringify({
+      level: status >= 500 ? 'error' : 'info',
+      route: '/api/proxy',
+      status,
+      duration: Date.now() - startedAt,
+      timeout: false,
+      note,
+      method: request.method,
+      ...extra,
+    });
+    const write = status >= 500 ? console.error : console.log;
+    write(line);
+  };
+  const jsonLogged = (body, status, extraHeaders = {}, note = 'response', extra = {}) => {
+    writeProxyLog(status, note, extra);
+    return jsonResponse(body, status, extraHeaders);
+  };
+
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -323,11 +351,11 @@ export default async function handler(request) {
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return jsonLogged({ error: 'Method not allowed' }, 405, {}, 'method-not-allowed');
   }
 
   if (!isHostedProxyEnabled()) {
-    return jsonResponse({ error: 'Hosted provider proxy is disabled.' }, 503);
+    return jsonLogged({ error: 'Hosted provider proxy is disabled.' }, 503, {}, 'proxy-disabled');
   }
 
   const clientIp =
@@ -337,13 +365,15 @@ export default async function handler(request) {
 
   const burstState = await getBurstState(clientIp);
   if (burstState.limited) {
-    return jsonResponse(
+    return jsonLogged(
       { error: 'Rate limit exceeded. Try again shortly.' },
       429,
       {
         'X-RateLimit-Store': burstState.store,
         ...(burstState.resetAt ? { 'X-RateLimit-Reset': new Date(burstState.resetAt).toISOString() } : {}),
       },
+      'burst-rate-limited',
+      { rateLimitStore: burstState.store },
     );
   }
 
@@ -351,33 +381,45 @@ export default async function handler(request) {
   try {
     payload = await request.json();
   } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+    return jsonLogged({ error: 'Invalid JSON body' }, 400, {}, 'invalid-json');
   }
 
   const { targetUrl, headers = {}, body } = payload || {};
 
   if (!targetUrl) {
-    return jsonResponse({ error: 'Missing targetUrl' }, 400);
+    return jsonLogged({ error: 'Missing targetUrl' }, 400, {}, 'missing-target');
   }
 
   let parsedUrl;
   try {
     parsedUrl = validateTargetUrl(targetUrl);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Invalid targetUrl' }, 403);
+    return jsonLogged(
+      { error: error.message || 'Invalid targetUrl' },
+      403,
+      {},
+      'invalid-target',
+      { targetHost: targetHostFromString(targetUrl) },
+    );
   }
 
   const auth = resolveAuth(headers);
 
   if (auth.usingSharedKey && !isHostedSharedKeyEnabled()) {
-    return jsonResponse({ error: 'Add your own Anthropic key to run models in hosted Prompt Lab.' }, 401);
+    return jsonLogged(
+      { error: 'Add your own Anthropic key to run models in hosted Prompt Lab.' },
+      401,
+      {},
+      'shared-key-disabled',
+      { targetHost: parsedUrl.hostname, usingSharedKey: true },
+    );
   }
 
   let demoState = null;
   if (auth.usingSharedKey) {
     demoState = await getDemoState(clientIp);
     if (demoState.limited) {
-      return jsonResponse(
+      return jsonLogged(
         {
           error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
           demo_remaining: 0,
@@ -389,6 +431,8 @@ export default async function handler(request) {
           'X-RateLimit-Store': demoState.store,
           ...(demoState.resetAt ? { 'X-Demo-Reset': new Date(demoState.resetAt).toISOString() } : {}),
         },
+        'demo-rate-limited',
+        { targetHost: parsedUrl.hostname, usingSharedKey: true, rateLimitStore: demoState.store },
       );
     }
   }
@@ -397,14 +441,26 @@ export default async function handler(request) {
   try {
     sanitizedBody = sanitizeAnthropicBody(body);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400);
+    return jsonLogged(
+      { error: error.message || 'Invalid provider request body' },
+      400,
+      {},
+      'invalid-provider-body',
+      { targetHost: parsedUrl.hostname, usingSharedKey: auth.usingSharedKey },
+    );
   }
 
   let injected;
   try {
     injected = injectServerKey(parsedUrl.toString(), auth.headers, auth.usingSharedKey);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503);
+    return jsonLogged(
+      { error: error.message || 'Hosted provider key is unavailable.' },
+      503,
+      {},
+      'server-key-unavailable',
+      { targetHost: parsedUrl.hostname, usingSharedKey: auth.usingSharedKey },
+    );
   }
 
   try {
@@ -435,15 +491,31 @@ export default async function handler(request) {
       }
     }
 
+    writeProxyLog(upstream.status, upstream.ok ? 'upstream-ok' : 'upstream-error', {
+      targetHost: parsedUrl.hostname,
+      usingSharedKey: auth.usingSharedKey,
+      model: sanitizedBody.model,
+      maxTokens: sanitizedBody.maxTokens,
+      rateLimitStore: responseHeaders['X-RateLimit-Store'],
+    });
+
     return new Response(responseBody, {
       status: upstream.status,
       headers: responseHeaders,
     });
   } catch (error) {
-    return jsonResponse(
+    return jsonLogged(
       { error: error.message || 'Upstream fetch failed' },
       502,
       { 'X-RateLimit-Store': auth.usingSharedKey ? demoState?.store || burstState.store : burstState.store },
+      'upstream-fetch-failed',
+      {
+        targetHost: parsedUrl.hostname,
+        usingSharedKey: auth.usingSharedKey,
+        model: sanitizedBody.model,
+        maxTokens: sanitizedBody.maxTokens,
+        rateLimitStore: auth.usingSharedKey ? demoState?.store || burstState.store : burstState.store,
+      },
     );
   }
 }
