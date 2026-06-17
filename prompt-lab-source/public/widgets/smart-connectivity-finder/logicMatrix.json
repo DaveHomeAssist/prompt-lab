@@ -1,0 +1,45 @@
+{
+  "routingEngine": {
+    "version": "2026.1",
+    "fallbackDestination": "universal-contact-eng",
+    "fallbackOutput": {
+      "headline": "Custom Engineering Review Console",
+      "description": "This combination needs application engineering review before a bill of materials is issued. The captured requirements package gives the team enough context to validate housing material, insert layout, media routing, and ingress protection.",
+      "sku_bundle": ["ENG-REVIEW", "APP-CONSULT", "BOM-CHECK"],
+      "primary_cta_text": "Send Requirements to Application Engineering",
+      "secondary_cta_text": "Download Requirements Summary"
+    },
+    "rules": [
+      {
+        "conditions": {
+          "industry": "automation",
+          "bottleneck": "downtime",
+          "environment": "vibration_harsh"
+        },
+        "recommendationId": "REC_HEAVY_DUTY_MODULAR",
+        "output": {
+          "headline": "Modular Han-Eco® IP65 System Layout",
+          "description": "Engineered for high-stress automated lines where traditional hardwiring creates a massive maintenance bottleneck. Groups power and shielded data paths into a single corrosion-proof composite housing.",
+          "sku_bundle": ["09400060311", "09140033001", "09140044501"],
+          "primary_cta_text": "Request a Specialized Product Sample & Quote",
+          "secondary_cta_text": "Access Custom 3D CAD Files & Configurator"
+        }
+      },
+      {
+        "conditions": {
+          "industry": "datacenters",
+          "bottleneck": "spatial",
+          "environment": "controlled"
+        },
+        "recommendationId": "REC_COMPACT_PCB",
+        "output": {
+          "headline": "High-Density har-flex® PCB Interface Layout",
+          "description": "Optimizes internal space constraints inside server and processing frames. Space-saving pitch configuration delivering robust surface-mount (SMT) connections without sacrificing signal integrity.",
+          "sku_bundle": ["15110162601", "15210162601"],
+          "primary_cta_text": "Speak Direct to an Application Engineer",
+          "secondary_cta_text": "Download Complete Technical Data Sheets"
+        }
+      }
+    ]
+  }
+}

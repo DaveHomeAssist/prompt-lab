@@ -1,4 +1,4 @@
-import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
+import { mkdirSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,15 +13,21 @@ function firstExistingPath(...paths) {
   return paths.find((candidate) => existsSync(candidate)) || null;
 }
 
+function copyFile(source, target) {
+  writeFileSync(target, readFileSync(source));
+}
+
 function copyDir(source, target) {
   mkdirSync(target, { recursive: true });
   for (const entry of readdirSync(source)) {
+    if (/(^| )2(\.|$)/.test(entry)) continue;
+
     const from = join(source, entry);
     const to = join(target, entry);
     if (statSync(from).isDirectory()) {
       copyDir(from, to);
     } else {
-      copyFileSync(from, to);
+      copyFile(from, to);
       console.log(`  ✓ ${to.replace(`${dist}/`, '')}`);
     }
   }
@@ -37,25 +43,25 @@ const files = [
   'options.js',
 ];
 for (const f of files) {
-  const source = firstExistingPath(join(ext, f), join(publicDir, f));
+  const source = firstExistingPath(join(publicDir, f), join(ext, f));
   if (!source) continue;
-  copyFileSync(source, join(dist, f));
+  copyFile(source, join(dist, f));
   console.log(`  ✓ ${f}`);
 }
 
 // Copy fonts
-const fontsDir = firstExistingPath(join(ext, 'fonts'), join(publicDir, 'fonts'));
+const fontsDir = firstExistingPath(join(publicDir, 'fonts'), join(ext, 'fonts'));
 if (existsSync(fontsDir)) {
   copyDir(fontsDir, join(dist, 'fonts'));
 }
 
 // Copy icons
-const iconsDir = firstExistingPath(join(ext, 'icons'), join(publicDir, 'icons'));
+const iconsDir = firstExistingPath(join(publicDir, 'icons'), join(ext, 'icons'));
 if (existsSync(iconsDir)) {
   copyDir(iconsDir, join(dist, 'icons'));
 }
 
-const libDir = firstExistingPath(join(ext, 'lib'), join(publicDir, 'lib'));
+const libDir = firstExistingPath(join(publicDir, 'lib'), join(ext, 'lib'));
 if (libDir && existsSync(libDir)) {
   copyDir(libDir, join(dist, 'lib'));
 }
