@@ -14,6 +14,7 @@ const webMobileDir = join(webPublicDir, 'mobile');
 const docsDir = join(repoDir, 'docs');
 
 const copyTargets = [
+  ['favicon.svg', 'favicon.svg'],
   ['hero-logo.png', 'hero-logo.png'],
   ['landing-product-shot.png', 'landing-product-shot.png'],
   ['og-image.png', 'og-image.png'],
