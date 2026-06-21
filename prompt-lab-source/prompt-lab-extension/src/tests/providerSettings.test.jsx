@@ -73,7 +73,7 @@ describe('DesktopSettingsModal', () => {
     loadProviderSettings.mockResolvedValue({
       provider: 'anthropic',
       apiKey: 'sk-ant',
-      anthropicModel: 'claude-sonnet-4-20250514',
+      anthropicModel: 'claude-sonnet-4-6',
       openaiApiKey: 'sk-openai',
       openaiModel: 'gpt-4o',
       ollamaBaseUrl: 'http://localhost:11434',
@@ -184,7 +184,7 @@ describe('DesktopSettingsModal', () => {
       openaiApiKey: 'sk-openai',
       openaiModel: 'gpt-4o',
       apiKey: '',
-      anthropicModel: 'claude-sonnet-4-20250514',
+      anthropicModel: 'claude-sonnet-4-6',
     });
 
     await renderModal();
@@ -200,7 +200,7 @@ describe('DesktopSettingsModal', () => {
     await waitFor(() => {
       expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
         provider: 'anthropic',
-        anthropicModel: 'claude-sonnet-4-20250514',
+        anthropicModel: 'claude-sonnet-4-6',
       }));
     });
   });
@@ -258,7 +258,7 @@ describe('DesktopSettingsModal', () => {
       listOllamaModels: listModels,
     }));
     vi.doMock('../lib/providerRegistry.js', () => ({
-      DEFAULTS: { anthropicModel: 'claude-sonnet-4-20250514' },
+      DEFAULTS: { anthropicModel: 'claude-sonnet-4-6' },
       normalizeProvider,
     }));
     localStorage.setItem('pl2-provider-settings', JSON.stringify({
@@ -273,7 +273,7 @@ describe('DesktopSettingsModal', () => {
       payload,
       settings: expect.objectContaining({
         provider: 'anthropic',
-        anthropicModel: 'claude-sonnet-4-20250514',
+        anthropicModel: 'claude-sonnet-4-6',
         apiKey: expect.any(String),
       }),
       fetchImpl: expect.any(Function),

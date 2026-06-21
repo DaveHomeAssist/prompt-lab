@@ -63,7 +63,7 @@ export default function useABTest({ notify }) {
     setter(prev => ({ ...prev, loading: true, response: '', error: false }));
     try {
       const data = await callWithRetry({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 800,
         messages: [{ role: 'user', content: state.prompt }],
       });

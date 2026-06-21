@@ -75,17 +75,17 @@ describe('provider registry', () => {
         temperature: 0.4,
         responseFormat: 'json',
       },
-      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-20250514' },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-6' },
       fetchImpl: fetchMock,
     })).resolves.toEqual(expect.objectContaining({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
     }));
 
     const [, init] = fetchMock.mock.calls[0];
     const requestBody = JSON.parse(init.body);
     expect(requestBody).toEqual({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 256,
       messages: [{ role: 'user', content: 'hello' }],
       stream: false,
@@ -93,5 +93,29 @@ describe('provider registry', () => {
       temperature: 0.4,
     });
     expect(requestBody.responseFormat).toBeUndefined();
+  });
+
+  it('omits sampling params for Anthropic models that reject them (Opus 4.7+)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ content: [{ type: 'text', text: 'Improved prompt' }] }),
+    });
+
+    await callProvider({
+      provider: 'anthropic',
+      payload: {
+        messages: [{ role: 'user', content: 'hello' }],
+        max_tokens: 256,
+        temperature: 0.4,
+      },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-opus-4-8' },
+      fetchImpl: fetchMock,
+    });
+
+    const [, init] = fetchMock.mock.calls[0];
+    const requestBody = JSON.parse(init.body);
+    expect(requestBody.model).toBe('claude-opus-4-8');
+    // Opus 4.8 returns a 400 if temperature/top_p/top_k are present.
+    expect(requestBody.temperature).toBeUndefined();
   });
 });

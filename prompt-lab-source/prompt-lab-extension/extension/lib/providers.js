@@ -1,6 +1,7 @@
 import {
   DEFAULTS,
   DEFAULT_PROVIDER,
+  anthropicRejectsSamplingParams,
   toAnthropicMessages,
   normalizeBaseUrl,
   normalizeProvider,
@@ -35,8 +36,9 @@ export async function callAnthropic(payload, settings = {}, fetchImpl = globalTh
     throw new Error('No Anthropic API key set. Open extension Options to add one.');
   }
 
+  const model = settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel;
   const requestBody = {
-    model: settings.anthropicModel || payload?.model || DEFAULTS.anthropicModel,
+    model,
     max_tokens: payload?.max_tokens || 1500,
     messages: toAnthropicMessages(payload),
     stream: false,
@@ -44,7 +46,9 @@ export async function callAnthropic(payload, settings = {}, fetchImpl = globalTh
   if (typeof payload?.system === 'string' && payload.system.trim()) {
     requestBody.system = payload.system;
   }
-  if (typeof payload?.temperature === 'number') {
+  // Opus 4.7+ and Fable 5 reject sampling params with a 400; only forward
+  // temperature for models that still accept it.
+  if (typeof payload?.temperature === 'number' && !anthropicRejectsSamplingParams(model)) {
     requestBody.temperature = payload.temperature;
   }
 

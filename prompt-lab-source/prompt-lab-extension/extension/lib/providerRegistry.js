@@ -4,7 +4,7 @@ export const DEFAULTS = Object.freeze({
   provider: DEFAULT_PROVIDER,
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
-  anthropicModel: 'claude-sonnet-4-20250514',
+  anthropicModel: 'claude-sonnet-4-6',
   openaiModel: 'gpt-4o',
   geminiModel: 'gemini-2.5-flash',
   openrouterModel: 'anthropic/claude-sonnet-4-20250514',
@@ -59,6 +59,16 @@ export function toAnthropicMessages(payload) {
     });
   }
   return messages;
+}
+
+// Anthropic dropped sampling params (temperature/top_p/top_k) starting with
+// Opus 4.7; Opus 4.8 and Fable 5 / Mythos 5 also reject them with a 400.
+// Opus 4.6 and earlier, Sonnet, and Haiku still accept them.
+export function anthropicRejectsSamplingParams(model) {
+  const id = String(model || '');
+  if (/^claude-(fable|mythos)-5\b/.test(id)) return true;
+  const opus = id.match(/^claude-opus-4-(\d+)/);
+  return Boolean(opus) && Number(opus[1]) >= 7;
 }
 
 export function toChatMessages(payload) {

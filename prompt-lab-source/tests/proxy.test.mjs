@@ -44,7 +44,7 @@ function makeRequest({
   targetUrl = 'https://api.anthropic.com/v1/messages',
   headers = {},
   body = {
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 800,
     messages: [{ role: 'user', content: 'hello' }],
   },
@@ -104,7 +104,7 @@ test('proxy preserves user auth and only injects the shared key when auth is mis
 
 test('proxy locks hosted traffic to Anthropic and clamps models and token budgets', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
-  process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-4-20250514';
+  process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-4-6';
   process.env.HOSTED_MAX_TOKENS = '1024';
   process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
 
@@ -128,13 +128,13 @@ test('proxy locks hosted traffic to Anthropic and clamps models and token budget
   const allowed = await handler(makeRequest({
     headers: { 'x-api-key': '__plb_hosted_shared_key__' },
     body: {
-      model: 'claude-opus-4-20250514',
+      model: 'claude-opus-4-8',
       max_tokens: 4096,
       messages: [{ role: 'user', content: 'hello' }],
     },
   }));
   assert.equal(allowed.status, 200);
-  assert.equal(captured[0].model, 'claude-sonnet-4-20250514');
+  assert.equal(captured[0].model, 'claude-sonnet-4-6');
   assert.equal(captured[0].max_tokens, 1024);
 });
 
@@ -183,7 +183,7 @@ test('proxy returns upstream streaming bodies without buffering them first', asy
     handler(makeRequest({
       headers: { 'x-api-key': '__plb_hosted_shared_key__' },
       body: {
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 800,
         stream: true,
         messages: [{ role: 'user', content: 'hello' }],

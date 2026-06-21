@@ -2,7 +2,7 @@ export const config = { runtime: 'edge' };
 
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
-const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-20250514'];
+const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-6'];
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;

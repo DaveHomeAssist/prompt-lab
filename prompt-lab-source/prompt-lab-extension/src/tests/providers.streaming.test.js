@@ -33,19 +33,19 @@ describe('current provider adapter', () => {
         temperature: 0.4,
         responseFormat: 'json',
       },
-      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-20250514' },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-6' },
       fetchImpl: fetchMock,
       onChunk,
     })).resolves.toEqual({
       content: [{ type: 'text', text: 'Improved prompt' }],
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       provider: 'anthropic',
     });
 
     const [, init] = fetchMock.mock.calls[0];
     const requestBody = JSON.parse(init.body);
     expect(requestBody).toEqual({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 256,
       messages: [{ role: 'user', content: 'hello' }],
       stream: true,
@@ -71,7 +71,7 @@ describe('current provider adapter', () => {
     await expect(callProvider({
       provider: 'anthropic',
       payload: { messages: [{ role: 'user', content: 'hello' }] },
-      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-20250514' },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-6' },
       fetchImpl: fetchMock,
     })).rejects.toMatchObject({
       name: 'AppError',
