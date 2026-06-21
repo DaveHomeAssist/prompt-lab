@@ -180,7 +180,7 @@ describe('useExecutionFlow', () => {
     });
     callModel.mockResolvedValue({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       text: 'Enhanced output',
     });
     scanSensitiveData.mockReturnValue({ matches: [], settings: {} });
@@ -202,7 +202,7 @@ describe('useExecutionFlow', () => {
       mode: 'enhance',
       status: 'success',
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       output: 'Enhanced output',
       goldenScore: 0.82,
     }));
@@ -238,12 +238,12 @@ describe('useExecutionFlow', () => {
     callModel
       .mockResolvedValueOnce({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         text: 'First output',
       })
       .mockResolvedValueOnce({
         provider: 'anthropic',
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         text: 'Retry output',
       });
 
@@ -285,7 +285,7 @@ describe('useExecutionFlow', () => {
     expect(savedRuns[0]).toEqual(expect.objectContaining({
       status: 'blocked',
       provider: 'blocked',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       promptId: 'entry-1',
     }));
     // Blocked runs must still carry a valid output string for history display

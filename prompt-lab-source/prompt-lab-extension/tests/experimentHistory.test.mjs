@@ -89,7 +89,7 @@ test('create: produces valid record from prompts', () => {
     winnerId: 'A',
     notes: 'A was better',
     provider: 'anthropic',
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
   });
   assert.ok(r.id);
   assert.ok(r.createdAt);

@@ -75,17 +75,17 @@ describe('provider registry', () => {
         temperature: 0.4,
         responseFormat: 'json',
       },
-      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-20250514' },
+      settings: { apiKey: 'sk-ant', anthropicModel: 'claude-sonnet-4-6' },
       fetchImpl: fetchMock,
     })).resolves.toEqual(expect.objectContaining({
       provider: 'anthropic',
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
     }));
 
     const [, init] = fetchMock.mock.calls[0];
     const requestBody = JSON.parse(init.body);
     expect(requestBody).toEqual({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 256,
       messages: [{ role: 'user', content: 'hello' }],
       stream: false,

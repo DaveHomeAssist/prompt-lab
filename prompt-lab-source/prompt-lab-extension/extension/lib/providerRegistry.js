@@ -4,7 +4,7 @@ export const DEFAULTS = Object.freeze({
   provider: DEFAULT_PROVIDER,
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
-  anthropicModel: 'claude-sonnet-4-20250514',
+  anthropicModel: 'claude-sonnet-4-6',
   openaiModel: 'gpt-4o',
   geminiModel: 'gemini-2.5-flash',
   openrouterModel: 'anthropic/claude-sonnet-4-20250514',

@@ -112,7 +112,7 @@ const PROVIDERS = Object.freeze({
   anthropic: {
     id: 'anthropic',
     label: 'Anthropic',
-    defaultModel: 'claude-sonnet-4-20250514',
+    defaultModel: 'claude-sonnet-4-6',
     apiKeyField: 'apiKey',
     modelField: 'anthropicModel',
     settingsKeys: ['apiKey', 'anthropicModel'],
