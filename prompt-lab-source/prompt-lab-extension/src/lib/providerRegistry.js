@@ -108,6 +108,16 @@ function parseOpenAiSse(buffer, flush = false) {
 
 // ── Provider descriptors ────────────────────────────────────────────
 
+// Anthropic dropped sampling params (temperature/top_p/top_k) starting with
+// Opus 4.7; Opus 4.8 and Fable 5 / Mythos 5 also reject them with a 400.
+// Opus 4.6 and earlier, Sonnet, and Haiku still accept them.
+function anthropicRejectsSamplingParams(model) {
+  const id = String(model || '');
+  if (/^claude-(fable|mythos)-5\b/.test(id)) return true;
+  const opus = id.match(/^claude-opus-4-(\d+)/);
+  return Boolean(opus) && Number(opus[1]) >= 7;
+}
+
 const PROVIDERS = Object.freeze({
   anthropic: {
     id: 'anthropic',
@@ -134,8 +144,9 @@ const PROVIDERS = Object.freeze({
     },
 
     buildPayload(payload, settings, options = {}) {
+      const model = this.resolveModel(payload, settings);
       const body = {
-        model: this.resolveModel(payload, settings),
+        model,
         max_tokens: payload?.max_tokens || 1500,
         messages: toAnthropicMessages(payload),
         stream: !!options.stream,
@@ -143,7 +154,9 @@ const PROVIDERS = Object.freeze({
       if (typeof payload?.system === 'string' && payload.system.trim()) {
         body.system = payload.system;
       }
-      if (typeof payload?.temperature === 'number') {
+      // Newer Anthropic models (Opus 4.7+, Fable 5) reject sampling params with
+      // a 400, so only forward temperature for models that still accept it.
+      if (typeof payload?.temperature === 'number' && !anthropicRejectsSamplingParams(model)) {
         body.temperature = payload.temperature;
       }
       return body;
