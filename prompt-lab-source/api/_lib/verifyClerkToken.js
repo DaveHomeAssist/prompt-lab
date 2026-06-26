@@ -1,10 +1,11 @@
-import { promisify } from 'node:util';
-import jwt from 'jsonwebtoken';
-import jwksRsa from 'jwks-rsa';
+import { createPublicKey, createVerify } from 'node:crypto';
 
 const DEFAULT_CLERK_JWKS_URL = 'https://api.clerk.com/v1/jwks';
-const VERIFY_JWT = promisify(jwt.verify);
-const jwksClients = new Map();
+const DEFAULT_AUTHORIZED_PARTIES = ['https://promptlab.tools'];
+const JWKS_CACHE_MS = 10 * 60 * 1000;
+const CLERK_PROFILE_CACHE_MS = 5 * 60 * 1000;
+const jwksCache = new Map();
+const clerkProfileCache = new Map();
 
 function readStringEnv(...names) {
   for (const name of names) {
@@ -28,34 +29,136 @@ function getBearerToken(request) {
   return match?.[1]?.trim() || '';
 }
 
-function getJwksClient() {
-  const jwksUri = readStringEnv('CLERK_JWKS_URL') || DEFAULT_CLERK_JWKS_URL;
-  if (!jwksClients.has(jwksUri)) {
-    jwksClients.set(jwksUri, jwksRsa({
-      jwksUri,
-      cache: true,
-      cacheMaxEntries: 5,
-      cacheMaxAge: 10 * 60 * 1000,
-      rateLimit: true,
-      jwksRequestsPerMinute: 10,
-      timeout: 5000,
-    }));
-  }
-  return jwksClients.get(jwksUri);
+function base64UrlToBuffer(value) {
+  const input = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padded = input.padEnd(input.length + ((4 - (input.length % 4)) % 4), '=');
+  return Buffer.from(padded, 'base64');
 }
 
-function getSigningKey(header, callback) {
+function parseBase64UrlJson(value) {
+  return JSON.parse(base64UrlToBuffer(value).toString('utf8'));
+}
+
+function splitCsv(value) {
+  return String(value || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function normalizeOrigin(value) {
+  if (!value) return '';
+  try {
+    return new URL(value).origin;
+  } catch {
+    return '';
+  }
+}
+
+function buildAuthorizedParties(request) {
+  const parties = new Set([
+    ...DEFAULT_AUTHORIZED_PARTIES,
+    ...splitCsv(readStringEnv('CLERK_AUTHORIZED_PARTIES')),
+  ]);
+  const requestOrigin = normalizeOrigin(request?.url);
+  if (requestOrigin) parties.add(requestOrigin);
+  return Array.from(parties);
+}
+
+async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: 'application/json', ...headers },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`JWKS request failed with ${response.status}.`);
+    return response.json();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function getJwks() {
+  const jwksUri = readStringEnv('CLERK_JWKS_URL') || DEFAULT_CLERK_JWKS_URL;
+  const cached = jwksCache.get(jwksUri);
+  if (cached && (Date.now() - cached.fetchedAt) < JWKS_CACHE_MS) {
+    return cached.keys;
+  }
+  const payload = await fetchJson(jwksUri);
+  const keys = Array.isArray(payload?.keys) ? payload.keys : [];
+  jwksCache.set(jwksUri, { keys, fetchedAt: Date.now() });
+  return keys;
+}
+
+async function getSigningKey(header) {
   if (header?.alg !== 'RS256') {
-    callback(new Error('Unsupported Clerk token algorithm.'));
-    return;
+    throw new Error('Unsupported Clerk token algorithm.');
   }
   if (!header?.kid) {
-    callback(new Error('Missing Clerk token key id.'));
-    return;
+    throw new Error('Missing Clerk token key id.');
   }
-  getJwksClient().getSigningKey(header.kid)
-    .then((key) => callback(null, key.getPublicKey()))
-    .catch((error) => callback(error));
+  const keys = await getJwks();
+  const jwk = keys.find((key) => String(key?.kid || '') === header.kid);
+  if (!jwk) throw new Error('Clerk token key id was not found.');
+  return createPublicKey({ key: jwk, format: 'jwk' });
+}
+
+function audienceMatches(claimAudience, expectedAudience) {
+  if (!expectedAudience) return true;
+  if (Array.isArray(claimAudience)) return claimAudience.includes(expectedAudience);
+  return String(claimAudience || '') === expectedAudience;
+}
+
+function assertValidClaims(claims) {
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(Number(claims?.exp)) || Number(claims.exp) <= now) {
+    throw new Error('Clerk token is expired.');
+  }
+  if (Number.isFinite(Number(claims?.nbf)) && Number(claims.nbf) > now) {
+    throw new Error('Clerk token is not active yet.');
+  }
+
+  const issuer = readStringEnv('CLERK_JWT_ISSUER');
+  if (issuer && claims?.iss !== issuer) {
+    throw new Error('Clerk token issuer is invalid.');
+  }
+
+  const audience = readStringEnv('CLERK_JWT_AUDIENCE');
+  if (audience && !audienceMatches(claims?.aud, audience)) {
+    throw new Error('Clerk token audience is invalid.');
+  }
+}
+
+async function verifyClerkJwt(token) {
+  const parts = String(token || '').split('.');
+  if (parts.length !== 3) throw new Error('Malformed Clerk token.');
+
+  const [encodedHeader, encodedClaims, encodedSignature] = parts;
+  const header = parseBase64UrlJson(encodedHeader);
+  const claims = parseBase64UrlJson(encodedClaims);
+  const publicKey = await getSigningKey(header);
+  const verifier = createVerify('RSA-SHA256');
+  verifier.update(`${encodedHeader}.${encodedClaims}`);
+  verifier.end();
+  const valid = verifier.verify(publicKey, base64UrlToBuffer(encodedSignature));
+  if (!valid) throw new Error('Invalid Clerk token signature.');
+  assertValidClaims(claims);
+  return claims;
+}
+
+async function verifyClerkToken(token, request) {
+  if (readStringEnv('CLERK_JWKS_URL') || !readStringEnv('CLERK_SECRET_KEY')) {
+    return verifyClerkJwt(token);
+  }
+
+  const { verifyToken } = await import('@clerk/backend');
+  return verifyToken(token, {
+    secretKey: readStringEnv('CLERK_SECRET_KEY'),
+    ...(readStringEnv('CLERK_JWT_KEY') ? { jwtKey: readStringEnv('CLERK_JWT_KEY') } : {}),
+    authorizedParties: buildAuthorizedParties(request),
+  });
 }
 
 function extractEmailFromClaims(claims = {}) {
@@ -72,23 +175,49 @@ function extractEmailFromClaims(claims = {}) {
   return '';
 }
 
-async function fetchClerkEmail(clerkUserId) {
-  const secretKey = readStringEnv('CLERK_SECRET_KEY');
-  if (!secretKey || !clerkUserId) return '';
-
-  const response = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkUserId)}`, {
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      Accept: 'application/json',
-    },
-  });
-  if (!response.ok) return '';
-
-  const payload = await response.json().catch(() => null);
+function buildClaimsFromClerkProfile(payload) {
   const primaryEmailId = String(payload?.primary_email_address_id || '');
   const addresses = Array.isArray(payload?.email_addresses) ? payload.email_addresses : [];
+  const emailValues = addresses
+    .map((entry) => String(entry?.email_address || '').trim().toLowerCase())
+    .filter(Boolean);
   const primary = addresses.find((entry) => String(entry?.id || '') === primaryEmailId) || addresses[0];
-  return extractEmailFromClaims({ email: primary?.email_address });
+  const primaryEmail = String(primary?.email_address || '').trim().toLowerCase();
+  const usernames = [
+    payload?.username,
+    payload?.external_accounts?.find?.((entry) => entry?.username)?.username,
+  ].map((value) => String(value || '').trim()).filter(Boolean);
+
+  return {
+    ...(primaryEmail ? {
+      email: primaryEmail,
+      email_address: primaryEmail,
+      primary_email_address: primaryEmail,
+    } : {}),
+    ...(emailValues.length ? { emails: emailValues, email_addresses: emailValues } : {}),
+    ...(usernames.length ? { username: usernames[0], usernames } : {}),
+  };
+}
+
+async function fetchClerkProfile(clerkUserId) {
+  const secretKey = readStringEnv('CLERK_SECRET_KEY');
+  if (!secretKey || !clerkUserId) return {};
+
+  const cached = clerkProfileCache.get(clerkUserId);
+  if (cached && (Date.now() - cached.fetchedAt) < CLERK_PROFILE_CACHE_MS) {
+    return cached.claims;
+  }
+
+  try {
+    const payload = await fetchJson(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkUserId)}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+    });
+    const claims = buildClaimsFromClerkProfile(payload);
+    clerkProfileCache.set(clerkUserId, { claims, fetchedAt: Date.now() });
+    return claims;
+  } catch {
+    return {};
+  }
 }
 
 export class ClerkAuthError extends Error {
@@ -107,11 +236,7 @@ export async function verifyClerkRequest(request) {
 
   let claims;
   try {
-    claims = await VERIFY_JWT(token, getSigningKey, {
-      algorithms: ['RS256'],
-      ...(readStringEnv('CLERK_JWT_ISSUER') ? { issuer: readStringEnv('CLERK_JWT_ISSUER') } : {}),
-      ...(readStringEnv('CLERK_JWT_AUDIENCE') ? { audience: readStringEnv('CLERK_JWT_AUDIENCE') } : {}),
-    });
+    claims = await verifyClerkToken(token, request);
   } catch {
     throw new ClerkAuthError('Invalid or expired Clerk authorization.');
   }
@@ -121,15 +246,28 @@ export async function verifyClerkRequest(request) {
     throw new ClerkAuthError('Clerk authorization is missing a user id.');
   }
 
-  const clerkEmail = extractEmailFromClaims(claims) || await fetchClerkEmail(clerkUserId);
-  if (!clerkEmail) {
-    throw new ClerkAuthError('Clerk authorization is missing a verified email.');
-  }
-
+  const profileClaims = await fetchClerkProfile(clerkUserId);
+  const clerkClaims = {
+    ...profileClaims,
+    ...claims,
+    emails: [
+      ...(Array.isArray(profileClaims.emails) ? profileClaims.emails : []),
+      ...(Array.isArray(claims.emails) ? claims.emails : []),
+    ],
+    email_addresses: [
+      ...(Array.isArray(profileClaims.email_addresses) ? profileClaims.email_addresses : []),
+      ...(Array.isArray(claims.email_addresses) ? claims.email_addresses : []),
+    ],
+    usernames: [
+      ...(Array.isArray(profileClaims.usernames) ? profileClaims.usernames : []),
+      ...(Array.isArray(claims.usernames) ? claims.usernames : []),
+    ],
+  };
+  const clerkEmail = extractEmailFromClaims(clerkClaims);
   return {
     clerkUserId,
     clerkEmail,
-    clerkClaims: claims,
+    clerkClaims,
   };
 }
 

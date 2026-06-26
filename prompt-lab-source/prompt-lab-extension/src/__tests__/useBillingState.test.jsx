@@ -74,6 +74,85 @@ describe('useBillingState', () => {
     expect(result.current.hasFeature('export')).toBe(true);
   });
 
+  it('auto-syncs owner Pro for a signed-in Clerk user id without cached billing email', async () => {
+    global.fetch = vi.fn(async (_url, init) => {
+      expect(init.headers.Authorization).toBe('Bearer clerk-token');
+      expect(JSON.parse(init.body)).toEqual({ action: 'validate' });
+      return new Response(JSON.stringify({
+        ok: true,
+        plan: 'pro',
+        status: 'active',
+        billingPeriod: 'owner',
+        clerkUserId: 'user_owner',
+        customerEmail: '',
+        owner: true,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const clerkUser = {
+      id: 'user_owner',
+      primaryEmailAddress: null,
+      primaryEmailAddressId: '',
+      emailAddresses: [],
+    };
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkGetToken, clerkUser }));
+
+    await waitFor(() => {
+      expect(result.current.plan).toBe('pro');
+    });
+
+    expect(result.current.planLabel).toBe('Owner Pro');
+    expect(result.current.clerkUserId).toBe('user_owner');
+    expect(result.current.hasFeature('collections')).toBe(true);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('auto-syncs owner Pro for a signed-in Clerk user id with stale cached billing email', async () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'free',
+      status: 'free',
+      customerEmail: 'old@example.com',
+      lastValidatedAt: '',
+    }));
+    global.fetch = vi.fn(async (_url, init) => {
+      expect(init.headers.Authorization).toBe('Bearer clerk-token');
+      expect(JSON.parse(init.body)).toEqual({ action: 'validate' });
+      return new Response(JSON.stringify({
+        ok: true,
+        plan: 'pro',
+        status: 'active',
+        billingPeriod: 'owner',
+        clerkUserId: 'user_owner',
+        customerEmail: '',
+        owner: true,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const clerkUser = {
+      id: 'user_owner',
+      primaryEmailAddress: null,
+      primaryEmailAddressId: '',
+      emailAddresses: [],
+    };
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkGetToken, clerkUser }));
+
+    await waitFor(() => {
+      expect(result.current.plan).toBe('pro');
+    });
+
+    expect(result.current.planLabel).toBe('Owner Pro');
+    expect(result.current.clerkUserId).toBe('user_owner');
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('activates local owner Pro access without Stripe checkout', async () => {
     global.fetch = vi.fn();
 

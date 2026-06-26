@@ -8,10 +8,11 @@ import {
   verifyStripeSignature,
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
-assertProductionConfig();
+assertProductionConfig({ stripe: true, webhook: true });
 
-export default async function handler(request) {
+async function webhookHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   const corsRejection = corsRejectionResponse(request);
   if (corsRejection) return corsRejection;
@@ -40,3 +41,5 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Could not process webhook.' }, 400, {}, request);
   }
 }
+
+export default createNodeCompatibleHandler(webhookHandler);

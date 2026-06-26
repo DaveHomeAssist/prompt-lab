@@ -10,7 +10,7 @@ import {
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
 
-assertProductionConfig();
+assertProductionConfig({ stripe: true });
 
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);

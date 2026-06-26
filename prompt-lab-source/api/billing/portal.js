@@ -7,10 +7,11 @@ import {
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
 import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 
-assertProductionConfig();
+assertProductionConfig({ clerk: true, stripe: true });
 
-export default async function handler(request) {
+async function portalHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   const corsRejection = corsRejectionResponse(request);
   if (corsRejection) return corsRejection;
@@ -42,3 +43,5 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Could not create billing portal session.' }, 400, {}, request);
   }
 }
+
+export default createNodeCompatibleHandler(portalHandler);

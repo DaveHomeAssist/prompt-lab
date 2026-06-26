@@ -27,6 +27,7 @@
     "markdownlint-cli2": "^0.18.1"
   },
   "dependencies": {
+    "@clerk/backend": "^3.8.4",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.1"
   }

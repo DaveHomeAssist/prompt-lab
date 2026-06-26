@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   canAccessFeature,
   createOwnerBillingState,
@@ -13,6 +13,21 @@ import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
 const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
 
+function readClerkEmail(clerkUser) {
+  const directEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  if (typeof directEmail === 'string' && directEmail.trim()) return directEmail.trim();
+
+  const primaryId = typeof clerkUser?.primaryEmailAddressId === 'string'
+    ? clerkUser.primaryEmailAddressId
+    : '';
+  const emailAddresses = Array.isArray(clerkUser?.emailAddresses) ? clerkUser.emailAddresses : [];
+  const primaryEmail = emailAddresses.find((item) => item?.id === primaryId)?.emailAddress;
+  if (typeof primaryEmail === 'string' && primaryEmail.trim()) return primaryEmail.trim();
+
+  const firstEmail = emailAddresses.find((item) => typeof item?.emailAddress === 'string' && item.emailAddress.trim())?.emailAddress;
+  return typeof firstEmail === 'string' ? firstEmail.trim() : '';
+}
+
 function shouldRevalidate(state) {
   if (state.status === 'owner') return false;
   if (!state.customerEmail && !state.customerId) return false;
@@ -22,18 +37,20 @@ function shouldRevalidate(state) {
 }
 
 function normalizeResponseState(payload, previousState) {
+  const hasField = (name) => Object.prototype.hasOwnProperty.call(payload || {}, name);
   return normalizeBillingState({
     ...previousState,
     plan: payload.plan,
     status: payload.status || (payload.plan === 'pro' ? 'active' : 'free'),
-    customerId: payload.customerId || previousState.customerId,
-    subscriptionId: payload.subscriptionId || previousState.subscriptionId,
-    priceId: payload.priceId || previousState.priceId,
-    billingPeriod: payload.billingPeriod || previousState.billingPeriod,
-    productName: payload.productName || previousState.productName,
-    customerEmail: payload.customerEmail || previousState.customerEmail,
-    customerName: payload.customerName || previousState.customerName,
-    manageUrl: payload.manageUrl || previousState.manageUrl,
+    customerId: hasField('customerId') ? payload.customerId : previousState.customerId,
+    subscriptionId: hasField('subscriptionId') ? payload.subscriptionId : previousState.subscriptionId,
+    priceId: hasField('priceId') ? payload.priceId : previousState.priceId,
+    billingPeriod: hasField('billingPeriod') ? payload.billingPeriod : previousState.billingPeriod,
+    productName: hasField('productName') ? payload.productName : previousState.productName,
+    clerkUserId: hasField('clerkUserId') ? payload.clerkUserId : previousState.clerkUserId,
+    customerEmail: hasField('customerEmail') ? payload.customerEmail : previousState.customerEmail,
+    customerName: hasField('customerName') ? payload.customerName : previousState.customerName,
+    manageUrl: hasField('manageUrl') ? payload.manageUrl : previousState.manageUrl,
     validationError: '',
     lastValidatedAt: new Date().toISOString(),
   });
@@ -54,17 +71,23 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     loadJson(storageKeys.billing, createDefaultBillingState()),
   ));
   const [busyAction, setBusyAction] = useState('');
+  const autoSyncKeyRef = useRef('');
   const apiBase = getBillingApiBase();
 
   // Sync Clerk identity into billing state when available
   useEffect(() => {
     if (!clerkUser) return;
-    const email = clerkUser.primaryEmailAddress?.emailAddress;
-    const clerkId = clerkUser.id;
-    if (email && email !== state.customerEmail) {
-      setState((prev) => normalizeBillingState({ ...prev, customerEmail: email, clerkUserId: clerkId }));
-    }
-  }, [clerkUser, state.customerEmail]);
+    const email = readClerkEmail(clerkUser);
+    const clerkId = typeof clerkUser.id === 'string' ? clerkUser.id.trim() : '';
+    if (!clerkId) return;
+    if (email === state.customerEmail && clerkId === state.clerkUserId) return;
+
+    setState((prev) => normalizeBillingState({
+      ...prev,
+      ...(email ? { customerEmail: email } : {}),
+      clerkUserId: clerkId,
+    }));
+  }, [clerkUser, state.clerkUserId, state.customerEmail]);
 
   useEffect(() => {
     saveJson(storageKeys.billing, state);
@@ -106,9 +129,37 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     }
   }, [apiBase, clerkGetToken]);
 
+  useEffect(() => {
+    if (!clerkGetToken || !state.clerkUserId || state.plan === 'pro') return undefined;
+    const autoSyncKey = `${state.clerkUserId}:${state.customerEmail || ''}:${state.customerId || ''}`;
+    if (autoSyncKeyRef.current === autoSyncKey) return undefined;
+    autoSyncKeyRef.current = autoSyncKey;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const payload = await requestBilling('/billing/license', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'validate',
+          }),
+        });
+        if (cancelled) return;
+        setState((prev) => normalizeResponseState(payload, prev));
+      } catch {
+        // Account sync is quiet on load; manual Sync or Refresh surfaces errors.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clerkGetToken, requestBilling, state.clerkUserId, state.customerEmail, state.customerId, state.plan]);
+
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
     if (state.status === 'owner') return true;
-    if (!state.customerEmail && !state.customerId) return false;
+    if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
 
     if (!silent) setBusyAction('validate');
     try {
@@ -145,9 +196,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [notify, requestBilling, state]);
 
   useEffect(() => {
+    if (clerkGetToken && state.plan !== 'pro') return;
     if (!shouldRevalidate(state)) return;
     refreshLicense({ silent: true });
-  }, [refreshLicense, state]);
+  }, [clerkGetToken, refreshLicense, state]);
 
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || state.customerEmail || '').trim().toLowerCase();

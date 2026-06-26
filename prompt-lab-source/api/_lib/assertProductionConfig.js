@@ -11,14 +11,20 @@ export function hasDurableStoreConfig(env = process.env) {
   );
 }
 
-export function assertProductionConfig(env = process.env) {
+export function assertProductionConfig({
+  env = process.env,
+  stripe = false,
+  clerk = false,
+  webhook = false,
+  durableStore = false,
+} = {}) {
   if (readStringEnv('NODE_ENV', env) !== 'production') return;
 
   const missing = [];
-  if (!readStringEnv('STRIPE_SECRET_KEY', env)) missing.push('STRIPE_SECRET_KEY');
-  if (!readStringEnv('CLERK_SECRET_KEY', env)) missing.push('CLERK_SECRET_KEY');
-  if (!readStringEnv('STRIPE_WEBHOOK_SECRET', env)) missing.push('STRIPE_WEBHOOK_SECRET');
-  if (!hasDurableStoreConfig(env)) {
+  if (stripe && !readStringEnv('STRIPE_SECRET_KEY', env)) missing.push('STRIPE_SECRET_KEY');
+  if (clerk && !readStringEnv('CLERK_SECRET_KEY', env)) missing.push('CLERK_SECRET_KEY');
+  if (webhook && !readStringEnv('STRIPE_WEBHOOK_SECRET', env)) missing.push('STRIPE_WEBHOOK_SECRET');
+  if (durableStore && !hasDurableStoreConfig(env)) {
     missing.push('KV_URL, KV_REST_API_URL+KV_REST_API_TOKEN, or UPSTASH_REDIS_REST_URL+UPSTASH_REDIS_REST_TOKEN');
   }
 

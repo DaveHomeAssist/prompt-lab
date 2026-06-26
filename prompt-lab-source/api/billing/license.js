@@ -8,15 +8,16 @@ import {
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
 import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 import { lookupOwnerEntitlement } from '../_lib/ownerEntitlements.js';
 
-assertProductionConfig();
+assertProductionConfig({ clerk: true });
 
 function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-export default async function handler(request) {
+async function licenseHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   const corsRejection = corsRejectionResponse(request);
   if (corsRejection) return corsRejection;
@@ -50,6 +51,7 @@ export default async function handler(request) {
     const ownerEntitlement = lookupOwnerEntitlement({
       clerkUserId: auth.clerkUserId,
       clerkEmail: auth.clerkEmail,
+      clerkClaims: auth.clerkClaims,
     });
     if (ownerEntitlement) {
       return jsonResponse({
@@ -77,3 +79,5 @@ export default async function handler(request) {
     return jsonResponse({ error: message }, status, {}, request);
   }
 }
+
+export default createNodeCompatibleHandler(licenseHandler);
