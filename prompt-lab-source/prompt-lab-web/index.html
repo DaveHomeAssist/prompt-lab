@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Lab — Every prompt, sharpened</title>
-<meta name="description" content="The multi-provider prompt engineering workspace. Enhance, compare, and perfect your prompts across Claude, GPT-4, Gemini, and more.">
+<title>Prompt Lab | Local prompt evaluation beta</title>
+<meta name="description" content="Controlled beta for a local-first prompt engineering workbench. Enhance, compare, and evaluate prompts across providers while keeping keys local on extension and desktop.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -320,6 +320,85 @@ img { display: block; max-width: 100%; }
   flex-wrap: wrap;
   opacity: 0;
   animation: fadeUp 0.8s var(--ease-out-expo) 0.75s forwards;
+}
+
+/* ========== SURFACE COMPARISON ========== */
+.surface-section {
+  padding: 72px 0 88px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(232, 81, 47, 0.04), transparent 65%);
+}
+.surface-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 28px;
+}
+.surface-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.surface-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+.surface-note {
+  max-width: 380px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  font-weight: 300;
+}
+.surface-table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(16, 16, 24, 0.72);
+}
+.surface-table th,
+.surface-table td {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.surface-table th {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  background: rgba(255, 255, 255, 0.02);
+}
+.surface-table tr:last-child td { border-bottom: none; }
+.surface-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.surface-role {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.surface-status {
+  display: inline-flex;
+  border: 1px solid var(--border-hover);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
 }
 .btn-primary {
   display: inline-flex;
@@ -1089,7 +1168,12 @@ img { display: block; max-width: 100%; }
   .hero-headline { font-size: 2.8rem; }
   .nav-links { display: none; }
   .nav-toggle { display: flex; }
-  .features, .demo-section, .bento, .pricing, .cta-section { padding: 80px 0; }
+  .features, .demo-section, .bento, .pricing, .cta-section, .surface-section { padding: 80px 0; }
+  .surface-header { display: block; }
+  .surface-note { margin-top: 16px; }
+  .surface-table { display: block; overflow-x: auto; border-radius: 14px; }
+  .surface-table th,
+  .surface-table td { min-width: 180px; padding: 14px 16px; }
   .section-heading { font-size: 1.8rem; }
   .demo-body { grid-template-columns: 1fr; }
   .demo-panel + .demo-panel {
@@ -1141,7 +1225,7 @@ img { display: block; max-width: 100%; }
       <span class="nav-version">v1.7</span>
       <a href="#features" class="nav-link">Features</a>
       <a href="#demo" class="nav-link">Demo</a>
-      <a href="#pricing" class="nav-link">Pricing</a>
+      <a href="#beta" class="nav-link">Beta</a>
       <a href="https://promptlab.tools/guide" class="nav-link" target="_blank">Docs</a>
       <a href="https://promptlab.tools/app" class="nav-cta">Open app →</a>
     </div>
@@ -1155,7 +1239,7 @@ img { display: block; max-width: 100%; }
 <div class="mobile-nav" id="mobileNav">
   <a href="#features" onclick="closeMobileNav()">Features</a>
   <a href="#demo" onclick="closeMobileNav()">Demo</a>
-  <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
+  <a href="#beta" onclick="closeMobileNav()">Beta</a>
   <a href="https://promptlab.tools/guide" target="_blank" onclick="closeMobileNav()">Docs</a>
   <a href="https://promptlab.tools/app" class="btn-primary" onclick="closeMobileNav()">Open app</a>
 </div>
@@ -1168,22 +1252,69 @@ img { display: block; max-width: 100%; }
   <div class="container hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      v1.7 — Library export · Evaluate timeline · Quick resume
+      Controlled technical beta · Local first · BYOK
     </div>
     <h1 class="hero-headline">
-      <span>Every prompt,</span>
-      <span><span class="hero-italic">sharpened.</span></span>
+      <span>Prompt engineering,</span>
+      <span><span class="hero-italic">done like engineering.</span></span>
     </h1>
     <p class="hero-sub">
-      The multi-provider workspace for prompt engineering. Enhance, compare, and iterate across Claude, GPT-4o, Gemini, and local models — then ship with confidence.
+      Enhance, compare, evaluate, and reuse prompts across providers. Extension and desktop are the full local multi-provider product. The web app is an Anthropic-first demo funnel.
     </p>
     <div class="hero-actions">
-      <a href="https://promptlab.tools/app" class="btn-primary">
-        Improve your first prompt
+      <a href="https://promptlab.tools/setup" class="btn-primary">
+        Get the extension
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <a href="#demo" class="btn-secondary">See it in action</a>
+      <a href="https://promptlab.tools/app" class="btn-secondary">Try the web demo</a>
     </div>
+  </div>
+</section>
+
+<!-- ===== SURFACE COMPARISON ===== -->
+<section class="surface-section reveal" id="surfaces">
+  <div class="container">
+    <div class="surface-header">
+      <div>
+        <div class="surface-kicker">Choose the right surface</div>
+        <h2 class="surface-title">Full product local.<br>Web demo focused.</h2>
+      </div>
+      <p class="surface-note">PromptLab is in controlled beta. The launch path is not a broad consumer rollout. P1 validates the workflow, P2 defines monetization, and Pro stays hidden until billing and paid value are verified.</p>
+    </div>
+    <table class="surface-table" aria-label="Prompt Lab surface comparison">
+      <thead>
+        <tr>
+          <th>Surface</th>
+          <th>Launch role</th>
+          <th>Provider coverage</th>
+          <th>Key posture</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="surface-name">Extension</span></td>
+          <td class="surface-role">Primary beta product for technical users.</td>
+          <td class="surface-role">Full local multi-provider product.</td>
+          <td class="surface-role">BYOK. Keys stay local.</td>
+          <td><span class="surface-status">Beta surface</span></td>
+        </tr>
+        <tr>
+          <td><span class="surface-name">Desktop</span></td>
+          <td class="surface-role">Full local workflow for users who prefer an app shell.</td>
+          <td class="surface-role">Full local multi-provider product.</td>
+          <td class="surface-role">BYOK. Keys stay local.</td>
+          <td><span class="surface-status">Developer preview</span></td>
+        </tr>
+        <tr>
+          <td><span class="surface-name">Web app</span></td>
+          <td class="surface-role">Demo funnel before install.</td>
+          <td class="surface-role">Anthropic-first hosted demo.</td>
+          <td class="surface-role">Capped shared-key trial, then BYOK.</td>
+          <td><span class="surface-status">Demo path</span></td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </section>
 
@@ -1197,15 +1328,15 @@ img { display: block; max-width: 100%; }
       </div>
       <div class="proof-item">
         <div class="proof-number" data-count="5"><span class="accent">5</span></div>
-        <div class="proof-label">AI providers</div>
+        <div class="proof-label">One prompt, every provider</div>
       </div>
       <div class="proof-item">
         <div class="proof-number">100<span class="accent">%</span></div>
-        <div class="proof-label">Local storage</div>
+        <div class="proof-label">Your keys stay local</div>
       </div>
       <div class="proof-item">
-        <div class="proof-number"><span class="accent">0</span>ms</div>
-        <div class="proof-label">Data sent to us</div>
+        <div class="proof-number"><span class="accent">0</span></div>
+        <div class="proof-label">Event-only, no prompt content</div>
       </div>
     </div>
   </div>
@@ -1216,8 +1347,8 @@ img { display: block; max-width: 100%; }
   <div class="container">
     <div class="reveal">
       <div class="section-label">Capabilities</div>
-      <h2 class="section-heading">One workspace.<br>Every tool you need.</h2>
-      <p class="section-sub">Prompt Lab packs a full prompt engineering toolkit into a single interface — no tab switching, no copy-pasting between tools.</p>
+      <h2 class="section-heading">One prompt.<br>Every provider.</h2>
+      <p class="section-sub">Evaluate, don't guess. Prompt Lab is built for users who need comparison discipline before they scale a prompt workflow.</p>
     </div>
 
     <!-- Feature 1: Enhance -->
@@ -1274,10 +1405,10 @@ img { display: block; max-width: 100%; }
       <div class="feature-text">
         <div class="feature-tag">Compare</div>
         <h3 class="feature-title">A/B test across any model</h3>
-        <p class="feature-desc">Send the same prompt to two different providers and see the responses side-by-side. Find the right model for every use case — without leaving the workspace.</p>
+        <p class="feature-desc">Run the same prompt through different providers and inspect the responses side by side. This is the core beta workflow, not a side feature.</p>
         <ul class="feature-bullets">
           <li>Claude, GPT-4o, Gemini, OpenRouter, and Ollama</li>
-          <li>Side-by-side response comparison</li>
+          <li>Side by side response comparison</li>
           <li>Evaluate and track results over time</li>
         </ul>
       </div>
@@ -1391,7 +1522,7 @@ img { display: block; max-width: 100%; }
     <div class="demo-header reveal">
       <div class="section-label">Try it</div>
       <h2 class="section-heading" style="margin-left:auto;margin-right:auto;">See the difference in real time</h2>
-      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Paste any rough prompt and watch Prompt Lab transform it.</p>
+      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Community posting waits for the required 30 second GIF: one prompt, five providers, side by side diff, and a clear evaluation moment.</p>
     </div>
     <div class="demo-container reveal reveal-delay-1">
       <div class="demo-chrome">
@@ -1481,54 +1612,54 @@ img { display: block; max-width: 100%; }
   </div>
 </section>
 
-<!-- ===== PRICING ===== -->
-<section class="pricing" id="pricing">
+<!-- ===== BETA STRATEGY ===== -->
+<section class="pricing" id="beta">
   <div class="container">
     <div class="pricing-header reveal">
-      <div class="section-label">Pricing</div>
-      <h2 class="section-heading">Start free. Scale when ready.</h2>
-      <p class="section-sub">No credit card required. Your prompts stay local — always.</p>
+      <div class="section-label">Beta strategy</div>
+      <h2 class="section-heading">Launch controlled.<br>Learn before charging.</h2>
+      <p class="section-sub">P1 validates the workflow. P2 defines monetization. Pro stays hidden until checkout, entitlement, billing state, and the paid feature set are verified. Chrome Web Store scales later; Product Hunt waits for smooth onboarding.</p>
     </div>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
-        <div class="pricing-tier">Free</div>
-        <div class="pricing-price"><span class="currency">$</span>0</div>
-        <div class="pricing-period">Forever free</div>
+        <div class="pricing-tier">P1</div>
+        <div class="pricing-price">Validate</div>
+        <div class="pricing-period">technical beta</div>
         <ul class="pricing-features">
-          <li>All 7 enhancement modes</li>
-          <li>Multi-model provider switching</li>
-          <li>Prompt library with search</li>
-          <li>Chrome extension</li>
-          <li>100% local storage</li>
+          <li>Completed prompt enhancement</li>
+          <li>Completed comparison</li>
+          <li>Second provider configured</li>
+          <li>Provider setup success rate</li>
+          <li>Seven day return</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn outline">Get started free</a>
+        <a href="https://promptlab.tools/app" class="pricing-btn outline">Try the demo</a>
       </div>
       <div class="pricing-card featured reveal reveal-delay-1">
-        <div class="pricing-popular">Most popular</div>
-        <div class="pricing-tier">Pro</div>
-        <div class="pricing-price"><span class="currency">$</span>9</div>
-        <div class="pricing-period">per month</div>
+        <div class="pricing-popular">Discovery required</div>
+        <div class="pricing-tier">P2</div>
+        <div class="pricing-price">Monetize</div>
+        <div class="pricing-period">paid value unknown</div>
         <ul class="pricing-features">
-          <li>Everything in Free</li>
-          <li>A/B Compare with eval scoring</li>
-          <li>Prompt Composer templates</li>
-          <li>PII scanner + auto-redaction</li>
-          <li>Advanced linting rules</li>
-          <li>Priority support</li>
+          <li>What would be worth paying for?</li>
+          <li>Which workflow creates economic value?</li>
+          <li>Which support, templates, evals, or history matter?</li>
+          <li>What is price sensitivity?</li>
+          <li>Where does client data pain matter?</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn filled">Get Pro →</a>
+        <a href="https://promptlab.tools/guide" class="pricing-btn filled">Read setup guide</a>
       </div>
       <div class="pricing-card reveal reveal-delay-2">
-        <div class="pricing-tier">Annual</div>
-        <div class="pricing-price"><span class="currency">$</span>100</div>
-        <div class="pricing-period">per year — save $8</div>
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price">Hidden</div>
+        <div class="pricing-period">not a launch CTA</div>
         <ul class="pricing-features">
-          <li>Everything in Pro</li>
-          <li>2 months free</li>
-          <li>Early access to new features</li>
-          <li>Roadmap input</li>
+          <li>Advanced eval history is a hypothesis</li>
+          <li>Templates are a hypothesis</li>
+          <li>Sync is a hypothesis</li>
+          <li>Support is a hypothesis</li>
+          <li>Hosted convenience is a hypothesis</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn outline">Go annual</a>
+        <a href="#surfaces" class="pricing-btn outline">Compare surfaces</a>
       </div>
     </div>
   </div>
@@ -1538,10 +1669,10 @@ img { display: block; max-width: 100%; }
 <section class="cta-section">
   <div class="container">
     <div class="reveal">
-      <h2 class="cta-heading">Your prompts deserve<br><em>better.</em></h2>
-      <p class="cta-sub">Join thousands of engineers, writers, and researchers who ship better AI — starting with better prompts.</p>
+      <h2 class="cta-heading">Evaluate first.<br><em>Scale later.</em></h2>
+      <p class="cta-sub">Use the web demo to see the workflow, then move to the extension or desktop preview for the full local multi-provider product.</p>
       <a href="https://promptlab.tools/app" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;">
-        Try Prompt Lab free
+        Try the web demo
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </div>
@@ -1563,7 +1694,7 @@ img { display: block; max-width: 100%; }
         <div class="footer-col-title">Product</div>
         <ul class="footer-links">
           <li><a href="#features">Features</a></li>
-          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#beta">Beta</a></li>
           <li><a href="https://promptlab.tools/app">Open App</a></li>
           <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/CHANGELOG.md" target="_blank">Changelog</a></li>
         </ul>

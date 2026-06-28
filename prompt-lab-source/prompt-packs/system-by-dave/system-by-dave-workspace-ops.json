@@ -1,0 +1,556 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "system-by-dave.workspace-ops",
+  "title": "System by Dave Workspace Ops",
+  "description": "Workspace cleanup, data shaping, and table transformation prompts from System by Dave.",
+  "author": "System by Dave",
+  "sourceUrl": "https://systembydave.com/prompts/",
+  "createdAt": "2026-06-16",
+  "updatedAt": "2026-06-16",
+  "presets": [
+    {
+      "id": "sbd-workspace-ops-create-table",
+      "title": "Create Table",
+      "prompt": "Create a clear, well-formatted markdown table from the data I provide.\n- Use the first row as column headers (clean them up for readability if needed).\n- Ensure all rows are aligned under the correct headers.\n- Do not change any values, only structure them into a table.\n- If the data looks inconsistent or ambiguous, briefly note any assumptions you make.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "markdown",
+        "table",
+        "formatting",
+        "data-cleanup",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "112",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-clean-list",
+      "title": "Clean List",
+      "prompt": "Convert the data I provide into a clean, normalized list of unique items, removing duplicates and obvious typos while preserving the original meaning. Briefly mention any normalization rules you applied.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "dedup",
+        "normalize",
+        "list",
+        "data-cleanup",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "113",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-tag-groups",
+      "title": "Tag Groups",
+      "prompt": "From the data I provide, extract only the entries that match clearly defined categories or tags. Group the results by category, and list each group with a short one-sentence description of what it represents.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "categorize",
+        "tags",
+        "grouping",
+        "extraction",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "114",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-json-map",
+      "title": "JSON Map",
+      "prompt": "Turn the data I provide into a structured JSON object with clear, descriptive keys. Keep all values intact, infer reasonable field names where missing, and validate that the structure is consistent across all items.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "json",
+        "schema",
+        "transform",
+        "structured-output",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "115",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-compare-grid",
+      "title": "Compare Grid",
+      "prompt": "Convert the data I provide into a comparison matrix. Use rows for items and columns for their main attributes. Keep attribute names short and clear, and leave cells blank rather than guessing missing values.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "comparison",
+        "matrix",
+        "table",
+        "analysis",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "116",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-value-normalize",
+      "title": "Value Normalize",
+      "prompt": "Given the data I provide, extract all date-, time-, or number-like values and standardize them into a consistent format (e.g., ISO dates, plain numbers). Return them in a structured list, and note any ambiguous entries you could not safely convert.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "dates",
+        "numbers",
+        "standardize",
+        "data-cleanup",
+        "data-structuring",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "117",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "data-structuring"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-trend-bullets",
+      "title": "Trend Bullets",
+      "prompt": "Summarize the key insights from the data I provide in 3–5 bullet points, focusing only on the most important trends, outliers, and patterns. Do not invent any numbers or facts that aren't explicitly present.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "insights",
+        "trends",
+        "summary",
+        "data-analysis",
+        "analysis",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "118",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "analysis"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-data-audit",
+      "title": "Data Audit",
+      "prompt": "Analyze the data I provide and identify any inconsistencies, missing values, or formatting issues. Return a short report that lists problems, gives 1–2 concrete examples for each, and suggests how to clean them.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "quality",
+        "audit",
+        "inconsistencies",
+        "data-analysis",
+        "analysis",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "119",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "analysis"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-exec-brief",
+      "title": "Exec Brief",
+      "prompt": "From the data I provide, generate a concise executive summary (maximum 150 words) that explains what the data is about, who it is for, and what decisions it could help support.",
+      "summary": "Format: Single Prompt. Source pack: 📊 Data & Table Toolkit.",
+      "category": "Data and Tables",
+      "tags": [
+        "system-by-dave",
+        "summary",
+        "executive",
+        "decision-support",
+        "briefing",
+        "analysis",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "120",
+        "pack": "📊 Data & Table Toolkit",
+        "area": "analysis"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-duplicate-page-finder",
+      "title": "Duplicate Page Finder",
+      "prompt": "Search this workspace for pages that appear to cover the same topic, person, or project more than once. Look for:\n- Pages with nearly identical titles\n- Pages with the same TypeCode prefix pointing to the same subject\n- Database entries that describe the same entity under slightly different names\n\nFor each duplicate cluster you find:\n1. List all the pages in the cluster with their URLs and parent locations\n2. Identify which one appears most recently edited or most complete\n3. Recommend: Keep / Archive / Merge — with one sentence of reasoning\n\nDo not delete anything. Output a table with columns: Cluster | Page Name | URL | Parent | Recommended Action | Reasoning",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "duplicates",
+        "workspace",
+        "notion",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "144",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-naming-standard-violations-audit",
+      "title": "Naming Standard Violations Audit",
+      "prompt": "Audit the pages in this section of the workspace against the following naming rules:\n- Page titles should begin with a TypeCode prefix (e.g. GOV, HUB, DOC, SOP, REF, PRJ, SFT, EVT, NOTE, LOG, DB, OPS, TEMP)\n- After the TypeCode, titles should follow the pattern: {{typecode}} | {{descriptive_name}} - {{date_if_applicable}}\n- Hub pages should be prefixed HUB |\n- Database pages should be prefixed DB |\n\nFor each page that violates these rules:\n1. List the current title and URL\n2. Suggest a corrected title following the naming standard\n3. Flag if the page appears to be a draft, duplicate, or orphan\n\nOutput a table: Current Title | URL | Suggested Title | Flag (Draft / Duplicate / Orphan / OK)",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "naming",
+        "standards",
+        "conventions",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "145",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": [
+        {
+          "key": "typecode",
+          "label": "Typecode",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter typecode"
+        },
+        {
+          "key": "descriptive_name",
+          "label": "Descriptive Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter descriptive name"
+        },
+        {
+          "key": "date_if_applicable",
+          "label": "Date If Applicable",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter date if applicable"
+        }
+      ]
+    },
+    {
+      "id": "sbd-workspace-ops-orphan-page-detector",
+      "title": "Orphan Page Detector",
+      "prompt": "Search for pages in this section that:\n- Are not linked or mentioned from any other page\n- Have no parent database entry pointing to them\n- Have not been edited in more than 60 days\n- Have no content other than a title\n\nFor each orphan page found:\n1. List the title, URL, and last edited date\n2. Estimate its likely original purpose based on the title\n3. Recommend: Keep and link | Archive | Delete (if clearly empty)\n\nDo not delete anything. Output a table: Title | URL | Last Edited | Likely Purpose | Recommended Action",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "orphans",
+        "unlinked",
+        "stale",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "146",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-temp-and-draft-page-sweep",
+      "title": "TEMP and Draft Page Sweep",
+      "prompt": "Search this workspace for pages that appear to be temporary, draft, or staging in nature. Look for:\n- Pages prefixed TEMP |\n- Pages in folders or sections labeled Archive, Needs Review, Staging, or Inbox\n- Pages whose titles contain words like \"draft,\" \"copy,\" \"old,\" \"backup,\" \"test,\" or \"untitled\"\n- Pages created more than 90 days ago that have never been linked from another page\n\nFor each page found:\n1. List the title, URL, parent location, and created date\n2. Identify if it has any content worth keeping\n3. Recommend: Promote (move to canonical location) | Archive | Delete\n\nOutput a table: Title | URL | Parent | Created | Has Content | Recommended Action",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "drafts",
+        "staging",
+        "temp",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "147",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-hub-page-navigation-audit",
+      "title": "Hub Page Navigation Audit",
+      "prompt": "Audit this hub page for navigation quality. Check for:\n- Links that point to pages that no longer exist or have been moved\n- Linked views that are pointing to the wrong database or show no results\n- Sections that reference pages not actually related to this hub's topic\n- Missing links to pages that clearly belong here but are not currently linked\n\nFor each issue found:\n1. Describe the problem\n2. Identify the specific element (link, section, view, callout)\n3. Recommend the fix\n\nDo not edit the page. Output a numbered list of issues with recommendations.",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "hub",
+        "navigation",
+        "links",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "148",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-database-schema-cleanup",
+      "title": "Database Schema Cleanup",
+      "prompt": "Audit this database schema for cleanup opportunities. Look for:\n- Properties with names like \"Text,\" \"Text (1),\" \"Text 1,\" or other clearly placeholder names\n- Properties that appear to duplicate another property's purpose\n- Properties with no values across any entries\n- Select or multi-select properties whose option lists have grown inconsistent\n\nFor each issue found:\n1. Name the property and describe the problem\n2. Recommend: Rename | Delete | Merge with {{other_property}} | Leave as-is\n3. If renaming, suggest the correct name\n\nOutput a table: Property Name | Issue | Recommended Action | Notes",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "database",
+        "schema",
+        "properties",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "149",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": [
+        {
+          "key": "other_property",
+          "label": "Other Property",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter other property"
+        }
+      ]
+    },
+    {
+      "id": "sbd-workspace-ops-projects-stale-entry-sweep",
+      "title": "Projects Stale Entry Sweep",
+      "prompt": "Review the entries in DB | Projects and flag any that need attention. Look for:\n- Entries with Status = Doing or Ongoing but no Next Action filled in\n- Entries with Status = Doing but Last Update older than 30 days\n- Entries with no Category assigned\n- Entries with no Priority assigned\n\nFor each flagged entry:\n1. List the project name and URL\n2. Describe the specific issue\n3. Suggest the corrective action\n\nOutput a table: Project Name | URL | Issue | Suggested Action",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "projects",
+        "stale",
+        "status",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "150",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-inbox-zero-sweep",
+      "title": "Inbox Zero Sweep",
+      "prompt": "Review all items currently in this inbox or staging area. For each item:\n1. Read the title and any available content\n2. Determine the most likely destination based on the workspace structure\n3. For each item, output: Title | Current Location | Recommended Destination | Action (Move / Archive / Convert to task)\n\nDo not move anything. Output the full triage table first for review.",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "inbox",
+        "triage",
+        "processing",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "151",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-cross-system-link-consistency-check",
+      "title": "Cross-System Link Consistency Check",
+      "prompt": "Check cross-linking consistency across the main hub pages in this workspace. For each hub:\n1. List which of the other hubs it currently links to\n2. Identify any cross-links that are missing and should exist\n3. Flag any links that point to outdated or moved pages\n\nOutput a matrix table: Hub | Currently Links To | Missing Links | Broken Links",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "cross-links",
+        "consistency",
+        "navigation",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "152",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-workspace-ops-post-session-cleanup",
+      "title": "Post-Session Cleanup",
+      "prompt": "This workspace just went through a significant build or working session. Help me do a post-session cleanup sweep. Search for:\n- Pages created in the last 7 days that have no parent hub link and are not in a database\n- Pages created in the last 7 days with placeholder titles (Untitled, Copy of, Test, Draft)\n- Any open to-do checkboxes that are more than 3 days old\n\nFor each item found:\n1. List the title, URL, and created date\n2. Recommend the next action: File | Link to hub | Fill in Next Action | Process from inbox | Close out\n\nOutput a grouped list by category.",
+      "summary": "Format: Single Prompt. Source pack: 🧹 Workspace Cleanup Suite.",
+      "category": "Workspace Cleanup",
+      "tags": [
+        "system-by-dave",
+        "cleanup",
+        "post-session",
+        "sweep",
+        "loose-ends",
+        "audit",
+        "single-prompt",
+        "system-by-dave-workspace-ops"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "153",
+        "pack": "🧹 Workspace Cleanup Suite",
+        "area": "audit"
+      },
+      "inputs": []
+    }
+  ]
+}

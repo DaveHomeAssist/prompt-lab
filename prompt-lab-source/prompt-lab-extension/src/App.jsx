@@ -37,6 +37,7 @@ import AppHeader from './AppHeader';
 import useRouteSync from './hooks/useRouteSync.js';
 import SavePanel from './SavePanel';
 import BugReportModal from './BugReportModal';
+import WillingnessToPayModal from './WillingnessToPayModal';
 import TemplateVariablesModal from './modals/TemplateVariablesModal';
 import SettingsModal from './modals/SettingsModal';
 import CommandPaletteModal from './modals/CommandPaletteModal';
@@ -61,6 +62,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showBugReport, setShowBugReport] = useState(false);
+  const [showDiscoveryFeedback, setShowDiscoveryFeedback] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [billingFeaturePrompt, setBillingFeaturePrompt] = useState(null);
   const [mdPreview, setMdPreview] = useState(false);
@@ -109,7 +111,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       void telemetry?.track?.('library.tweak_changed', { axis, from, to });
     },
   });
-  const abTest = useABTest({ notify });
+  const abTest = useABTest({ notify, telemetry });
 
   // ── Editor controllers (state + execution + persistence) ──
   const editorState = useEditorState();
@@ -121,7 +123,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     lib,
     editor: editorState,
   });
-  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow, telemetry });
   const ed = {
     ...editorState,
     ...persistenceFlow,
@@ -179,6 +181,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   const canRunBatchCases = billing.hasFeature('batchRuns');
   const canUseDiffView = billing.hasFeature('diffView');
   const canUseAbTesting = billing.hasFeature('abTesting');
+  const publicProEnabled = billing.proCtaEnabled;
   const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '' };
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
@@ -370,6 +373,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           setShowShortcuts(false);
           setShowSettings(false);
           setShowBugReport(false);
+          setShowDiscoveryFeedback(false);
           closeSavePanel();
           lib.setShareId(null);
           lib.closeVersionHistory();
@@ -544,6 +548,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     exportLib: () => { handleExportLibrary(); closePalette(); },
     openSettings: () => { setShowSettings(true); closePalette(); },
     reportBug: () => { setShowBugReport(true); closePalette(); },
+    paidDiscovery: () => { setShowDiscoveryFeedback(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
   });
@@ -572,7 +577,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
         setShowShortcuts={setShowShortcuts} setShowSettings={setShowSettings}
         billingPlan={billing.plan}
         billingLabel={billing.planLabel}
-        openBilling={openBilling}
+        openBilling={publicProEnabled ? openBilling : null}
         clerkUserButton={clerkUser ? clerkUserButton : null}
       />
 
@@ -688,16 +693,16 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
                 ? (
                   <div className="flex h-full items-center justify-center p-6">
                     <div className={`${m.surface} ${m.border} max-w-md rounded-2xl border p-5 text-center`}>
-                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is part of Prompt Lab Pro.</p>
+                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is in Pro validation.</p>
                       <p className={`mt-2 text-xs leading-relaxed ${m.textMuted}`}>
-                        Unlock head-to-head prompt runs, saved winners, and compare history with a Prompt Lab Pro plan.
+                        This candidate paid workflow stays hidden unless private billing validation is enabled.
                       </p>
                       <button
                         type="button"
                         onClick={() => openBilling('abTesting')}
                         className="ui-control mt-4 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
                       >
-                        Upgrade to Pro
+                        Open billing validation
                       </button>
                     </div>
                   </div>
@@ -777,7 +782,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billing}
-          openBilling={openBilling}
+          openBilling={publicProEnabled ? openBilling : null}
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
@@ -785,6 +790,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           onReportBug={() => {
             setShowSettings(false);
             setShowBugReport(true);
+          }}
+          onShareDiscovery={() => {
+            setShowSettings(false);
+            setShowDiscoveryFeedback(true);
           }}
         />
       )}
@@ -815,7 +824,20 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
         />
       )}
 
-      {showBillingModal && (
+      {showDiscoveryFeedback && (
+        <WillingnessToPayModal
+          show={showDiscoveryFeedback}
+          onClose={() => setShowDiscoveryFeedback(false)}
+          m={m}
+          notify={notify}
+          isWeb={isWeb}
+          defaultSurface={bugReportSurface}
+          appContext={bugReportContext}
+          telemetry={telemetry}
+        />
+      )}
+
+      {showBillingModal && publicProEnabled && (
         <BillingModal
           m={m}
           billing={billing}
@@ -842,6 +864,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           onClose={() => setShowDesktopSettings(false)}
           m={m}
           notify={notify}
+          telemetry={telemetry}
         />
       )}
       </div>

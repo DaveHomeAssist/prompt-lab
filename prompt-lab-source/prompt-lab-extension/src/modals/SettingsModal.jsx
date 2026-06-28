@@ -25,6 +25,7 @@ export default function SettingsModal({
   canExportLibrary = true,
   telemetry,
   onReportBug,
+  onShareDiscovery,
   libraryTweaks,
 }) {
   const [telemetryEnabled, setTelemetryEnabled] = useState(telemetry?.telemetryEnabled !== false);
@@ -88,7 +89,7 @@ export default function SettingsModal({
             />
           </div>
         )}
-        {billing && (
+        {billing && billing.proCtaEnabled && (
           <div className={`rounded-xl border p-3 ${m.surface} ${m.border}`}>
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -101,9 +102,17 @@ export default function SettingsModal({
                 onClick={() => openBilling?.()}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
               >
-                {billing.plan === 'pro' ? 'Manage Billing' : 'Upgrade to Pro'}
+                {billing.plan === 'pro' ? 'Manage Billing' : 'Billing validation'}
               </button>
             </div>
+          </div>
+        )}
+        {billing && !billing.proCtaEnabled && (
+          <div className={`rounded-xl border p-3 ${m.surface} ${m.border}`}>
+            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Beta access</p>
+            <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
+              Pro is hidden while Prompt Lab validates paid value. Local workflow features remain available in the beta.
+            </p>
           </div>
         )}
         {telemetry && (
@@ -112,7 +121,7 @@ export default function SettingsModal({
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Insights</p>
                 <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
-                  Share lightweight usage events and an optional contact email so Prompt Lab can understand activation, upgrade, and retention patterns.
+                  Share event-only usage insights and an optional contact email so Prompt Lab can understand activation, upgrade, and retention patterns.
                 </p>
               </div>
               <input
@@ -131,7 +140,7 @@ export default function SettingsModal({
             />
             <div className="flex items-center justify-between gap-3">
               <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
-                Prompt text, provider API keys, and model responses are not included in insights events.
+                Event-only: prompt text, provider API keys, and model responses are not included in insights events.
               </p>
               <button
                 type="button"
@@ -166,7 +175,7 @@ export default function SettingsModal({
           <div className={`rounded-xl border p-3 ${m.codeBlock} ${m.border}`}>
             <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collections</p>
             <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>
-              Collections are available on Prompt Lab Pro. Use the billing panel to unlock grouped prompt sets.
+              Collections are not limited during the controlled beta.
             </p>
           </div>
         )}
@@ -176,8 +185,11 @@ export default function SettingsModal({
         <button type="button" onClick={onReportBug} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}>
           <Ic n="FileText" size={12} />Report a Bug
         </button>
+        <button type="button" onClick={onShareDiscovery} className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} transition-colors`}>
+          <Ic n="MessageSquare" size={12} />Paid Value Discovery
+        </button>
         <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
-          <button onClick={canExportLibrary ? exportLib : () => openBilling?.('export')} className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 transition-colors ${canExportLibrary ? `${m.btn} ${m.textBody}` : 'border border-violet-500/40 bg-violet-500/12 text-violet-200'}`}><Ic n="Download" size={12} />{canExportLibrary ? 'Export Library' : 'Export Library (Pro)'}</button>
+          <button onClick={canExportLibrary ? exportLib : () => openBilling?.('export')} className={`flex items-center gap-2 text-sm rounded-lg px-3 py-2 transition-colors ${canExportLibrary ? `${m.btn} ${m.textBody}` : 'border border-violet-500/40 bg-violet-500/12 text-violet-200'}`}><Ic n="Download" size={12} />{canExportLibrary ? 'Export Library' : 'Export Library'}</button>
           <label className={`flex items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library<input type="file" accept=".json" onChange={importLib} className="hidden" /></label>
           <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) clearLibrary(); }} className="flex items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
         </div>

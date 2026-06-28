@@ -86,14 +86,14 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
               {billing.plan === 'pro' ? 'Billing' : 'Prompt Lab Pro'}
             </p>
             <h2 id="billing-modal-title" className={`mt-1 text-lg font-semibold ${m.text}`}>
-              {requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro'}
+              {requestedFeature ? `${feature.label} is in Pro validation` : 'Prompt Lab Pro validation'}
             </h2>
             <p className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {requestedFeature
-                ? `${feature.description} Upgrade to Pro or sync an existing purchase to keep going.`
+                ? `${feature.description} Pro remains gated until billing and paid value are verified.`
                 : hasClerkIdentity
-                  ? 'Use Clerk Billing to start Prompt Lab Pro. Stripe handles payment processing underneath, and your signed in account keeps subscription state in sync.'
-                  : 'Billing actions are currently limited to signed in Prompt Lab accounts while the public billing endpoints stay locked down.'}
+                  ? 'Use this only for private billing verification. Stripe handles payment processing underneath, and your signed in account keeps subscription state in sync.'
+                  : 'Billing actions stay limited to signed in Prompt Lab accounts while public Pro CTAs remain hidden.'}
             </p>
           </div>
           <button
@@ -131,9 +131,9 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             disabled={requiresPromptLabAccount || billing.busyAction === 'checkout:monthly'}
             className="ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
           >
-            <div className="text-sm font-semibold">Go Pro Monthly</div>
+            <div className="text-sm font-semibold">Private monthly checkout</div>
             <div className="mt-1 text-xs text-violet-100">
-              {hasClerkIdentity ? '$9/month via Clerk Billing' : 'Sign in on the web to start checkout'}
+              {hasClerkIdentity ? 'Billing verification only' : 'Sign in on the web to start checkout'}
             </div>
           </button>
           <button
@@ -142,9 +142,9 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             disabled={requiresPromptLabAccount || billing.busyAction === 'checkout:annual'}
             className="ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40"
           >
-            <div className="text-sm font-semibold">Go Pro Annual</div>
+            <div className="text-sm font-semibold">Private annual checkout</div>
             <div className="mt-1 text-xs text-emerald-200">
-              {hasClerkIdentity ? '$100/year, best value' : 'Signed in account required'}
+              {hasClerkIdentity ? 'Billing verification only' : 'Signed in account required'}
             </div>
           </button>
         </div>
@@ -212,7 +212,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
         </div>
 
         <div className={`mt-5 rounded-xl border p-3 ${m.codeBlock} ${m.border}`}>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Prompt Lab Pro includes</p>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Pro feature hypotheses</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {FEATURE_LIST.map((item) => (
               <div key={item.id} className="flex items-start gap-2">

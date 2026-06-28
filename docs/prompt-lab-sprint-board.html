@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Lab — Chisel Sprint Board</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#09090f;--surface:#111118;--surface-alt:#16161f;
+  --border:#1e1e2e;--border-b:#2a2a3e;
+  --chisel:#378ADD;--chisel-dim:#185FA5;
+  --text:#e2e2ef;--text-m:#6b6b8a;--text-d:#3a3a55;
+  --red:#ff4466;--amber:#ffaa33;--green:#33dd88;--blue:#4488ff;--purple:#9f7aea;
+  --font-d:'Syne',sans-serif;--font-b:'DM Sans',sans-serif;--font-m:'DM Mono',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:13px;line-height:1.6}
+
+.banner{position:relative;overflow:hidden;border-bottom:1px solid var(--border-b);padding:0 32px}
+.banner-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:32px 32px;opacity:0.4}
+.banner-glow{position:absolute;top:-60px;right:100px;width:360px;height:360px;background:radial-gradient(circle,rgba(55,138,221,0.07) 0%,transparent 70%);pointer-events:none}
+.banner-inner{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:28px 0 22px}
+.banner-top{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.agent-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(55,138,221,0.08);border:1px solid rgba(55,138,221,0.25);border-radius:4px;padding:3px 10px 3px 8px;font-family:var(--font-m);font-size:11px;font-weight:500;color:var(--chisel);letter-spacing:.06em;text-transform:uppercase}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:var(--chisel);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.run-id{font-family:var(--font-m);font-size:11px;color:var(--text-d);letter-spacing:.04em}
+.banner-title{font-family:var(--font-d);font-size:26px;font-weight:800;letter-spacing:-.02em;margin-bottom:10px}
+.banner-title span{color:var(--chisel)}
+.stack-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px}
+.stack-tag{font-family:var(--font-m);font-size:11px;color:var(--text-m);background:var(--surface-alt);border:1px solid var(--border);border-radius:3px;padding:2px 8px}
+.stack-tag.warn{color:#ffaa33;background:rgba(255,170,51,.08);border-color:rgba(255,170,51,.2)}
+.banner-meta{display:flex;align-items:center;gap:20px;padding-top:12px;border-top:1px solid var(--border)}
+.meta-item{display:flex;align-items:center;gap:5px;font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.meta-val{color:var(--text)}
+
+.content{max-width:1100px;margin:0 auto;padding:32px 32px 64px}
+.section-label{font-family:var(--font-m);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-d);margin-bottom:14px}
+
+.sprint-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:40px}
+.sprint-card{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.sprint-header{padding:13px 16px 11px;border-bottom:1px solid var(--border)}
+.sprint-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.sprint-num{font-family:var(--font-m);font-size:10px;color:var(--text-d);letter-spacing:.06em}
+.sprint-weeks{font-family:var(--font-m);font-size:10px;color:var(--text-m);background:var(--surface-alt);border:1px solid var(--border);border-radius:3px;padding:1px 6px}
+.sprint-title{font-size:13px;font-weight:500;color:var(--text);margin-bottom:2px}
+.sprint-theme{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.sprint-body{padding:0}
+table{width:100%;border-collapse:collapse}
+th{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-d);padding:7px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface)}
+td{padding:7px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+.mono{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+.imp{display:inline-block;font-size:11px;padding:2px 7px;border-radius:3px;font-weight:500;white-space:nowrap}
+.imp-h{background:rgba(255,68,102,.1);color:#ff4466;border:1px solid rgba(255,68,102,.2)}
+.imp-m{background:rgba(255,170,51,.1);color:#ffaa33;border:1px solid rgba(255,170,51,.2)}
+.imp-l{background:rgba(51,221,136,.08);color:#33dd88;border:1px solid rgba(51,221,136,.15)}
+
+.risk-table{width:100%;border-collapse:collapse;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:32px}
+.risk-table th{font-family:var(--font-m);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-m);background:var(--surface);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--border-b)}
+.risk-table td{padding:9px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6}
+.risk-table tr:last-child td{border-bottom:none}
+.risk-level{display:inline-block;padding:2px 7px;border-radius:3px;font-family:var(--font-m);font-size:10px;font-weight:500}
+.rl-h{background:rgba(255,68,102,.1);color:#ff4466;border:1px solid rgba(255,68,102,.2)}
+.rl-m{background:rgba(255,170,51,.1);color:#ffaa33;border:1px solid rgba(255,170,51,.2)}
+
+.parallel{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:32px}
+.parallel-header{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:10px}
+.parallel-title{font-size:13px;font-weight:500}
+.parallel-sub{font-family:var(--font-m);font-size:11px;color:var(--text-m)}
+
+.note{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--chisel-dim);border-radius:0 6px 6px 0;padding:10px 14px;font-size:12px;color:var(--text-m);line-height:1.6;margin-bottom:20px}
+.note strong{color:var(--text);font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="banner">
+  <div class="banner-grid"></div>
+  <div class="banner-glow"></div>
+  <div class="banner-inner">
+    <div class="banner-top">
+      <div class="agent-badge"><div class="badge-dot"></div>Chisel</div>
+      <div class="run-id">sprint-plan · 2026-03-19</div>
+    </div>
+    <div class="banner-title">Prompt Lab — <span>Sprint Board</span></div>
+    <div class="stack-row">
+      <span class="stack-tag">App.jsx 77KB</span>
+      <span class="stack-tag">Tailwind</span>
+      <span class="stack-tag">React</span>
+      <span class="stack-tag">Vitest 52 tests</span>
+      <span class="stack-tag warn">37 uncommitted changes</span>
+      <span class="stack-tag warn">touch targets 32px → 44px needed</span>
+    </div>
+    <div class="banner-meta">
+      <div class="meta-item">Sprints <span class="meta-val" style="margin-left:4px">6</span></div>
+      <div class="meta-item">Window <span class="meta-val" style="margin-left:4px">12 weeks</span></div>
+      <div class="meta-item">Phase 0 <span class="meta-val" style="color:var(--amber);margin-left:4px">75% done</span></div>
+      <div class="meta-item">Phase 1 <span class="meta-val" style="color:var(--red);margin-left:4px">40% done</span></div>
+      <div class="meta-item">Highest risk <span class="meta-val" style="color:var(--red);margin-left:4px">App.jsx monolith + experiments unification</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="note"><strong>Commit first.</strong> 37 uncommitted changes are in-flight. Push current state before Sprint 1 begins — otherwise regressions are undetectable.</div>
+
+  <div class="section-label" style="margin-bottom:16px">Sprints</div>
+  <div class="sprint-grid">
+
+    <!-- Sprint 1 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 1</span>
+          <span class="sprint-weeks">Weeks 1–2</span>
+        </div>
+        <div class="sprint-title">Readability & size pass</div>
+        <div class="sprint-theme">"Everything is too small"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Bump interactive text 12px → 14px</td><td class="mono">constants.js, EditorActions.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Bump touch targets 32px → 44px</td><td class="mono">index.css</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Tab labels text-[11px] → text-sm</td><td class="mono">App.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Strengthen active tab indicator</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Increase output text in enhanced result</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Contrast audit — all text-gray combos</td><td class="mono">All components</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 2 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 2</span>
+          <span class="sprint-weeks">Weeks 3–4</span>
+        </div>
+        <div class="sprint-title">Create workflow compression</div>
+        <div class="sprint-theme">"Less vertical, more outcome" · Issue #002</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Elevate output panel — card, larger type, copy CTA</td><td class="mono">App.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Collapse scoring + lint into expandable row</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Make Save contextual — post-enhance only</td><td class="mono">EditorActions.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add Review layout preset (output-prominent)</td><td class="mono">useUiState.js, MainWorkspace.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 3 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 3</span>
+          <span class="sprint-weeks">Weeks 5–6</span>
+        </div>
+        <div class="sprint-title">Navigation & tab polish</div>
+        <div class="sprint-theme">"Know where you are" · Issue #002 cont.</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Rename "Library" sub-tab to avoid collision</td><td class="mono">App.jsx, navigationRegistry.js</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add arrow-key nav between tabs</td><td class="mono">App.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add intermediate breakpoint (720–1024px)</td><td class="mono">index.css</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Tab overflow "More" pattern</td><td class="mono">App.jsx</td><td><span class="imp imp-l">Low</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 4 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 4</span>
+          <span class="sprint-weeks">Weeks 7–8</span>
+          <span style="font-family:var(--font-m);font-size:10px;color:var(--red);background:rgba(255,68,102,.08);border:1px solid rgba(255,68,102,.15);border-radius:3px;padding:1px 6px">highest risk</span>
+        </div>
+        <div class="sprint-title">Experiments unification</div>
+        <div class="sprint-theme">"One timeline, not two surfaces" · Issue #003</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Merge Compare + History → unified Experiments</td><td class="mono">ABTestTab.jsx, RunTimelinePanel.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Unified experiment timeline with filtering</td><td class="mono">New component or merged</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Prompt version comparison within timeline</td><td class="mono">VersionDiffModal.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 5 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 5</span>
+          <span class="sprint-weeks">Weeks 9–10</span>
+        </div>
+        <div class="sprint-title">Compose & library polish</div>
+        <div class="sprint-theme">"Compose should feel as good as Edit"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Search/filter in composer library</td><td class="mono">ComposerTab.jsx, LibraryPanel.jsx</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Improve block labeling in composer</td><td class="mono">ComposerTab.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Enrich empty states with templates</td><td class="mono">All workspace components</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Add Compose layout preset (library-prominent)</td><td class="mono">useUiState.js, MainWorkspace.jsx</td><td><span class="imp imp-m">Med</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sprint 6 -->
+    <div class="sprint-card">
+      <div class="sprint-header">
+        <div class="sprint-meta">
+          <span class="sprint-num">Sprint 6</span>
+          <span class="sprint-weeks">Weeks 11–12</span>
+        </div>
+        <div class="sprint-title">Validation & ship</div>
+        <div class="sprint-theme">"Prove it works"</div>
+      </div>
+      <div class="sprint-body">
+        <table>
+          <thead><tr><th>Task</th><th>File(s)</th><th>Impact</th></tr></thead>
+          <tbody>
+            <tr><td>Task-based test scenarios (enhance, compare, compose)</td><td class="mono">New test doc</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Full a11y audit (contrast, keyboard, screen reader)</td><td class="mono">All components</td><td><span class="imp imp-h">High</span></td></tr>
+            <tr><td>Record demo video for landing page</td><td class="mono">External tool</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Commit + push all docs/marketing work</td><td class="mono">docs/</td><td><span class="imp imp-m">Med</span></td></tr>
+            <tr><td>Update AGENTS.md, close issues #002/#003</td><td class="mono">AGENTS.md</td><td><span class="imp imp-l">Low</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Parallel track -->
+  <div class="section-label">Parallel track — landing & docs (ongoing)</div>
+  <div class="parallel">
+    <div class="parallel-header">
+      <span class="parallel-title">Landing page & docs</span>
+      <span class="parallel-sub">80% complete · 3 blockers remaining</span>
+    </div>
+    <table>
+      <thead><tr><th>Task</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>PL-1 through PL-24 landing UX items</td><td class="mono" style="color:var(--green)">18 done · 6 pre-existing · 3 placeholders</td></tr>
+        <tr><td>Docs audit (favicon, meta, sitemap, dead links)</td><td class="mono" style="color:var(--green)">All 6 complete</td></tr>
+        <tr><td>Nav tree standardization across docs</td><td class="mono" style="color:var(--amber)">Proposed — not implemented</td></tr>
+        <tr><td>Demo video recording</td><td class="mono" style="color:var(--red)">Blocked — content creation</td></tr>
+        <tr><td>Real testimonials</td><td class="mono" style="color:var(--red)">Blocked — user outreach</td></tr>
+        <tr><td>Commit + push all landing/docs changes</td><td class="mono" style="color:var(--amber)">Ready to push</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Risk register -->
+  <div class="section-label">Risk register</div>
+  <table class="risk-table">
+    <thead><tr><th>Risk</th><th>Level</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>App.jsx is 77KB monolith — changes risk regressions</td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Extract components before modifying. Run Vitest 52-test suite after each sprint.</td>
+      </tr>
+      <tr>
+        <td>37 uncommitted changes already in-flight</td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Commit current work first — before Sprint 1 begins.</td>
+      </tr>
+      <tr>
+        <td>No feature flags — extension updates push to all users</td>
+        <td><span class="risk-level rl-m">Med</span></td>
+        <td>Ship sprints as atomic commits. Roll back via extension versioning.</td>
+      </tr>
+      <tr>
+        <td>Touch target increase may break compact density layout</td>
+        <td><span class="risk-level rl-m">Med</span></td>
+        <td>Test all 3 density modes after Sprint 1 size changes.</td>
+      </tr>
+      <tr>
+        <td>Experiments unification is the highest-risk refactor</td>
+        <td><span class="risk-level rl-h">High</span></td>
+        <td>Design unified timeline on paper first. Prototype in isolation before merging.</td>
+      </tr>
+    </tbody>
+  </table>
+
+</div>
+</body>
+</html>

@@ -20,14 +20,46 @@ export const storageKeys = Object.freeze({
   packsV1: 'pl2-packs-v1',
 });
 
-export function loadJson(key, fallback = null) {
+export function getCorruptBackupKey(key, timestamp = new Date().toISOString()) {
+  return `${key}:corrupt-backup:${timestamp}`;
+}
+
+function backupCorruptJson(key, rawValue) {
+  const backupKey = getCorruptBackupKey(key);
   try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
+    localStorage.setItem(backupKey, rawValue);
+    return backupKey;
+  } catch (e) {
+    logWarn(`backupCorruptJson "${key}"`, e);
+    return null;
+  }
+}
+
+export function loadJsonWithRecovery(key, fallback = null, options = {}) {
+  let value;
+  try {
+    value = localStorage.getItem(key);
   } catch (e) {
     logWarn(`loadJson "${key}"`, e);
-    return fallback;
+    return { value: fallback, corrupted: false, backupKey: null };
   }
+
+  if (!value) return { value: fallback, corrupted: false, backupKey: null };
+
+  try {
+    return { value: JSON.parse(value), corrupted: false, backupKey: null };
+  } catch (e) {
+    logWarn(`loadJson "${key}"`, e);
+    return {
+      value: fallback,
+      corrupted: true,
+      backupKey: options.backupCorrupt ? backupCorruptJson(key, value) : null,
+    };
+  }
+}
+
+export function loadJson(key, fallback = null) {
+  return loadJsonWithRecovery(key, fallback).value;
 }
 
 export function saveJson(key, value) {
@@ -49,7 +81,13 @@ export function getAnticipation() {
 }
 
 export function setAnticipation(data) {
-  localStorage.setItem('pl2-anticipation', JSON.stringify(data));
+  try {
+    localStorage.setItem('pl2-anticipation', JSON.stringify(data));
+    return true;
+  } catch (e) {
+    logWarn('setAnticipation "pl2-anticipation"', e);
+    return false;
+  }
 }
 
 export function removeKey(key) {

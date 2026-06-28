@@ -7,31 +7,41 @@ export const BILLING_FEATURES = Object.freeze({
   abTesting: {
     id: 'abTesting',
     label: 'A/B testing',
-    description: 'Run prompt variants head-to-head inside Evaluate.',
+    description: 'Candidate paid value. Run prompt variants head-to-head inside Evaluate.',
   },
   diffView: {
     id: 'diffView',
     label: 'Diff viewer',
-    description: 'Compare generated outputs side-by-side.',
+    description: 'Candidate paid value. Compare generated outputs side by side.',
   },
   batchRuns: {
     id: 'batchRuns',
     label: 'Batch runs',
-    description: 'Run saved test cases in one pass.',
+    description: 'Candidate paid value. Run saved test cases in one pass.',
   },
   collections: {
     id: 'collections',
     label: 'Collections',
-    description: 'Organize prompts into reusable groups.',
+    description: 'Candidate paid value. Organize prompts into reusable groups.',
   },
   export: {
     id: 'export',
     label: 'Library export',
-    description: 'Export your library as JSON.',
+    description: 'Candidate paid value. Export your library as JSON.',
   },
 });
 
 const PRO_FEATURES = new Set(Object.keys(BILLING_FEATURES));
+
+function readBooleanEnv(name, fallback = false) {
+  const value = typeof import.meta !== 'undefined' ? import.meta.env?.[name] : undefined;
+  if (typeof value !== 'string' || !value.trim()) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
+}
+
+export function isPublicProEnabled() {
+  return readBooleanEnv('VITE_PROMPTLAB_PRO_CTA_ENABLED', false);
+}
 
 export function createDefaultBillingState() {
   return {
@@ -73,8 +83,9 @@ export function normalizeBillingState(value = {}) {
   };
 }
 
-export function canAccessFeature(plan, featureId) {
+export function canAccessFeature(plan, featureId, { proCtaEnabled = isPublicProEnabled() } = {}) {
   if (!PRO_FEATURES.has(featureId)) return true;
+  if (!proCtaEnabled) return true;
   return plan === PLAN_PRO;
 }
 
@@ -104,9 +115,13 @@ export function getBillingApiBase() {
   return `${configuredBase}/api`;
 }
 
-export function describeBillingStatus(state) {
+export function describeBillingStatus(state, { proCtaEnabled = isPublicProEnabled() } = {}) {
   const hasClerkIdentity = typeof state?.clerkUserId === 'string' && state.clerkUserId.trim();
   const hasCustomerEmail = typeof state?.customerEmail === 'string' && state.customerEmail.trim();
+
+  if (!proCtaEnabled && state.plan !== PLAN_PRO) {
+    return 'Controlled beta access active. Pro stays hidden until billing and paid value are verified.';
+  }
 
   switch (state.status) {
     case 'active':

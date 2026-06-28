@@ -25,6 +25,7 @@ describe('bugReporter', () => {
       title: `  ${'x'.repeat(200)}  `,
       severity: 'Nope',
       steps: '  reproduce  ',
+      evidence: '  screenshot: https://example.test/image.png  ',
       context: {
         browser: '  Chrome  ',
         blank: '',
@@ -37,6 +38,7 @@ describe('bugReporter', () => {
     expect(payload.title.length).toBe(160);
     expect(payload.severity).toBe('Medium');
     expect(payload.steps).toBe('reproduce');
+    expect(payload.evidence).toBe('screenshot: https://example.test/image.png');
     expect(payload.context).toEqual({ browser: 'Chrome' });
     expect(payload.promptContext.raw).toBe('hello');
   });

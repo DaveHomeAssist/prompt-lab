@@ -5,6 +5,7 @@ import {
   describeBillingStatus,
   getBillingApiBase,
   getPlanLabel,
+  isPublicProEnabled,
   normalizeBillingState,
 } from '../lib/billing.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
@@ -64,6 +65,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   const [busyAction, setBusyAction] = useState('');
   const autoSyncKeyRef = useRef('');
   const apiBase = getBillingApiBase();
+  const proCtaEnabled = isPublicProEnabled();
 
   // Sync Clerk identity into billing state when available
   useEffect(() => {
@@ -284,16 +286,17 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   const billing = useMemo(() => ({
     ...state,
     busyAction,
+    proCtaEnabled,
     isPro: state.plan === 'pro',
     planLabel: getPlanLabel(state),
-    statusCopy: describeBillingStatus(state),
-    hasFeature: (featureId) => canAccessFeature(state.plan, featureId),
+    statusCopy: describeBillingStatus(state, { proCtaEnabled }),
+    hasFeature: (featureId) => canAccessFeature(state.plan, featureId, { proCtaEnabled }),
     refreshLicense,
     activateLicense,
     deactivateLicense,
     startCheckout,
     openManagePurchases,
-  }), [activateLicense, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, state]);
+  }), [activateLicense, busyAction, deactivateLicense, openManagePurchases, proCtaEnabled, refreshLicense, startCheckout, state]);
 
   return billing;
 }

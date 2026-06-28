@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeBillingStatus, normalizeBillingState } from '../lib/billing.js';
+import { canAccessFeature, describeBillingStatus, normalizeBillingState } from '../lib/billing.js';
 
 describe('billing copy', () => {
   it('uses signed in account copy when Clerk identity is present', () => {
@@ -31,5 +31,13 @@ describe('billing copy', () => {
     });
 
     expect(describeBillingStatus(state)).toBe('The payment processor reports this subscription as unpaid.');
+  });
+
+  it('keeps beta features open while public Pro CTAs are hidden', () => {
+    const state = normalizeBillingState({ plan: 'free', status: 'free' });
+
+    expect(describeBillingStatus(state, { proCtaEnabled: false })).toBe('Controlled beta access active. Pro stays hidden until billing and paid value are verified.');
+    expect(canAccessFeature('free', 'abTesting', { proCtaEnabled: false })).toBe(true);
+    expect(canAccessFeature('free', 'abTesting', { proCtaEnabled: true })).toBe(false);
   });
 });

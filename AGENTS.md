@@ -29,7 +29,7 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 - Local branch contains commits after the deployed source. Do not assume local docs, desktop, or tracker changes are deployed
 - Hosted billing, hosted provider proxy, hosted shared key, and telemetry persistence are intentionally disabled
 - Public API routes can still create Vercel invocation and log cost if bots or users hit them
-- Do not push this branch without deciding the Vercel preview build cost strategy
+- Vercel preview build cost strategy is manual preview deploys only; see `prompt-lab-source/docs/developer-stability-contracts.md` and D-011 in `prompt-lab-source/docs/DECISIONS.md`. Revisit before changing preview automation or hosted compute surfaces
 - Home OS has separate dirty files under `/Users/daverobertson/Code/active/home-os`; do not mix those changes into Prompt Lab
 
 ## Documentation Maintenance

@@ -17,13 +17,13 @@ const sharedVersions = {
     'diff-match-patch': '1.0.5',
     react: '18.3.1',
     'react-dom': '18.3.1',
-    'react-router-dom': '7.13.2',
+    'react-router-dom': '7.18.0',
   },
   devDependencies: {
     autoprefixer: '10.4.20',
-    postcss: '8.4.49',
+    postcss: '8.5.15',
     tailwindcss: '3.4.17',
-    vite: '7.3.2',
+    vite: '7.3.6',
   },
 };
 

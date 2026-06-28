@@ -1,0 +1,447 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "system-by-dave.prompt-engineering-meta",
+  "title": "System by Dave Prompt Engineering Meta Toolkit",
+  "description": "Prompt audit, diagnosis, decomposition, and hardening prompts from System by Dave.",
+  "author": "System by Dave",
+  "sourceUrl": "https://systembydave.com/prompts/",
+  "createdAt": "2026-06-16",
+  "updatedAt": "2026-06-16",
+  "presets": [
+    {
+      "id": "sbd-prompt-engineering-meta-prompt-intent-extractor",
+      "title": "Prompt Intent Extractor",
+      "prompt": "Analyze the following prompt and identify its true intent.\n\nPrompt:\n{{paste_prompt}}\n\nReturn:\n- Primary task\n- Secondary implied tasks\n- Requested artifact\n- Likely output medium\n- Tone signals\n- Formatting signals\n- Ambiguities\n- Missing constraints\n- What the model is most likely to infer on its own",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "intent",
+        "analysis",
+        "diagnostics",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "170",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-seed-prompt-diagnostic",
+      "title": "Seed Prompt Diagnostic",
+      "prompt": "You are a prompt diagnostics analyst.\n\nEvaluate this prompt as a seed prompt:\n{{paste_prompt}}\n\nScore each from 1 to 5 and explain briefly:\n- Execution Strength\n- Artifact Specificity\n- Medium Clarity\n- Structure Control\n- Audience Control\n- Tone Control\n- Constraint Coverage\n- Ambiguity Load\n- Enhancement Yield\n- Assumption Risk\n\nThen provide:\n- Overall diagnosis in one sentence\n- Main strengths\n- Main weaknesses\n- What a prompt enhancement layer should add carefully",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "scoring",
+        "rubric",
+        "evaluation",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "171",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-prompt-decomposition",
+      "title": "Prompt Decomposition",
+      "prompt": "Break down the following prompt into its functional parts.\n\nPrompt:\n{{paste_prompt}}\n\nIdentify:\n- Role or persona instructions\n- Core task directive\n- Output format instructions\n- Constraints\n- Tone or style guidance\n- Audience signals\n- Hidden assumptions\n- Risky ambiguities\n\nThen rewrite the breakdown as a compact table.",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "breakdown",
+        "structure",
+        "analysis",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "172",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-enhancement-risk-review",
+      "title": "Enhancement Risk Review",
+      "prompt": "Review this prompt and determine how risky it would be for an enhancement system to expand it.\n\nPrompt:\n{{paste_prompt}}\n\nAssess:\n- Which details are explicit\n- Which details would need to be inferred\n- Which inferences are safe\n- Which inferences could distort intent\n- Whether the prompt should be expanded minimally, moderately, or aggressively\n\nThen give:\n- Risk level: low, medium, or high\n- Recommended enhancement strategy",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "risk",
+        "enhancement",
+        "safety",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "173",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-original-vs-enhanced-comparison",
+      "title": "Original vs Enhanced Comparison",
+      "prompt": "Compare these two prompts.\n\nOriginal prompt:\n{{paste_original}}\n\nEnhanced prompt:\n{{paste_enhanced}}\n\nEvaluate:\n- What the enhanced version clarified\n- What it preserved from the original\n- What assumptions it introduced\n- Whether it oversteered\n- Whether the enhancement improved execution reliability\n\nReturn:\n- A side by side score table\n- A short verdict\n- A safer improved version if needed",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "comparison",
+        "a-b-test",
+        "evaluation",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "174",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_original",
+          "label": "Paste Original",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste original"
+        },
+        {
+          "key": "paste_enhanced",
+          "label": "Paste Enhanced",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste enhanced"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-medium-detection",
+      "title": "Medium Detection",
+      "prompt": "Determine what output medium this prompt most likely intends.\n\nPrompt:\n{{paste_prompt}}\n\nChoose the best fit and explain why:\n- Notion page\n- Markdown article\n- HTML page\n- Email\n- Report\n- Slide deck\n- Internal note\n- Social post\n- Other\n\nThen state what wording in the prompt created the signal, and what wording is missing.",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "medium",
+        "output-format",
+        "classification",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "175",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-ambiguity-extraction",
+      "title": "Ambiguity Extraction",
+      "prompt": "Interrogate this prompt for ambiguity.\n\nPrompt:\n{{paste_prompt}}\n\nList every phrase that is vague, subjective, or under-specified.\nFor each one, explain:\n- Why it is ambiguous\n- What a model might assume it means\n- What risk that creates\n- How to rewrite it more operationally",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "ambiguity",
+        "clarity",
+        "rewrite",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "176",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-constraint-recovery",
+      "title": "Constraint Recovery",
+      "prompt": "This prompt is under-specified. Recover the missing constraints without changing the likely intent.\n\nPrompt:\n{{paste_prompt}}\n\nInfer the most important missing dimensions:\n- audience\n- tone\n- length\n- medium\n- structure\n- formatting\n- exclusions\n- output rules\n\nFor each:\n- state whether it is explicit, implied, or missing\n- suggest a cautious default\n\nThen produce a minimally enhanced rewrite.",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "constraints",
+        "defaults",
+        "enhancement",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "177",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-prompt-hardening",
+      "title": "Prompt Hardening",
+      "prompt": "Take this prompt and harden it for more reliable execution while preserving its original meaning.\n\nPrompt:\n{{paste_prompt}}\n\nRules:\n- preserve the user's intent\n- do not over-template\n- add only the minimum needed clarity\n- make execution more deterministic\n\nReturn:\n- revised prompt\n- list of changes made\n- explanation of why each change improves reliability",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "hardening",
+        "reliability",
+        "deterministic",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "178",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-promptlab-evaluator",
+      "title": "PromptLab Evaluator",
+      "prompt": "You are evaluating a prompt enhancement pipeline.\n\nSeed prompt:\n{{paste_seed}}\n\nEnhanced prompt:\n{{paste_enhanced}}\n\nScore 1 to 5:\n- Intent Preservation\n- Clarity Gain\n- Execution Reliability\n- Assumption Load\n- Medium Accuracy\n- Structural Helpfulness\n- Oversteer Risk\n\nThen answer:\n- What did the enhancer do well?\n- Where did it add too much?\n- What would a better enhancement look like?\n- Final verdict: good enhancement, acceptable but risky, or oversteered",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "evaluation",
+        "pipeline",
+        "quality",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "179",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_seed",
+          "label": "Paste Seed",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste seed"
+        },
+        {
+          "key": "paste_enhanced",
+          "label": "Paste Enhanced",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste enhanced"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-fast-one-shot-prompt-audit",
+      "title": "Fast One-Shot Prompt Audit",
+      "prompt": "Audit this prompt quickly.\n\nPrompt:\n{{paste_prompt}}\n\nReturn only:\n- Prompt type\n- Primary intent\n- Biggest ambiguity\n- Biggest strength\n- Biggest risk\n- Best minimal rewrite",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "audit",
+        "quick",
+        "diagnosis",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "180",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    },
+    {
+      "id": "sbd-prompt-engineering-meta-codex-claude-code-feedback",
+      "title": "Codex / Claude Code Feedback",
+      "prompt": "You are reviewing prompt quality for a development workflow.\n\nPrompt under review:\n{{paste_prompt}}\n\nTask:\nProvide feedback suitable for Claude Code or Codex.\n\nInclude:\n- one sentence diagnosis\n- rubric scores from 1 to 5\n- top three issues\n- top three strengths\n- recommended rewrite\n- implementation advice for a prompt enhancement system\n\nKeep the output compact, technical, and actionable.",
+      "summary": "Format: Single Prompt. Source pack: 🧪 Prompt Engineering Meta-Toolkit.",
+      "category": "Prompt Engineering",
+      "tags": [
+        "system-by-dave",
+        "prompt-engineering",
+        "code",
+        "feedback",
+        "technical",
+        "meta",
+        "single-prompt",
+        "system-by-dave-prompt-engineering-meta-toolkit"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "181",
+        "pack": "🧪 Prompt Engineering Meta-Toolkit",
+        "area": "meta"
+      },
+      "inputs": [
+        {
+          "key": "paste_prompt",
+          "label": "Paste Prompt",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter paste prompt"
+        }
+      ]
+    }
+  ]
+}

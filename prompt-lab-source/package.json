@@ -13,6 +13,7 @@
     "build": "npm run check:node && npm run build --prefix prompt-lab-extension",
     "build:smoke": "npm run check:node && npm run toolchain:check && node scripts/build-smoke.mjs",
     "test": "npm run check:node && npm test --prefix prompt-lab-extension",
+    "test:stability": "npm run check:node && npm run test:stability --prefix prompt-lab-extension",
     "docs:lint": "npm run check:node && markdownlint-cli2",
     "docs:check": "npm run docs:lint",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
@@ -33,5 +34,9 @@
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.22.1"
+  },
+  "overrides": {
+    "js-yaml": "4.3.0",
+    "markdown-it": "14.2.0"
   }
 }

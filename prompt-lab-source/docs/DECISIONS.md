@@ -179,6 +179,39 @@ Consequences: Billing integration unblocked. Implementation path: (1) add `plan`
 
 ---
 
+### [D-011] PLB Vercel preview build cost strategy
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-06-28
+Date resolved: 2026-06-28
+
+Context: Prompt Lab has public Vercel API routes and prior cost-control
+requirements. Routine branch pushes must not accidentally become compute-spend
+events or imply that hosted billing, provider proxy, telemetry persistence, or
+webhooks are active.
+
+Options:
+
+- Allow automatic Git preview builds on every branch push.
+- Disable all previews and preview only by local static build artifacts.
+- Use manual preview deploys only when a preview URL is needed.
+
+Decision: Manual preview deploys only. Run the local stability gate first, review
+`vercel.json` and public `api/` route cost surfaces, then use
+`npm run deploy:preview` only when a preview URL is necessary. Do not treat a
+branch push as a routine preview trigger.
+
+Rationale: Prompt Lab can be validated locally for most developer-stability work.
+Manual previews preserve the ability to verify hosted behavior while keeping
+build minutes and function invocation risk intentional.
+
+Consequences: The branch can be pushed only after confirming this policy still
+applies. Production deployment still requires the separate Vercel cost guard
+workflow and live verification before any fixed, safe, or contained claim.
+
+---
+
 ## Resolved decisions
 
 ---

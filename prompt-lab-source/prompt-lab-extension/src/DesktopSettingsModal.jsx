@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { DEFAULTS, normalizeAnthropicModel } from './lib/providerRegistry.js';
 import {
@@ -30,13 +30,30 @@ const DEFAULT_SETTINGS = {
   ollamaModel: DEFAULTS.ollamaModel,
 };
 
-export default function DesktopSettingsModal({ show, onClose, m, notify }) {
+function hasValue(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function getConfiguredProviderCount(settings, isHostedWeb) {
+  if (isHostedWeb) return hasValue(settings.apiKey) || HOSTED_SHARED_KEY_ENABLED ? 1 : 0;
+  return [
+    hasValue(settings.apiKey),
+    hasValue(settings.openaiApiKey),
+    hasValue(settings.geminiApiKey),
+    hasValue(settings.openrouterApiKey),
+    hasValue(settings.ollamaBaseUrl) && hasValue(settings.ollamaModel),
+  ].filter(Boolean).length;
+}
+
+export default function DesktopSettingsModal({ show, onClose, m, notify, telemetry }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [ollamaModels, setOllamaModels] = useState([]);
   const [ollama, setOllama] = useState({ message: '', tone: 'neutral' });
   const [connection, setConnection] = useState({ message: '', tone: 'neutral' });
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const trackedProviderSuccessRef = useRef('');
+  const trackedSecondProviderRef = useRef(false);
 
   const inputClass = `w-full px-3 py-2 rounded-lg border text-sm ${m.input} ${m.border} ${m.text}`;
   const buttonClass = `px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
@@ -111,6 +128,12 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     try {
       await saveProviderSettings(settings);
       setConnection({ message: 'Settings saved.', tone: 'success' });
+      void telemetry?.track?.('provider.settings_saved', {
+        provider: settings.provider,
+        surface: isHostedWeb ? 'web' : 'desktop',
+        configuredProviderCount: getConfiguredProviderCount(settings, isHostedWeb),
+        credentialMode: isHostedWeb && HOSTED_SHARED_KEY_ENABLED && !settings.apiKey ? 'shared-key-trial' : 'byok',
+      });
       notify?.('Provider settings saved');
     } catch (error) {
       setConnection({ message: error?.message || 'Failed to save settings.', tone: 'error' });
@@ -146,6 +169,24 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
         messages: [{ role: 'user', content: 'Say "ok"' }],
       }, settings);
       setConnection({ message: 'Connected!', tone: 'success' });
+      const configuredProviderCount = getConfiguredProviderCount(settings, isHostedWeb);
+      const successKey = `${isHostedWeb ? 'web' : 'desktop'}:${settings.provider}:${currentModel}:${configuredProviderCount}`;
+      if (trackedProviderSuccessRef.current !== successKey) {
+        trackedProviderSuccessRef.current = successKey;
+        void telemetry?.track?.('activation.provider_setup_succeeded', {
+          provider: settings.provider,
+          surface: isHostedWeb ? 'web' : 'desktop',
+          configuredProviderCount,
+          credentialMode: isHostedWeb && HOSTED_SHARED_KEY_ENABLED && !settings.apiKey ? 'shared-key-trial' : 'byok',
+        });
+      }
+      if (!isHostedWeb && configuredProviderCount >= 2 && !trackedSecondProviderRef.current) {
+        trackedSecondProviderRef.current = true;
+        void telemetry?.track?.('activation.second_provider_configured', {
+          configuredProviderCount,
+          activeProvider: settings.provider,
+        });
+      }
     } catch (error) {
       setConnection({ message: error?.message || 'Connection failed.', tone: 'error' });
     } finally {
@@ -193,7 +234,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                 <p className={`text-sm font-semibold ${m.text}`}>Hosted access</p>
                 <p className={`text-xs ${m.textMuted}`}>
                   {HOSTED_SHARED_KEY_ENABLED
-                    ? 'Hosted Prompt Lab is locked to Anthropic. The shared hosted key is used automatically when you leave the personal key field blank.'
+                    ? 'Hosted Prompt Lab is locked to Anthropic. The shared hosted key is used automatically for a capped trial when you leave the personal key field blank.'
                     : 'Hosted Prompt Lab is locked to Anthropic. Model calls use your personal key directly from this browser; the hosted server proxy is off.'}
                 </p>
               </div>
@@ -252,7 +293,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
               </label>
               {isHostedWeb && (
                 <p className={`text-xs ${m.textMuted}`}>
-                  Hosted mode keeps Anthropic fixed for now so shared usage stays predictable.
+                  Hosted mode keeps Anthropic fixed. Shared-key trial calls are capped, then BYOK keeps usage predictable.
                 </p>
               )}
             </>

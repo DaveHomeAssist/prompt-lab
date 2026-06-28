@@ -8,7 +8,7 @@ import {
   suggestTitleFromText,
   updatePromptEntry,
 } from '../lib/promptSchema.js';
-import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
+import { loadJson, loadJsonWithRecovery, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { ensureString } from '../lib/utils.js';
 import {
   getLoadedPacks,
@@ -44,6 +44,32 @@ function deriveCollectionsFromLibrary(entries) {
   )];
 }
 
+function pluralize(count, singular, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function getImportPayload(parsed) {
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed?.library)) return parsed.library;
+  return null;
+}
+
+function getImportSummary({ importedCount, skippedCount, rejectedCount }) {
+  if (importedCount === 0) {
+    const details = [];
+    if (skippedCount > 0) details.push(`skipped ${pluralize(skippedCount, 'duplicate')}`);
+    if (rejectedCount > 0) details.push(`rejected ${pluralize(rejectedCount, 'invalid record')}`);
+    return details.length
+      ? `No new prompts imported. ${details.join(', ')}.`
+      : 'No new prompts imported.';
+  }
+
+  const details = [`Imported ${pluralize(importedCount, 'prompt')}`];
+  if (skippedCount > 0) details.push(`skipped ${pluralize(skippedCount, 'duplicate')}`);
+  if (rejectedCount > 0) details.push(`rejected ${pluralize(rejectedCount, 'invalid record')}`);
+  return `${details.join(', ')}.`;
+}
+
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
   const [libReady, setLibReady] = useState(false);
@@ -72,9 +98,34 @@ export default function usePromptLibrary(notify) {
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
   const collectionsRef = useRef(collections);
+  const corruptionNoticeShownRef = useRef(false);
 
   useEffect(() => { libraryRef.current = library; }, [library]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
+
+  const commitLibraryState = useCallback(({ nextLibrary, nextCollections, persist = false } = {}) => {
+    const result = { libraryPersisted: true, collectionsPersisted: true };
+
+    if (Array.isArray(nextLibrary)) {
+      libraryRef.current = nextLibrary;
+      setLibrary(nextLibrary);
+      if (persist) result.libraryPersisted = saveJson(storageKeys.library, nextLibrary);
+    }
+
+    if (Array.isArray(nextCollections)) {
+      collectionsRef.current = nextCollections;
+      setCollections(nextCollections);
+      if (persist) result.collectionsPersisted = saveJson(storageKeys.collections, nextCollections);
+    }
+
+    return result;
+  }, []);
+
+  const notifyPersistenceFailure = useCallback((result, message) => {
+    if (!result?.libraryPersisted || !result?.collectionsPersisted) {
+      notify(message);
+    }
+  }, [notify]);
 
   const applyLegacyPayload = useCallback((payload) => {
     if (!payload || !Array.isArray(payload.library)) {
@@ -87,29 +138,35 @@ export default function usePromptLibrary(notify) {
       ? mergeCollections(previousCollections, payload.collections)
       : previousCollections;
 
-    libraryRef.current = libraryResult.library;
-    collectionsRef.current = nextCollections;
-    setLibrary(libraryResult.library);
-    if (nextCollections !== previousCollections) {
-      setCollections(nextCollections);
-    }
+    const commitResult = commitLibraryState({
+      nextLibrary: libraryResult.library,
+      nextCollections: nextCollections !== previousCollections ? nextCollections : undefined,
+      persist: true,
+    });
 
     return {
       importedCount: libraryResult.importedCount,
       reachable: true,
       hasLegacyLibrary: payload.library.length > 0,
+      persisted: commitResult.libraryPersisted && commitResult.collectionsPersisted,
     };
-  }, []);
+  }, [commitLibraryState]);
 
   useEffect(() => {
-    const storedLibrary = loadJson(storageKeys.library, null);
+    const storedLibraryResult = loadJsonWithRecovery(storageKeys.library, null, { backupCorrupt: true });
+    const storedLibrary = storedLibraryResult.value;
     const hasStoredLibrary = Array.isArray(storedLibrary);
     const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
-    const storedCollections = loadJson(storageKeys.collections, null);
+    const storedCollectionsResult = loadJsonWithRecovery(storageKeys.collections, null, { backupCorrupt: true });
+    const storedCollections = storedCollectionsResult.value;
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
       ? mergeCollections(storedCollections, derivedCollections)
       : (!hasStoredLibrary ? ['Handoff Templates'] : derivedCollections);
+    const recoveredKeys = [
+      storedLibraryResult.backupKey ? 'library' : null,
+      storedCollectionsResult.backupKey ? 'collections' : null,
+    ].filter(Boolean);
 
     libraryRef.current = initialLibrary;
     collectionsRef.current = initialCollections;
@@ -117,6 +174,11 @@ export default function usePromptLibrary(notify) {
     setCollections(initialCollections);
     setLoadedStarterPackIds(getLoadedPacks());
     setLibReady(true);
+
+    if (recoveredKeys.length > 0 && !corruptionNoticeShownRef.current) {
+      corruptionNoticeShownRef.current = true;
+      notify(`Recovered from unreadable local ${recoveredKeys.join(' and ')} data. A backup was saved before defaults were loaded.`);
+    }
 
     const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
     const shouldAttemptLegacyRecovery = shouldAttemptLegacyWebMigration(window.location.origin, window.location.protocol)
@@ -133,6 +195,9 @@ export default function usePromptLibrary(notify) {
         const result = applyLegacyPayload(payload);
         if (!result.reachable) return;
         saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+        if (!result.persisted) {
+          notify('Recovered legacy prompts in memory, but local storage failed. They may not persist after refresh.');
+        }
         if (result.importedCount > 0) {
           notify(`Recovered ${result.importedCount} prompts from your legacy web library.`);
         }
@@ -162,7 +227,7 @@ export default function usePromptLibrary(notify) {
     return () => window.clearTimeout(timeoutId);
   }, [collections, libReady]);
 
-  const updateLibraryEntry = (entryId, updater) => {
+  const updateLibraryEntry = (entryId, updater, options = {}) => {
     let changed = false;
     const nextLibrary = libraryRef.current.map((entry) => {
       if (entry.id !== entryId) return entry;
@@ -172,8 +237,13 @@ export default function usePromptLibrary(notify) {
       return next;
     });
     if (changed) {
-      libraryRef.current = nextLibrary;
-      setLibrary(nextLibrary);
+      const commitResult = commitLibraryState({
+        nextLibrary,
+        persist: options.persist === true,
+      });
+      if (options.persistenceFailureMessage) {
+        notifyPersistenceFailure(commitResult, options.persistenceFailureMessage);
+      }
     }
     return changed;
   };
@@ -192,16 +262,21 @@ export default function usePromptLibrary(notify) {
 
     if (editingId) {
       let savedTitle = cleanTitle;
-      const changed = updateLibraryEntry(editingId, entry => {
-        const next = updatePromptEntry(entry, payload, { source: 'manual_save', changeNote: ensureString(changeNote) });
-        savedTitle = next?.title || savedTitle;
-        return next;
-      });
-      if (changed) {
-        const persisted = saveJson(storageKeys.library, libraryRef.current);
-        if (!persisted) {
-          notify('Prompt updated in memory, but local storage failed. It may not persist after refresh.');
-        }
+      const changed = updateLibraryEntry(
+        editingId,
+        entry => {
+          const next = updatePromptEntry(entry, payload, { source: 'manual_save', changeNote: ensureString(changeNote) });
+          savedTitle = next?.title || savedTitle;
+          return next;
+        },
+        {
+          persist: true,
+          persistenceFailureMessage: 'Prompt updated in memory, but local storage failed. It may not persist after refresh.',
+        },
+      );
+      if (!changed) {
+        notify('Prompt update failed: the saved prompt no longer exists.');
+        return null;
       }
       notify('Prompt updated!');
       return { id: editingId, title: savedTitle };
@@ -214,19 +289,17 @@ export default function usePromptLibrary(notify) {
       testCases: [],
     });
     const nextLibrary = [entry, ...libraryRef.current];
-    libraryRef.current = nextLibrary;
-    setLibrary(nextLibrary);
-    const persisted = saveJson(storageKeys.library, nextLibrary);
-    if (!persisted) {
-      notify('Saved in memory, but local storage failed. It may not persist after refresh.');
-    }
+    const commitResult = commitLibraryState({ nextLibrary, persist: true });
+    notifyPersistenceFailure(commitResult, 'Saved in memory, but local storage failed. It may not persist after refresh.');
     notify('Saved!');
     return { id: entry.id, title: entry.title };
   };
 
   const del = (id) => {
     if (!window.confirm('Delete this prompt?')) return;
-    setLibrary(prev => prev.filter(entry => entry.id !== id));
+    const nextLibrary = libraryRef.current.filter(entry => entry.id !== id);
+    const commitResult = commitLibraryState({ nextLibrary, persist: true });
+    notifyPersistenceFailure(commitResult, 'Deleted in memory, but local storage failed. It may reappear after refresh.');
     notify('Prompt deleted.');
   };
 
@@ -240,19 +313,14 @@ export default function usePromptLibrary(notify) {
     const nextLibrary = libraryRef.current.map((entry) =>
       entry.collection === collectionName ? { ...entry, collection: '' } : entry
     );
-    collectionsRef.current = nextCollections;
-    libraryRef.current = nextLibrary;
-    setCollections(nextCollections);
-    setLibrary(nextLibrary);
+    const commitResult = commitLibraryState({ nextLibrary, nextCollections, persist: true });
     setActiveCollection(prev => prev === collectionName ? null : prev);
+    notifyPersistenceFailure(commitResult, 'Removed collection in memory, but local storage failed. It may return after refresh.');
     notify(`Removed collection: ${collectionName}`);
-  }, [notify]);
+  }, [commitLibraryState, notify, notifyPersistenceFailure]);
 
   const clearLibrary = useCallback(() => {
-    libraryRef.current = [];
-    collectionsRef.current = [];
-    setLibrary([]);
-    setCollections([]);
+    const commitResult = commitLibraryState({ nextLibrary: [], nextCollections: [], persist: true });
     setActiveCollection(null);
     setActiveTag(null);
     setExpandedId(null);
@@ -264,23 +332,29 @@ export default function usePromptLibrary(notify) {
     setDraggingLibraryId(null);
     setDragOverLibraryId(null);
     setLoadedStarterPackIds([]);
-    saveJson('pl2-loaded-packs', []);
+    const loadedPacksPersisted = saveJson('pl2-loaded-packs', []);
+    notifyPersistenceFailure(
+      {
+        libraryPersisted: commitResult.libraryPersisted && loadedPacksPersisted,
+        collectionsPersisted: commitResult.collectionsPersisted,
+      },
+      'Cleared in memory, but local storage failed. Prompts or starter-pack state may return after refresh.',
+    );
     notify('Library cleared.');
-  }, [notify]);
+  }, [commitLibraryState, notify, notifyPersistenceFailure]);
 
   const moveLibraryEntry = (sourceId, targetId, position = 'before') => {
     if (!sourceId || !targetId || sourceId === targetId) return;
-    setLibrary(prev => {
-      const from = prev.findIndex(entry => entry.id === sourceId);
-      if (from < 0) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      let insertAt = next.findIndex(entry => entry.id === targetId);
-      if (insertAt < 0) return prev;
-      if (position === 'after') insertAt += 1;
-      next.splice(insertAt, 0, moved);
-      return next;
-    });
+    const from = libraryRef.current.findIndex(entry => entry.id === sourceId);
+    if (from < 0) return;
+    const next = [...libraryRef.current];
+    const [moved] = next.splice(from, 1);
+    let insertAt = next.findIndex(entry => entry.id === targetId);
+    if (insertAt < 0) return;
+    if (position === 'after') insertAt += 1;
+    next.splice(insertAt, 0, moved);
+    const commitResult = commitLibraryState({ nextLibrary: next, persist: true });
+    notifyPersistenceFailure(commitResult, 'Reordered in memory, but local storage failed. The order may reset after refresh.');
   };
 
   const moveLibraryEntryByOffset = (entryId, offset, filteredList) => {
@@ -294,16 +368,15 @@ export default function usePromptLibrary(notify) {
       moveLibraryEntry(entryId, targetId, offset > 0 ? 'after' : 'before');
       return;
     }
-    setLibrary(prev => {
-      const from = prev.findIndex(entry => entry.id === entryId);
-      if (from < 0) return prev;
-      const targetIndex = Math.max(0, Math.min(prev.length - 1, from + offset));
-      if (targetIndex === from) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(targetIndex, 0, moved);
-      return next;
-    });
+    const from = libraryRef.current.findIndex(entry => entry.id === entryId);
+    if (from < 0) return;
+    const targetIndex = Math.max(0, Math.min(libraryRef.current.length - 1, from + offset));
+    if (targetIndex === from) return;
+    const next = [...libraryRef.current];
+    const [moved] = next.splice(from, 1);
+    next.splice(targetIndex, 0, moved);
+    const commitResult = commitLibraryState({ nextLibrary: next, persist: true });
+    notifyPersistenceFailure(commitResult, 'Reordered in memory, but local storage failed. The order may reset after refresh.');
   };
 
   const renameEntry = (id, nextTitle, editingId, setSaveTitle) => {
@@ -397,10 +470,19 @@ export default function usePromptLibrary(notify) {
     reader.onload = (readEvent) => {
       try {
         const parsed = JSON.parse(readEvent.target.result);
-        const payload = Array.isArray(parsed) ? parsed : parsed?.library;
+        const payload = getImportPayload(parsed);
+        if (!payload) {
+          notify('Import failed: expected a Prompt Lab export or an array of prompts.');
+          return;
+        }
         const normalized = normalizeLibrary(payload);
+        const rejectedCount = payload.length - normalized.length;
         if (!normalized.length) {
-          notify('Import failed: no valid prompts found.');
+          notify(
+            rejectedCount > 0
+              ? `Import failed: ${pluralize(rejectedCount, 'record')} had no valid prompt content.`
+              : 'Import failed: no prompts found.',
+          );
           return;
         }
         const result = mergeLibraryEntries(libraryRef.current, normalized, { prepend: true });
@@ -408,21 +490,19 @@ export default function usePromptLibrary(notify) {
           collectionsRef.current,
           deriveCollectionsFromLibrary(result.library),
         );
-        libraryRef.current = result.library;
-        collectionsRef.current = nextCollections;
-        setLibrary(result.library);
-        setCollections(nextCollections);
-        if (result.importedCount === 0) {
-          notify(`No new prompts imported. Skipped ${result.skippedCount} duplicates.`);
-          return;
-        }
-        notify(
-          result.skippedCount > 0
-            ? `Imported ${result.importedCount} prompts, skipped ${result.skippedCount} duplicates.`
-            : `Imported ${result.importedCount} prompts!`
-        );
+        const commitResult = commitLibraryState({
+          nextLibrary: result.library,
+          nextCollections,
+          persist: true,
+        });
+        notifyPersistenceFailure(commitResult, 'Imported in memory, but local storage failed. Changes may not persist after refresh.');
+        notify(getImportSummary({
+          importedCount: result.importedCount,
+          skippedCount: result.skippedCount,
+          rejectedCount,
+        }));
       } catch {
-        notify('Import failed');
+        notify('Import failed: file is not valid JSON.');
       } finally {
         event.target.value = '';
       }
@@ -452,11 +532,13 @@ export default function usePromptLibrary(notify) {
       return null;
     }
 
-    libraryRef.current = result.library;
-    collectionsRef.current = result.collections;
-    setLibrary(result.library);
-    setCollections(result.collections);
+    const commitResult = commitLibraryState({
+      nextLibrary: result.library,
+      nextCollections: result.collections,
+      persist: true,
+    });
     setLoadedStarterPackIds(getLoadedPacks());
+    notifyPersistenceFailure(commitResult, 'Loaded starter pack in memory, but local storage failed. It may not persist after refresh.');
 
     if (result.count > 0) {
       notify(`Loaded ${result.count} prompts into ${result.collection}`);
@@ -464,7 +546,7 @@ export default function usePromptLibrary(notify) {
       notify(`No new prompts loaded from ${result.collection}.`);
     }
     return result;
-  }, [notify]);
+  }, [commitLibraryState, notify, notifyPersistenceFailure]);
 
   const recoverLegacyWebLibrary = useCallback(async ({ force = false } = {}) => {
     if (recoveringLegacyLibrary) return { importedCount: 0, reason: 'busy' };
@@ -485,6 +567,9 @@ export default function usePromptLibrary(notify) {
         return { importedCount: 0, reason: 'unreachable' };
       }
       saveJson(LEGACY_LIBRARY_CHECK_KEY, true);
+      if (!result.persisted) {
+        notify('Recovered legacy prompts in memory, but local storage failed. They may not persist after refresh.');
+      }
 
       if (!result.hasLegacyLibrary) {
         notify('No legacy web library found.');

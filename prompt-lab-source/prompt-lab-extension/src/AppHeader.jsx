@@ -46,7 +46,7 @@ export default function AppHeader({
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'bg-emerald-500/15 text-emerald-300' : `${m.btn} ${m.textAlt}`}`}>
             {billingLabel}
           </span>
-          {billingPlan !== 'pro' && (
+          {billingPlan !== 'pro' && openBilling && (
             <button
               type="button"
               onClick={() => openBilling()}

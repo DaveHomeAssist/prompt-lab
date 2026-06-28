@@ -25,7 +25,7 @@ const nowMs = () =>
 /**
  * Execution controller for enhance + evaluate flows.
  */
-export default function useExecutionFlow({ ui, lib, editor, persistence }) {
+export default function useExecutionFlow({ ui, lib, editor, persistence, telemetry }) {
   const { notify, setTab, tab } = ui;
   const {
     raw, enhanced, variants, notes, enhMode,
@@ -225,6 +225,15 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         notes: parsed.notes || '',
         goldenScore,
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
+
+      void telemetry?.track?.('activation.enhancement_completed', {
+        mode: enhMode,
+        provider: data?.provider || 'unknown',
+        model: data?.model || payload?.model || 'unknown',
+        latencyMs: Math.round(nowMs() - startedAt),
+        hasVariants: (parsed.variants || []).length > 0,
+        promptSaved: false,
+      });
 
       setShowSave(true);
       setOptimisticSaveVisible(false);

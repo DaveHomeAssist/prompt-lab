@@ -8,7 +8,7 @@ import { DEFAULT_ENHANCE_MODEL } from '../constants.js';
 
 const EMPTY_VARIANT = { status: 'idle', prompt: '' };
 
-export default function useABTest({ notify }) {
+export default function useABTest({ notify, telemetry }) {
   const [abA, setAbA] = useState(EMPTY_VARIANT);
   const [abB, setAbB] = useState(EMPTY_VARIANT);
   const [abWinner, setAbWinner] = useState(null);
@@ -18,6 +18,7 @@ export default function useABTest({ notify }) {
   const [showRuns, setShowRuns] = useState(false);
   const [activeSide, setActiveSide] = useState('A');
   const abReqRef = useRef({ a: 0, b: 0 });
+  const completedComparisonRef = useRef('');
 
   useEffect(() => {
     listExperiments().then(setHistory).catch((e) => logWarn('load experiments', e));
@@ -26,6 +27,24 @@ export default function useABTest({ notify }) {
   useEffect(() => {
     listEvalRuns({ mode: 'ab', limit: 12 }).then(setEvalRuns).catch((e) => logWarn('load eval runs', e));
   }, []);
+
+  useEffect(() => {
+    if (abA.status !== 'success' || abB.status !== 'success') return;
+    if (!abA.response || !abB.response) return;
+    const comparisonKey = [
+      hashText(abA.prompt || ''),
+      hashText(abB.prompt || ''),
+      hashText(abA.response || ''),
+      hashText(abB.response || ''),
+    ].join(':');
+    if (completedComparisonRef.current === comparisonKey) return;
+    completedComparisonRef.current = comparisonKey;
+    void telemetry?.track?.('activation.comparison_completed', {
+      source: 'ab-test',
+      sideCount: 2,
+      hasWinner: Boolean(abWinner),
+    });
+  }, [abA, abB, abWinner, telemetry]);
 
   const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
 
@@ -90,6 +109,7 @@ export default function useABTest({ notify }) {
 
   const resetAB = () => {
     abReqRef.current = { a: abReqRef.current.a + 1, b: abReqRef.current.b + 1 };
+    completedComparisonRef.current = '';
     setAbA(EMPTY_VARIANT);
     setAbB(EMPTY_VARIANT);
     setAbWinner(null);

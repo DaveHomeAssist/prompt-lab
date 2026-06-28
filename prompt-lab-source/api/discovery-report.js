@@ -8,8 +8,8 @@ const CORS_HEADERS = {
 
 const NOTION_API_URL = 'https://api.notion.com/v1/pages';
 const MAX_BLOCK_TEXT = 1800;
-const BUG_REPORT_DISABLED_MESSAGE = 'Bug reporting is temporarily unavailable.';
-const BUG_REPORT_RATE_LIMIT_MESSAGE = 'Too many bug report submissions. Please wait and try again.';
+const DISCOVERY_DISABLED_MESSAGE = 'Discovery feedback is temporarily unavailable.';
+const DISCOVERY_RATE_LIMIT_MESSAGE = 'Too many discovery feedback submissions. Please wait and try again.';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const rateLimitWindows = new Map();
 
@@ -100,14 +100,16 @@ function readStringEnv(...names) {
   return '';
 }
 
-function readBooleanEnv(name, fallback = false) {
-  const value = readStringEnv(name);
+function readBooleanEnv(names, fallback = false) {
+  const nameList = Array.isArray(names) ? names : [names];
+  const value = readStringEnv(...nameList);
   if (!value) return fallback;
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 }
 
-function readIntEnv(name, fallback) {
-  const value = Number.parseInt(readStringEnv(name), 10);
+function readIntEnv(names, fallback) {
+  const nameList = Array.isArray(names) ? names : [names];
+  const value = Number.parseInt(readStringEnv(...nameList), 10);
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
@@ -119,12 +121,12 @@ function getClientIp(request) {
   return realIp.trim() || 'unknown';
 }
 
-function isBugReportingEnabled() {
-  return readBooleanEnv('PROMPTLAB_BUG_REPORTS_ENABLED', false);
+function isDiscoveryFeedbackEnabled() {
+  return readBooleanEnv(['PROMPTLAB_DISCOVERY_FEEDBACK_ENABLED', 'PROMPTLAB_BUG_REPORTS_ENABLED'], false);
 }
 
-function checkBugReportRateLimit(request) {
-  const limit = readIntEnv('PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN', 3);
+function checkDiscoveryRateLimit(request) {
+  const limit = readIntEnv(['PROMPTLAB_DISCOVERY_FEEDBACK_LIMIT_PER_MIN', 'PROMPTLAB_BUG_REPORTS_LIMIT_PER_MIN'], 3);
   const now = Date.now();
   const clientIp = getClientIp(request);
   let entry = rateLimitWindows.get(clientIp);
@@ -143,7 +145,7 @@ function checkBugReportRateLimit(request) {
   return entry.count <= limit;
 }
 
-export async function bugReportHandler(request) {
+export async function discoveryReportHandler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
@@ -152,19 +154,19 @@ export async function bugReportHandler(request) {
     return json({ error: 'Method not allowed' }, 405);
   }
 
-  if (!isBugReportingEnabled()) {
-    return json({ error: BUG_REPORT_DISABLED_MESSAGE }, 503);
+  if (!isDiscoveryFeedbackEnabled()) {
+    return json({ error: DISCOVERY_DISABLED_MESSAGE }, 503);
   }
 
   const notionToken = process.env.NOTION_TOKEN;
-  const parentPageId = process.env.NOTION_BUG_REPORT_PARENT_PAGE_ID;
+  const parentPageId = readStringEnv('NOTION_DISCOVERY_PARENT_PAGE_ID', 'NOTION_BUG_REPORT_PARENT_PAGE_ID');
 
   if (!notionToken || !parentPageId) {
-    return json({ error: 'Bug reporting is not configured.' }, 503);
+    return json({ error: 'Discovery feedback is not configured.' }, 503);
   }
 
-  if (!checkBugReportRateLimit(request)) {
-    return json({ error: BUG_REPORT_RATE_LIMIT_MESSAGE }, 429);
+  if (!checkDiscoveryRateLimit(request)) {
+    return json({ error: DISCOVERY_RATE_LIMIT_MESSAGE }, 429);
   }
 
   try {
@@ -174,21 +176,19 @@ export async function bugReportHandler(request) {
       return json({ ok: true, ignored: true });
     }
 
-    const title = clampText(payload?.title, 160);
-    const severity = clampText(payload?.severity, 40) || 'Medium';
-    const surface = clampText(payload?.surface, 120);
     const product = clampText(payload?.product, 80) || 'Prompt Lab';
-    const steps = clampText(payload?.steps, 6000);
-    const expected = clampText(payload?.expected, 6000);
-    const actual = clampText(payload?.actual, 6000);
-    const evidence = clampText(payload?.evidence, 6000);
+    const surface = clampText(payload?.surface, 120);
     const contact = clampText(payload?.contact, 160);
+    const worthPayingFor = clampText(payload?.worthPayingFor, 6000);
+    const economicWorkflow = clampText(payload?.economicWorkflow, 6000);
+    const supportTemplatesEvals = clampText(payload?.supportTemplatesEvals, 6000);
+    const priceSensitivity = clampText(payload?.priceSensitivity, 6000);
+    const consultantPain = clampText(payload?.consultantPain, 6000);
     const url = clampText(payload?.url, 1000);
     const context = payload?.context && typeof payload.context === 'object' ? payload.context : {};
-    const promptContext = payload?.promptContext && typeof payload.promptContext === 'object' ? payload.promptContext : null;
 
-    if (!title || !steps) {
-      return json({ error: 'Title and steps are required.' }, 400);
+    if (!worthPayingFor) {
+      return json({ error: 'Paid value answer is required.' }, 400);
     }
 
     const createdAt = new Date().toISOString();
@@ -202,8 +202,8 @@ export async function bugReportHandler(request) {
     );
 
     const children = [
-      headingBlock('Bug Summary'),
-      ...paragraphBlocks(`${severity} severity report for ${product}${surface ? ` / ${surface}` : ''}.`),
+      headingBlock('Willingness-to-Pay Discovery'),
+      ...paragraphBlocks(`${product}${surface ? ` / ${surface}` : ''} paid value discovery.`),
       detailsParagraph('URL', url),
       detailsParagraph('Contact', contact),
       detailsParagraph('Browser', clampText(context.browser, 500)),
@@ -211,41 +211,31 @@ export async function bugReportHandler(request) {
       detailsParagraph('View', clampText(context.viewPath, 240)),
       detailsParagraph('App Version', clampText(context.appVersion, 64)),
       detailsParagraph('Submitted', createdAt),
-      headingBlock('Steps to Reproduce'),
-      ...paragraphBlocks(steps),
+      headingBlock('What Would Make This Worth Paying For'),
+      ...paragraphBlocks(worthPayingFor),
     ].filter(Boolean);
 
-    if (expected) {
-      children.push(headingBlock('Expected'));
-      children.push(...paragraphBlocks(expected));
+    if (economicWorkflow) {
+      children.push(headingBlock('Workflow Creating Economic Value'));
+      children.push(...paragraphBlocks(economicWorkflow));
     }
-    if (actual) {
-      children.push(headingBlock('Actual'));
-      children.push(...paragraphBlocks(actual));
+    if (supportTemplatesEvals) {
+      children.push(headingBlock('Support, Templates, Evals, or History'));
+      children.push(...paragraphBlocks(supportTemplatesEvals));
     }
-    if (evidence) {
-      children.push(headingBlock('Logs or Screenshots'));
-      children.push(...paragraphBlocks(evidence));
+    if (priceSensitivity) {
+      children.push(headingBlock('Price Sensitivity'));
+      children.push(...paragraphBlocks(priceSensitivity));
+    }
+    if (consultantPain) {
+      children.push(headingBlock('Consultant or Client-Data Pain'));
+      children.push(...paragraphBlocks(consultantPain));
     }
 
     children.push(headingBlock('Client Context'));
     children.push(...codeBlocks(contextJson));
 
-    if (promptContext && (promptContext.raw || promptContext.enhanced)) {
-      children.push(headingBlock('Prompt Context'));
-      if (promptContext.mode) {
-        children.push(...paragraphBlocks(`Enhance mode: ${clampText(promptContext.mode, 80)}`));
-      }
-      if (promptContext.raw) {
-        children.push(headingBlock('Raw Prompt'));
-        children.push(...codeBlocks(clampText(promptContext.raw, 12000)));
-      }
-      if (promptContext.enhanced) {
-        children.push(headingBlock('Enhanced Prompt'));
-        children.push(...codeBlocks(clampText(promptContext.enhanced, 12000)));
-      }
-    }
-
+    const titleSurface = surface || product;
     const notionResponse = await fetch(NOTION_API_URL, {
       method: 'POST',
       headers: {
@@ -260,7 +250,7 @@ export async function bugReportHandler(request) {
         },
         properties: {
           title: {
-            title: richText(`[${severity}] ${title}`),
+            title: richText(`[Discovery] ${titleSurface} paid value feedback`),
           },
         },
         children,
@@ -274,8 +264,8 @@ export async function bugReportHandler(request) {
 
     return json({ ok: true, id: notionData.id, pageUrl: notionData.url });
   } catch (error) {
-    return json({ error: error?.message || 'Bug report failed' }, 500);
+    return json({ error: error?.message || 'Discovery feedback failed' }, 500);
   }
 }
 
-export default createNodeCompatibleHandler(bugReportHandler);
+export default createNodeCompatibleHandler(discoveryReportHandler);

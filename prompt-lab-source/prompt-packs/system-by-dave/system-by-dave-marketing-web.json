@@ -1,0 +1,804 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "system-by-dave.marketing-web",
+  "title": "System by Dave Marketing and Web",
+  "description": "Marketing copy and embeddable web prompt templates from System by Dave.",
+  "author": "System by Dave",
+  "sourceUrl": "https://systembydave.com/prompts/",
+  "createdAt": "2026-06-16",
+  "updatedAt": "2026-06-16",
+  "presets": [
+    {
+      "id": "sbd-marketing-web-flyer-preset",
+      "title": "Flyer preset",
+      "prompt": "You are a senior graphic designer and event marketing copywriter.\n\nTASK: Design and write copy for a promotional flyer for the following event.\n\nEVENT DETAILS:\n- Name: {{event_name}}\n- Date & Time: {{date}}\n- Admission: {{admission}}\n- Location: {{location}}\n\nHIGHLIGHTS:\n- {{feature_lines_one_per_line}}\n\nDESIGN DIRECTION: {{aesthetic}}\n\nCTA LINK: {{cta_url}}\n\nCONSTRAINTS:\n- Output print-ready flyer copy with headline, subhead, body, and CTA\n- Keep total word count under 120\n- All text must be legible at arm's length on a standard poster",
+      "summary": "Source pack: 🌐 Web prompt-embed templates.",
+      "category": "Web Embeds",
+      "tags": [
+        "system-by-dave",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "212",
+        "pack": "🌐 Web prompt-embed templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "event_name",
+          "label": "Event Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter event name"
+        },
+        {
+          "key": "date",
+          "label": "Date",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter date"
+        },
+        {
+          "key": "admission",
+          "label": "Admission",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter admission"
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter location"
+        },
+        {
+          "key": "feature_lines_one_per_line",
+          "label": "Feature Lines One Per Line",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter feature lines one per line"
+        },
+        {
+          "key": "aesthetic",
+          "label": "Aesthetic",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter aesthetic"
+        },
+        {
+          "key": "cta_url",
+          "label": "Cta Url",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter cta url"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-product-preset",
+      "title": "Product preset",
+      "prompt": "You are a product marketing strategist and conversion copywriter.\n\nTASK: Write a compelling product landing page copy block for the product described below.\n\nPRODUCT:\n- Name: {{product_name}}\n- Tagline: {{tagline}}\n\nPROBLEM STATEMENT:\n{{problem}}\n\nKEY FEATURES:\n- {{feature_lines_one_per_line}}\n\nCTA LINK: {{cta_url}}\n\nCONSTRAINTS:\n- Output: headline, sub-headline, 3 benefit blocks (icon-ready), and a CTA line\n- Tone: confident, concise, zero jargon\n- Total word count under 150",
+      "summary": "Source pack: 🌐 Web prompt-embed templates.",
+      "category": "Web Embeds",
+      "tags": [
+        "system-by-dave",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "213",
+        "pack": "🌐 Web prompt-embed templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "product_name",
+          "label": "Product Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product name"
+        },
+        {
+          "key": "tagline",
+          "label": "Tagline",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tagline"
+        },
+        {
+          "key": "problem",
+          "label": "Problem",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter problem"
+        },
+        {
+          "key": "feature_lines_one_per_line",
+          "label": "Feature Lines One Per Line",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter feature lines one per line"
+        },
+        {
+          "key": "cta_url",
+          "label": "Cta Url",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter cta url"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-tool-preset",
+      "title": "Tool preset",
+      "prompt": "You are a developer tools product designer and technical writer.\n\nTASK: Write the system prompt and user-facing description for the following tool.\n\nTOOL:\n- Name: {{tool_name}}\n- Purpose: {{purpose}}\n\nUSER INPUTS:\n- {{input_lines_one_per_line}}\n\nOUTPUTS:\n- {{output_lines_one_per_line}}\n\nCONSTRAINTS:\n- {{constraint_lines_one_per_line}}\n\nDELIVERABLES:\n- A system prompt (under 300 words) that an LLM would receive to act as this tool\n- A 2-sentence user-facing description for a tool directory listing",
+      "summary": "Source pack: 🌐 Web prompt-embed templates.",
+      "category": "Web Embeds",
+      "tags": [
+        "system-by-dave",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "214",
+        "pack": "🌐 Web prompt-embed templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "tool_name",
+          "label": "Tool Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tool name"
+        },
+        {
+          "key": "purpose",
+          "label": "Purpose",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter purpose"
+        },
+        {
+          "key": "input_lines_one_per_line",
+          "label": "Input Lines One Per Line",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter input lines one per line"
+        },
+        {
+          "key": "output_lines_one_per_line",
+          "label": "Output Lines One Per Line",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter output lines one per line"
+        },
+        {
+          "key": "constraint_lines_one_per_line",
+          "label": "Constraint Lines One Per Line",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter constraint lines one per line"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-interactive-preset",
+      "title": "Interactive preset",
+      "prompt": "You are an interactive experience designer and narrative engineer.\n\nTASK: Design the interaction loop and opening sequence for the following experience.\n\nEXPERIENCE:\n- Name: {{experience_name}}\n\nCORE CONCEPT:\n{{concept}}\n\nINTERACTION MODEL:\n{{interaction_model}}\n\nTONE / AESTHETIC: {{tone}}\n\nDELIVERABLES:\n- State machine diagram (text format) for the core loop\n- Opening scene script (under 200 words)\n- 2 branching choice sets for the first decision point\n- Brief UX note on how state is communicated visually",
+      "summary": "Source pack: 🌐 Web prompt-embed templates.",
+      "category": "Web Embeds",
+      "tags": [
+        "system-by-dave",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "215",
+        "pack": "🌐 Web prompt-embed templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "experience_name",
+          "label": "Experience Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter experience name"
+        },
+        {
+          "key": "concept",
+          "label": "Concept",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter concept"
+        },
+        {
+          "key": "interaction_model",
+          "label": "Interaction Model",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter interaction model"
+        },
+        {
+          "key": "tone",
+          "label": "Tone",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tone"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-cold-email-opening-line",
+      "title": "Cold email opening line",
+      "prompt": "Write a personalized opening line for a cold email to {{prospect_name}} at {{company}}. Their role is {{job_title}}. Make it specific, human, and under 2 sentences.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "sales",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "216",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "prospect_name",
+          "label": "Prospect Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter prospect name"
+        },
+        {
+          "key": "company",
+          "label": "Company",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter company"
+        },
+        {
+          "key": "job_title",
+          "label": "Job Title",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter job title"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-sales-copy-for-a-product-feature",
+      "title": "Sales copy for a product feature",
+      "prompt": "Write conversion-focused copy for {{feature_name}}. The product is {{product}}, the buyer is {{persona}}, and the core outcome is {{outcome}}. 3 sentences max.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "sales",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "217",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "feature_name",
+          "label": "Feature Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter feature name"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product"
+        },
+        {
+          "key": "persona",
+          "label": "Persona",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter persona"
+        },
+        {
+          "key": "outcome",
+          "label": "Outcome",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter outcome"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-linkedin-connection-request",
+      "title": "LinkedIn connection request",
+      "prompt": "Write a LinkedIn connection note to {{name}} who works in {{industry}}. Mention {{shared_context}}. No pitch. Max 280 characters.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "outreach",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "218",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter name"
+        },
+        {
+          "key": "industry",
+          "label": "Industry",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter industry"
+        },
+        {
+          "key": "shared_context",
+          "label": "Shared Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter shared context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-email-subject-line-a-b-variants",
+      "title": "Email subject line A/B variants",
+      "prompt": "Generate 5 email subject line variants for {{campaign_goal}}. Audience is {{audience}}. Tone: {{tone}}. Mix curiosity, urgency, and specificity across variants.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "marketing",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "219",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "campaign_goal",
+          "label": "Campaign Goal",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter campaign goal"
+        },
+        {
+          "key": "audience",
+          "label": "Audience",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter audience"
+        },
+        {
+          "key": "tone",
+          "label": "Tone",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tone"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-shopify-product-description",
+      "title": "Shopify product description",
+      "prompt": "Write a Shopify product description for {{product_name}} by {{brand}}. Key features: {{features}}. Tone: {{tone}}. Include a one-sentence hook, 3 bullet points, and a CTA.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "ecommerce",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "220",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "product_name",
+          "label": "Product Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product name"
+        },
+        {
+          "key": "brand",
+          "label": "Brand",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter brand"
+        },
+        {
+          "key": "features",
+          "label": "Features",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter features"
+        },
+        {
+          "key": "tone",
+          "label": "Tone",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tone"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-youtube-script-hook",
+      "title": "YouTube script hook",
+      "prompt": "Write a 30-second YouTube hook for a video about {{topic}}. Target audience: {{audience}}. Channel style: {{style}}. Open with a problem or surprising statement.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "content",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "221",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "topic",
+          "label": "Topic",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter topic"
+        },
+        {
+          "key": "audience",
+          "label": "Audience",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter audience"
+        },
+        {
+          "key": "style",
+          "label": "Style",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter style"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-follow-up-email-after-no-reply",
+      "title": "Follow-up email after no reply",
+      "prompt": "Write a follow-up email to {{name}} at {{company}}. Original ask: {{original_ask}}. Days since last contact: {{days}}. Be brief, add value, give an easy out.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "outreach",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "222",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter name"
+        },
+        {
+          "key": "company",
+          "label": "Company",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter company"
+        },
+        {
+          "key": "original_ask",
+          "label": "Original Ask",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter original ask"
+        },
+        {
+          "key": "days",
+          "label": "Days",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter days"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-instagram-caption-with-hook",
+      "title": "Instagram caption with hook",
+      "prompt": "Write an Instagram caption for {{brand}} promoting {{offer}}. Audience: {{audience}}. Start with a scroll-stopping hook, end with a CTA. Max 150 words.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "marketing",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "223",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "brand",
+          "label": "Brand",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter brand"
+        },
+        {
+          "key": "offer",
+          "label": "Offer",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter offer"
+        },
+        {
+          "key": "audience",
+          "label": "Audience",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter audience"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-objection-handling-response",
+      "title": "Objection handling response",
+      "prompt": "Write a reply to a sales objection: \"{{objection}}\". Product: {{product}}. Buyer persona: {{persona}}. Acknowledge the concern, reframe with evidence, and redirect to value.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "sales",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "224",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "objection",
+          "label": "Objection",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter objection"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product"
+        },
+        {
+          "key": "persona",
+          "label": "Persona",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter persona"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-blog-post-intro-paragraph",
+      "title": "Blog post intro paragraph",
+      "prompt": "Write an intro paragraph for a blog post titled \"{{title}}\" targeting {{audience}}. Tone: {{tone}}. Open with a relatable pain point, end with a preview of the solution.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "content",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "225",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter title"
+        },
+        {
+          "key": "audience",
+          "label": "Audience",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter audience"
+        },
+        {
+          "key": "tone",
+          "label": "Tone",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tone"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-abandoned-cart-recovery-email",
+      "title": "Abandoned cart recovery email",
+      "prompt": "Write a cart recovery email for {{store_name}}. Product left in cart: {{product}}. Offer: {{incentive}}. Be conversational, not pushy. Keep it under 80 words.",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "ecommerce",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "226",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "store_name",
+          "label": "Store Name",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter store name"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product"
+        },
+        {
+          "key": "incentive",
+          "label": "Incentive",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter incentive"
+        }
+      ]
+    },
+    {
+      "id": "sbd-marketing-web-ad-copy-problem-solution",
+      "title": "Ad copy — problem/solution",
+      "prompt": "Write a {{platform}} ad for {{product}}. Problem: {{pain_point}}. Audience: {{audience}}. Format: headline (6 words max), body (20 words max), CTA (3 words max).",
+      "summary": "Source pack: 📣 Marketing site templates.",
+      "category": "Marketing",
+      "tags": [
+        "system-by-dave",
+        "marketing",
+        "system-by-dave-marketing-and-web"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "227",
+        "pack": "📣 Marketing site templates",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "platform",
+          "label": "Platform",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter platform"
+        },
+        {
+          "key": "product",
+          "label": "Product",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter product"
+        },
+        {
+          "key": "pain_point",
+          "label": "Pain Point",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter pain point"
+        },
+        {
+          "key": "audience",
+          "label": "Audience",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter audience"
+        }
+      ]
+    }
+  ]
+}

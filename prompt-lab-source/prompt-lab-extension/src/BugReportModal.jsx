@@ -9,6 +9,7 @@ const INITIAL_FORM = Object.freeze({
   steps: '',
   expected: '',
   actual: '',
+  evidence: '',
   contact: '',
   includePromptContext: false,
   website: '',
@@ -66,6 +67,7 @@ export default function BugReportModal({
         steps: form.steps,
         expected: form.expected,
         actual: form.actual,
+        evidence: form.evidence,
         contact: form.contact,
         url: appContext?.url || '',
         website: form.website,
@@ -110,7 +112,7 @@ export default function BugReportModal({
           <div>
             <h2 id="modal-bug-report" className={`font-bold text-base ${m.text}`}>Report Bug</h2>
             <p className={`text-xs ${m.textMuted} mt-1`}>
-              Sends a structured bug report to Notion with environment and view context.
+              Sends bug support intake to Notion. Pricing and willingness to pay feedback is handled separately.
             </p>
           </div>
           <button
@@ -165,6 +167,16 @@ export default function BugReportModal({
               />
             </label>
           </div>
+
+          <label className="flex flex-col gap-1.5">
+            <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Logs or Screenshots</span>
+            <textarea
+              className={`${inputClass} min-h-[72px] resize-y`}
+              value={form.evidence}
+              onChange={(event) => updateField('evidence', event.target.value)}
+              placeholder="Paste log lines, screenshot links, or a short note if none are available."
+            />
+          </label>
 
           <label className="flex flex-col gap-1.5">
             <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Steps to Reproduce</span>
@@ -230,7 +242,7 @@ export default function BugReportModal({
           )}
 
           <div className={`rounded-lg border ${m.border} ${m.surface} px-3 py-2 text-xs ${m.textMuted}`}>
-            Reports include URL, browser, view state, app version, and viewport automatically.
+            Reports include surface, severity, reproduction, URL, browser, view state, app version, and viewport automatically.
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1">

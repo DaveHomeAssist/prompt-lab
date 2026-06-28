@@ -48,8 +48,8 @@ export function getLoadedPacks() {
 /**
  * Get all available starter libraries with their loaded status.
  */
-export function getStarterLibraries() {
-  const loaded = new Set(getLoadedPacks());
+export function getStarterLibraries(loadedPackIds = getLoadedPacks()) {
+  const loaded = new Set(Array.isArray(loadedPackIds) ? loadedPackIds : getLoadedPacks());
   return (seedData.libraries || [])
     .filter(lib => Array.isArray(lib.prompts) && lib.prompts.length > 0)
     .map(lib => ({

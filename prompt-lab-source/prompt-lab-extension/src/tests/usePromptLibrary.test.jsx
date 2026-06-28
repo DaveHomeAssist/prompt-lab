@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
+import { LEGACY_LIBRARY_CHECK_KEY } from '../lib/legacyLibraryMigration.js';
 import { storageKeys } from '../lib/storage.js';
 
 function makeEntry(overrides = {}) {
@@ -17,6 +18,22 @@ function makeEntry(overrides = {}) {
     useCount: overrides.useCount || 0,
     versions: overrides.versions || [],
     variants: overrides.variants || [],
+  };
+}
+
+function getStorageKeys() {
+  return Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index)).filter(Boolean);
+}
+
+function mockFileReaderResult(result) {
+  const OriginalFileReader = globalThis.FileReader;
+  globalThis.FileReader = class MockFileReader {
+    readAsText() {
+      this.onload?.({ target: { result } });
+    }
+  };
+  return () => {
+    globalThis.FileReader = OriginalFileReader;
   };
 }
 
@@ -139,5 +156,191 @@ describe('usePromptLibrary', () => {
       tags: ['alpha', 'beta'],
     });
     expect(notify).toHaveBeenCalledWith('Prompt updated!');
+  });
+
+  it('backs up corrupt library storage and notifies before loading fallback data', async () => {
+    localStorage.setItem(storageKeys.library, '{broken');
+    localStorage.setItem(LEGACY_LIBRARY_CHECK_KEY, JSON.stringify(true));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library.length).toBeGreaterThan(0);
+    });
+
+    const backupKey = getStorageKeys().find((key) => key.startsWith(`${storageKeys.library}:corrupt-backup:`));
+    expect(backupKey).toBeTruthy();
+    expect(localStorage.getItem(backupKey)).toBe('{broken');
+    expect(notify).toHaveBeenCalledWith(
+      'Recovered from unreadable local library data. A backup was saved before defaults were loaded.',
+    );
+  });
+
+  it('does not report success when saving a missing prompt id', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({
+        id: 'entry-1',
+        title: 'Alpha',
+        original: 'Original text',
+        enhanced: 'Enhanced text',
+      }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library).toHaveLength(1);
+    });
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave({
+        raw: 'Updated original',
+        enhanced: 'Updated enhanced',
+        variants: [],
+        notes: '',
+        tags: [],
+        title: 'Missing Alpha',
+        collection: '',
+        editingId: 'missing-entry',
+        changeNote: '',
+      });
+    });
+
+    expect(saved).toBeNull();
+    expect(result.current.library[0]).toMatchObject({
+      id: 'entry-1',
+      title: 'Alpha',
+      original: 'Original text',
+      enhanced: 'Enhanced text',
+    });
+    expect(notify).toHaveBeenCalledWith('Prompt update failed: the saved prompt no longer exists.');
+    expect(notify).not.toHaveBeenCalledWith('Prompt updated!');
+  });
+
+  it('preserves a manual reorder when saving again before the next render', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({ id: 'entry-1', title: 'Alpha' }),
+      makeEntry({ id: 'entry-2', title: 'Bravo' }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library.map((entry) => entry.title)).toEqual(['Alpha', 'Bravo']);
+    });
+
+    act(() => {
+      result.current.moveLibraryEntry('entry-1', 'entry-2', 'after');
+      result.current.doSave({
+        raw: 'New prompt body',
+        enhanced: 'New prompt body',
+        variants: [],
+        notes: '',
+        tags: [],
+        title: 'New Prompt',
+        collection: '',
+        editingId: '',
+        changeNote: '',
+      });
+    });
+
+    expect(result.current.library.map((entry) => entry.title)).toEqual(['New Prompt', 'Bravo', 'Alpha']);
+  });
+
+  it('reports imported, duplicate, and invalid prompt counts', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({ id: 'entry-1', title: 'Existing', enhanced: 'Duplicate body' }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library).toHaveLength(1);
+    });
+
+    const restoreFileReader = mockFileReaderResult(JSON.stringify([
+      { id: 'duplicate', title: 'Duplicate', enhanced: 'Duplicate body' },
+      { id: 'fresh', title: 'Fresh', enhanced: 'Fresh body', collection: 'Imported' },
+      { id: 'invalid', title: 'Invalid', enhanced: '' },
+    ]));
+    const event = { target: { files: [{ size: 512 }], value: 'selected.json' } };
+
+    try {
+      act(() => {
+        result.current.importLib(event);
+      });
+    } finally {
+      restoreFileReader();
+    }
+
+    expect(result.current.library.map((entry) => entry.title)).toEqual(['Fresh', 'Existing']);
+    expect(result.current.collections).toContain('Imported');
+    expect(event.target.value).toBe('');
+    expect(notify).toHaveBeenCalledWith('Imported 1 prompt, skipped 1 duplicate, rejected 1 invalid record.');
+  });
+
+  it('reports malformed import JSON directly', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([]));
+    localStorage.setItem(LEGACY_LIBRARY_CHECK_KEY, JSON.stringify(true));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+    });
+
+    const restoreFileReader = mockFileReaderResult('{broken');
+    const event = { target: { files: [{ size: 128 }], value: 'selected.json' } };
+
+    try {
+      act(() => {
+        result.current.importLib(event);
+      });
+    } finally {
+      restoreFileReader();
+    }
+
+    expect(event.target.value).toBe('');
+    expect(notify).toHaveBeenCalledWith('Import failed: file is not valid JSON.');
+  });
+
+  it('keeps recent-access tracking from throwing when anticipation storage fails', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({ id: 'entry-1', title: 'Alpha' }),
+    ]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library).toHaveLength(1);
+    });
+
+    const originalSetItem = Storage.prototype.setItem;
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItemMock(key, value) {
+      if (key === 'pl2-anticipation') throw new Error('storage unavailable');
+      return originalSetItem.call(this, key, value);
+    });
+
+    try {
+      act(() => {
+        expect(() => result.current.trackRecentAccess('entry-1')).not.toThrow();
+      });
+    } finally {
+      setItem.mockRestore();
+    }
+
+    expect(result.current.library[0]?.lastAccessedAt).toEqual(expect.any(String));
   });
 });

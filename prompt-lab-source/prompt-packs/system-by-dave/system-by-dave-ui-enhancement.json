@@ -1,0 +1,346 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "system-by-dave.ui-enhancement",
+  "title": "System by Dave UI Enhancement",
+  "description": "UX, UI, motion, and frontend optimization prompts from System by Dave.",
+  "author": "System by Dave",
+  "sourceUrl": "https://systembydave.com/prompts/",
+  "createdAt": "2026-06-16",
+  "updatedAt": "2026-06-16",
+  "presets": [
+    {
+      "id": "sbd-ui-enhancement-navigation-simplification",
+      "title": "Navigation Simplification",
+      "prompt": "You are an information architect.\n\nTASK:\nReduce navigation complexity and cognitive load for: {{target_surface}}.\n\nCURRENT NAVIGATION:\n{{current_nav}}\n\nINSTRUCTIONS:\n- Limit top-level navigation to 4–6 items\n- Group by user intent, not system structure\n- Remove redundant paths\n- Use contextual navigation where possible\n- Add clear backtracking\n\nOUTPUT FORMAT:\n1. New Navigation Structure\n2. Removed / Merged Elements\n3. Core User Flows",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "information-architecture",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "203",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "current_nav",
+          "label": "Current Nav",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter current nav"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-cta-clarity-optimization",
+      "title": "CTA Clarity Optimization",
+      "prompt": "You are a product UX strategist.\n\nTASK:\nMaximize action clarity and reduce hesitation for: {{target_surface}}.\n\nCURRENT ACTIONS:\n{{current_actions}}\n\nINSTRUCTIONS:\n- Enforce one primary action per screen\n- Increase contrast and size for primary CTA\n- Rewrite vague labels to outcome-based labels\n- Reduce competing actions\n- Add directional cues (progress, grouping)\n\nOUTPUT FORMAT:\n1. CTA Hierarchy Map (primary, secondary)\n2. Rewritten Labels (before → after)\n3. Layout Adjustments (attention flow)",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "ux-strategy",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "204",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "current_actions",
+          "label": "Current Actions",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter current actions"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-visual-hierarchy-compression",
+      "title": "Visual Hierarchy Compression",
+      "prompt": "You are a UI systems designer.\n\nTASK:\nImprove clarity and reduce visual noise for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Define 3–4 typography tiers max\n- Use contrast and size for priority\n- Increase whitespace around key actions\n- Group related elements into sections/cards\n- De-emphasize non-critical information\n\nOUTPUT FORMAT:\n1. Hierarchy Levels (primary → tertiary)\n2. Layout Changes\n3. Typography Scale",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "ui-systems",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "205",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-interaction-density-optimization",
+      "title": "Interaction Density Optimization",
+      "prompt": "You are a senior UX systems engineer.\n\nTASK:\nIncrease interaction density and reduce user friction for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Collapse multi-step flows into single-surface interactions\n- Replace page transitions with inline expansion, drawers, or modals\n- Convert static UI into interactive elements (inline edit, clickable rows)\n- Add keyboard shortcuts for all primary actions\n- Remove redundant confirmations unless destructive\n\nOUTPUT FORMAT:\n1. Interaction Map (Before → After)\n2. UI Changes (bullet list, specific components)\n3. Keyboard Shortcut Map (action → key)",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "ux-systems",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "206",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-microinteraction-system",
+      "title": "Microinteraction System",
+      "prompt": "You are a microinteraction designer.\n\nTASK:\nAdd tactile feedback to all key interactions for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Button press → scale + color shift\n- Hover → affordance or preview\n- Drag → resistance + snapping\n- Success → confirmation feedback\n- Error → shake or highlight\n\nCONSTRAINTS:\n- Animation duration ≤200ms\n- No decorative motion\n\nOUTPUT FORMAT:\n1. Interaction → Feedback Mapping\n2. Timing + Easing Specs",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "motion-design",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "207",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-anticipatory-ux",
+      "title": "Anticipatory UX",
+      "prompt": "You are building anticipatory UX for: {{target_surface}}.\n\nKNOWN USER PATTERNS:\n{{user_patterns}}\n\nTASK:\nMake the interface predict user intent.\n\nINSTRUCTIONS:\n- Suggest next actions based on context\n- Pre-fill common inputs from history\n- Highlight likely selections\n- Persist preferences in localStorage\n\nOUTPUT FORMAT:\n1. Prediction Opportunities (context signal → predicted intent → action)\n2. UI Changes\n3. Stored Data Model (localStorage key and shape)",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "ux-systems",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "208",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "user_patterns",
+          "label": "User Patterns",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter user patterns"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-reactive-ui-states",
+      "title": "Reactive UI States",
+      "prompt": "You are a reactive UI systems designer for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nTASK:\nMake the interface adapt to user state.\n\nINSTRUCTIONS:\nDefine UI behavior for:\n- Empty state (first-time use guidance)\n- Active state (current workflow feedback)\n- Completed state (summary + next steps)\n- Error state (clear recovery actions)\n\nOUTPUT FORMAT:\n1. State Matrix (state → UI behavior)\n2. UI Components per State\n3. Microcopy per State",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "ux-systems",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "209",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-perceived-performance-enhancement",
+      "title": "Perceived Performance Enhancement",
+      "prompt": "You are a frontend performance engineer focused on perceived speed.\n\nTASK:\nMake the interface feel instant for: {{target_surface}}.\n\nCONTEXT:\n{{context}}\n\nINSTRUCTIONS:\n- Implement optimistic UI updates with rollback logic\n- Replace spinners with skeleton loaders\n- Preload likely next views based on user intent\n- Ensure visual feedback within 50ms of interaction\n- Use micro-animations (≤150ms) to mask delays\n\nOUTPUT FORMAT:\n1. Latency-Hiding Techniques Applied\n2. UI State Model (loading, success, error)\n3. Animation Specs (timing, trigger, purpose)",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "frontend-performance",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "210",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_surface",
+          "label": "Target Surface",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target surface"
+        },
+        {
+          "key": "context",
+          "label": "Context",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter context"
+        }
+      ]
+    },
+    {
+      "id": "sbd-ui-enhancement-single-file-ui-optimization",
+      "title": "Single-File UI Optimization",
+      "prompt": "You are a frontend engineer optimizing a single-file HTML/CSS/JS app.\n\nTASK:\nImprove performance and maintainability for: {{target_file}}.\n\nCONSTRAINTS:\n{{constraints}}\n\nINSTRUCTIONS:\n- Use CSS variables for theming\n- Create reusable class-based components\n- Minimize DOM nodes\n- Lazy-render hidden sections\n- Use event delegation\n\nOUTPUT FORMAT:\n1. Performance Improvements\n2. Component Patterns\n3. Render Strategy",
+      "summary": "Source pack: 🧩 UI Enhancement Pack (preset-pack-schema).",
+      "category": "UI Enhancement",
+      "tags": [
+        "system-by-dave",
+        "frontend-performance",
+        "system-by-dave-ui-enhancement"
+      ],
+      "status": "active",
+      "format": "Single Prompt",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "211",
+        "pack": "🧩 UI Enhancement Pack (preset-pack-schema)",
+        "area": ""
+      },
+      "inputs": [
+        {
+          "key": "target_file",
+          "label": "Target File",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter target file"
+        },
+        {
+          "key": "constraints",
+          "label": "Constraints",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter constraints"
+        }
+      ]
+    }
+  ]
+}

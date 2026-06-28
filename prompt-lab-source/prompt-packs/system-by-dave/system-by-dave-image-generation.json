@@ -1,0 +1,1109 @@
+{
+  "version": "1.0.0",
+  "type": "prompt-pack",
+  "id": "system-by-dave.image-generation",
+  "title": "System by Dave Image Generation",
+  "description": "Image generation and image analysis prompts from System by Dave.",
+  "author": "System by Dave",
+  "sourceUrl": "https://systembydave.com/prompts/",
+  "createdAt": "2026-06-16",
+  "updatedAt": "2026-06-16",
+  "presets": [
+    {
+      "id": "sbd-image-generation-analyze-photograph-urban-architecture",
+      "title": "Analyze Photograph | Urban Architecture",
+      "prompt": "Analyze this urban or architectural photograph.\n\nInclude:\n- Type of structure\n- Architectural style and materials\n- City context and density cues\n- Presence of people or vehicles\n- Lighting and weather conditions\n- Symmetry, lines, and perspective\n\nEnd with:\nA) clean architectural prompt\nB) cinematic urban environment prompt",
+      "summary": "Use this prompt to analyze an urban or architectural photograph and generate a detailed textual breakdown. Provide the type of structure, architectural style and materials, city context and density cues, proportion and symmetry, lighting on surfaces, street‑level activity, and overall atmosphere. Paste the image description or reference and receive a comprehensive analysis suitable for scene‑prompt creation. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "data-analysis",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "35",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-image",
+      "title": "Analyze Image",
+      "prompt": "Analyze the image in depth across these categories:\n\n1. Main Subject\n2. Physical Appearance\n3. Pose or Behavior\n4. Background Setting\n5. Lighting and Mood\n6. Color Palette\n7. Accessories or Props\n8. Style and Technical Qualities\n9. Composition and Framing\n10. Atmosphere and Storytelling\n\nWrite a rich, vivid prompt that stays descriptive but avoids unnecessary adjectives. Maintain accuracy. This prompt will be used for AI image generation, so clarity matters. Produce 2 versions at the end: a simple prompt and an advanced cinematic prompt.",
+      "summary": "Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "data-analysis",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "36",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-photograph-food-still-life",
+      "title": "Analyze Photograph | Food Still Life",
+      "prompt": "Analyze this food or still life photograph.\n\nDetail:\n- Main subjects and arrangement\n- Textures, colors, finishing touches\n- Props, tableware, or background elements\n- Lighting direction and mood\n- Context or implied scenario\n\nFinish with:\nA) clean still life prompt\nB) editorial food photography prompt",
+      "summary": "Use this prompt to analyze a food or still life photograph, detailing the main subjects, arrangement, textures, colors, props, lighting, styling choices, and overall mood. It expects you to paste the photograph description or image reference and returns a thorough compositional analysis useful for AI image generation or styling review. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "data-analysis",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "37",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-photo-framework",
+      "title": "Analyze Photo | Framework",
+      "prompt": "Analyze the image using a structured method. Identify the main subject, physical appearance, pose or behavior, background setting, lighting, mood, color palette, notable props, artistic style, composition, and atmosphere. Write a polished paragraph that captures the scene clearly and can be used as a base for an AI image generator prompt.",
+      "summary": "Use this prompt to analyze an uploaded image and generate a detailed, structured breakdown ready for AI image generation. It extracts information such as the main subject, appearance, pose, background, lighting, mood, color palette, props, style, composition, and atmosphere. Paste your image alongside the prompt to receive a comprehensive description that can be directly used as a generation prompt. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "data-analysis",
+        "content-structuring",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "38",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-landscape-image",
+      "title": "Analyze Landscape Image",
+      "prompt": "Analyze this landscape image using the specialized Landscape framework.\n\nDescribe:\n- Terrain and natural features\n- Vegetation and geological elements\n- Water, sky, and seasonal indicators\n- Atmospheric conditions\n- Time of day and light quality\n- Perspective, scale, and composition cues\n\nComplete with:\nA) scenic realism prompt\nB) epic cinematic landscape prompt",
+      "summary": "Use this prompt to generate a comprehensive analysis of a landscape image using the specialized Landscape framework. It guides the model to describe terrain and natural features, vegetation and geological elements, weather and atmospheric conditions, time of day and light quality, depth and perspective, as well as color palette and mood. Input the image description or reference, and receive a detailed textual breakdown suitable for environment generation or creative projects. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "content-creation",
+        "data-analysis",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "39",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-photograph-people",
+      "title": "Analyze Photograph | People",
+      "prompt": "Analyze this photograph of a person using the specialized People framework.\n\nInclude:\n- Subject identity markers (age, gender expression, body type)\n- Facial features and unique traits\n- Clothing details, style choices, colors\n- Pose, posture, expression, and emotional tone\n- Accessories or props\n- Social or situational context\n- Background and setting\n- Lighting qualities\n- Mood and implied narrative\n\nFinish with:\nA) a clean descriptive prompt\nB) a stylized portrait prompt",
+      "summary": "Use this prompt to generate a detailed analysis of a portrait photograph using the specialized People framework. It extracts subject identity markers, facial features, expression, clothing, pose, background context, lighting, and overall mood. Paste the image description or link as input, and receive a structured narrative suitable for character generation or creative briefs. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "information-extraction",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "40",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-image-2",
+      "title": "Analyze Image",
+      "prompt": "Analyze this image using the ten category system:\n1. Main Subject\n2. Physical Appearance\n3. Pose or Behavior\n4. Background Setting\n5. Lighting and Mood\n6. Color Palette\n7. Accessories or Props\n8. Style and Technical Qualities\n9. Composition\n10. Atmosphere and Storytelling\n\nAfter the breakdown, craft:\nA) a simple AI image prompt\nB) an advanced cinematic prompt",
+      "summary": "Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "data-analysis",
+        "ai-integration",
+        "content-creation",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "41",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-analyze-animal-photograph",
+      "title": "Analyze Animal Photograph",
+      "prompt": "Analyze this animal photograph using the specialized Animal framework.\n\nBreak down:\n- Species and breed indicators\n- Fur, feather, or scale details\n- Pose, stance, expression, behavior cues\n- Habitat and environment\n- Surrounding vegetation or terrain\n- Weather or light conditions\n- Interactions with other animals or objects\n\nEnd with:\nA) naturalistic prompt\nB) dramatic wildlife prompt",
+      "summary": "Use this prompt to perform a detailed analysis of an animal photograph using a specialized framework. It generates a structured breakdown of species and breed clues, fur/feather/scale details, behavior and movement, natural habitat context, lighting on the animal, and the emotional reading. Paste the image description or link as input and receive a concise, scannable analysis. Format: Prompt Pack. Source pack: 🤖 Photo Analysis (Image Gen).",
+      "category": "Photo Analysis",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "data-analysis",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "42",
+        "pack": "🤖 Photo Analysis (Image Gen)",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-generate-comic-panel",
+      "title": "Generate Comic Panel",
+      "prompt": "single comic panel of {{moment}}, clean lineart with flat color and light shading, dynamic perspective, bold sound effect area, print ready look, gentle paper texture",
+      "summary": "Use this prompt to generate a single comic panel that visualizes a specific action moment. Replace [moment] with a concise description (e.g., “hero catching falling ally mid‑air”) to receive clean lineart, flat colors, light shading, dynamic perspective, and a bold sound‑effect area, all formatted as a print‑ready panel with gentle halftone dots. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "43",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "moment",
+          "label": "Moment",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter moment"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-render-octane-style",
+      "title": "| Generate Render | Octane Style",
+      "prompt": "3d render of {{subject}}, photoreal octane look, global illumination, soft area lights, accurate reflections, cinematic bokeh, high poly detail",
+      "summary": "Use this prompt to create a photorealistic Octane‑style 3D render of any subject you specify. Replace [subject] with the object you want rendered, and the model will produce a high‑poly, globally illuminated image with soft area lights, accurate reflections, and cinematic bokeh. Ideal for generating detailed visual concepts such as product shots, concept art, or portfolio pieces. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "content-creation",
+        "user-interface-design",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "44",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "subject",
+          "label": "Subject",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter subject"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-sticker-sheet",
+      "title": "Generate Sticker Sheet",
+      "prompt": "sticker pack of {{theme}}, thick white outline, playful color, flat shading, varied sizes on one sheet, drop shadow preview",
+      "summary": "Use this prompt to generate a playful sticker sheet layout for a chosen theme. Paste your theme in place of [theme] to create a pack featuring thick white outlines, flat shading, varied sizes, and a drop‑shadow preview, ideal for merch design mockups and social‑media sticker sets. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "45",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "theme",
+          "label": "Theme",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter theme"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-low-poly-isometric-scene",
+      "title": "Generate Low Poly Isometric Scene",
+      "prompt": "low poly isometric scene of {{theme}}, flat colors, clean triangulation, balanced props, pleasant pastel palette, simple shadows",
+      "summary": "Use this prompt to generate a low‑poly isometric scene with flat colors, clean triangulation, balanced props, a pastel palette and simple shadows. Replace [theme] with the desired setting (e.g., “cozy coffee shop”) to create a stylized illustration. Ideal for game art concepts, app visuals, or social‑media graphics where a quick, cohesive scene is needed. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "46",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "theme",
+          "label": "Theme",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter theme"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-clay-study",
+      "title": "Generate Clay Study",
+      "prompt": "monochrome clay render of {{subject}}, soft skylight, smooth matte surface, gentle occlusion, turntable ready angle, studio sweep background",
+      "summary": "Use this prompt to create a monochrome clay study of any subject, rendered with soft skylight, a smooth matte surface, and gentle occlusion, ready for turntable animation. Replace the [subject] placeholder with the object you want to visualize, such as “vintage sports car.” Ideal for evaluating 3D model quality and proportions without color distractions. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "content-creation",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "47",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "subject",
+          "label": "Subject",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter subject"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-isometric-room-cozy",
+      "title": "Generate Isometric Room | Cozy",
+      "prompt": "cozy isometric room, workstation setup, layered shelves, soft window glow, warm practicals, neat cable routing, tidy plants",
+      "summary": "Use this prompt to generate a cozy isometric room illustration featuring a workstation, layered shelves, soft window glow, neat cable routing, and tidy plants. It produces a detailed interior image suitable for personal brand visuals or social media avatar backdrops. Paste the prompt as‑is into an image‑generation model to create the scene. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "user-interface-design",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "48",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-hero-product-shot",
+      "title": "Hero Product Shot",
+      "prompt": "premium product hero shot of {{item}}, on glossy acrylic base, edge lighting, soft top light, crisp reflections, seamless gray background, studio photograph",
+      "summary": "Use this prompt to create a premium studio‑style hero shot of a physical product. Insert the product name in place of [item] and the model will render it on a glossy acrylic base with edge lighting, soft top light, crisp reflections, and a seamless gray background. Ideal for marketing visuals, e‑commerce listings, and product catalogs. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-automation",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "49",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "item",
+          "label": "Item",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter item"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-series-poster",
+      "title": "Generate Series Poster",
+      "prompt": "poster for {{series_title}}, bold central silhouette, minimal palette of two colors, strong typography area, clean negative space, screen print look, halftone texture",
+      "summary": "Use this prompt to generate a bold, minimalist series poster featuring a central silhouette, a two‑color palette, and a screen‑print, hand‑pressed texture. Replace [series title] with your series name; the prompt works best for event posters, album covers, or social‑media headers where strong typography and clean negative space are desired. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "user-interface-design",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "50",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "series_title",
+          "label": "Series Title",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter series title"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-rooftop-at-dusk",
+      "title": "Rooftop at Dusk",
+      "prompt": "gritty rooftop at blue hour, low clouds, city skyline bokeh, practical sodium lights, 35mm handheld feel, subtle grain, cool to warm color contrast",
+      "summary": "Use this prompt to create a gritty rooftop scene at blue hour, featuring low clouds, city skyline bokeh, and practical sodium lights with a 35mm handheld feel. Ideal for AI image generators that accept textual prompts, delivering subtle grain and a cool‑to‑warm color contrast. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "51",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-generate-exploded-view-technical-diagram-v1",
+      "title": "Generate Exploded View | Technical Diagram | v1",
+      "prompt": "exploded technical diagram of {{device}}, parts floating in order, white background, isometric view, clean labeling space, high detail metal and plastic textures",
+      "summary": "Use this prompt to generate a high‑detail exploded technical diagram of a specified device, showing its parts floating in order against a white background in an isometric view. Replace [device] with the name of the item you want illustrated (e.g., “mechanical watch movement”). The output includes clean labeling space for easy annotation and works well for metal and plastic components. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "content-creation",
+        "user-interface-design",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "52",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "device",
+          "label": "Device",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter device"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-fantasy-artifact",
+      "title": "Fantasy Artifact",
+      "prompt": "mystic artifact {{description}}, ornate metalwork, gemstone inlays, glow from within, dark velvet backdrop, spotlight vignette, high detail",
+      "summary": "Use this prompt to generate a high‑detail image of a mystical artifact featuring ornate metalwork, gemstone inlays, and an inner glow against a dark velvet backdrop. Insert your specific artifact description in place of [description] (e.g., “crystal‑encrusted compass”). Ideal for AI image models that accept textual prompts to create striking, spotlight‑vignetted visuals. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-automation",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "53",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "description",
+          "label": "Description",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter description"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-generate-sci-fi-corridor",
+      "title": "Generate Sci Fi Corridor",
+      "prompt": "clean sci fi corridor, soft bounce light, brushed aluminum and matte ceramic, subtle wear and fingerprints, leading lines, symmetrical framing",
+      "summary": "Use this prompt to create a clean, futuristic sci‑fi corridor scene featuring soft bounce lighting, brushed aluminum, matte ceramic, and subtle wear with fingerprints. It generates a symmetrical, detailed background ideal for character composites or concept art. No additional input is required—run the prompt as‑is to produce the image. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "user-interface-design",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "54",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-forest-clearing",
+      "title": "Forest Clearing",
+      "prompt": "mossy forest clearing with mist rays, ancient stones, shallow brook, high detail botanicals, macro style textures, soft dappled sunlight, tranquil atmosphere",
+      "summary": "Use this prompt to generate a highly detailed, misty forest clearing scene featuring ancient stones, a shallow brook, and lush botanicals illuminated by soft dappled sunlight. Ideal for creating 1024x1024 images with a tranquil atmosphere, especially when using SDXL with CFG 5‑7. Paste the prompt as‑is into your text‑to‑image model for best results. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-automation",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "55",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-logo-study",
+      "title": "Logo Study",
+      "prompt": "logo exploration for {{concept}}, geometric mark options on grid, black on white, vector feel, simple shapes, balanced weight, presentation sheet with three variations",
+      "summary": "Use this prompt to generate geometric logo exploration options for a given concept, delivering three balanced variants on a presentation grid. Replace [concept] with your brand idea (e.g., “mountain summit outdoor brand”) to get simple, black‑on‑white vector‑style logo sketches. Ideal for quick visual brainstorming of icon‑only or wordmark designs. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "56",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "concept",
+          "label": "Concept",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter concept"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-wear-and-tear-realism",
+      "title": "Wear and Tear Realism",
+      "prompt": "close up of {{tool_or_prop}} with authentic wear, micro scratches, oil smudges, soft specular highlights, macro photography, shallow depth of field",
+      "summary": "Use this prompt to generate a macro close‑up image of a specified tool or prop that showcases realistic wear, micro scratches, oil smudges, and soft specular highlights. Replace [tool or prop] with your object description (e.g., “vintage leather toolbelt”) to produce a photo‑realistic render with shallow depth of field. Ideal for prop design references, game asset textures, or any visual work needing authentic, aged detail. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "57",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "tool_or_prop",
+          "label": "Tool Or Prop",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter tool or prop"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-underground-lair",
+      "title": "Underground Lair",
+      "prompt": "abandoned subway platform turned secret base, scattered gear, old posters, tungsten practicals, moody shadows, cinematic smoke",
+      "summary": "Use this prompt to generate a cinematic scene of an abandoned subway platform transformed into a secret base. It cues scattered gear, old posters, moody shadows, cinematic smoke, and warm tungsten lighting for striking contrast. Ideal for visual‑art or concept‑design workflows where you need a gritty, atmospheric underground setting. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "58",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-character-turnaround",
+      "title": "Character Turnaround",
+      "prompt": "character model sheet of {{character}}, neutral pose, front side back three quarter views on one page, flat studio lighting, clean white backdrop, lineart with flat colors, labeled panels, even spacing",
+      "summary": "Use this prompt to generate a complete character model sheet featuring front, side, back, and three‑quarter views on a single page. Paste your character description in place of [character] (e.g., “armored wolf knight in silver plate”) and the prompt will produce a clean, white‑backdrop illustration with linear outlines and annotation labels. Ideal for concept artists needing quick, multi‑angle references for character design. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "59",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-expressions-sheet",
+      "title": "Expressions Sheet",
+      "prompt": "{{character}} expression sheet, nine faces on grid, joy anger surprise disgust sadness fear smug tired laugh, clean anime lineart, flat pastel fills, studio light",
+      "summary": "Use this prompt to generate a 3×3 grid of clean anime lineart facial expressions for a specified character, covering joy, anger, surprise, disgust, sadness, fear, smug, tired, and laugh. Replace [character] with your character description (e.g., “armored wolf knight in silver plate”) and run the prompt to get nine pastel‑filled, studio‑lit expression sheets suitable for reference or asset creation. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "60",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-universal-prompt-builder",
+      "title": "Universal Prompt Builder",
+      "prompt": "{{subject}} in {{style_or_art_movement}}, {{camera_or_render_view}}, {{lighting}}, {{composition}}, {{color_mood}}, {{time_of_day_or_environment}}, {{materials_and_surface_detail}}, {{action_or_pose}}, highly detailed, sharp focus, coherent anatomy, cinematic depth, natural color",
+      "summary": "Use this prompt to quickly build custom image‑generation prompts for any visual concept. Paste your desired subject, style or art movement, camera view, lighting, composition, color mood, time of day or environment, and material details into the brackets to create a complete, ready‑to‑use prompt. Ideal for generating images across platforms that accept text prompts, especially when you need a structured, versatile description. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "61",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "subject",
+          "label": "Subject",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter subject"
+        },
+        {
+          "key": "style_or_art_movement",
+          "label": "Style Or Art Movement",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter style or art movement"
+        },
+        {
+          "key": "camera_or_render_view",
+          "label": "Camera Or Render View",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter camera or render view"
+        },
+        {
+          "key": "lighting",
+          "label": "Lighting",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter lighting"
+        },
+        {
+          "key": "composition",
+          "label": "Composition",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter composition"
+        },
+        {
+          "key": "color_mood",
+          "label": "Color Mood",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter color mood"
+        },
+        {
+          "key": "time_of_day_or_environment",
+          "label": "Time Of Day Or Environment",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter time of day or environment"
+        },
+        {
+          "key": "materials_and_surface_detail",
+          "label": "Materials And Surface Detail",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter materials and surface detail"
+        },
+        {
+          "key": "action_or_pose",
+          "label": "Action Or Pose",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter action or pose"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-neon-night-alley",
+      "title": "Neon Night Alley",
+      "prompt": "rain soaked neon alley, cyberpunk signage, volumetric light beams, reflections on wet cobblestone, wide angle 24mm, deep blues and magentas, cinematic framing",
+      "summary": "Use this prompt to generate a vivid cyberpunk rain‑soaked alley scene with neon signage, volumetric light beams, and wet cobblestone reflections. It specifies a wide‑angle 24 mm view, deep blues and magentas, and a cinematic style, ideal for 1024×1024 image outputs on SDXL. Paste the prompt into a text‑to‑image model and adjust CFG between 5 and 7 for best results. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "content-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "62",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-full-body-action",
+      "title": "Full Body Action",
+      "prompt": "full body of {{character}} mid leap, dynamic pose, comic book ink with clean color, three point lighting, slight motion blur on limbs, low angle view, dramatic clouds, vivid complementary colors",
+      "summary": "Use this prompt to generate a dynamic full‑body comic‑book style action shot of a character captured mid‑leap with dramatic lighting and motion blur. Insert the character’s name, species, and costume in the [character] slot, and optionally add a background location for context. The output is a vivid visual description ready for image‑generation models. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [
+        "ChatGPT",
+        "Claude",
+        "Gemini",
+        "Generic"
+      ],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "63",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-botanical-hero",
+      "title": "Botanical Hero",
+      "prompt": "nature powered {{character}}, subtle leaf motifs woven into costume, eco tech details, macro textile realism, soft backlight through foliage, dew highlights, calm green and gold palette",
+      "summary": "Use this prompt to generate a nature‑inspired character concept with detailed botanical costume elements. Insert your character name or description in place of [character] to receive a vivid design featuring leaf motifs, eco‑tech details, macro‑realistic textiles, soft foliage backlighting, and a calm green‑and‑gold palette. Ideal for creating eco‑warrior, forest guardian, or organic‑tech visuals. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "ai-integration",
+        "content-creation",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "64",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-city-golden-hour",
+      "title": "City Golden Hour",
+      "prompt": "sunlit city street at golden hour, warm long shadows, 35mm street photography, people silhouettes, soft haze, reflective puddles, balanced composition",
+      "summary": "Use this prompt to generate a warm urban golden‑hour street scene with sunlit streets, long shadows, silhouetted people, soft haze, and reflective puddles. Ideal for creating atmospheric background images, concept‑art references, or photography‑style visuals. Paste the prompt exactly as shown to obtain a balanced composition reminiscent of 35mm street photography. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "65",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-universal-negative-prompt",
+      "title": "Universal Negative Prompt",
+      "prompt": "blurry, low detail, low contrast, jpeg artifacts, extra fingers, extra limbs, fused limbs, deformed hands, broken anatomy, disfigured face, out of frame, watermark, signature, text, logo, bad proportions, harsh aliasing, low resolution, oversaturated skin, glitter skin, skin blemishes, noisy background",
+      "summary": "Use this prompt to filter out common AI image artifacts and unwanted visual defects in generated pictures. Paste the entire list into the negative‑prompt field of your image‑generation tool (e.g., Stable Diffusion, SDXL, ComfyUI) before creating an image. It targets issues like blur, low detail, extra limbs, watermark, and other distortions, helping produce cleaner, higher‑quality results. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "content-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "66",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": []
+    },
+    {
+      "id": "sbd-image-generation-hero-portrait",
+      "title": "Hero Portrait",
+      "prompt": "confident hero portrait of {{character}}, head and shoulders, editorial photography style, 85mm lens, soft window light, gentle rim light, subtle film grain, centered composition, muted teal and amber palette, studio backdrop",
+      "summary": "Use this prompt to generate a confident head‑and‑shoulders hero portrait of any character in an editorial photography style. Replace [character] with your subject (e.g., “armored wolf knight in silver plate”) and the model will produce a 1024×1024 image featuring soft window light, gentle rim light, muted teal‑amber tones, and subtle film grain. Ideal for character concept art or profile illustrations. Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "67",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        }
+      ]
+    },
+    {
+      "id": "sbd-image-generation-costume-variant",
+      "title": "Costume Variant",
+      "prompt": "{{character}} alternate outfit inspired by {{theme}}, fashion editorial, 50mm lens, softbox lighting, full body, white cyc studio, fabric realism with crisp stitching and tailored fit",
+      "summary": "🛰 Control Center Format: Prompt Pack. Source pack: 🤖 Image Generation.",
+      "category": "Image Generation",
+      "tags": [
+        "system-by-dave",
+        "content-creation",
+        "ai-integration",
+        "workflow-optimization",
+        "artist",
+        "prompt-pack",
+        "system-by-dave-image-generation"
+      ],
+      "status": "active",
+      "format": "Prompt Pack",
+      "platforms": [],
+      "source": {
+        "url": "https://systembydave.com/prompts/",
+        "id": "68",
+        "pack": "🤖 Image Generation",
+        "area": "ARTIST"
+      },
+      "inputs": [
+        {
+          "key": "character",
+          "label": "Character",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter character"
+        },
+        {
+          "key": "theme",
+          "label": "Theme",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "Enter theme"
+        }
+      ]
+    }
+  ]
+}

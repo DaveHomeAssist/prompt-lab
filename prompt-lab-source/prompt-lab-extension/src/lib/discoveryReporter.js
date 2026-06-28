@@ -1,26 +1,22 @@
-const DEFAULT_HOSTED_ENDPOINT = 'https://promptlab.tools/api/bug-report';
+const DEFAULT_HOSTED_ENDPOINT = 'https://promptlab.tools/api/discovery-report';
 const MAX_TEXT = 6000;
-const MAX_PROMPT = 12000;
-const MAX_TITLE = 160;
-const SEVERITIES = new Set(['Low', 'Medium', 'High', 'Critical']);
 
-function clampText(value, max) {
+function clampText(value, max = MAX_TEXT) {
   if (typeof value !== 'string') return '';
   const trimmed = value.trim();
   if (!trimmed) return '';
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed;
 }
 
-export function resolveBugReportEndpoint({ override, isWeb, locationOrigin } = {}) {
+export function resolveDiscoveryFeedbackEndpoint({ override, isWeb, locationOrigin } = {}) {
   if (override) return override;
   if (isWeb && typeof locationOrigin === 'string' && /^https?:/i.test(locationOrigin)) {
-    return `${locationOrigin.replace(/\/$/, '')}/api/bug-report`;
+    return `${locationOrigin.replace(/\/$/, '')}/api/discovery-report`;
   }
   return DEFAULT_HOSTED_ENDPOINT;
 }
 
-export function sanitizeBugReportPayload(payload = {}) {
-  const severity = SEVERITIES.has(payload.severity) ? payload.severity : 'Medium';
+export function sanitizeDiscoveryFeedbackPayload(payload = {}) {
   const context = payload.context && typeof payload.context === 'object'
     ? Object.fromEntries(
         Object.entries(payload.context)
@@ -31,34 +27,25 @@ export function sanitizeBugReportPayload(payload = {}) {
           ])
       )
     : {};
-  const promptContext = payload.promptContext && typeof payload.promptContext === 'object'
-    ? {
-        raw: clampText(payload.promptContext.raw, MAX_PROMPT),
-        enhanced: clampText(payload.promptContext.enhanced, MAX_PROMPT),
-        mode: clampText(payload.promptContext.mode, 64),
-      }
-    : null;
 
   return {
-    title: clampText(payload.title, MAX_TITLE),
-    severity,
     product: clampText(payload.product || 'Prompt Lab', 80),
     surface: clampText(payload.surface, 120),
-    steps: clampText(payload.steps, MAX_TEXT),
-    expected: clampText(payload.expected, MAX_TEXT),
-    actual: clampText(payload.actual, MAX_TEXT),
-    evidence: clampText(payload.evidence, MAX_TEXT),
     contact: clampText(payload.contact, 160),
+    worthPayingFor: clampText(payload.worthPayingFor),
+    economicWorkflow: clampText(payload.economicWorkflow),
+    supportTemplatesEvals: clampText(payload.supportTemplatesEvals),
+    priceSensitivity: clampText(payload.priceSensitivity),
+    consultantPain: clampText(payload.consultantPain),
     url: clampText(payload.url, 1000),
     website: clampText(payload.website, 200),
     context,
-    promptContext,
   };
 }
 
-export async function submitBugReport(payload, options = {}) {
-  const endpoint = resolveBugReportEndpoint(options);
-  const body = sanitizeBugReportPayload(payload);
+export async function submitDiscoveryFeedback(payload, options = {}) {
+  const endpoint = resolveDiscoveryFeedbackEndpoint(options);
+  const body = sanitizeDiscoveryFeedbackPayload(payload);
   const fetchImpl = options.fetchImpl || fetch;
 
   const response = await fetchImpl(endpoint, {
@@ -69,7 +56,7 @@ export async function submitBugReport(payload, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data?.error || 'Bug report failed');
+    throw new Error(data?.error || 'Discovery feedback failed');
   }
   return data;
 }
