@@ -53,3 +53,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-06-08] [PLB] [ops] Extend local preflight command timeout for current Vitest suite duration
 [2026-06-09] [PLB] [feature] Add server-side owner Pro entitlement for verified Clerk accounts
 [2026-06-09] [PLB] [landing] Refresh landing page around import packs, portable libraries, and current Pro gates
+[2026-06-09] [PLB] [fix] Surface preset import failures and expand Library import regression coverage
