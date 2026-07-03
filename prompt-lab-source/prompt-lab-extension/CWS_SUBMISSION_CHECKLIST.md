@@ -21,5 +21,5 @@
 
 - Screenshots + promo tile generated → `store-assets/cws/` (see its README). ✅
 - Privacy policy now resolves at both `https://promptlab.tools/privacy` and `/privacy.html` (publish-landing writes the pretty-route redirect). ✅
-- Reviewer build: `npm run build:cws` → `dist-cws/` (regenerate before upload; gitignored). 
+- Reviewer build: `npm run build:cws` → `dist-cws/` (regenerate before upload; gitignored).
 - Remaining are Chrome Web Store console + policy decisions for the owner: upload assets, select `Developer Tools`, finalize listing copy, permission review, single-purpose sentence (drafted above), Ollama-localhost decision.
