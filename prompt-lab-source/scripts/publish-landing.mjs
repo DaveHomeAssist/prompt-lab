@@ -63,6 +63,7 @@ async function resetDocsDir() {
     join(docsDir, 'templates'),
     join(docsDir, 'mobile'),
     join(docsDir, 'privatepolicy.html'),
+    join(docsDir, 'privacy'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
     join(docsDir, 'CNAME'),
@@ -165,6 +166,33 @@ ${privacyRedirectMeta}
   );
 }
 
+async function writePrivacyPrettyRoute() {
+  // The landing footer and CWS listing link to /privacy (no .html); GitHub
+  // Pages serves directories, so publish a redirecting index alongside the
+  // canonical privacy.html.
+  const privacyDir = join(docsDir, 'privacy');
+  await mkdir(privacyDir, { recursive: true });
+  await writeFile(
+    join(privacyDir, 'index.html'),
+    `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prompt Lab Privacy Policy</title>
+${privacyRedirectMeta}
+  <meta http-equiv="refresh" content="0; url=../privacy.html">
+  <link rel="canonical" href="https://promptlab.tools/privacy.html">
+</head>
+<body>
+  <p><a href="../privacy.html">Open the Prompt Lab privacy policy</a></p>
+</body>
+</html>
+`,
+    'utf8',
+  );
+}
+
 async function validatePublicInputs() {
   await stat(webIndexHtml);
 
@@ -226,6 +254,7 @@ async function main() {
   await writeNoJekyll();
   await writeCname();
   await writeLegacyPrivacyRedirect();
+  await writePrivacyPrettyRoute();
 
   console.log(`Landing site published to ${docsDir}`);
 }

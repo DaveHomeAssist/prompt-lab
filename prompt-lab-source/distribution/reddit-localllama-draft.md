@@ -20,7 +20,7 @@ The idea: instead of switching between different UIs to compare how local vs. cl
 
 - Web app: https://promptlab.tools/app/ (works in any browser)
 - Chrome/Vivaldi extension: follow the setup page for the unpacked side-panel build
-- Source: https://github.com/DaveHomeAssist/prompt-lab
+- Site: https://promptlab.tools (source visible on GitHub for inspection; source-available, all rights reserved)
 
 For Ollama, just set your base URL in settings (defaults to `localhost:11434`). Any model you've pulled shows up in the model dropdown.
 

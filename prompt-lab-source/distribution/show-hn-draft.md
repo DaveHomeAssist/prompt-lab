@@ -21,6 +21,6 @@ What it does:
 
 No account required for the editor. Prompt text, model responses, and provider keys stay local unless you explicitly send a provider request. Usage insights are lightweight and exclude prompt text, model responses, and keys.
 
-Built with React, Vite, Tailwind. Source is on GitHub: https://github.com/DaveHomeAssist/prompt-lab
+Built with React, Vite, Tailwind. Site: https://promptlab.tools — source is visible on GitHub for inspection (source-available, all rights reserved).
 
 I'd love feedback on the workflow — especially from anyone doing systematic prompt optimization.

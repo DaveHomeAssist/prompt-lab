@@ -57,8 +57,8 @@ docs/                     # Published public docs/static site copy
 
 | Surface | URL | Host |
 |---------|-----|------|
-| Public landing page | `https://promptlab.tools/` | Vercel |
-| Hosted web app | `https://promptlab.tools/app/` | Vercel |
+| Public landing page | `https://promptlab.tools/` | GitHub Pages (`.github/workflows/pages.yml`, web root `docs/`) |
+| Hosted web app | `https://promptlab.tools/app/` | GitHub Pages static bundle (live provider runs use the Vercel proxy deployment) |
 | Chrome / Vivaldi extension | MV3 side panel, local/unpacked build; store submission materials in draft | Local build / Chrome Web Store review prep |
 | macOS desktop | Tauri 2 — `.app` / `.dmg` | Local build |
 | Windows desktop | Tauri 2 — `.exe` / `.msi` | Local build |
@@ -93,4 +93,6 @@ This project follows the shared naming conventions in `30-shared-resources/share
 
 ## License
 
-All rights reserved.
+All rights reserved. The repository is public so the code can be inspected
+(source-available), but no license is granted to copy, modify, or
+redistribute it. See `LICENSE`.

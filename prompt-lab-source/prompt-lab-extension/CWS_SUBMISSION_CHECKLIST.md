@@ -1,9 +1,9 @@
 # Chrome Web Store Submission Checklist
 
 - [ ] Store listing copy is final: name, short description, and detailed description all match `manifest.json` and [README.md](./README.md).
-- [ ] Screenshots are prepared at `1280x800` or `640x400` with at least 1 image and no more than 5.
-- [ ] Promo images are ready: small promo tile `440x280` and optional marquee `1400x560`.
-- [ ] Privacy policy URL is published and reachable on `promptlab.tools` or another stable public URL using [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) as the source document.
+- [x] Screenshots are prepared at `1280x800` or `640x400` with at least 1 image and no more than 5.
+- [x] Promo images are ready: small promo tile `440x280` and optional marquee `1400x560`.
+- [x] Privacy policy URL is published and reachable on `promptlab.tools` or another stable public URL using [PRIVACY_POLICY.md](./PRIVACY_POLICY.md) as the source document.
 - [ ] Permission justifications are reviewed for every host permission against [PERMISSIONS_JUSTIFICATION.md](./PERMISSIONS_JUSTIFICATION.md).
 - [ ] Category is selected. Recommended: `Developer Tools`.
 - [ ] Single-purpose description for reviewer is written in one sentence: Prompt Lab is a side-panel prompt engineering workbench for testing and refining prompts across supported AI providers.
@@ -14,3 +14,12 @@
   - Configure a provider
   - Recommended free/local path: run Ollama locally, choose `Ollama`, keep `http://localhost:11434`, pick an installed model, run `Enhance`
 - [ ] Ollama localhost permission strategy is decided. Recommended review path: consider submitting without localhost first to reduce review friction, then add it in a later update if needed.
+
+---
+
+## Status 2026-07-03 (engineering pass)
+
+- Screenshots + promo tile generated → `store-assets/cws/` (see its README). ✅
+- Privacy policy now resolves at both `https://promptlab.tools/privacy` and `/privacy.html` (publish-landing writes the pretty-route redirect). ✅
+- Reviewer build: `npm run build:cws` → `dist-cws/` (regenerate before upload; gitignored). 
+- Remaining are Chrome Web Store console + policy decisions for the owner: upload assets, select `Developer Tools`, finalize listing copy, permission review, single-purpose sentence (drafted above), Ollama-localhost decision.
