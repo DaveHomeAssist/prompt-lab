@@ -12,6 +12,30 @@ const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const webTemplatesDir = join(webPublicDir, 'templates');
 const webMobileDir = join(webPublicDir, 'mobile');
 const docsDir = join(repoDir, 'docs');
+const mobileRedirectMeta = `  <meta name="description" content="Open the Prompt Lab mobile prototype.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Prompt Lab">
+  <meta property="og:title" content="PromptLab Mobile Prototype">
+  <meta property="og:description" content="Open the Prompt Lab mobile prototype.">
+  <meta property="og:url" content="https://promptlab.tools/mobile/prototype.html">
+  <meta property="og:image" content="https://promptlab.tools/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PromptLab Mobile Prototype">
+  <meta name="twitter:description" content="Open the Prompt Lab mobile prototype.">
+  <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
+const privacyRedirectMeta = `  <meta name="description" content="Open the Prompt Lab privacy policy.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Prompt Lab">
+  <meta property="og:title" content="Prompt Lab Privacy Policy">
+  <meta property="og:description" content="Open the Prompt Lab privacy policy.">
+  <meta property="og:url" content="https://promptlab.tools/privacy.html">
+  <meta property="og:image" content="https://promptlab.tools/og-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Prompt Lab Privacy Policy">
+  <meta name="twitter:description" content="Open the Prompt Lab privacy policy.">
+  <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
 
 const copyTargets = [
   ['favicon.svg', 'favicon.svg'],
@@ -95,6 +119,7 @@ async function copyMobileDir() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PromptLab Mobile Prototype</title>
+${mobileRedirectMeta}
   <meta http-equiv="refresh" content="0; url=./prototype.html">
   <link rel="canonical" href="https://promptlab.tools/mobile/prototype.html">
 </head>
@@ -127,6 +152,7 @@ async function writeLegacyPrivacyRedirect() {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Prompt Lab Privacy Policy</title>
+${privacyRedirectMeta}
   <meta http-equiv="refresh" content="0; url=./privacy.html">
   <link rel="canonical" href="https://promptlab.tools/privacy.html">
 </head>
