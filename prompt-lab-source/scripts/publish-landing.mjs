@@ -12,29 +12,29 @@ const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const webTemplatesDir = join(webPublicDir, 'templates');
 const webMobileDir = join(webPublicDir, 'mobile');
 const docsDir = join(repoDir, 'docs');
-const mobileRedirectMeta = `  <meta name="description" content="Open the Prompt Lab mobile prototype.">
+const mobileRedirectMeta = `  <meta name="description" content="Redirect to the Prompt Lab mobile prototype for testing the touch-first prompt workspace, canvas flow, and compact editing surfaces.">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Prompt Lab">
   <meta property="og:title" content="PromptLab Mobile Prototype">
-  <meta property="og:description" content="Open the Prompt Lab mobile prototype.">
+  <meta property="og:description" content="Redirect to the Prompt Lab mobile prototype for testing the touch-first prompt workspace, canvas flow, and compact editing surfaces.">
   <meta property="og:url" content="https://promptlab.tools/mobile/prototype.html">
   <meta property="og:image" content="https://promptlab.tools/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="PromptLab Mobile Prototype">
-  <meta name="twitter:description" content="Open the Prompt Lab mobile prototype.">
+  <meta name="twitter:description" content="Redirect to the Prompt Lab mobile prototype for testing touch-first prompt workflows and compact editing surfaces.">
   <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
-const privacyRedirectMeta = `  <meta name="description" content="Open the Prompt Lab privacy policy.">
+const privacyRedirectMeta = `  <meta name="description" content="Redirect to the Prompt Lab privacy policy covering local prompt storage, extension behavior, account data, and contact details.">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Prompt Lab">
   <meta property="og:title" content="Prompt Lab Privacy Policy">
-  <meta property="og:description" content="Open the Prompt Lab privacy policy.">
+  <meta property="og:description" content="Redirect to the Prompt Lab privacy policy covering local prompt storage, extension behavior, account data, and contact details.">
   <meta property="og:url" content="https://promptlab.tools/privacy.html">
   <meta property="og:image" content="https://promptlab.tools/og-image.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Prompt Lab Privacy Policy">
-  <meta name="twitter:description" content="Open the Prompt Lab privacy policy.">
+  <meta name="twitter:description" content="Redirect to the Prompt Lab privacy policy for storage, extension behavior, account data, and contact details.">
   <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
 
 const copyTargets = [
