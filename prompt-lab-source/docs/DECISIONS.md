@@ -37,7 +37,7 @@ Options:
 
 Decision: Hash-based routing (`location.hash`). Routes: `#/library`, `#/create`, `#/evaluate`, `#/settings`.
 
-Rationale: VS Code webviews don't support pushState — hash routing is the only option that works identically across extension, desktop, and web. No framework dependency needed. Supports deep-linking (`#/evaluate/run/abc123`) and browser back/forward via hashchange. The web app is a demo surface, not the primary product, so clean URLs and SEO are not requirements.
+Rationale: VS Code webviews don't support pushState — hash routing is the only option that works identically across extension, desktop, and web. This decision does not block framework or routing changes elsewhere when the product needs them. Supports deep-linking (`#/evaluate/run/abc123`) and browser back/forward via hashchange. The web app is a demo surface, not the primary product, so clean URLs and SEO are not requirements.
 
 Consequences: Phase 2 UI work is unblocked. Create workflow can split into `#/create/prompt`, `#/create/config`, `#/create/run` to reduce verticality. No router library needed — reduces bundle size. If web app ever becomes the primary surface, can migrate to pushState later.
 
