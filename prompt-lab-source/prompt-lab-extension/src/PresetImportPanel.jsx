@@ -17,6 +17,11 @@ function summarizeImport(result) {
   return `${importedCount} imported${skippedCount ? `, ${skippedCount} skipped` : ''}`;
 }
 
+function getErrorMessage(error, fallback) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 function uniqueCollections(entries) {
   return [...new Set(
     (Array.isArray(entries) ? entries : [])
@@ -41,6 +46,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
   const [dragActive, setDragActive] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
 
   const preview = useMemo(() => {
     const text = sourceText.trim();
@@ -87,16 +93,23 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
     setSourceText(value);
     setSourceLabel(label);
     setImportResult(null);
+    setImportError('');
   };
 
   const handleFile = async (file) => {
     if (!file) return;
-    const text = await readFileAsText(file);
-    handleSourceText(text, file.name);
+    try {
+      const text = await readFileAsText(file);
+      handleSourceText(text, file.name);
+    } catch (error) {
+      setImportResult(null);
+      setImportError(`File read failed: ${getErrorMessage(error, 'Unable to read the selected file.')}`);
+    }
   };
 
   const handleImport = async () => {
     if (!readyToImport || importing) return;
+    setImportError('');
 
     const adapter = {
       load: async () => lib.library,
@@ -114,6 +127,9 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
     try {
       const result = await importPresetPack(preview.pack, adapter);
       setImportResult(result);
+    } catch (error) {
+      setImportResult(null);
+      setImportError(`Import failed: ${getErrorMessage(error, 'Unable to save imported prompts.')}`);
     } finally {
       setImporting(false);
     }
@@ -249,6 +265,15 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
           <ul className="flex flex-col gap-1 text-xs text-amber-100">
             {preview.validation.warnings.slice(0, 5).map((message) => <li key={message}>{message}</li>)}
           </ul>
+        </div>
+      )}
+
+      {importError && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <DraftBadge tone="danger">Import failed</DraftBadge>
+            <p className="text-xs text-rose-200">{importError}</p>
+          </div>
         </div>
       )}
 
