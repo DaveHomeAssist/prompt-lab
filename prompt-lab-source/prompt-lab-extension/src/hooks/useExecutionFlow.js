@@ -126,12 +126,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     return parsed;
   };
 
-  const enhance = async (overridePayload) => {
+  const enhance = async (overridePayload, meta) => {
     if (!raw.trim()) return;
     const safeOverridePayload = overridePayload && typeof overridePayload === 'object' && 'nativeEvent' in overridePayload
       ? null
       : overridePayload;
     const payload = safeOverridePayload || buildEnhancePayload();
+    const enhanceModeId = meta?.modeId || enhMode;
 
     if (!safeOverridePayload) {
       const { matches } = scanSensitiveData({ payload });
@@ -142,6 +143,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
             promptId: editingId,
             promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
             mode: 'enhance',
+            enhanceMode: enhanceModeId,
             provider: 'blocked',
             model: payload?.model || 'unknown',
             input: raw,
@@ -204,7 +206,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       setSaveTags(parsed.tags || []);
 
       const nextTitle = suggestTitleFromText(parsed.enhanced || raw);
-      setSaveTitle(nextTitle);
+      // Suggest a title without clobbering one the user already typed.
+      if (!ensureString(saveTitle).trim()) setSaveTitle(nextTitle);
 
       const goldenText = editingId
         ? (lib.library.find((entry) => entry.id === editingId)?.goldenResponse?.text || '')
@@ -217,6 +220,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         promptId: editingId,
         promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance',
+        enhanceMode: enhanceModeId,
         provider: data?.provider || 'unknown',
         model: data?.model || payload?.model || 'unknown',
         input: raw,
@@ -232,6 +236,19 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       setStreaming(false);
     } catch (caught) {
       if (caught?.name === 'AbortError' || abortController?.signal?.aborted) {
+        // Cancelled attempts stay in the running record instead of vanishing.
+        saveEvalRun({
+          promptId: editingId,
+          promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
+          mode: 'enhance',
+          enhanceMode: enhanceModeId,
+          provider: 'unknown',
+          model: payload?.model || 'unknown',
+          input: raw,
+          output: 'Enhance cancelled before completion.',
+          latencyMs: nowMs() - startedAt,
+          status: 'canceled',
+        }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save canceled eval run', err));
         if (reqId === enhanceReqRef.current) {
           setLoading(false);
           setStreaming(false);
@@ -242,7 +259,22 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       }
       if (reqId === enhanceReqRef.current) {
         setOptimisticSaveVisible(false);
-        setError(normalizeError(caught, 'execution'));
+        const appError = normalizeError(caught, 'execution');
+        setError(appError);
+        // Failed attempts are part of the running enhancement record too.
+        saveEvalRun({
+          promptId: editingId,
+          promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
+          mode: 'enhance',
+          enhanceMode: enhanceModeId,
+          provider: 'unknown',
+          model: payload?.model || 'unknown',
+          input: raw,
+          output: appError.userMessage || appError.message || 'Enhance failed.',
+          latencyMs: nowMs() - startedAt,
+          status: 'error',
+          notes: appError.category ? `Error category: ${appError.category}` : '',
+        }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save failed eval run', err));
       }
     } finally {
       if (enhanceAbortRef.current === abortController) {
@@ -254,7 +286,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const enhanceWithMode = async (modeId) => {
     if (!raw.trim()) return;
-    return enhance(buildEnhancePayload(modeId));
+    return enhance(buildEnhancePayload(modeId), { modeId });
   };
 
   const cancelEnhance = () => {

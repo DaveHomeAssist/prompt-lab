@@ -1,6 +1,6 @@
 export const EVAL_MODES = Object.freeze(['enhance', 'ab', 'test-case']);
 export const VERDICT_VALUES = Object.freeze(['pass', 'fail', 'mixed']);
-export const EVAL_STATUSES = Object.freeze(['success', 'error', 'blocked']);
+export const EVAL_STATUSES = Object.freeze(['success', 'error', 'blocked', 'canceled']);
 
 function normalizeEntityId(value) {
   const id = String(value || '').trim();
@@ -25,6 +25,7 @@ export function normalizeEvalRunRecord(record) {
     promptVersionId: normalizeEntityId(record.promptVersionId),
     promptTitle: String(record.promptTitle || 'Untitled prompt').trim() || 'Untitled prompt',
     mode: EVAL_MODES.includes(record.mode) ? record.mode : 'enhance',
+    enhanceMode: String(record.enhanceMode || '').trim(),
     provider: String(record.provider || 'unknown').trim() || 'unknown',
     model: String(record.model || 'unknown').trim() || 'unknown',
     variantLabel: String(record.variantLabel || '').trim(),

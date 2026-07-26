@@ -120,18 +120,43 @@ export function arePromptSnapshotsEqual(left, right) {
 }
 
 export function suggestTitleFromText(value) {
-  const text = ensureString(value).replace(/\s+/g, ' ').trim();
-  if (!text) return 'Untitled Prompt';
+  const rawText = ensureString(value).trim();
+  if (!rawText) return 'Untitled Prompt';
 
-  // Try to extract a meaningful first line or sentence
-  const firstLine = text.split(/\n/)[0].trim();
-  const candidate = firstLine || text;
+  // Use the first non-empty line before collapsing whitespace, so markdown
+  // prompts keep their line structure for title extraction.
+  const firstLine = rawText.split(/\n/).map((line) => line.trim()).find(Boolean) || '';
 
-  // Extract first sentence (end at . ! ? or —) if reasonably short
+  // A markdown heading on the first line is an author-supplied title.
+  const headingMatch = firstLine.match(/^#{1,6}\s+(.+)$/);
+  let candidate = headingMatch ? headingMatch[1] : firstLine;
+
+  // Drop wrapping markup (fences, blockquotes, emphasis) and collapse spaces.
+  candidate = candidate
+    .replace(/^```[\w-]*/, '')
+    .replace(/^[>\-*\s]+/, '')
+    .replace(/[*_`]+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!candidate) candidate = rawText.replace(/\s+/g, ' ').trim();
+
+  // Strip conversational filler so titles start with the actual task.
+  candidate = candidate.replace(/^(?:please|kindly)[,\s]+/i, '');
+
+  // Reduce role preambles to the role itself: "You are a helpful pirate…" → "Helpful pirate…".
+  const roleMatch = candidate.match(/^(?:you are|you're|act as|acting as|imagine you(?:'re| are))\s+(?:an?\s+|the\s+)?(.+)$/i);
+  if (roleMatch) candidate = roleMatch[1];
+
+  // Prefer the first sentence when it is reasonably short.
   const sentenceMatch = candidate.match(/^(.+?[.!?])(?:\s|$)/);
-  const phrase = sentenceMatch && sentenceMatch[1].length <= 80
+  let phrase = sentenceMatch && sentenceMatch[1].length <= 80
     ? sentenceMatch[1]
     : candidate;
+
+  // Titles don't need terminal periods; keep expressive ? and !.
+  phrase = phrase.replace(/\.+$/, '').trim();
+  if (!phrase) return 'Untitled Prompt';
+  phrase = phrase[0].toUpperCase() + phrase.slice(1);
 
   // Trim to a reasonable length, breaking at word boundary
   const MAX = 60;

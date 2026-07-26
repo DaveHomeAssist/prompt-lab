@@ -164,7 +164,7 @@ function buildPadId() {
 
 /* ── Component ── */
 
-export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibrary }) {
+export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = false, onPromoteToLibrary }) {
   const migrationCheckedRef = useRef(false);
   const textareaRef = useRef(null);
 
@@ -191,9 +191,11 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
   const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
   const editorPaneMinHeightClass = pageScroll ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[calc(100vh-11rem)]';
   const textareaMinHeightClass = pageScroll ? 'min-h-[calc(100vh-16rem)]' : 'min-h-[calc(100vh-14rem)]';
-  const copyBtnClass = m.text?.includes('gray-100')
+  const isDark = colorMode === 'dark';
+  const copyBtnClass = isDark
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
+  const activePadTitleClass = isDark ? 'text-violet-200' : 'text-violet-800';
 
   const formatRelativeTime = (value) => {
     if (!value) return '';
@@ -568,13 +570,13 @@ export default function PadTab({ m, notify, pageScroll = false, onPromoteToLibra
                 key={pad.id}
                 type="button"
                 onClick={() => handleSelectPad(pad.id)}
-                className={`w-full text-left px-3 py-2.5 transition-colors ${
+                className={`w-full text-left px-3 py-2.5 border-r-2 transition-colors ${
                   isActive
-                    ? 'bg-violet-600/15 border-r-2 border-violet-500'
-                    : m.btn
+                    ? 'bg-violet-600/15 border-violet-500'
+                    : `${m.btn} border-transparent`
                 }`}
               >
-                <div className={`text-xs font-medium truncate ${isActive ? 'text-violet-200' : m.text}`}>{pad.name}</div>
+                <div className={`text-xs font-medium truncate ${isActive ? activePadTitleClass : m.text}`}>{pad.name}</div>
                 {preview && <div className={`text-[10px] truncate mt-0.5 ${m.textMuted}`}>{preview}</div>}
                 {timeStr && <div className={`text-[10px] mt-0.5 ${m.textMuted}`}>{timeStr}</div>}
               </button>

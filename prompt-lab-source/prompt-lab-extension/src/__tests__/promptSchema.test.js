@@ -453,9 +453,32 @@ describe('suggestTitleFromText', () => {
     expect(suggestTitleFromText(null)).toBe('Untitled Prompt');
   });
 
-  it('uses first sentence if short enough', () => {
+  it('uses first sentence if short enough, without a trailing period', () => {
     const result = suggestTitleFromText('Write a haiku. Then explain it.');
-    expect(result).toBe('Write a haiku.');
+    expect(result).toBe('Write a haiku');
+  });
+
+  it('uses a markdown heading on the first line as the title', () => {
+    const result = suggestTitleFromText('# Code Review Checklist\n\nReview the following diff for bugs.');
+    expect(result).toBe('Code Review Checklist');
+  });
+
+  it('names from the first non-empty line instead of the whole collapsed text', () => {
+    const result = suggestTitleFromText('Summarize the article below.\nArticle: Lorem ipsum dolor sit amet, consectetur adipiscing elit.');
+    expect(result).toBe('Summarize the article below');
+  });
+
+  it('reduces role preambles to the role itself', () => {
+    expect(suggestTitleFromText('You are a senior technical writer. Rewrite the passage.')).toBe('Senior technical writer');
+    expect(suggestTitleFromText('Act as a travel guide for Tokyo')).toBe('Travel guide for Tokyo');
+  });
+
+  it('strips conversational filler and capitalizes the result', () => {
+    expect(suggestTitleFromText('please summarize this meeting transcript')).toBe('Summarize this meeting transcript');
+  });
+
+  it('keeps expressive terminal punctuation', () => {
+    expect(suggestTitleFromText('What is the capital of France? Answer in one word.')).toBe('What is the capital of France?');
   });
 
   it('truncates long text at word boundary with ellipsis', () => {

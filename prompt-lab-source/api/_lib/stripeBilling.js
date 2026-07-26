@@ -303,12 +303,18 @@ async function createStripeCustomer(config, { clerkUserId = '', clerkEmail = '' 
 export async function getOrCreateStripeCustomer(config, { clerkUserId = '', clerkEmail = '' } = {}) {
   const id = String(clerkUserId || '').trim();
   const email = normalizeEmail(clerkEmail);
-  if (!id || !email) {
+  if (!id) {
     throw new Error('A verified Clerk identity is required for billing.');
   }
 
+  // Social logins (e.g. GitHub) can withhold the account email, so resolve by
+  // Clerk user-id metadata before requiring an email at all.
   const metadataCustomer = await findCustomerByClerkUserId(config, id);
   if (metadataCustomer) return metadataCustomer;
+
+  if (!email) {
+    throw new Error('This sign-in method does not share an email address, so billing could not be linked. Add a verified email to your account and retry.');
+  }
 
   const emailCustomer = await findCustomerByEmail(config, email);
   if (emailCustomer) {

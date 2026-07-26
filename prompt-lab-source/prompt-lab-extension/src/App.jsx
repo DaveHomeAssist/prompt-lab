@@ -11,6 +11,7 @@ import useNavigation from './hooks/useNavigation.js';
 import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
+import useFollowUpSuggestions from './hooks/useFollowUpSuggestions.js';
 import useABTest from './hooks/useABTest.js';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
@@ -116,6 +117,10 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     editor: editorState,
   });
   const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const followUpSuggestions = useFollowUpSuggestions({
+    raw: editorState.raw,
+    enhanced: editorState.enhanced,
+  });
   const ed = {
     ...editorState,
     ...persistenceFlow,
@@ -403,6 +408,19 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     });
     addToComposer(entry);
   };
+  const handleUseFollowUp = (suggestion) => {
+    trackTelemetry('followups.loaded_into_editor', { plan: billing.plan });
+    setRaw(suggestion.prompt);
+    setSaveTitle(suggestion.title);
+    notify('Follow-up loaded into editor.');
+  };
+  const handleChainFollowUp = (suggestion) => {
+    trackTelemetry('composer.block_added', {
+      source: 'follow-up',
+      plan: billing.plan,
+    });
+    addToComposer({ title: suggestion.title, enhanced: suggestion.prompt });
+  };
   const quickSave = () => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
     const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
@@ -623,6 +641,12 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
               onUnlockDiff={() => openBilling('diffView')}
               runCasesLocked={!canRunBatchCases}
+              followUps={followUpSuggestions.followUps}
+              followUpsLoading={followUpSuggestions.followUpsLoading}
+              followUpsError={followUpSuggestions.followUpsError}
+              fetchFollowUps={followUpSuggestions.fetchFollowUps}
+              onUseFollowUp={handleUseFollowUp}
+              onChainFollowUp={handleChainFollowUp}
             />
           )}
           libraryPane={(
@@ -710,7 +734,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       )}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
         setRaw(content);
         setEnhanced(content);
         setSaveTitle(title);
