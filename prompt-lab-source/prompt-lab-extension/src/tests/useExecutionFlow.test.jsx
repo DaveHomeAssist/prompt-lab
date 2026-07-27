@@ -231,7 +231,15 @@ describe('useExecutionFlow', () => {
     expect(result.current.error.category).toBe('unknown');
     // Loading must reset even on failure
     expect(result.current.loading).toBe(false);
-    expect(savedRuns).toHaveLength(0);
+    // Failed attempts are part of the running enhancement record.
+    await waitFor(() => {
+      expect(savedRuns).toHaveLength(1);
+    });
+    expect(savedRuns[0]).toEqual(expect.objectContaining({
+      mode: 'enhance',
+      status: 'error',
+      input: 'Keep this input intact',
+    }));
   });
 
   it('retry_creates_new_eval_run', async () => {

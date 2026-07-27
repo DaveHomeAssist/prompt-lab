@@ -42,6 +42,12 @@ const STATUS_LABELS = {
   success: 'Success',
   error: 'Error',
   blocked: 'Blocked',
+  canceled: 'Cancelled',
+};
+const STATUS_BADGE_STYLES = {
+  error: 'bg-red-500/20 text-red-300',
+  blocked: 'bg-amber-500/20 text-amber-300',
+  canceled: 'bg-gray-500/20 text-gray-300',
 };
 const DATE_RANGE_LABELS = {
   '7d': 'Last 7 days',
@@ -64,7 +70,7 @@ function validateTimelineFilters(value) {
     mode: ['', 'enhance', 'ab', 'test-case'].includes(value.mode) ? value.mode : DEFAULT_EVALUATE_TIMELINE_FILTERS.mode,
     provider: typeof value.provider === 'string' ? value.provider : DEFAULT_EVALUATE_TIMELINE_FILTERS.provider,
     model: typeof value.model === 'string' ? value.model : DEFAULT_EVALUATE_TIMELINE_FILTERS.model,
-    status: ['', 'success', 'error', 'blocked'].includes(value.status) ? value.status : DEFAULT_EVALUATE_TIMELINE_FILTERS.status,
+    status: ['', 'success', 'error', 'blocked', 'canceled'].includes(value.status) ? value.status : DEFAULT_EVALUATE_TIMELINE_FILTERS.status,
     dateRange: ['7d', '30d', '90d', ''].includes(value.dateRange) ? value.dateRange : DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange,
     search: typeof value.search === 'string' ? value.search : DEFAULT_EVALUATE_TIMELINE_FILTERS.search,
     showModelCompare: Boolean(value.showModelCompare),
@@ -196,6 +202,14 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
           </span>
           <span className={`${m.textMuted} truncate`}>{run.model}</span>
           <span className={`uppercase ${m.textMuted}`}>{run.mode === 'test-case' ? 'test' : run.mode}</span>
+          {run.enhanceMode && run.mode === 'enhance' && (
+            <span className={`${m.textMuted} truncate`}>{run.enhanceMode}</span>
+          )}
+          {run.status && run.status !== 'success' && (
+            <span className={`inline-block px-1.5 py-0.5 rounded font-semibold ${STATUS_BADGE_STYLES[run.status] || 'bg-gray-500/20 text-gray-300'}`}>
+              {STATUS_LABELS[run.status] || run.status}
+            </span>
+          )}
           <span className={m.textMuted}>{formatLatency(run.latencyMs)}</span>
           {version && <span className={`${ACCENT_TEXT_CLASS} font-semibold`}>{version}</span>}
         </div>
@@ -559,6 +573,7 @@ export default function RunTimelinePanel({
             <option value="success">Success</option>
             <option value="error">Error</option>
             <option value="blocked">Blocked</option>
+            <option value="canceled">Cancelled</option>
           </select>
           <select value={dateRange} onChange={e => setTimelineFilter('dateRange', e.target.value)} aria-label="Filter by date range"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>

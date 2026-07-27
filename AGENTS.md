@@ -30,6 +30,10 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | 004 | P2 | resolved | Accessibility parity remains incomplete | Added aria-labels to theme/shortcuts/settings buttons; ThemeProvider now syncs body bg |
 | 005 | P2 | resolved | Privacy policy page missing, all nav links dead | Created docs/privacy.html, fixed all nav/footer links to relative paths |
 | 006 | P2 | resolved | No diff viewer for A/B test outputs | Added DiffEngine.js, DiffPane.jsx, and Sync View button in ABTestTab |
+| 007 | P2 | resolved | Selected pad title unreadable in light theme | Threaded colorMode into PadTab; theme-aware active title, fixed dead theme sniff, stable row width |
+| 008 | P2 | resolved | GitHub-login entitlement persistence diverges from email login | Clerk-id-first Stripe lookup, checkout clerkUserId binding, revalidate guard parity, billing state reset on account switch |
+| 009 | P2 | resolved | Failed/cancelled enhance runs missing from run history | Error and cancelled enhance attempts now recorded with enhanceMode tag and timeline status filters |
+| 010 | P2 | resolved | Library auto-naming produced prefix-slice titles | Heading/role-aware title suggestion; enhance no longer clobbers user-typed titles |
 
 ## Session Log
 
@@ -54,3 +58,9 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-06-09] [PLB] [feature] Add server-side owner Pro entitlement for verified Clerk accounts
 [2026-06-09] [PLB] [landing] Refresh landing page around import packs, portable libraries, and current Pro gates
 [2026-06-09] [PLB] [fix] Surface preset import failures and expand Library import regression coverage
+[2026-07-26] [PLB] [fix] Make selected pad sidebar title theme-aware and stabilize row layout
+[2026-07-26] [PLB] [fix] Align GitHub-social and email Clerk login entitlement persistence
+[2026-07-26] [PLB] [feature] Record failed and cancelled enhance runs with enhance-mode tags in run history
+[2026-07-26] [PLB] [feature] Smarter library auto-naming (headings, role preambles, no title clobbering)
+[2026-07-26] [PLB] [feature] Add on-demand follow-up prompt suggestions with editor/composer chaining
+[2026-07-26] [PLB] [docs] Add native Swift iPad app plan (IPAD_NATIVE_APP_PLAN.md)

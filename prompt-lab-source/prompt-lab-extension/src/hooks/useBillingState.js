@@ -30,7 +30,9 @@ function readClerkEmail(clerkUser) {
 
 function shouldRevalidate(state) {
   if (state.status === 'owner') return false;
-  if (!state.customerEmail && !state.customerId) return false;
+  // Keep parity with refreshLicense: a Clerk user id alone (e.g. GitHub login
+  // with a private email) is enough identity to revalidate against.
+  if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
   const lastValidated = Date.parse(state.lastValidatedAt || '');
   if (!Number.isFinite(lastValidated)) return true;
   return (Date.now() - lastValidated) > REVALIDATE_AFTER_MS;
@@ -82,11 +84,18 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     if (!clerkId) return;
     if (email === state.customerEmail && clerkId === state.clerkUserId) return;
 
-    setState((prev) => normalizeBillingState({
-      ...prev,
-      ...(email ? { customerEmail: email } : {}),
-      clerkUserId: clerkId,
-    }));
+    setState((prev) => {
+      // A different Clerk account signed in on this device: drop the previous
+      // account's entitlements instead of merging them into the new identity.
+      const base = prev.clerkUserId && prev.clerkUserId !== clerkId && prev.status !== 'owner'
+        ? createDefaultBillingState()
+        : prev;
+      return normalizeBillingState({
+        ...base,
+        ...(email ? { customerEmail: email } : {}),
+        clerkUserId: clerkId,
+      });
+    });
   }, [clerkUser, state.clerkUserId, state.customerEmail]);
 
   useEffect(() => {
@@ -261,6 +270,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         body: JSON.stringify({
           period,
           email: overrides?.email || state.customerEmail || telemetry?.contactEmail || '',
+          clerkUserId: state.clerkUserId || '',
           source,
           deviceId: metadata?.deviceId || telemetry?.deviceId || '',
           sessionId: metadata?.sessionId || telemetry?.sessionId || '',
@@ -282,7 +292,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, state.customerEmail, telemetry]);
+  }, [notify, requestBilling, state.clerkUserId, state.customerEmail, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
     if (state.status === 'owner' || state.billingPeriod === 'owner') {

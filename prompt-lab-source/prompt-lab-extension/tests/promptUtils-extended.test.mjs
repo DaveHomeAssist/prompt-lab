@@ -276,8 +276,8 @@ test('suggestTitle: long text truncated with ellipsis', () => {
   assert.ok(t.endsWith('…'));
 });
 
-test('suggestTitle: whitespace collapsed', () => {
-  assert.equal(suggestTitleFromText('  hello   world  '), 'hello world');
+test('suggestTitle: whitespace collapsed and first letter capitalized', () => {
+  assert.equal(suggestTitleFromText('  hello   world  '), 'Hello world');
 });
 
 test('suggestTitle: empty returns "Untitled Prompt"', () => {
