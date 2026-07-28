@@ -1,7 +1,8 @@
-# Prompt Lab for iPad — Native Swift App Plan
+# Prompt Lab for iPhone & iPad — Native Swift App Plan
 
-Status: proposed (requires an ADR before implementation)
+Status: proposed (ADR recorded — see `docs/DECISIONS.md` [D-011]; scaffold awaits owner greenlight)
 Created: 2026-07-26
+Updated: 2026-07-28 — retargeted from iPad-only to a **universal iPhone + iPad app** per owner decision. Core architecture is unchanged; the delta is a compact-width (iPhone) navigation model and universal deployment target.
 Owner: Dave Robertson
 
 ## Why this document exists
@@ -22,26 +23,44 @@ scope so the ADR and the first implementation sprint have a concrete basis.
 | Native SwiftUI iPad app (this plan) | First-class iPad UX (Split View, Stage Manager, hardware keyboard, sidebar idioms); Keychain-native key storage; best App Store positioning | Second UI codebase to maintain; feature drift risk against the React app |
 | Hybrid: SwiftUI shell + shared JS core | Native chrome with shared enhance/parsing logic via JavaScriptCore | Bridging complexity; still two UI trees |
 
-**Recommendation:** Native SwiftUI app scoped to a focused iPad feature set (below), with
+**Recommendation:** Native SwiftUI app scoped to a focused feature set (below), with
 the JSON contracts — not the UI — as the sharing boundary. The React app's provider
-payload/response logic is already centralized (`providerRegistry.js`, `promptUtils.js`,
-system prompts in `constants.js`), and those contracts are portable as data, not code.
+payload/response logic is already centralized, and those contracts are portable as data, not code.
+
+### Source-of-truth map (what to port, and from where)
+
+The shared app is **not** in `prompt-lab-web/` — that package is a thin mount over the
+extension's `src/`. All load-bearing, platform-agnostic logic lives in
+**`prompt-lab-extension/src/lib/`**. Port these; discard the shell-specific seams.
+
+| Concern | Source (verified 2026-07-28) | Ports to |
+|---|---|---|
+| Prompt / version / golden schema | `prompt-lab-extension/src/lib/promptSchema.js` | SwiftData `@Model` entities |
+| Eval-run schema | `prompt-lab-extension/src/lib/evalSchema.js` | SwiftData `EvalRun` model |
+| Provider descriptors | `prompt-lab-extension/src/lib/providerRegistry.js` (Anthropic `defaultModel: claude-sonnet-4-6`) | `ProviderClient` conformances |
+| Enhance system prompt + JSON contract | `buildSystemPrompt` in `prompt-lab-extension/src/lib/constants.js` → `{enhanced, variants, notes, assumptions, tags}` | reused verbatim as the contract string |
+| Keyboard shortcut map | `prompt-lab-extension/src/lib/navigationRegistry.js` | `.keyboardShortcut` modifiers |
+| **Discard (shell-specific):** | `platform.js`, `desktopApi.js`, extension `background.js` | replaced by URLSession + Keychain |
 
 ## What the app is (v1 scope)
 
-A three-column iPad workbench mirroring the web app's mental model:
+A workbench mirroring the web app's mental model, adaptive across size classes:
 
 1. **Sidebar** — Library (saved prompts, collections), Pads (scratchpads), Runs.
 2. **Editor** — prompt authoring with enhance modes (balanced/claude/chatgpt/image/code/concise/detailed), variables, and lint hints.
 3. **Results** — enhanced output, variants, notes/assumptions, diff vs. original, run history.
+
+**Adaptive layout (universal):**
+- **iPad (regular width):** the full three-column `NavigationSplitView` (Sidebar → Editor → Results).
+- **iPhone (compact width):** the same three columns **collapse to a stacked push flow** — Library/Runs list → Editor (with a Results tab/segment or a push to a Results detail). No side-by-side Editor+Results on iPhone; Results is reached by segment control or navigation push. This is a presentation change only — the `WorkbenchStore` and models are identical across size classes.
 
 v1 explicitly **excludes**: A/B compare, composer chains, billing/Pro gating, telemetry,
 and the PII scanner (deferred until parity is worth the port).
 
 ## Architecture
 
-- **UI:** SwiftUI, `NavigationSplitView` (three-column), targeting iPadOS 17+.
-- **State:** `@Observable` models; one `WorkbenchStore` per window scene to support Split View multitasking.
+- **UI:** SwiftUI, `NavigationSplitView` (three-column on regular width; auto-collapses to a stacked `NavigationStack` flow on compact width). Universal target: **iOS 17+ / iPadOS 17+**.
+- **State:** `@Observable` models; one `WorkbenchStore` per window scene to support iPad Split View / Stage Manager multitasking (a single scene on iPhone).
 - **Persistence:** SwiftData for library entries, pads, and run records. Schemas mirror the web app's normalized shapes (`promptSchema.js`, `evalSchema.js`) so import/export stays lossless.
 - **Interchange:** import/export of the existing library JSON export format is a v1 requirement — it is the bridge between surfaces and removes migration risk.
 - **Providers:** a `ProviderClient` protocol with Anthropic first (streaming via URLSession async bytes), then OpenAI/Gemini/OpenRouter. Payload construction ports the shapes in `providerRegistry.js`. Ollama is excluded from v1 (localhost does not map to iPad).
@@ -74,7 +93,7 @@ destination, added alongside the existing desktop matrix.
 1. **M0 — ADR + scaffold (1 sprint):** record the decision; create the Xcode project, SwiftData models, and library JSON import round-trip tests.
 2. **M1 — Enhance end-to-end (1–2 sprints):** editor + Anthropic streaming enhance + results panel with variants/notes; Keychain key management.
 3. **M2 — Library + pads + runs (1 sprint):** saved library CRUD, scratchpads, local run history mirroring `eval_runs` fields (including `enhanceMode` and the `success/error/blocked/canceled` statuses added 2026-07-26).
-4. **M3 — iPad polish (1 sprint):** hardware keyboard shortcuts (mirror `navigationRegistry.js` mappings), Split View/Stage Manager, drag-and-drop of prompts as text, share-sheet export.
+4. **M3 — Adaptive layout + polish (1–2 sprints):** compact-width (iPhone) navigation — collapse the three columns to a stacked push flow with a Results segment; Dynamic Type and safe-area correctness on iPhone. iPad-specific: hardware keyboard shortcuts (mirror `navigationRegistry.js` mappings), Split View/Stage Manager, drag-and-drop of prompts as text, share-sheet export (share sheet also covers the iPhone export path).
 5. **M4 — Beta:** TestFlight, App Store metadata reusing `store-assets/`, privacy nutrition labels (no tracking; keys on device).
 
 ## Risks

@@ -249,5 +249,27 @@ Consequences: All System by Dave Notion Marketplace assets use this palette. Dis
 
 ---
 
-*Last updated: 2026-03-29*
-*Related: CLAUDE.md, PIPELINE.md, PROMPT_SYSTEM.md*
+### [D-011] Native SwiftUI app for iPhone & iPad vs Tauri Mobile shell
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-07-26
+Date resolved: 2026-07-28
+
+Context: The July 26 work list calls for a native Swift iPad Prompt Lab app. That direction conflicts with `MOBILE_DEPLOYMENT_ROADMAP.md`, whose stated goal is to ship iOS/Android **without forking the shared frontend** by wrapping the existing React app (which lives in `prompt-lab-extension/src/`) in a Tauri Mobile shell. A native app is a deliberate fork of the UI layer, so the decision must be recorded before code lands. This ADR is the gate the plan (`IPAD_NATIVE_APP_PLAN.md`) requires.
+
+Options:
+- **Tauri Mobile shell** (existing roadmap) — one React codebase; extension/desktop parity for free. Cost: WebView UX, weaker iPad multitasking/keyboard/pencil support, app-review risk for WebView-heavy apps.
+- **Native SwiftUI universal app** — first-class iOS/iPadOS UX (Split View, Stage Manager, hardware keyboard, Keychain-native key storage, best App Store positioning). Cost: a second UI codebase; feature-drift risk against the React app.
+- **Hybrid: SwiftUI shell + shared JS core via JavaScriptCore** — native chrome, shared enhance/parsing logic. Cost: bridging complexity; still two UI trees.
+
+Decision: **Native SwiftUI universal app targeting iPhone + iPad (iOS/iPadOS 17+).** The sharing boundary is the **JSON contracts, not the UI** — the enhance contract (`buildSystemPrompt` in `constants.js`), `promptSchema.js`, and `evalSchema.js` are portable as data. Scope is the focused v1 in `IPAD_NATIVE_APP_PLAN.md`; A/B, composer chains, billing, telemetry, and PII are deferred. BYO API keys in Keychain; no Clerk/Stripe auth in v1.
+
+Rationale: The prompt workbench is a keyboard- and multitasking-heavy tool where WebView UX is a real ceiling on iPad, and the extension/desktop already run auth-free with client-side keys, so a BYO-key native app matches the existing posture. Contract-level sharing (not code-level) keeps drift risk bounded and testable via import/export round-trips.
+
+Consequences: Introduces `prompt-lab-ipad/` as a fourth surface and a second UI codebase to maintain. Every change to the enhance contract in `constants.js` becomes a cross-surface API change (add a checklist item to `docs/PIPELINE.md`). Does not block the Tauri Mobile roadmap — if v1 retention doesn't justify the second codebase, that path remains open. **Next gate:** owner greenlight before the M0 Xcode scaffold; no app code lands on this ADR alone.
+
+---
+
+*Last updated: 2026-07-28*
+*Related: CLAUDE.md, PIPELINE.md, PROMPT_SYSTEM.md, IPAD_NATIVE_APP_PLAN.md*
