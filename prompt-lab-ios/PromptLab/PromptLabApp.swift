@@ -10,7 +10,7 @@ struct PromptLabApp: App {
         .modelContainer(for: [PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
     }
 
-    @ViewBuilder
+    @MainActor @ViewBuilder
     private var rootView: some View {
         #if DEBUG
         let arguments = ProcessInfo.processInfo.arguments
