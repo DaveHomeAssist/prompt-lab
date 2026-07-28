@@ -3,22 +3,22 @@ import SwiftData
 
 @Model
 final class RunRecord {
-    @Attribute(.unique) var id: String
-    var createdAt: Date
+    @Attribute(.unique) var id: String = UUID().uuidString
+    var createdAt: Date = Date.now
     var promptId: String?
     var promptVersionId: String?
-    var promptTitle: String
-    var mode: String
-    var enhanceMode: String
-    var provider: String
-    var model: String
-    var variantLabel: String
-    var input: String
-    var output: String
-    var latencyMs: Int
+    var promptTitle: String = "Untitled prompt"
+    var mode: String = "enhance"
+    var enhanceMode: String = "balanced"
+    var provider: String = "unknown"
+    var model: String = "unknown"
+    var variantLabel: String = ""
+    var input: String = ""
+    var output: String = ""
+    var latencyMs: Int = 0
     var verdict: String?
-    var notes: String
-    var status: String
+    var notes: String = ""
+    var status: String = "success"
     var testCaseId: String?
     var goldenScore: Double?
 

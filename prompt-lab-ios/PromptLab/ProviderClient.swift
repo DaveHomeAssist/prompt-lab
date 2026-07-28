@@ -12,6 +12,7 @@ protocol ProviderClient {
 }
 
 enum ProviderError: LocalizedError, Equatable {
+    case invalidEndpoint
     case invalidResponse
     case httpStatus(Int)
     case malformedStream
@@ -19,6 +20,8 @@ enum ProviderError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
+        case .invalidEndpoint:
+            "The Anthropic endpoint is invalid."
         case .invalidResponse:
             "Anthropic returned an invalid HTTP response."
         case let .httpStatus(code):
@@ -36,11 +39,15 @@ struct AnthropicProviderClient: ProviderClient {
     let modelID = "claude-sonnet-4-6"
     let requiresAPIKey = true
 
-    private let endpoint = URL(string: "https://api.anthropic.com/v1/messages")!
+    private let endpoint: String
     private let session: URLSession
 
-    init(session: URLSession = .shared) {
+    init(
+        session: URLSession = .shared,
+        endpoint: String = "https://api.anthropic.com/v1/messages"
+    ) {
         self.session = session
+        self.endpoint = endpoint
     }
 
     func streamEnhance(
@@ -50,7 +57,10 @@ struct AnthropicProviderClient: ProviderClient {
         AsyncThrowingStream { continuation in
             let producer = Task {
                 do {
-                    var urlRequest = URLRequest(url: endpoint)
+                    guard let endpointURL = URL(string: endpoint) else {
+                        throw ProviderError.invalidEndpoint
+                    }
+                    var urlRequest = URLRequest(url: endpointURL)
                     urlRequest.httpMethod = "POST"
                     urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     urlRequest.setValue(apiKey, forHTTPHeaderField: "x-api-key")

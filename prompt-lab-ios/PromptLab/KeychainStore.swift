@@ -29,7 +29,10 @@ struct KeychainStore: APIKeyStoring {
         let query = baseQuery
         let updateStatus = SecItemUpdate(
             query as CFDictionary,
-            [kSecValueData: data] as CFDictionary
+            [
+                kSecValueData: data,
+                kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            ] as CFDictionary
         )
         if updateStatus == errSecSuccess { return }
         guard updateStatus == errSecItemNotFound else {

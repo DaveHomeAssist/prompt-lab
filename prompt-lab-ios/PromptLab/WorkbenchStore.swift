@@ -89,6 +89,7 @@ final class WorkbenchStore {
             }
             try Task.checkCancellation()
             let parsed = try EnhanceResponseParser.parse(streamedText)
+            try Task.checkCancellation()
             let latency = max(0, Int(Date().timeIntervalSince(startedAt) * 1_000))
             let run = RunRecord(
                 promptTitle: String(input.prefix(60)),
@@ -101,7 +102,12 @@ final class WorkbenchStore {
                 notes: parsed.notes
             )
             modelContext.insert(run)
-            try modelContext.save()
+            do {
+                try modelContext.save()
+            } catch {
+                modelContext.delete(run)
+                throw error
+            }
             result = parsed
             state = .completed
         } catch is CancellationError {
