@@ -1,0 +1,52 @@
+name: iPad Prototype
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prompt-lab-ios/**
+      - .github/workflows/ipad-prototype.yml
+  pull_request:
+    paths:
+      - prompt-lab-ios/**
+      - .github/workflows/ipad-prototype.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-build-and-test:
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select iPad simulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_id=$(xcrun simctl list runtimes --json | jq -r '[.runtimes[] | select(.isAvailable and (.identifier | contains("iOS")))] | last | .identifier')
+          device_type_id=$(xcrun simctl list devicetypes --json | jq -r '[.devicetypes[] | select(.name | startswith("iPad Pro (11-inch)"))] | first | .identifier')
+          if [[ -z "$runtime_id" || "$runtime_id" == "null" || -z "$device_type_id" || "$device_type_id" == "null" ]]; then
+            echo "No compatible iPad simulator runtime or device type is installed." >&2
+            exit 1
+          fi
+          simulator_id=$(xcrun simctl create "Prompt Lab CI iPad" "$device_type_id" "$runtime_id")
+          echo "SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
+
+      - name: Build native prototype
+        run: >-
+          xcodebuild build
+          -project prompt-lab-ios/PromptLab.xcodeproj
+          -scheme PromptLab
+          -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
+
+      - name: Test native prototype
+        run: >-
+          xcodebuild test
+          -project prompt-lab-ios/PromptLab.xcodeproj
+          -scheme PromptLab
+          -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
