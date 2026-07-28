@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct WorkbenchRootView: View {
     @Environment(\.modelContext) private var modelContext
@@ -35,18 +36,37 @@ struct WorkbenchRootView: View {
 }
 
 private struct SidebarView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query(sort: \PromptEntry.sourceIndex) private var prompts: [PromptEntry]
+    @Query(sort: \Pad.updatedAt, order: .reverse) private var pads: [Pad]
     @Query(sort: \RunRecord.createdAt, order: .reverse) private var runs: [RunRecord]
+    @State private var isImporting = false
+    @State private var isExporting = false
+    @State private var exportDocument: LibraryJSONDocument?
+    @State private var notice: LibraryNotice?
 
     var body: some View {
         List {
             Section("Library") {
-                Label("Saved prompts", systemImage: "books.vertical")
-                Text("No saved prompts")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if prompts.isEmpty {
+                    Label("No saved prompts", systemImage: "books.vertical")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(prompts) { prompt in
+                        Label(prompt.title, systemImage: "text.book.closed")
+                            .lineLimit(1)
+                    }
+                }
             }
             Section("Pads") {
-                Label("Scratchpad", systemImage: "note.text")
+                if pads.isEmpty {
+                    Label("No scratchpads", systemImage: "note.text")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(pads) { pad in
+                        Label(pad.title, systemImage: "note.text")
+                    }
+                }
             }
             Section("Runs") {
                 if runs.isEmpty {
@@ -70,7 +90,60 @@ private struct SidebarView: View {
             }
         }
         .navigationTitle("Prompt Lab")
+        .toolbar {
+            ToolbarItemGroup(placement: .bottomBar) {
+                Button {
+                    isImporting = true
+                } label: {
+                    Label("Import Library", systemImage: "square.and.arrow.down")
+                }
+                .accessibilityLabel("Import Prompt Lab library JSON")
+
+                Button {
+                    do {
+                        exportDocument = LibraryJSONDocument(data: try LibraryInterchange.exportData(from: modelContext))
+                        isExporting = true
+                    } catch {
+                        notice = LibraryNotice(message: error.localizedDescription)
+                    }
+                } label: {
+                    Label("Export Library", systemImage: "square.and.arrow.up")
+                }
+                .accessibilityLabel("Export Prompt Lab library JSON")
+            }
+        }
+        .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
+            do {
+                let url = try result.get()
+                let accessed = url.startAccessingSecurityScopedResource()
+                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+                let summary = try LibraryInterchange.importData(Data(contentsOf: url), into: modelContext)
+                notice = LibraryNotice(
+                    message: "Imported \(summary.promptCount) prompt\(summary.promptCount == 1 ? "" : "s") and preserved \(summary.collectionCount) collection\(summary.collectionCount == 1 ? "" : "s")."
+                )
+            } catch {
+                notice = LibraryNotice(message: error.localizedDescription)
+            }
+        }
+        .fileExporter(
+            isPresented: $isExporting,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: "prompt-library-ios.json"
+        ) { result in
+            if case let .failure(error) = result {
+                notice = LibraryNotice(message: error.localizedDescription)
+            }
+        }
+        .alert(item: $notice) { notice in
+            Alert(title: Text("Library"), message: Text(notice.message), dismissButton: .default(Text("OK")))
+        }
     }
+}
+
+private struct LibraryNotice: Identifiable {
+    let id = UUID()
+    let message: String
 }
 
 private struct EditorView: View {

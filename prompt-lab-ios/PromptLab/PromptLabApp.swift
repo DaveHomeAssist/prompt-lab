@@ -7,7 +7,7 @@ struct PromptLabApp: App {
         WindowGroup {
             rootView
         }
-        .modelContainer(for: [PromptEntry.self, Pad.self, RunRecord.self])
+        .modelContainer(for: [PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
     }
 
     @ViewBuilder

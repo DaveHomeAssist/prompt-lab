@@ -16,6 +16,9 @@
 		AB0000000000000000000008 /* Contracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000A /* Contracts.swift */; };
 		AB0000000000000000000009 /* ProviderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000B /* ProviderClient.swift */; };
 		AB000000000000000000000A /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000C /* KeychainStore.swift */; };
+		AB000000000000000000000B /* LibraryMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000D /* LibraryMetadata.swift */; };
+		AB000000000000000000000C /* LibraryInterchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000E /* LibraryInterchange.swift */; };
+		AB000000000000000000000D /* web-library-export-1.7.0.json in Resources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000F /* web-library-export-1.7.0.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -41,6 +44,9 @@
 		AC000000000000000000000A /* Contracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Contracts.swift; sourceTree = "<group>"; };
 		AC000000000000000000000B /* ProviderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderClient.swift; sourceTree = "<group>"; };
 		AC000000000000000000000C /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		AC000000000000000000000D /* LibraryMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryMetadata.swift; sourceTree = "<group>"; };
+		AC000000000000000000000E /* LibraryInterchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryInterchange.swift; sourceTree = "<group>"; };
+		AC000000000000000000000F /* web-library-export-1.7.0.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/web-library-export-1.7.0.json"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +72,7 @@
 				AC000000000000000000000A /* Contracts.swift */,
 				AC000000000000000000000B /* ProviderClient.swift */,
 				AC000000000000000000000C /* KeychainStore.swift */,
+				AC000000000000000000000E /* LibraryInterchange.swift */,
 				AF0000000000000000000004 /* Models */,
 				AF0000000000000000000005 /* Features */,
 			);
@@ -74,7 +81,7 @@
 		};
 		AF0000000000000000000002 /* PromptLabTests */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000007 /* PromptLabTests.swift */,);
+			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */,);
 			path = PromptLabTests;
 			sourceTree = "<group>";
 		};
@@ -86,7 +93,7 @@
 		};
 		AF0000000000000000000004 /* Models */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000003 /* PromptEntry.swift */, AC0000000000000000000004 /* Pad.swift */, AC0000000000000000000005 /* RunRecord.swift */,);
+			children = (AC0000000000000000000003 /* PromptEntry.swift */, AC0000000000000000000004 /* Pad.swift */, AC0000000000000000000005 /* RunRecord.swift */, AC000000000000000000000D /* LibraryMetadata.swift */,);
 			path = Models;
 			sourceTree = "<group>";
 		};
@@ -149,14 +156,14 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		BD0000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		BC0000000000000000000001 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (AB0000000000000000000001, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A,);
+			files = (AB0000000000000000000001, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A, AB000000000000000000000B, AB000000000000000000000C,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		BC0000000000000000000002 = {
