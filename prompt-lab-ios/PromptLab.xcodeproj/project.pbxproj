@@ -13,6 +13,9 @@
 		AB0000000000000000000005 /* RunRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000005 /* RunRecord.swift */; };
 		AB0000000000000000000006 /* WorkbenchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000006 /* WorkbenchRootView.swift */; };
 		AB0000000000000000000007 /* PromptLabTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000007 /* PromptLabTests.swift */; };
+		AB0000000000000000000008 /* Contracts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000A /* Contracts.swift */; };
+		AB0000000000000000000009 /* ProviderClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000B /* ProviderClient.swift */; };
+		AB000000000000000000000A /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000C /* KeychainStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +38,9 @@
 		AC0000000000000000000007 /* PromptLabTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabTests.swift; sourceTree = "<group>"; };
 		AC0000000000000000000008 /* PromptLab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PromptLab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC0000000000000000000009 /* PromptLabTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromptLabTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC000000000000000000000A /* Contracts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Contracts.swift; sourceTree = "<group>"; };
+		AC000000000000000000000B /* ProviderClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderClient.swift; sourceTree = "<group>"; };
+		AC000000000000000000000C /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +63,9 @@
 			children = (
 				AC0000000000000000000001 /* PromptLabApp.swift */,
 				AC0000000000000000000002 /* WorkbenchStore.swift */,
+				AC000000000000000000000A /* Contracts.swift */,
+				AC000000000000000000000B /* ProviderClient.swift */,
+				AC000000000000000000000C /* KeychainStore.swift */,
 				AF0000000000000000000004 /* Models */,
 				AF0000000000000000000005 /* Features */,
 			);
@@ -147,7 +156,7 @@
 		BC0000000000000000000001 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (AB0000000000000000000001, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006,);
+			files = (AB0000000000000000000001, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		BC0000000000000000000002 = {
@@ -168,6 +177,7 @@
 		BF0000000000000000000011 = {isa = XCBuildConfiguration; buildSettings = {
 			CODE_SIGN_STYLE = Automatic;
 			CURRENT_PROJECT_VERSION = 1;
+			ENABLE_TESTABILITY = YES;
 			GENERATE_INFOPLIST_FILE = YES;
 			INFOPLIST_KEY_CFBundleDisplayName = "Prompt Lab";
 			INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
