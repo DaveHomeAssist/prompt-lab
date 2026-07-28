@@ -7,6 +7,7 @@ struct WorkbenchRootView: View {
     @State private var store: WorkbenchStore
     private let runRecordedDemo: Bool
 
+    @MainActor
     init(
         provider: any ProviderClient = AnthropicProviderClient(),
         runRecordedDemo: Bool = false
