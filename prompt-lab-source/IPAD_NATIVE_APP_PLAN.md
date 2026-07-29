@@ -30,15 +30,16 @@ payload/response logic is already centralized, and those contracts are portable 
 ### Source-of-truth map (what to port, and from where)
 
 The shared app is **not** in `prompt-lab-web/` — that package is a thin mount over the
-extension's `src/`. All load-bearing, platform-agnostic logic lives in
-**`prompt-lab-extension/src/lib/`**. Port these; discard the shell-specific seams.
+extension's `src/`. Most load-bearing, platform-agnostic logic lives in
+**`prompt-lab-extension/src/lib/`**, while the enhance contract builder remains at
+**`prompt-lab-extension/src/constants.js`**. Port these sources; discard the shell-specific seams.
 
 | Concern | Source (verified 2026-07-28) | Ports to |
 |---|---|---|
 | Prompt / version / golden schema | `prompt-lab-extension/src/lib/promptSchema.js` | SwiftData `@Model` entities |
 | Eval-run schema | `prompt-lab-extension/src/lib/evalSchema.js` | SwiftData `EvalRun` model |
 | Provider descriptors | `prompt-lab-extension/src/lib/providerRegistry.js` (Anthropic `defaultModel: claude-sonnet-4-6`) | `ProviderClient` conformances |
-| Enhance system prompt + JSON contract | `buildSystemPrompt` in `prompt-lab-extension/src/lib/constants.js` → `{enhanced, variants, notes, assumptions, tags}` | reused verbatim as the contract string |
+| Enhance system prompt + JSON contract | `buildSystemPrompt` in `prompt-lab-extension/src/constants.js` → `{enhanced, variants, notes, assumptions, tags}` | reused verbatim as the contract string |
 | Keyboard shortcut map | `prompt-lab-extension/src/lib/navigationRegistry.js` | `.keyboardShortcut` modifiers |
 | **Discard (shell-specific):** | `platform.js`, `desktopApi.js`, extension `background.js` | replaced by URLSession + Keychain |
 
