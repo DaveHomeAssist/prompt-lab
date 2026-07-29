@@ -192,6 +192,7 @@
 			INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 			INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 			MARKETING_VERSION = 0.1.0;
 			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype;
@@ -202,7 +203,7 @@
 			SWIFT_EMIT_LOC_STRINGS = YES;
 			SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 			SWIFT_VERSION = 5.0;
-			TARGETED_DEVICE_FAMILY = 2;
+			TARGETED_DEVICE_FAMILY = "1,2";
 		}; name = Debug; };
 		BF0000000000000000000012 = {isa = XCBuildConfiguration; buildSettings = {
 			CODE_SIGN_STYLE = Automatic;
@@ -213,6 +214,7 @@
 			INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 			INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+			INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 			MARKETING_VERSION = 0.1.0;
 			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype;
@@ -222,7 +224,7 @@
 			SUPPORTS_MACCATALYST = NO;
 			SWIFT_EMIT_LOC_STRINGS = YES;
 			SWIFT_VERSION = 5.0;
-			TARGETED_DEVICE_FAMILY = 2;
+			TARGETED_DEVICE_FAMILY = "1,2";
 		}; name = Release; };
 		BF0000000000000000000021 = {isa = XCBuildConfiguration; buildSettings = {
 			BUNDLE_LOADER = "$(TEST_HOST)";
@@ -234,7 +236,7 @@
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 			SWIFT_VERSION = 5.0;
-			TARGETED_DEVICE_FAMILY = 2;
+			TARGETED_DEVICE_FAMILY = "1,2";
 			TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromptLab.app/PromptLab";
 		}; name = Debug; };
 		BF0000000000000000000022 = {isa = XCBuildConfiguration; buildSettings = {
@@ -247,7 +249,7 @@
 			SDKROOT = iphoneos;
 			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 			SWIFT_VERSION = 5.0;
-			TARGETED_DEVICE_FAMILY = 2;
+			TARGETED_DEVICE_FAMILY = "1,2";
 			TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromptLab.app/PromptLab";
 		}; name = Release; };
 /* End XCBuildConfiguration section */
