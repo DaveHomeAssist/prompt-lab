@@ -42,6 +42,7 @@ private struct SidebarView: View {
     @Query(sort: \Pad.updatedAt, order: .reverse) private var pads: [Pad]
     @Query(sort: \RunRecord.createdAt, order: .reverse) private var runs: [RunRecord]
     @State private var isImporting = false
+    @State private var isConfirmingImport = false
     @State private var isExporting = false
     @State private var exportDocument: LibraryJSONDocument?
     @State private var notice: LibraryNotice?
@@ -94,11 +95,11 @@ private struct SidebarView: View {
         .toolbar {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button {
-                    isImporting = true
+                    isConfirmingImport = true
                 } label: {
-                    Label("Import Library", systemImage: "square.and.arrow.down")
+                    Label("Replace Library", systemImage: "square.and.arrow.down")
                 }
-                .accessibilityLabel("Import Prompt Lab library JSON")
+                .accessibilityLabel("Replace Prompt Lab library from JSON")
 
                 Button {
                     do {
@@ -112,6 +113,18 @@ private struct SidebarView: View {
                 }
                 .accessibilityLabel("Export Prompt Lab library JSON")
             }
+        }
+        .confirmationDialog(
+            "Replace current library?",
+            isPresented: $isConfirmingImport,
+            titleVisibility: .visible
+        ) {
+            Button("Choose Replacement File", role: .destructive) {
+                isImporting = true
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Importing replaces all saved prompts. Export a backup first if needed.")
         }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
             do {
