@@ -37,13 +37,12 @@ jobs:
           DEVICE_FAMILY: ${{ matrix.device_family }}
         run: |
           set -euo pipefail
-          runtime_id=$(xcrun simctl list runtimes --json | jq -r '[.runtimes[] | select(.isAvailable and (.identifier | contains("iOS")))] | last | .identifier')
-          device_type_id=$(xcrun simctl list devicetypes --json | jq -r --arg family "$DEVICE_FAMILY" '[.devicetypes[] | select(.name | startswith($family))] | last | .identifier')
-          if [[ -z "$runtime_id" || "$runtime_id" == "null" || -z "$device_type_id" || "$device_type_id" == "null" ]]; then
-            echo "No compatible $DEVICE_FAMILY simulator runtime or device type is installed." >&2
+          simulator_id=$(xcrun simctl list devices available --json | jq -r --arg family "$DEVICE_FAMILY" '[.devices[] | .[] | select(.isAvailable and (.name | startswith($family)))] | last | .udid')
+          if [[ -z "$simulator_id" || "$simulator_id" == "null" ]]; then
+            echo "No compatible installed $DEVICE_FAMILY simulator is available." >&2
+            xcrun simctl list devices available
             exit 1
           fi
-          simulator_id=$(xcrun simctl create "Prompt Lab CI $DEVICE_FAMILY" "$device_type_id" "$runtime_id")
           echo "SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
 
       - name: Build native prototype
