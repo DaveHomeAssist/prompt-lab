@@ -1,15 +1,15 @@
-# Prompt Lab for iPad
+# Prompt Lab for iPhone & iPad
 
-Native SwiftUI prototype of the Prompt Lab workbench for iPadOS 17 and later.
+Native SwiftUI prototype of the Prompt Lab workbench for iOS and iPadOS 17 and later.
 
-This is a prototype, not a replacement for the shipped React surfaces. Native SwiftUI conflicts with the current Tauri Mobile roadmap in `prompt-lab-source/MOBILE_DEPLOYMENT_ROADMAP.md`. The repository's `prompt-lab-source/docs/DECISIONS.md` does not currently contain the brief's referenced D-011 entry, so an ADR must be recorded before this direction moves beyond prototype status.
+This is a prototype, not a replacement for the shipped React surfaces. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with the JSON contracts—not the UI—as the compatibility boundary.
 
 ## Build and test
 
 Requirements:
 
 - Xcode with an iOS 17 or later simulator runtime
-- An iPad simulator named `iPad Pro (11-inch)`
+- An available iPhone or iPad simulator
 
 ```sh
 xcodebuild build \
@@ -21,9 +21,15 @@ xcodebuild test \
   -project prompt-lab-ios/PromptLab.xcodeproj \
   -scheme PromptLab \
   -destination 'platform=iOS Simulator,name=iPad Pro (11-inch)'
+
+# Also verify the compact-width target with any installed iPhone simulator.
+xcodebuild build \
+  -project prompt-lab-ios/PromptLab.xcodeproj \
+  -scheme PromptLab \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-The app targets iPad only and uses landscape orientation so Sidebar, Editor, and Results remain visible together.
+The app targets both iPhone and iPad. Regular-width iPads show Sidebar, Editor, and Results together; compact-width iPhones collapse the same `NavigationSplitView` into a stacked navigation flow.
 
 ## Add an Anthropic key
 
@@ -36,7 +42,7 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 
 ## What works
 
-- Three-column SwiftUI workbench using `NavigationSplitView`
+- Adaptive SwiftUI workbench using `NavigationSplitView` across iPhone and iPad
 - Scene-local observable editor and request state
 - SwiftData persistence for library entries, scratchpads, and web-shaped run records
 - Anthropic Messages API payloads and streamed SSE text deltas
