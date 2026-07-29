@@ -64,3 +64,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-07-26] [PLB] [feature] Smarter library auto-naming (headings, role preambles, no title clobbering)
 [2026-07-26] [PLB] [feature] Add on-demand follow-up prompt suggestions with editor/composer chaining
 [2026-07-26] [PLB] [docs] Add native Swift iPad app plan (IPAD_NATIVE_APP_PLAN.md)
+[2026-07-28] [PLB] [feature] Add Recent Surface Sweep maintenance prompt to Workspace Cleanup seed library
