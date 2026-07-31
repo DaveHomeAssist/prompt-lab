@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AOM Show Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;800&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14110F;
+  --panel:#201B17;
+  --panel-2:#2A241F;
+  --line:#3A322B;
+  --parchment:#EDE3D1;
+  --muted:#9C9084;
+  --sand:#C99A4E;
+  --steel:#6E93A0;
+  --rust:#C0472A;
+  --ok:#7FA05E;
+  --ppm-w:1180px;
+  --row-h:46px;
+  --label-w:112px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--parchment);
+  font-family:"DM Sans",sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  padding:20px 16px 120px;
+  max-width:1400px;
+  margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- header ---------- */
+.masthead{
+  border-bottom:2px solid var(--line);
+  padding-bottom:14px;
+  margin-bottom:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.masthead h1{
+  font-family:"Syne",sans-serif;
+  font-weight:800;
+  font-size:clamp(24px,5.5vw,38px);
+  letter-spacing:-0.02em;
+  line-height:1.02;
+  text-transform:uppercase;
+}
+.masthead h1 em{font-style:normal;color:var(--sand)}
+.masthead .sub{
+  font-family:"DM Mono",monospace;
+  font-size:11.5px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-top:6px;
+}
+.hdr-actions{display:flex;gap:8px;align-items:center}
+.btn{
+  font-family:"DM Mono",monospace;
+  font-size:11px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  background:var(--panel-2);
+  color:var(--parchment);
+  border:1px solid var(--line);
+  padding:8px 14px;
+  border-radius:2px;
+  cursor:pointer;
+}
+.btn:active{transform:scale(0.98)}
+.btn.primary{background:var(--sand);color:var(--ink);border-color:var(--sand);font-weight:500}
+.btn.danger{border-color:var(--rust);color:#E08A72}
+.btn.editing{background:var(--rust);color:#fff;border-color:var(--rust)}
+#savestate{
+  font-family:"DM Mono",monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+  opacity:0;
+  transition:opacity .3s;
+}
+#savestate.show{opacity:1}
+#savestate.ok{color:var(--ok)}
+#savestate.bad{color:#E08A72}
+
+/* ---------- now strip ---------- */
+.now{
+  background:var(--panel);
+  border-left:3px solid var(--sand);
+  padding:14px 16px;
+  margin-bottom:24px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:20px 40px;
+}
+.now .clock{
+  font-family:"DM Mono",monospace;
+  font-size:30px;
+  font-weight:500;
+  letter-spacing:-0.02em;
+  line-height:1;
+}
+.now .clock span{font-size:14px;color:var(--muted)}
+.now-col{min-width:150px}
+.now-col h3{
+  font-family:"DM Mono",monospace;
+  font-size:10.5px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:400;
+  margin-bottom:6px;
+}
+.now-col .lines{font-size:14px;line-height:1.45}
+
+/* ---------- board ---------- */
+.section-label{
+  font-family:"DM Mono",monospace;
+  font-size:10.5px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:baseline;
+  gap:12px;
+}
+.section-label .hint{text-transform:none;letter-spacing:0.02em;font-size:11px}
+
+.scroller{
+  overflow-x:auto;
+  overflow-y:hidden;
+  border:1px solid var(--line);
+  background:var(--panel);
+  margin-bottom:12px;
+  -webkit-overflow-scrolling:touch;
+}
+.track{min-width:calc(var(--label-w) + var(--ppm-w));position:relative}
+
+.axis{display:flex;height:26px;border-bottom:1px solid var(--line);position:relative}
+.axis .corner{
+  width:var(--label-w);flex:0 0 var(--label-w);
+  position:sticky;left:0;z-index:6;
+  background:var(--panel-2);border-right:1px solid var(--line);
+}
+.axis .ticks{flex:1;position:relative}
+.tick{
+  position:absolute;top:0;bottom:0;
+  border-left:1px solid var(--line);
+  padding-left:5px;
+  font-family:"DM Mono",monospace;font-size:10.5px;color:var(--muted);
+  display:flex;align-items:center;
+}
+
+.row{display:flex;height:var(--row-h);border-bottom:1px solid var(--line);position:relative}
+.row:last-child{border-bottom:none}
+.rlabel{
+  width:var(--label-w);flex:0 0 var(--label-w);
+  position:sticky;left:0;z-index:5;
+  background:var(--panel-2);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;justify-content:center;
+  padding:0 8px 0 10px;
+}
+.rlabel .nm{font-family:"Syne",sans-serif;font-weight:600;font-size:13px;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rlabel .fl{font-family:"DM Mono",monospace;font-size:9.5px;letter-spacing:0.1em;color:var(--muted);text-transform:uppercase}
+.rlabel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.f2 .rlabel::before{background:var(--sand)}
+.f1 .rlabel::before{background:var(--steel)}
+body.edit .rlabel{cursor:pointer}
+body.edit .rlabel::after{
+  content:"+";
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  font-family:"DM Mono",monospace;font-size:15px;color:var(--sand);
+}
+.lane{flex:1;position:relative}
+.blk{
+  position:absolute;top:7px;bottom:7px;border-radius:2px;
+  display:flex;align-items:center;padding:0 7px;
+  font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:0.02em;
+  overflow:hidden;white-space:nowrap;
+}
+body.edit .blk{cursor:pointer}
+.f2 .blk{background:rgba(201,154,78,0.20);border:1px solid rgba(201,154,78,0.62);color:#EBCD98}
+.f1 .blk{background:rgba(110,147,160,0.20);border:1px solid rgba(110,147,160,0.62);color:#B4D0D8}
+.blk.dead{
+  background:repeating-linear-gradient(135deg,transparent,transparent 4px,rgba(192,71,42,0.20) 4px,rgba(192,71,42,0.20) 8px);
+  border:1px dashed rgba(192,71,42,0.75);
+  color:#E08A72;
+  text-decoration:line-through;
+}
+.blk.live{box-shadow:0 0 0 1px var(--parchment) inset,0 0 14px rgba(237,227,209,0.14)}
+.emptyrow{
+  position:absolute;left:10px;top:50%;transform:translateY(-50%);
+  font-family:"DM Mono",monospace;font-size:10.5px;color:var(--muted);
+}
+.band{
+  position:absolute;top:26px;bottom:0;
+  background:rgba(192,71,42,0.13);
+  border-left:1px solid rgba(192,71,42,0.55);
+  border-right:1px solid rgba(192,71,42,0.55);
+  pointer-events:none;z-index:3;
+}
+.band .tag{
+  position:absolute;top:2px;left:50%;transform:translateX(-50%);
+  background:var(--rust);color:#fff;
+  font-family:"DM Mono",monospace;font-size:9px;letter-spacing:0.12em;
+  padding:2px 5px;white-space:nowrap;
+}
+.head{
+  position:absolute;top:26px;bottom:0;width:2px;
+  background:var(--parchment);z-index:4;pointer-events:none;
+}
+.head::after{
+  content:"";position:absolute;top:-4px;left:-3px;
+  width:8px;height:8px;background:var(--parchment);transform:rotate(45deg);
+}
+
+.board-foot{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:12px;margin-bottom:28px;flex-wrap:wrap;
+}
+.legend{
+  display:flex;flex-wrap:wrap;gap:8px 20px;
+  font-family:"DM Mono",monospace;font-size:10.5px;
+  letter-spacing:0.06em;text-transform:uppercase;color:var(--muted);
+}
+.legend i{display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.sw2{background:rgba(201,154,78,0.25);border:1px solid var(--sand)}
+.sw1{background:rgba(110,147,160,0.25);border:1px solid var(--steel)}
+.swx{border:1px dashed var(--rust);background:rgba(192,71,42,0.18)}
+.swp{background:rgba(192,71,42,0.35);border:1px solid var(--rust)}
+#addroom{display:none}
+body.edit #addroom{display:inline-block}
+
+/* ---------- turn stack ---------- */
+.turns{border:1px solid var(--line);background:var(--panel);margin-bottom:28px}
+.turn{display:flex;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:flex-start}
+.turn:last-child{border-bottom:none}
+.turn.pinch{background:rgba(192,71,42,0.10);border-left:3px solid var(--rust);padding-left:11px}
+.turn.past{opacity:0.4}
+.turn .t{font-family:"DM Mono",monospace;font-size:13px;font-weight:500;flex:0 0 62px;padding-top:1px}
+.turn .d{flex:1;font-size:14px}
+.turn .d b{font-weight:700}
+.turn .d .meta{
+  display:block;font-family:"DM Mono",monospace;font-size:10.5px;
+  color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-top:2px;
+}
+.turn.pinch .d .meta{color:#E08A72}
+.turns .none{padding:14px;font-family:"DM Mono",monospace;font-size:11px;color:var(--muted)}
+
+.footnote{
+  border-top:2px solid var(--line);padding-top:14px;
+  font-family:"DM Mono",monospace;font-size:10.5px;
+  letter-spacing:0.04em;color:var(--muted);
+}
+
+/* ---------- editor sheet ---------- */
+#overlay{
+  position:fixed;inset:0;background:rgba(10,8,6,0.6);
+  z-index:20;display:none;
+}
+#sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:21;
+  background:var(--panel-2);border-top:2px solid var(--sand);
+  padding:18px 16px calc(18px + env(safe-area-inset-bottom));
+  display:none;
+  max-width:560px;margin:0 auto;
+  border-radius:6px 6px 0 0;
+}
+#sheet.open,#overlay.open{display:block}
+#sheet h2{
+  font-family:"Syne",sans-serif;font-weight:700;font-size:17px;
+  margin-bottom:14px;letter-spacing:-0.01em;
+}
+.field{margin-bottom:12px}
+.field label{
+  display:block;
+  font-family:"DM Mono",monospace;font-size:10px;
+  letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);
+  margin-bottom:4px;
+}
+.field input[type=text],.field input[type=time],.field select{
+  width:100%;
+  background:var(--ink);color:var(--parchment);
+  border:1px solid var(--line);border-radius:2px;
+  padding:10px;
+  font-family:"DM Mono",monospace;font-size:15px;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--sand)}
+.field.half{display:inline-block;width:calc(50% - 6px)}
+.field.half + .field.half{margin-left:12px}
+.chk{
+  display:flex;align-items:center;gap:10px;margin-bottom:14px;
+  font-size:14px;
+}
+.chk input{width:18px;height:18px;accent-color:var(--rust)}
+.sheet-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.sheet-actions .btn{flex:1;text-align:center;padding:11px 8px}
+#err{
+  color:#E08A72;font-family:"DM Mono",monospace;font-size:11px;
+  margin-bottom:8px;display:none;
+}
+#err.show{display:block}
+
+@media (max-width:640px){
+  :root{--ppm-w:1000px;--label-w:96px;--row-h:44px}
+  body{padding:16px 12px 120px}
+  .now{gap:14px 26px}
+  .now .clock{font-size:26px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .row{animation:fade .4s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+}
+@media print{
+  body{background:#fff;color:#111;padding:0}
+  .masthead h1 em{color:#8A5A12}
+  .now,.turns,.scroller{background:#fff;border-color:#bbb}
+  .rlabel,.axis .corner{background:#f2efe9}
+  .scroller{overflow:visible}
+  .track{min-width:0;width:100%}
+  .head,.hdr-actions,#addroom{display:none}
+  :root{--parchment:#111;--muted:#555;--line:#ccc;--panel:#fff;--panel-2:#f2efe9}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <h1>AOM Show Board <em id="daylabel">·</em></h1>
+    <div class="sub">Sheraton Philadelphia Downtown &nbsp;·&nbsp; <span id="windowlabel"></span> &nbsp;·&nbsp; <span id="savestate">saved</span></div>
+  </div>
+  <div class="hdr-actions">
+    <button class="btn" id="settingsbtn">Day</button>
+    <button class="btn" id="editbtn">Edit</button>
+  </div>
+</header>
+
+<section class="now">
+  <div><div class="clock" id="clock">--:--<span id="ampm"></span></div></div>
+  <div class="now-col">
+    <h3>Live now</h3>
+    <div class="lines" id="live">&mdash;</div>
+  </div>
+  <div class="now-col">
+    <h3>Next action</h3>
+    <div class="lines" id="next">&mdash;</div>
+  </div>
+</section>
+
+<div class="section-label">
+  <span>Room timeline</span>
+  <span class="hint" id="scrollhint">swipe sideways · tap Edit to change anything</span>
+</div>
+
+<div class="scroller">
+  <div class="track" id="track">
+    <div class="axis">
+      <div class="corner"></div>
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <div id="rows"></div>
+  </div>
+</div>
+
+<div class="board-foot">
+  <div class="legend">
+    <span><i class="sw2"></i>Floor 2</span>
+    <span><i class="sw1"></i>Floor 1</span>
+    <span><i class="swx"></i>Cancelled</span>
+    <span><i class="swp"></i>Pinch</span>
+  </div>
+  <button class="btn" id="addroom">+ Room</button>
+</div>
+
+<div class="section-label"><span>Turn stack</span></div>
+<div class="turns" id="turns"></div>
+
+<div class="footnote">
+  Pinch bands and the time axis are computed from whatever is on the board.
+  Edits save to your Claude account storage on this artifact.
+</div>
+
+<div id="overlay"></div>
+<div id="sheet"></div>
+
+<script>
+/* ================= data ================= */
+const DEFAULT_BOARD = {
+  day: "Fri Jul 31",
+  rooms: [
+    {name:"Parlor A",floor:2,note:"",sessions:[
+      {s:"10:45",e:"12:15",id:"21424",dead:false},
+      {s:"12:30",e:"14:00",id:"14739",dead:false},
+      {s:"14:30",e:"16:00",id:"21395",dead:true},
+      {s:"16:15",e:"17:45",id:"17497",dead:false}]},
+    {name:"Parlor B",floor:2,note:"",sessions:[
+      {s:"09:00",e:"12:00",id:"22683",dead:false},
+      {s:"12:15",e:"13:45",id:"11621",dead:false},
+      {s:"14:00",e:"16:00",id:"10112",dead:false},
+      {s:"16:30",e:"18:00",id:"19866",dead:false}]},
+    {name:"Parlor C",floor:2,note:"",sessions:[
+      {s:"10:00",e:"12:00",id:"18784",dead:false}]},
+    {name:"Parlor D",floor:2,note:"",sessions:[
+      {s:"08:00",e:"09:30",id:"22056",dead:false},
+      {s:"11:30",e:"13:30",id:"24326",dead:false}]},
+    {name:"Seminar A",floor:1,note:"",sessions:[
+      {s:"09:00",e:"10:30",id:"14989",dead:false},
+      {s:"10:45",e:"12:15",id:"15267",dead:false},
+      {s:"12:30",e:"14:00",id:"18814",dead:false},
+      {s:"15:30",e:"17:30",id:"10622",dead:false}]},
+    {name:"Seminar B",floor:1,note:"",sessions:[
+      {s:"08:00",e:"10:00",id:"14012",dead:false},
+      {s:"10:15",e:"12:45",id:"14939",dead:false},
+      {s:"13:00",e:"15:30",id:"16162",dead:false}]},
+    {name:"Seminar C",floor:1,note:"Nursing room · no AV",sessions:[]},
+    {name:"Seminar D",floor:1,note:"Setup only · sessions start Sunday",sessions:[]}
+  ]
+};
+const KEY="aom_show_board_v1";
+const TURN_MAX=30;           /* minutes: strike-to-reset gap that counts as a tight turn */
+const DARK_MAX=60;           /* gap beyond which we call it "dark until" in the stack   */
+
+let board=null;
+let START=480,END=1080,SPAN=600;
+
+/* ================= utils ================= */
+const $=id=>document.getElementById(id);
+const m=t=>{const[a,b]=t.split(":").map(Number);return a*60+b};
+const clone=o=>JSON.parse(JSON.stringify(o));
+const fmt=v=>{let h=Math.floor(v/60),mm=v%60;const ap=h>=12?"p":"a";h=h%12||12;return h+(mm?":"+String(mm).padStart(2,"0"):"")+ap};
+const toHHMM=v=>String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0");
+const pct=x=>((x-START)/SPAN*100);
+const LW=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--label-w"));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ================= storage ================= */
+async function loadBoard(){
+  try{
+    const r=await window.storage.get(KEY);
+    if(r&&r.value){board=JSON.parse(r.value);return}
+  }catch(e){/* key absent or storage unavailable */}
+  board=clone(DEFAULT_BOARD);
+}
+let saveTimer=null;
+function saveBoard(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    const el=$("savestate");
+    try{
+      const r=await window.storage.set(KEY,JSON.stringify(board));
+      el.textContent=r?"saved":"save failed";
+      el.className="show "+(r?"ok":"bad");
+    }catch(e){
+      el.textContent="not saved · session only";
+      el.className="show bad";
+    }
+    setTimeout(()=>el.classList.remove("show"),2000);
+  },250);
+}
+
+/* ================= derived values ================= */
+function computeWindow(){
+  let lo=Infinity,hi=-Infinity;
+  board.rooms.forEach(r=>r.sessions.forEach(x=>{
+    lo=Math.min(lo,m(x.s));hi=Math.max(hi,m(x.e));
+  }));
+  if(!isFinite(lo)){lo=480;hi=1080}
+  START=Math.floor(lo/60)*60;
+  END=Math.ceil(hi/60)*60;
+  if(END-START<120)END=START+120;
+  SPAN=END-START;
+}
+
+function activeSorted(r){
+  return r.sessions.filter(x=>!x.dead).slice().sort((a,b)=>m(a.s)-m(b.s));
+}
+
+function computeTurns(){
+  const out=[];
+  board.rooms.forEach(r=>{
+    const act=activeSorted(r);
+    act.forEach((x,i)=>{
+      const nxt=act[i+1];
+      if(nxt){
+        const gap=m(nxt.s)-m(x.e);
+        if(gap>=0)out.push({room:r.name,floor:r.floor,a:m(x.e),b:m(nxt.s),gap,kind:gap<=TURN_MAX?"turn":(gap<=DARK_MAX?"turn":"dark")});
+      }else{
+        out.push({room:r.name,floor:r.floor,a:m(x.e),b:null,gap:null,kind:"done"});
+      }
+    });
+  });
+  return out.sort((p,q)=>p.a-q.a);
+}
+
+function computePinches(turnEvents){
+  const tight=turnEvents.filter(t=>t.kind==="turn"&&t.gap<=TURN_MAX);
+  const clusters=[];
+  tight.forEach(t=>{
+    const c=clusters[clusters.length-1];
+    if(c&&t.a<=c.b){c.b=Math.max(c.b,t.b);c.items.push(t)}
+    else clusters.push({a:t.a,b:t.b,items:[t]});
+  });
+  return clusters.filter(c=>new Set(c.items.map(i=>i.room)).size>=2);
+}
+
+/* ================= render ================= */
+function render(){
+  computeWindow();
+  $("daylabel").textContent="· "+board.day;
+  $("windowlabel").textContent=fmt(START)+" to "+fmt(END);
+
+  /* axis */
+  const ticks=$("ticks");ticks.innerHTML="";
+  for(let h=START/60;h<=END/60;h++){
+    const d=document.createElement("div");
+    d.className="tick";
+    d.style.left=pct(h*60)+"%";
+    d.textContent=(h%12||12)+(h>=12&&h<24?"p":"a");
+    ticks.appendChild(d);
+  }
+
+  /* rows */
+  const rows=$("rows");rows.innerHTML="";
+  board.rooms.forEach((r,ri)=>{
+    const row=document.createElement("div");
+    row.className="row f"+r.floor;
+    row.style.animationDelay=(ri*30)+"ms";
+    const lab=document.createElement("div");
+    lab.className="rlabel";
+    lab.innerHTML='<span class="nm">'+esc(r.name)+'</span><span class="fl">Floor '+r.floor+'</span>';
+    lab.addEventListener("click",()=>{if(editMode)openRoomEditor(ri)});
+    row.appendChild(lab);
+    const lane=document.createElement("div");
+    lane.className="lane";
+    if(!r.sessions.length&&r.note){
+      lane.innerHTML='<span class="emptyrow">'+esc(r.note)+'</span>';
+    }
+    r.sessions.slice().sort((a,b)=>m(a.s)-m(b.s)).forEach(x=>{
+      const si=r.sessions.indexOf(x);
+      const a=m(x.s),b=m(x.e);
+      const el=document.createElement("div");
+      el.className="blk"+(x.dead?" dead":"");
+      el.style.left=pct(a)+"%";
+      el.style.width=Math.max(((b-a)/SPAN*100),0.5)+"%";
+      el.textContent=fmt(a)+" to "+fmt(b)+(x.dead?"  CANCELLED":(x.id?"  #"+x.id:""));
+      el.title=r.name+" · "+fmt(a)+" to "+fmt(b)+(x.id?" · #"+x.id:"");
+      el.dataset.a=a;el.dataset.b=b;el.dataset.dead=x.dead?1:0;
+      el.addEventListener("click",ev=>{if(editMode){ev.stopPropagation();openSessionEditor(ri,si)}});
+      lane.appendChild(el);
+    });
+    row.appendChild(lane);
+    rows.appendChild(row);
+  });
+
+  /* pinch bands */
+  const track=$("track");
+  track.querySelectorAll(".band,.head").forEach(el=>el.remove());
+  const turnEvents=computeTurns();
+  const pinches=computePinches(turnEvents);
+  const w=LW();
+  pinches.forEach(p=>{
+    const band=document.createElement("div");
+    band.className="band";
+    band.style.left=`calc(${w}px + (100% - ${w}px) * ${pct(p.a)/100})`;
+    band.style.width=`calc((100% - ${w}px) * ${(p.b-p.a)/SPAN})`;
+    band.innerHTML='<span class="tag">PINCH '+fmt(p.a).toUpperCase()+' TO '+fmt(p.b).toUpperCase()+'</span>';
+    track.appendChild(band);
+  });
+
+  /* playhead */
+  const head=document.createElement("div");
+  head.className="head";head.id="playhead";head.style.display="none";
+  track.appendChild(head);
+
+  renderTurnStack(turnEvents,pinches);
+  tick();
+}
+
+function renderTurnStack(turnEvents,pinches){
+  const box=$("turns");box.innerHTML="";
+  const byTime={};
+  turnEvents.forEach(t=>{(byTime[t.a]=byTime[t.a]||[]).push(t)});
+  const times=Object.keys(byTime).map(Number).sort((a,b)=>a-b);
+  if(!times.length){box.innerHTML='<div class="none">No sessions on the board</div>';return}
+  times.forEach(t=>{
+    const g=byTime[t];
+    const tight=g.filter(e=>e.kind==="turn"&&e.gap<=TURN_MAX);
+    const inPinch=pinches.some(p=>t>=p.a&&t<p.b)&&tight.length>0;
+    const multi=tight.length>1;
+    const el=document.createElement("div");
+    el.className="turn"+((multi||inPinch)?" pinch":"");
+    el.dataset.t=t;
+    const desc=g.map(e=>{
+      if(e.kind==="done")return "<b>"+esc(e.room)+"</b> done for the day";
+      if(e.gap<=TURN_MAX)return "<b>"+esc(e.room)+"</b> turn, back at "+fmt(e.b);
+      return "<b>"+esc(e.room)+"</b> strike, dark until "+fmt(e.b);
+    }).join("<br>");
+    let meta="";
+    if(multi){
+      const floors=new Set(tight.map(e=>e.floor));
+      meta=tight.length+" rooms turning"+(floors.size>1?" across two floors":"")+" · "+Math.min(...tight.map(e=>e.gap))+" min";
+    }else if(tight.length===1){
+      meta=tight[0].gap+" min turn";
+    }
+    el.innerHTML='<span class="t">'+fmt(t)+'</span><span class="d">'+desc+(meta?'<span class="meta">'+meta+'</span>':'')+'</span>';
+    box.appendChild(el);
+  });
+}
+
+/* ================= live tick ================= */
+function tick(){
+  const now=new Date();
+  const cur=now.getHours()*60+now.getMinutes();
+  let h=now.getHours(),mm=String(now.getMinutes()).padStart(2,"0");
+  const ap=h>=12?"PM":"AM";h=h%12||12;
+  $("clock").firstChild.nodeValue=h+":"+mm;
+  $("ampm").textContent=" "+ap;
+
+  const head=$("playhead");
+  if(head){
+    if(cur>=START&&cur<=END){
+      const w=LW();
+      head.style.display="block";
+      head.style.left=`calc(${w}px + (100% - ${w}px) * ${pct(cur)/100})`;
+    }else head.style.display="none";
+  }
+
+  const live=[],upcoming=[];
+  board.rooms.forEach(r=>{
+    r.sessions.forEach(x=>{
+      if(x.dead)return;
+      const a=m(x.s),b=m(x.e);
+      if(cur>=a&&cur<b)live.push(esc(r.name)+"  "+fmt(a)+" to "+fmt(b));
+      if(a>cur)upcoming.push({t:a,txt:esc(r.name)+" up"});
+      if(b>cur)upcoming.push({t:b,txt:esc(r.name)+" out"});
+    });
+  });
+  document.querySelectorAll(".blk").forEach(el=>{
+    const a=+el.dataset.a,b=+el.dataset.b;
+    el.classList.toggle("live",el.dataset.dead==="0"&&cur>=a&&cur<b);
+  });
+  $("live").innerHTML=live.length?live.join("<br>"):"Nothing running";
+  upcoming.sort((p,q)=>p.t-q.t);
+  const t0=upcoming.length?upcoming[0].t:null;
+  if(t0===null){$("next").innerHTML="Day complete"}
+  else{
+    const grp=upcoming.filter(u=>u.t===t0).map(u=>u.txt);
+    $("next").innerHTML="<b>"+fmt(t0)+"</b> &nbsp;"+grp.join("<br><b>"+fmt(t0)+"</b> &nbsp;");
+  }
+  document.querySelectorAll(".turn").forEach(el=>{
+    el.classList.toggle("past",+el.dataset.t<cur);
+  });
+}
+
+/* ================= edit mode ================= */
+let editMode=false;
+$("editbtn").addEventListener("click",()=>{
+  editMode=!editMode;
+  document.body.classList.toggle("edit",editMode);
+  $("editbtn").textContent=editMode?"Done":"Edit";
+  $("editbtn").classList.toggle("editing",editMode);
+  $("scrollhint").textContent=editMode
+    ?"tap a block to edit it · tap a room name to edit the room or add a session"
+    :"swipe sideways · tap Edit to change anything";
+});
+
+/* ---------- sheet plumbing ---------- */
+function openSheet(html){
+  $("sheet").innerHTML=html;
+  $("sheet").classList.add("open");
+  $("overlay").classList.add("open");
+}
+function closeSheet(){
+  $("sheet").classList.remove("open");
+  $("overlay").classList.remove("open");
+}
+$("overlay").addEventListener("click",closeSheet);
+function showErr(msg){const e=$("err");if(e){e.textContent=msg;e.classList.add("show")}}
+
+/* ---------- session editor ---------- */
+function openSessionEditor(ri,si){
+  const r=board.rooms[ri];
+  const isNew=si===null;
+  const x=isNew?{s:"",e:"",id:"",dead:false}:r.sessions[si];
+  openSheet(`
+    <h2>${esc(r.name)} · ${isNew?"New session":"Edit session"}</h2>
+    <div id="err"></div>
+    <div class="field half"><label>Start</label><input type="time" id="f_s" value="${x.s}" step="300"></div><div class="field half"><label>End</label><input type="time" id="f_e" value="${x.e}" step="300"></div>
+    <div class="field"><label>Session ID (optional)</label><input type="text" id="f_id" value="${esc(x.id||"")}" placeholder="e.g. 21424" inputmode="numeric"></div>
+    <div class="chk"><input type="checkbox" id="f_dead" ${x.dead?"checked":""}><label for="f_dead" style="margin:0;font-family:'DM Sans';font-size:14px;text-transform:none;letter-spacing:0;color:var(--parchment)">Cancelled (stays visible, hatched out)</label></div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="f_save">Save</button>
+      ${isNew?"":'<button class="btn danger" id="f_del">Delete</button>'}
+      <button class="btn" id="f_cancel">Cancel</button>
+    </div>
+  `);
+  $("f_cancel").addEventListener("click",closeSheet);
+  $("f_save").addEventListener("click",()=>{
+    const s=$("f_s").value,e=$("f_e").value;
+    if(!s||!e)return showErr("Both times are required");
+    if(m(e)<=m(s))return showErr("End must be after start");
+    const val={s,e,id:$("f_id").value.trim(),dead:$("f_dead").checked};
+    if(isNew)r.sessions.push(val);else r.sessions[si]=val;
+    r.sessions.sort((a,b)=>m(a.s)-m(b.s));
+    closeSheet();saveBoard();render();
+  });
+  if(!isNew)$("f_del").addEventListener("click",()=>{
+    r.sessions.splice(si,1);
+    closeSheet();saveBoard();render();
+  });
+}
+
+/* ---------- room editor ---------- */
+function openRoomEditor(ri){
+  const r=board.rooms[ri];
+  openSheet(`
+    <h2>${esc(r.name)}</h2>
+    <div id="err"></div>
+    <div class="field"><label>Room name</label><input type="text" id="f_nm" value="${esc(r.name)}"></div>
+    <div class="field half"><label>Floor</label><select id="f_fl"><option value="1" ${r.floor===1?"selected":""}>Floor 1</option><option value="2" ${r.floor===2?"selected":""}>Floor 2</option></select></div><div class="field half"><label>&nbsp;</label><button class="btn primary" id="f_add" style="width:100%;padding:11px 8px">+ Session</button></div>
+    <div class="field"><label>Note (shows when room has no sessions)</label><input type="text" id="f_note" value="${esc(r.note||"")}" placeholder="e.g. Setup only"></div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="f_save">Save</button>
+      <button class="btn danger" id="f_del">Delete room</button>
+      <button class="btn" id="f_cancel">Cancel</button>
+    </div>
+  `);
+  $("f_cancel").addEventListener("click",closeSheet);
+  $("f_add").addEventListener("click",()=>{
+    /* save name edits first so the session sheet shows the right title */
+    r.name=$("f_nm").value.trim()||r.name;
+    r.floor=+$("f_fl").value;
+    r.note=$("f_note").value.trim();
+    openSessionEditor(ri,null);
+  });
+  $("f_save").addEventListener("click",()=>{
+    const nm=$("f_nm").value.trim();
+    if(!nm)return showErr("Room needs a name");
+    r.name=nm;r.floor=+$("f_fl").value;r.note=$("f_note").value.trim();
+    closeSheet();saveBoard();render();
+  });
+  $("f_del").addEventListener("click",()=>{
+    openSheet(`
+      <h2>Delete ${esc(r.name)}?</h2>
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Removes the room and its ${r.sessions.length} session${r.sessions.length===1?"":"s"} from the board.</p>
+      <div class="sheet-actions">
+        <button class="btn danger" id="f_yes">Delete</button>
+        <button class="btn" id="f_no">Keep it</button>
+      </div>
+    `);
+    $("f_yes").addEventListener("click",()=>{
+      board.rooms.splice(ri,1);
+      closeSheet();saveBoard();render();
+    });
+    $("f_no").addEventListener("click",closeSheet);
+  });
+}
+
+/* ---------- add room ---------- */
+$("addroom").addEventListener("click",()=>{
+  board.rooms.push({name:"New Room",floor:2,note:"",sessions:[]});
+  saveBoard();render();
+  openRoomEditor(board.rooms.length-1);
+});
+
+/* ---------- day settings ---------- */
+$("settingsbtn").addEventListener("click",()=>{
+  openSheet(`
+    <h2>Board settings</h2>
+    <div id="err"></div>
+    <div class="field"><label>Day label</label><input type="text" id="f_day" value="${esc(board.day)}" placeholder="e.g. Sat Aug 1"></div>
+    <div class="sheet-actions">
+      <button class="btn primary" id="f_save">Save</button>
+      <button class="btn danger" id="f_reset">Reset board to Fri Jul 31 defaults</button>
+      <button class="btn" id="f_cancel">Cancel</button>
+    </div>
+  `);
+  $("f_cancel").addEventListener("click",closeSheet);
+  $("f_save").addEventListener("click",()=>{
+    board.day=$("f_day").value.trim()||board.day;
+    closeSheet();saveBoard();render();
+  });
+  $("f_reset").addEventListener("click",()=>{
+    openSheet(`
+      <h2>Reset the whole board?</h2>
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Throws away every edit and restores the confirmed Friday July 31 schedule.</p>
+      <div class="sheet-actions">
+        <button class="btn danger" id="f_yes">Reset</button>
+        <button class="btn" id="f_no">Keep my edits</button>
+      </div>
+    `);
+    $("f_yes").addEventListener("click",()=>{
+      board=clone(DEFAULT_BOARD);
+      closeSheet();saveBoard();render();
+    });
+    $("f_no").addEventListener("click",closeSheet);
+  });
+});
+
+/* ================= boot ================= */
+(async function(){
+  await loadBoard();
+  render();
+  setInterval(tick,30000);
+  window.addEventListener("resize",render);
+  if(window.innerWidth>1320)$("scrollhint").textContent="tap Edit to change anything";
+})();
+</script>
+</body>
+</html>
