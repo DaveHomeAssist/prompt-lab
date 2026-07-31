@@ -391,7 +391,7 @@ body.edit #addroom{display:inline-block}
 
 <div class="footnote">
   Pinch bands and the time axis are computed from whatever is on the board.
-  Edits save to your Claude account storage on this artifact.
+  Edits save automatically and stay on this device.
 </div>
 
 <div id="overlay"></div>
@@ -448,10 +448,16 @@ const LW=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyVa
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ================= storage ================= */
+/* Uses Claude artifact storage when present, otherwise this browser's localStorage. */
 async function loadBoard(){
   try{
-    const r=await window.storage.get(KEY);
-    if(r&&r.value){board=JSON.parse(r.value);return}
+    if(window.storage){
+      const r=await window.storage.get(KEY);
+      if(r&&r.value){board=JSON.parse(r.value);return}
+    }else{
+      const v=localStorage.getItem(KEY);
+      if(v){board=JSON.parse(v);return}
+    }
   }catch(e){/* key absent or storage unavailable */}
   board=clone(DEFAULT_BOARD);
 }
@@ -461,9 +467,15 @@ function saveBoard(){
   saveTimer=setTimeout(async()=>{
     const el=$("savestate");
     try{
-      const r=await window.storage.set(KEY,JSON.stringify(board));
-      el.textContent=r?"saved":"save failed";
-      el.className="show "+(r?"ok":"bad");
+      let ok;
+      if(window.storage){
+        ok=await window.storage.set(KEY,JSON.stringify(board));
+      }else{
+        localStorage.setItem(KEY,JSON.stringify(board));
+        ok=true;
+      }
+      el.textContent=ok?"saved":"save failed";
+      el.className="show "+(ok?"ok":"bad");
     }catch(e){
       el.textContent="not saved · session only";
       el.className="show bad";
