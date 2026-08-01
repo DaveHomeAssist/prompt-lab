@@ -18,137 +18,94 @@
   --sand:#C99A4E;
   --steel:#6E93A0;
   --rust:#C0472A;
-  --ok:#7FA05E;
+  --olive:#7FA05E;
   --ppm-w:1180px;
   --row-h:46px;
   --label-w:112px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{
-  background:var(--ink);
-  color:var(--parchment);
-  font-family:"DM Sans",sans-serif;
-  font-size:15px;
-  line-height:1.5;
-  padding:20px 16px 120px;
-  max-width:1400px;
-  margin:0 auto;
+  background:var(--ink);color:var(--parchment);
+  font-family:"DM Sans",sans-serif;font-size:15px;line-height:1.5;
+  padding:20px 16px 120px;max-width:1400px;margin:0 auto;
   -webkit-font-smoothing:antialiased;
 }
 
 /* ---------- header ---------- */
 .masthead{
   border-bottom:2px solid var(--line);
-  padding-bottom:14px;
-  margin-bottom:16px;
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  gap:12px;
-  flex-wrap:wrap;
+  padding-bottom:14px;margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  gap:12px;flex-wrap:wrap;
 }
 .masthead h1{
-  font-family:"Syne",sans-serif;
-  font-weight:800;
+  font-family:"Syne",sans-serif;font-weight:800;
   font-size:clamp(24px,5.5vw,38px);
-  letter-spacing:-0.02em;
-  line-height:1.02;
-  text-transform:uppercase;
+  letter-spacing:-0.02em;line-height:1.02;text-transform:uppercase;
 }
 .masthead h1 em{font-style:normal;color:var(--sand)}
 .masthead .sub{
-  font-family:"DM Mono",monospace;
-  font-size:11.5px;
-  letter-spacing:0.1em;
-  text-transform:uppercase;
-  color:var(--muted);
-  margin-top:6px;
+  font-family:"DM Mono",monospace;font-size:11.5px;
+  letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-top:6px;
 }
 .hdr-actions{display:flex;gap:8px;align-items:center}
 .btn{
-  font-family:"DM Mono",monospace;
-  font-size:11px;
-  letter-spacing:0.1em;
-  text-transform:uppercase;
-  background:var(--panel-2);
-  color:var(--parchment);
-  border:1px solid var(--line);
-  padding:8px 14px;
-  border-radius:2px;
-  cursor:pointer;
+  font-family:"DM Mono",monospace;font-size:11px;
+  letter-spacing:0.1em;text-transform:uppercase;
+  background:var(--panel-2);color:var(--parchment);
+  border:1px solid var(--line);padding:8px 14px;border-radius:2px;cursor:pointer;
 }
 .btn:active{transform:scale(0.98)}
 .btn.primary{background:var(--sand);color:var(--ink);border-color:var(--sand);font-weight:500}
 .btn.danger{border-color:var(--rust);color:#E08A72}
 .btn.editing{background:var(--rust);color:#fff;border-color:var(--rust)}
 #savestate{
-  font-family:"DM Mono",monospace;
-  font-size:10px;
-  letter-spacing:0.1em;
-  text-transform:uppercase;
-  color:var(--muted);
-  opacity:0;
-  transition:opacity .3s;
+  font-family:"DM Mono",monospace;font-size:10px;
+  letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);
+  opacity:0;transition:opacity .3s;
 }
 #savestate.show{opacity:1}
-#savestate.ok{color:var(--ok)}
+#savestate.ok{color:var(--olive)}
 #savestate.bad{color:#E08A72}
+
+/* ---------- day tabs ---------- */
+.daytabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap}
+.daytab{
+  font-family:"DM Mono",monospace;font-size:11px;
+  letter-spacing:0.08em;text-transform:uppercase;
+  background:transparent;color:var(--muted);
+  border:1px solid var(--line);padding:7px 14px;border-radius:2px;cursor:pointer;
+}
+.daytab.active{background:var(--sand);color:var(--ink);border-color:var(--sand);font-weight:500}
 
 /* ---------- now strip ---------- */
 .now{
-  background:var(--panel);
-  border-left:3px solid var(--sand);
-  padding:14px 16px;
-  margin-bottom:24px;
-  display:flex;
-  flex-wrap:wrap;
-  gap:20px 40px;
+  background:var(--panel);border-left:3px solid var(--sand);
+  padding:14px 16px;margin-bottom:24px;
+  display:flex;flex-wrap:wrap;gap:20px 40px;
 }
-.now .clock{
-  font-family:"DM Mono",monospace;
-  font-size:30px;
-  font-weight:500;
-  letter-spacing:-0.02em;
-  line-height:1;
-}
+.now .clock{font-family:"DM Mono",monospace;font-size:30px;font-weight:500;letter-spacing:-0.02em;line-height:1}
 .now .clock span{font-size:14px;color:var(--muted)}
 .now-col{min-width:150px}
 .now-col h3{
-  font-family:"DM Mono",monospace;
-  font-size:10.5px;
-  letter-spacing:0.16em;
-  text-transform:uppercase;
-  color:var(--muted);
-  font-weight:400;
-  margin-bottom:6px;
+  font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:0.16em;
+  text-transform:uppercase;color:var(--muted);font-weight:400;margin-bottom:6px;
 }
 .now-col .lines{font-size:14px;line-height:1.45}
 
 /* ---------- board ---------- */
 .section-label{
-  font-family:"DM Mono",monospace;
-  font-size:10.5px;
-  letter-spacing:0.18em;
-  text-transform:uppercase;
-  color:var(--muted);
-  margin-bottom:10px;
-  display:flex;
-  justify-content:space-between;
-  align-items:baseline;
-  gap:12px;
+  font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:0.18em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:10px;
+  display:flex;justify-content:space-between;align-items:baseline;gap:12px;
 }
 .section-label .hint{text-transform:none;letter-spacing:0.02em;font-size:11px}
-
 .scroller{
-  overflow-x:auto;
-  overflow-y:hidden;
-  border:1px solid var(--line);
-  background:var(--panel);
-  margin-bottom:12px;
-  -webkit-overflow-scrolling:touch;
+  overflow-x:auto;overflow-y:hidden;
+  border:1px solid var(--line);background:var(--panel);
+  margin-bottom:12px;-webkit-overflow-scrolling:touch;
 }
 .track{min-width:calc(var(--label-w) + var(--ppm-w));position:relative}
-
 .axis{display:flex;height:26px;border-bottom:1px solid var(--line);position:relative}
 .axis .corner{
   width:var(--label-w);flex:0 0 var(--label-w);
@@ -157,13 +114,10 @@ body{
 }
 .axis .ticks{flex:1;position:relative}
 .tick{
-  position:absolute;top:0;bottom:0;
-  border-left:1px solid var(--line);
-  padding-left:5px;
-  font-family:"DM Mono",monospace;font-size:10.5px;color:var(--muted);
-  display:flex;align-items:center;
+  position:absolute;top:0;bottom:0;border-left:1px solid var(--line);
+  padding-left:5px;font-family:"DM Mono",monospace;font-size:10.5px;
+  color:var(--muted);display:flex;align-items:center;
 }
-
 .row{display:flex;height:var(--row-h);border-bottom:1px solid var(--line);position:relative}
 .row:last-child{border-bottom:none}
 .rlabel{
@@ -178,10 +132,10 @@ body{
 .rlabel::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
 .f2 .rlabel::before{background:var(--sand)}
 .f1 .rlabel::before{background:var(--steel)}
+.fR .rlabel::before{background:var(--olive)}
 body.edit .rlabel{cursor:pointer}
 body.edit .rlabel::after{
-  content:"+";
-  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  content:"+";position:absolute;right:6px;top:50%;transform:translateY(-50%);
   font-family:"DM Mono",monospace;font-size:15px;color:var(--sand);
 }
 .lane{flex:1;position:relative}
@@ -194,11 +148,10 @@ body.edit .rlabel::after{
 body.edit .blk{cursor:pointer}
 .f2 .blk{background:rgba(201,154,78,0.20);border:1px solid rgba(201,154,78,0.62);color:#EBCD98}
 .f1 .blk{background:rgba(110,147,160,0.20);border:1px solid rgba(110,147,160,0.62);color:#B4D0D8}
+.fR .blk{background:rgba(127,160,94,0.20);border:1px solid rgba(127,160,94,0.62);color:#C4DAAE}
 .blk.dead{
   background:repeating-linear-gradient(135deg,transparent,transparent 4px,rgba(192,71,42,0.20) 4px,rgba(192,71,42,0.20) 8px);
-  border:1px dashed rgba(192,71,42,0.75);
-  color:#E08A72;
-  text-decoration:line-through;
+  border:1px dashed rgba(192,71,42,0.75);color:#E08A72;text-decoration:line-through;
 }
 .blk.live{box-shadow:0 0 0 1px var(--parchment) inset,0 0 14px rgba(237,227,209,0.14)}
 .emptyrow{
@@ -226,11 +179,7 @@ body.edit .blk{cursor:pointer}
   content:"";position:absolute;top:-4px;left:-3px;
   width:8px;height:8px;background:var(--parchment);transform:rotate(45deg);
 }
-
-.board-foot{
-  display:flex;justify-content:space-between;align-items:center;
-  gap:12px;margin-bottom:28px;flex-wrap:wrap;
-}
+.board-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:28px;flex-wrap:wrap}
 .legend{
   display:flex;flex-wrap:wrap;gap:8px 20px;
   font-family:"DM Mono",monospace;font-size:10.5px;
@@ -239,6 +188,7 @@ body.edit .blk{cursor:pointer}
 .legend i{display:inline-block;width:11px;height:11px;margin-right:6px;vertical-align:-1px;border-radius:2px}
 .sw2{background:rgba(201,154,78,0.25);border:1px solid var(--sand)}
 .sw1{background:rgba(110,147,160,0.25);border:1px solid var(--steel)}
+.swR{background:rgba(127,160,94,0.25);border:1px solid var(--olive)}
 .swx{border:1px dashed var(--rust);background:rgba(192,71,42,0.18)}
 .swp{background:rgba(192,71,42,0.35);border:1px solid var(--rust)}
 #addroom{display:none}
@@ -259,59 +209,40 @@ body.edit #addroom{display:inline-block}
 }
 .turn.pinch .d .meta{color:#E08A72}
 .turns .none{padding:14px;font-family:"DM Mono",monospace;font-size:11px;color:var(--muted)}
-
 .footnote{
   border-top:2px solid var(--line);padding-top:14px;
-  font-family:"DM Mono",monospace;font-size:10.5px;
-  letter-spacing:0.04em;color:var(--muted);
+  font-family:"DM Mono",monospace;font-size:10.5px;letter-spacing:0.04em;color:var(--muted);
 }
 
 /* ---------- editor sheet ---------- */
-#overlay{
-  position:fixed;inset:0;background:rgba(10,8,6,0.6);
-  z-index:20;display:none;
-}
+#overlay{position:fixed;inset:0;background:rgba(10,8,6,0.6);z-index:20;display:none}
 #sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:21;
   background:var(--panel-2);border-top:2px solid var(--sand);
   padding:18px 16px calc(18px + env(safe-area-inset-bottom));
-  display:none;
-  max-width:560px;margin:0 auto;
-  border-radius:6px 6px 0 0;
+  display:none;max-width:560px;margin:0 auto;border-radius:6px 6px 0 0;
+  max-height:80vh;overflow-y:auto;
 }
 #sheet.open,#overlay.open{display:block}
-#sheet h2{
-  font-family:"Syne",sans-serif;font-weight:700;font-size:17px;
-  margin-bottom:14px;letter-spacing:-0.01em;
-}
+#sheet h2{font-family:"Syne",sans-serif;font-weight:700;font-size:17px;margin-bottom:14px;letter-spacing:-0.01em}
 .field{margin-bottom:12px}
 .field label{
-  display:block;
-  font-family:"DM Mono",monospace;font-size:10px;
-  letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);
-  margin-bottom:4px;
+  display:block;font-family:"DM Mono",monospace;font-size:10px;
+  letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;
 }
 .field input[type=text],.field input[type=time],.field select{
-  width:100%;
-  background:var(--ink);color:var(--parchment);
-  border:1px solid var(--line);border-radius:2px;
-  padding:10px;
+  width:100%;background:var(--ink);color:var(--parchment);
+  border:1px solid var(--line);border-radius:2px;padding:10px;
   font-family:"DM Mono",monospace;font-size:15px;
 }
 .field input:focus,.field select:focus{outline:none;border-color:var(--sand)}
 .field.half{display:inline-block;width:calc(50% - 6px)}
 .field.half + .field.half{margin-left:12px}
-.chk{
-  display:flex;align-items:center;gap:10px;margin-bottom:14px;
-  font-size:14px;
-}
+.chk{display:flex;align-items:center;gap:10px;margin-bottom:14px;font-size:14px}
 .chk input{width:18px;height:18px;accent-color:var(--rust)}
 .sheet-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .sheet-actions .btn{flex:1;text-align:center;padding:11px 8px}
-#err{
-  color:#E08A72;font-family:"DM Mono",monospace;font-size:11px;
-  margin-bottom:8px;display:none;
-}
+#err{color:#E08A72;font-family:"DM Mono",monospace;font-size:11px;margin-bottom:8px;display:none}
 #err.show{display:block}
 
 @media (max-width:640px){
@@ -331,7 +262,7 @@ body.edit #addroom{display:inline-block}
   .rlabel,.axis .corner{background:#f2efe9}
   .scroller{overflow:visible}
   .track{min-width:0;width:100%}
-  .head,.hdr-actions,#addroom{display:none}
+  .head,.hdr-actions,#addroom,.daytabs{display:none}
   :root{--parchment:#111;--muted:#555;--line:#ccc;--panel:#fff;--panel-2:#f2efe9}
 }
 </style>
@@ -344,10 +275,12 @@ body.edit #addroom{display:inline-block}
     <div class="sub">Sheraton Philadelphia Downtown &nbsp;·&nbsp; <span id="windowlabel"></span> &nbsp;·&nbsp; <span id="savestate">saved</span></div>
   </div>
   <div class="hdr-actions">
-    <button class="btn" id="settingsbtn">Day</button>
+    <button class="btn" id="settingsbtn">Days</button>
     <button class="btn" id="editbtn">Edit</button>
   </div>
 </header>
+
+<div class="daytabs" id="daytabs"></div>
 
 <section class="now">
   <div><div class="clock" id="clock">--:--<span id="ampm"></span></div></div>
@@ -380,6 +313,7 @@ body.edit #addroom{display:inline-block}
   <div class="legend">
     <span><i class="sw2"></i>Floor 2</span>
     <span><i class="sw1"></i>Floor 1</span>
+    <span><i class="swR"></i>Rooftop</span>
     <span><i class="swx"></i>Cancelled</span>
     <span><i class="swp"></i>Pinch</span>
   </div>
@@ -391,7 +325,7 @@ body.edit #addroom{display:inline-block}
 
 <div class="footnote">
   Pinch bands and the time axis are computed from whatever is on the board.
-  Edits save automatically and stay on this device.
+  Edits save automatically, per day. Live clock features only run on the day whose label matches today.
 </div>
 
 <div id="overlay"></div>
@@ -399,35 +333,10 @@ body.edit #addroom{display:inline-block}
 
 <script>
 /* ================= data ================= */
-const DEFAULT_BOARD = {
-  day: "Sat Aug 1",
-  rooms: [
-    {name:"Parlor A",floor:2,note:"",sessions:[
-      {s:"08:00",e:"09:30",id:"16249",dead:false},
-      {s:"10:00",e:"11:30",id:"17589",dead:false},
-      {s:"11:45",e:"13:45",id:"13531",dead:false},
-      {s:"16:00",e:"18:00",id:"10113",dead:false}]},
-    {name:"Parlor B",floor:2,note:"",sessions:[
-      {s:"08:00",e:"09:30",id:"18444",dead:false},
-      {s:"10:00",e:"11:30",id:"13592",dead:false},
-      {s:"13:00",e:"14:30",id:"22406",dead:false},
-      {s:"15:00",e:"17:30",id:"21278",dead:false}]},
-    {name:"Parlor C",floor:2,note:"",sessions:[
-      {s:"09:45",e:"11:15",id:"14043",dead:false}]},
-    {name:"Parlor D",floor:2,note:"Sat sign not captured · tap Edit to add",sessions:[]},
-    {name:"Seminar A",floor:1,note:"",sessions:[
-      {s:"08:00",e:"09:30",id:"13765",dead:false},
-      {s:"09:45",e:"11:45",id:"13965",dead:false},
-      {s:"12:45",e:"13:45",id:"17298",dead:false},
-      {s:"14:00",e:"17:00",id:"10376",dead:false}]},
-    {name:"Seminar B",floor:1,note:"Sat sign not captured · tap Edit to add",sessions:[]},
-    {name:"Seminar C",floor:1,note:"Nursing room · no AV",sessions:[]},
-    {name:"Seminar D",floor:1,note:"Setup only · sessions start Sunday",sessions:[]}
-  ]
-};
-const KEY="aom_show_board_v2";
-const TURN_MAX=30;           /* minutes: strike-to-reset gap that counts as a tight turn */
-const DARK_MAX=60;           /* gap beyond which we call it "dark until" in the stack   */
+const DEFAULT_BOARD={"active": 2, "days": [{"label": "Fri Jul 31", "rooms": [{"name": "Parlor A", "floor": "2", "note": "", "sessions": [{"s": "10:45", "e": "12:15", "id": "21424", "dead": false}, {"s": "12:30", "e": "14:00", "id": "14739", "dead": false}, {"s": "14:30", "e": "16:00", "id": "21395", "dead": true}, {"s": "16:15", "e": "17:45", "id": "17497", "dead": false}]}, {"name": "Parlor B", "floor": "2", "note": "", "sessions": [{"s": "09:00", "e": "12:00", "id": "22683", "dead": false}, {"s": "12:15", "e": "13:45", "id": "11621", "dead": false}, {"s": "14:00", "e": "16:00", "id": "10112", "dead": false}, {"s": "16:30", "e": "18:00", "id": "19866", "dead": false}]}, {"name": "Parlor C", "floor": "2", "note": "", "sessions": [{"s": "10:00", "e": "12:00", "id": "18784", "dead": false}]}, {"name": "Parlor D", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "22056", "dead": false}, {"s": "11:30", "e": "13:30", "id": "24326", "dead": false}]}, {"name": "Seminar A", "floor": "1", "note": "", "sessions": [{"s": "09:00", "e": "10:30", "id": "14989", "dead": false}, {"s": "10:45", "e": "12:15", "id": "15267", "dead": false}, {"s": "12:30", "e": "14:00", "id": "18814", "dead": false}, {"s": "15:30", "e": "17:30", "id": "10622", "dead": false}]}, {"name": "Seminar B", "floor": "1", "note": "", "sessions": [{"s": "08:00", "e": "10:00", "id": "14012", "dead": false}, {"s": "10:15", "e": "12:45", "id": "14939", "dead": false}, {"s": "13:00", "e": "15:30", "id": "16162", "dead": false}]}, {"name": "Seminar C", "floor": "1", "note": "Nursing room · no AV", "sessions": []}, {"name": "Seminar D", "floor": "1", "note": "Setup day · RENTEX short throw", "sessions": []}, {"name": "Horizons", "floor": "R", "note": "Setup day · K8s, mixer, WL podium, PC DI", "sessions": []}]}, {"label": "Sat Aug 1", "rooms": [{"name": "Parlor A", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "16249", "dead": false}, {"s": "10:00", "e": "11:30", "id": "17589", "dead": false}, {"s": "11:45", "e": "13:45", "id": "13531", "dead": false}, {"s": "16:00", "e": "18:00", "id": "10113", "dead": false}]}, {"name": "Parlor B", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "18444", "dead": false}, {"s": "10:00", "e": "11:30", "id": "13592", "dead": false}, {"s": "13:00", "e": "14:30", "id": "22406", "dead": false}, {"s": "15:00", "e": "17:30", "id": "21278", "dead": false}]}, {"name": "Parlor C", "floor": "2", "note": "", "sessions": [{"s": "09:45", "e": "11:15", "id": "14043", "dead": false}]}, {"name": "Parlor D", "floor": "2", "note": "No sign captured", "sessions": []}, {"name": "Seminar A", "floor": "1", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "13765", "dead": false}, {"s": "09:45", "e": "11:45", "id": "13965", "dead": false}, {"s": "12:45", "e": "13:45", "id": "17298", "dead": false}, {"s": "14:00", "e": "17:00", "id": "10376", "dead": false}]}, {"name": "Seminar B", "floor": "1", "note": "", "sessions": [{"s": "08:00", "e": "10:00", "id": "18135", "dead": false}, {"s": "11:30", "e": "13:30", "id": "19157", "dead": false}, {"s": "13:45", "e": "15:15", "id": "19863", "dead": false}, {"s": "15:30", "e": "16:30", "id": "20123", "dead": false}, {"s": "16:45", "e": "18:45", "id": "13470", "dead": false}]}, {"name": "Seminar C", "floor": "1", "note": "Nursing room · no AV", "sessions": []}, {"name": "Seminar D", "floor": "1", "note": "Dark · sessions start Sunday", "sessions": []}, {"name": "Horizons", "floor": "R", "note": "Reception unconfirmed from signs", "sessions": []}]}, {"label": "Sun Aug 2", "rooms": [{"name": "Parlor A", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "21749", "dead": false}, {"s": "11:30", "e": "13:00", "id": "22698", "dead": false}, {"s": "13:15", "e": "15:15", "id": "17964", "dead": false}, {"s": "15:30", "e": "18:30", "id": "17450", "dead": false}]}, {"name": "Parlor B", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "23009", "dead": false}, {"s": "10:45", "e": "12:45", "id": "14249", "dead": false}, {"s": "13:00", "e": "14:30", "id": "23034", "dead": false}, {"s": "15:30", "e": "17:30", "id": "15493", "dead": false}]}, {"name": "Parlor C", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "10855", "dead": false}, {"s": "09:45", "e": "11:15", "id": "23050", "dead": false}, {"s": "11:30", "e": "13:00", "id": "23065", "dead": false}, {"s": "13:15", "e": "14:45", "id": "23066", "dead": false}, {"s": "15:00", "e": "16:30", "id": "23067", "dead": false}, {"s": "16:45", "e": "18:15", "id": "23035", "dead": false}]}, {"name": "Parlor D", "floor": "2", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "23054", "dead": false}, {"s": "09:45", "e": "11:15", "id": "23052", "dead": false}, {"s": "11:30", "e": "13:00", "id": "14888", "dead": false}, {"s": "13:15", "e": "14:45", "id": "23051", "dead": false}]}, {"name": "Seminar A", "floor": "1", "note": "No sign posted yet", "sessions": []}, {"name": "Seminar B", "floor": "1", "note": "No sign posted yet", "sessions": []}, {"name": "Seminar C", "floor": "1", "note": "Nursing room · no AV", "sessions": []}, {"name": "Seminar D", "floor": "1", "note": "", "sessions": [{"s": "08:00", "e": "09:30", "id": "12041", "dead": false}, {"s": "09:45", "e": "11:15", "id": "14956", "dead": false}, {"s": "11:30", "e": "13:00", "id": "14407", "dead": false}, {"s": "13:15", "e": "14:45", "id": "14259", "dead": false}, {"s": "15:00", "e": "16:30", "id": "11727", "dead": false}]}, {"name": "Horizons", "floor": "R", "note": "", "sessions": []}]}]};
+const KEY="aom_show_board_v5";
+const TURN_MAX=30;
+const DARK_MAX=60;
 
 let board=null;
 let START=480,END=1080,SPAN=600;
@@ -437,10 +346,11 @@ const $=id=>document.getElementById(id);
 const m=t=>{const[a,b]=t.split(":").map(Number);return a*60+b};
 const clone=o=>JSON.parse(JSON.stringify(o));
 const fmt=v=>{let h=Math.floor(v/60),mm=v%60;const ap=h>=12?"p":"a";h=h%12||12;return h+(mm?":"+String(mm).padStart(2,"0"):"")+ap};
-const toHHMM=v=>String(Math.floor(v/60)).padStart(2,"0")+":"+String(v%60).padStart(2,"0");
 const pct=x=>((x-START)/SPAN*100);
 const LW=()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--label-w"));
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const day=()=>board.days[board.active];
+const floorName=f=>f==="R"?"Rooftop":"Floor "+f;
 
 /* ================= storage ================= */
 /* Uses Claude artifact storage when present, otherwise this browser's localStorage. */
@@ -453,7 +363,7 @@ async function loadBoard(){
       const v=localStorage.getItem(KEY);
       if(v){board=JSON.parse(v);return}
     }
-  }catch(e){/* key absent or storage unavailable */}
+  }catch(e){}
   board=clone(DEFAULT_BOARD);
 }
 let saveTimer=null;
@@ -479,10 +389,10 @@ function saveBoard(){
   },250);
 }
 
-/* ================= derived values ================= */
+/* ================= derived ================= */
 function computeWindow(){
   let lo=Infinity,hi=-Infinity;
-  board.rooms.forEach(r=>r.sessions.forEach(x=>{
+  day().rooms.forEach(r=>r.sessions.forEach(x=>{
     lo=Math.min(lo,m(x.s));hi=Math.max(hi,m(x.e));
   }));
   if(!isFinite(lo)){lo=480;hi=1080}
@@ -491,20 +401,16 @@ function computeWindow(){
   if(END-START<120)END=START+120;
   SPAN=END-START;
 }
-
-function activeSorted(r){
-  return r.sessions.filter(x=>!x.dead).slice().sort((a,b)=>m(a.s)-m(b.s));
-}
-
+function activeSorted(r){return r.sessions.filter(x=>!x.dead).slice().sort((a,b)=>m(a.s)-m(b.s))}
 function computeTurns(){
   const out=[];
-  board.rooms.forEach(r=>{
+  day().rooms.forEach(r=>{
     const act=activeSorted(r);
     act.forEach((x,i)=>{
       const nxt=act[i+1];
       if(nxt){
         const gap=m(nxt.s)-m(x.e);
-        if(gap>=0)out.push({room:r.name,floor:r.floor,a:m(x.e),b:m(nxt.s),gap,kind:gap<=TURN_MAX?"turn":(gap<=DARK_MAX?"turn":"dark")});
+        if(gap>=0)out.push({room:r.name,floor:r.floor,a:m(x.e),b:m(nxt.s),gap,kind:"turn"});
       }else{
         out.push({room:r.name,floor:r.floor,a:m(x.e),b:null,gap:null,kind:"done"});
       }
@@ -512,7 +418,6 @@ function computeTurns(){
   });
   return out.sort((p,q)=>p.a-q.a);
 }
-
 function computePinches(turnEvents){
   const tight=turnEvents.filter(t=>t.kind==="turn"&&t.gap<=TURN_MAX);
   const clusters=[];
@@ -523,14 +428,30 @@ function computePinches(turnEvents){
   });
   return clusters.filter(c=>new Set(c.items.map(i=>i.room)).size>=2);
 }
+function isToday(){
+  const n=new Date();
+  const label=day().label.toLowerCase();
+  const mo=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"][n.getMonth()];
+  return label.includes(mo)&&label.includes(" "+n.getDate());
+}
 
 /* ================= render ================= */
+function renderTabs(){
+  const tabs=$("daytabs");tabs.innerHTML="";
+  board.days.forEach((d,i)=>{
+    const b=document.createElement("button");
+    b.className="daytab"+(i===board.active?" active":"");
+    b.textContent=d.label;
+    b.addEventListener("click",()=>{board.active=i;saveBoard();render()});
+    tabs.appendChild(b);
+  });
+}
 function render(){
+  renderTabs();
   computeWindow();
-  $("daylabel").textContent="· "+board.day;
+  $("daylabel").textContent="· "+day().label;
   $("windowlabel").textContent=fmt(START)+" to "+fmt(END);
 
-  /* axis */
   const ticks=$("ticks");ticks.innerHTML="";
   for(let h=START/60;h<=END/60;h++){
     const d=document.createElement("div");
@@ -540,15 +461,14 @@ function render(){
     ticks.appendChild(d);
   }
 
-  /* rows */
   const rows=$("rows");rows.innerHTML="";
-  board.rooms.forEach((r,ri)=>{
+  day().rooms.forEach((r,ri)=>{
     const row=document.createElement("div");
-    row.className="row f"+r.floor;
+    row.className="row f"+(r.floor==="R"?"R":r.floor);
     row.style.animationDelay=(ri*30)+"ms";
     const lab=document.createElement("div");
     lab.className="rlabel";
-    lab.innerHTML='<span class="nm">'+esc(r.name)+'</span><span class="fl">Floor '+r.floor+'</span>';
+    lab.innerHTML='<span class="nm">'+esc(r.name)+'</span><span class="fl">'+floorName(r.floor)+'</span>';
     lab.addEventListener("click",()=>{if(editMode)openRoomEditor(ri)});
     row.appendChild(lab);
     const lane=document.createElement("div");
@@ -573,7 +493,6 @@ function render(){
     rows.appendChild(row);
   });
 
-  /* pinch bands */
   const track=$("track");
   track.querySelectorAll(".band,.head").forEach(el=>el.remove());
   const turnEvents=computeTurns();
@@ -587,8 +506,6 @@ function render(){
     band.innerHTML='<span class="tag">PINCH '+fmt(p.a).toUpperCase()+' TO '+fmt(p.b).toUpperCase()+'</span>';
     track.appendChild(band);
   });
-
-  /* playhead */
   const head=document.createElement("div");
   head.className="head";head.id="playhead";head.style.display="none";
   track.appendChild(head);
@@ -602,7 +519,7 @@ function renderTurnStack(turnEvents,pinches){
   const byTime={};
   turnEvents.forEach(t=>{(byTime[t.a]=byTime[t.a]||[]).push(t)});
   const times=Object.keys(byTime).map(Number).sort((a,b)=>a-b);
-  if(!times.length){box.innerHTML='<div class="none">No sessions on the board</div>';return}
+  if(!times.length){box.innerHTML='<div class="none">No sessions on this day yet</div>';return}
   times.forEach(t=>{
     const g=byTime[t];
     const tight=g.filter(e=>e.kind==="turn"&&e.gap<=TURN_MAX);
@@ -614,15 +531,14 @@ function renderTurnStack(turnEvents,pinches){
     const desc=g.map(e=>{
       if(e.kind==="done")return "<b>"+esc(e.room)+"</b> done for the day";
       if(e.gap<=TURN_MAX)return "<b>"+esc(e.room)+"</b> turn, back at "+fmt(e.b);
+      if(e.gap<=DARK_MAX)return "<b>"+esc(e.room)+"</b> turn, back at "+fmt(e.b);
       return "<b>"+esc(e.room)+"</b> strike, dark until "+fmt(e.b);
     }).join("<br>");
     let meta="";
     if(multi){
       const floors=new Set(tight.map(e=>e.floor));
-      meta=tight.length+" rooms turning"+(floors.size>1?" across two floors":"")+" · "+Math.min(...tight.map(e=>e.gap))+" min";
-    }else if(tight.length===1){
-      meta=tight[0].gap+" min turn";
-    }
+      meta=tight.length+" rooms turning"+(floors.size>1?" across floors":"")+" · "+Math.min(...tight.map(e=>e.gap))+" min";
+    }else if(tight.length===1){meta=tight[0].gap+" min turn"}
     el.innerHTML='<span class="t">'+fmt(t)+'</span><span class="d">'+desc+(meta?'<span class="meta">'+meta+'</span>':'')+'</span>';
     box.appendChild(el);
   });
@@ -637,17 +553,26 @@ function tick(){
   $("clock").firstChild.nodeValue=h+":"+mm;
   $("ampm").textContent=" "+ap;
 
+  const today=isToday();
   const head=$("playhead");
   if(head){
-    if(cur>=START&&cur<=END){
+    if(today&&cur>=START&&cur<=END){
       const w=LW();
       head.style.display="block";
       head.style.left=`calc(${w}px + (100% - ${w}px) * ${pct(cur)/100})`;
     }else head.style.display="none";
   }
 
+  if(!today){
+    $("live").innerHTML="Viewing "+esc(day().label);
+    $("next").innerHTML="&mdash;";
+    document.querySelectorAll(".blk").forEach(el=>el.classList.remove("live"));
+    document.querySelectorAll(".turn").forEach(el=>el.classList.remove("past"));
+    return;
+  }
+
   const live=[],upcoming=[];
-  board.rooms.forEach(r=>{
+  day().rooms.forEach(r=>{
     r.sessions.forEach(x=>{
       if(x.dead)return;
       const a=m(x.s),b=m(x.e);
@@ -681,11 +606,10 @@ $("editbtn").addEventListener("click",()=>{
   $("editbtn").textContent=editMode?"Done":"Edit";
   $("editbtn").classList.toggle("editing",editMode);
   $("scrollhint").textContent=editMode
-    ?"tap a block to edit it · tap a room name to edit the room or add a session"
+    ?"tap a block to edit it · tap a room name for room options"
     :"swipe sideways · tap Edit to change anything";
 });
 
-/* ---------- sheet plumbing ---------- */
 function openSheet(html){
   $("sheet").innerHTML=html;
   $("sheet").classList.add("open");
@@ -698,9 +622,8 @@ function closeSheet(){
 $("overlay").addEventListener("click",closeSheet);
 function showErr(msg){const e=$("err");if(e){e.textContent=msg;e.classList.add("show")}}
 
-/* ---------- session editor ---------- */
 function openSessionEditor(ri,si){
-  const r=board.rooms[ri];
+  const r=day().rooms[ri];
   const isNew=si===null;
   const x=isNew?{s:"",e:"",id:"",dead:false}:r.sessions[si];
   openSheet(`
@@ -731,14 +654,17 @@ function openSessionEditor(ri,si){
   });
 }
 
-/* ---------- room editor ---------- */
 function openRoomEditor(ri){
-  const r=board.rooms[ri];
+  const r=day().rooms[ri];
   openSheet(`
     <h2>${esc(r.name)}</h2>
     <div id="err"></div>
     <div class="field"><label>Room name</label><input type="text" id="f_nm" value="${esc(r.name)}"></div>
-    <div class="field half"><label>Floor</label><select id="f_fl"><option value="1" ${r.floor===1?"selected":""}>Floor 1</option><option value="2" ${r.floor===2?"selected":""}>Floor 2</option></select></div><div class="field half"><label>&nbsp;</label><button class="btn primary" id="f_add" style="width:100%;padding:11px 8px">+ Session</button></div>
+    <div class="field half"><label>Location</label><select id="f_fl">
+      <option value="1" ${r.floor==="1"?"selected":""}>Floor 1</option>
+      <option value="2" ${r.floor==="2"?"selected":""}>Floor 2</option>
+      <option value="R" ${r.floor==="R"?"selected":""}>Rooftop</option>
+    </select></div><div class="field half"><label>&nbsp;</label><button class="btn primary" id="f_add" style="width:100%;padding:11px 8px">+ Session</button></div>
     <div class="field"><label>Note (shows when room has no sessions)</label><input type="text" id="f_note" value="${esc(r.note||"")}" placeholder="e.g. Setup only"></div>
     <div class="sheet-actions">
       <button class="btn primary" id="f_save">Save</button>
@@ -748,70 +674,81 @@ function openRoomEditor(ri){
   `);
   $("f_cancel").addEventListener("click",closeSheet);
   $("f_add").addEventListener("click",()=>{
-    /* save name edits first so the session sheet shows the right title */
     r.name=$("f_nm").value.trim()||r.name;
-    r.floor=+$("f_fl").value;
+    r.floor=$("f_fl").value;
     r.note=$("f_note").value.trim();
     openSessionEditor(ri,null);
   });
   $("f_save").addEventListener("click",()=>{
     const nm=$("f_nm").value.trim();
     if(!nm)return showErr("Room needs a name");
-    r.name=nm;r.floor=+$("f_fl").value;r.note=$("f_note").value.trim();
+    r.name=nm;r.floor=$("f_fl").value;r.note=$("f_note").value.trim();
     closeSheet();saveBoard();render();
   });
   $("f_del").addEventListener("click",()=>{
     openSheet(`
       <h2>Delete ${esc(r.name)}?</h2>
-      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Removes the room and its ${r.sessions.length} session${r.sessions.length===1?"":"s"} from the board.</p>
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Removes the room and its ${r.sessions.length} session${r.sessions.length===1?"":"s"} from this day only.</p>
       <div class="sheet-actions">
         <button class="btn danger" id="f_yes">Delete</button>
         <button class="btn" id="f_no">Keep it</button>
       </div>
     `);
     $("f_yes").addEventListener("click",()=>{
-      board.rooms.splice(ri,1);
+      day().rooms.splice(ri,1);
       closeSheet();saveBoard();render();
     });
     $("f_no").addEventListener("click",closeSheet);
   });
 }
 
-/* ---------- add room ---------- */
 $("addroom").addEventListener("click",()=>{
-  board.rooms.push({name:"New Room",floor:2,note:"",sessions:[]});
+  day().rooms.push({name:"New Room",floor:"2",note:"",sessions:[]});
   saveBoard();render();
-  openRoomEditor(board.rooms.length-1);
+  openRoomEditor(day().rooms.length-1);
 });
 
 /* ---------- day settings ---------- */
 $("settingsbtn").addEventListener("click",()=>{
   openSheet(`
-    <h2>Board settings</h2>
+    <h2>Days</h2>
     <div id="err"></div>
-    <div class="field"><label>Day label</label><input type="text" id="f_day" value="${esc(board.day)}" placeholder="e.g. Sat Aug 1"></div>
+    <div class="field"><label>Rename current day</label><input type="text" id="f_day" value="${esc(day().label)}" placeholder="e.g. Mon Aug 3"></div>
     <div class="sheet-actions">
       <button class="btn primary" id="f_save">Save</button>
-      <button class="btn danger" id="f_reset">Reset board to Sat Aug 1 defaults</button>
-      <button class="btn" id="f_cancel">Cancel</button>
+      <button class="btn" id="f_new">+ New day (same rooms, empty)</button>
+    </div>
+    <div class="sheet-actions" style="margin-top:10px">
+      <button class="btn danger" id="f_reset">Reset current day to sign data</button>
+      <button class="btn" id="f_cancel">Close</button>
     </div>
   `);
   $("f_cancel").addEventListener("click",closeSheet);
   $("f_save").addEventListener("click",()=>{
-    board.day=$("f_day").value.trim()||board.day;
+    day().label=$("f_day").value.trim()||day().label;
     closeSheet();saveBoard();render();
   });
+  $("f_new").addEventListener("click",()=>{
+    const rooms=day().rooms.map(r=>({name:r.name,floor:r.floor,note:"",sessions:[]}));
+    board.days.push({label:"New Day",rooms});
+    board.active=board.days.length-1;
+    closeSheet();saveBoard();render();
+    $("settingsbtn").click();
+  });
   $("f_reset").addEventListener("click",()=>{
+    const i=board.active;
+    const hasDefault=i<DEFAULT_BOARD.days.length;
     openSheet(`
-      <h2>Reset the whole board?</h2>
-      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Throws away every edit and restores the posted Saturday August 1 schedule.</p>
+      <h2>Reset ${esc(day().label)}?</h2>
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">${hasDefault?"Throws away edits on this day and restores what was read from the door signs.":"This day has no sign data. Resetting clears all its sessions."}</p>
       <div class="sheet-actions">
         <button class="btn danger" id="f_yes">Reset</button>
         <button class="btn" id="f_no">Keep my edits</button>
       </div>
     `);
     $("f_yes").addEventListener("click",()=>{
-      board=clone(DEFAULT_BOARD);
+      if(hasDefault)board.days[i]=clone(DEFAULT_BOARD.days[i]);
+      else board.days[i].rooms.forEach(r=>r.sessions=[]);
       closeSheet();saveBoard();render();
     });
     $("f_no").addEventListener("click",closeSheet);
@@ -821,6 +758,14 @@ $("settingsbtn").addEventListener("click",()=>{
 /* ================= boot ================= */
 (async function(){
   await loadBoard();
+  /* jump to today's tab if one matches */
+  const n=new Date();
+  const mo=["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"][n.getMonth()];
+  const idx=board.days.findIndex(d=>{
+    const l=d.label.toLowerCase();
+    return l.includes(mo)&&l.includes(" "+n.getDate());
+  });
+  if(idx>=0)board.active=idx;
   render();
   setInterval(tick,30000);
   window.addEventListener("resize",render);
