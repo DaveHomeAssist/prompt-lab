@@ -400,37 +400,32 @@ body.edit #addroom{display:inline-block}
 <script>
 /* ================= data ================= */
 const DEFAULT_BOARD = {
-  day: "Fri Jul 31",
+  day: "Sat Aug 1",
   rooms: [
     {name:"Parlor A",floor:2,note:"",sessions:[
-      {s:"10:45",e:"12:15",id:"21424",dead:false},
-      {s:"12:30",e:"14:00",id:"14739",dead:false},
-      {s:"14:30",e:"16:00",id:"21395",dead:true},
-      {s:"16:15",e:"17:45",id:"17497",dead:false}]},
+      {s:"08:00",e:"09:30",id:"16249",dead:false},
+      {s:"10:00",e:"11:30",id:"17589",dead:false},
+      {s:"11:45",e:"13:45",id:"13531",dead:false},
+      {s:"16:00",e:"18:00",id:"10113",dead:false}]},
     {name:"Parlor B",floor:2,note:"",sessions:[
-      {s:"09:00",e:"12:00",id:"22683",dead:false},
-      {s:"12:15",e:"13:45",id:"11621",dead:false},
-      {s:"14:00",e:"16:00",id:"10112",dead:false},
-      {s:"16:30",e:"18:00",id:"19866",dead:false}]},
+      {s:"08:00",e:"09:30",id:"18444",dead:false},
+      {s:"10:00",e:"11:30",id:"13592",dead:false},
+      {s:"13:00",e:"14:30",id:"22406",dead:false},
+      {s:"15:00",e:"17:30",id:"21278",dead:false}]},
     {name:"Parlor C",floor:2,note:"",sessions:[
-      {s:"10:00",e:"12:00",id:"18784",dead:false}]},
-    {name:"Parlor D",floor:2,note:"",sessions:[
-      {s:"08:00",e:"09:30",id:"22056",dead:false},
-      {s:"11:30",e:"13:30",id:"24326",dead:false}]},
+      {s:"09:45",e:"11:15",id:"14043",dead:false}]},
+    {name:"Parlor D",floor:2,note:"Sat sign not captured · tap Edit to add",sessions:[]},
     {name:"Seminar A",floor:1,note:"",sessions:[
-      {s:"09:00",e:"10:30",id:"14989",dead:false},
-      {s:"10:45",e:"12:15",id:"15267",dead:false},
-      {s:"12:30",e:"14:00",id:"18814",dead:false},
-      {s:"15:30",e:"17:30",id:"10622",dead:false}]},
-    {name:"Seminar B",floor:1,note:"",sessions:[
-      {s:"08:00",e:"10:00",id:"14012",dead:false},
-      {s:"10:15",e:"12:45",id:"14939",dead:false},
-      {s:"13:00",e:"15:30",id:"16162",dead:false}]},
+      {s:"08:00",e:"09:30",id:"13765",dead:false},
+      {s:"09:45",e:"11:45",id:"13965",dead:false},
+      {s:"12:45",e:"13:45",id:"17298",dead:false},
+      {s:"14:00",e:"17:00",id:"10376",dead:false}]},
+    {name:"Seminar B",floor:1,note:"Sat sign not captured · tap Edit to add",sessions:[]},
     {name:"Seminar C",floor:1,note:"Nursing room · no AV",sessions:[]},
     {name:"Seminar D",floor:1,note:"Setup only · sessions start Sunday",sessions:[]}
   ]
 };
-const KEY="aom_show_board_v1";
+const KEY="aom_show_board_v2";
 const TURN_MAX=30;           /* minutes: strike-to-reset gap that counts as a tight turn */
 const DARK_MAX=60;           /* gap beyond which we call it "dark until" in the stack   */
 
@@ -797,7 +792,7 @@ $("settingsbtn").addEventListener("click",()=>{
     <div class="field"><label>Day label</label><input type="text" id="f_day" value="${esc(board.day)}" placeholder="e.g. Sat Aug 1"></div>
     <div class="sheet-actions">
       <button class="btn primary" id="f_save">Save</button>
-      <button class="btn danger" id="f_reset">Reset board to Fri Jul 31 defaults</button>
+      <button class="btn danger" id="f_reset">Reset board to Sat Aug 1 defaults</button>
       <button class="btn" id="f_cancel">Cancel</button>
     </div>
   `);
@@ -809,7 +804,7 @@ $("settingsbtn").addEventListener("click",()=>{
   $("f_reset").addEventListener("click",()=>{
     openSheet(`
       <h2>Reset the whole board?</h2>
-      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Throws away every edit and restores the confirmed Friday July 31 schedule.</p>
+      <p style="margin-bottom:14px;font-size:14px;color:var(--muted)">Throws away every edit and restores the posted Saturday August 1 schedule.</p>
       <div class="sheet-actions">
         <button class="btn danger" id="f_yes">Reset</button>
         <button class="btn" id="f_no">Keep my edits</button>
