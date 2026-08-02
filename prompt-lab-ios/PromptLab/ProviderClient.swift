@@ -14,7 +14,7 @@ protocol ProviderClient {
 enum ProviderError: LocalizedError, Equatable {
     case invalidEndpoint
     case invalidResponse
-    case httpStatus(Int)
+    case httpStatus(Int, String?)
     case malformedStream
     case remote(String)
 
@@ -24,8 +24,12 @@ enum ProviderError: LocalizedError, Equatable {
             "The Anthropic endpoint is invalid."
         case .invalidResponse:
             "Anthropic returned an invalid HTTP response."
-        case let .httpStatus(code):
-            "Anthropic returned HTTP \(code)."
+        case let .httpStatus(code, detail):
+            if let detail, !detail.isEmpty {
+                "Anthropic returned HTTP \(code): \(detail)"
+            } else {
+                "Anthropic returned HTTP \(code)."
+            }
         case .malformedStream:
             "Anthropic returned a malformed streaming event."
         case let .remote(message):
@@ -81,7 +85,10 @@ struct AnthropicProviderClient: ProviderClient {
                         throw ProviderError.invalidResponse
                     }
                     guard (200...299).contains(httpResponse.statusCode) else {
-                        throw ProviderError.httpStatus(httpResponse.statusCode)
+                        throw ProviderError.httpStatus(
+                            httpResponse.statusCode,
+                            await Self.failureDetail(from: bytes)
+                        )
                     }
 
                     for try await line in bytes.lines {
@@ -117,6 +124,37 @@ struct AnthropicProviderClient: ProviderClient {
                 producer.cancel()
             }
         }
+    }
+
+    /// Drains an error response so the caller sees Anthropic's own reason
+    /// (invalid key, rate limit, overloaded) instead of a bare status code.
+    /// Bounded so a large or malformed body cannot stall the request.
+    private static func failureDetail(from bytes: URLSession.AsyncBytes) async -> String? {
+        var data = Data()
+        do {
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count >= 8_192 { break }
+            }
+        } catch {
+            return nil
+        }
+        guard !data.isEmpty else { return nil }
+        if let envelope = try? JSONDecoder().decode(AnthropicErrorEnvelope.self, from: data) {
+            return envelope.error.message
+        }
+        let raw = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return (raw?.isEmpty ?? true) ? nil : raw
+    }
+}
+
+private struct AnthropicErrorEnvelope: Decodable {
+    let error: APIError
+
+    struct APIError: Decodable {
+        let type: String?
+        let message: String
     }
 }
 

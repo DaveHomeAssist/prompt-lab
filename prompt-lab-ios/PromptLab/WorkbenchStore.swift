@@ -111,12 +111,58 @@ final class WorkbenchStore {
             result = parsed
             state = .completed
         } catch is CancellationError {
+            recordRun(
+                modelContext: modelContext,
+                input: input,
+                output: streamedText,
+                startedAt: startedAt,
+                status: "canceled",
+                notes: "Enhance canceled before completion."
+            )
             streamedText = ""
             result = nil
             state = .canceled
         } catch {
+            recordRun(
+                modelContext: modelContext,
+                input: input,
+                output: streamedText,
+                startedAt: startedAt,
+                status: "failed",
+                notes: error.localizedDescription
+            )
             result = nil
             state = .failed(error.localizedDescription)
+        }
+    }
+
+    /// Failed and canceled attempts belong in run history too — matching the web
+    /// app, where dropping them hid real failures from the timeline (issue 009).
+    /// Best-effort: a run record must never mask the underlying enhance error.
+    private func recordRun(
+        modelContext: ModelContext,
+        input: String,
+        output: String,
+        startedAt: Date,
+        status: String,
+        notes: String
+    ) {
+        let run = RunRecord(
+            promptTitle: String(input.prefix(60)),
+            enhanceMode: selectedMode.rawValue,
+            provider: provider.providerID,
+            model: provider.modelID,
+            input: input,
+            output: output,
+            latencyMs: max(0, Int(Date().timeIntervalSince(startedAt) * 1_000)),
+            notes: notes,
+            status: status
+        )
+        modelContext.insert(run)
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.delete(run)
         }
     }
 }

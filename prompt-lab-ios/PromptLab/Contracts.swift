@@ -110,7 +110,8 @@ enum EnhanceContractError: LocalizedError, Equatable {
 
 enum EnhanceResponseParser {
     static func parse(_ text: String) throws -> EnhanceResponse {
-        guard let data = text.data(using: .utf8) else {
+        guard let json = extractJSONObject(from: text),
+              let data = json.data(using: .utf8) else {
             throw EnhanceContractError.invalidJSON
         }
 
@@ -137,5 +138,17 @@ enum EnhanceResponseParser {
             throw EnhanceContractError.emptyNotes
         }
         return response
+    }
+
+    /// Models wrap the contract in Markdown fences or add a short preamble often
+    /// enough that a strict decode fails runs that are otherwise valid. Recover
+    /// the outermost JSON object instead of discarding the response.
+    private static func extractJSONObject(from text: String) -> String? {
+        guard let start = text.firstIndex(of: "{"),
+              let end = text.lastIndex(of: "}"),
+              start < end else {
+            return nil
+        }
+        return String(text[start...end])
     }
 }

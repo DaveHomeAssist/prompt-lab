@@ -41,6 +41,34 @@ final class PromptLabTests: XCTestCase {
         }
     }
 
+    func testEnhanceParserAcceptsMarkdownFencedOutput() throws {
+        let fenced = """
+        ```json
+        \(Self.validContractJSON)
+        ```
+        """
+        let parsed = try EnhanceResponseParser.parse(fenced)
+        XCTAssertEqual(parsed.enhanced, "Improved")
+        XCTAssertEqual(parsed.variants.count, 2)
+    }
+
+    func testEnhanceParserAcceptsPreambleBeforeJSON() throws {
+        let withPreamble = "Here is the enhanced prompt:\n\n\(Self.validContractJSON)"
+        let parsed = try EnhanceResponseParser.parse(withPreamble)
+        XCTAssertEqual(parsed.enhanced, "Improved")
+    }
+
+    func testHTTPStatusErrorSurfacesAnthropicDetail() {
+        XCTAssertEqual(
+            ProviderError.httpStatus(401, "invalid x-api-key").errorDescription,
+            "Anthropic returned HTTP 401: invalid x-api-key"
+        )
+        XCTAssertEqual(
+            ProviderError.httpStatus(500, nil).errorDescription,
+            "Anthropic returned HTTP 500."
+        )
+    }
+
     func testEnhanceParserRejectsWrongVariantCount() {
         let oneVariant = #"{"enhanced":"Improved","variants":[{"label":"A","content":"One"}],"notes":"Changed it.","assumptions":[],"tags":[]}"#
         XCTAssertThrowsError(try EnhanceResponseParser.parse(oneVariant)) { error in
@@ -115,7 +143,7 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
-    func testCancellationMidStreamLeavesNoRun() async throws {
+    func testCancellationMidStreamRecordsCanceledRun() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
         let store = WorkbenchStore(provider: SlowProviderClient())
@@ -126,13 +154,18 @@ final class PromptLabTests: XCTestCase {
         store.cancelEnhance()
         try await waitUntil { store.state == .canceled }
 
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 0)
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.count, 1)
+        XCTAssertEqual(runs.first?.status, "canceled")
+        XCTAssertEqual(runs.first?.enhanceMode, "balanced")
+        // The partial stream is kept on the record even though the view clears it.
+        XCTAssertFalse(runs.first?.output.isEmpty ?? true)
         XCTAssertNil(store.result)
         XCTAssertTrue(store.streamedText.isEmpty)
     }
 
     @MainActor
-    func testAPIErrorStateIsReachableWithoutSavingRun() async throws {
+    func testAPIErrorRecordsFailedRunWithReason() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
         let store = WorkbenchStore(provider: ErrorProviderClient())
@@ -144,7 +177,12 @@ final class PromptLabTests: XCTestCase {
             return XCTFail("Expected a failed state, got \(store.state)")
         }
         XCTAssertEqual(message, "Recorded API failure.")
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 0)
+
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.count, 1)
+        XCTAssertEqual(runs.first?.status, "failed")
+        XCTAssertEqual(runs.first?.notes, "Recorded API failure.")
+        XCTAssertEqual(runs.first?.input, "Trigger an API error.")
     }
 
     @MainActor
@@ -183,6 +221,8 @@ final class PromptLabTests: XCTestCase {
     private var appSchema: Schema {
         Schema([PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
     }
+
+    private static let validContractJSON = #"{"enhanced":"Improved","variants":[{"label":"A","content":"One"},{"label":"B","content":"Two"}],"notes":"Changed it.","assumptions":[],"tags":[]}"#
 
     @MainActor
     private func waitUntil(
