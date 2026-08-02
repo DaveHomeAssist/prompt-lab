@@ -34,6 +34,9 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | 008 | P2 | resolved | GitHub-login entitlement persistence diverges from email login | Clerk-id-first Stripe lookup, checkout clerkUserId binding, revalidate guard parity, billing state reset on account switch |
 | 009 | P2 | resolved | Failed/cancelled enhance runs missing from run history | Error and cancelled enhance attempts now recorded with enhanceMode tag and timeline status filters |
 | 010 | P2 | resolved | Library auto-naming produced prefix-slice titles | Heading/role-aware title suggestion; enhance no longer clobbers user-typed titles |
+| 011 | P1 | resolved | iOS prototype dropped failed/cancelled enhance runs (regression vs 009) | Native store now writes RunRecord with status failed/canceled; attempts that never reach the provider (no API key) still record nothing |
+| 012 | P1 | resolved | iOS enhance parser rejected fenced or preambled contract JSON | Recover outermost JSON object before decoding; fences and short preambles no longer fail an otherwise-valid run |
+| 013 | P2 | resolved | iOS provider discarded Anthropic error bodies | Non-2xx responses drained (8KB cap) and decoded so invalid-key/rate-limit reasons surface instead of a bare status code |
 
 ## Session Log
 
@@ -64,3 +67,8 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-07-26] [PLB] [feature] Smarter library auto-naming (headings, role preambles, no title clobbering)
 [2026-07-26] [PLB] [feature] Add on-demand follow-up prompt suggestions with editor/composer chaining
 [2026-07-26] [PLB] [docs] Add native Swift iPad app plan (IPAD_NATIVE_APP_PLAN.md)
+[2026-08-02] [PLB] [review] Audit native iPad prototype branch; 3 P1/P2 issues found (011-013)
+[2026-08-02] [PLB] [fix] Record failed and canceled enhance runs in native run history (011)
+[2026-08-02] [PLB] [fix] Tolerate Markdown-fenced and preambled enhance contract JSON on iOS (012)
+[2026-08-02] [PLB] [fix] Surface Anthropic error bodies instead of bare HTTP status codes (013)
+[2026-08-02] [PLB] [test] Verify native suite on iPad Pro simulator, 14/14 passing
