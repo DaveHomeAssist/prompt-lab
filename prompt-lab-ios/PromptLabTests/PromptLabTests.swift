@@ -240,6 +240,41 @@ final class PromptLabTests: XCTestCase {
     }
 }
 
+/// Live network smoke test for the shipping Anthropic path.
+///
+/// Skipped unless ANTHROPIC_API_KEY is present in the test runner environment.
+/// Run locally with:
+///   TEST_RUNNER_ANTHROPIC_API_KEY=<key> xcodebuild test ... -only-testing:PromptLabTests/LiveAnthropicSmokeTests
+final class LiveAnthropicSmokeTests: XCTestCase {
+    func testLiveEnhanceStreamsAndSatisfiesContract() async throws {
+        guard let apiKey = ProcessInfo.processInfo.environment["ANTHROPIC_API_KEY"],
+              !apiKey.isEmpty else {
+            throw XCTSkip("ANTHROPIC_API_KEY not set; skipping live Anthropic smoke test.")
+        }
+
+        let client = AnthropicProviderClient()
+        let request = EnhanceRequest(
+            prompt: "Summarize this repository's README for a new contributor.",
+            mode: .concise
+        )
+
+        var streamed = ""
+        var deltaCount = 0
+        for try await delta in client.streamEnhance(request: request, apiKey: apiKey) {
+            streamed += delta
+            deltaCount += 1
+        }
+
+        XCTAssertGreaterThan(deltaCount, 1, "Expected multiple SSE text deltas, got \(deltaCount).")
+        XCTAssertFalse(streamed.isEmpty, "Streamed response was empty.")
+
+        let parsed = try EnhanceResponseParser.parse(streamed)
+        XCTAssertFalse(parsed.enhanced.isEmpty)
+        XCTAssertEqual(parsed.variants.count, 2)
+        XCTAssertFalse(parsed.notes.isEmpty)
+    }
+}
+
 private final class MemoryAPIKeyStore: APIKeyStoring {
     private var value: String?
 
