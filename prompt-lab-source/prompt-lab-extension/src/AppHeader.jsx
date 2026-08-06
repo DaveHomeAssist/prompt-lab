@@ -40,7 +40,7 @@ export default function AppHeader({
               <span className="pl-brand-title font-bold text-sm">Prompt Lab</span>
               <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}</span>
             </div>
-            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
+            <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted} ${compact ? 'hidden' : ''}`}>
               {utilityCopy}
             </span>
           </div>
@@ -116,7 +116,7 @@ export default function AppHeader({
                 ))}
               </>
             )}
-            {primaryView === 'notebook' && (
+            {primaryView === 'notebook' && !compact && (
               <span className={`text-[11px] ${m.textMuted}`}>Scratchpad notes with library handoff</span>
             )}
           </div>

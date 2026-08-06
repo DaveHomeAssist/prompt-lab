@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: prompt-lab-source/.nvmrc
           cache: npm
           cache-dependency-path: prompt-lab-source/prompt-lab-extension/package-lock.json
 
@@ -39,6 +39,9 @@ jobs:
 
       - name: Run extension tests
         run: npm test
+
+      - name: Run desktop adapter smoke tests
+        run: npm run test:desktop
 
   desktop-build:
     needs: extension-tests
@@ -60,7 +63,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: prompt-lab-source/.nvmrc
           cache: npm
           cache-dependency-path: prompt-lab-source/prompt-lab-desktop/package-lock.json
 

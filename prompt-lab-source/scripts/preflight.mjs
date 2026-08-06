@@ -18,6 +18,7 @@ const extDir    = join(sourceDir, 'prompt-lab-extension');
 const webDir    = join(sourceDir, 'prompt-lab-web');
 const desktopDir = join(sourceDir, 'prompt-lab-desktop');
 const cargoTomlPath = join(desktopDir, 'src-tauri', 'Cargo.toml');
+const tauriConfigPath = join(desktopDir, 'src-tauri', 'tauri.conf.json');
 const docsDir   = join(repoDir, 'docs');
 const quick     = process.argv.includes('--quick');
 
@@ -191,6 +192,7 @@ async function checkVersions() {
     join(sourceDir, 'package.json'),
     join(extDir, 'package.json'),
     join(webDir, 'package.json'),
+    join(desktopDir, 'package.json'),
   ];
   const versions = [];
   for (const p of pkgs) {
@@ -210,6 +212,15 @@ async function checkVersions() {
     });
   } catch {
     versions.push({ path: relative(repoDir, cargoTomlPath), version: '???' });
+  }
+  try {
+    const tauriConfig = JSON.parse(await readFile(tauriConfigPath, 'utf8'));
+    versions.push({
+      path: relative(repoDir, tauriConfigPath),
+      version: tauriConfig.version || '???',
+    });
+  } catch {
+    versions.push({ path: relative(repoDir, tauriConfigPath), version: '???' });
   }
   const allSame = versions.every(v => v.version === versions[0].version);
   if (allSame) {

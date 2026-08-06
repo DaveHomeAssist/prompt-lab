@@ -1,0 +1,45 @@
+{
+  "type": "prompt-lab-library",
+  "version": "1.7.0",
+  "schemaVersion": 1,
+  "exportedAt": "2026-08-05T12:00:00.000Z",
+  "count": 1,
+  "library": [
+    {
+      "id": "fixture-prompt",
+      "title": "Fixture Prompt",
+      "original": "Draft the handoff.",
+      "enhanced": "Draft a concise technical handoff.",
+      "variants": [],
+      "notes": "Fixture note",
+      "tags": ["handoff"],
+      "collection": "Operations",
+      "useCount": 2,
+      "versions": [
+        {
+          "id": "fixture-version-1",
+          "createdAt": "2026-08-01T12:00:00.000Z",
+          "title": "Fixture Prompt",
+          "original": "Draft the handoff.",
+          "enhanced": "Draft the handoff clearly.",
+          "variants": [],
+          "notes": "Earlier version",
+          "tags": ["handoff"],
+          "collection": "Operations"
+        }
+      ],
+      "testCases": [],
+      "createdAt": "2026-08-01T12:00:00.000Z",
+      "updatedAt": "2026-08-05T12:00:00.000Z",
+      "metadata": {
+        "owner": "Dave",
+        "purpose": "Technical handoff",
+        "status": "active",
+        "compatibility": ["openai", "anthropic"],
+        "riskLevel": "low",
+        "externalId": "fixture-42"
+      }
+    }
+  ],
+  "collections": ["Operations"]
+}

@@ -571,6 +571,9 @@ export function detectDuplicates(incoming, existing) {
       if (incomingPromptHash && comparePromptHash && incomingPromptHash === comparePromptHash) {
         reasons.push({ similarity: 1, reason: 'prompt-exact-match' });
       }
+      if (ensureString(candidate?.id) && ensureString(candidate?.id) === ensureString(entry?.id)) {
+        reasons.push({ similarity: 1, reason: 'id-collision' });
+      }
 
       reasons.forEach((item) => {
         const key = [candidate?.id, entry?.id, item.reason].join('::');
@@ -606,7 +609,7 @@ export function detectEmptyPrompts(presets) {
  * @param {{ save: (library: Array<object>) => unknown, load?: () => unknown, get?: () => unknown, read?: () => unknown, library?: Array<object> }} storageAdapter
  * @returns {Promise<{ imported: Array<object>, skipped: Array<object>, conflicts: Array<object> }>}
  */
-export async function importPresetPack(pack, storageAdapter) {
+export async function importPresetPack(pack, storageAdapter, options = {}) {
   if (!storageAdapter || typeof storageAdapter.save !== 'function') {
     throw new Error('storageAdapter.save is required.');
   }
@@ -624,15 +627,24 @@ export async function importPresetPack(pack, storageAdapter) {
   const normalizedPack = prepared.pack;
   const existingLibrary = normalizeLibrary(await readExistingLibrary(storageAdapter));
   const conflicts = detectDuplicates(normalizedPack.presets, existingLibrary);
-  const exactMatchIds = new Set(
-    conflicts
-      .filter((item) => item.reason === 'prompt-exact-match')
-      .map((item) => item.a.id)
-  );
+  const resolutions = options.resolutions instanceof Map
+    ? options.resolutions
+    : new Map(Object.entries(options.resolutions || {}));
+  const conflictByPresetId = new Map();
+  conflicts.forEach((conflict) => {
+    const items = conflictByPresetId.get(conflict.a.id) || [];
+    items.push(conflict);
+    conflictByPresetId.set(conflict.a.id, items);
+  });
+  const canceled = asArray(normalizedPack.presets).some((preset) => resolutions.get(ensureString(preset.id)) === 'cancel');
+  if (canceled) {
+    return { imported: [], replaced: [], skipped: [], conflicts, canceled: true, sourceType: prepared.sourceType, sourceLabel: prepared.sourceLabel };
+  }
   const emptyIds = new Set(detectEmptyPrompts(normalizedPack.presets).map((preset) => ensureString(preset.id)));
   const usedIds = new Set(existingLibrary.map((entry) => entry.id));
   const mergedLibrary = [...existingLibrary];
   const imported = [];
+  const replaced = [];
   const skipped = [];
 
   asArray(normalizedPack.presets).forEach((preset) => {
@@ -641,13 +653,23 @@ export async function importPresetPack(pack, storageAdapter) {
       skipped.push({ id: presetId, title: ensureString(preset.title), reason: 'empty-prompt' });
       return;
     }
-    if (exactMatchIds.has(presetId)) {
-      skipped.push({ id: presetId, title: ensureString(preset.title), reason: 'prompt-exact-match' });
+    const presetConflicts = conflictByPresetId.get(presetId) || [];
+    const defaultResolution = presetConflicts.some((item) => item.reason === 'prompt-exact-match') ? 'skip' : 'keep-both';
+    const resolution = resolutions.get(presetId) || defaultResolution;
+    if (resolution === 'skip') {
+      skipped.push({
+        id: presetId,
+        title: ensureString(preset.title),
+        reason: presetConflicts.some((item) => item.reason === 'prompt-exact-match')
+          ? 'prompt-exact-match'
+          : 'conflict-skipped',
+      });
       return;
     }
 
-    const resolvedId = makeImportedId(presetId, usedIds);
-    if (resolvedId !== presetId) {
+    const replaceTargetId = resolution === 'replace' ? presetConflicts[0]?.b?.id : '';
+    const resolvedId = replaceTargetId || makeImportedId(presetId, usedIds);
+    if (!replaceTargetId && resolvedId !== presetId && !presetConflicts.some((item) => item.reason === 'id-collision')) {
       conflicts.push({
         a: summarizeItem(preset),
         b: { id: presetId, title: ensureString(preset.title) },
@@ -686,8 +708,15 @@ export async function importPresetPack(pack, storageAdapter) {
       version: ensureString(normalizedPack.version),
     });
 
-    mergedLibrary.push(entry);
-    imported.push({ id: entry.id, title: entry.title });
+    if (replaceTargetId) {
+      const replaceIndex = mergedLibrary.findIndex((current) => current.id === replaceTargetId);
+      if (replaceIndex >= 0) mergedLibrary[replaceIndex] = entry;
+      else mergedLibrary.push(entry);
+      replaced.push({ id: entry.id, title: entry.title });
+    } else {
+      mergedLibrary.push(entry);
+      imported.push({ id: entry.id, title: entry.title });
+    }
   });
 
   const normalizedMergedLibrary = normalizeLibrary(mergedLibrary);
@@ -695,8 +724,10 @@ export async function importPresetPack(pack, storageAdapter) {
 
   return {
     imported,
+    replaced,
     skipped,
     conflicts,
+    canceled: false,
     sourceType: prepared.sourceType,
     sourceLabel: prepared.sourceLabel,
   };

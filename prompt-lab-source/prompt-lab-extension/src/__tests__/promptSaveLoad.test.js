@@ -113,6 +113,38 @@ describe('Prompt Save & Load Integration', () => {
       expect(result.current.library[0].title).toBe('New Prompt');
     });
 
+    it('preserves follow-up provenance metadata on a new record', async () => {
+      const { result } = setupHook();
+      await waitFor(() => expect(result.current.libReady).toBe(true));
+
+      let saved;
+      act(() => {
+        saved = result.current.doSave({
+          raw: 'Audit the output.',
+          enhanced: 'Audit the output.',
+          variants: [],
+          notes: '',
+          tags: ['follow-up'],
+          title: 'Audit output',
+          collection: '',
+          editingId: null,
+          changeNote: '',
+          metadata: {
+            purpose: 'follow-up',
+            derivedFrom: 'run-output',
+            sourceRunId: 'run-123',
+          },
+        });
+      });
+
+      const entry = result.current.library.find((item) => item.id === saved.id);
+      expect(entry.metadata).toMatchObject({
+        purpose: 'follow-up',
+        derivedFrom: 'run-output',
+        sourceRunId: 'run-123',
+      });
+    });
+
     it('uses raw as enhanced when enhanced is empty', async () => {
       const { result } = setupHook();
       await waitFor(() => expect(result.current.libReady).toBe(true));

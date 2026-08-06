@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { loadJson, saveJson, removeKey } from '../lib/storage.js';
+import { loadJson, saveJson, removeKey, probeStorage } from '../lib/storage.js';
 
 beforeEach(() => {
   while (localStorage.length > 0) {
@@ -27,5 +27,24 @@ describe('storage round-trip', () => {
     saveJson('to-remove', { x: 1 });
     expect(removeKey('to-remove')).toBe(true);
     expect(loadJson('to-remove')).toBeNull();
+  });
+
+  it('probes writable storage without leaving a record behind', () => {
+    const before = localStorage.length;
+    expect(probeStorage()).toEqual(expect.objectContaining({ ok: true }));
+    expect(localStorage.length).toBe(before);
+  });
+
+  it('reports quota failures with an actionable message', () => {
+    const quotaError = new DOMException('Storage quota exceeded', 'QuotaExceededError');
+    const storage = {
+      setItem() { throw quotaError; },
+      getItem() { return null; },
+      removeItem() {},
+    };
+    expect(probeStorage(storage)).toEqual(expect.objectContaining({
+      ok: false,
+      message: expect.stringContaining('full'),
+    }));
   });
 });

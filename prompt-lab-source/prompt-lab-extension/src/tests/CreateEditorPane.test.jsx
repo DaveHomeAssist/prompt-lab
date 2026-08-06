@@ -125,6 +125,8 @@ function renderPane(overrides = {}) {
       showDiffUpgradeHint
       onUnlockDiff={noop}
       runCasesLocked={false}
+      onUseResultAsDraft={noop}
+      onSelectFollowUpRun={noop}
       {...overrides}
     />
   );
@@ -208,5 +210,38 @@ describe('CreateEditorPane', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
 
     expect(onOpenEvaluate).toHaveBeenCalledTimes(1);
+  });
+
+  it('makes the result-to-draft transition explicit', () => {
+    const onUseResultAsDraft = vi.fn();
+    renderPane({ onUseResultAsDraft });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use as Draft' }));
+
+    expect(onUseResultAsDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('lets a successful run become the follow-up source', () => {
+    const onSelectFollowUpRun = vi.fn();
+    renderPane({
+      showEvalHistory: true,
+      setShowEvalHistory: vi.fn(),
+      onSelectFollowUpRun,
+      evalRuns: [{
+        id: 'run-1',
+        status: 'success',
+        variantLabel: 'Primary',
+        createdAt: '2026-08-05T12:00:00.000Z',
+        mode: 'enhance',
+        provider: 'openai',
+        model: 'gpt-test',
+        latencyMs: 125,
+        output: 'The actual model result.',
+      }],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use for follow-ups' }));
+
+    expect(onSelectFollowUpRun).toHaveBeenCalledWith('run-1');
   });
 });

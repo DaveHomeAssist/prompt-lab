@@ -1,6 +1,6 @@
 # Prompt Lab Documentation Inventory
 
-Updated: 2026-03-30
+Updated: 2026-08-05
 
 ## Canonical Source Rules
 
@@ -59,6 +59,11 @@ Updated: 2026-03-30
 | Path | Scope | Status | Notes |
 |---|---|---|---|
 | `docs/CURRENT_MENU_SYSTEM.md` | Current menu/navigation model | Active | Code-grounded reference for header layers, state mapping, and command palette/menu behavior. |
+| `docs/deployment-operations.md` | Production deployment runbook | Active | Defines the authoritative Vercel project, verification commands, rollback path, and known duplicate-project debt. |
+| `docs/library-export-contract.md` | Native library export contract | Active | Freezes schema version 1, compatibility expectations, and the canonical round-trip fixture. |
+| `docs/scratchpad-storage.md` | Scratchpad storage and migration | Active | Documents Tiptap JSON schema version 3, version-2 backup behavior, autosave flushes, and export projections. |
+| `docs/implementation-audit-2026-08-05.md` | Product improvement acceptance audit | Active | Maps all five workstreams to evidence and identifies the owner-approved deployment and manual release gates. |
+| `docs/product-ideas-2026-08-05.md` | Product ideas backlog snapshot | Working | Captures Dave's August 2026 product ideas as prioritized implementation workstreams, not shipped commitments. |
 | `docs/create-evaluate-restructure-plan.md` | Create/Evaluate implementation brief | Active | Phase 0 implementation brief for Create compression and Evaluate unification, including acceptance criteria and initial refactor boundaries. |
 | `docs/next-3-sprints-plan.md` | Near-term sprint execution plan | Active | Three-sprint execution plan focused on activation runway, Evaluate proof, and conversion. |
 | `docs/uxui-bold-restructure-spec.md` | UX/UI redesign spec | Active | Bold cross-surface UX/UI restructuring spec covering landing conversion, app-shell coherence, and phased execution. |

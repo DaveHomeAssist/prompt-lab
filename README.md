@@ -57,8 +57,9 @@ docs/                     # Published public docs/static site copy
 
 | Surface | URL | Host |
 |---------|-----|------|
-| Public landing page | `https://promptlab.tools/` | GitHub Pages (`.github/workflows/pages.yml`, web root `docs/`) |
-| Hosted web app | `https://promptlab.tools/app/` | GitHub Pages static bundle (live provider runs use the Vercel proxy deployment) |
+| Public landing page | `https://promptlab.tools/` | Vercel project `prompt-lab` |
+| Hosted web app | `https://promptlab.tools/app/` | Vercel project `prompt-lab`, including the hosted provider proxy |
+| Legacy static mirror | Repository Pages URL | GitHub Pages (`.github/workflows/pages.yml`, web root `docs/`); not the authoritative custom-domain host |
 | Chrome / Vivaldi extension | MV3 side panel, local/unpacked build; store submission materials in draft | Local build / Chrome Web Store review prep |
 | macOS desktop | Tauri 2 — `.app` / `.dmg` | Local build |
 | Windows desktop | Tauri 2 — `.exe` / `.msi` | Local build |
@@ -77,6 +78,7 @@ docs/                     # Published public docs/static site copy
 
 - `prompt-lab-source/ARCHITECTURE.md` — canonical system architecture
 - `prompt-lab-source/DOCS_INVENTORY.md` — documentation map and source-of-truth rules
+- `prompt-lab-source/docs/deployment-operations.md` — production project, verification, and rollback runbook
 - `prompt-lab-source/docs/docs-map.md` — task and audience routing guide
 - `prompt-lab-source/docs/docs-style-guide.md` — authoring rules
 - `prompt-lab-source/docs/glossary.md` — standard terminology

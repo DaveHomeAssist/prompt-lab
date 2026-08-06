@@ -221,12 +221,37 @@ export function normalizeError(err, source = 'unknown') {
     return platformError(source, rawMessage);
   }
 
+  if (source === 'ollama' && msg.includes('empty content')) {
+    return providerError(
+      source,
+      502,
+      rawMessage,
+      'Ollama returned no text. Increase the generation limit or choose another model.',
+    );
+  }
+
   // Provider HTTP error — extract status from message like "failed (429)"
   const statusMatch = msg.match(/\((\d{3})\)/);
   const httpStatus = status || (statusMatch ? Number(statusMatch[1]) : undefined);
   if (httpStatus) {
     if (httpStatus === 429) return rateLimitError(source, rawMessage);
     if (httpStatus === 401 || httpStatus === 403) return authError(source, rawMessage);
+    if (source === 'ollama' && (msg.includes('out-of-memory') || msg.includes('out of memory') || msg.includes('failed to allocate'))) {
+      return providerError(
+        source,
+        httpStatus,
+        rawMessage,
+        'Ollama ran out of memory. Choose a smaller model or lower the context length.',
+      );
+    }
+    if (source === 'ollama' && httpStatus === 404) {
+      return providerError(
+        source,
+        httpStatus,
+        rawMessage,
+        'Ollama model unavailable. Refresh models or choose an installed model.',
+      );
+    }
     return providerError(source, httpStatus, rawMessage);
   }
 

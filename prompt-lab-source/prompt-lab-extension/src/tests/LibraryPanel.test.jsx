@@ -96,6 +96,11 @@ function makeProps(overrides = {}) {
       openVersionHistory: vi.fn(),
       del: vi.fn(),
       starterLibraries: [],
+      libraryView: 'all',
+      setLibraryView: vi.fn(),
+      syncStatus: 'saved',
+      syncMessage: 'Saved locally.',
+      recoveryAvailable: false,
     },
     compact: false,
     isWeb: false,
@@ -167,6 +172,21 @@ describe('LibraryPanel actions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close Import' }));
     expect(screen.queryByTestId('preset-import-panel')).not.toBeInTheDocument();
+  });
+
+  it('provides persistent library views and visible save status', () => {
+    const props = makeProps();
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByTestId('library-sync-status')).toHaveTextContent('Saved');
+    fireEvent.click(screen.getByRole('button', { name: /Recent/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Collections/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Tags/ }));
+
+    expect(props.lib.setLibraryView).toHaveBeenNthCalledWith(1, 'recent');
+    expect(props.lib.setLibraryView).toHaveBeenNthCalledWith(2, 'collections');
+    expect(props.lib.setLibraryView).toHaveBeenNthCalledWith(3, 'tags');
   });
 
   it('offers a starter-pack CTA when the library is empty', () => {

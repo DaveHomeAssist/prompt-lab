@@ -320,6 +320,11 @@
         </div>
         <input type="text" id="ollamaModelManual" placeholder="Or type a model name manually" autocomplete="off" style="margin-top:0.35rem;">
       </div>
+      <div>
+        <label class="field-label" for="ollamaContextLength">Context Length</label>
+        <input type="number" id="ollamaContextLength" min="1024" max="131072" step="1024" value="4096">
+        <p class="hint">Lower this value if Ollama reports an out-of-memory error.</p>
+      </div>
       <p class="hint">Ollama runs locally. No API key needed. Hit ↻ to discover installed models, or type one manually.</p>
     </div>
 

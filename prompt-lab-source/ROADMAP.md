@@ -29,6 +29,10 @@ These are active priorities, not shipped commitments:
 3. Keep extension, desktop, and web documentation aligned as the shared architecture evolves.
 4. Keep the `promptlab.tools` landing page, the public hosted app URL, and the proxy-backed web flow aligned with the current product docs.
 
+Working backlog snapshot:
+
+- `docs/product-ideas-2026-08-05.md` tracks desktop stabilization, the enhance workflow, library reliability, scratchpad rich editing, follow-up prompt expansion, Skill Lab, Agent Lab, admin health, and native mobile exploration.
+
 ## Platform expansion strategy
 
 | Version | Focus |
@@ -57,6 +61,9 @@ These are candidates, not released features:
 3. More explicit release packaging for public extension builds versus developer-oriented local-provider builds.
 4. Continued cleanup of legacy duplicate trees and archived planning material.
 5. Mobile deployment via a Tauri Mobile shell after desktop CI and packaging stabilize. See `MOBILE_DEPLOYMENT_ROADMAP.md` and the ADR in Notion.
+6. Improve the enhance workflow and make follow-up prompts reusable records linked to real run output.
+7. Harden library import, persistence, compatibility, and cross-tab synchronization before adding cloud sync.
+8. Upgrade scratchpads with safe rich-text migration and inline rename behavior.
 
 ## Guardrails
 

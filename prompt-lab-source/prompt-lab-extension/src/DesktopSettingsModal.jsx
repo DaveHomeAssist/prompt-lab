@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Ic from './icons';
 import { DEFAULTS } from './lib/providerRegistry.js';
+import { ErrorCategory, normalizeError } from './lib/errorTaxonomy.js';
+import { probeStorage } from './lib/storage.js';
 import {
   isExtension,
   listOllamaModels,
@@ -24,7 +26,27 @@ const DEFAULT_SETTINGS = {
   openrouterModel: DEFAULTS.openrouterModel,
   ollamaBaseUrl: DEFAULTS.ollamaBaseUrl,
   ollamaModel: DEFAULTS.ollamaModel,
+  ollamaContextLength: DEFAULTS.ollamaContextLength,
 };
+
+export function formatConnectionError(error, provider) {
+  const normalized = normalizeError(error, provider || 'provider');
+  if (normalized.category === ErrorCategory.AUTH) {
+    return 'Authentication failed. Check the provider API key.';
+  }
+  if (normalized.category === ErrorCategory.NETWORK) {
+    return provider === 'ollama'
+      ? 'Cannot reach Ollama. Check that it is running and the Base URL is correct.'
+      : 'Cannot reach the provider. Check the network, VPN, or firewall.';
+  }
+  if (normalized.category === ErrorCategory.RATE_LIMIT) {
+    return 'Provider rate limit reached. Wait briefly and try again.';
+  }
+  if (normalized.category === ErrorCategory.PROVIDER && normalized.status === 404) {
+    return 'Model unavailable. Check the configured model name.';
+  }
+  return normalized.userMessage || 'Connection failed.';
+}
 
 export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -35,6 +57,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   const [connectionStatusType, setConnectionStatusType] = useState('neutral');
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [storageHealth, setStorageHealth] = useState({ ok: true, message: '' });
 
   const inputClass = `w-full px-3 py-2 rounded-lg border text-sm ${m.input} ${m.border} ${m.text}`;
   const buttonClass = `px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
@@ -49,6 +72,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     setOllamaStatus('');
     setOllamaStatusType('neutral');
     setOllamaModels([]);
+    setStorageHealth(probeStorage());
     loadProviderSettings()
       .then((stored) => {
         if (!cancelled) {
@@ -136,13 +160,13 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     try {
       await testProviderConnection({
         model: currentModel,
-        max_tokens: 10,
+        max_tokens: 64,
         messages: [{ role: 'user', content: 'Say "ok"' }],
       }, settings);
       setConnectionStatus('Connected!');
       setConnectionStatusType('success');
     } catch (error) {
-      setConnectionStatus(error?.message || 'Connection failed.');
+      setConnectionStatus(formatConnectionError(error, settings.provider));
       setConnectionStatusType('error');
     } finally {
       setIsTestingConnection(false);
@@ -342,6 +366,22 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   className={inputClass}
                 />
               </label>
+              <label className="block space-y-1">
+                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Context Length</span>
+                <input
+                  type="number"
+                  min="1024"
+                  max="131072"
+                  step="1024"
+                  aria-label="Context Length"
+                  value={settings.ollamaContextLength}
+                  onChange={event => updateSetting('ollamaContextLength', event.target.value)}
+                  className={inputClass}
+                />
+                <span className={`block text-xs ${m.textMuted}`}>
+                  Lower this value if Ollama reports an out-of-memory error.
+                </span>
+              </label>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -373,6 +413,11 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           )}
 
           <div className={`space-y-3 border-t ${m.border} pt-4`}>
+            {storageHealth.message && (
+              <p className={`text-xs ${storageHealth.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                {storageHealth.message}
+              </p>
+            )}
             {connectionStatus && <p className={`text-sm ${statusClass}`}>{connectionStatus}</p>}
             <div className="flex items-center justify-end gap-2">
               <button

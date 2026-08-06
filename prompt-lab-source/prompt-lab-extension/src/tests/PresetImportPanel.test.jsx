@@ -115,6 +115,35 @@ describe('PresetImportPanel', () => {
     ]));
   });
 
+  it('commits confirmed imports through the revisioned repository path', async () => {
+    const commitLibrarySnapshot = vi.fn();
+
+    render(
+      <PresetImportPanel
+        m={makeTheme()}
+        lib={{
+          library: [],
+          collections: ['Existing'],
+          commitLibrarySnapshot,
+        }}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Paste preset pack or library JSON...'), {
+      target: { value: JSON.stringify(buildPack()) },
+    });
+    expect(commitLibrarySnapshot).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Import Presets/i }));
+
+    await waitFor(() => expect(commitLibrarySnapshot).toHaveBeenCalledTimes(1));
+    expect(commitLibrarySnapshot).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ title: 'Navigation Audit' })]),
+      ['Existing', 'UX'],
+      { backupReason: 'pre-preset-import' },
+    );
+  });
+
   it('previews and imports raw prompt arrays', async () => {
     const setLibrary = vi.fn();
     const setCollections = vi.fn();

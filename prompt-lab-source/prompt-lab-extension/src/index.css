@@ -6,6 +6,68 @@ body {
   margin: 0;
   background: #030712;
 }
+
+.pl-pad-editor .ProseMirror {
+  min-height: 100%;
+  padding: 1rem;
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.pl-pad-editor .ProseMirror p {
+  margin: 0.35rem 0;
+}
+
+.pl-pad-editor .ProseMirror h1,
+.pl-pad-editor .ProseMirror h2 {
+  margin: 0.75rem 0 0.35rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.pl-pad-editor .ProseMirror h1 { font-size: 1.4rem; }
+.pl-pad-editor .ProseMirror h2 { font-size: 1.15rem; }
+
+.pl-pad-editor .ProseMirror ul:not([data-type="taskList"]),
+.pl-pad-editor .ProseMirror ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.pl-pad-editor .ProseMirror ul:not([data-type="taskList"]) { list-style: disc; }
+.pl-pad-editor .ProseMirror ol { list-style: decimal; }
+
+.pl-pad-editor .ProseMirror ul[data-type="taskList"] {
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pl-pad-editor .ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.pl-pad-editor .ProseMirror ul[data-type="taskList"] li > label {
+  margin-top: 0.42rem;
+  flex: 0 0 auto;
+}
+
+.pl-pad-editor .ProseMirror ul[data-type="taskList"] li > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.pl-pad-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: "Notes, ideas, and prompt drafts";
+  float: left;
+  height: 0;
+  color: #6b7280;
+  pointer-events: none;
+}
 * {
   box-sizing: border-box;
 }
