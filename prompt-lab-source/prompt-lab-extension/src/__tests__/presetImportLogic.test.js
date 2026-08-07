@@ -317,6 +317,53 @@ describe('importPresetPack', () => {
     expect(idCollisions.length).toBeGreaterThanOrEqual(0);
   });
 
+  it('replaces the selected conflicting record', async () => {
+    const existing = createPromptEntry({
+      id: 'existing',
+      title: 'Preset One',
+      original: 'Old content',
+      enhanced: 'Old content',
+    });
+    const adapter = { save: vi.fn(), library: [existing] };
+
+    const result = await importPresetPack(makeValidPack(), adapter, {
+      resolutions: { 'preset-1': 'replace' },
+    });
+
+    expect(result.replaced).toEqual([expect.objectContaining({ id: 'existing', title: 'Preset One' })]);
+    expect(adapter.save.mock.calls[0][0].filter((entry) => entry.id === 'existing')).toHaveLength(1);
+    expect(adapter.save.mock.calls[0][0].find((entry) => entry.id === 'existing').enhanced).toBe('Write a haiku about nature');
+  });
+
+  it('keeps both records when requested', async () => {
+    const existing = createPromptEntry({
+      id: 'preset-1',
+      title: 'Preset One',
+      original: 'Old content',
+      enhanced: 'Old content',
+    });
+    const adapter = { save: vi.fn(), library: [existing] };
+
+    const result = await importPresetPack(makeValidPack(), adapter, {
+      resolutions: { 'preset-1': 'keep-both' },
+    });
+
+    expect(result.imported).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'preset-1-imported' }),
+    ]));
+  });
+
+  it('cancels without calling save', async () => {
+    const adapter = { save: vi.fn(), library: [] };
+
+    const result = await importPresetPack(makeValidPack(), adapter, {
+      resolutions: { 'preset-1': 'cancel' },
+    });
+
+    expect(result.canceled).toBe(true);
+    expect(adapter.save).not.toHaveBeenCalled();
+  });
+
   it('reads existing library via load function', async () => {
     const existing = [createPromptEntry({ id: 'ex1', enhanced: 'Existing content here' })];
     const loadFn = vi.fn().mockResolvedValue(existing);

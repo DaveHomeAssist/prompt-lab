@@ -78,6 +78,7 @@ describe('DesktopSettingsModal', () => {
       openaiModel: 'gpt-4o',
       ollamaBaseUrl: 'http://localhost:11434',
       ollamaModel: 'llama3.2:3b',
+      ollamaContextLength: 4096,
     });
     saveProviderSettings.mockResolvedValue(undefined);
     listOllamaModels.mockResolvedValue([]);
@@ -138,10 +139,25 @@ describe('DesktopSettingsModal', () => {
     expect(testProviderConnection).toHaveBeenCalledWith(
       expect.objectContaining({
         model: expect.any(String),
+        max_tokens: 64,
         messages: expect.arrayContaining([expect.objectContaining({ role: 'user' })]),
       }),
       expect.objectContaining({ provider: 'anthropic' }),
     );
+  });
+
+  it('connection_test_reports_actionable_authentication_failure', async () => {
+    testProviderConnection.mockRejectedValueOnce(new Error('401 Unauthorized'));
+    await renderModal();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Test Connection' }));
+
+    expect(await screen.findByText('Authentication failed. Check the provider API key.')).toBeInTheDocument();
+  });
+
+  it('shows local storage health when settings open', async () => {
+    await renderModal();
+    expect(await screen.findByText('Local storage ready.')).toBeInTheDocument();
   });
 
   it('ollama_refresh_updates_model_list_only', async () => {
@@ -168,6 +184,7 @@ describe('DesktopSettingsModal', () => {
 
     expect(await screen.findByRole('option', { name: /llama3\.2:8b/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Base URL' })).toHaveValue('http://localhost:11434');
+    expect(screen.getByRole('spinbutton', { name: 'Context Length' })).toHaveValue(4096);
     expect(saveProviderSettings).not.toHaveBeenCalled();
 
     fireEvent.change(providerSelect, { target: { value: 'openai' } });

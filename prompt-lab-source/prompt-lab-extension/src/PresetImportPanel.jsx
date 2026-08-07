@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import DraftBadge from './DraftBadge.jsx';
 import {
@@ -12,9 +12,15 @@ import { ensureString } from './lib/utils.js';
 function summarizeImport(result) {
   if (!result) return '';
   const importedCount = result.imported.length;
+  const replacedCount = result.replaced?.length || 0;
   const skippedCount = result.skipped.length;
-  if (!importedCount && !skippedCount) return 'No changes applied.';
-  return `${importedCount} imported${skippedCount ? `, ${skippedCount} skipped` : ''}`;
+  if (result.canceled) return 'Import canceled. No changes applied.';
+  if (!importedCount && !replacedCount && !skippedCount) return 'No changes applied.';
+  return [
+    `${importedCount} imported`,
+    replacedCount ? `${replacedCount} replaced` : '',
+    skippedCount ? `${skippedCount} skipped` : '',
+  ].filter(Boolean).join(', ');
 }
 
 function getErrorMessage(error, fallback) {
@@ -47,6 +53,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState('');
+  const [resolutions, setResolutions] = useState({});
 
   const preview = useMemo(() => {
     const text = sourceText.trim();
@@ -88,6 +95,22 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
   const presetCount = Array.isArray(preview.pack?.presets) ? preview.pack.presets.length : 0;
   const readyToImport = Boolean(preview.pack && preview.validation?.valid);
   const hasDraft = Boolean(sourceText.trim());
+  const conflictRows = useMemo(() => {
+    const rows = new Map();
+    preview.duplicates.forEach((conflict) => {
+      const existing = rows.get(conflict.a.id) || { preset: conflict.a, matches: [] };
+      existing.matches.push(conflict);
+      rows.set(conflict.a.id, existing);
+    });
+    return [...rows.values()];
+  }, [preview.duplicates]);
+
+  useEffect(() => {
+    setResolutions(Object.fromEntries(conflictRows.map((row) => [
+      row.preset.id,
+      row.matches.some((match) => match.reason === 'prompt-exact-match') ? 'skip' : 'keep-both',
+    ])));
+  }, [conflictRows]);
 
   const handleSourceText = (value, label = '') => {
     setSourceText(value);
@@ -114,9 +137,17 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
     const adapter = {
       load: async () => lib.library,
       save: async (mergedLibrary) => {
+        const nextCollections = uniqueCollections(mergedLibrary);
+        if (typeof lib.commitLibrarySnapshot === 'function') {
+          lib.commitLibrarySnapshot(
+            mergedLibrary,
+            [...new Set([...(Array.isArray(lib.collections) ? lib.collections : []), ...nextCollections])],
+            { backupReason: 'pre-preset-import' },
+          );
+          return true;
+        }
         lib.setLibrary(mergedLibrary);
         if (typeof lib.setCollections === 'function') {
-          const nextCollections = uniqueCollections(mergedLibrary);
           lib.setCollections((prev) => [...new Set([...(Array.isArray(prev) ? prev : []), ...nextCollections])]);
         }
         return true;
@@ -125,7 +156,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
 
     setImporting(true);
     try {
-      const result = await importPresetPack(preview.pack, adapter);
+      const result = await importPresetPack(preview.pack, adapter, { resolutions });
       setImportResult(result);
     } catch (error) {
       setImportResult(null);
@@ -320,12 +351,39 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
           <div className="flex flex-col gap-2">
             {preview.duplicates.length > 0 && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-200">Possible duplicates</p>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-200">Resolve conflicts</p>
+                  <div className="flex gap-2">
+                    {['skip', 'replace', 'keep-both', 'cancel'].map((choice) => (
+                      <button
+                        key={choice}
+                        type="button"
+                        onClick={() => setResolutions(Object.fromEntries(conflictRows.map((row) => [row.preset.id, choice])))}
+                        className="text-[10px] font-semibold text-amber-100 hover:text-white"
+                      >
+                        {choice === 'keep-both' ? 'Keep all' : choice === 'cancel' ? 'Cancel all' : `${choice[0].toUpperCase()}${choice.slice(1)} all`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="mt-2 flex flex-col gap-1">
-                  {preview.duplicates.slice(0, 4).map((item) => (
-                    <p key={`${item.a.id}-${item.b.id}-${item.reason}`} className="text-xs text-amber-100">
-                      {item.a.title} ↔ {item.b.title} ({item.reason})
-                    </p>
+                  {conflictRows.slice(0, 8).map((row) => (
+                    <label key={row.preset.id} className="flex items-center justify-between gap-3 text-xs text-amber-100">
+                      <span className="min-w-0 truncate">
+                        {row.preset.title} matches {row.matches[0]?.b?.title} ({row.matches.map((item) => item.reason).join(', ')})
+                      </span>
+                      <select
+                        aria-label={`Resolve ${row.preset.title}`}
+                        value={resolutions[row.preset.id] || 'keep-both'}
+                        onChange={(event) => setResolutions((current) => ({ ...current, [row.preset.id]: event.target.value }))}
+                        className={`${m.input} border rounded-md px-2 py-1 text-xs ${m.text} shrink-0`}
+                      >
+                        <option value="skip">Skip</option>
+                        <option value="replace">Replace</option>
+                        <option value="keep-both">Keep both</option>
+                        <option value="cancel">Cancel import</option>
+                      </select>
+                    </label>
                   ))}
                 </div>
               </div>
@@ -347,6 +405,17 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
         <p className={`text-xs ${m.textMuted}`}>
           Exact prompt matches are skipped automatically. ID collisions are imported with a safe suffix.
         </p>
+        <button
+          type="button"
+          onClick={() => {
+            handleSourceText('');
+            setImportResult({ imported: [], replaced: [], skipped: [], canceled: true });
+          }}
+          disabled={!hasDraft || importing}
+          className={`ui-control inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
+        >
+          Cancel Import
+        </button>
         <button
           type="button"
           onClick={handleImport}

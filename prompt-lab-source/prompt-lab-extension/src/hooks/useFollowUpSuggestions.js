@@ -1,43 +1,50 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { callModel } from '../api';
 import { extractTextFromAnthropic } from '../promptUtils';
 import { normalizeError } from '../lib/errorTaxonomy.js';
-import { buildFollowUpPayload, parseFollowUpSuggestions } from '../lib/followUpSuggestions.js';
+import {
+  buildFollowUpPayload,
+  parseFollowUpSuggestions,
+  resolveFollowUpSource,
+} from '../lib/followUpSuggestions.js';
 
 /**
- * On-demand follow-up prompt suggestions for the current enhance result.
- * Suggestions invalidate whenever the enhanced output changes so stale chains
- * are never offered against a new result.
+ * On-demand follow-up prompt suggestions for the selected successful run,
+ * enhanced prompt, or raw draft (in that order).
  */
-export default function useFollowUpSuggestions({ raw, enhanced }) {
+export default function useFollowUpSuggestions({ raw, enhanced, sourceRun = null, sourcePromptId = null }) {
   const [followUps, setFollowUps] = useState([]);
   const [followUpsLoading, setFollowUpsLoading] = useState(false);
   const [followUpsError, setFollowUpsError] = useState('');
   const reqRef = useRef(0);
-  const lastEnhancedRef = useRef(enhanced);
+  const source = useMemo(
+    () => resolveFollowUpSource({ raw, enhanced, sourceRun, sourcePromptId }),
+    [enhanced, raw, sourcePromptId, sourceRun],
+  );
+  const lastSourceKeyRef = useRef(source.key);
 
   useEffect(() => {
-    if (lastEnhancedRef.current === enhanced) return;
-    lastEnhancedRef.current = enhanced;
+    if (lastSourceKeyRef.current === source.key) return;
+    lastSourceKeyRef.current = source.key;
     reqRef.current += 1;
     setFollowUps([]);
     setFollowUpsError('');
     setFollowUpsLoading(false);
-  }, [enhanced]);
+  }, [source.key]);
 
   const fetchFollowUps = async () => {
-    const source = String(enhanced || raw || '').trim();
-    if (!source || followUpsLoading) return;
+    if (!source.text || followUpsLoading) return;
 
     const reqId = reqRef.current + 1;
     reqRef.current = reqId;
     setFollowUpsLoading(true);
     setFollowUpsError('');
     try {
-      const data = await callModel(buildFollowUpPayload({ raw, enhanced }));
+      const data = await callModel(buildFollowUpPayload({ source }));
       if (reqId !== reqRef.current) return;
       const parsed = parseFollowUpSuggestions(extractTextFromAnthropic(data));
-      setFollowUps(parsed);
+      const generatedAt = new Date().toISOString();
+      setFollowUps(parsed.map((suggestion) => ({ ...suggestion, source, generatedAt })));
       if (parsed.length === 0) {
         setFollowUpsError('No follow-up suggestions came back. Try again.');
       }
@@ -57,5 +64,13 @@ export default function useFollowUpSuggestions({ raw, enhanced }) {
     setFollowUpsLoading(false);
   };
 
-  return { followUps, followUpsLoading, followUpsError, fetchFollowUps, clearFollowUps };
+  return {
+    source,
+    canSuggest: Boolean(source.text),
+    followUps,
+    followUpsLoading,
+    followUpsError,
+    fetchFollowUps,
+    clearFollowUps,
+  };
 }

@@ -4,6 +4,7 @@ import {
   anthropicRejectsSamplingParams,
   toAnthropicMessages,
   normalizeBaseUrl,
+  normalizeOllamaContextLength,
   normalizeProvider,
   toChatMessages,
   toGeminiContents,
@@ -74,8 +75,19 @@ export async function callOllama(payload, settings = {}, fetchImpl = globalThis.
   const requestBody = {
     model: settings.ollamaModel || payload?.model || DEFAULTS.ollamaModel,
     stream: false,
+    think: false,
     messages: toChatMessages(payload),
+    options: {
+      num_ctx: normalizeOllamaContextLength(settings.ollamaContextLength),
+    },
   };
+  const maxTokens = Number.parseInt(payload?.max_tokens, 10);
+  if (Number.isFinite(maxTokens) && maxTokens > 0) {
+    requestBody.options.num_predict = Math.min(8192, maxTokens);
+  }
+  if (typeof payload?.temperature === 'number') {
+    requestBody.options.temperature = payload.temperature;
+  }
 
   const response = await fetchOrThrow(fetchImpl)(`${normalizeBaseUrl(settings.ollamaBaseUrl, DEFAULTS.ollamaBaseUrl)}/api/chat`, {
     method: 'POST',

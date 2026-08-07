@@ -9,6 +9,7 @@ import {
   updatePromptEntry,
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
+import { createLocalLibraryRepository } from '../lib/libraryRepository.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
 import {
@@ -29,6 +30,11 @@ import {
 } from '../lib/libraryMatching.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
+const VALID_LIBRARY_VIEWS = ['all', 'recent', 'collections', 'tags', 'imports'];
+
+function getSnapshotKey(records, collections) {
+  return JSON.stringify({ records, collections });
+}
 
 function getNewestSortTimestamp(entry) {
   const sortValue = entry?.updatedAt || entry?.updated_at || entry?.metadata?.packLoadedAt || entry?.createdAt;
@@ -49,9 +55,39 @@ export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
   const [libReady, setLibReady] = useState(false);
   const [collections, setCollections] = useState([]);
-  const [search, setSearch] = useState('');
-  const [activeTag, setActiveTag] = useState(null);
-  const [activeCollection, setActiveCollection] = useState(null);
+  const [search, _setSearch] = useState(() => ensureString(loadJson(storageKeys.librarySearch, '')));
+  const setSearch = useCallback((value) => {
+    _setSearch((previous) => {
+      const next = ensureString(typeof value === 'function' ? value(previous) : value);
+      saveJson(storageKeys.librarySearch, next);
+      return next;
+    });
+  }, []);
+  const [activeTag, _setActiveTag] = useState(() => loadJson(storageKeys.libraryActiveTag, null));
+  const setActiveTag = useCallback((value) => {
+    _setActiveTag((previous) => {
+      const next = typeof value === 'function' ? value(previous) : value;
+      saveJson(storageKeys.libraryActiveTag, next);
+      return next;
+    });
+  }, []);
+  const [activeCollection, _setActiveCollection] = useState(() => loadJson(storageKeys.libraryActiveCollection, null));
+  const setActiveCollection = useCallback((value) => {
+    _setActiveCollection((previous) => {
+      const next = typeof value === 'function' ? value(previous) : value;
+      saveJson(storageKeys.libraryActiveCollection, next);
+      return next;
+    });
+  }, []);
+  const [libraryView, _setLibraryView] = useState(() => {
+    const stored = loadJson(storageKeys.libraryView, 'all');
+    return VALID_LIBRARY_VIEWS.includes(stored) ? stored : 'all';
+  });
+  const setLibraryView = useCallback((value) => {
+    const next = VALID_LIBRARY_VIEWS.includes(value) ? value : 'all';
+    _setLibraryView(next);
+    saveJson(storageKeys.libraryView, next);
+  }, []);
   const [sortBy, _setSortBy] = useState(() => {
     const stored = loadJson(storageKeys.sortBy, 'newest');
     return VALID_SORTS.includes(stored) ? stored : 'newest';
@@ -71,8 +107,14 @@ export default function usePromptLibrary(notify) {
   const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
+  const [syncStatus, setSyncStatus] = useState('local-only');
+  const [syncMessage, setSyncMessage] = useState('Stored on this device.');
+  const [recoveryAvailable, setRecoveryAvailable] = useState(false);
+  const repository = useMemo(() => createLocalLibraryRepository(), []);
   const libraryRef = useRef(library);
   const collectionsRef = useRef(collections);
+  const revisionRef = useRef(0);
+  const persistedSnapshotRef = useRef('');
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
 
@@ -95,6 +137,7 @@ export default function usePromptLibrary(notify) {
       ? mergeCollections(previousCollections, payload.collections)
       : previousCollections;
 
+    try { repository.backup('pre-legacy-recovery'); } catch { /* Persistence status is updated by the save effect. */ }
     libraryRef.current = libraryResult.library;
     collectionsRef.current = nextCollections;
     setLibrary(libraryResult.library);
@@ -107,23 +150,34 @@ export default function usePromptLibrary(notify) {
       reachable: true,
       hasLegacyLibrary: payload.library.length > 0,
     };
-  }, []);
+  }, [repository]);
 
   useEffect(() => {
-    const storedLibrary = loadJson(storageKeys.library, null);
-    const hasStoredLibrary = Array.isArray(storedLibrary);
+    const loaded = repository.load();
+    const storedLibrary = loaded.envelope.records;
+    const hasStoredLibrary = loaded.hasStoredData;
     const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
-    const storedCollections = loadJson(storageKeys.collections, null);
+    const storedCollections = loaded.envelope.collections;
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
-    const initialCollections = Array.isArray(storedCollections)
+    const initialCollections = hasStoredLibrary
       ? mergeCollections(storedCollections, derivedCollections)
-      : (!hasStoredLibrary ? ['Handoff Templates'] : derivedCollections);
+      : mergeCollections(['Handoff Templates'], derivedCollections);
 
     libraryRef.current = initialLibrary;
     collectionsRef.current = initialCollections;
+    revisionRef.current = loaded.envelope.revision;
+    persistedSnapshotRef.current = getSnapshotKey(storedLibrary, storedCollections);
     setLibrary(initialLibrary);
     setCollections(initialCollections);
     setLoadedStarterPackIds(getLoadedPacks());
+    setRecoveryAvailable(Boolean(loaded.recoveryAvailable));
+    if (loaded.warning) {
+      setSyncStatus('failed');
+      setSyncMessage(loaded.warning);
+    } else if (loaded.hasStoredData) {
+      setSyncStatus('saved');
+      setSyncMessage(loaded.migrated ? 'Library migrated and saved locally.' : 'Saved locally.');
+    }
     setLibReady(true);
 
     const alreadyCheckedLegacy = loadJson(LEGACY_LIBRARY_CHECK_KEY, false) === true;
@@ -154,23 +208,59 @@ export default function usePromptLibrary(notify) {
     return () => {
       cancelled = true;
     };
-  }, [applyLegacyPayload, markLegacyLibraryChecked]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked, repository]);
 
   useEffect(() => {
     if (!libReady) return undefined;
+    const snapshotKey = getSnapshotKey(library, collections);
+    if (snapshotKey === persistedSnapshotRef.current) return undefined;
+    setSyncStatus('syncing');
+    setSyncMessage('Saving locally...');
     const timeoutId = window.setTimeout(() => {
-      saveJson(storageKeys.library, library);
+      try {
+        const result = repository.save(
+          { records: library, collections },
+          { expectedRevision: revisionRef.current },
+        );
+        revisionRef.current = result.envelope.revision;
+        persistedSnapshotRef.current = snapshotKey;
+        setSyncStatus('saved');
+        setSyncMessage(result.warnings.length > 0 ? result.warnings.join(' ') : 'Saved locally.');
+      } catch (error) {
+        setSyncStatus(error?.code === 'revision-conflict' ? 'conflict' : 'failed');
+        setSyncMessage(error?.message || 'Library changes could not be saved.');
+      }
     }, 120);
     return () => window.clearTimeout(timeoutId);
-  }, [library, libReady]);
+  }, [collections, libReady, library, repository]);
 
   useEffect(() => {
     if (!libReady) return undefined;
-    const timeoutId = window.setTimeout(() => {
-      saveJson(storageKeys.collections, collections);
-    }, 120);
-    return () => window.clearTimeout(timeoutId);
-  }, [collections, libReady]);
+    return repository.subscribe((envelope, error) => {
+      if (error) {
+        setSyncStatus('failed');
+        setSyncMessage(error.message || 'A library update from another tab was invalid.');
+        return;
+      }
+      if (!envelope || envelope.revision <= revisionRef.current) return;
+      const localSnapshot = getSnapshotKey(libraryRef.current, collectionsRef.current);
+      if (localSnapshot !== persistedSnapshotRef.current) {
+        setSyncStatus('conflict');
+        setSyncMessage('Another tab saved a newer revision while this tab has unsaved changes. Reload this view before saving.');
+        return;
+      }
+      const nextLibrary = normalizeLibrary(envelope.records);
+      const nextCollections = mergeCollections(envelope.collections, deriveCollectionsFromLibrary(nextLibrary));
+      revisionRef.current = envelope.revision;
+      persistedSnapshotRef.current = getSnapshotKey(nextLibrary, nextCollections);
+      libraryRef.current = nextLibrary;
+      collectionsRef.current = nextCollections;
+      setLibrary(nextLibrary);
+      setCollections(nextCollections);
+      setSyncStatus('saved');
+      setSyncMessage('Updated from another tab.');
+    });
+  }, [libReady, repository]);
 
   const updateLibraryEntry = (entryId, updater) => {
     let changed = false;
@@ -184,7 +274,7 @@ export default function usePromptLibrary(notify) {
     return changed;
   };
 
-  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote }) => {
+  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote, metadata }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
       title: cleanTitle,
@@ -194,6 +284,7 @@ export default function usePromptLibrary(notify) {
       notes: ensureString(notes),
       tags: normalizeTagList(tags),
       collection: ensureString(collection),
+      ...(metadata && typeof metadata === 'object' ? { metadata } : {}),
     };
 
     if (editingId) {
@@ -243,6 +334,12 @@ export default function usePromptLibrary(notify) {
   }, [notify]);
 
   const clearLibrary = useCallback(() => {
+    try { repository.backup('pre-clear-library'); } catch (error) {
+      setSyncStatus('failed');
+      setSyncMessage(error?.message || 'Could not create a library backup.');
+      notify('Library backup failed. Clear was canceled.');
+      return;
+    }
     libraryRef.current = [];
     collectionsRef.current = [];
     setLibrary([]);
@@ -260,7 +357,7 @@ export default function usePromptLibrary(notify) {
     setLoadedStarterPackIds([]);
     saveJson('pl2-loaded-packs', []);
     notify('Library cleared.');
-  }, [notify]);
+  }, [notify, repository, setActiveCollection, setActiveTag]);
 
   const moveLibraryEntry = (sourceId, targetId, position = 'before') => {
     if (!sourceId || !targetId || sourceId === targetId) return;
@@ -357,6 +454,59 @@ export default function usePromptLibrary(notify) {
     updateLibraryEntry(entryId, entry => updatePromptEntry(entry, { goldenThreshold: threshold }));
   };
 
+  const commitLibrarySnapshot = useCallback((nextLibrary, nextCollections, { backupReason = 'pre-import' } = {}) => {
+    const normalizedLibrary = normalizeLibrary(nextLibrary);
+    const normalizedCollections = mergeCollections(
+      Array.isArray(nextCollections) ? nextCollections : [],
+      deriveCollectionsFromLibrary(normalizedLibrary),
+    );
+    setSyncStatus('syncing');
+    setSyncMessage('Saving locally...');
+    try {
+      const result = repository.import(
+        { records: normalizedLibrary, collections: normalizedCollections },
+        { expectedRevision: revisionRef.current, backupReason },
+      );
+      revisionRef.current = result.envelope.revision;
+      persistedSnapshotRef.current = getSnapshotKey(normalizedLibrary, normalizedCollections);
+      libraryRef.current = normalizedLibrary;
+      collectionsRef.current = normalizedCollections;
+      setLibrary(normalizedLibrary);
+      setCollections(normalizedCollections);
+      setSyncStatus('saved');
+      setSyncMessage(result.warnings.length > 0 ? result.warnings.join(' ') : 'Saved locally.');
+      setRecoveryAvailable(true);
+      return result;
+    } catch (error) {
+      setSyncStatus(error?.code === 'revision-conflict' ? 'conflict' : 'failed');
+      setSyncMessage(error?.message || 'Library import could not be saved.');
+      throw error;
+    }
+  }, [repository]);
+
+  const recoverLibraryBackup = useCallback(() => {
+    try {
+      const result = repository.recoverBackup();
+      const nextLibrary = normalizeLibrary(result.envelope.records);
+      const nextCollections = mergeCollections(result.envelope.collections, deriveCollectionsFromLibrary(nextLibrary));
+      revisionRef.current = result.envelope.revision;
+      persistedSnapshotRef.current = getSnapshotKey(nextLibrary, nextCollections);
+      libraryRef.current = nextLibrary;
+      collectionsRef.current = nextCollections;
+      setLibrary(nextLibrary);
+      setCollections(nextCollections);
+      setSyncStatus('saved');
+      setSyncMessage('Recovered the latest local backup.');
+      notify('Library backup recovered.');
+      return true;
+    } catch (error) {
+      setSyncStatus('failed');
+      setSyncMessage(error?.message || 'Library backup recovery failed.');
+      notify('Library backup recovery failed.');
+      return false;
+    }
+  }, [notify, repository]);
+
   const exportLib = () => {
     if (library.length === 0) {
       notify('Library is empty.');
@@ -364,14 +514,7 @@ export default function usePromptLibrary(notify) {
     }
     if (library.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
       && !window.confirm('Export may include sensitive prompt content. Continue?')) return;
-    const exportPayload = {
-      version: '1.7.0',
-      schemaVersion: 1,
-      exportedAt: new Date().toISOString(),
-      count: library.length,
-      library,
-      collections,
-    };
+    const exportPayload = repository.export({ records: library, collections, appVersion: '1.7.0' });
     const url = URL.createObjectURL(new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' }));
     const stamp = new Date().toISOString().slice(0, 10);
     const anchor = Object.assign(document.createElement('a'), { href: url, download: `prompt-library-${stamp}.json` });
@@ -402,10 +545,8 @@ export default function usePromptLibrary(notify) {
           collectionsRef.current,
           deriveCollectionsFromLibrary(result.library),
         );
-        libraryRef.current = result.library;
-        collectionsRef.current = nextCollections;
-        setLibrary(result.library);
-        setCollections(nextCollections);
+        if (!window.confirm(`Import ${result.importedCount} prompts and skip ${result.skippedCount} duplicates?`)) return;
+        commitLibrarySnapshot(result.library, nextCollections, { backupReason: 'pre-settings-import' });
         if (result.importedCount === 0) {
           notify(`No new prompts imported. Skipped ${result.skippedCount} duplicates.`);
           return;
@@ -446,6 +587,12 @@ export default function usePromptLibrary(notify) {
       return null;
     }
 
+    try { repository.backup('pre-starter-pack'); } catch (error) {
+      setSyncStatus('failed');
+      setSyncMessage(error?.message || 'Could not create a library backup.');
+      notify('Starter pack was not loaded because backup failed.');
+      return null;
+    }
     libraryRef.current = result.library;
     collectionsRef.current = result.collections;
     setLibrary(result.library);
@@ -458,7 +605,7 @@ export default function usePromptLibrary(notify) {
       notify(`No new prompts loaded from ${result.collection}.`);
     }
     return result;
-  }, [notify]);
+  }, [notify, repository]);
 
   const recoverLegacyWebLibrary = useCallback(async ({ force = false } = {}) => {
     if (recoveringLegacyLibrary) return { importedCount: 0, reason: 'busy' };
@@ -509,14 +656,19 @@ export default function usePromptLibrary(notify) {
     [library],
   );
 
-  const filtered = useMemo(
-    () => [...library]
+  const filtered = useMemo(() => {
+    if (libraryView === 'imports') return [];
+    const recentOrder = getAnticipation().lastAccessOrder || [];
+    const recentIndex = new Map(recentOrder.map((id, index) => [id, index]));
+    return [...library]
       .filter(entry =>
         matchesLibrarySearch(entry, search)
         && (!activeTag || (entry.tags || []).includes(activeTag))
         && (!activeCollection || entry.collection === activeCollection)
+        && (libraryView !== 'recent' || recentIndex.has(entry.id))
       )
       .sort((left, right) => {
+        if (libraryView === 'recent') return recentIndex.get(left.id) - recentIndex.get(right.id);
         if (sortBy === 'manual') return 0;
         if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
         if (sortBy === 'most-used') return right.useCount - left.useCount;
@@ -533,9 +685,8 @@ export default function usePromptLibrary(notify) {
         const newestDelta = getNewestSortTimestamp(right) - getNewestSortTimestamp(left);
         if (newestDelta !== 0) return newestDelta;
         return new Date(right.createdAt) - new Date(left.createdAt);
-      }),
-    [activeCollection, activeTag, library, search, sortBy],
-  );
+      });
+  }, [activeCollection, activeTag, library, libraryView, search, sortBy]);
 
   const quickInject = useMemo(
     () => [...library].sort((left, right) => right.useCount - left.useCount).slice(0, 5),
@@ -564,12 +715,13 @@ export default function usePromptLibrary(notify) {
   return {
     library, setLibrary, libReady, collections, setCollections,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
+    libraryView, setLibraryView, syncStatus, syncMessage, recoveryAvailable, recoverLibraryBackup,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
-    exportLib, importLib, getShareUrl,
+    exportLib, importLib, commitLibrarySnapshot, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject, recentPrompts, trackRecentAccess,

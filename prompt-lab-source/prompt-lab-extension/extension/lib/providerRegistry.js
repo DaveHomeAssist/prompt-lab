@@ -4,6 +4,7 @@ export const DEFAULTS = Object.freeze({
   provider: DEFAULT_PROVIDER,
   ollamaBaseUrl: 'http://localhost:11434',
   ollamaModel: 'llama3.2:3b',
+  ollamaContextLength: 4096,
   anthropicModel: 'claude-sonnet-4-6',
   openaiModel: 'gpt-4o',
   geminiModel: 'gemini-2.5-flash',
@@ -24,6 +25,7 @@ export const PROVIDER_SETTINGS_KEYS = Object.freeze([
   'anthropicModel',
   'ollamaBaseUrl',
   'ollamaModel',
+  'ollamaContextLength',
   'openaiApiKey',
   'openaiModel',
   'geminiApiKey',
@@ -39,6 +41,12 @@ export function normalizeProvider(provider) {
 export function normalizeBaseUrl(baseUrl, fallback = DEFAULTS.ollamaBaseUrl) {
   const raw = String(baseUrl || fallback).trim();
   return raw.replace(/\/+$/, '');
+}
+
+export function normalizeOllamaContextLength(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULTS.ollamaContextLength;
+  return Math.min(131072, Math.max(1024, parsed));
 }
 
 export function anthropicBlocksToText(content) {

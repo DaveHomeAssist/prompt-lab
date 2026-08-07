@@ -33,7 +33,7 @@ export default function SettingsModal({
       <div className={`pl-modal-panel ${m.modal} border rounded-xl p-5 w-full max-w-sm flex flex-col gap-4`} role="dialog" aria-modal="true" aria-labelledby="modal-settings">
         <div className="flex justify-between items-center">
           <h2 id="modal-settings" className={`font-bold text-base ${m.text}`}>Settings</h2>
-          <button type="button" onClick={onClose} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
+          <button type="button" aria-label="Close settings" onClick={onClose} className={`${m.textSub} hover:text-white`}><Ic n="X" size={15} /></button>
         </div>
         <label className={`flex items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
           <span>Show enhancement notes</span>

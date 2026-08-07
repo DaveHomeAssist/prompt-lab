@@ -60,6 +60,8 @@ const LibraryPanel = memo(function LibraryPanel({
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const activeLibraryView = lib.libraryView || 'all';
+  const importPanelVisible = showImportPanel || activeLibraryView === 'imports';
   const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
   const primaryStarterPack = unloadedStarterPacks[0] || null;
   const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
@@ -78,6 +80,10 @@ const LibraryPanel = memo(function LibraryPanel({
   }, [lib.search]);
 
   useEffect(() => {
+    if (activeLibraryView === 'imports') setShowImportPanel(true);
+  }, [activeLibraryView]);
+
+  useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       if (searchDraft !== lib.search) {
         lib.setSearch(searchDraft);
@@ -93,9 +99,71 @@ const LibraryPanel = memo(function LibraryPanel({
     lib.setActiveCollection(null);
   };
 
+  const openLibraryView = (view) => {
+    lib.setLibraryView?.(view);
+    setShowImportPanel(view === 'imports');
+    if (view === 'all') {
+      lib.setActiveTag(null);
+      lib.setActiveCollection(null);
+    } else if (view === 'collections') {
+      lib.setActiveTag(null);
+    } else if (view === 'tags') {
+      lib.setActiveCollection(null);
+    }
+  };
+
+  const syncLabels = {
+    'local-only': 'Local only',
+    saved: 'Saved',
+    syncing: 'Saving',
+    conflict: 'Conflict',
+    failed: 'Save failed',
+  };
+  const syncTone = lib.syncStatus === 'failed' || lib.syncStatus === 'conflict'
+    ? 'bg-rose-500/15 text-rose-300'
+    : lib.syncStatus === 'syncing'
+      ? 'bg-amber-500/15 text-amber-200'
+      : 'bg-emerald-500/15 text-emerald-300';
+
   return (
     <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <nav aria-label="Library views" className="flex items-center gap-1 flex-wrap">
+            {[
+              ['all', 'Layers', 'All'],
+              ['recent', 'Clock', 'Recent'],
+              ['collections', 'FolderOpen', 'Collections'],
+              ['tags', 'Tag', 'Tags'],
+              ['imports', 'Upload', 'Imports'],
+            ].map(([view, icon, label]) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => openLibraryView(view)}
+                aria-current={activeLibraryView === view ? 'page' : undefined}
+                className={`ui-control inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeLibraryView === view ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`}`}
+              >
+                <Ic n={icon} size={11} />{label}
+              </button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-2">
+            <span
+              role="status"
+              data-testid="library-sync-status"
+              title={lib.syncMessage || 'Stored on this device.'}
+              className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${syncTone}`}
+            >
+              {syncLabels[lib.syncStatus] || 'Local only'}
+            </span>
+            {lib.recoveryAvailable && (
+              <button type="button" onClick={lib.recoverLibraryBackup} className={`text-xs font-semibold ${m.textAlt} hover:text-orange-300`}>
+                Recover backup
+              </button>
+            )}
+          </div>
+        </div>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
             <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
@@ -124,7 +192,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 {lib.recoveringLegacyLibrary ? 'Checking...' : 'Recover'}
               </button>
             )}
-            <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
+            <button type="button" onClick={() => openLibraryView(importPanelVisible ? 'all' : 'imports')} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${importPanelVisible ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
             </button>
           </div>
@@ -134,7 +202,7 @@ const LibraryPanel = memo(function LibraryPanel({
             Manual order is live. Drag cards or use the arrow controls to move them.
           </p>
         )}
-        {canUseCollections && lib.collections.length > 0 && (
+        {canUseCollections && lib.collections.length > 0 && ['all', 'collections'].includes(activeLibraryView) && (
           <div className="flex gap-1 flex-wrap">
             <button type="button" onClick={() => lib.setActiveCollection(null)} className={`ui-control px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${!lib.activeCollection ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`}`}>All</button>
             {lib.collections.map(c => (
@@ -153,18 +221,18 @@ const LibraryPanel = memo(function LibraryPanel({
             </button>
           </div>
         )}
-        {lib.allLibTags.length > 0 && (
+        {lib.allLibTags.length > 0 && ['all', 'tags'].includes(activeLibraryView) && (
           <div className="flex flex-wrap gap-1">
             {lib.allLibTags.map(t => <TagChip key={t} tag={t} selected={lib.activeTag === t} onClick={() => lib.setActiveTag(p => p === t ? null : t)} />)}
           </div>
         )}
       </div>
-      {showImportPanel && (
+      {importPanelVisible && (
         <PresetImportPanel
           m={m}
           lib={lib}
           compact={compact}
-          onClose={() => setShowImportPanel(false)}
+          onClose={() => openLibraryView('all')}
         />
       )}
       <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-3`}>
@@ -189,7 +257,7 @@ const LibraryPanel = memo(function LibraryPanel({
               )}
               <button
                 type="button"
-                onClick={() => setShowImportPanel(true)}
+                  onClick={() => openLibraryView('imports')}
                 className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSoftButtonClass}`}
               >
                 Import Pack
@@ -209,7 +277,7 @@ const LibraryPanel = memo(function LibraryPanel({
             ))}
           </div>
         </section>
-        {lib.filtered.length === 0 && !showImportPanel && (
+        {lib.filtered.length === 0 && !importPanelVisible && (
           <div className={`ui-empty-state h-full ${m.codeBlock} border ${m.border}`}>
             <Ic n="Wand2" size={24} className={m.textMuted} />
             <p className={`text-sm font-semibold ${m.textSub}`}>
@@ -241,7 +309,7 @@ const LibraryPanel = memo(function LibraryPanel({
               )}
               <button
                 type="button"
-                onClick={() => setShowImportPanel(true)}
+                onClick={() => openLibraryView('imports')}
                 className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${accentSoftButtonClass}`}
               >
                 Import Pack

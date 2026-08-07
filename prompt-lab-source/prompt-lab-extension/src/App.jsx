@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   scorePrompt,
   ngramSimilarity,
@@ -16,7 +16,6 @@ import useABTest from './hooks/useABTest.js';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
 import Toast from './Toast';
-import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
@@ -41,6 +40,9 @@ import CommandPaletteModal from './modals/CommandPaletteModal';
 import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import BillingModal from './modals/BillingModal.jsx';
+import { buildFollowUpLibraryRecord } from './lib/followUpSuggestions.js';
+
+const PadTab = lazy(() => import('./PadTab.jsx'));
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -117,9 +119,18 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     editor: editorState,
   });
   const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const [followUpSourceRunId, setFollowUpSourceRunId] = useState('auto');
+  const successfulEvalRuns = executionFlow.evalRuns.filter(
+    (run) => run?.status === 'success' && typeof run.output === 'string' && run.output.trim(),
+  );
+  const followUpSourceRun = followUpSourceRunId === 'none'
+    ? null
+    : successfulEvalRuns.find((run) => run.id === followUpSourceRunId) || successfulEvalRuns[0] || null;
   const followUpSuggestions = useFollowUpSuggestions({
     raw: editorState.raw,
     enhanced: editorState.enhanced,
+    sourceRun: followUpSourceRun,
+    sourcePromptId: persistenceFlow.editingId,
   });
   const ed = {
     ...editorState,
@@ -369,6 +380,7 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
   const handleEnhanceRequest = () => {
+    setFollowUpSourceRunId('auto');
     trackTelemetry('editor.enhance_requested', {
       mode: enhMode,
       inputLength: raw.length,
@@ -410,8 +422,16 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
   };
   const handleUseFollowUp = (suggestion) => {
     trackTelemetry('followups.loaded_into_editor', { plan: billing.plan });
+    executionFlow.clearExecutionState();
+    persistenceFlow.clearPersistenceState();
+    followUpSuggestions.clearFollowUps();
+    setFollowUpSourceRunId('none');
     setRaw(suggestion.prompt);
+    setEnhanced('');
+    editorState.setVariants([]);
+    editorState.setNotes('');
     setSaveTitle(suggestion.title);
+    setResultTab('improved');
     notify('Follow-up loaded into editor.');
   };
   const handleChainFollowUp = (suggestion) => {
@@ -420,6 +440,29 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       plan: billing.plan,
     });
     addToComposer({ title: suggestion.title, enhanced: suggestion.prompt });
+  };
+  const handleSaveFollowUp = (suggestion) => {
+    const saved = lib.doSave(buildFollowUpLibraryRecord(suggestion, followUpSuggestions.source));
+    if (saved?.id) {
+      trackTelemetry('library.prompt_saved', {
+        plan: billing.plan,
+        via: 'follow-up',
+        isVersion: false,
+        hasCollection: false,
+      });
+    }
+  };
+  const handleUseResultAsDraft = () => {
+    const nextDraft = String(enhanced || '').trim();
+    if (!nextDraft) return;
+    followUpSuggestions.clearFollowUps();
+    setFollowUpSourceRunId('none');
+    setRaw(nextDraft);
+    setEnhanced('');
+    editorState.setVariants([]);
+    editorState.setNotes('');
+    setResultTab('improved');
+    notify('Result moved to Draft.');
   };
   const quickSave = () => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
@@ -644,9 +687,15 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
               followUps={followUpSuggestions.followUps}
               followUpsLoading={followUpSuggestions.followUpsLoading}
               followUpsError={followUpSuggestions.followUpsError}
+              followUpSource={followUpSuggestions.source}
+              canSuggestFollowUps={followUpSuggestions.canSuggest}
               fetchFollowUps={followUpSuggestions.fetchFollowUps}
               onUseFollowUp={handleUseFollowUp}
               onChainFollowUp={handleChainFollowUp}
+              onSaveFollowUp={handleSaveFollowUp}
+              onUseResultAsDraft={handleUseResultAsDraft}
+              followUpSourceRunId={followUpSourceRun?.id || null}
+              onSelectFollowUpRun={setFollowUpSourceRunId}
             />
           )}
           libraryPane={(
@@ -734,14 +783,14 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       )}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
+      {tab === 'pad' && <div className="pl-tab-panel"><Suspense fallback={<div className={`p-4 text-sm ${m.textMuted}`}>Loading scratchpad...</div>}><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
         setRaw(content);
         setEnhanced(content);
         setSaveTitle(title);
         setShowSave(true);
         setTab('editor');
         notify('Loaded into editor — save to library when ready.');
-      }} /></div>}
+      }} /></Suspense></div>}
       </main>
 
       {showSave && (

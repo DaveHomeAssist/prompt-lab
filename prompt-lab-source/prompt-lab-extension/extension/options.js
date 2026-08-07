@@ -25,6 +25,7 @@ const els = {
   ollamaBaseUrl: document.getElementById('ollamaBaseUrl'),
   ollamaModel: document.getElementById('ollamaModel'),
   ollamaModelManual: document.getElementById('ollamaModelManual'),
+  ollamaContextLength: document.getElementById('ollamaContextLength'),
   ollamaRefreshBtn: document.getElementById('ollamaRefreshBtn'),
   ollamaStatus: document.getElementById('ollamaStatus'),
   // Buttons & status
@@ -178,6 +179,7 @@ function loadSettings() {
       // Ollama
       els.ollamaBaseUrl.value = normalizeUrl(store.ollamaBaseUrl, DEFAULTS.ollamaBaseUrl);
       const savedOllamaModel = (store.ollamaModel || DEFAULTS.ollamaModel).trim();
+      els.ollamaContextLength.value = store.ollamaContextLength || DEFAULTS.ollamaContextLength;
       // Attempt to fetch models; if offline, fall back to manual input
       fetchOllamaModels(savedOllamaModel);
 
@@ -255,6 +257,7 @@ function saveSettings() {
       }
       next.ollamaBaseUrl = url;
       next.ollamaModel = model;
+      next.ollamaContextLength = els.ollamaContextLength.value || DEFAULTS.ollamaContextLength;
       break;
     }
   }
@@ -287,7 +290,7 @@ async function testConnection() {
   try {
     const payload = {
       model: getActiveModel(),
-      max_tokens: 16,
+      max_tokens: 64,
       messages: [{ role: 'user', content: 'Reply with exactly: ok' }],
     };
 

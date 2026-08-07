@@ -100,4 +100,11 @@ describe('AppHeader', () => {
       'hover:bg-orange-400'
     );
   });
+
+  it('hides desktop context copy in the compact header', () => {
+    renderHeader({ compact: true, primaryView: 'notebook' });
+
+    expect(screen.getByText('Scratchpad + working notes')).toHaveClass('hidden');
+    expect(screen.queryByText('Scratchpad notes with library handoff')).not.toBeInTheDocument();
+  });
 });

@@ -48,13 +48,22 @@ describe('provider registry', () => {
 
     await expect(callProvider({
       provider: 'ollama',
-      payload: { messages: [{ role: 'user', content: 'hello' }] },
-      settings: { ollamaBaseUrl: 'http://localhost:11434', ollamaModel: 'mock-model' },
+      payload: { messages: [{ role: 'user', content: 'hello' }], max_tokens: 64, temperature: 0.2 },
+      settings: {
+        ollamaBaseUrl: 'http://localhost:11434',
+        ollamaModel: 'mock-model',
+        ollamaContextLength: 2048,
+      },
       fetchImpl: fetchMock,
     })).resolves.toEqual({
       content: [{ type: 'text', text: '{"enhanced":"Improved prompt","variants":[],"notes":"","tags":[]}' }],
       model: 'mock-model',
       provider: 'ollama',
+    });
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body)).toMatchObject({
+      think: false,
+      options: { num_ctx: 2048, num_predict: 64, temperature: 0.2 },
     });
   });
 

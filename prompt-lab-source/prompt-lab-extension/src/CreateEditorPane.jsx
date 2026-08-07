@@ -3,6 +3,7 @@ import Ic from './icons';
 import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
+import FollowUpPanel from './FollowUpPanel';
 import { getLintQuickFixMeta } from './promptLint';
 
 /**
@@ -121,9 +122,15 @@ export default function CreateEditorPane({
   followUps = [],
   followUpsLoading = false,
   followUpsError = '',
+  followUpSource,
+  canSuggestFollowUps = false,
   fetchFollowUps,
   onUseFollowUp,
   onChainFollowUp,
+  onSaveFollowUp,
+  onUseResultAsDraft,
+  followUpSourceRunId,
+  onSelectFollowUpRun,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
@@ -641,6 +648,14 @@ export default function CreateEditorPane({
                         <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={onUseResultAsDraft}
+                      className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors ${m.btn} ${m.textAlt} hover:text-orange-300 shrink-0`}
+                      title="Move this result into Draft and continue refining"
+                    >
+                      <Ic n="ArrowRight" size={11} />Use as Draft
+                    </button>
                     {editingId && (
                       <button
                         onClick={() => lib.pinGoldenResponse(editingId, {
@@ -776,61 +791,20 @@ export default function CreateEditorPane({
                 )}
               </div>
 
-              {/* Follow-up suggestions */}
-              {Boolean((enhanced || '').trim()) && !loading && typeof fetchFollowUps === 'function' && (
-                <div data-testid="follow-up-panel" className={`${m.surface} border ${m.border} rounded-lg p-3`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Follow-up Prompts</span>
-                    <button
-                      type="button"
-                      data-testid="suggest-follow-ups"
-                      onClick={fetchFollowUps}
-                      disabled={followUpsLoading}
-                      className={`ui-control rounded-lg px-2.5 py-1 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
-                    >
-                      {followUpsLoading ? 'Suggesting…' : followUps.length > 0 ? 'Refresh' : 'Suggest Follow-ups'}
-                    </button>
-                  </div>
-                  {followUpsError && (
-                    <p className="mt-2 text-xs text-red-400">{followUpsError}</p>
-                  )}
-                  {followUps.length > 0 && (
-                    <div className="mt-2 flex flex-col gap-2">
-                      {followUps.map((suggestion, index) => (
-                        <div key={`${suggestion.title}-${index}`} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className={`text-xs font-bold ${accentTextClass} truncate`}>{suggestion.title}</span>
-                            <div className="flex gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => onUseFollowUp?.(suggestion)}
-                                className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
-                              >
-                                Use
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => onChainFollowUp?.(suggestion)}
-                                className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
-                              >
-                                Chain
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => copy(suggestion.prompt)}
-                                aria-label={`Copy follow-up: ${suggestion.title}`}
-                                className={`${m.textAlt} hover:text-white transition-colors`}
-                              >
-                                <Ic n="Copy" size={10} />
-                              </button>
-                            </div>
-                          </div>
-                          <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{suggestion.prompt}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {!loading && (
+                <FollowUpPanel
+                  m={m}
+                  source={followUpSource}
+                  canSuggest={canSuggestFollowUps}
+                  suggestions={followUps}
+                  loading={followUpsLoading}
+                  error={followUpsError}
+                  onFetch={fetchFollowUps}
+                  onUse={onUseFollowUp}
+                  onChain={onChainFollowUp}
+                  onSave={onSaveFollowUp}
+                  onCopy={copy}
+                />
               )}
 
               {/* Run history (collapsible) */}
@@ -862,6 +836,21 @@ export default function CreateEditorPane({
                         <p className={`${m.textBody} leading-relaxed whitespace-pre-wrap`}>{(run.output || '').slice(0, 220)}{run.output && run.output.length > 220 ? '…' : ''}</p>
                         {run.output && (
                           <div className="mt-1 flex flex-wrap gap-3">
+                            {run.status === 'success' && (
+                              <button
+                                type="button"
+                                onClick={() => onSelectFollowUpRun?.(run.id)}
+                                aria-pressed={followUpSourceRunId === run.id}
+                                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-semibold transition-colors ${
+                                  followUpSourceRunId === run.id
+                                    ? 'bg-orange-500/20 text-orange-300'
+                                    : `${m.btn} ${m.textAlt} hover:text-orange-300`
+                                }`}
+                              >
+                                <Ic n="GitBranch" size={10} />
+                                {followUpSourceRunId === run.id ? 'Follow-up source' : 'Use for follow-ups'}
+                              </button>
+                            )}
                             <button onClick={() => copy(run.output, 'Run output copied')}
                               className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md font-semibold transition-colors ${copyBtn}`}>
                               <Ic n="Copy" size={10} />Copy output

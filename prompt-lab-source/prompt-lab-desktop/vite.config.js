@@ -14,6 +14,13 @@ export default defineConfig({
       react: resolve(__dirname, 'node_modules/react'),
       'react-dom': resolve(__dirname, 'node_modules/react-dom'),
       'react-router-dom': resolve(__dirname, 'node_modules/react-router-dom'),
+      '@tiptap/react': resolve(__dirname, 'node_modules/@tiptap/react'),
+      '@tiptap/pm': resolve(__dirname, 'node_modules/@tiptap/pm'),
+      '@tiptap/starter-kit': resolve(__dirname, 'node_modules/@tiptap/starter-kit'),
+      '@tiptap/extension-underline': resolve(__dirname, 'node_modules/@tiptap/extension-underline'),
+      '@tiptap/extension-text-style': resolve(__dirname, 'node_modules/@tiptap/extension-text-style'),
+      '@tiptap/extension-task-list': resolve(__dirname, 'node_modules/@tiptap/extension-task-list'),
+      '@tiptap/extension-task-item': resolve(__dirname, 'node_modules/@tiptap/extension-task-item'),
     },
   },
   build: {

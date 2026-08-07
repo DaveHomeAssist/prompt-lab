@@ -67,6 +67,14 @@ export function normalizeBaseUrl(baseUrl, fallback) {
   return raw.replace(/\/+$/, '');
 }
 
+export const DEFAULT_OLLAMA_CONTEXT_LENGTH = 4096;
+
+export function normalizeOllamaContextLength(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_OLLAMA_CONTEXT_LENGTH;
+  return Math.min(131072, Math.max(1024, parsed));
+}
+
 // ── SSE stream parsers ─────────────────────────────────────────────
 
 function parseSseChunks(buffer, flush = false, pickText) {
@@ -185,7 +193,7 @@ const PROVIDERS = Object.freeze({
     defaultModel: 'llama3.2:3b',
     defaultBaseUrl: 'http://localhost:11434',
     modelField: 'ollamaModel',
-    settingsKeys: ['ollamaBaseUrl', 'ollamaModel'],
+    settingsKeys: ['ollamaBaseUrl', 'ollamaModel', 'ollamaContextLength'],
     capabilities: ['chat', 'system', 'local'],
     requiresApiKey: false,
 
@@ -202,11 +210,23 @@ const PROVIDERS = Object.freeze({
     },
 
     buildPayload(payload, settings, options = {}) {
-      return {
+      const request = {
         model: this.resolveModel(payload, settings),
         stream: !!options.stream,
+        think: false,
         messages: toChatMessages(payload),
+        options: {
+          num_ctx: normalizeOllamaContextLength(settings.ollamaContextLength),
+        },
       };
+      const maxTokens = Number.parseInt(payload?.max_tokens, 10);
+      if (Number.isFinite(maxTokens) && maxTokens > 0) {
+        request.options.num_predict = Math.min(8192, maxTokens);
+      }
+      if (typeof payload?.temperature === 'number') {
+        request.options.temperature = payload.temperature;
+      }
+      return request;
     },
 
     normalizeResponse(data, requestBody, _resolvedModel) {
@@ -394,8 +414,8 @@ export const PROVIDER_SETTINGS_KEYS = Object.freeze([
 ]);
 
 /** Backward-compatible DEFAULTS object. */
-export const DEFAULTS = Object.freeze(
-  Object.fromEntries([
+export const DEFAULTS = Object.freeze({
+  ...Object.fromEntries([
     ['provider', DEFAULT_PROVIDER],
     ...VALID_PROVIDERS.map((id) => {
       const p = PROVIDERS[id];
@@ -404,7 +424,8 @@ export const DEFAULTS = Object.freeze(
       return entries;
     }).flat(),
   ]),
-);
+  ollamaContextLength: DEFAULT_OLLAMA_CONTEXT_LENGTH,
+});
 
 /** Look up a provider descriptor by ID. Returns the default if unknown. */
 export function getProvider(id) {

@@ -11,7 +11,7 @@
     "test": "npm run check:node && vitest run",
     "test:phase1": "npm run check:node && vitest run src/tests/usePersistenceFlow.test.jsx src/tests/usePersistenceFlow.share.test.jsx src/tests/useExecutionFlow.test.jsx src/tests/providerSettings.test.jsx",
     "test:watch": "npm run check:node && vitest",
-    "test:desktop": "npm run check:node && vitest run tests/desktop-smoke.test.mjs",
+    "test:desktop": "npm run check:node && vitest run --config vitest.desktop.config.js",
     "test:diag": "npm run check:node && vitest run --reporter=hanging-process",
     "test:e2e": "npm run check:node && npm run build && playwright test",
     "test:legacy": "npm run check:node && node --test tests/*.test.mjs",
@@ -21,10 +21,17 @@
     "node": "20.x"
   },
   "dependencies": {
+    "@tiptap/extension-task-item": "^3.29.2",
+    "@tiptap/extension-task-list": "^3.29.2",
+    "@tiptap/extension-text-style": "^3.29.2",
+    "@tiptap/extension-underline": "^3.29.2",
+    "@tiptap/pm": "^3.29.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
     "diff-match-patch": "^1.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.18.2"
   },
   "overrides": {
     "@rolldown/pluginutils": "1.0.0-rc.9"
