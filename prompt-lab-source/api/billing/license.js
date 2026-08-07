@@ -10,8 +10,7 @@ import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
 import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js';
 import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 import { lookupOwnerEntitlement } from '../_lib/ownerEntitlements.js';
-
-assertProductionConfig({ clerk: true });
+import { isExternalFetchTimeout, isFeatureEnabled } from '../_lib/runtimeSafety.js';
 
 function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -23,6 +22,14 @@ async function licenseHandler(request) {
   if (corsRejection) return corsRejection;
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
+  }
+  if (!isFeatureEnabled('BILLING_ENABLED')) {
+    return jsonResponse({ error: 'Billing is disabled.' }, 503, {}, request);
+  }
+  try {
+    assertProductionConfig({ clerk: true, stripe: true });
+  } catch (error) {
+    return jsonResponse({ error: error.message || 'Billing is not configured.' }, 503, {}, request);
   }
 
   let auth;
@@ -51,7 +58,6 @@ async function licenseHandler(request) {
     const ownerEntitlement = lookupOwnerEntitlement({
       clerkUserId: auth.clerkUserId,
       clerkEmail: auth.clerkEmail,
-      clerkClaims: auth.clerkClaims,
     });
     if (ownerEntitlement) {
       return jsonResponse({
@@ -75,7 +81,9 @@ async function licenseHandler(request) {
     }, 200, {}, request);
   } catch (error) {
     const message = error.message || 'Billing request failed.';
-    const status = /No active Prompt Lab Pro subscription/i.test(message) ? 404 : 400;
+    const status = isExternalFetchTimeout(error)
+      ? 504
+      : (/No active Prompt Lab Pro subscription/i.test(message) ? 404 : 400);
     return jsonResponse({ error: message }, status, {}, request);
   }
 }
