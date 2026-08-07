@@ -18,19 +18,19 @@
 <meta name="twitter:description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
 <meta name="twitter:image" content="https://promptlab.tools/og-image.png">
 <meta name="description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
-<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 @font-face {
   font-family: 'Outfit';
-  src: url('./fonts/outfit.woff2') format('woff2');
+  src: url('/fonts/outfit.woff2') format('woff2');
   font-weight: 300 700;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
   font-weight: 400 500;
   font-style: normal;
   font-display: swap;
@@ -1760,9 +1760,8 @@ section[id] { scroll-margin-top: 88px; }
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
   }
   .hero-bg::before,
   .hero-bg::after,
