@@ -60,12 +60,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: prompt-lab-source/prompt-lab-web/package-lock.json
+
+      - name: Install hosted web dependencies
+        working-directory: prompt-lab-source/prompt-lab-web
+        run: npm ci
+
+      - name: Build hosted web surface
+        working-directory: prompt-lab-source/prompt-lab-web
+        run: npm run build
+
       - name: Check internal docs links
         uses: lycheeverse/lychee-action@v2
         with:
           args: >-
             --offline
             --config .lychee.toml
+            --root-dir ${{ github.workspace }}/prompt-lab-source/prompt-lab-web/dist
             ./README.md
             ./AGENTS.md
             ./docs/**/*.html
