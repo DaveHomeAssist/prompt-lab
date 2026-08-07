@@ -29,7 +29,17 @@ export function normalizeTelemetryState(value = {}) {
     deviceId: typeof value?.deviceId === 'string' && value.deviceId.trim()
       ? value.deviceId.trim()
       : fallback.deviceId,
-    pendingEvents: Array.isArray(value?.pendingEvents) ? value.pendingEvents.slice(-TELEMETRY_EVENT_LIMIT) : [],
+    pendingEvents: Array.isArray(value?.pendingEvents)
+      ? value.pendingEvents
+        .filter((envelope) => (
+          envelope
+          && typeof envelope === 'object'
+          && envelope.kind === 'event'
+          && envelope.telemetryEnabled === true
+          && typeof envelope.event === 'string'
+        ))
+        .slice(-TELEMETRY_EVENT_LIMIT)
+      : [],
     lastSyncedAt: typeof value?.lastSyncedAt === 'string' ? value.lastSyncedAt : '',
     lastError: typeof value?.lastError === 'string' ? value.lastError : '',
   };

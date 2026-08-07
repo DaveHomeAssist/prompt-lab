@@ -171,9 +171,9 @@ test('all landing funnel events persist through the API handler to Redis counter
       event: 'landing.cta_clicked',
       context: {
         attributionVersion: 1,
-        placement: 'hero',
-        intent: 'free',
-        destination: 'app',
+        placement: 'privacy',
+        intent: 'open',
+        destination: 'privacy',
         timestamp: now,
       },
     },
