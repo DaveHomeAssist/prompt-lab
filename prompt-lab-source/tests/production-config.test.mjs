@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -9,6 +10,8 @@ const libDir = path.join(sourceDir, 'api', '_lib');
 const stripeBillingUrl = pathToFileURL(path.join(libDir, 'stripeBilling.js')).href;
 const telemetryStoreUrl = pathToFileURL(path.join(libDir, 'telemetryStore.js')).href;
 const productionConfigUrl = pathToFileURL(path.join(libDir, 'assertProductionConfig.js')).href;
+const runtimeSafetyUrl = pathToFileURL(path.join(libDir, 'runtimeSafety.js')).href;
+const vercelConfigPath = path.join(sourceDir, 'vercel.json');
 
 const ENV_KEYS = [
   'NODE_ENV',
@@ -22,6 +25,10 @@ const ENV_KEYS = [
   'STRIPE_WEBHOOK_SECRET',
   'PROMPTLAB_BILLING_CONSOLE_FALLBACK',
   'PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK',
+  'HOSTED_PROXY_ENABLED',
+  'HOSTED_SHARED_KEY_ENABLED',
+  'PROMPTLAB_TELEMETRY_ENABLED',
+  'BILLING_ENABLED',
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 const ORIGINAL_FETCH = globalThis.fetch;
@@ -59,14 +66,48 @@ test.afterEach(() => {
   console.log = ORIGINAL_CONSOLE_LOG;
 });
 
-test('production config throws when durable storage is missing', async () => {
+test('production config requires durable storage only when the caller requests it', async () => {
   setProductionEnvWithoutStorage();
   const { assertProductionConfig } = await loadModule(productionConfigUrl);
 
+  assert.doesNotThrow(() => assertProductionConfig());
   assert.throws(
-    () => assertProductionConfig(),
-    /KV_URL, KV_REST_API_URL\+KV_REST_API_TOKEN, or UPSTASH_REDIS_REST_URL\+UPSTASH_REDIS_REST_TOKEN/i,
+    () => assertProductionConfig({ durableStore: true }),
+    /KV_REST_API_URL\+KV_REST_API_TOKEN or UPSTASH_REDIS_REST_URL\+UPSTASH_REDIS_REST_TOKEN/i,
   );
+
+  process.env.KV_URL = 'redis://unsupported.example.test';
+  assert.throws(
+    () => assertProductionConfig({ durableStore: true }),
+    /KV_REST_API_URL\+KV_REST_API_TOKEN/i,
+    'KV_URL alone must not pass because the runtime only implements REST storage',
+  );
+});
+
+test('cost-bearing production features default off and require explicit true values', async () => {
+  setProductionEnvWithoutStorage();
+  const { isFeatureEnabled } = await loadModule(runtimeSafetyUrl);
+
+  for (const name of [
+    'HOSTED_PROXY_ENABLED',
+    'HOSTED_SHARED_KEY_ENABLED',
+    'PROMPTLAB_TELEMETRY_ENABLED',
+    'BILLING_ENABLED',
+  ]) {
+    delete process.env[name];
+    assert.equal(isFeatureEnabled(name), false, `${name} should default off in production`);
+    process.env[name] = 'true';
+    assert.equal(isFeatureEnabled(name), true, `${name} should accept an explicit true value`);
+    process.env[name] = 'false';
+    assert.equal(isFeatureEnabled(name), false, `${name} should accept an explicit false value`);
+  }
+});
+
+test('Vercel caps cost-bearing API function duration explicitly', async () => {
+  const config = JSON.parse(await readFile(vercelConfigPath, 'utf8'));
+  assert.equal(config.functions?.['api/proxy.js']?.maxDuration, 10);
+  assert.equal(config.functions?.['api/telemetry.js']?.maxDuration, 10);
+  assert.equal(config.functions?.['api/billing/*.js']?.maxDuration, 10);
 });
 
 test('production billing webhook persistence throws instead of using console fallback', async () => {

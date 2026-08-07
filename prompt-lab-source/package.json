@@ -14,6 +14,7 @@
     "docs:lint": "npm run check:node && markdownlint-cli2",
     "docs:check": "npm run docs:lint",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
+    "test:api": "npm run check:node && node --test tests/api-safety.test.mjs tests/production-config.test.mjs tests/proxy.test.mjs tests/telemetry-safety.test.mjs tests/stripeBilling.test.mjs tests/billing-auth.test.mjs tests/billing-cors.test.mjs tests/vercel-deploy.test.mjs",
     "build:landing": "npm run check:node && node scripts/publish-landing.mjs",
     "notion:docs-agent": "npm run check:node && node scripts/notion-docs-agent.mjs",
     "publish:landing": "npm run build:landing",

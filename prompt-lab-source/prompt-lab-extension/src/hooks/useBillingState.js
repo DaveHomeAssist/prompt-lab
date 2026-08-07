@@ -106,7 +106,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
-      const requiresAuth = path === '/billing/license' || path === '/billing/portal';
+      const requiresAuth = path === '/billing/license'
+        || path === '/billing/portal'
+        || path === '/billing/checkout';
       const headers = { ...(init?.headers || {}) };
       let token = '';
       if (clerkGetToken) {
@@ -261,7 +263,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     return nextState;
   }, [notify, telemetry]);
 
-  const startCheckout = useCallback(async (period, source = 'billing-modal', metadata = {}, overrides = {}) => {
+  const startCheckout = useCallback(async (period, source = 'billing-modal') => {
     setBusyAction(`checkout:${period}`);
     try {
       const payload = await requestBilling('/billing/checkout', {
@@ -269,13 +271,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           period,
-          email: overrides?.email || state.customerEmail || telemetry?.contactEmail || '',
-          clerkUserId: state.clerkUserId || '',
           source,
-          deviceId: metadata?.deviceId || telemetry?.deviceId || '',
-          sessionId: metadata?.sessionId || telemetry?.sessionId || '',
-          surface: metadata?.surface || telemetry?.surface || '',
-          contactEmail: telemetry?.contactEmail || '',
         }),
       });
       if (!payload?.url) {
@@ -286,13 +282,13 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       telemetry?.track?.('billing.checkout_started', {
         period,
         source,
-        surface: metadata?.surface || telemetry?.surface || '',
+        surface: telemetry?.surface || '',
       });
       return true;
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, state.clerkUserId, state.customerEmail, telemetry]);
+  }, [notify, requestBilling, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
     if (state.status === 'owner' || state.billingPeriod === 'owner') {

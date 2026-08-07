@@ -61,16 +61,15 @@ cd ..
 npm run deploy:prod
 ```
 
-The deploy helper temporarily mirrors the linked `.vercel/project.json` from `prompt-lab-source/` to the repo root so Vercel uses the existing `prompt-lab` project with the correct root directory.
+The deploy helper validates that `prompt-lab-source/.vercel/project.json` points to the canonical `prompt-lab` project, then temporarily mirrors that link to the repo root so Vercel uses the correct root directory.
 
 ## Owner Pro access
 
-Hosted owner/admin Pro access is granted server-side from the verified Clerk session before Stripe lookup. Configure one or both Vercel environment variables:
+Hosted owner/admin Pro access is granted server-side from the verified Clerk session before Stripe lookup. Configure this Vercel environment variable:
 
-- `PROMPTLAB_OWNER_EMAILS` - comma or whitespace separated verified Clerk primary emails
 - `PROMPTLAB_OWNER_CLERK_USER_IDS` - comma or whitespace separated Clerk user IDs
 
-Prefer `PROMPTLAB_OWNER_CLERK_USER_IDS` when possible because GitHub login email visibility can change. After updating env vars, redeploy and use **Sync existing access** in the billing modal while signed in.
+Email, username, and client metadata are deliberately ignored for owner access. After updating the Clerk user ID allowlist, redeploy and use **Sync existing access** in the billing modal while signed in.
 
 ## Key files
 

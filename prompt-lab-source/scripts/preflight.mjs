@@ -74,6 +74,18 @@ function checkTests() {
   }
 }
 
+function checkApiTests() {
+  if (quick) { skip('Production API safety tests', '--quick flag, skipped'); return; }
+  console.log('  Running production API safety tests...');
+  const result = run('npm run test:api', sourceDir);
+  if (result.ok) {
+    pass('Production API safety tests', 'Flags, auth, timeouts, storage, and runtime contracts passed');
+  } else {
+    const detail = (result.stderr || result.stdout).split('\n').slice(-12).join('\n');
+    fail('Production API safety tests', detail);
+  }
+}
+
 // ── 3. EXTENSION BUILD ──
 function checkExtensionBuild() {
   console.log('  Building extension...');
@@ -282,6 +294,7 @@ async function main() {
 
   checkGitStatus();
   checkTests();
+  checkApiTests();
   checkExtensionBuild();
   checkWebBuild();
   checkLandingPublish();
