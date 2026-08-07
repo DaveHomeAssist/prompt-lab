@@ -149,6 +149,138 @@ test('a real client envelope carries granted consent through the API handler wit
   assert.deepEqual(await response.json(), { ok: true, mode: 'noop' });
 });
 
+test('all landing funnel events persist through the API handler to Redis counters and the event list', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.PROMPTLAB_TELEMETRY_ENABLED = 'true';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'test-token';
+
+  const now = Date.now();
+  const events = [
+    {
+      event: 'landing.referral_opened',
+      context: {
+        attributionVersion: 1,
+        placement: 'hero',
+        intent: 'free',
+        destination: 'app',
+        timestamp: now,
+      },
+    },
+    {
+      event: 'landing.cta_clicked',
+      context: {
+        attributionVersion: 1,
+        placement: 'hero',
+        intent: 'free',
+        destination: 'app',
+        timestamp: now,
+      },
+    },
+    {
+      event: 'landing.demo_completed',
+      context: {
+        attributionVersion: 1,
+        placement: 'demo',
+        intent: 'sample',
+        destination: 'demo',
+        demoMode: 'balanced',
+        resultCount: 1,
+        timestamp: now,
+      },
+    },
+    {
+      event: 'landing.surface_selected',
+      context: {
+        attributionVersion: 1,
+        placement: 'surface_web',
+        intent: 'open',
+        destination: 'app',
+        timestamp: now,
+      },
+    },
+    {
+      event: 'landing.pricing_period_selected',
+      context: {
+        attributionVersion: 1,
+        placement: 'pricing_pro',
+        intent: 'upgrade',
+        period: 'annual',
+        timestamp: now,
+      },
+    },
+    {
+      event: 'landing.docs_result_selected',
+      context: {
+        attributionVersion: 1,
+        placement: 'docs_search',
+        intent: 'open',
+        destination: 'guide',
+        resultCount: 1,
+        timestamp: now,
+      },
+    },
+  ];
+  const writes = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const parsed = new URL(url);
+    writes.push({
+      pathname: parsed.pathname,
+      authorization: new Headers(init.headers).get('Authorization'),
+      body: init.body,
+    });
+    const command = decodeURIComponent(parsed.pathname.split('/')[1] || '');
+    const result = command === 'set' || command === 'ltrim' ? 'OK' : 1;
+    return new Response(JSON.stringify({ result }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const { default: handler } = await loadModule(telemetryUrl);
+  for (const [index, event] of events.entries()) {
+    const response = await handler(telemetryRequest({
+      ...event,
+      surface: 'web',
+      deviceId: `landing-device-${index + 1}`,
+      sessionId: `landing-session-${index + 1}`,
+      telemetryEnabled: true,
+      contactEmail: 'must-not-persist@example.com',
+    }, `203.0.113.${40 + index}`));
+    assert.equal(response.status, 200, event.event);
+    assert.deepEqual(await response.json(), { ok: true, mode: 'redis' }, event.event);
+  }
+
+  assert.equal(writes.every(({ authorization }) => authorization === 'Bearer test-token'), true);
+  for (const { event } of events) {
+    assert.equal(
+      writes.some(({ pathname }) => decodeURIComponent(pathname)
+        === `/incr/promptlab:telemetry:count:${event}`),
+      true,
+      `${event} should increment its aggregate counter`,
+    );
+  }
+
+  const eventWrites = writes
+    .filter(({ pathname }) => decodeURIComponent(pathname)
+      === '/rpush/promptlab:telemetry:telemetry:events');
+  assert.equal(eventWrites.length, events.length);
+  assert.deepEqual(
+    eventWrites.map(({ body }) => {
+      const payload = JSON.parse(body);
+      assert.equal(payload.telemetryEnabled, true);
+      assert.equal(Object.hasOwn(payload, 'contactEmail'), false);
+      return payload.event;
+    }),
+    events.map(({ event }) => event),
+  );
+  assert.equal(
+    writes.filter(({ pathname }) => decodeURIComponent(pathname)
+      .startsWith('/ltrim/promptlab:telemetry:telemetry:events/')).length,
+    events.length,
+  );
+});
+
 test('telemetry rejects unsupported event names before persistence', async () => {
   process.env.PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK = 'false';
   const { default: handler } = await loadModule(telemetryUrl);

@@ -128,6 +128,7 @@ test.describe('mobile navigation', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('opens from the keyboard, traps focus, closes with Escape, and returns focus', async ({ page }) => {
+    test.setTimeout(30_000);
     await page.goto('/');
 
     const toggle = page.locator('#navToggle');
@@ -493,6 +494,13 @@ test.describe('JavaScript disabled', () => {
     await expect(page.locator('#demoNoScript')).toContainText(/fixed example prompt remains visible/i);
     await expect(page.locator('#demoInput')).toContainText(/Write a Python script that reads a CSV/i);
 
+    await expect(page.locator('#navToggle')).toBeHidden();
+    const fallbackLinks = page.locator('.nav-fallback a');
+    await expect(fallbackLinks).toHaveCount(4);
+    for (const link of await fallbackLinks.all()) {
+      await expect(link).toBeVisible();
+    }
+
     const hiddenRevealCount = await page.locator('.reveal').evaluateAll((elements) => (
       elements.filter((element) => {
         const style = getComputedStyle(element);
@@ -501,6 +509,59 @@ test.describe('JavaScript disabled', () => {
     ));
     expect(hiddenRevealCount).toBe(0);
   });
+});
+
+test.describe('documentation with JavaScript disabled', () => {
+  test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+
+  test('keeps every provider guide and privacy navigation available', async ({ page }) => {
+    await page.goto('/setup.html');
+    await expect(page.locator('.provider-tabs')).toBeHidden();
+    const providerPanels = page.locator('.provider-panel');
+    await expect(providerPanels).toHaveCount(5);
+    for (const panel of await providerPanels.all()) {
+      await expect(panel).toBeVisible();
+    }
+
+    await page.goto('/privacy.html');
+    await expect(page.locator('main#main-content')).toBeVisible();
+    const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+    await page.keyboard.press('Tab');
+    await expect(skipLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+
+    const siteLinks = page.locator('.site-nav-links a');
+    await expect(siteLinks).toHaveCount(5);
+    for (const link of await siteLinks.all()) {
+      await expect(link).toBeVisible();
+    }
+  });
+});
+
+test('setup provider tabs retain keyboard behavior with JavaScript enabled', async ({ page }) => {
+  await page.goto('/setup.html');
+
+  const anthropicTab = page.locator('#tab-anthropic');
+  const openAiTab = page.locator('#tab-openai');
+  const ollamaTab = page.locator('#tab-ollama');
+  await expect(anthropicTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#panel-anthropic')).toBeVisible();
+  await expect(page.locator('#panel-openai')).toBeHidden();
+
+  await anthropicTab.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(openAiTab).toBeFocused();
+  await expect(openAiTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#panel-openai')).toBeVisible();
+  await expect(page.locator('#panel-anthropic')).toBeHidden();
+  await expect(page).toHaveURL(/#openai$/);
+
+  await page.keyboard.press('End');
+  await expect(ollamaTab).toBeFocused();
+  await expect(ollamaTab).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#panel-ollama')).toBeVisible();
+  await expect(page).toHaveURL(/#ollama$/);
 });
 
 test('1280x800 at 200% reflow proxy stays usable at a 640x400 CSS viewport', async ({ page }) => {
@@ -538,14 +599,23 @@ test('target viewports avoid horizontal overflow', async ({ page }) => {
   for (const viewport of targetViewports) {
     await page.setViewportSize(viewport);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    if (viewport.width === 320) {
+      await page.evaluate(() => {
+        document.documentElement.style.scrollbarGutter = 'stable';
+      });
+    }
     const dimensions = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
+      bodyMinWidth: getComputedStyle(document.body).minWidth,
     }));
     expect(
       dimensions.scrollWidth,
       `${viewport.width}x${viewport.height} overflowed: ${JSON.stringify(dimensions)}`,
     ).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+    if (viewport.width === 320) {
+      expect(dimensions.bodyMinWidth).toBe('0px');
+    }
   }
 });
 

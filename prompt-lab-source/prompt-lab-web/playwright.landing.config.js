@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: 2,
   outputDir: process.env.CI ? 'test-results' : '/tmp/promptlab-landing-playwright-results',
   timeout: 15_000,
   expect: {

@@ -227,7 +227,29 @@ test('landing conversion controls have unique stable analytics identifiers', () 
   const analyticsIds = [...landingHtml.matchAll(/\bdata-analytics-id=["']([^"']+)["']/gi)]
     .map((match) => match[1]);
   assert.equal(new Set(analyticsIds).size, analyticsIds.length, 'Landing analytics IDs must be unique');
-  assert.ok(analyticsIds.includes('landing.privacy.open_policy'));
+  assert.deepEqual([...analyticsIds].sort(), [
+    'landing.demo.example_prompt',
+    'landing.demo.mode_balanced',
+    'landing.demo.mode_concise',
+    'landing.demo.mode_detailed',
+    'landing.demo.show_result',
+    'landing.demo.try_own',
+    'landing.final.try_free',
+    'landing.footer.open_app',
+    'landing.hero.see_workflow',
+    'landing.hero.try_free',
+    'landing.mobile_menu.open_app',
+    'landing.nav.open_app',
+    'landing.nav_mobile.open_app',
+    'landing.pricing.annual',
+    'landing.pricing.free',
+    'landing.pricing.monthly',
+    'landing.pricing.pro',
+    'landing.privacy.open_policy',
+    'landing.surface.desktop_source',
+    'landing.surface.extension',
+    'landing.surface.web',
+  ]);
 
   const privacyCta = landingHtml.match(/<a\b[^>]*href=["']\/privacy["'][^>]*>/i)?.[0];
   assert.ok(privacyCta, 'Expected the privacy policy CTA');

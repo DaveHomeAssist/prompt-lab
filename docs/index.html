@@ -1196,7 +1196,7 @@ img { display: block; max-width: 100%; }
 }
 
 html { scroll-padding-top: 88px; }
-body { min-width: 320px; }
+body { min-width: 0; }
 body.dialog-open { overflow: hidden; }
 section[id] { scroll-margin-top: 88px; }
 
@@ -1774,6 +1774,36 @@ section[id] { scroll-margin-top: 88px; }
   }
 }
 </style>
+<noscript>
+<style>
+@media (max-width: 680px) {
+  .nav {
+    background: rgba(6, 6, 10, 0.96);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-toggle { display: none; }
+  .nav-fallback {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px 20px 0;
+  }
+  .nav-fallback a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-hover);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+  }
+  .hero { padding-top: 220px; }
+}
+</style>
+</noscript>
 </head>
 <body>
 
@@ -1798,6 +1828,14 @@ section[id] { scroll-margin-top: 88px; }
       <span></span><span></span><span></span>
     </button>
   </div>
+  <noscript>
+    <div class="nav-fallback">
+      <a href="#product">Product</a>
+      <a href="#workflow">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="/guide.html">Docs</a>
+    </div>
+  </noscript>
 </nav>
 
 <!-- Mobile nav -->

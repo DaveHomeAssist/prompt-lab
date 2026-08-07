@@ -65,6 +65,28 @@ body {
   min-height: 100vh;
 }
 
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-180%);
+  background: var(--surface-100);
+  color: var(--surface-950);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus { transform: translateY(0); }
+
+a:focus-visible {
+  outline: 3px solid var(--lab-violet-light);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .site-nav {
   position: sticky;
   top: 0;
@@ -94,6 +116,9 @@ body {
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.35rem 0.7rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 6px;
   transition: color 0.15s, background 0.15s;
 }
@@ -166,14 +191,23 @@ footer a {
 }
 
 @media (max-width: 640px) {
-  .site-nav { padding: 0.5rem 1rem; }
-  .site-nav-links a:not(.active) { display: none; }
+  .site-nav {
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+  .site-nav-links {
+    width: 100%;
+    flex-wrap: wrap;
+  }
   .wrapper { padding: 2rem 1rem 3rem; }
   h1 { font-size: 1.4rem; }
 }
 </style>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <nav class="site-nav" aria-label="Site navigation">
   <a href="./" class="site-nav-brand">
@@ -184,12 +218,12 @@ footer a {
     <a href="./index.html">Home</a>
     <a href="./guide.html">Guide</a>
     <a href="./setup.html">Setup</a>
-    <a href="./privacy.html" class="active" style="color:var(--surface-100);">Privacy</a>
+    <a href="./privacy.html" class="active" aria-current="page" style="color:var(--surface-100);">Privacy</a>
     <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
 </nav>
 
-<div class="wrapper">
+<main class="wrapper" id="main-content" tabindex="-1">
 
 <h1>Privacy Policy</h1>
 <p class="subtitle">Last updated: August 6, 2026</p>
@@ -227,11 +261,11 @@ footer a {
 <h2>Contact</h2>
 <p>Questions about this policy can be directed to the project's <a href="https://github.com/DaveHomeAssist/prompt-lab/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a> page.</p>
 
-</div>
+</main>
 
 <footer>
   <span>&aleph;</span> Prompt Lab v1.7.0
-  <br><a href="./index.html">Home</a> &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a>
+  <br><a href="./index.html">Home</a> &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" rel="noopener noreferrer">Source</a>
 </footer>
 
 </body>
