@@ -169,12 +169,23 @@ test('target-blank links protect the opener on landing and task documentation', 
 });
 
 test('public landing surfaces load fonts locally without automatic third-party requests', () => {
-  const pages = [landingHtml, guideHtml, setupHtml, privacyHtml];
+  const pages = [
+    ['landing', landingHtml, '/fonts/'],
+    ['guide', guideHtml, './fonts/'],
+    ['setup', setupHtml, './fonts/'],
+    ['privacy', privacyHtml, './fonts/'],
+  ];
 
-  for (const html of pages) {
+  for (const [pageName, html, fontRoot] of pages) {
     assert.doesNotMatch(html, /fonts\.(?:googleapis|gstatic)\.com/i);
-    assert.match(html, /\.\/fonts\/outfit\.woff2/);
-    assert.match(html, /\.\/fonts\/jetbrains-mono\.woff2/);
+    assert.ok(
+      html.includes(`${fontRoot}outfit.woff2`),
+      `${pageName} should load Outfit from ${fontRoot}`,
+    );
+    assert.ok(
+      html.includes(`${fontRoot}jetbrains-mono.woff2`),
+      `${pageName} should load JetBrains Mono from ${fontRoot}`,
+    );
   }
 });
 
