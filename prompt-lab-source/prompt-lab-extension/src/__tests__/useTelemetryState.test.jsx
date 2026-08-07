@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import useTelemetryState from '../hooks/useTelemetryState.js';
+import { normalizeTelemetryState } from '../lib/telemetry.js';
 
 describe('useTelemetryState', () => {
   const originalFetch = global.fetch;
@@ -77,5 +78,27 @@ describe('useTelemetryState', () => {
 
     expect(global.fetch).not.toHaveBeenCalled();
     expect(localStorage.getItem('pl_telemetry_consent')).toBe('denied');
+  });
+
+  it('drops legacy queued envelopes that predate explicit consent markers', () => {
+    const state = normalizeTelemetryState({
+      telemetryEnabled: true,
+      pendingEvents: [
+        { kind: 'event', event: 'app.opened', context: { section: 'create' } },
+        {
+          kind: 'event',
+          event: 'app.opened',
+          telemetryEnabled: true,
+          context: { section: 'create' },
+        },
+      ],
+    });
+
+    expect(state.pendingEvents).toEqual([{
+      kind: 'event',
+      event: 'app.opened',
+      telemetryEnabled: true,
+      context: { section: 'create' },
+    }]);
   });
 });

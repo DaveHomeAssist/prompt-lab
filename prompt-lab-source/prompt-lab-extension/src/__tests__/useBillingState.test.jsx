@@ -179,6 +179,67 @@ describe('useBillingState', () => {
     expect(notify).toHaveBeenCalledWith('Owner Pro access enabled on this device.');
   });
 
+  it('does not start checkout without a Clerk session token', async () => {
+    global.fetch = vi.fn();
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn() }));
+    let checkoutError;
+
+    await act(async () => {
+      try {
+        await result.current.startCheckout('monthly');
+      } catch (error) {
+        checkoutError = error;
+      }
+    });
+
+    expect(checkoutError).toBeInstanceOf(Error);
+    expect(checkoutError.message).toBe('Sign in to Prompt Lab before syncing billing.');
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  it('authenticates checkout and sends only the selected period and source', async () => {
+    global.fetch = vi.fn(async (_url, init) => {
+      expect(init.headers.Authorization).toBe('Bearer clerk-token');
+      expect(JSON.parse(init.body)).toEqual({
+        period: 'annual',
+        source: 'landing-pricing',
+      });
+      return new Response(JSON.stringify({
+        ok: true,
+        url: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const telemetry = {
+      contactEmail: 'private@example.com',
+      deviceId: 'private-device',
+      sessionId: 'private-session',
+      surface: 'web',
+      track: vi.fn(),
+    };
+    const { result } = renderHook(() => useBillingState({
+      notify: vi.fn(),
+      clerkGetToken,
+      telemetry,
+    }));
+
+    await act(async () => {
+      await result.current.startCheckout('annual', 'landing-pricing');
+    });
+
+    expect(window.open).toHaveBeenCalledWith(
+      'https://checkout.stripe.com/c/pay/cs_test_123',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
+
   it('labels server owner Pro access and does not open a Stripe portal', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',
