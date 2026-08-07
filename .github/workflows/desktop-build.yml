@@ -27,10 +27,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: prompt-lab-source/.nvmrc
           cache: npm
           cache-dependency-path: prompt-lab-source/prompt-lab-extension/package-lock.json
 
@@ -57,10 +57,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version-file: prompt-lab-source/.nvmrc
           cache: npm
           cache-dependency-path: prompt-lab-source/prompt-lab-desktop/package-lock.json
 

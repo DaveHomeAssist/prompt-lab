@@ -1,0 +1,141 @@
+name: Landing CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - "prompt-lab-source/package.json"
+      - "prompt-lab-source/package-lock.json"
+      - "prompt-lab-source/scripts/preflight.mjs"
+      - "prompt-lab-source/scripts/publish-landing.mjs"
+      - "prompt-lab-source/scripts/landing-funnel-report.mjs"
+      - "prompt-lab-source/scripts/landing-funnel-report.test.mjs"
+      - "prompt-lab-source/tests/landing*.test.mjs"
+      - "prompt-lab-source/tests/*.test.mjs"
+      - "prompt-lab-source/api/**"
+      - "prompt-lab-source/vercel.json"
+      - "prompt-lab-source/prompt-lab-extension/src/App.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useBillingState.js"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useTelemetryState.js"
+      - "prompt-lab-source/prompt-lab-extension/src/lib/landingAttribution.js"
+      - "prompt-lab-source/prompt-lab-extension/src/modals/BillingModal.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/BillingModal.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/landingAttribution.test.js"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/useTelemetryState.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/useBillingState.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/tests/App.test.jsx"
+      - "prompt-lab-source/prompt-lab-web/index.html"
+      - "prompt-lab-source/prompt-lab-web/app/**"
+      - "prompt-lab-source/prompt-lab-web/package.json"
+      - "prompt-lab-source/prompt-lab-web/package-lock.json"
+      - "prompt-lab-source/prompt-lab-web/playwright.landing.config.js"
+      - "prompt-lab-source/prompt-lab-web/public/**"
+      - "prompt-lab-source/prompt-lab-web/tests/landing/**"
+      - "prompt-lab-source/prompt-lab-web/vite.config.js"
+      - ".github/workflows/landing-ci.yml"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "prompt-lab-source/package.json"
+      - "prompt-lab-source/package-lock.json"
+      - "prompt-lab-source/scripts/preflight.mjs"
+      - "prompt-lab-source/scripts/publish-landing.mjs"
+      - "prompt-lab-source/scripts/landing-funnel-report.mjs"
+      - "prompt-lab-source/scripts/landing-funnel-report.test.mjs"
+      - "prompt-lab-source/tests/landing*.test.mjs"
+      - "prompt-lab-source/tests/*.test.mjs"
+      - "prompt-lab-source/api/**"
+      - "prompt-lab-source/vercel.json"
+      - "prompt-lab-source/prompt-lab-extension/src/App.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useBillingState.js"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useTelemetryState.js"
+      - "prompt-lab-source/prompt-lab-extension/src/lib/landingAttribution.js"
+      - "prompt-lab-source/prompt-lab-extension/src/modals/BillingModal.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/BillingModal.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/landingAttribution.test.js"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/useTelemetryState.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/__tests__/useBillingState.test.jsx"
+      - "prompt-lab-source/prompt-lab-extension/src/tests/App.test.jsx"
+      - "prompt-lab-source/prompt-lab-web/index.html"
+      - "prompt-lab-source/prompt-lab-web/app/**"
+      - "prompt-lab-source/prompt-lab-web/package.json"
+      - "prompt-lab-source/prompt-lab-web/package-lock.json"
+      - "prompt-lab-source/prompt-lab-web/playwright.landing.config.js"
+      - "prompt-lab-source/prompt-lab-web/public/**"
+      - "prompt-lab-source/prompt-lab-web/tests/landing/**"
+      - "prompt-lab-source/prompt-lab-web/vite.config.js"
+      - ".github/workflows/landing-ci.yml"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  landing-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: prompt-lab-source
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            prompt-lab-source/package-lock.json
+            prompt-lab-source/prompt-lab-extension/package-lock.json
+            prompt-lab-source/prompt-lab-web/package-lock.json
+
+      - name: Install landing dependencies
+        run: |
+          npm ci
+          npm ci --prefix prompt-lab-extension
+          npm ci --prefix prompt-lab-web
+
+      - name: Run static landing gates
+        run: npm run test:landing
+
+      - name: Run production API safety gates
+        run: npm run test:api
+
+      - name: Run app handoff gates
+        run: npm test --prefix prompt-lab-extension
+
+      - name: Build hosted web surface
+        run: npm run build --prefix prompt-lab-web
+
+      - name: Verify generated Pages parity
+        run: |
+          npm run build:landing
+          git diff --exit-code -- ../docs
+
+      - name: Install Playwright Chromium
+        working-directory: prompt-lab-source/prompt-lab-web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser landing gates
+        run: npm run test:e2e:landing
+
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-playwright-evidence
+          path: |
+            prompt-lab-source/prompt-lab-web/playwright-report
+            prompt-lab-source/prompt-lab-web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
