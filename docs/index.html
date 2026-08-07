@@ -4,20 +4,20 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prompt Lab - Build, import, and evaluate prompt systems.</title>
+<title>Prompt Lab — Turn rough prompts into reusable workflows</title>
 <link rel="canonical" href="https://promptlab.tools/">
 <meta name="robots" content="index,follow">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Prompt Lab">
-<meta property="og:title" content="Prompt Lab - Build, import, and evaluate prompt systems.">
-<meta property="og:description" content="Prompt Lab is a browser-based prompt engineering workspace for drafting prompts, importing packs, saving libraries, composing reusable blocks, and evaluating runs across web, extension, and desktop surfaces.">
+<meta property="og:title" content="Prompt Lab — Turn rough prompts into reusable workflows">
+<meta property="og:description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
 <meta property="og:url" content="https://promptlab.tools/">
 <meta property="og:image" content="https://promptlab.tools/og-image.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Prompt Lab - Build, import, and evaluate prompt systems.">
-<meta name="twitter:description" content="Prompt Lab is a browser-based prompt engineering workspace for drafting prompts, importing packs, saving libraries, composing reusable blocks, and evaluating runs across web, extension, and desktop surfaces.">
+<meta name="twitter:title" content="Prompt Lab — Turn rough prompts into reusable workflows">
+<meta name="twitter:description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
 <meta name="twitter:image" content="https://promptlab.tools/og-image.png">
-<meta name="description" content="Prompt Lab is a browser-based prompt engineering workspace for drafting prompts, importing packs, saving libraries, composing reusable blocks, and evaluating runs across web, extension, and desktop surfaces.">
+<meta name="description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -902,20 +902,6 @@ img { display: block; max-width: 100%; }
   background: linear-gradient(180deg, rgba(232, 81, 47, 0.05) 0%, var(--bg-elevated) 100%);
   position: relative;
 }
-.pricing-popular {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: white;
-  background: var(--accent);
-  padding: 4px 14px;
-  border-radius: 20px;
-}
 .pricing-tier {
   font-family: var(--font-mono);
   font-size: 0.75rem;
@@ -1180,40 +1166,619 @@ img { display: block; max-width: 100%; }
     justify-content: center;
   }
 }
+/* ========== LANDING REDESIGN OVERRIDES ========== */
+:root {
+  --text-secondary: #AAAAB6;
+  --text-tertiary: #8A8A98;
+  --accent-text: #E86A47;
+  --focus: #FFD166;
+}
+
+html { scroll-padding-top: 88px; }
+body { min-width: 320px; }
+body.dialog-open { overflow: hidden; }
+section[id] { scroll-margin-top: 88px; }
+
+.skip-link {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 10000;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-void);
+  font-weight: 600;
+  transform: translateY(-160%);
+  transition: transform 0.15s ease;
+}
+.skip-link:focus { transform: translateY(0); }
+
+:where(a, button, input, summary, textarea):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.reveal,
+.hero-badge,
+.hero-headline span,
+.hero-sub,
+.hero-actions {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.nav {
+  background: rgba(6, 6, 10, 0.78);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border-bottom: 1px solid transparent;
+}
+.nav.scrolled { border-bottom-color: var(--border-hover); }
+.nav-inner { gap: 18px; }
+.nav-logo { min-height: 44px; flex-shrink: 0; }
+.nav-links { margin-left: auto; gap: 26px; }
+.nav-link,
+.nav-cta,
+.nav-mobile-cta {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-cta { padding: 10px 20px; }
+.nav-mobile-cta {
+  display: none;
+  margin-left: auto;
+  gap: 0.3em;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-void);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.nav-toggle {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border: 1px solid var(--border-hover);
+  border-radius: 9px;
+}
+
+.mobile-nav {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(90vw, 420px);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 88px 28px 32px;
+  border: 0;
+  border-left: 1px solid var(--border-hover);
+  background: rgba(10, 10, 15, 0.98);
+  color: var(--text-primary);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  overflow-y: auto;
+}
+.mobile-nav[open] { display: flex; }
+.mobile-nav::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+.mobile-nav a {
+  min-height: 52px;
+  padding: 12px 8px;
+  display: flex;
+  align-items: center;
+  font-size: 1.65rem;
+  border-bottom: 1px solid var(--border);
+}
+.mobile-nav .btn-primary {
+  justify-content: center;
+  margin-top: 18px;
+  border-bottom: 0;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+.mobile-nav-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  font-size: 1.5rem;
+}
+.mobile-nav-title {
+  position: absolute;
+  top: 27px;
+  left: 28px;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero {
+  min-height: auto;
+  padding: 164px 0 96px;
+}
+.hero-content { max-width: 1200px; }
+.hero-badge { margin-bottom: 28px; }
+.hero-headline {
+  max-width: 980px;
+  font-size: clamp(3.3rem, 7.5vw, 6.8rem);
+}
+.hero-headline .hero-italic { animation: none; filter: none; }
+.hero-sub { max-width: 680px; margin-bottom: 32px; }
+.hero-actions { margin-bottom: 26px; }
+.hero-actions .btn-primary,
+.hero-actions .btn-secondary { min-height: 52px; }
+.trust-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+.trust-line span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.trust-line span::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.surface-chooser {
+  padding: 72px 0;
+  border-block: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255,255,255,0.012), transparent);
+}
+.surface-heading { margin-bottom: 32px; }
+.surface-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.surface-card {
+  position: relative;
+  display: flex;
+  min-height: 220px;
+  padding: 28px;
+  border: 1px solid var(--border-hover);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  flex-direction: column;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.surface-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(232, 81, 47, 0.42);
+}
+.surface-card.recommended { border-color: var(--accent); }
+.surface-eyebrow {
+  min-height: 24px;
+  margin-bottom: 20px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.surface-card h3 {
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: 1.65rem;
+}
+.surface-card p {
+  margin-bottom: 22px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.surface-link {
+  margin-top: auto;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.surface-note {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-tertiary);
+  font-size: 0.78rem;
+}
+
+.section-label,
+.surface-eyebrow,
+.feature-tag,
+.mock-tab.active,
+.feature-bullets li::before,
+.pricing-features li::before,
+.billing-option input:not(:checked) + label .billing-save {
+  color: var(--accent-text);
+}
+
+.demo-section { padding: 112px 0; }
+.demo-header .section-sub { margin-bottom: 0; }
+.demo-container { overflow: visible; }
+.demo-chrome { border-radius: 20px 20px 0 0; }
+.demo-modes {
+  margin: 0;
+  padding: 14px 20px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+}
+.demo-modes legend {
+  width: 100%;
+  padding: 0 0 10px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.demo-mode-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.demo-mode-option { position: relative; }
+.demo-mode-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.demo-mode-option label {
+  display: inline-flex;
+  min-height: 44px;
+  padding: 9px 16px;
+  align-items: center;
+  border: 1px solid var(--border-hover);
+  border-radius: 9px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.demo-mode-option input:checked + label {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+.demo-mode-option input:focus-visible + label {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.demo-textarea {
+  min-height: 240px;
+  padding: 2px;
+  cursor: default;
+}
+.demo-textarea[readonly] { color: var(--text-primary); }
+.demo-output {
+  min-height: 240px;
+  padding: 2px;
+}
+.demo-output:empty::before {
+  content: 'Choose a sample style, then show the result.';
+  color: var(--text-tertiary);
+}
+.demo-output[aria-busy='true']::before {
+  content: 'Preparing the sample…';
+  color: var(--text-secondary);
+}
+.demo-footer { gap: 18px; flex-wrap: wrap; }
+.demo-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+.demo-run { min-height: 44px; padding-inline: 22px; }
+.demo-run[aria-busy='true']::before {
+  content: '';
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  display: inline-block;
+  vertical-align: -2px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: sample-spin 0.7s linear infinite;
+}
+@keyframes sample-spin { to { transform: rotate(360deg); } }
+.demo-cta {
+  min-height: 44px;
+  padding: 9px 16px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-hover);
+  border-radius: 8px;
+  font-weight: 600;
+}
+.demo-cta[hidden] { display: none; }
+.demo-status {
+  width: 100%;
+  min-height: 24px;
+  padding: 0 20px 16px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.features { padding: 120px 0; }
+.workflow-intro { margin-bottom: 82px; }
+.workflow-intro .section-sub { margin-bottom: 0; }
+.feature-row { margin-bottom: 96px; }
+
+.privacy-band {
+  padding: 100px 0;
+  border-block: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.privacy-layout {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 72px;
+  align-items: start;
+}
+.privacy-copy .section-sub { margin-bottom: 26px; }
+.privacy-list {
+  display: grid;
+  gap: 14px;
+  list-style: none;
+}
+.privacy-list li {
+  padding: 20px 22px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-primary);
+}
+.privacy-list strong { display: block; margin-bottom: 4px; }
+.privacy-list span { color: var(--text-secondary); }
+
+.pricing { padding: 120px 0; }
+.pricing-header .section-sub { margin-bottom: 28px; }
+.billing-toggle {
+  width: fit-content;
+  margin: 0 auto 46px;
+  padding: 5px;
+  display: flex;
+  gap: 4px;
+  border: 1px solid var(--border-hover);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+}
+.billing-toggle legend { position: absolute; clip: rect(0,0,0,0); }
+.billing-option { position: relative; }
+.billing-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.billing-option label {
+  min-height: 44px;
+  padding: 10px 18px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.billing-option input:checked + label {
+  background: var(--text-primary);
+  color: var(--bg-void);
+  font-weight: 600;
+}
+.billing-option input:focus-visible + label {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+.billing-save {
+  margin-left: 7px;
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+.billing-option input:checked + label .billing-save { color: #7c2d12; }
+.pricing-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 760px;
+}
+.pricing-card { min-height: 100%; }
+.pricing-period { min-height: 44px; }
+.pricing-note {
+  margin-top: 18px;
+  color: var(--text-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.faq {
+  padding: 112px 0;
+  border-top: 1px solid var(--border);
+}
+.faq-layout {
+  display: grid;
+  grid-template-columns: 0.65fr 1.35fr;
+  gap: 72px;
+}
+.faq-list { border-top: 1px solid var(--border-hover); }
+.faq-list details { border-bottom: 1px solid var(--border-hover); }
+.faq-list summary {
+  min-height: 64px;
+  padding: 18px 42px 18px 0;
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after {
+  content: '+';
+  position: absolute;
+  right: 8px;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+}
+.faq-list details[open] summary::after { content: '−'; }
+.faq-list details p {
+  max-width: 680px;
+  padding: 0 40px 22px 0;
+  color: var(--text-secondary);
+}
+
+.cta-section { border-top: 1px solid var(--border); }
+.footer a { min-height: 36px; display: inline-flex; align-items: center; }
+.footer-bottom a { min-height: 44px; }
+
+@media (max-width: 980px) {
+  .nav-version { display: none; }
+  .nav-links { gap: 18px; }
+  .surface-grid { grid-template-columns: 1fr; }
+  .surface-card { min-height: 0; }
+  .privacy-layout,
+  .faq-layout { grid-template-columns: 1fr; gap: 42px; }
+}
+
+@media (max-width: 680px) {
+  .container, .container--narrow { padding-inline: 20px; }
+  .nav-inner { padding-inline: 20px; }
+  .nav-links { display: none; }
+  .nav-toggle { display: flex; }
+  .nav-mobile-cta { display: inline-flex; }
+  .nav-logo { font-size: 1.08rem; }
+  .nav-logo-mark { width: 30px; height: 30px; }
+  .hero { padding: 126px 0 72px; }
+  .hero-headline {
+    max-width: 100%;
+    font-size: clamp(2.65rem, 13vw, 4rem);
+    line-height: 1.02;
+    overflow-wrap: anywhere;
+  }
+  .hero-sub { font-size: 1.05rem; }
+  .hero-actions { align-items: stretch; }
+  .hero-actions a { width: 100%; justify-content: center; }
+  .trust-line { display: grid; }
+  .surface-chooser { padding: 60px 0; }
+  .demo-section,
+  .features,
+  .privacy-band,
+  .pricing,
+  .faq,
+  .cta-section { padding: 76px 0; }
+  .demo-header { margin-bottom: 38px; text-align: left; }
+  .demo-header .section-heading,
+  .demo-header .section-sub { margin-inline: 0 !important; }
+  .demo-modes { padding: 14px; }
+  .demo-mode-options { display: grid; grid-template-columns: 1fr; }
+  .demo-mode-option label { width: 100%; }
+  .demo-body { grid-template-columns: 1fr; }
+  .demo-panel { padding: 20px; }
+  .demo-panel + .demo-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .demo-textarea,
+  .demo-output { min-height: 190px; }
+  .demo-footer { align-items: stretch; padding: 16px; }
+  .demo-footer-actions { width: 100%; margin-left: 0; flex-direction: column; }
+  .demo-footer-actions > * { width: 100%; justify-content: center; }
+  .demo-status { padding-inline: 16px; }
+  .feature-visual { aspect-ratio: auto; min-height: 360px; }
+  .mock-models { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .billing-toggle { width: 100%; }
+  .billing-option { flex: 1; }
+  .billing-option label { justify-content: center; padding-inline: 10px; }
+  .footer-bottom { align-items: flex-start; gap: 14px; flex-direction: column; }
+}
+
+@media (max-width: 420px) {
+  .nav-logo { gap: 7px; }
+  .nav-inner { gap: 10px; }
+  .nav-mobile-cta { padding-inline: 9px; }
+  .hero-headline { font-size: 2.62rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .hero-bg::before,
+  .hero-bg::after,
+  .hero-badge-dot { animation: none; }
+}
 </style>
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 <!-- ===== NAV ===== -->
-<nav class="nav" id="nav">
+<nav class="nav" id="nav" aria-label="Primary navigation">
   <div class="nav-inner">
-    <a href="#" class="nav-logo">
+    <a href="/" class="nav-logo" aria-label="Prompt Lab home">
       <div class="nav-logo-mark">PL</div>
       Prompt Lab
     </a>
     <div class="nav-links">
-      <span class="nav-version">v1.7</span>
-      <a href="#workflow" class="nav-link">Workflow</a>
-      <a href="#demo" class="nav-link">Try it</a>
+      <a href="#product" class="nav-link">Product</a>
+      <a href="#workflow" class="nav-link">How it works</a>
       <a href="#pricing" class="nav-link">Pricing</a>
-      <a href="https://promptlab.tools/guide.html" class="nav-link" target="_blank">Docs</a>
-      <a href="https://promptlab.tools/app" class="nav-cta">Open PromptLab &rarr;</a>
+      <a href="/guide.html" class="nav-link">Docs</a>
+      <a href="/app?source=landing&amp;placement=nav&amp;intent=open" class="nav-cta" data-analytics-id="landing.nav.open_app">Open app &rarr;</a>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Menu">
+    <a href="/app?source=landing&amp;placement=nav_mobile&amp;intent=open" class="nav-mobile-cta" data-analytics-id="landing.nav_mobile.open_app" aria-label="Open PromptLab app"><span>Open</span> app</a>
+    <button class="nav-toggle" id="navToggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
       <span></span><span></span><span></span>
     </button>
   </div>
 </nav>
 
 <!-- Mobile nav -->
-<div class="mobile-nav" id="mobileNav">
-  <a href="#workflow" onclick="closeMobileNav()">Workflow</a>
-  <a href="#demo" onclick="closeMobileNav()">Try it</a>
-  <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
-  <a href="https://promptlab.tools/guide.html" target="_blank" onclick="closeMobileNav()">Docs</a>
-  <a href="https://promptlab.tools/app" class="btn-primary" onclick="closeMobileNav()">Open PromptLab</a>
-</div>
+<dialog class="mobile-nav" id="mobileNav" role="dialog" aria-modal="true" aria-labelledby="mobileNavTitle">
+  <span class="mobile-nav-title" id="mobileNavTitle">Navigation</span>
+  <button class="mobile-nav-close" id="mobileNavClose" type="button" aria-label="Close navigation menu">&times;</button>
+  <a href="#product">Product</a>
+  <a href="#workflow">How it works</a>
+  <a href="#pricing">Pricing</a>
+  <a href="/guide.html">Docs</a>
+  <a href="/app?source=landing&amp;placement=mobile_menu&amp;intent=open" class="btn-primary" data-analytics-id="landing.mobile_menu.open_app">Open PromptLab &rarr;</a>
+</dialog>
 
+<main id="main-content" tabindex="-1">
 <!-- ===== HERO ===== -->
 <section class="hero">
   <div class="hero-bg">
@@ -1222,46 +1787,100 @@ img { display: block; max-width: 100%; }
   <div class="container hero-content">
     <div class="hero-badge">
       <span class="hero-badge-dot"></span>
-      v1.7 - Import packs &middot; Compose &middot; Evaluate
+      v1.7 &middot; Draft &middot; Improve &middot; Reuse &middot; Evaluate
     </div>
     <h1 class="hero-headline">
-      <span>Prompt Lab</span>
-      <span><span class="hero-italic">Prompt engineering workspace.</span></span>
+      <span>Turn rough prompts into</span>
+      <span><span class="hero-italic">reusable, tested workflows.</span></span>
     </h1>
     <p class="hero-sub">
-      Draft, import, save, compose, and evaluate prompts in one portable system. Use the hosted app, load the extension, or keep a desktop build nearby when repeatable prompt work matters.
+      Prompt Lab gives you one focused place to shape a draft, keep the version that works, and compare results when the work needs proof.
     </p>
     <div class="hero-actions">
-      <a href="https://promptlab.tools/app" class="btn-primary">
-        Open PromptLab
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <a href="/app?source=landing&amp;placement=hero&amp;intent=free" class="btn-primary" data-analytics-id="landing.hero.try_free">
+        Try PromptLab free
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
-      <a href="https://promptlab.tools/setup.html" class="btn-secondary">Extension setup</a>
-      <a href="#workflow" class="btn-tertiary">See how it works</a>
+      <a href="#demo" class="btn-secondary" data-analytics-id="landing.hero.see_workflow">See the workflow</a>
+    </div>
+    <div class="trust-line">
+      <span>Free editor</span>
+      <span>Local library storage</span>
+      <span>Connect a provider when ready</span>
     </div>
   </div>
 </section>
 
-<!-- ===== PROOF STRIP ===== -->
-<section class="proof reveal">
+<!-- ===== SURFACE CHOOSER ===== -->
+<section class="surface-chooser" id="product" aria-labelledby="surfaceHeading">
   <div class="container">
-    <div class="proof-grid">
-      <div class="proof-item">
-        <div class="proof-number" data-count="7"><span class="accent">7</span></div>
-        <div class="proof-label">Enhancement modes</div>
+    <div class="surface-heading">
+      <div class="section-label">Choose your surface</div>
+      <h2 class="section-heading" id="surfaceHeading">Start where you already work.</h2>
+    </div>
+    <div class="surface-grid">
+      <a class="surface-card recommended" href="/app?source=landing&amp;placement=surface_web&amp;intent=free" data-analytics-id="landing.surface.web">
+        <span class="surface-eyebrow">Recommended</span>
+        <h3>Web app</h3>
+        <p>Open the complete workspace in a browser. No installation required.</p>
+        <span class="surface-link">Start free &rarr;</span>
+      </a>
+      <a class="surface-card" href="/setup.html" data-analytics-id="landing.surface.extension">
+        <span class="surface-eyebrow">Browser companion</span>
+        <h3>Extension</h3>
+        <p>Keep the workbench beside ChatGPT, Claude, and other browser-based AI tools.</p>
+        <span class="surface-link">View setup guide &rarr;</span>
+      </a>
+      <a class="surface-card" href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer" data-analytics-id="landing.surface.desktop_source">
+        <span class="surface-eyebrow">Source build</span>
+        <h3>Desktop</h3>
+        <p>Keep a local build nearby for provider workflows and a focused desktop surface.</p>
+        <span class="surface-link">View source and build notes &rarr;</span>
+        <span class="surface-note">No packaged installer is advertised.</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INTERACTIVE SAMPLE ===== -->
+<section class="demo-section" id="demo" aria-labelledby="demoHeading">
+  <div class="container demo-wrapper">
+    <div class="demo-header reveal">
+      <div class="section-label">Interactive sample</div>
+      <h2 class="section-heading" id="demoHeading" style="margin-left:auto;margin-right:auto;">See exactly what changes.</h2>
+      <p class="section-sub" style="margin-left:auto;margin-right:auto;">This transparent sample uses fixed example content. It never reads or sends your text.</p>
+    </div>
+    <div class="demo-container reveal">
+      <div class="demo-chrome" aria-hidden="true">
+        <div class="demo-chrome-dots"><div class="demo-chrome-dot"></div><div class="demo-chrome-dot"></div><div class="demo-chrome-dot"></div></div>
+        <div class="demo-chrome-title">prompt lab · sample</div>
       </div>
-      <div class="proof-item">
-        <div class="proof-number"><span class="accent">3</span></div>
-        <div class="proof-label">Web, extension, desktop surfaces</div>
+      <fieldset class="demo-modes" id="demoModes">
+        <legend>Preview three of PromptLab's seven modes on the same rough prompt</legend>
+        <div class="demo-mode-options">
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoBalanced" value="balanced" checked data-analytics-id="landing.demo.mode_balanced"><label for="demoBalanced">Balanced</label></div>
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoConcise" value="concise" data-analytics-id="landing.demo.mode_concise"><label for="demoConcise">Concise</label></div>
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoDetailed" value="detailed" data-analytics-id="landing.demo.mode_detailed"><label for="demoDetailed">Detailed</label></div>
+        </div>
+      </fieldset>
+      <div class="demo-body">
+        <div class="demo-panel">
+          <label class="demo-panel-label" for="demoInput"><span class="dot input-dot"></span> Example prompt</label>
+          <textarea class="demo-textarea" id="demoInput" readonly spellcheck="false" data-analytics-id="landing.demo.example_prompt">Write a Python script that reads a CSV and makes charts. Make it easy to use and handle errors well.</textarea>
+        </div>
+        <div class="demo-panel">
+          <div class="demo-panel-label" id="demoOutputLabel"><span class="dot output-dot"></span> Sample result</div>
+          <div class="demo-output" id="demoOutput" role="region" aria-labelledby="demoOutputLabel" aria-busy="false"></div>
+        </div>
       </div>
-      <div class="proof-item">
-        <div class="proof-number"><span class="accent">Import</span></div>
-        <div class="proof-label">Packs, exports, starter libraries</div>
+      <div class="demo-footer">
+        <span class="demo-hint">Ctrl or Cmd + Enter works while focus is in this sample.</span>
+        <div class="demo-footer-actions">
+          <button class="demo-run" id="demoRun" type="button" aria-busy="false" data-analytics-id="landing.demo.show_result">Show sample result</button>
+          <a class="demo-cta" id="demoCta" href="/app?source=landing&amp;placement=demo&amp;intent=free" hidden data-analytics-id="landing.demo.try_own">Try your own prompt in PromptLab &rarr;</a>
+        </div>
       </div>
-      <div class="proof-item">
-        <div class="proof-number"><span class="accent">Local</span></div>
-        <div class="proof-label">Prompts kept in your workspace</div>
-      </div>
+      <p class="demo-status" id="demoStatus" role="status" aria-live="polite"></p>
     </div>
   </div>
 </section>
@@ -1269,16 +1888,16 @@ img { display: block; max-width: 100%; }
 <!-- ===== FEATURES ===== -->
 <section class="features" id="workflow">
   <div class="container">
-    <div class="reveal">
-      <div class="section-label">Workflow</div>
-      <h2 class="section-heading">Create, Library, Evaluate.</h2>
-      <p class="section-sub">Prompt Lab is built around one repeatable loop: shape the prompt, keep the version that works, and test the result when you need proof.</p>
+    <div class="reveal workflow-intro">
+      <div class="section-label">How it works</div>
+      <h2 class="section-heading">Shape it. Save it. Prove it.</h2>
+      <p class="section-sub">One repeatable loop keeps prompt work from disappearing into chat history: improve the instruction, save the useful version, and compare outcomes when quality matters.</p>
     </div>
 
-    <!-- Feature 1: Workbench -->
+    <!-- Feature 1: Create -->
     <div class="feature-row reveal">
       <div class="feature-text">
-        <div class="feature-tag">Workbench</div>
+        <div class="feature-tag">Create</div>
         <h3 class="feature-title">Sharpen drafts without losing the point</h3>
         <p class="feature-desc">Use the workbench to turn rough instructions into usable prompts with fast iteration, quality checks, and enhancement modes that keep the original intent intact.</p>
         <ul class="feature-bullets">
@@ -1324,66 +1943,8 @@ img { display: block; max-width: 100%; }
       </div>
     </div>
 
-    <!-- Feature 2: Evaluate -->
+    <!-- Feature 2: Library -->
     <div class="feature-row reverse reveal">
-      <div class="feature-text">
-        <div class="feature-tag">Evaluate</div>
-        <h3 class="feature-title">Review runs instead of guessing</h3>
-        <p class="feature-desc">Keep evaluation history visible, compare variants when the workflow needs proof, and preserve the model context behind every result you reuse.</p>
-        <ul class="feature-bullets">
-          <li>Run timeline with provider, model, latency, and status</li>
-          <li>A/B Compare and side-by-side diff available in Pro</li>
-          <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter, and Ollama</li>
-        </ul>
-      </div>
-      <div class="feature-visual">
-        <div class="feature-visual-chrome">
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">evaluate</span>
-        </div>
-        <div class="feature-visual-body">
-          <div class="mock-models">
-            <div class="mock-model-card">
-              <div class="mock-model-name">Claude 3.5 Sonnet</div>
-              <div class="mock-model-provider">Anthropic</div>
-              <div class="mock-line" style="width:90%; margin-top: 8px;"></div>
-              <div class="mock-line short"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:92%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">GPT-4o</div>
-              <div class="mock-model-provider">OpenAI</div>
-              <div class="mock-line medium" style="margin-top: 8px;"></div>
-              <div class="mock-line" style="width:70%"></div>
-              <div class="mock-line short"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:78%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">Gemini 1.5 Pro</div>
-              <div class="mock-model-provider">Google</div>
-              <div class="mock-line" style="width:85%; margin-top: 8px;"></div>
-              <div class="mock-line" style="width:65%"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:85%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">Llama 3.1 70B</div>
-              <div class="mock-model-provider">Ollama (local)</div>
-              <div class="mock-line short" style="margin-top: 8px;"></div>
-              <div class="mock-line" style="width:75%"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:70%"></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 3: Library -->
-    <div class="feature-row reveal">
       <div class="feature-text">
         <div class="feature-tag">Library</div>
         <h3 class="feature-title">Keep and import the prompts worth reusing</h3>
@@ -1437,48 +1998,65 @@ img { display: block; max-width: 100%; }
         </div>
       </div>
     </div>
-  </div>
-</section>
 
-<!-- ===== INTERACTIVE DEMO ===== -->
-<section class="demo-section" id="demo">
-  <div class="container demo-wrapper">
-    <div class="demo-header reveal">
-      <div class="section-label">Workbench</div>
-      <h2 class="section-heading" style="margin-left:auto;margin-right:auto;">See the workbench in motion</h2>
-      <p class="section-sub" style="margin-left:auto;margin-right:auto;">Paste a rough prompt and watch Prompt Lab turn it into a cleaner, more reusable version.</p>
+    <!-- Feature 3: Evaluate -->
+    <div class="feature-row reveal">
+      <div class="feature-text">
+        <div class="feature-tag">Evaluate</div>
+        <h3 class="feature-title">Review runs instead of guessing</h3>
+        <p class="feature-desc">Keep evaluation history visible, compare variants when the workflow needs proof, and preserve the model context behind every result you reuse.</p>
+        <ul class="feature-bullets">
+          <li>Run timeline with provider, model, latency, and status</li>
+          <li>A/B Compare and side-by-side diff available in Pro</li>
+          <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter, and Ollama</li>
+        </ul>
+      </div>
+      <div class="feature-visual">
+        <div class="feature-visual-chrome">
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <div class="feature-visual-dot"></div>
+          <span class="feature-visual-chrome-title">evaluate</span>
+        </div>
+        <div class="feature-visual-body">
+          <div class="mock-models">
+            <div class="mock-model-card">
+              <div class="mock-model-name">Claude</div>
+              <div class="mock-model-provider">Anthropic</div>
+              <div class="mock-line" style="width:90%; margin-top: 8px;"></div>
+              <div class="mock-line short"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:92%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">OpenAI model</div>
+              <div class="mock-model-provider">OpenAI</div>
+              <div class="mock-line medium" style="margin-top: 8px;"></div>
+              <div class="mock-line" style="width:70%"></div>
+              <div class="mock-line short"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:78%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">Gemini</div>
+              <div class="mock-model-provider">Google</div>
+              <div class="mock-line" style="width:85%; margin-top: 8px;"></div>
+              <div class="mock-line" style="width:65%"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:85%"></div></div>
+            </div>
+            <div class="mock-model-card">
+              <div class="mock-model-name">Local model</div>
+              <div class="mock-model-provider">Ollama (local)</div>
+              <div class="mock-line short" style="margin-top: 8px;"></div>
+              <div class="mock-line" style="width:75%"></div>
+              <div class="mock-line medium"></div>
+              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:70%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="demo-container reveal reveal-delay-1">
-      <div class="demo-chrome">
-        <div class="demo-chrome-dots">
-          <div class="demo-chrome-dot"></div>
-          <div class="demo-chrome-dot"></div>
-          <div class="demo-chrome-dot"></div>
-        </div>
-        <div class="demo-chrome-title">prompt lab</div>
-      </div>
-      <div class="demo-modes">
-        <button class="demo-mode active" data-mode="improve">Improve</button>
-        <button class="demo-mode" data-mode="expand">Expand</button>
-        <button class="demo-mode" data-mode="shorten">Shorten</button>
-        <button class="demo-mode" data-mode="formalize">Formalize</button>
-        <button class="demo-mode" data-mode="simplify">Simplify</button>
-      </div>
-      <div class="demo-body">
-        <div class="demo-panel">
-          <div class="demo-panel-label"><span class="dot input-dot"></span> Your prompt</div>
-          <textarea class="demo-textarea" id="demoInput" spellcheck="false">Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.</textarea>
-        </div>
-        <div class="demo-panel">
-          <div class="demo-panel-label"><span class="dot output-dot"></span> Refined</div>
-          <div class="demo-output" id="demoOutput"></div>
-        </div>
-      </div>
-      <div class="demo-footer">
-        <span class="demo-hint">Cmd + Enter to refine</span>
-        <button class="demo-run" id="demoRun">Refine →</button>
-      </div>
-    </div>
+
   </div>
 </section>
 
@@ -1492,47 +2070,64 @@ img { display: block; max-width: 100%; }
     <div class="bento-grid">
       <div class="bento-card span-2 reveal">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
         </div>
         <div class="bento-title">Browser extension</div>
         <div class="bento-desc">Keep Prompt Lab beside ChatGPT, Claude, or any AI interface when you want the workbench in context. Works on Chrome, Vivaldi, Brave, and Edge.</div>
       </div>
       <div class="bento-card reveal reveal-delay-1">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
         </div>
         <div class="bento-title">Compose</div>
         <div class="bento-desc">Build longer prompts from reusable fragments in the same system as your saved library and workbench drafts.</div>
       </div>
       <div class="bento-card reveal reveal-delay-1">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <div class="bento-title">PII Scanner</div>
         <div class="bento-desc">Catch personal data before you send. Automatic detection and optional redaction of names, emails, phone numbers, and more.</div>
       </div>
       <div class="bento-card reveal reveal-delay-2">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         </div>
         <div class="bento-title">Pack Import</div>
         <div class="bento-desc">Load preset packs, exported libraries, starter bundles, and raw prompt arrays through one preview-and-merge flow.</div>
       </div>
       <div class="bento-card reveal reveal-delay-2">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         </div>
         <div class="bento-title">Notebook</div>
         <div class="bento-desc">Keep rough notes, snippets, and scratch work nearby without polluting the prompt versions that actually matter.</div>
       </div>
       <div class="bento-card reveal reveal-delay-3">
         <div class="bento-icon">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
         <div class="bento-title">Run timeline</div>
         <div class="bento-desc">Track every evaluation with timestamps, provider context, and scored results so your wins stay legible over time.</div>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ===== PRIVACY & PORTABILITY ===== -->
+<section class="privacy-band" id="privacy" aria-labelledby="privacyHeading">
+  <div class="container privacy-layout">
+    <div class="privacy-copy">
+      <div class="section-label">Privacy and portability</div>
+      <h2 class="section-heading" id="privacyHeading">Your prompt library stays useful outside Prompt Lab.</h2>
+      <p class="section-sub">The editor keeps prompts and libraries in local browser storage. Provider calls happen only when you choose to connect and run one.</p>
+      <a class="btn-secondary" href="/privacy">Read the privacy policy &rarr;</a>
+    </div>
+    <ul class="privacy-list">
+      <li><strong>Local by default</strong><span>Drafts and saved library items remain in this browser unless you export or connect another service.</span></li>
+      <li><strong>Provider choice</strong><span>Use supported provider connections when a workflow needs a real model response.</span></li>
+      <li><strong>Exportable work</strong><span>Keep reusable prompts portable with the available library import and export tools.</span></li>
+    </ul>
   </div>
 </section>
 
@@ -1542,8 +2137,13 @@ img { display: block; max-width: 100%; }
     <div class="pricing-header reveal">
       <div class="section-label">Pricing</div>
       <h2 class="section-heading">Start free. Upgrade when useful.</h2>
-      <p class="section-sub">No credit card required for the editor. Prompts and libraries stay in local browser storage unless you choose to call a provider or sync billing.</p>
+      <p class="section-sub">The editor is free to use. Pro unlocks the comparison and organization tools that matter when prompt work becomes a repeatable practice.</p>
     </div>
+    <fieldset class="billing-toggle">
+      <legend>Choose a Pro billing period</legend>
+      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingMonthly" value="monthly" checked data-analytics-id="landing.pricing.monthly"><label for="billingMonthly">Monthly</label></div>
+      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingAnnual" value="annual" data-analytics-id="landing.pricing.annual"><label for="billingAnnual">Annual <span class="billing-save">Save $8</span></label></div>
+    </fieldset>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
         <div class="pricing-tier">Free</div>
@@ -1557,13 +2157,12 @@ img { display: block; max-width: 100%; }
           <li>Extension setup guide</li>
           <li>Local browser storage</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn outline">Get started free</a>
+        <a href="/app?source=landing&amp;placement=pricing_free&amp;intent=free" class="pricing-btn outline" data-analytics-id="landing.pricing.free">Get started free</a>
       </div>
-      <div class="pricing-card featured reveal reveal-delay-1">
-        <div class="pricing-popular">Most popular</div>
+      <div class="pricing-card featured reveal">
         <div class="pricing-tier">Pro</div>
-        <div class="pricing-price"><span class="currency">$</span>9</div>
-        <div class="pricing-period">per month</div>
+        <div class="pricing-price"><span class="currency">$</span><span id="proPrice">9</span></div>
+        <div class="pricing-period" id="proPeriod">per month</div>
         <ul class="pricing-features">
           <li>Everything in Free</li>
           <li>A/B Compare in Evaluate</li>
@@ -1572,20 +2171,49 @@ img { display: block; max-width: 100%; }
           <li>Collections for grouped libraries</li>
           <li>JSON library export</li>
         </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn filled">Open upgrade flow →</a>
+        <a href="/app?upgrade=pro&amp;period=monthly&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-analytics-id="landing.pricing.pro">Continue to PromptLab &rarr;</a>
+        <p class="pricing-note">Opens Prompt Lab and asks you to confirm before checkout. Selecting a plan here never charges you.</p>
       </div>
-      <div class="pricing-card reveal reveal-delay-2">
-        <div class="pricing-tier">Annual</div>
-        <div class="pricing-price"><span class="currency">$</span>100</div>
-        <div class="pricing-period">per year — save $8</div>
-        <ul class="pricing-features">
-          <li>Everything in Pro</li>
-          <li>2 months free</li>
-          <li>Early access to new features</li>
-          <li>Roadmap input</li>
-        </ul>
-        <a href="https://promptlab.tools/app" class="pricing-btn outline">Open annual option</a>
-      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq" id="faq" aria-labelledby="faqHeading">
+  <div class="container faq-layout">
+    <div>
+      <div class="section-label">Questions</div>
+      <h2 class="section-heading" id="faqHeading">Know what happens before you open the app.</h2>
+    </div>
+    <div class="faq-list">
+      <details>
+        <summary>Do I need an account?</summary>
+        <p>The hosted web app currently asks you to sign in. This landing-page sample does not, and it never sends example content to a provider.</p>
+      </details>
+      <details>
+        <summary>Are AI provider costs included in Pro?</summary>
+        <p>No. Provider usage is separate from Prompt Lab Pro and remains subject to the provider account or local model you choose.</p>
+      </details>
+      <details>
+        <summary>Where are my prompts stored?</summary>
+        <p>The web editor keeps prompts and libraries in local browser storage. A provider receives content only when you intentionally connect it and run a provider-backed action.</p>
+      </details>
+      <details>
+        <summary>Where are provider API keys stored?</summary>
+        <p>Configured keys stay in browser or extension storage. Hosted web requests pass through Prompt Lab's domain-allowlisted proxy for browser compatibility, but the keys are not persisted server-side.</p>
+      </details>
+      <details>
+        <summary>How do I cancel Pro?</summary>
+        <p>Use Manage Billing in Prompt Lab to open Stripe's customer portal, where you can manage or cancel the subscription.</p>
+      </details>
+      <details>
+        <summary>Will choosing Pro charge me immediately?</summary>
+        <p>No. The pricing choice opens Prompt Lab with your monthly or annual preference. You still review and confirm the billing flow inside the app.</p>
+      </details>
+      <details>
+        <summary>Is there a desktop installer?</summary>
+        <p>The repository includes desktop source and build notes. This page does not claim a packaged installer; use the web app unless you specifically want to build the desktop surface.</p>
+      </details>
     </div>
   </div>
 </section>
@@ -1596,13 +2224,14 @@ img { display: block; max-width: 100%; }
     <div class="reveal">
       <h2 class="cta-heading">Build a prompt workflow,<br><em>not a prompt pile.</em></h2>
       <p class="cta-sub">Open Prompt Lab on the web, install the extension when you want it beside the page, and keep a library that can move with you.</p>
-      <a href="https://promptlab.tools/app" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;">
-        Open PromptLab
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <a href="/app?source=landing&amp;placement=final_cta&amp;intent=free" class="btn-primary" style="font-size:1.05rem; padding: 16px 36px;" data-analytics-id="landing.final.try_free">
+        Try PromptLab free
+        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </a>
     </div>
   </div>
 </section>
+</main>
 
 <!-- ===== FOOTER ===== -->
 <footer class="footer">
@@ -1618,26 +2247,28 @@ img { display: block; max-width: 100%; }
       <div>
         <div class="footer-col-title">Product</div>
         <ul class="footer-links">
-          <li><a href="#workflow">Workflow</a></li>
+          <li><a href="#product">Product</a></li>
+          <li><a href="#workflow">How it works</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="https://promptlab.tools/app">Open PromptLab</a></li>
-          <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/prompt-lab-source/prompt-lab-extension/VERSION_HISTORY.md" target="_blank">Changelog</a></li>
+          <li><a href="/app?source=landing&amp;placement=footer&amp;intent=open" data-analytics-id="landing.footer.open_app">Open PromptLab</a></li>
+          <li><a href="https://github.com/DaveHomeAssist/prompt-lab/blob/main/prompt-lab-source/prompt-lab-extension/VERSION_HISTORY.md" target="_blank" rel="noopener noreferrer">Changelog</a></li>
         </ul>
       </div>
       <div>
         <div class="footer-col-title">Resources</div>
         <ul class="footer-links">
-          <li><a href="https://promptlab.tools/guide.html">Documentation</a></li>
-          <li><a href="https://promptlab.tools/setup.html">Extension Setup</a></li>
-          <li><a href="https://promptlab.tools/guide.html">API Providers</a></li>
-          <li><a href="https://promptlab.tools/guide.html">Prompt Guide</a></li>
+          <li><a href="/guide.html#quick-start">Quick start</a></li>
+          <li><a href="/setup.html#provider-setup">Provider setup</a></li>
+          <li><a href="/guide.html#import-export">Import and export</a></li>
+          <li><a href="/guide.html#variables">Variables</a></li>
+          <li><a href="/guide.html#keyboard-shortcuts">Keyboard shortcuts</a></li>
         </ul>
       </div>
       <div>
         <div class="footer-col-title">Company</div>
         <ul class="footer-links">
-          <li><a href="https://systembydave.com" target="_blank">System by Dave</a></li>
-          <li><a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank">GitHub</a></li>
+          <li><a href="https://systembydave.com" target="_blank" rel="noopener noreferrer">System by Dave</a></li>
+          <li><a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a></li>
           <li><a href="mailto:hi@promptlab.tools">Contact</a></li>
         </ul>
       </div>
@@ -1645,151 +2276,326 @@ img { display: block; max-width: 100%; }
     <div class="footer-bottom">
       <span>&copy; 2026 Prompt Lab. All rights reserved.</span>
       <div class="footer-bottom-links">
-        <a href="https://promptlab.tools/privacy">Privacy</a>
+        <a href="/privacy">Privacy</a>
       </div>
     </div>
   </div>
 </footer>
 
 <script>
-// ===== NAV SCROLL =====
-const nav = document.getElementById('nav');
-let lastScroll = 0;
-window.addEventListener('scroll', () => {
-  nav.classList.toggle('scrolled', window.scrollY > 40);
-}, { passive: true });
+(function () {
+  'use strict';
 
-// ===== MOBILE NAV =====
-const toggle = document.getElementById('navToggle');
-const mobileNav = document.getElementById('mobileNav');
-toggle.addEventListener('click', () => {
-  mobileNav.classList.toggle('open');
-  document.body.style.overflow = mobileNav.classList.contains('open') ? 'hidden' : '';
-});
-function closeMobileNav() {
-  mobileNav.classList.remove('open');
-  document.body.style.overflow = '';
-}
+  const nav = document.getElementById('nav');
+  const navToggle = document.getElementById('navToggle');
+  const mobileNav = document.getElementById('mobileNav');
+  const mobileNavClose = document.getElementById('mobileNavClose');
 
-// ===== SCROLL REVEAL =====
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      observer.unobserve(entry.target);
+  window.addEventListener('scroll', function () {
+    nav.classList.toggle('scrolled', window.scrollY > 40);
+  }, { passive: true });
+
+  function openMobileNav() {
+    if (typeof mobileNav.showModal === 'function') {
+      mobileNav.showModal();
+    } else {
+      mobileNav.setAttribute('open', '');
+    }
+    navToggle.setAttribute('aria-expanded', 'true');
+    navToggle.setAttribute('aria-label', 'Close navigation menu');
+    document.body.classList.add('dialog-open');
+    mobileNavClose.focus();
+  }
+
+  function closeMobileNav(options) {
+    const returnFocus = !options || options.returnFocus !== false;
+    if (typeof mobileNav.close === 'function' && mobileNav.open) {
+      mobileNav.close();
+    } else {
+      mobileNav.removeAttribute('open');
+    }
+    navToggle.setAttribute('aria-expanded', 'false');
+    navToggle.setAttribute('aria-label', 'Open navigation menu');
+    document.body.classList.remove('dialog-open');
+    if (returnFocus) navToggle.focus();
+  }
+
+  navToggle.addEventListener('click', function () {
+    if (mobileNav.open || mobileNav.hasAttribute('open')) {
+      closeMobileNav();
+    } else {
+      openMobileNav();
     }
   });
-}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-// ===== DEMO INTERACTION =====
-const modes = document.querySelectorAll('.demo-mode');
-const demoInput = document.getElementById('demoInput');
-const demoOutput = document.getElementById('demoOutput');
-const demoRun = document.getElementById('demoRun');
-
-const demoData = {
-  improve: {
-    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
-    output: `Write a Python CLI script that accepts a CSV file path as input and generates data visualizations from its contents.\n\n<span class="added">Requirements:</span>\n<span class="added">1. Accept file path via command-line argument using argparse</span>\n<span class="added">2. Validate the file exists and is valid CSV before processing</span>\n<span class="added">3. Auto-detect numeric columns and generate appropriate chart types:</span>\n<span class="added">   — Bar charts for categorical comparisons</span>\n<span class="added">   — Line charts for time-series data</span>\n<span class="added">   — Scatter plots for numeric correlations</span>\n<span class="added">4. Save charts as PNG files in an output directory</span>\n<span class="added">5. Use try/except with descriptive error messages for:</span>\n<span class="added">   — Missing files, malformed CSV, empty datasets</span>\n\n<span class="added">Use pandas for data handling and matplotlib for visualization.</span>\n<span class="added">Include a --preview flag to display charts before saving.</span>`
-  },
-  expand: {
-    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
-    output: `Write a Python script that reads a CSV file and generates <span class="added">a comprehensive set of</span> data visualizations.\n\n<span class="added">Input Handling:</span>\n<span class="added">— Accept CSV file path as a CLI argument (argparse)</span>\n<span class="added">— Support optional flags: --output-dir, --format (png/svg/pdf), --dpi, --style</span>\n<span class="added">— Validate file exists, is readable, and contains valid CSV data</span>\n<span class="added">— Handle encoding issues (UTF-8 with BOM, Latin-1 fallback)</span>\n\n<span class="added">Chart Generation:</span>\n<span class="added">— Automatically profile each column (numeric, categorical, datetime)</span>\n<span class="added">— Generate distribution histograms for numeric columns</span>\n<span class="added">— Create bar charts for categorical columns (top 20 values)</span>\n<span class="added">— Plot time-series line charts when datetime index is detected</span>\n<span class="added">— Build correlation heatmap for all numeric pairs</span>\n<span class="added">— Create a summary dashboard combining key charts</span>\n\n<span class="added">Error Handling:</span>\n<span class="added">— FileNotFoundError: descriptive message with path suggestion</span>\n<span class="added">— EmptyDataError: warn and exit gracefully</span>\n<span class="added">— ParserError: report the problematic row number</span>\n<span class="added">— Log all warnings to stderr, results to stdout</span>`
-  },
-  shorten: {
-    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
-    output: `<span class="added">Python CLI script: CSV → auto-generated charts (bar, line, scatter).</span>\n\n<span class="added">Requirements: argparse input, pandas processing, matplotlib output.</span>\n<span class="added">Auto-detect column types. Save PNGs. Graceful error handling for missing/malformed files.</span>`
-  },
-  formalize: {
-    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
-    output: `<span class="added">Develop a Python application that ingests CSV datasets and produces statistical visualizations.</span>\n\n<span class="added">Functional Requirements:</span>\n<span class="added">— The application shall accept a CSV file path via command-line interface</span>\n<span class="added">— The application shall perform column-type inference and select appropriate chart types</span>\n<span class="added">— The application shall implement comprehensive error handling with descriptive diagnostics</span>\n<span class="added">— The application shall output charts in configurable raster or vector formats</span>\n\n<span class="added">Technical Specifications:</span>\n<span class="added">— Language: Python 3.10+</span>\n<span class="added">— Dependencies: pandas, matplotlib, argparse (stdlib)</span>\n<span class="added">— Error handling: structured exception hierarchy with logging</span>`
-  },
-  simplify: {
-    input: `Write me a python script that takes a csv and makes charts from it. I want it to be easy to use and handle errors well.`,
-    output: `<span class="added">Make a simple Python script that:</span>\n<span class="added">1. Takes a CSV filename as input</span>\n<span class="added">2. Reads it with pandas</span>\n<span class="added">3. Makes a chart for each number column using matplotlib</span>\n<span class="added">4. Saves the charts as images</span>\n\n<span class="added">If the file is missing or broken, print a helpful error message instead of crashing.</span>\n\n<span class="added">Keep it under 50 lines. No classes needed — just functions.</span>`
-  }
-};
-
-let currentMode = 'improve';
-let isTyping = false;
-
-modes.forEach(btn => {
-  btn.addEventListener('click', () => {
-    if (isTyping) return;
-    modes.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentMode = btn.dataset.mode;
-    demoInput.value = demoData[currentMode].input;
-    demoOutput.innerHTML = '';
+  mobileNavClose.addEventListener('click', closeMobileNav);
+  mobileNav.addEventListener('cancel', function (event) {
+    event.preventDefault();
+    closeMobileNav();
   });
-});
+  mobileNav.addEventListener('keydown', function (event) {
+    if (event.key !== 'Tab') return;
+    const focusable = Array.from(mobileNav.querySelectorAll('a[href], button:not([disabled])'))
+      .filter(function (element) {
+        return element.getClientRects().length > 0;
+      });
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  mobileNav.addEventListener('click', function (event) {
+    if (event.target === mobileNav) closeMobileNav();
+  });
+  mobileNav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function (event) {
+      if (!mobileNav.open && !mobileNav.hasAttribute('open')) return;
 
-async function typeOutput(html) {
-  isTyping = true;
-  demoRun.textContent = 'Refining...';
-  demoOutput.innerHTML = '';
+      const href = link.getAttribute('href') || '';
+      const target = href.charAt(0) === '#' ? document.getElementById(href.slice(1)) : null;
+      closeMobileNav({ returnFocus: false });
 
-  // Parse HTML to extract text and tags
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html.replace(/\\n/g, '\n');
-  const fullHTML = tempDiv.innerHTML;
-
-  let i = 0;
-  const speed = 8;
-
-  return new Promise(resolve => {
-    function type() {
-      if (i < fullHTML.length) {
-        // Skip HTML tags
-        if (fullHTML[i] === '<') {
-          const closeIdx = fullHTML.indexOf('>', i);
-          i = closeIdx + 1;
-        } else {
-          i++;
+      if (target) {
+        event.preventDefault();
+        history.pushState(null, '', href);
+        const hadTabindex = target.hasAttribute('tabindex');
+        if (!hadTabindex) target.setAttribute('tabindex', '-1');
+        target.focus({ preventScroll: true });
+        target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        if (!hadTabindex) {
+          target.addEventListener('blur', function () {
+            target.removeAttribute('tabindex');
+          }, { once: true });
         }
-        demoOutput.innerHTML = fullHTML.substring(0, i);
-        // Find the proper closing point for any open tags
-        const tempCheck = document.createElement('div');
-        tempCheck.innerHTML = fullHTML.substring(0, i);
-        demoOutput.innerHTML = tempCheck.innerHTML;
+      }
+    });
+  });
 
-        setTimeout(type, speed + Math.random() * 12);
-      } else {
-        demoOutput.innerHTML = fullHTML;
-        isTyping = false;
-        demoRun.textContent = 'Refine →';
-        resolve();
+  const attributionKey = 'promptlab_landing_attribution';
+  const attributionLifetime = 24 * 60 * 60 * 1000;
+  const allowedEvents = new Set([
+    'landing.cta_clicked',
+    'landing.demo_completed',
+    'landing.surface_selected',
+    'landing.pricing_period_selected'
+  ]);
+  const allowedPlacements = new Set([
+    'nav', 'nav_mobile', 'mobile_menu', 'hero', 'surface_web',
+    'surface_extension', 'surface_desktop', 'demo', 'pricing_free',
+    'pricing_pro', 'final_cta', 'footer'
+  ]);
+  const allowedIntents = new Set(['open', 'free', 'upgrade', 'sample']);
+  const allowedDestinations = new Set(['app', 'demo', 'setup', 'source']);
+  const allowedPeriods = new Set(['monthly', 'annual']);
+  const allowedDemoModes = new Set(['balanced', 'concise', 'detailed']);
+
+  function recordAttribution(candidate) {
+    if (!allowedEvents.has(candidate.event)) return;
+    const event = { event: candidate.event, timestamp: Date.now() };
+    if (allowedPlacements.has(candidate.placement)) event.placement = candidate.placement;
+    if (allowedIntents.has(candidate.intent)) event.intent = candidate.intent;
+    if (allowedDestinations.has(candidate.destination)) event.destination = candidate.destination;
+    if (allowedPeriods.has(candidate.period)) event.period = candidate.period;
+    if (allowedDemoModes.has(candidate.demoMode)) event.demoMode = candidate.demoMode;
+    if (candidate.resultCount === 1) event.resultCount = 1;
+
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(attributionKey) || '{"version":1,"events":[]}');
+      const now = Date.now();
+      const previous = parsed && parsed.version === 1 && Array.isArray(parsed.events)
+        ? parsed.events.filter(function (item) {
+            return item && Number.isFinite(item.timestamp) && now - item.timestamp <= attributionLifetime;
+          })
+        : [];
+      sessionStorage.setItem(attributionKey, JSON.stringify({
+        version: 1,
+        events: previous.concat(event).slice(-12)
+      }));
+    } catch (error) {
+      try {
+        sessionStorage.setItem(attributionKey, JSON.stringify({ version: 1, events: [event] }));
+      } catch (storageError) {
+        // Storage may be unavailable in private or restricted browser contexts.
       }
     }
-    type();
-  });
-}
-
-demoRun.addEventListener('click', () => {
-  if (isTyping) return;
-  typeOutput(demoData[currentMode].output);
-});
-
-// Keyboard shortcut
-document.addEventListener('keydown', (e) => {
-  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-    e.preventDefault();
-    if (!isTyping) typeOutput(demoData[currentMode].output);
   }
-});
 
-// ===== SMOOTH ANCHOR SCROLL =====
-document.querySelectorAll('a[href^="#"]').forEach(link => {
-  link.addEventListener('click', (e) => {
-    const target = document.querySelector(link.getAttribute('href'));
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const clickAttribution = {
+    'landing.nav.open_app': ['nav', 'open', 'app'],
+    'landing.nav_mobile.open_app': ['nav_mobile', 'open', 'app'],
+    'landing.mobile_menu.open_app': ['mobile_menu', 'open', 'app'],
+    'landing.hero.try_free': ['hero', 'free', 'app'],
+    'landing.hero.see_workflow': ['hero', 'sample', 'demo'],
+    'landing.surface.web': ['surface_web', 'free', 'app'],
+    'landing.surface.extension': ['surface_extension', 'open', 'setup'],
+    'landing.surface.desktop_source': ['surface_desktop', 'open', 'source'],
+    'landing.demo.try_own': ['demo', 'free', 'app'],
+    'landing.pricing.free': ['pricing_free', 'free', 'app'],
+    'landing.pricing.pro': ['pricing_pro', 'upgrade', 'app'],
+    'landing.final.try_free': ['final_cta', 'free', 'app'],
+    'landing.footer.open_app': ['footer', 'open', 'app']
+  };
+
+  document.querySelectorAll('[data-analytics-id]').forEach(function (control) {
+    control.addEventListener('click', function () {
+      const descriptor = clickAttribution[control.dataset.analyticsId];
+      if (!descriptor) return;
+      const event = {
+        event: 'landing.cta_clicked',
+        placement: descriptor[0],
+        intent: descriptor[1],
+        destination: descriptor[2]
+      };
+      if (control.id === 'proCta') {
+        event.period = document.querySelector('input[name="billingPeriod"]:checked').value;
+      }
+      recordAttribution(event);
+      if (control.dataset.analyticsId.startsWith('landing.surface.')) {
+        recordAttribution({
+          event: 'landing.surface_selected',
+          placement: descriptor[0],
+          intent: descriptor[1],
+          destination: descriptor[2]
+        });
+      }
+    });
+  });
+
+  const demo = document.getElementById('demo');
+  const demoOutput = document.getElementById('demoOutput');
+  const demoRun = document.getElementById('demoRun');
+  const demoStatus = document.getElementById('demoStatus');
+  const demoCta = document.getElementById('demoCta');
+  const demoModes = document.querySelectorAll('input[name="demoMode"]');
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const demoResults = {
+    balanced: [
+      'Create a Python command-line script that accepts a CSV file path and generates appropriate charts from its data.',
+      '',
+      'Requirements:',
+      '1. Validate that the file exists and contains readable CSV data.',
+      '2. Detect numeric, categorical, and date columns.',
+      '3. Generate sensible bar, line, or scatter charts.',
+      '4. Save charts as PNG files in an output folder.',
+      '5. Return clear messages for missing files, empty data, or malformed rows.',
+      '',
+      'Use pandas for data handling, matplotlib for charts, and argparse for the command-line interface.'
+    ].join('\n'),
+    concise: [
+      'Build a Python CLI that reads a CSV, detects useful column types, and saves suitable bar, line, or scatter charts as PNG files.',
+      '',
+      'Use argparse, pandas, and matplotlib. Validate the input and return clear errors for missing, empty, or malformed files.'
+    ].join('\n'),
+    detailed: [
+      'Develop a Python 3 command-line application for turning CSV datasets into a small visualization report.',
+      '',
+      'Input and validation:',
+      '• Accept the CSV path plus optional output-directory and preview flags.',
+      '• Verify the file exists, is readable, and contains at least one data row.',
+      '• Report encoding, parsing, and unsupported-data errors with an actionable message.',
+      '',
+      'Chart selection:',
+      '• Bar charts for bounded categorical comparisons.',
+      '• Line charts when a date or ordered index is present.',
+      '• Scatter plots for useful numeric pairs.',
+      '',
+      'Save deterministic PNG filenames and print a summary of created files. Use small functions, type hints, argparse, pandas, and matplotlib.'
+    ].join('\n')
+  };
+
+  function selectedDemoMode() {
+    const selected = document.querySelector('input[name="demoMode"]:checked');
+    return selected ? selected.value : 'balanced';
+  }
+
+  function resetDemo() {
+    demoOutput.textContent = '';
+    demoOutput.setAttribute('aria-busy', 'false');
+    demoStatus.textContent = '';
+    demoCta.hidden = true;
+    demoRun.disabled = false;
+    demoRun.setAttribute('aria-busy', 'false');
+    demoRun.textContent = 'Show sample result';
+  }
+
+  demoModes.forEach(function (radio) {
+    radio.addEventListener('change', resetDemo);
+  });
+
+  function showDemoResult() {
+    if (demoRun.disabled) return;
+    const mode = selectedDemoMode();
+    demoOutput.textContent = '';
+    demoOutput.setAttribute('aria-busy', 'true');
+    demoRun.disabled = true;
+    demoRun.setAttribute('aria-busy', 'true');
+    demoRun.textContent = 'Preparing sample…';
+    demoStatus.textContent = 'Preparing sample result…';
+
+    window.setTimeout(function () {
+      demoOutput.textContent = demoResults[mode];
+      demoOutput.setAttribute('aria-busy', 'false');
+      demoRun.disabled = false;
+      demoRun.setAttribute('aria-busy', 'false');
+      demoRun.textContent = 'Show sample result';
+      demoCta.hidden = false;
+      demoStatus.textContent = 'Example ready. No provider was called.';
+      recordAttribution({
+        event: 'landing.demo_completed',
+        placement: 'demo',
+        intent: 'sample',
+        destination: 'demo',
+        demoMode: mode,
+        resultCount: 1
+      });
+    }, prefersReducedMotion ? 0 : 220);
+  }
+
+  demoRun.addEventListener('click', showDemoResult);
+  demo.addEventListener('keydown', function (event) {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+      event.preventDefault();
+      showDemoResult();
     }
   });
-});
+
+  const billingRadios = document.querySelectorAll('input[name="billingPeriod"]');
+  const proPrice = document.getElementById('proPrice');
+  const proPeriod = document.getElementById('proPeriod');
+  const proCta = document.getElementById('proCta');
+
+  function updateBillingChoice(event) {
+    const selected = document.querySelector('input[name="billingPeriod"]:checked');
+    const period = selected ? selected.value : 'monthly';
+    if (period === 'annual') {
+      proPrice.textContent = '100';
+      proPeriod.textContent = 'per year · $8.33 effective monthly · save $8/year';
+    } else {
+      proPrice.textContent = '9';
+      proPeriod.textContent = 'per month';
+    }
+    proCta.href = '/app?upgrade=pro&period=' + period + '&source=landing-pricing';
+    proCta.dataset.period = period;
+    if (event) {
+      recordAttribution({
+        event: 'landing.pricing_period_selected',
+        placement: 'pricing_pro',
+        intent: 'upgrade',
+        period: period
+      });
+    }
+  }
+
+  billingRadios.forEach(function (radio) {
+    radio.addEventListener('change', updateBillingChoice);
+  });
+  updateBillingChoice();
+}());
 </script>
 </body>
 </html>
