@@ -7,5 +7,7 @@ prompt-lab-desktop/src-tauri/target/
 
 # Desktop Vite build output (regenerated)
 prompt-lab-desktop/dist/
+prompt-lab-web/playwright-report/
+prompt-lab-web/test-results/
 .vercel
 .env*.local

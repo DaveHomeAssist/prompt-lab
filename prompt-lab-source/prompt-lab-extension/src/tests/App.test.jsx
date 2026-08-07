@@ -297,6 +297,16 @@ vi.mock('../modals/PiiWarningModal.jsx', () => ({
   default: () => null,
 }));
 
+vi.mock('../modals/BillingModal.jsx', () => ({
+  default: ({ requestedPeriod, requestedSource }) => (
+    <div role="dialog" aria-label="Billing handoff">
+      {requestedPeriod
+        ? `Requested period: ${requestedPeriod}; source: ${requestedSource || 'none'}`
+        : 'Billing'}
+    </div>
+  ),
+}));
+
 import App from '../App.jsx';
 
 const originalFetch = global.fetch;
@@ -318,6 +328,7 @@ describe('App', () => {
 
   afterEach(() => {
     global.fetch = originalFetch;
+    vi.unstubAllEnvs();
     localStorage.clear();
   });
 
@@ -341,6 +352,110 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Allow analytics' })).not.toBeInTheDocument();
     });
+  });
+
+  it('opens a valid web pricing handoff once without starting checkout', async () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    const onLandingIntentConsumed = vi.fn();
+    const intent = {
+      upgrade: 'pro',
+      period: 'annual',
+      source: 'landing-pricing',
+    };
+    const { rerender } = render(
+      <MemoryRouter>
+        <App landingIntent={intent} onLandingIntentConsumed={onLandingIntentConsumed} />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole('dialog', { name: 'Billing handoff' })).toHaveTextContent(
+      'Requested period: annual; source: landing-pricing',
+    );
+    expect(onLandingIntentConsumed).toHaveBeenCalledTimes(1);
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    rerender(
+      <MemoryRouter>
+        <App landingIntent={intent} onLandingIntentConsumed={onLandingIntentConsumed} />
+      </MemoryRouter>,
+    );
+    expect(onLandingIntentConsumed).toHaveBeenCalledTimes(1);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('does not apply landing handoff props outside web mode', () => {
+    vi.stubEnv('VITE_WEB_MODE', 'false');
+    const onLandingIntentConsumed = vi.fn();
+    const onLandingAttributionConsumed = vi.fn();
+    render(
+      <MemoryRouter>
+        <App
+          landingIntent={{ upgrade: 'pro', period: 'monthly', source: 'landing-pricing' }}
+          landingAttribution={{
+            version: 1,
+            events: [{
+              event: 'landing.cta_clicked',
+              placement: 'pricing_pro',
+              intent: 'upgrade',
+              destination: 'app',
+              period: 'monthly',
+              timestamp: Date.now(),
+            }],
+          }}
+          onLandingIntentConsumed={onLandingIntentConsumed}
+          onLandingAttributionConsumed={onLandingAttributionConsumed}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('dialog', { name: 'Billing handoff' })).not.toBeInTheDocument();
+    expect(onLandingIntentConsumed).not.toHaveBeenCalled();
+    expect(onLandingAttributionConsumed).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('emits sanitized landing attribution only after analytics consent', async () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    const onLandingAttributionConsumed = vi.fn();
+    const timestamp = Date.now();
+    render(
+      <MemoryRouter>
+        <App
+          landingIntent={{ upgrade: 'pro', period: 'monthly', source: 'landing-pricing' }}
+          landingAttribution={{
+            version: 1,
+            events: [{
+              event: 'landing.cta_clicked',
+              placement: 'pricing_pro',
+              intent: 'upgrade',
+              destination: 'app',
+              period: 'monthly',
+              timestamp,
+              prompt: 'never send this prompt',
+              search: 'never send this search',
+              email: 'private@example.com',
+              apiKey: 'sk-private',
+            }],
+          }}
+          onLandingAttributionConsumed={onLandingAttributionConsumed}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(onLandingAttributionConsumed).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Allow analytics' }));
+
+    await waitFor(() => {
+      const bodies = global.fetch.mock.calls.map(([, init]) => JSON.parse(init.body));
+      expect(bodies.some(({ event }) => event === 'landing.referral_opened')).toBe(true);
+      expect(bodies.some(({ event }) => event === 'landing.cta_clicked')).toBe(true);
+    });
+    expect(onLandingAttributionConsumed).toHaveBeenCalledTimes(1);
+
+    const payloads = global.fetch.mock.calls.map(([, init]) => JSON.stringify(JSON.parse(init.body)));
+    expect(payloads.join('\n')).not.toMatch(/never send|private@example\.com|sk-private/);
   });
 
   it('shows the draft context before the first enhance run', () => {

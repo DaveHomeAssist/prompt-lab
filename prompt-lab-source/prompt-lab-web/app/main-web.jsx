@@ -4,9 +4,56 @@ import { HashRouter } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser, useAuth } from '@clerk/clerk-react';
 import App from '../../prompt-lab-extension/src/App';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
+import {
+  buildLandingIntentRedirectUrl,
+  clearLandingAttribution,
+  parseLandingIntent,
+  readLandingAttribution,
+  stripLandingIntentParams,
+} from '../../prompt-lab-extension/src/lib/landingAttribution.js';
 import '../../prompt-lab-extension/src/index.css';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+function getLandingStorage() {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+const landingStorage = getLandingStorage();
+const initialLandingIntent = typeof window !== 'undefined'
+  ? parseLandingIntent(window.location.search)
+  : null;
+const initialLandingAttribution = readLandingAttribution(landingStorage);
+const landingIntentRedirectUrl = typeof window !== 'undefined' && initialLandingIntent
+  ? buildLandingIntentRedirectUrl(window.location.href, initialLandingIntent)
+  : '';
+
+function consumeLandingIntent() {
+  if (typeof window === 'undefined' || !initialLandingIntent) return;
+  const nextUrl = stripLandingIntentParams(window.location.href);
+  if (!nextUrl) return;
+  try {
+    window.history.replaceState(window.history.state, '', nextUrl);
+  } catch {
+    // The handoff is already one-shot in React state if History is unavailable.
+  }
+}
+
+function consumeLandingAttribution() {
+  clearLandingAttribution(landingStorage);
+}
+
+const landingProps = {
+  landingIntent: initialLandingIntent,
+  landingAttribution: initialLandingAttribution,
+  onLandingIntentConsumed: consumeLandingIntent,
+  onLandingAttributionConsumed: consumeLandingAttribution,
+};
 
 function AuthGate() {
   const { user, isLoaded } = useUser();
@@ -40,6 +87,7 @@ function AuthGate() {
           background: '#0f172a',
         }}>
           <SignIn
+            forceRedirectUrl={landingIntentRedirectUrl || undefined}
             appearance={{
               variables: {
                 colorPrimary: '#8b5cf6',
@@ -56,6 +104,7 @@ function AuthGate() {
       <SignedIn>
         <HashRouter>
           <App
+            {...landingProps}
             clerkUser={user}
             clerkGetToken={getToken}
             clerkUserButton={<UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#8b5cf6' } }} />}
@@ -72,7 +121,7 @@ if (!CLERK_KEY) {
     ReactDOM.createRoot(document.getElementById('root')).render(
       <ErrorBoundary>
         <HashRouter>
-          <App />
+          <App {...landingProps} />
         </HashRouter>
       </ErrorBoundary>
     );

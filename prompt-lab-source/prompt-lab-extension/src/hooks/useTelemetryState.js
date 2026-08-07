@@ -8,8 +8,8 @@ import {
   getTelemetryApiBase,
   getTelemetrySurface,
   normalizeTelemetryState,
-  sanitizeTelemetryContext,
 } from '../lib/telemetry.js';
+import { isLandingTelemetryEvent } from '../../../shared/telemetrySchema.js';
 
 const TELEMETRY_CONSENT_KEY = 'pl_telemetry_consent';
 
@@ -67,10 +67,14 @@ export default function useTelemetryState({ notify }) {
   }, [telemetryAllowed]);
 
   const sendPayload = useCallback(async (payload) => {
+    const landingEvent = payload?.kind === 'event' && isLandingTelemetryEvent(payload?.event);
+    const requestPayload = { ...payload };
+    if (landingEvent) delete requestPayload.contactEmail;
+
     const response = await fetch(`${apiBase}/telemetry`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(requestPayload),
     });
     if (!response.ok) {
       let message = 'Telemetry request failed.';
@@ -114,11 +118,13 @@ export default function useTelemetryState({ notify }) {
     }
   }, [flushPending, state.pendingEvents.length, state.telemetryEnabled, telemetryAllowed]);
 
-  const track = useCallback(async (event, context = {}) => {
+  const track = useCallback(async (event, context = {}, { includeContactEmail = true } = {}) => {
     if (!telemetryAllowed || !state.telemetryEnabled) return false;
 
-    const envelope = buildTelemetryEnvelope(state, sessionId, event, sanitizeTelemetryContext(context));
+    const envelopeState = includeContactEmail ? state : { ...state, contactEmail: '' };
+    let envelope = null;
     try {
+      envelope = buildTelemetryEnvelope(envelopeState, sessionId, event, context);
       await sendPayload(envelope);
       setState((prev) => ({
         ...prev,
@@ -130,7 +136,9 @@ export default function useTelemetryState({ notify }) {
       setState((prev) => ({
         ...prev,
         lastError: error.message || 'Telemetry sync failed.',
-        pendingEvents: [...prev.pendingEvents, envelope].slice(-25),
+        pendingEvents: envelope
+          ? [...prev.pendingEvents, envelope].slice(-25)
+          : prev.pendingEvents,
       }));
       return false;
     }

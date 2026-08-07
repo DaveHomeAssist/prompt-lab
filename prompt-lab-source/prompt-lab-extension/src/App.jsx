@@ -41,6 +41,10 @@ import CommandPaletteModal from './modals/CommandPaletteModal';
 import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import BillingModal from './modals/BillingModal.jsx';
+import {
+  buildLandingTelemetryEvents,
+  normalizeLandingIntent,
+} from './lib/landingAttribution.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -55,11 +59,21 @@ Constraints:
 - sound precise, not hypey`;
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) {
+export default function App({
+  clerkUser,
+  clerkGetToken,
+  clerkUserButton,
+  landingIntent,
+  landingAttribution,
+  onLandingIntentConsumed,
+  onLandingAttributionConsumed,
+} = {}) {
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [billingFeaturePrompt, setBillingFeaturePrompt] = useState(null);
+  const [requestedBillingPeriod, setRequestedBillingPeriod] = useState(null);
+  const [requestedBillingSource, setRequestedBillingSource] = useState(null);
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
@@ -165,12 +179,16 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
       plan: billing.plan,
       section: activeSection,
     });
+    setRequestedBillingPeriod(null);
+    setRequestedBillingSource(null);
     setBillingFeaturePrompt(featureId);
     setShowBillingModal(true);
   };
   const closeBilling = () => {
     setShowBillingModal(false);
     setBillingFeaturePrompt(null);
+    setRequestedBillingPeriod(null);
+    setRequestedBillingSource(null);
   };
 
   const canUseCollections = billing.hasFeature('collections');
@@ -191,6 +209,42 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
     tab, setTab,
   });
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
+  const landingPricingIntent = normalizeLandingIntent(landingIntent);
+  const landingRequestedPeriod = landingPricingIntent?.period || null;
+  const landingRequestedSource = landingPricingIntent?.source || null;
+  const landingIntentHandledRef = useRef(false);
+  const landingAttributionHandledRef = useRef(false);
+
+  useEffect(() => {
+    if (!isWeb || !landingRequestedPeriod || landingIntentHandledRef.current) return;
+    landingIntentHandledRef.current = true;
+    setBillingFeaturePrompt(null);
+    setRequestedBillingPeriod(landingRequestedPeriod);
+    setRequestedBillingSource(landingRequestedSource);
+    setShowBillingModal(true);
+    onLandingIntentConsumed?.();
+  }, [isWeb, landingRequestedPeriod, landingRequestedSource, onLandingIntentConsumed]);
+
+  useEffect(() => {
+    if (!isWeb || landingAttributionHandledRef.current || telemetry.consentGiven == null) return;
+    if (telemetry.consentGiven === 'granted' && telemetry.telemetryEnabled !== true) return;
+    landingAttributionHandledRef.current = true;
+
+    if (telemetry.consentGiven === 'granted') {
+      const events = buildLandingTelemetryEvents({ landingIntent, landingAttribution });
+      events.forEach(({ event, context }) => {
+        void telemetry.track(event, context, { includeContactEmail: false });
+      });
+    }
+
+    onLandingAttributionConsumed?.();
+  }, [
+    isWeb,
+    landingAttribution,
+    landingIntent,
+    onLandingAttributionConsumed,
+    telemetry,
+  ]);
   const openRunsViewWithBilling = (nextView) => {
     if (nextView === 'compare' && !canUseAbTesting) {
       openBilling('abTesting');
@@ -814,6 +868,8 @@ export default function App({ clerkUser, clerkGetToken, clerkUserButton } = {}) 
           m={m}
           billing={billing}
           requestedFeature={billingFeaturePrompt}
+          requestedPeriod={requestedBillingPeriod}
+          requestedSource={requestedBillingSource}
           onClose={closeBilling}
         />
       )}

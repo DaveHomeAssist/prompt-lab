@@ -49,9 +49,10 @@ const LANDING_PLACEMENT = enumField(
   'final_cta',
   'footer',
   'docs_search',
+  'privacy',
 );
 const LANDING_INTENT = enumField('open', 'free', 'upgrade', 'sample');
-const LANDING_DESTINATION = enumField('app', 'demo', 'setup', 'source', 'guide');
+const LANDING_DESTINATION = enumField('app', 'demo', 'setup', 'source', 'guide', 'privacy');
 const ATTRIBUTION_VERSION = enumField(1);
 
 function schema(fields, required = []) {

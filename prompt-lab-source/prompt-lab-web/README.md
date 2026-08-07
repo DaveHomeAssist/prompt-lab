@@ -65,11 +65,11 @@ The deploy helper validates that `prompt-lab-source/.vercel/project.json` points
 
 ## Owner Pro access
 
-Hosted owner/admin Pro access is granted server-side from the verified Clerk session before Stripe lookup. Configure this Vercel environment variable:
+Hosted owner/admin Pro access is granted server-side from the immutable Clerk user ID in the verified Clerk session before Stripe lookup. Configure this Vercel environment variable:
 
 - `PROMPTLAB_OWNER_CLERK_USER_IDS` - comma or whitespace separated Clerk user IDs
 
-Email, username, and client metadata are deliberately ignored for owner access. After updating the Clerk user ID allowlist, redeploy and use **Sync existing access** in the billing modal while signed in.
+Email addresses, usernames, profile metadata, and client-provided identity fields are deliberately ignored for owner access; only the verified Clerk user ID allowlist can grant it. After updating the allowlist, redeploy and use **Sync existing access** in the billing modal while signed in.
 
 ## Key files
 

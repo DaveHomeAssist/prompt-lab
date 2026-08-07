@@ -10,21 +10,24 @@
     "check:node": "node ../scripts/require-node-20.mjs",
     "check:production-env": "npm run check:node && node scripts/check-production-env.mjs",
     "dev": "npm run check:node && vite",
-    "build": "npm run check:node && vite build",
-    "preview": "npm run check:node && vite preview"
+    "build": "npm run check:production-env && vite build",
+    "preview": "npm run check:node && vite preview",
+    "test:e2e:landing": "npm run check:node && playwright test --config=playwright.landing.config.js"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.8",
     "diff-match-patch": "^1.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.61.1",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "10.4.20",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.26",
     "tailwindcss": "3.4.17",
-    "vite": "^8.0.10"
+    "vite": "^8.2.1"
   }
 }

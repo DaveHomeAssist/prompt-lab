@@ -51,8 +51,45 @@ describe('useTelemetryState', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({
       event: 'app.opened',
+      telemetryEnabled: true,
       context: { section: 'create' },
     });
+  });
+
+  it('omits an optional contact email from content-free landing events', async () => {
+    localStorage.setItem('pl_telemetry_consent', 'granted');
+    localStorage.setItem('pl2-telemetry', JSON.stringify({
+      telemetryEnabled: true,
+      contactEmail: 'private@example.com',
+    }));
+    const { result } = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+
+    await act(async () => {
+      await result.current.track(
+        'landing.cta_clicked',
+        {
+          attributionVersion: 1,
+          placement: 'pricing_pro',
+          intent: 'upgrade',
+          destination: 'app',
+          period: 'annual',
+        },
+        { includeContactEmail: false },
+      );
+    });
+
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({
+      event: 'landing.cta_clicked',
+      context: {
+        attributionVersion: 1,
+        placement: 'pricing_pro',
+        intent: 'upgrade',
+        destination: 'app',
+        period: 'annual',
+      },
+    });
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).not.toHaveProperty('contactEmail');
+    expect(global.fetch.mock.calls[0][1].body).not.toContain('private@example.com');
   });
 
   it('does not send future events after consent is denied', async () => {
