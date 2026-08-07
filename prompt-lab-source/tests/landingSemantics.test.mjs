@@ -168,6 +168,16 @@ test('target-blank links protect the opener on landing and task documentation', 
   }
 });
 
+test('public landing surfaces load fonts locally without automatic third-party requests', () => {
+  const pages = [landingHtml, guideHtml, setupHtml, privacyHtml];
+
+  for (const html of pages) {
+    assert.doesNotMatch(html, /fonts\.(?:googleapis|gstatic)\.com/i);
+    assert.match(html, /\.\/fonts\/outfit\.woff2/);
+    assert.match(html, /\.\/fonts\/jetbrains-mono\.woff2/);
+  }
+});
+
 test('landing task links resolve to canonical guide and setup headings', () => {
   const taskLinks = [
     { page: 'guide.html', id: 'quick-start', html: guideHtml },
@@ -195,6 +205,8 @@ test('reveal animation is an enhancement and reduced motion has an explicit path
     /(?:\.js\s+\.reveal\b[^}]*\{[^}]*opacity\s*:\s*0|\.reveal\b[^{}]*\{[^}]*opacity\s*:\s*1)/si,
     'Reveal content must default to visible or be hidden only after JavaScript opts in',
   );
+  assertPageMatch(landingHtml, /\.reveal-motion\s+\.reveal:not\(\.visible\)/i);
+  assertPageMatch(landingHtml, /new\s+IntersectionObserver\s*\(/i);
   assertPageMatch(landingHtml, /@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*\)/i);
   assertPageMatch(landingHtml, /matchMedia\(\s*["']\(prefers-reduced-motion:\s*reduce\)["']\s*\)/i);
 });

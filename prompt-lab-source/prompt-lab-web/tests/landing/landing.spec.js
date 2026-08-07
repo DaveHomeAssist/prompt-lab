@@ -38,6 +38,15 @@ async function expectInside(page, containerSelector) {
   }, containerSelector)).toBe(true);
 }
 
+async function tabUntil(page, target, maxTabs = 80) {
+  for (let count = 0; count < maxTabs; count += 1) {
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+    await page.keyboard.press('Tab');
+  }
+
+  await expect(target, `Expected ${await target.evaluate((element) => element.outerHTML)} in the tab order`).toBeFocused();
+}
+
 test('landing and task documentation have no serious or critical axe violations', async ({ page }) => {
   test.setTimeout(30_000);
   for (const route of ['/', '/guide.html', '/setup.html', '/privacy.html']) {
@@ -54,6 +63,32 @@ test('landing and task documentation have no serious or critical axe violations'
   }
 });
 
+test('public surfaces make no third-party requests before consent', async ({ page }) => {
+  const thirdPartyRequests = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (!['127.0.0.1', 'localhost'].includes(url.hostname)) {
+      thirdPartyRequests.push(request.url());
+    }
+  });
+
+  for (const route of ['/', '/guide.html', '/setup.html', '/privacy.html']) {
+    await page.goto(route, { waitUntil: 'networkidle' });
+  }
+
+  expect(thirdPartyRequests).toEqual([]);
+});
+
+test('reveal motion is a JavaScript enhancement with a visible completion state', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveClass(/reveal-motion/);
+
+  const pricingHeader = page.locator('#pricing .pricing-header');
+  await expect.poll(() => pricingHeader.evaluate((element) => getComputedStyle(element).opacity)).toBe('0');
+  await pricingHeader.scrollIntoViewIfNeeded();
+  await expect.poll(() => pricingHeader.evaluate((element) => getComputedStyle(element).opacity)).toBe('1');
+});
+
 test.describe('mobile navigation', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
@@ -63,11 +98,18 @@ test.describe('mobile navigation', () => {
     const toggle = page.locator('#navToggle');
     const dialog = page.locator('#mobileNav');
     const main = page.locator('#main-content');
+    const close = page.locator('#mobileNavClose');
+    const product = dialog.getByRole('link', { name: 'Product', exact: true });
+    const workflow = dialog.getByRole('link', { name: 'How it works', exact: true });
+    const pricing = dialog.getByRole('link', { name: 'Pricing', exact: true });
+    const docs = dialog.getByRole('link', { name: 'Docs', exact: true });
+    const openApp = dialog.getByRole('link', { name: /Open PromptLab/ });
 
-    await toggle.focus();
+    await tabUntil(page, toggle);
     await page.keyboard.press('Enter');
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(dialog).toBeVisible();
+    await expect(close).toBeFocused();
     const dialogAxeResults = await new AxeBuilder({ page })
       .include('#mobileNav')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
@@ -80,9 +122,16 @@ test.describe('mobile navigation', () => {
     await expectInside(page, '#mobileNav');
 
     await page.keyboard.press('Shift+Tab');
-    await expectInside(page, '#mobileNav');
+    await expect(openApp).toBeFocused();
     await page.keyboard.press('Tab');
-    await expectInside(page, '#mobileNav');
+    await expect(close).toBeFocused();
+
+    for (const target of [product, workflow, pricing, docs, openApp]) {
+      await page.keyboard.press('Tab');
+      await expect(target).toBeFocused();
+    }
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
 
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
@@ -91,7 +140,8 @@ test.describe('mobile navigation', () => {
 
     await page.keyboard.press('Space');
     await expect(dialog).toBeVisible();
-    await page.locator('#mobileNavClose').click();
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Enter');
     await expect(dialog).toBeHidden();
     await expect(toggle).toBeFocused();
   });
@@ -114,6 +164,44 @@ test.describe('mobile navigation', () => {
       target.getBoundingClientRect().top
     ))).toBeLessThan(180);
   });
+});
+
+test('critical landing controls work through the tab order without pointer input', async ({ page }) => {
+  await page.goto('/');
+
+  const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+  await page.keyboard.press('Tab');
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#main-content')).toBeFocused();
+
+  const balancedMode = page.locator('#demoBalanced');
+  const conciseMode = page.locator('#demoConcise');
+  await tabUntil(page, balancedMode);
+  await page.keyboard.press('ArrowRight');
+  await expect(conciseMode).toBeChecked();
+  await expect(conciseMode).toBeFocused();
+
+  const run = page.locator('#demoRun');
+  await tabUntil(page, run);
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#demoStatus')).toHaveText('Example ready. No provider was called.');
+  await expect(page.locator('#demoOutput')).not.toBeEmpty();
+
+  const monthly = page.locator('#billingMonthly');
+  const annual = page.locator('#billingAnnual');
+  await tabUntil(page, monthly);
+  await page.keyboard.press('ArrowRight');
+  await expect(annual).toBeChecked();
+  await expect(annual).toBeFocused();
+  await expect(page.locator('#proPrice')).toContainText('100');
+  await expect(page.locator('#proCta')).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
+
+  const firstQuestion = page.locator('#faq summary').first();
+  await tabUntil(page, firstQuestion);
+  await page.keyboard.press('Enter');
+  await expect(firstQuestion.locator('..')).toHaveAttribute('open', '');
 });
 
 test('sample modes, shortcut scope, busy state, status, result, and handoff work', async ({ page }) => {
@@ -143,6 +231,7 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
     const run = document.getElementById('demoRun');
     const status = document.getElementById('demoStatus');
     const snapshots = [];
+    const statusChanges = [];
     const capture = () => snapshots.push({
       outputBusy: output.getAttribute('aria-busy'),
       runBusy: run.getAttribute('aria-busy'),
@@ -157,7 +246,9 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
       subtree: true,
       characterData: true,
     });
-    window.__landingDemoGate = { snapshots, observer };
+    const statusObserver = new MutationObserver(() => statusChanges.push(status.textContent));
+    statusObserver.observe(status, { childList: true, subtree: true, characterData: true });
+    window.__landingDemoGate = { snapshots, observer, statusChanges, statusObserver };
   });
 
   await input.focus();
@@ -173,10 +264,15 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
   await expect(cta).toHaveAttribute('href', /\/app\/?/);
   await expect(demo).toContainText(/Try your own prompt/i);
 
-  const demoStates = await page.evaluate(() => {
+  const demoGate = await page.evaluate(() => {
     window.__landingDemoGate.observer.disconnect();
-    return window.__landingDemoGate.snapshots;
+    window.__landingDemoGate.statusObserver.disconnect();
+    return {
+      snapshots: window.__landingDemoGate.snapshots,
+      statusChanges: window.__landingDemoGate.statusChanges,
+    };
   });
+  const demoStates = demoGate.snapshots;
   expect(demoStates.some((state) => (
     state.outputBusy === 'true'
     && state.runBusy === 'true'
@@ -189,6 +285,10 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
     && !state.disabled
     && /(?:Example ready|(?:Balanced|Concise|Detailed) sample ready)/i.test(state.status)
   )), 'Demo should expose a completed/ready state').toBe(true);
+  expect(
+    demoGate.statusChanges.filter((message) => message === 'Example ready. No provider was called.'),
+    'The polite live region should receive one ready message',
+  ).toHaveLength(1);
 });
 
 test.describe('reduced motion', () => {
@@ -196,19 +296,44 @@ test.describe('reduced motion', () => {
 
   test('shows the complete sample immediately and leaves no running reveal animation', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.addInitScript(() => {
+      const nativeSetTimeout = window.setTimeout.bind(window);
+      window.__landingTimeoutDelays = [];
+      window.setTimeout = (handler, delay = 0, ...args) => {
+        window.__landingTimeoutDelays.push(Number(delay));
+        return nativeSetTimeout(handler, delay, ...args);
+      };
+    });
     await page.goto('/');
     await expect.poll(() => page.evaluate(() => (
       matchMedia('(prefers-reduced-motion: reduce)').matches
     ))).toBe(true);
 
+    await page.evaluate(() => { window.__landingTimeoutDelays = []; });
     await page.locator('#demoRun').click();
     await expect(page.locator('#demoStatus')).toContainText(/(?:Example ready|(?:Balanced|Concise|Detailed) sample ready)/i, { timeout: 750 });
     await expect(page.locator('#demoOutput')).not.toBeEmpty();
 
-    const runningAnimations = await page.evaluate(() => (
-      document.getAnimations().filter((animation) => animation.playState === 'running').length
-    ));
-    expect(runningAnimations).toBe(0);
+    const timeoutDelays = await page.evaluate(() => window.__landingTimeoutDelays);
+    expect(timeoutDelays).toContain(0);
+    expect(timeoutDelays).not.toContain(220);
+
+    const motionState = await page.evaluate(() => {
+      const heroBackground = document.querySelector('.hero-bg');
+      const badgeDot = document.querySelector('.hero-badge-dot');
+      return {
+        runningAnimations: document.getAnimations().filter((animation) => animation.playState === 'running').length,
+        heroBefore: getComputedStyle(heroBackground, '::before').animationName,
+        heroAfter: getComputedStyle(heroBackground, '::after').animationName,
+        badgeDot: getComputedStyle(badgeDot).animationName,
+      };
+    });
+    expect(motionState).toEqual({
+      runningAnimations: 0,
+      heroBefore: 'none',
+      heroAfter: 'none',
+      badgeDot: 'none',
+    });
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).scrollBehavior)).toBe('auto');
   });
 });
@@ -222,6 +347,17 @@ test.describe('JavaScript disabled', () => {
       await expect(page.locator(selector)).toBeVisible();
     }
 
+    const skipLink = page.getByRole('link', { name: 'Skip to main content' });
+    await page.keyboard.press('Tab');
+    await expect(skipLink).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#main-content')).toBeFocused();
+
+    await expect(page.locator('#demoRun')).toBeDisabled();
+    await expect(page.locator('#demoNoScript')).toBeVisible();
+    await expect(page.locator('#demoNoScript')).toContainText(/fixed example prompt remains visible/i);
+    await expect(page.locator('#demoInput')).toContainText(/Write a Python script that reads a CSV/i);
+
     const hiddenRevealCount = await page.locator('.reveal').evaluateAll((elements) => (
       elements.filter((element) => {
         const style = getComputedStyle(element);
@@ -230,6 +366,36 @@ test.describe('JavaScript disabled', () => {
     ));
     expect(hiddenRevealCount).toBe(0);
   });
+});
+
+test('1280x800 at 200% reflow proxy stays usable at a 640x400 CSS viewport', async ({ page }) => {
+  // This exercises the CSS viewport expected after zoom reflow. It does not simulate browser zoom.
+  await page.setViewportSize({ width: 640, height: 400 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+  const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+  for (const selector of [
+    '.nav-mobile-cta',
+    '#navToggle',
+    'label[for="demoBalanced"]',
+    'label[for="demoConcise"]',
+    'label[for="demoDetailed"]',
+    '#demoRun',
+    'label[for="billingMonthly"]',
+    'label[for="billingAnnual"]',
+    '#proCta',
+  ]) {
+    const target = page.locator(selector);
+    await target.scrollIntoViewIfNeeded();
+    await expect(target, `${selector} should remain visible in the reflow proxy`).toBeVisible();
+    const box = await target.boundingBox();
+    expect(box, `${selector} should have a rendered box`).not.toBeNull();
+    expect(box.x, `${selector} should not be clipped on the left`).toBeGreaterThanOrEqual(-1);
+    expect(box.x + box.width, `${selector} should not be clipped on the right`).toBeLessThanOrEqual(viewportWidth + 1);
+  }
 });
 
 test('target viewports avoid horizontal overflow', async ({ page }) => {
@@ -346,11 +512,31 @@ test('guide search stores content-free, allowlisted result attribution', async (
   await page.evaluate(() => sessionStorage.removeItem('promptlab_landing_attribution'));
 
   const search = page.locator('#docs-search-input');
-  await search.fill('clipboard');
+  const clear = page.locator('#docs-search-clear');
+  const status = page.locator('#docs-search-status');
+  await expect(status).toHaveAttribute('role', 'status');
+  await expect(status).toHaveAttribute('aria-atomic', 'true');
+  await tabUntil(page, search);
+  await page.keyboard.type('clipboard');
   const result = page.locator('#docs-search-list .search-result-link');
   await expect(result).toHaveCount(1);
   await expect(result).toContainText('Template variables');
-  await result.click();
+  await expect(status).toHaveText('1 task found.');
+  await expect(clear).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue('');
+  await expect(clear).toBeHidden();
+  await expect(page.locator('#docs-search-results')).toBeHidden();
+  await expect(status).toHaveText('Search cleared.');
+
+  await page.keyboard.type('clipboard');
+  await page.keyboard.press('Tab');
+  await expect(clear).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(result).toBeFocused();
+  await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/#variables$/);
 
   const stored = await page.evaluate(() => sessionStorage.getItem('promptlab_landing_attribution'));

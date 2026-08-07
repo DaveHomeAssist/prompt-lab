@@ -82,6 +82,7 @@ jobs:
             --offline
             --config .lychee.toml
             --root-dir ${{ github.workspace }}/prompt-lab-source/prompt-lab-web/dist
+            --index-files index.html
             ./README.md
             ./AGENTS.md
             ./docs/**/*.html

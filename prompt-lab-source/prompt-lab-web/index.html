@@ -18,10 +18,24 @@
 <meta name="twitter:description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
 <meta name="twitter:image" content="https://promptlab.tools/og-image.png">
 <meta name="description" content="Draft, improve, save, and evaluate prompts in one portable workspace. Try a transparent sample, then start free in the web app.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('./fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ========== RESET & FOUNDATIONS ========== */
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -42,7 +56,7 @@
   --gold-subtle: rgba(196, 164, 74, 0.12);
   --border: rgba(255, 255, 255, 0.06);
   --border-hover: rgba(255, 255, 255, 0.12);
-  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-display: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
   --font-body: 'Outfit', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -86,18 +100,24 @@ img { display: block; max-width: 100%; }
 
 /* ========== SCROLL REVEAL ========== */
 .reveal {
-  opacity: 0;
-  transform: translateY(40px);
-  transition: opacity 0.8s var(--ease-out-expo), transform 0.8s var(--ease-out-expo);
+  opacity: 1;
+  transform: none;
 }
-.reveal.visible {
+.reveal-motion .reveal {
+  transition: opacity 0.65s var(--ease-out-expo), transform 0.65s var(--ease-out-expo);
+}
+.reveal-motion .reveal:not(.visible) {
+  opacity: 0;
+  transform: translateY(32px);
+}
+.reveal-motion .reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }
-.reveal-delay-1 { transition-delay: 0.1s; }
-.reveal-delay-2 { transition-delay: 0.2s; }
-.reveal-delay-3 { transition-delay: 0.3s; }
-.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-motion .reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-motion .reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-motion .reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-motion .reveal-delay-4 { transition-delay: 0.4s; }
 
 /* ========== NAV ========== */
 .nav {
@@ -1527,6 +1547,14 @@ section[id] { scroll-margin-top: 88px; }
   color: var(--text-secondary);
   font-size: 0.86rem;
 }
+.demo-noscript {
+  margin: 0 20px 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-hover);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
 
 .features { padding: 120px 0; }
 .workflow-intro { margin-bottom: 82px; }
@@ -1739,6 +1767,11 @@ section[id] { scroll-margin-top: 88px; }
   .hero-bg::before,
   .hero-bg::after,
   .hero-badge-dot { animation: none; }
+  .reveal-motion .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 </style>
 </head>
@@ -1826,7 +1859,7 @@ section[id] { scroll-margin-top: 88px; }
         <span class="surface-link">Start free &rarr;</span>
       </a>
       <a class="surface-card" href="/setup.html" data-analytics-id="landing.surface.extension">
-        <span class="surface-eyebrow">Browser companion</span>
+        <span class="surface-eyebrow">Browser extension &mdash; setup</span>
         <h3>Extension</h3>
         <p>Keep the workbench beside ChatGPT, Claude, and other browser-based AI tools.</p>
         <span class="surface-link">View setup guide &rarr;</span>
@@ -1876,10 +1909,13 @@ section[id] { scroll-margin-top: 88px; }
       <div class="demo-footer">
         <span class="demo-hint">Ctrl or Cmd + Enter works while focus is in this sample.</span>
         <div class="demo-footer-actions">
-          <button class="demo-run" id="demoRun" type="button" aria-busy="false" data-analytics-id="landing.demo.show_result">Show sample result</button>
+          <button class="demo-run" id="demoRun" type="button" aria-busy="false" data-analytics-id="landing.demo.show_result" disabled>Show sample result</button>
           <a class="demo-cta" id="demoCta" href="/app?source=landing&amp;placement=demo&amp;intent=free" hidden data-analytics-id="landing.demo.try_own">Try your own prompt in PromptLab &rarr;</a>
         </div>
       </div>
+      <noscript>
+        <p class="demo-noscript" id="demoNoScript">The fixed example prompt remains visible above. Enable JavaScript to reveal its fixed sample result; no text is sent or processed.</p>
+      </noscript>
       <p class="demo-status" id="demoStatus" role="status" aria-live="polite"></p>
     </div>
   </div>
@@ -2286,6 +2322,32 @@ section[id] { scroll-margin-top: 88px; }
 (function () {
   'use strict';
 
+  const revealItems = Array.from(document.querySelectorAll('.reveal'));
+  const reduceRevealMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (revealItems.length > 0 && !reduceRevealMotion && 'IntersectionObserver' in window) {
+    const visibleBoundary = window.innerHeight * 0.94;
+    revealItems.forEach(function (item) {
+      if (item.getBoundingClientRect().top <= visibleBoundary) item.classList.add('visible');
+    });
+    document.documentElement.classList.add('reveal-motion');
+    const revealObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      });
+    }, { threshold: 0.12 });
+    revealItems.filter(function (item) {
+      return !item.classList.contains('visible');
+    }).forEach(function (item) {
+      revealObserver.observe(item);
+    });
+  } else {
+    revealItems.forEach(function (item) {
+      item.classList.add('visible');
+    });
+  }
+
   const nav = document.getElementById('nav');
   const navToggle = document.getElementById('navToggle');
   const mobileNav = document.getElementById('mobileNav');
@@ -2473,6 +2535,7 @@ section[id] { scroll-margin-top: 88px; }
   const demoCta = document.getElementById('demoCta');
   const demoModes = document.querySelectorAll('input[name="demoMode"]');
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  demoRun.disabled = false;
   const demoResults = {
     balanced: [
       'Create a Python command-line script that accepts a CSV file path and generates appropriate charts from its data.',
