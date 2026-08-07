@@ -19,6 +19,8 @@ const portalUrl = billingModuleUrl('portal.js');
 
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
+  'NODE_ENV',
+  'BILLING_ENABLED',
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
   'STRIPE_SECRET_KEY',
@@ -27,6 +29,7 @@ const ENV_KEYS = [
   'STRIPE_CHECKOUT_SUCCESS_URL',
   'STRIPE_CHECKOUT_CANCEL_URL',
   'STRIPE_PORTAL_RETURN_URL',
+  'PROMPTLAB_STRIPE_TIMEOUT_MS',
 ];
 const ORIGINAL_ENV = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 
@@ -43,6 +46,10 @@ function resetEnv() {
 async function loadHandler(moduleUrl) {
   const mod = await import(`${moduleUrl}?t=${Date.now()}-${Math.random()}`);
   return mod.default;
+}
+
+function isJwksHarnessRequest(url) {
+  return String(url || '') === process.env.CLERK_JWKS_URL;
 }
 
 async function createJwksHarness() {
@@ -87,7 +94,8 @@ test.afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
 });
 
-test('billing checkout creates a Stripe checkout for the requested plan', async () => {
+test('billing checkout uses verified Clerk identity and ignores posted identity fields', async () => {
+  const jwks = await createJwksHarness();
   process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
   process.env.STRIPE_YEARLY_PRICE_ID = 'price_yearly';
@@ -95,7 +103,8 @@ test('billing checkout creates a Stripe checkout for the requested plan', async 
   process.env.STRIPE_CHECKOUT_CANCEL_URL = 'https://promptlab.tools/app/?billing=cancelled';
 
   const captured = [];
-  globalThis.fetch = async (_url, init) => {
+  globalThis.fetch = async (url, init) => {
+    if (String(url) === process.env.CLERK_JWKS_URL) return ORIGINAL_FETCH(url, init);
     captured.push(new URLSearchParams(init.body));
     return new Response(JSON.stringify({
       id: 'cs_test_123',
@@ -106,23 +115,68 @@ test('billing checkout creates a Stripe checkout for the requested plan', async 
     });
   };
 
-  const handler = await loadHandler(checkoutUrl);
-  const response = await handler(new Request('https://promptlab.tools/api/billing/checkout', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      period: 'monthly',
-      email: 'user@example.com',
-      source: 'upgrade-modal',
-    }),
-  }));
+  try {
+    const handler = await loadHandler(checkoutUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/checkout', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwks.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        period: 'monthly',
+        email: 'attacker@example.com',
+        clerkUserId: 'user_attacker',
+        contactEmail: 'attacker@example.com',
+        source: 'upgrade-modal',
+      }),
+    }));
 
-  assert.equal(response.status, 200);
-  const payload = await response.json();
-  assert.equal(payload.url, 'https://checkout.stripe.com/c/pay/cs_test_123');
-  assert.equal(captured[0].get('line_items[0][price]'), 'price_monthly');
-  assert.equal(captured[0].get('customer_email'), 'user@example.com');
-  assert.equal(captured[0].get('subscription_data[metadata][billing_period]'), 'monthly');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.url, 'https://checkout.stripe.com/c/pay/cs_test_123');
+    assert.equal(captured[0].get('line_items[0][price]'), 'price_monthly');
+    assert.equal(captured[0].get('customer_email'), 'user@example.com');
+    assert.equal(captured[0].get('metadata[clerk_user_id]'), 'user_123');
+    assert.equal(captured[0].get('subscription_data[metadata][clerk_user_id]'), 'user_123');
+    assert.equal(captured[0].get('metadata[contact_email]'), null);
+    assert.equal(captured[0].get('subscription_data[metadata][billing_period]'), 'monthly');
+  } finally {
+    await jwks.close();
+  }
+});
+
+test('billing checkout aborts a stalled Stripe request', async () => {
+  const jwks = await createJwksHarness();
+  process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+  process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
+  process.env.PROMPTLAB_STRIPE_TIMEOUT_MS = '5';
+
+  globalThis.fetch = async (url, init) => {
+    if (String(url) === process.env.CLERK_JWKS_URL) return ORIGINAL_FETCH(url, init);
+    return new Promise((resolve, reject) => {
+      init.signal.addEventListener('abort', () => {
+        reject(new DOMException('Aborted', 'AbortError'));
+      }, { once: true });
+    });
+  };
+
+  try {
+    const handler = await loadHandler(checkoutUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/checkout', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwks.token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ period: 'monthly' }),
+    }));
+
+    assert.equal(response.status, 504);
+    assert.match(await response.text(), /Stripe request timed out/i);
+  } finally {
+    await jwks.close();
+  }
 });
 
 test('billing sync validates only configured Prompt Lab Stripe prices', async () => {
@@ -133,6 +187,7 @@ test('billing sync validates only configured Prompt Lab Stripe prices', async ()
   const calls = [];
 
   globalThis.fetch = async (url) => {
+    if (isJwksHarnessRequest(url)) return ORIGINAL_FETCH(url);
     calls.push(String(url));
     if (String(url).includes('/customers/search')) {
       return new Response(JSON.stringify({
@@ -186,6 +241,7 @@ test('billing sync rejects an email with no active Prompt Lab Pro subscription',
   process.env.STRIPE_YEARLY_PRICE_ID = 'price_yearly';
 
   globalThis.fetch = async (url) => {
+    if (isJwksHarnessRequest(url)) return ORIGINAL_FETCH(url);
     if (String(url).includes('/customers/search')) {
       return new Response(JSON.stringify({
         data: [{
@@ -232,6 +288,7 @@ test('billing portal returns the configured portal url', async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   process.env.STRIPE_PORTAL_RETURN_URL = 'https://promptlab.tools/app/';
   globalThis.fetch = async (url, init) => {
+    if (isJwksHarnessRequest(url)) return ORIGINAL_FETCH(url, init);
     if (String(url).includes('/customers/search')) {
       return new Response(JSON.stringify({
         data: [{

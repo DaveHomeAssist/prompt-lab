@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 import {
   buildStripeConfig,
   corsRejectionResponse,
@@ -9,15 +7,40 @@ import {
   parseJsonBody,
 } from '../_lib/stripeBilling.js';
 import { assertProductionConfig } from '../_lib/assertProductionConfig.js';
+import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js';
+import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
+import { isExternalFetchTimeout, isFeatureEnabled } from '../_lib/runtimeSafety.js';
 
-assertProductionConfig({ stripe: true });
+function readSource(value) {
+  return typeof value === 'string'
+    ? value.trim().replace(/[^a-zA-Z0-9._:-]+/g, '-').slice(0, 64)
+    : '';
+}
 
-export default async function handler(request) {
+async function checkoutHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   const corsRejection = corsRejectionResponse(request);
   if (corsRejection) return corsRejection;
   if (request.method !== 'POST') {
     return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
+  }
+
+  if (!isFeatureEnabled('BILLING_ENABLED')) {
+    return jsonResponse({ error: 'Billing is disabled.' }, 503, {}, request);
+  }
+
+  try {
+    assertProductionConfig({ clerk: true, stripe: true });
+  } catch {
+    return jsonResponse({ error: 'Billing is not configured.' }, 503, {}, request);
+  }
+
+  let auth;
+  try {
+    auth = await verifyClerkRequest(request);
+  } catch (error) {
+    const status = error instanceof ClerkAuthError ? error.status : 401;
+    return jsonResponse({ error: error.message || 'A valid Clerk session is required.' }, status, {}, request);
   }
 
   const body = await parseJsonBody(request);
@@ -27,13 +50,9 @@ export default async function handler(request) {
     const config = buildStripeConfig();
     const result = await createCheckout(config, {
       period,
-      email: typeof body?.email === 'string' ? body.email.trim() : '',
-      source: typeof body?.source === 'string' && body.source.trim() ? body.source.trim() : 'app',
-      clerkUserId: typeof body?.clerkUserId === 'string' ? body.clerkUserId.trim() : '',
-      deviceId: typeof body?.deviceId === 'string' ? body.deviceId.trim() : '',
-      sessionId: typeof body?.sessionId === 'string' ? body.sessionId.trim() : '',
-      surface: typeof body?.surface === 'string' ? body.surface.trim() : '',
-      contactEmail: typeof body?.contactEmail === 'string' ? body.contactEmail.trim() : '',
+      source: readSource(body?.source) || 'app',
+      email: auth.clerkEmail,
+      clerkUserId: auth.clerkUserId,
     });
 
     if (!result.checkoutUrl) {
@@ -48,6 +67,13 @@ export default async function handler(request) {
       checkoutSessionId: result.checkoutSessionId,
     }, 200, {}, request);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Could not create checkout.' }, 500, {}, request);
+    return jsonResponse(
+      { error: error.message || 'Could not create checkout.' },
+      isExternalFetchTimeout(error) ? 504 : 500,
+      {},
+      request,
+    );
   }
 }
+
+export default createNodeCompatibleHandler(checkoutHandler);

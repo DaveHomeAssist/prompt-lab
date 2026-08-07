@@ -11,9 +11,17 @@ const proxyModuleUrl = pathToFileURL(
 
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
+  'NODE_ENV',
   'ANTHROPIC_API_KEY',
+  'HOSTED_PROXY_ENABLED',
+  'HOSTED_SHARED_KEY_ENABLED',
+  'PROMPTLAB_WEB_ORIGIN',
+  'VITE_PROMPTLAB_WEB_ORIGIN',
+  'PROMPTLAB_PROXY_ALLOWED_ORIGINS',
   'HOSTED_ALLOWED_ANTHROPIC_MODELS',
   'HOSTED_MAX_TOKENS',
+  'PROMPTLAB_ANTHROPIC_TIMEOUT_MS',
+  'PROMPTLAB_REDIS_TIMEOUT_MS',
   'HOSTED_DEMO_DAILY_LIMIT',
   'HOSTED_BURST_LIMIT',
   'KV_REST_API_URL',
@@ -43,6 +51,7 @@ async function loadHandler() {
 function makeRequest({
   targetUrl = 'https://api.anthropic.com/v1/messages',
   headers = {},
+  requestOrigin = 'https://promptlab.tools',
   body = {
     model: 'claude-sonnet-4-6',
     max_tokens: 800,
@@ -51,7 +60,10 @@ function makeRequest({
 } = {}) {
   return new Request('https://promptlab.tools/api/proxy', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(requestOrigin ? { Origin: requestOrigin } : {}),
+    },
     body: JSON.stringify({
       targetUrl,
       headers,
@@ -63,6 +75,84 @@ function makeRequest({
 test.afterEach(() => {
   resetEnv();
   globalThis.fetch = ORIGINAL_FETCH;
+});
+
+test('production defaults the whole proxy route off, including BYOK requests', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  delete process.env.HOSTED_PROXY_ENABLED;
+  delete process.env.HOSTED_SHARED_KEY_ENABLED;
+  globalThis.fetch = assert.fail;
+
+  const handler = await loadHandler();
+  const byokResponse = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+  }));
+  assert.equal(byokResponse.status, 503);
+  assert.match(await byokResponse.text(), /proxy is disabled/i);
+
+  const sharedResponse = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+  assert.equal(sharedResponse.status, 503);
+  assert.match(await sharedResponse.text(), /proxy is disabled/i);
+});
+
+test('an enabled production proxy preserves BYOK while shared-key injection stays separately disabled', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'false';
+
+  const captured = [];
+  globalThis.fetch = async (_url, init) => {
+    captured.push(init.headers);
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const handler = await loadHandler();
+  const byokResponse = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+  }));
+  assert.equal(byokResponse.status, 200);
+  assert.equal(captured[0]['x-api-key'], 'user-key');
+
+  const sharedResponse = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+  assert.equal(sharedResponse.status, 403);
+  assert.match(await sharedResponse.text(), /shared-key access is disabled/i);
+  assert.equal(captured.length, 1);
+});
+
+test('production shared-key mode requires both hosted feature flags', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(init.headers['x-api-key'], 'server-key');
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+  assert.equal(response.status, 200);
 });
 
 test('proxy preserves user auth and only injects the shared key when auth is missing', async () => {
@@ -102,7 +192,82 @@ test('proxy preserves user auth and only injects the shared key when auth is mis
   assert.equal(captured[1].headers['x-api-key'], 'server-key');
 });
 
-test('proxy locks hosted traffic to Anthropic and clamps models and token budgets', async () => {
+test('proxy accepts only exact configured web or extension origins', async () => {
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'false';
+  process.env.PROMPTLAB_PROXY_ALLOWED_ORIGINS = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
+
+  const capturedOrigins = [];
+  globalThis.fetch = async (_url, init) => {
+    capturedOrigins.push(init.headers['x-api-key']);
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const handler = await loadHandler();
+  const webResponse = await handler(makeRequest({
+    headers: { 'x-api-key': 'web-key' },
+  }));
+  assert.equal(webResponse.status, 200);
+  assert.equal(webResponse.headers.get('Access-Control-Allow-Origin'), 'https://promptlab.tools');
+  assert.equal(webResponse.headers.get('Vary'), 'Origin');
+
+  const extensionResponse = await handler(makeRequest({
+    requestOrigin: 'chrome-extension://abcdefghijklmnopabcdefghijklmnop',
+    headers: { 'x-api-key': 'extension-key' },
+  }));
+  assert.equal(extensionResponse.status, 200);
+  assert.equal(
+    extensionResponse.headers.get('Access-Control-Allow-Origin'),
+    'chrome-extension://abcdefghijklmnopabcdefghijklmnop',
+  );
+
+  const evilResponse = await handler(makeRequest({
+    requestOrigin: 'https://evil.example',
+    headers: { 'x-api-key': 'evil-key' },
+  }));
+  assert.equal(evilResponse.status, 403);
+  assert.equal(evilResponse.headers.get('Access-Control-Allow-Origin'), null);
+
+  const missingOriginResponse = await handler(makeRequest({
+    requestOrigin: '',
+    headers: { 'x-api-key': 'missing-origin-key' },
+  }));
+  assert.equal(missingOriginResponse.status, 403);
+  assert.deepEqual(capturedOrigins, ['web-key', 'extension-key']);
+});
+
+test('proxy preflight is origin-specific and fails closed when the route is disabled', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+
+  const handler = await loadHandler();
+  const allowed = await handler(new Request('https://promptlab.tools/api/proxy', {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://promptlab.tools' },
+  }));
+  assert.equal(allowed.status, 204);
+  assert.equal(allowed.headers.get('Access-Control-Allow-Origin'), 'https://promptlab.tools');
+  assert.doesNotMatch(allowed.headers.get('Access-Control-Allow-Origin'), /\*/);
+
+  const rejected = await handler(new Request('https://promptlab.tools/api/proxy', {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://evil.example' },
+  }));
+  assert.equal(rejected.status, 403);
+
+  process.env.HOSTED_PROXY_ENABLED = 'false';
+  const disabled = await handler(new Request('https://promptlab.tools/api/proxy', {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://promptlab.tools' },
+  }));
+  assert.equal(disabled.status, 503);
+  assert.match(await disabled.text(), /proxy is disabled/i);
+});
+
+test('proxy locks traffic to the exact Anthropic Messages endpoint and clamps models and token budgets', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-4-6';
   process.env.HOSTED_MAX_TOKENS = '1024';
@@ -123,7 +288,17 @@ test('proxy locks hosted traffic to Anthropic and clamps models and token budget
     targetUrl: 'https://api.openai.com/v1/chat/completions',
   }));
   assert.equal(blocked.status, 403);
-  assert.match(await blocked.text(), /Anthropic only/i);
+  assert.match(await blocked.text(), /Anthropic Messages endpoint/i);
+
+  for (const targetUrl of [
+    'https://api.anthropic.com/v1/organizations',
+    'https://api.anthropic.com/v1/messages?beta=true',
+    'https://api.anthropic.com/v1/messages/extra',
+    'https://api.anthropic.com.evil.example/v1/messages',
+  ]) {
+    const response = await handler(makeRequest({ targetUrl }));
+    assert.equal(response.status, 403, targetUrl);
+  }
 
   const allowed = await handler(makeRequest({
     headers: { 'x-api-key': '__plb_hosted_shared_key__' },
@@ -136,6 +311,38 @@ test('proxy locks hosted traffic to Anthropic and clamps models and token budget
   assert.equal(allowed.status, 200);
   assert.equal(captured[0].model, 'claude-sonnet-4-6');
   assert.equal(captured[0].max_tokens, 1024);
+});
+
+test('proxy forwards only the provider header allowlist', async () => {
+  let capturedHeaders;
+  globalThis.fetch = async (_url, init) => {
+    capturedHeaders = init.headers;
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+      cookie: 'session=do-not-forward',
+      host: 'internal.example',
+      origin: 'https://evil.example',
+      'x-forwarded-for': '127.0.0.1',
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(capturedHeaders['x-api-key'], 'user-key');
+  assert.equal(capturedHeaders['anthropic-version'], '2023-06-01');
+  assert.equal(capturedHeaders['content-type'], 'application/json');
+  assert.equal(capturedHeaders.cookie, undefined);
+  assert.equal(capturedHeaders.host, undefined);
+  assert.equal(capturedHeaders.origin, undefined);
+  assert.equal(capturedHeaders['x-forwarded-for'], undefined);
 });
 
 test('proxy enforces the shared-key daily limit', async () => {
@@ -166,10 +373,14 @@ test('proxy returns upstream streaming bodies without buffering them first', asy
   process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
 
   const encoder = new TextEncoder();
-  globalThis.fetch = async () => new Response(
+  let upstreamAborted = false;
+  globalThis.fetch = async (_url, init) => new Response(
     new ReadableStream({
       start(controller) {
         controller.enqueue(encoder.encode('data: {"type":"content_block_delta","delta":{"text":"Copy-ready"}}\n\n'));
+        init.signal.addEventListener('abort', () => {
+          upstreamAborted = true;
+        }, { once: true });
       },
     }),
     {
@@ -198,4 +409,77 @@ test('proxy returns upstream streaming bodies without buffering them first', asy
   const first = await reader.read();
   await reader.cancel();
   assert.equal(new TextDecoder().decode(first.value), 'data: {"type":"content_block_delta","delta":{"text":"Copy-ready"}}\n\n');
+  assert.equal(upstreamAborted, true);
+});
+
+test('proxy aborts a stalled Anthropic request within the configured safety timeout', async () => {
+  process.env.PROMPTLAB_ANTHROPIC_TIMEOUT_MS = '5';
+
+  globalThis.fetch = async (_url, init) => new Promise((resolve, reject) => {
+    init.signal.addEventListener('abort', () => {
+      reject(new DOMException('Aborted', 'AbortError'));
+    }, { once: true });
+  });
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+  }));
+
+  assert.equal(response.status, 504);
+  assert.match(await response.text(), /Anthropic request timed out/i);
+});
+
+test('proxy keeps the Anthropic timeout active after streaming headers arrive', async () => {
+  process.env.PROMPTLAB_ANTHROPIC_TIMEOUT_MS = '10';
+  let upstreamAborted = false;
+  const encoder = new TextEncoder();
+
+  globalThis.fetch = async (_url, init) => new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"type":"message_start"}\n\n'));
+        init.signal.addEventListener('abort', () => {
+          upstreamAborted = true;
+          // Deliberately leave the mock stream open. The timeout wrapper must
+          // still fail the downstream read even if the upstream ignores abort.
+        }, { once: true });
+      },
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    },
+  );
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+    body: {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      stream: true,
+      messages: [{ role: 'user', content: 'hello' }],
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  const reader = response.body.getReader();
+  const first = await reader.read();
+  assert.equal(new TextDecoder().decode(first.value), 'data: {"type":"message_start"}\n\n');
+  await assert.rejects(
+    () => reader.read(),
+    (error) => {
+      assert.equal(error?.code, 'EXTERNAL_FETCH_TIMEOUT');
+      assert.match(error?.message || '', /Anthropic request timed out/i);
+      return true;
+    },
+  );
+  assert.equal(upstreamAborted, true);
 });

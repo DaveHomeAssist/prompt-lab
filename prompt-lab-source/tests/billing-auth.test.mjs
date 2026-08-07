@@ -16,17 +16,13 @@ function billingModuleUrl(fileName) {
 
 const licenseUrl = billingModuleUrl('license.js');
 const portalUrl = billingModuleUrl('portal.js');
+const ownerEntitlementsUrl = pathToFileURL(path.join(sourceDir, 'api', '_lib', 'ownerEntitlements.js')).href;
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
-  'CLERK_SECRET_KEY',
   'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
-  'PROMPTLAB_PRO_OWNER_EMAILS',
-  'PROMPTLAB_PRO_OWNER_USERNAMES',
   'PROMPTLAB_OWNER_CLERK_USER_IDS',
-  'PROMPTLAB_OWNER_EMAILS',
-  'PROMPTLAB_OWNER_USERNAMES',
   'STRIPE_SECRET_KEY',
   'STRIPE_MONTHLY_PRICE_ID',
   'STRIPE_YEARLY_PRICE_ID',
@@ -230,21 +226,6 @@ function installNoExternalFetchMock(message) {
   };
 }
 
-function installClerkProfileFetchMock(profile, message) {
-  globalThis.fetch = async (url, init = {}) => {
-    const urlText = String(url);
-    if (isJwksHarnessRequest(urlText)) return ORIGINAL_FETCH(url, init);
-    if (urlText === 'https://api.clerk.com/v1/users/user_owner') {
-      assert.match(String(init?.headers?.Authorization || ''), /^Bearer sk_test_/);
-      return new Response(JSON.stringify(profile), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    throw new Error(message);
-  };
-}
-
 test.beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_123';
   process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
@@ -334,59 +315,23 @@ test('billing license uses the verified Clerk identity instead of the posted ema
   }
 });
 
-test('billing license grants owner Pro by verified Clerk email before Stripe lookup', async () => {
-  const jwks = await createJwksHarness();
-  process.env.PROMPTLAB_OWNER_EMAILS = 'owner@example.com,dave@promptlab.tools';
-  installNoExternalFetchMock('Stripe should not be queried for owner email entitlement.');
+test('owner entitlement ignores email, username, and unsafe metadata grants', async () => {
+  const { lookupOwnerEntitlement } = await import(`${ownerEntitlementsUrl}?t=${Date.now()}-${Math.random()}`);
+  const mutableGrantEnv = {
+    PROMPTLAB_OWNER_EMAILS: 'owner@example.com',
+    PROMPTLAB_PRO_OWNER_EMAILS: 'owner@example.com',
+    PROMPTLAB_OWNER_USERNAMES: 'daverobertson',
+    PROMPTLAB_PRO_OWNER_USERNAMES: 'daverobertson',
+  };
 
-  try {
-    const handler = await loadHandler(licenseUrl);
-    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_owner', email: 'owner@example.com' })}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'validate' }),
-    }));
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.plan, 'pro');
-    assert.equal(payload.status, 'active');
-    assert.equal(payload.billingPeriod, 'owner');
-    assert.equal(payload.customerEmail, 'owner@example.com');
-    assert.equal(payload.owner, true);
-  } finally {
-    await jwks.close();
-  }
-});
-
-test('billing license grants owner Pro by legacy owner email env before Stripe lookup', async () => {
-  const jwks = await createJwksHarness();
-  process.env.PROMPTLAB_PRO_OWNER_EMAILS = 'owner@example.com,dave@promptlab.tools';
-  installNoExternalFetchMock('Stripe should not be queried for owner email entitlement.');
-
-  try {
-    const handler = await loadHandler(licenseUrl);
-    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_owner', email: 'owner@example.com' })}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'validate' }),
-    }));
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.plan, 'pro');
-    assert.equal(payload.billingPeriod, 'owner');
-    assert.equal(payload.customerEmail, 'owner@example.com');
-    assert.equal(payload.owner, true);
-  } finally {
-    await jwks.close();
-  }
+  assert.equal(lookupOwnerEntitlement({
+    clerkUserId: 'user_unlisted',
+    clerkEmail: 'owner@example.com',
+    clerkClaims: {
+      username: 'daverobertson',
+      unsafe_metadata: { username: 'daverobertson' },
+    },
+  }, mutableGrantEnv), null);
 });
 
 test('billing license grants owner Pro by verified Clerk user id before Stripe lookup', async () => {
@@ -438,77 +383,6 @@ test('billing license grants owner Pro by Clerk user id when the token has no em
     assert.equal(payload.billingPeriod, 'owner');
     assert.equal(payload.clerkUserId, 'user_owner');
     assert.equal(payload.customerEmail, '');
-    assert.equal(payload.owner, true);
-  } finally {
-    await jwks.close();
-  }
-});
-
-test('billing license grants owner Pro by Clerk username claim', async () => {
-  const jwks = await createJwksHarness();
-  process.env.PROMPTLAB_OWNER_USERNAMES = 'daverobertson';
-  installNoExternalFetchMock('External services should not be queried for owner username entitlement.');
-
-  try {
-    const handler = await loadHandler(licenseUrl);
-    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${jwks.tokenFor({
-          userId: 'user_owner',
-          email: '',
-          claims: { username: '@daverobertson' },
-        })}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'activate' }),
-    }));
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.plan, 'pro');
-    assert.equal(payload.billingPeriod, 'owner');
-    assert.equal(payload.clerkUserId, 'user_owner');
-    assert.equal(payload.owner, true);
-  } finally {
-    await jwks.close();
-  }
-});
-
-test('billing license grants owner Pro by Clerk profile username when token omits username', async () => {
-  const jwks = await createJwksHarness();
-  process.env.CLERK_SECRET_KEY = 'sk_test_profile';
-  process.env.PROMPTLAB_PRO_OWNER_USERNAMES = 'daverobertson';
-  installClerkProfileFetchMock({
-    id: 'user_owner',
-    username: 'daverobertson',
-    primary_email_address_id: 'email_owner',
-    email_addresses: [{
-      id: 'email_owner',
-      email_address: 'owner@example.com',
-    }],
-  }, 'Stripe should not be queried for owner profile username entitlement.');
-
-  try {
-    const handler = await loadHandler(licenseUrl);
-    const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${jwks.tokenFor({
-          userId: 'user_owner',
-          email: '',
-        })}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'validate' }),
-    }));
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.plan, 'pro');
-    assert.equal(payload.billingPeriod, 'owner');
-    assert.equal(payload.customerEmail, 'owner@example.com');
-    assert.equal(payload.clerkUserId, 'user_owner');
     assert.equal(payload.owner, true);
   } finally {
     await jwks.close();
