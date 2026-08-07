@@ -1,5 +1,10 @@
 import { APP_VERSION } from '../constants.js';
 import { isExtension } from './platform.js';
+import {
+  isLandingTelemetryEvent,
+  normalizeTelemetryEventName,
+  sanitizeTelemetryEventContext,
+} from '../../../shared/telemetrySchema.js';
 
 export const TELEMETRY_EVENT_LIMIT = 25;
 
@@ -63,15 +68,20 @@ export function createDeviceId() {
 }
 
 export function buildTelemetryEnvelope(state, sessionId, event, context = {}) {
+  const eventName = normalizeTelemetryEventName(event);
+  const landingEvent = isLandingTelemetryEvent(eventName);
   return {
     kind: 'event',
-    event,
+    event: eventName,
     appVersion: APP_VERSION,
     surface: getTelemetrySurface(),
     deviceId: state.deviceId,
     sessionId,
-    contactEmail: normalizeEmail(state.contactEmail),
-    context: sanitizeTelemetryContext(context),
+    telemetryEnabled: state?.telemetryEnabled === true,
+    ...(!landingEvent && normalizeEmail(state.contactEmail)
+      ? { contactEmail: normalizeEmail(state.contactEmail) }
+      : {}),
+    context: sanitizeTelemetryEventContext(eventName, context),
   };
 }
 
@@ -85,28 +95,6 @@ export function buildTelemetryIdentityPayload(state, sessionId, overrides = {}) 
     telemetryEnabled: overrides.telemetryEnabled ?? state.telemetryEnabled,
     contactEmail: normalizeEmail(overrides.contactEmail ?? state.contactEmail),
   };
-}
-
-export function sanitizeTelemetryContext(value, depth = 0) {
-  if (value == null) return null;
-  if (depth > 2) return null;
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value === 'string') return value.trim().slice(0, 240);
-  if (Array.isArray(value)) {
-    return value.slice(0, 12)
-      .map((item) => sanitizeTelemetryContext(item, depth + 1))
-      .filter((item) => item !== undefined);
-  }
-  if (typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .slice(0, 20)
-        .map(([key, item]) => [key.slice(0, 64), sanitizeTelemetryContext(item, depth + 1)])
-        .filter(([, item]) => item !== undefined)
-    );
-  }
-  return String(value).slice(0, 120);
 }
 
 export function normalizeEmail(value) {

@@ -1,13 +1,107 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from '../icons';
 import { BILLING_FEATURES, getFeatureMeta } from '../lib/billing.js';
 
 const FEATURE_LIST = Object.values(BILLING_FEATURES);
 
-export default function BillingModal({ m, billing, requestedFeature, onClose }) {
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+export default function BillingModal({
+  m,
+  billing,
+  requestedFeature,
+  requestedPeriod,
+  requestedSource,
+  onClose,
+}) {
   const [accessEmail, setAccessEmail] = useState(billing.customerEmail || '');
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
+  const overlayRef = useRef(null);
+  const dialogRef = useRef(null);
+  const closeButtonRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  const safeRequestedPeriod = requestedPeriod === 'monthly' || requestedPeriod === 'annual'
+    ? requestedPeriod
+    : null;
+  const checkoutSource = requestedSource === 'landing-pricing'
+    ? 'landing-pricing'
+    : (requestedFeature || 'billing-modal');
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const overlay = overlayRef.current;
+    const parent = overlay?.parentElement;
+    const backgroundState = parent
+      ? Array.from(parent.children)
+        .filter((element) => element !== overlay)
+        .map((element) => ({
+          element,
+          inert: element.getAttribute('inert'),
+          ariaHidden: element.getAttribute('aria-hidden'),
+        }))
+      : [];
+    const previousBodyOverflow = document.body.style.overflow;
+
+    backgroundState.forEach(({ element }) => {
+      element.setAttribute('inert', '');
+      element.setAttribute('aria-hidden', 'true');
+    });
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        onCloseRef.current?.();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+
+      const focusable = Array.from(dialogRef.current?.querySelectorAll(FOCUSABLE_SELECTOR) || []);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        dialogRef.current?.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.body.style.overflow = previousBodyOverflow;
+      backgroundState.forEach(({ element, inert, ariaHidden }) => {
+        if (inert == null) element.removeAttribute('inert');
+        else element.setAttribute('inert', inert);
+        if (ariaHidden == null) element.removeAttribute('aria-hidden');
+        else element.setAttribute('aria-hidden', ariaHidden);
+      });
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, []);
 
   useEffect(() => {
     setAccessEmail(billing.customerEmail || '');
@@ -47,9 +141,7 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   async function handleCheckout(period) {
     try {
       setLocalError('');
-      await billing.startCheckout(period, requestedFeature || 'billing-modal', {}, {
-        email: accessEmail,
-      });
+      await billing.startCheckout(period, checkoutSource);
     } catch (error) {
       setLocalError(error.message || 'Could not open Stripe checkout.');
     }
@@ -74,12 +166,15 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
   }
 
   return (
-    <div className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
+    <div ref={overlayRef} className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
       <div
+        ref={dialogRef}
         className={`pl-modal-panel w-full max-w-lg rounded-2xl border p-5 shadow-2xl ${m.modal} ${m.border} ${m.text}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="billing-modal-title"
+        aria-describedby="billing-modal-description"
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -90,13 +185,14 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
             <h2 id="billing-modal-title" className={`mt-1 text-lg font-semibold ${m.text}`}>
               {requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro'}
             </h2>
-            <p className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
+            <p id="billing-modal-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {requestedFeature
                 ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
                 : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.'}
             </p>
           </div>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onClose}
             className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
@@ -124,24 +220,38 @@ export default function BillingModal({ m, billing, requestedFeature, onClose }) 
           )}
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {safeRequestedPeriod && (
+          <p className={`mt-4 text-xs leading-relaxed ${m.textMuted}`} role="status">
+            Your {safeRequestedPeriod} choice from the pricing page is highlighted. Checkout starts only when you choose it below.
+          </p>
+        )}
+
+        <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
           <button
             type="button"
             onClick={() => handleCheckout('monthly')}
             disabled={billing.busyAction === 'checkout:monthly'}
-            className="ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
+            data-requested={safeRequestedPeriod === 'monthly' ? 'true' : undefined}
+            className={`ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-violet-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
             <div className="mt-1 text-xs text-violet-100">$9/month via Stripe</div>
+            {safeRequestedPeriod === 'monthly' && (
+              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-white">Selected on pricing page</div>
+            )}
           </button>
           <button
             type="button"
             onClick={() => handleCheckout('annual')}
             disabled={billing.busyAction === 'checkout:annual'}
-            className="ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40"
+            data-requested={safeRequestedPeriod === 'annual' ? 'true' : undefined}
+            className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
             <div className="mt-1 text-xs text-emerald-200">$100/year, best value</div>
+            {safeRequestedPeriod === 'annual' && (
+              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
+            )}
           </button>
         </div>
 
