@@ -18,7 +18,7 @@
     "test:audit:apps": "npm run check:node && node --test scripts/check-app-dependency-audit.test.mjs",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
     "test:landing": "npm run check:node && node --test tests/landing*.test.mjs scripts/landing-funnel-report.test.mjs",
-    "test:api": "npm run check:node && node --test tests/api-safety.test.mjs tests/production-config.test.mjs tests/proxy.test.mjs tests/telemetry-safety.test.mjs tests/stripeBilling.test.mjs tests/billing-auth.test.mjs tests/billing-cors.test.mjs",
+    "test:api": "npm run check:node && node --test tests/api-safety.test.mjs tests/production-config.test.mjs tests/proxy.test.mjs tests/telemetry-safety.test.mjs tests/stripeBilling.test.mjs tests/billing-auth.test.mjs tests/billing-cors.test.mjs tests/web-production-env.test.mjs tests/vercel-deploy.test.mjs",
     "test:e2e:landing": "npm run check:node && npm run test:e2e:landing --prefix prompt-lab-web",
     "build:landing": "npm run check:node && node scripts/publish-landing.mjs",
     "notion:docs-agent": "npm run check:node && node scripts/notion-docs-agent.mjs",

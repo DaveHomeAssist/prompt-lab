@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prompt Lab — Turn rough prompts into reusable workflows</title>
 <link rel="canonical" href="https://promptlab.tools/">
@@ -2156,7 +2157,7 @@ section[id] { scroll-margin-top: 88px; }
       <div class="section-label">Privacy and portability</div>
       <h2 class="section-heading" id="privacyHeading">Your prompt library stays useful outside Prompt Lab.</h2>
       <p class="section-sub">The editor keeps prompts and libraries in local browser storage. Provider calls happen only when you choose to connect and run one.</p>
-      <a class="btn-secondary" href="/privacy">Read the privacy policy &rarr;</a>
+      <a class="btn-secondary" href="/privacy" data-analytics-id="landing.privacy.open_policy">Read the privacy policy &rarr;</a>
     </div>
     <ul class="privacy-list">
       <li><strong>Local by default</strong><span>Drafts and saved library items remain in this browser unless you export or connect another service.</span></li>
@@ -2439,43 +2440,91 @@ section[id] { scroll-margin-top: 88px; }
 
   const attributionKey = 'promptlab_landing_attribution';
   const attributionLifetime = 24 * 60 * 60 * 1000;
+  const attributionClockSkew = 5 * 60 * 1000;
+  const attributionLimit = 12;
   const allowedEvents = new Set([
     'landing.cta_clicked',
     'landing.demo_completed',
     'landing.surface_selected',
-    'landing.pricing_period_selected'
+    'landing.pricing_period_selected',
+    'landing.docs_result_selected'
   ]);
   const allowedPlacements = new Set([
     'nav', 'nav_mobile', 'mobile_menu', 'hero', 'surface_web',
     'surface_extension', 'surface_desktop', 'demo', 'pricing_free',
-    'pricing_pro', 'final_cta', 'footer'
+    'pricing_pro', 'final_cta', 'footer', 'docs_search', 'privacy'
   ]);
   const allowedIntents = new Set(['open', 'free', 'upgrade', 'sample']);
-  const allowedDestinations = new Set(['app', 'demo', 'setup', 'source']);
+  const allowedDestinations = new Set(['app', 'demo', 'setup', 'source', 'guide', 'privacy']);
   const allowedPeriods = new Set(['monthly', 'annual']);
   const allowedDemoModes = new Set(['balanced', 'concise', 'detailed']);
+  const eventFields = {
+    'landing.cta_clicked': ['placement', 'intent', 'destination', 'period'],
+    'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],
+    'landing.surface_selected': ['placement', 'intent', 'destination'],
+    'landing.pricing_period_selected': ['placement', 'intent', 'period'],
+    'landing.docs_result_selected': ['placement', 'intent', 'destination', 'resultCount']
+  };
+  const requiredEventFields = {
+    'landing.cta_clicked': ['placement', 'intent', 'destination'],
+    'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],
+    'landing.surface_selected': ['placement', 'intent', 'destination'],
+    'landing.pricing_period_selected': ['placement', 'period'],
+    'landing.docs_result_selected': ['placement', 'destination', 'resultCount']
+  };
+
+  function normalizeAttributionField(field, value) {
+    if (field === 'resultCount') {
+      if (!Number.isSafeInteger(value)) return undefined;
+      return Math.max(0, Math.min(50, value));
+    }
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (field === 'placement' && allowedPlacements.has(normalized)) return normalized;
+    if (field === 'intent' && allowedIntents.has(normalized)) return normalized;
+    if (field === 'destination' && allowedDestinations.has(normalized)) return normalized;
+    if (field === 'period' && allowedPeriods.has(normalized)) return normalized;
+    if (field === 'demoMode' && allowedDemoModes.has(normalized)) return normalized;
+    return undefined;
+  }
+
+  function sanitizeAttributionEvent(value, now) {
+    if (!value || typeof value !== 'object' || !allowedEvents.has(value.event)) return null;
+    if (
+      !Number.isSafeInteger(value.timestamp)
+      || value.timestamp < now - attributionLifetime
+      || value.timestamp > now + attributionClockSkew
+    ) {
+      return null;
+    }
+
+    const event = { event: value.event, timestamp: value.timestamp };
+    eventFields[value.event].forEach(function (field) {
+      const normalized = normalizeAttributionField(field, value[field]);
+      if (normalized !== undefined) event[field] = normalized;
+    });
+    if (requiredEventFields[value.event].some(function (field) {
+      return event[field] === undefined;
+    })) {
+      return null;
+    }
+    return event;
+  }
 
   function recordAttribution(candidate) {
-    if (!allowedEvents.has(candidate.event)) return;
-    const event = { event: candidate.event, timestamp: Date.now() };
-    if (allowedPlacements.has(candidate.placement)) event.placement = candidate.placement;
-    if (allowedIntents.has(candidate.intent)) event.intent = candidate.intent;
-    if (allowedDestinations.has(candidate.destination)) event.destination = candidate.destination;
-    if (allowedPeriods.has(candidate.period)) event.period = candidate.period;
-    if (allowedDemoModes.has(candidate.demoMode)) event.demoMode = candidate.demoMode;
-    if (candidate.resultCount === 1) event.resultCount = 1;
+    const now = Date.now();
+    const event = sanitizeAttributionEvent({ ...candidate, timestamp: now }, now);
+    if (!event) return;
 
     try {
       const parsed = JSON.parse(sessionStorage.getItem(attributionKey) || '{"version":1,"events":[]}');
-      const now = Date.now();
       const previous = parsed && parsed.version === 1 && Array.isArray(parsed.events)
-        ? parsed.events.filter(function (item) {
-            return item && Number.isFinite(item.timestamp) && now - item.timestamp <= attributionLifetime;
-          })
+        ? parsed.events
+            .map(function (item) { return sanitizeAttributionEvent(item, now); })
+            .filter(Boolean)
         : [];
       sessionStorage.setItem(attributionKey, JSON.stringify({
         version: 1,
-        events: previous.concat(event).slice(-12)
+        events: previous.concat(event).slice(-attributionLimit)
       }));
     } catch (error) {
       try {
@@ -2498,6 +2547,7 @@ section[id] { scroll-margin-top: 88px; }
     'landing.demo.try_own': ['demo', 'free', 'app'],
     'landing.pricing.free': ['pricing_free', 'free', 'app'],
     'landing.pricing.pro': ['pricing_pro', 'upgrade', 'app'],
+    'landing.privacy.open_policy': ['privacy', 'open', 'privacy'],
     'landing.final.try_free': ['final_cta', 'free', 'app'],
     'landing.footer.open_app': ['footer', 'open', 'app']
   };

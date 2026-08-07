@@ -92,8 +92,15 @@ describe('landing attribution handoff', () => {
     expect(JSON.stringify(result)).not.toMatch(/private|example\.com|sk-secret|person@/);
   });
 
-  it('round-trips the four planned measurement events without visitor content', () => {
+  it('round-trips every captured measurement event without visitor content', () => {
     const plannedEvents = [
+      {
+        event: 'landing.cta_clicked',
+        placement: 'privacy',
+        intent: 'open',
+        destination: 'privacy',
+        timestamp: NOW - 5,
+      },
       {
         event: 'landing.demo_completed',
         placement: 'demo',
@@ -142,6 +149,7 @@ describe('landing attribution handoff', () => {
 
     expect(telemetryEvents.map(({ event }) => event)).toEqual([
       'landing.referral_opened',
+      'landing.cta_clicked',
       'landing.demo_completed',
       'landing.surface_selected',
       'landing.pricing_period_selected',

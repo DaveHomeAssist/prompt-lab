@@ -13,6 +13,30 @@ const repoVercelDir = join(repoDir, '.vercel');
 const sourceProjectFile = join(sourceVercelDir, 'project.json');
 const repoProjectFile = join(repoVercelDir, 'project.json');
 const prod = process.argv.includes('--prod');
+export const CANONICAL_VERCEL_PROJECT_ID = 'prj_kynCeAMcASaNBIBMRHVJb7sozDfN';
+export const CANONICAL_VERCEL_PROJECT_NAME = 'prompt-lab';
+
+export function assertCanonicalVercelProject(projectJson) {
+  let project;
+  try {
+    project = JSON.parse(projectJson);
+  } catch {
+    throw new Error('Invalid prompt-lab-source/.vercel/project.json. Relink the canonical Prompt Lab project before deploying.');
+  }
+
+  if (
+    project?.projectId !== CANONICAL_VERCEL_PROJECT_ID
+    || project?.projectName !== CANONICAL_VERCEL_PROJECT_NAME
+  ) {
+    const linkedName = typeof project?.projectName === 'string' ? project.projectName : 'unknown';
+    const linkedId = typeof project?.projectId === 'string' ? project.projectId : 'unknown';
+    throw new Error(
+      `Refusing Vercel deployment: linked project "${linkedName}" (${linkedId}) is not canonical "${CANONICAL_VERCEL_PROJECT_NAME}" (${CANONICAL_VERCEL_PROJECT_ID}).`,
+    );
+  }
+
+  return project;
+}
 
 async function pathExists(target) {
   try {
@@ -27,11 +51,12 @@ async function ensureSourceProjectLink() {
   if (!await pathExists(sourceProjectFile)) {
     throw new Error('Missing prompt-lab-source/.vercel/project.json. Run `vercel link` from prompt-lab-source first.');
   }
+  const sourceProjectJson = await readFile(sourceProjectFile, 'utf8');
+  assertCanonicalVercelProject(sourceProjectJson);
+  return sourceProjectJson;
 }
 
-async function prepareRepoLink() {
-  const sourceProjectJson = await readFile(sourceProjectFile, 'utf8');
-
+async function prepareRepoLink(sourceProjectJson) {
   if (await pathExists(repoProjectFile)) {
     const repoProjectJson = await readFile(repoProjectFile, 'utf8');
     if (repoProjectJson.trim() !== sourceProjectJson.trim()) {
@@ -52,8 +77,8 @@ async function prepareRepoLink() {
 }
 
 async function runDeploy() {
-  await ensureSourceProjectLink();
-  const createdRepoLink = await prepareRepoLink();
+  const sourceProjectJson = await ensureSourceProjectLink();
+  const createdRepoLink = await prepareRepoLink(sourceProjectJson);
 
   try {
     await new Promise((resolvePromise, rejectPromise) => {
@@ -79,7 +104,9 @@ async function runDeploy() {
   }
 }
 
-runDeploy().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+if (resolve(process.argv[1] || '') === fileURLToPath(import.meta.url)) {
+  runDeploy().catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

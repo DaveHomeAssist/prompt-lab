@@ -11,6 +11,7 @@ const landingHtml = readFileSync(join(webDir, 'index.html'), 'utf8');
 const guideHtml = readFileSync(join(webDir, 'public', 'guide.html'), 'utf8');
 const setupHtml = readFileSync(join(webDir, 'public', 'setup.html'), 'utf8');
 const privacyHtml = readFileSync(join(webDir, 'public', 'privacy.html'), 'utf8');
+const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'index.html'), 'utf8');
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -187,6 +188,50 @@ test('public landing surfaces load fonts locally without automatic third-party r
       `${pageName} should load JetBrains Mono from ${fontRoot}`,
     );
   }
+});
+
+test('public landing surfaces declare a first-party-only content security policy', () => {
+  const pages = [
+    ['landing', landingHtml],
+    ['guide', guideHtml],
+    ['setup', setupHtml],
+    ['privacy', privacyHtml],
+    ['privacy redirect', privacyRedirectHtml],
+  ];
+  const requiredDirectives = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ];
+
+  for (const [pageName, html] of pages) {
+    const policyTag = [...html.matchAll(/<meta\b[^>]*>/gi)]
+      .map((match) => match[0])
+      .find((tag) => attributeValue(tag, 'http-equiv')?.toLowerCase() === 'content-security-policy');
+    assert.ok(policyTag, `${pageName} needs a Content-Security-Policy meta tag`);
+    const policy = attributeValue(policyTag, 'content') ?? '';
+    for (const directive of requiredDirectives) {
+      assert.ok(policy.includes(directive), `${pageName} CSP is missing ${directive}`);
+    }
+    assert.doesNotMatch(policy, /https?:|\*/i, `${pageName} CSP must not allow external origins or wildcards`);
+  }
+});
+
+test('landing conversion controls have unique stable analytics identifiers', () => {
+  const analyticsIds = [...landingHtml.matchAll(/\bdata-analytics-id=["']([^"']+)["']/gi)]
+    .map((match) => match[1]);
+  assert.equal(new Set(analyticsIds).size, analyticsIds.length, 'Landing analytics IDs must be unique');
+  assert.ok(analyticsIds.includes('landing.privacy.open_policy'));
+
+  const privacyCta = landingHtml.match(/<a\b[^>]*href=["']\/privacy["'][^>]*>/i)?.[0];
+  assert.ok(privacyCta, 'Expected the privacy policy CTA');
+  assert.equal(attributeValue(privacyCta, 'data-analytics-id'), 'landing.privacy.open_policy');
 });
 
 test('landing task links resolve to canonical guide and setup headings', () => {

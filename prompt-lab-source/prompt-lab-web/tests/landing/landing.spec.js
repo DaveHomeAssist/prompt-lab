@@ -79,6 +79,41 @@ test('public surfaces make no third-party requests before consent', async ({ pag
   expect(thirdPartyRequests).toEqual([]);
 });
 
+test('public content security policy blocks injected third-party scripts', async ({ page }) => {
+  let thirdPartyScriptRequested = false;
+  await page.route('https://vercel.live/**', async (route) => {
+    thirdPartyScriptRequested = true;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: 'window.__unexpectedThirdPartyScript = true;',
+    });
+  });
+
+  for (const route of ['/', '/guide.html', '/setup.html', '/privacy.html']) {
+    thirdPartyScriptRequested = false;
+    await page.goto(route);
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        const script = document.createElement('script');
+        const timeout = window.setTimeout(resolve, 250);
+        script.src = 'https://vercel.live/_next-live/feedback/feedback.js';
+        script.addEventListener('load', () => {
+          window.clearTimeout(timeout);
+          resolve();
+        }, { once: true });
+        script.addEventListener('error', () => {
+          window.clearTimeout(timeout);
+          resolve();
+        }, { once: true });
+        document.head.append(script);
+      });
+    });
+    expect(thirdPartyScriptRequested, `${route} allowed an injected third-party script request`).toBe(false);
+    expect(await page.evaluate(() => window.__unexpectedThirdPartyScript)).toBeUndefined();
+  }
+});
+
 test('reveal motion is a JavaScript enhancement with a visible completion state', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('html')).toHaveClass(/reveal-motion/);
@@ -289,6 +324,106 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
     demoGate.statusChanges.filter((message) => message === 'Example ready. No provider was called.'),
     'The polite live region should receive one ready message',
   ).toHaveLength(1);
+});
+
+test('landing controls purge poisoned attribution and store only allowlisted funnel events', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    const now = Date.now();
+    sessionStorage.setItem('promptlab_landing_attribution', JSON.stringify({
+      version: 1,
+      events: [
+        {
+          event: 'landing.cta_clicked',
+          placement: 'hero',
+          intent: 'free',
+          destination: 'app',
+          timestamp: now - 1_000,
+          prompt: 'private prompt poison',
+          email: 'poison@example.com',
+          url: 'https://tracker.invalid/private',
+        },
+        {
+          event: 'landing.unknown',
+          placement: 'hero',
+          intent: 'free',
+          destination: 'app',
+          timestamp: now,
+          prompt: 'unknown event poison',
+        },
+        {
+          event: 'landing.cta_clicked',
+          placement: 'hero',
+          intent: 'free',
+          destination: 'app',
+          timestamp: now - (25 * 60 * 60 * 1000),
+          email: 'stale@example.com',
+        },
+        {
+          event: 'landing.cta_clicked',
+          placement: 'hero',
+          intent: 'free',
+          destination: 'app',
+          timestamp: now + (10 * 60 * 1000),
+          url: 'https://future.invalid/',
+        },
+      ],
+    }));
+
+    for (const analyticsId of ['landing.privacy.open_policy', 'landing.surface.extension']) {
+      document.querySelector(`[data-analytics-id="${analyticsId}"]`)
+        .addEventListener('click', (event) => event.preventDefault(), { capture: true });
+    }
+  });
+
+  await page.locator('[data-analytics-id="landing.privacy.open_policy"]').click();
+  await page.locator('[data-analytics-id="landing.surface.extension"]').click();
+  await page.locator('#demoRun').click();
+  await expect(page.locator('#demoStatus')).toHaveText('Example ready. No provider was called.');
+  await page.locator('label[for="billingAnnual"]').click();
+
+  const stored = await page.evaluate(() => sessionStorage.getItem('promptlab_landing_attribution'));
+  expect(stored).not.toBeNull();
+  for (const poison of [
+    'private prompt poison',
+    'poison@example.com',
+    'tracker.invalid',
+    'unknown event poison',
+    'stale@example.com',
+    'future.invalid',
+  ]) {
+    expect(stored).not.toContain(poison);
+  }
+
+  const payload = JSON.parse(stored);
+  expect(payload.version).toBe(1);
+  expect(payload.events.map(({ event }) => event)).toEqual([
+    'landing.cta_clicked',
+    'landing.cta_clicked',
+    'landing.cta_clicked',
+    'landing.surface_selected',
+    'landing.demo_completed',
+    'landing.pricing_period_selected',
+  ]);
+  expect(payload.events[1]).toMatchObject({
+    event: 'landing.cta_clicked',
+    placement: 'privacy',
+    intent: 'open',
+    destination: 'privacy',
+  });
+  expect(payload.events[3]).toMatchObject({
+    event: 'landing.surface_selected',
+    placement: 'surface_extension',
+    intent: 'open',
+    destination: 'setup',
+  });
+
+  const allowedKeys = new Set([
+    'event', 'timestamp', 'placement', 'intent', 'destination', 'period', 'demoMode', 'resultCount',
+  ]);
+  for (const event of payload.events) {
+    expect(Object.keys(event).every((key) => allowedKeys.has(key))).toBe(true);
+  }
 });
 
 test.describe('reduced motion', () => {
@@ -561,4 +696,67 @@ test('guide search stores content-free, allowlisted result attribution', async (
     'resultCount',
     'timestamp',
   ]);
+});
+
+test('guide search revalidates retained attribution before saving a result', async ({ page }) => {
+  await page.goto('/guide.html');
+  await page.evaluate(() => {
+    const now = Date.now();
+    sessionStorage.setItem('promptlab_landing_attribution', JSON.stringify({
+      version: 1,
+      events: [
+        {
+          event: 'landing.cta_clicked',
+          placement: 'hero',
+          intent: 'free',
+          destination: 'app',
+          timestamp: now - 1_000,
+          prompt: 'guide prompt poison',
+          email: 'guide-poison@example.com',
+          url: 'https://guide-tracker.invalid/private',
+        },
+        {
+          event: 'landing.unknown',
+          placement: 'docs_search',
+          destination: 'guide',
+          resultCount: 1,
+          timestamp: now,
+          searchTerm: 'clipboard',
+        },
+      ],
+    }));
+  });
+
+  await page.locator('#docs-search-input').fill('clipboard');
+  await page.locator('#docs-search-list .search-result-link').click();
+  await expect(page).toHaveURL(/#variables$/);
+
+  const stored = await page.evaluate(() => sessionStorage.getItem('promptlab_landing_attribution'));
+  expect(stored).not.toContain('guide prompt poison');
+  expect(stored).not.toContain('guide-poison@example.com');
+  expect(stored).not.toContain('guide-tracker.invalid');
+  expect(stored).not.toContain('clipboard');
+
+  const payload = JSON.parse(stored);
+  expect(payload.events).toHaveLength(2);
+  expect(payload.events[0]).toMatchObject({
+    event: 'landing.cta_clicked',
+    placement: 'hero',
+    intent: 'free',
+    destination: 'app',
+  });
+  expect(Object.keys(payload.events[0]).sort()).toEqual([
+    'destination',
+    'event',
+    'intent',
+    'placement',
+    'timestamp',
+  ]);
+  expect(payload.events[1]).toMatchObject({
+    event: 'landing.docs_result_selected',
+    placement: 'docs_search',
+    intent: 'open',
+    destination: 'guide',
+    resultCount: 1,
+  });
 });

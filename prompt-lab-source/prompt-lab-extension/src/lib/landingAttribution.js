@@ -38,6 +38,7 @@ const ALLOWED_VALUES = {
     'final_cta',
     'footer',
     'docs_search',
+    'privacy',
   ]),
   intent: new Set([
     'open',
@@ -51,6 +52,7 @@ const ALLOWED_VALUES = {
     'setup',
     'source',
     'guide',
+    'privacy',
   ]),
   period: BILLING_PERIODS,
   demoMode: new Set(['balanced', 'concise', 'detailed']),

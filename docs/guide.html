@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>How-To Guide — Prompt Lab</title>
 <link rel="canonical" href="https://promptlab.tools/guide.html">
@@ -1005,29 +1006,95 @@ code {
   const status = document.getElementById('docs-search-status');
   const attributionKey = 'promptlab_landing_attribution';
   const attributionLifetime = 24 * 60 * 60 * 1000;
+  const attributionClockSkew = 5 * 60 * 1000;
+  const attributionLimit = 12;
+  const allowedEvents = new Set([
+    'landing.cta_clicked',
+    'landing.demo_completed',
+    'landing.surface_selected',
+    'landing.pricing_period_selected',
+    'landing.docs_result_selected'
+  ]);
+  const allowedPlacements = new Set([
+    'nav', 'nav_mobile', 'mobile_menu', 'hero', 'surface_web',
+    'surface_extension', 'surface_desktop', 'demo', 'pricing_free',
+    'pricing_pro', 'final_cta', 'footer', 'docs_search', 'privacy'
+  ]);
+  const allowedIntents = new Set(['open', 'free', 'upgrade', 'sample']);
+  const allowedDestinations = new Set(['app', 'demo', 'setup', 'source', 'guide', 'privacy']);
+  const allowedPeriods = new Set(['monthly', 'annual']);
+  const allowedDemoModes = new Set(['balanced', 'concise', 'detailed']);
+  const eventFields = {
+    'landing.cta_clicked': ['placement', 'intent', 'destination', 'period'],
+    'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],
+    'landing.surface_selected': ['placement', 'intent', 'destination'],
+    'landing.pricing_period_selected': ['placement', 'intent', 'period'],
+    'landing.docs_result_selected': ['placement', 'intent', 'destination', 'resultCount']
+  };
+  const requiredEventFields = {
+    'landing.cta_clicked': ['placement', 'intent', 'destination'],
+    'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],
+    'landing.surface_selected': ['placement', 'intent', 'destination'],
+    'landing.pricing_period_selected': ['placement', 'period'],
+    'landing.docs_result_selected': ['placement', 'destination', 'resultCount']
+  };
 
   searchRegion.hidden = false;
 
+  function normalizeAttributionField(field, value) {
+    if (field === 'resultCount') {
+      if (!Number.isSafeInteger(value)) return undefined;
+      return Math.max(0, Math.min(50, value));
+    }
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    if (field === 'placement' && allowedPlacements.has(normalized)) return normalized;
+    if (field === 'intent' && allowedIntents.has(normalized)) return normalized;
+    if (field === 'destination' && allowedDestinations.has(normalized)) return normalized;
+    if (field === 'period' && allowedPeriods.has(normalized)) return normalized;
+    if (field === 'demoMode' && allowedDemoModes.has(normalized)) return normalized;
+    return undefined;
+  }
+
+  function sanitizeAttributionEvent(value, now) {
+    if (!value || typeof value !== 'object' || !allowedEvents.has(value.event)) return null;
+    if (
+      !Number.isSafeInteger(value.timestamp)
+      || value.timestamp < now - attributionLifetime
+      || value.timestamp > now + attributionClockSkew
+    ) {
+      return null;
+    }
+
+    const event = { event: value.event, timestamp: value.timestamp };
+    eventFields[value.event].forEach((field) => {
+      const normalized = normalizeAttributionField(field, value[field]);
+      if (normalized !== undefined) event[field] = normalized;
+    });
+    if (requiredEventFields[value.event].some((field) => event[field] === undefined)) return null;
+    return event;
+  }
+
   function recordDocsSelection(task, resultCount) {
-    const event = {
+    const now = Date.now();
+    const event = sanitizeAttributionEvent({
       event: 'landing.docs_result_selected',
       placement: 'docs_search',
       intent: 'open',
       destination: task.href.includes('setup.html') ? 'setup' : 'guide',
       resultCount: Math.max(1, Math.min(50, resultCount)),
-      timestamp: Date.now()
-    };
+      timestamp: now
+    }, now);
+    if (!event) return;
     try {
       const parsed = JSON.parse(sessionStorage.getItem(attributionKey) || '{"version":1,"events":[]}');
-      const now = Date.now();
       const previous = parsed && parsed.version === 1 && Array.isArray(parsed.events)
-        ? parsed.events.filter((item) => (
-            item && Number.isFinite(item.timestamp) && now - item.timestamp <= attributionLifetime
-          ))
+        ? parsed.events
+            .map((item) => sanitizeAttributionEvent(item, now))
+            .filter(Boolean)
         : [];
       sessionStorage.setItem(attributionKey, JSON.stringify({
         version: 1,
-        events: previous.concat(event).slice(-12)
+        events: previous.concat(event).slice(-attributionLimit)
       }));
     } catch (error) {
       try {
