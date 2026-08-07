@@ -36,7 +36,7 @@
   --surface-800:      #1E293B;
   --surface-700:      #334155;
   --surface-600:      #475569;
-  --surface-500:      #64748B;
+  --surface-500:      #718198;
   --surface-400:      #94A3B8;
   --surface-300:      #CBD5E1;
   --surface-200:      #E2E8F0;
@@ -63,7 +63,7 @@
   --border-hi:   rgba(255,255,255,0.14);
   --text:        var(--surface-100);
   --text-sub:    var(--surface-400);
-  --text-muted:  var(--surface-600);
+  --text-muted:  var(--surface-500);
   --accent:      var(--lab-violet);
   --accent-light:var(--lab-violet-light);
   --accent-dim:  var(--glow-violet-soft);
@@ -94,11 +94,28 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── FOCUS ── */
+/* ── ACCESSIBILITY ── */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-180%);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus { transform: translateY(0); }
+
 a:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--accent-light);
-  outline-offset: 2px;
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--accent-light);
+  outline-offset: 3px;
   border-radius: var(--radius-sm);
 }
 
@@ -123,6 +140,7 @@ header {
   align-items: center;
   gap: 0.6rem;
   text-decoration: none;
+  min-height: 44px;
 }
 
 .logo-icon {
@@ -151,7 +169,7 @@ header {
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--text-sub);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   padding: 0.2rem 0.65rem;
@@ -191,7 +209,7 @@ nav.sidebar {
 
 .nav-label:first-child { margin-top: 0; }
 
-nav a {
+nav.sidebar a {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -200,17 +218,18 @@ nav a {
   color: var(--text-sub);
   text-decoration: none;
   padding: 0.35rem 1.5rem;
+  min-height: 44px;
   border-left: 2px solid transparent;
   transition: color 0.15s, background-color 0.15s, border-color 0.15s;
 }
 
-nav a:hover {
+nav.sidebar a:hover {
   color: var(--text);
   background: var(--glass-bg-hover);
   border-left-color: var(--accent-border);
 }
 
-nav a.active {
+nav.sidebar a.active {
   color: var(--accent-light);
   border-left-color: var(--accent);
   background: var(--accent-dim);
@@ -226,6 +245,31 @@ nav a.active {
 main {
   padding: 2.5rem 3rem 5rem;
   min-width: 0;
+}
+
+/* ── BREADCRUMBS ── */
+.breadcrumbs {
+  margin-bottom: 1.25rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  list-style: none;
+}
+
+.breadcrumbs li + li::before {
+  content: "/";
+  margin-right: 0.55rem;
+  color: var(--text-muted);
+}
+
+.breadcrumbs a {
+  color: var(--accent-light);
+  text-underline-offset: 0.2em;
 }
 
 /* ── PAGE TITLE ── */
@@ -258,7 +302,6 @@ main {
 .section {
   margin-bottom: 3.5rem;
   scroll-margin-top: 74px;
-  animation: fadeUp 0.35s ease both;
 }
 
 .section-header {
@@ -287,6 +330,8 @@ main {
   letter-spacing: -0.02em;
   color: var(--text);
 }
+
+.section-header h2[id] { scroll-margin-top: 74px; }
 
 /* ── PROVIDER TABS ── */
 .provider-tabs {
@@ -351,6 +396,7 @@ main {
   border-top: none;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
   padding: 1.5rem;
+  min-width: 0;
 }
 
 .provider-panel[hidden] { display: none; }
@@ -387,6 +433,11 @@ main {
   margin-bottom: 0.2rem;
 }
 
+.step-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .step-body p {
   font-size: 0.84rem;
   color: var(--text-sub);
@@ -404,6 +455,8 @@ main {
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
   overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .code-block pre {
@@ -438,6 +491,7 @@ code {
   background: var(--accent-dim);
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
+  overflow-wrap: anywhere;
 }
 
 /* ── CALLOUT ── */
@@ -452,7 +506,7 @@ code {
 }
 
 .callout-icon { font-size: 0.85rem; flex-shrink: 0; margin-top: 0.05rem; }
-.callout-body { color: var(--text-sub); }
+.callout-body { color: var(--text-sub); min-width: 0; overflow-wrap: anywhere; }
 .callout-body strong { color: var(--text); font-weight: 600; }
 
 .callout.tip  { background: var(--green-dim);  border-left: 3px solid var(--green); }
@@ -522,7 +576,12 @@ footer {
   font-family: var(--font-mono);
 }
 
-footer a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+footer a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  transition: color 0.15s;
+}
 footer a:hover { color: var(--text-sub); }
 
 /* ── RESPONSIVE ── */
@@ -541,14 +600,19 @@ footer a:hover { color: var(--text-sub); }
   .page-title h1 { font-size: 1.4rem; }
 }
 
-/* ── ANIMATION ── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <header>
   <a href="/" class="logo">
@@ -562,7 +626,7 @@ footer a:hover { color: var(--text-sub); }
 
 <div class="layout">
 
-  <nav class="sidebar" aria-label="Page sections">
+  <nav class="sidebar" aria-label="Provider setup sections">
     <div class="nav-label">Getting Started</div>
     <a href="#overview"><span class="nav-dot" style="background:var(--accent-light)"></span>Overview</a>
     <a href="#options"><span class="nav-dot" style="background:var(--text-muted)"></span>Open Options</a>
@@ -574,7 +638,15 @@ footer a:hover { color: var(--text-sub); }
     <a href="#troubleshoot"><span class="nav-dot" style="background:var(--text-muted)"></span>Troubleshooting</a>
   </nav>
 
-  <main>
+  <main id="main-content" tabindex="-1">
+
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        <li><a href="./">Home</a></li>
+        <li><a href="./guide.html">Guide</a></li>
+        <li><span aria-current="page">Provider setup</span></li>
+      </ol>
+    </nav>
 
     <div class="page-title">
       <h1>Provider <span>Setup</span></h1>
@@ -642,7 +714,7 @@ footer a:hover { color: var(--text-sub); }
     <div class="section" id="providers">
       <div class="section-header">
         <span class="section-num">02</span>
-        <h2>Configure a provider</h2>
+        <h2 id="provider-setup">Configure a provider</h2>
       </div>
 
       <div class="provider-tabs" role="tablist" aria-label="AI providers">
@@ -923,7 +995,7 @@ footer a:hover { color: var(--text-sub); }
 (function () {
   const tabs     = document.querySelectorAll('.ptab[role="tab"]');
   const panels   = document.querySelectorAll('.provider-panel[role="tabpanel"]');
-  const navLinks = document.querySelectorAll('nav a');
+  const navLinks = document.querySelectorAll('.sidebar a');
   const sections = document.querySelectorAll('.section[id]');
   const validProviders = ['anthropic','openai','gemini','openrouter','ollama'];
 
@@ -957,6 +1029,7 @@ footer a:hover { color: var(--text-sub); }
         e.preventDefault();
         activateProvider(tabs[next].dataset.provider);
         tabs[next].focus();
+        tabs[next].scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
       }
     });
   });
@@ -981,9 +1054,15 @@ footer a:hover { color: var(--text-sub); }
   const observer = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (e.isIntersecting) {
-        navLinks.forEach(l => l.classList.remove('active'));
-        const match = document.querySelector(`nav a[href="#${e.target.id}"]`);
-        if (match) match.classList.add('active');
+        navLinks.forEach(l => {
+          l.classList.remove('active');
+          l.removeAttribute('aria-current');
+        });
+        const match = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+        if (match) {
+          match.classList.add('active');
+          match.setAttribute('aria-current', 'location');
+        }
       }
     });
   }, { rootMargin: '-30% 0px -60% 0px' });
