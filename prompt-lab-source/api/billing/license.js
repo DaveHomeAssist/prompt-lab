@@ -16,6 +16,18 @@ function readString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+// Terminal response for billing-off deployments: clients must treat this as
+// a final state, keep any cached entitlement, and stop retrying.
+function billingDisabledResponse(request) {
+  return jsonResponse({
+    ok: true,
+    plan: 'free',
+    status: 'free',
+    billingDisabled: true,
+    retryable: false,
+  }, 200, {}, request);
+}
+
 async function licenseHandler(request) {
   if (request.method === 'OPTIONS') return optionsResponse(request);
   const corsRejection = corsRejectionResponse(request);
@@ -24,12 +36,12 @@ async function licenseHandler(request) {
     return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
   }
   if (!isFeatureEnabled('BILLING_ENABLED')) {
-    return jsonResponse({ error: 'Billing is disabled.' }, 503, {}, request);
+    return billingDisabledResponse(request);
   }
   try {
     assertProductionConfig({ clerk: true, stripe: true });
-  } catch (error) {
-    return jsonResponse({ error: error.message || 'Billing is not configured.' }, 503, {}, request);
+  } catch {
+    return billingDisabledResponse(request);
   }
 
   let auth;

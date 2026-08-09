@@ -60,7 +60,6 @@ test('all billing routes default off in production before auth or external work'
 
   const cases = [
     [checkoutUrl, '/api/billing/checkout', { period: 'monthly' }],
-    [licenseUrl, '/api/billing/license', { action: 'validate' }],
     [portalUrl, '/api/billing/portal', {}],
     [webhookUrl, '/api/billing/webhook', {}],
   ];
@@ -71,6 +70,41 @@ test('all billing routes default off in production before auth or external work'
     assert.equal(response.status, 503, pathname);
     assert.match(await response.text(), /Billing is disabled/i, pathname);
   }
+});
+
+// License is the exception to the 503 default: unpatched clients retry 5xx
+// responses in a loop, so billing-off must be a terminal 200 contract.
+const BILLING_DISABLED_CONTRACT = {
+  ok: true,
+  plan: 'free',
+  status: 'free',
+  billingDisabled: true,
+  retryable: false,
+};
+
+test('license returns the terminal billing-disabled contract when the feature is off', async () => {
+  process.env.NODE_ENV = 'production';
+  delete process.env.BILLING_ENABLED;
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(licenseUrl);
+  const response = await handler(postRequest('/api/billing/license', { action: 'validate' }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), BILLING_DISABLED_CONTRACT);
+});
+
+test('license returns the terminal billing-disabled contract when production secrets are missing', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.BILLING_ENABLED = 'true';
+  for (const key of ENV_KEYS.filter((name) => !['NODE_ENV', 'BILLING_ENABLED'].includes(name))) {
+    delete process.env[key];
+  }
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(licenseUrl);
+  const response = await handler(postRequest('/api/billing/license', { action: 'validate' }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), BILLING_DISABLED_CONTRACT);
 });
 
 test('explicit billing enablement still fails closed when production secrets are missing', async () => {
