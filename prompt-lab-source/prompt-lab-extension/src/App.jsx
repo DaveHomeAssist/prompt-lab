@@ -3,7 +3,11 @@ import {
   scorePrompt,
   ngramSimilarity,
   suggestTitleFromText,
+  extractVars,
 } from './promptUtils';
+import { scanSensitiveData } from './piiScanner.js';
+import { captureContext } from './lib/platform.js';
+import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
@@ -469,6 +473,36 @@ export default function App({
     setSaveTitle(suggestion.title);
     notify('Follow-up loaded into editor.');
   };
+  const handleCaptureContext = async () => {
+    try {
+      const response = await captureContext();
+      if (!response?.ok || !response.capture) {
+        notify(response?.reason || 'Nothing captured from the page.');
+        return;
+      }
+      const value = response.capture.selection || response.capture.title || '';
+      const { matches } = scanSensitiveData({ prompt: value });
+      if (matches.length > 0) {
+        notify('Capture blocked: sensitive data detected in the page selection.');
+        return;
+      }
+      const insertion = buildCaptureInsertion(response.capture, raw, extractVars(raw));
+      if (!insertion) {
+        notify('Nothing captured from the page.');
+        return;
+      }
+      if (insertion.type === 'var') {
+        setVarVals((prev) => ({ ...prev, [insertion.name]: insertion.value }));
+        setShowVarForm(true);
+        notify(`Filled {{${insertion.name}}} from the page.`);
+      } else {
+        setRaw(raw + insertion.block);
+        notify('Page context appended to the prompt.');
+      }
+    } catch (caught) {
+      notify(caught?.message || 'Capture failed.');
+    }
+  };
   const saveComposerChain = (blocks) => {
     const steps = (Array.isArray(blocks) ? blocks : [])
       .filter((block) => (block?.content || '').trim())
@@ -673,6 +707,7 @@ export default function App({
               m={m}
               compact={compact}
               pageScroll={pageScroll}
+              onCaptureContext={isExtension ? handleCaptureContext : undefined}
               colorMode={colorMode}
               quickInject={lib.quickInject}
               recentPrompts={lib.recentPrompts}

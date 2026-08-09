@@ -16,6 +16,7 @@ export default function EditorActions({
   testCaseCount,
   hasSavablePrompt,
   onCancelEnhance,
+  onCaptureContext,
   enhanceShortcutLabel = 'Ctrl+Enter',
   runCasesLocked = false,
 }) {
@@ -95,6 +96,18 @@ export default function EditorActions({
       >
         Save to Library
       </button>
+      {typeof onCaptureContext === 'function' && (
+        <button
+          type="button"
+          onClick={onCaptureContext}
+          disabled={loading}
+          title="Capture the active tab's selection into the prompt (PII-scanned first)"
+          className={`ui-control min-w-[8rem] flex-[0_0_auto] inline-flex items-center justify-center gap-1.5 px-2.5 ${m.btn} ${m.textAlt} disabled:opacity-40 rounded-lg text-xs font-semibold transition-colors py-2`}
+        >
+          <Ic n="Download" size={11} />
+          Capture Page
+        </button>
+      )}
       <button
         type="button"
         onClick={onClear}

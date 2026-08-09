@@ -70,6 +70,20 @@ function extListOllamaModels(baseUrl) {
   });
 }
 
+function extCaptureContext() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'CAPTURE_CONTEXT' }, (response) => {
+      if (chrome.runtime.lastError) {
+        return resolve({ ok: false, reason: chrome.runtime.lastError.message });
+      }
+      resolve(response || { ok: false, reason: 'No response while capturing context.' });
+    });
+  });
+}
+
+// Page capture only exists on the extension surface.
+const desktopCaptureContext = () => Promise.resolve(null);
+
 function extGetConfiguredProviders() {
   return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage(
@@ -182,6 +196,7 @@ export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : des
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;
 export const testProviderConnection = IS_EXTENSION ? extTestProviderConnection : desktopTestProviderConnection;
 export const getConfiguredProviders = IS_EXTENSION ? extGetConfiguredProviders : desktopGetConfiguredProviders;
+export const captureContext = IS_EXTENSION ? extCaptureContext : desktopCaptureContext;
 export const sessionGet = IS_EXTENSION ? extSessionGet : desktopSessionGet;
 export const sessionSet = IS_EXTENSION ? extSessionSet : desktopSessionSet;
 export const openSettings = IS_EXTENSION ? extOpenSettings : desktopOpenSettings;

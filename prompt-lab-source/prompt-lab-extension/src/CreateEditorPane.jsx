@@ -29,6 +29,7 @@ export default function CreateEditorPane({
   compact,
   pageScroll = false,
   colorMode,
+  onCaptureContext,
   // Quick inject
   quickInject,
   recentPrompts,
@@ -397,6 +398,7 @@ export default function CreateEditorPane({
           <EditorActions
             m={m}
             compact={compact}
+            onCaptureContext={onCaptureContext}
             enhMode={enhMode}
             onEnhanceModeChange={setEnhMode}
             onEnhance={enhance}

@@ -22,6 +22,31 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  // Capture the active tab's selection/title/url for the editor's context vars.
+  if (msg?.type === 'CAPTURE_CONTEXT') {
+    (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id) return sendResponse({ ok: false, reason: 'No active tab found.' });
+        if (!/^https?:/i.test(tab.url || '')) {
+          return sendResponse({ ok: false, reason: 'This page cannot be captured.' });
+        }
+        const [result] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => ({
+            selection: String(window.getSelection?.() || ''),
+            title: document.title || '',
+            url: location.href,
+          }),
+        });
+        sendResponse({ ok: true, capture: result?.result || { selection: '', title: tab.title || '', url: tab.url || '' } });
+      } catch (error) {
+        sendResponse({ ok: false, reason: error?.message || String(error) });
+      }
+    })();
+    return true;
+  }
+
   // Configured-provider discovery — descriptors only, raw keys never leave the worker.
   if (msg?.type === 'GET_PROVIDER_SETTINGS') {
     (async () => {
