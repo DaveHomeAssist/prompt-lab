@@ -13,7 +13,8 @@
     "test:watch": "npm run check:node && vitest",
     "test:desktop": "npm run check:node && vitest run tests/desktop-smoke.test.mjs",
     "test:diag": "npm run check:node && vitest run --reporter=hanging-process",
-    "test:e2e": "npm run check:node && npm run build && playwright test",
+    "test:e2e": "npm run check:node && npm run build && playwright test --grep-invert @production",
+    "test:e2e:production": "npm run check:node && playwright test --grep @production",
     "test:legacy": "npm run check:node && node --test tests/*.test.mjs",
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
