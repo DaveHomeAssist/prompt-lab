@@ -1,0 +1,98 @@
+{
+  "version": "1.7.0",
+  "schemaVersion": 1,
+  "exportedAt": "2026-07-28T12:00:00.000Z",
+  "count": 1,
+  "library": [
+    {
+      "id": "web-export-001",
+      "title": "Incident summary",
+      "original": "Summarize {{incident}} for leadership.",
+      "enhanced": "Summarize {{incident}} for leadership with impact, timeline, resolution, and next steps.",
+      "variants": [
+        {
+          "label": "Concise",
+          "content": "Summarize {{incident}} in five leadership-ready bullets."
+        },
+        {
+          "label": "Detailed",
+          "content": "Write a leadership incident brief covering impact, timeline, resolution, owners, and next steps."
+        }
+      ],
+      "notes": "Adds an explicit executive structure.",
+      "tags": [
+        "Writing",
+        "Analysis"
+      ],
+      "collection": "Operations",
+      "createdAt": "2026-07-26T14:30:00.000Z",
+      "updatedAt": "2026-07-27T09:15:00.000Z",
+      "updated_at": "2026-07-27T09:15:00.000Z",
+      "useCount": 3,
+      "lastAccessedAt": "2026-07-27T10:00:00.000Z",
+      "currentVersionId": "version-current-001",
+      "version": 1,
+      "schema_version": 1,
+      "versions": [
+        {
+          "id": "version-001",
+          "original": "Summarize {{incident}}.",
+          "enhanced": "Summarize {{incident}} for leadership.",
+          "variants": [],
+          "notes": "Initial version.",
+          "savedAt": "2026-07-26T14:30:00.000Z",
+          "changeNote": "Initial save",
+          "source": "manual_save"
+        }
+      ],
+      "testCases": [
+        {
+          "id": "case-001",
+          "name": "Database outage",
+          "input": "Primary database unavailable for 12 minutes.",
+          "expectedTraits": [
+            "States impact"
+          ],
+          "exclusions": [
+            "Speculation"
+          ],
+          "notes": "Regression case",
+          "createdAt": "2026-07-26T15:00:00.000Z",
+          "updatedAt": "2026-07-26T15:00:00.000Z"
+        }
+      ],
+      "goldenResponse": {
+        "text": "Leadership incident summary",
+        "pinnedAt": "2026-07-27T11:00:00.000Z",
+        "pinnedFromRunId": "run-001",
+        "provider": "anthropic",
+        "model": "claude-sonnet-4-6"
+      },
+      "goldenThreshold": 0.85,
+      "inputs": [
+        {
+          "key": "incident",
+          "label": "Incident",
+          "type": "textarea",
+          "required": true,
+          "placeholder": "Describe the incident",
+          "options": []
+        }
+      ],
+      "metadata": {
+        "owner": "Operations",
+        "purpose": "Incident communication",
+        "status": "active",
+        "compatibility": [
+          "claude-sonnet-4-6"
+        ],
+        "riskLevel": "medium",
+        "customField": "preserve-me"
+      }
+    }
+  ],
+  "collections": [
+    "Operations",
+    "Empty Collection"
+  ]
+}

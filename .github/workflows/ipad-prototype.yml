@@ -1,0 +1,60 @@
+name: iOS Prototype
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - prompt-lab-ios/**
+      - .github/workflows/ipad-prototype.yml
+  pull_request:
+    paths:
+      - prompt-lab-ios/**
+      - .github/workflows/ipad-prototype.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-build-and-test:
+    name: Native build and test (${{ matrix.device_family }})
+    runs-on: macos-14
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        device_family:
+          - iPhone
+          - iPad
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select ${{ matrix.device_family }} simulator
+        shell: bash
+        env:
+          DEVICE_FAMILY: ${{ matrix.device_family }}
+        run: |
+          set -euo pipefail
+          simulator_id=$(xcrun simctl list devices available --json | jq -r --arg family "$DEVICE_FAMILY" '[.devices[] | .[] | select(.isAvailable and (.name | startswith($family)))] | last | .udid')
+          if [[ -z "$simulator_id" || "$simulator_id" == "null" ]]; then
+            echo "No compatible installed $DEVICE_FAMILY simulator is available." >&2
+            xcrun simctl list devices available
+            exit 1
+          fi
+          echo "SIMULATOR_ID=$simulator_id" >> "$GITHUB_ENV"
+
+      - name: Build native prototype
+        run: >-
+          xcodebuild build
+          -project prompt-lab-ios/PromptLab.xcodeproj
+          -scheme PromptLab
+          -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
+
+      - name: Test native prototype
+        run: >-
+          xcodebuild test
+          -project prompt-lab-ios/PromptLab.xcodeproj
+          -scheme PromptLab
+          -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
