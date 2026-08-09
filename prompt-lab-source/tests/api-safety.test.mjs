@@ -67,13 +67,29 @@ test('all billing routes default off in production before auth or external work'
   for (const [moduleUrl, pathname, body] of cases) {
     const { default: handler } = await loadModule(moduleUrl);
     const response = await handler(postRequest(pathname, body));
-    assert.equal(response.status, 503, pathname);
     assert.match(await response.text(), /Billing is disabled/i, pathname);
   }
 });
 
-// License is the exception to the 503 default: unpatched clients retry 5xx
-// responses in a loop, so billing-off must be a terminal 200 contract.
+// The webhook is the one route that MUST keep answering 5xx while billing is
+// off. Stripe retries 5xx with backoff, and that retry is what preserves the
+// events until billing comes back. A 200 here acknowledges events that were
+// never processed and loses them permanently. Do not "fix" this to match the
+// terminal contract used by the client-facing routes.
+test('billing webhook still answers 503 when BILLING_ENABLED is unset', async () => {
+  process.env.NODE_ENV = 'production';
+  delete process.env.BILLING_ENABLED;
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(webhookUrl);
+  const response = await handler(postRequest('/api/billing/webhook', {}));
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /Billing is disabled/i);
+});
+
+// License, portal and checkout are the exceptions to the 503 default:
+// unpatched clients retry 5xx responses in a loop, so billing-off must be a
+// terminal contract those clients stop retrying.
 const BILLING_DISABLED_CONTRACT = {
   ok: true,
   plan: 'free',
@@ -81,6 +97,17 @@ const BILLING_DISABLED_CONTRACT = {
   billingDisabled: true,
   retryable: false,
 };
+
+// A terminal response is one the client accepts and stops re-issuing: a
+// non-error status, an explicit retryable: false, and no Retry-After nudging
+// it back for another round.
+async function assertTerminalDisabledResponse(response, label) {
+  assert.ok(response.status < 400, `${label} status ${response.status} should be < 400`);
+  assert.equal(response.headers.get('Retry-After'), null, `${label} must not send Retry-After`);
+  const payload = await response.json();
+  assert.equal(payload.retryable, false, `${label} must mark the response non-retryable`);
+  return payload;
+}
 
 test('license returns the terminal billing-disabled contract when the feature is off', async () => {
   process.env.NODE_ENV = 'production';
@@ -107,6 +134,44 @@ test('license returns the terminal billing-disabled contract when production sec
   assert.deepEqual(await response.json(), BILLING_DISABLED_CONTRACT);
 });
 
+test('portal returns a terminal billing-disabled response when the feature is off', async () => {
+  process.env.NODE_ENV = 'production';
+  delete process.env.BILLING_ENABLED;
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(portalUrl);
+  const response = await handler(postRequest('/api/billing/portal', {}));
+  const payload = await assertTerminalDisabledResponse(response, 'portal (feature off)');
+  assert.equal(payload.billingDisabled, true);
+  assert.match(payload.error, /Billing is disabled/i);
+});
+
+test('portal returns a terminal billing-disabled response when production secrets are missing', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.BILLING_ENABLED = 'true';
+  for (const key of ENV_KEYS.filter((name) => !['NODE_ENV', 'BILLING_ENABLED'].includes(name))) {
+    delete process.env[key];
+  }
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(portalUrl);
+  const response = await handler(postRequest('/api/billing/portal', {}));
+  const payload = await assertTerminalDisabledResponse(response, 'portal (unconfigured)');
+  assert.equal(payload.billingDisabled, true);
+});
+
+test('checkout returns a terminal billing-disabled response when the feature is off', async () => {
+  process.env.NODE_ENV = 'production';
+  delete process.env.BILLING_ENABLED;
+  globalThis.fetch = assert.fail;
+
+  const { default: handler } = await loadModule(checkoutUrl);
+  const response = await handler(postRequest('/api/billing/checkout', { period: 'monthly' }));
+  const payload = await assertTerminalDisabledResponse(response, 'checkout (feature off)');
+  assert.equal(payload.billingDisabled, true);
+  assert.match(payload.error, /Billing is disabled/i);
+});
+
 test('explicit billing enablement still fails closed when production secrets are missing', async () => {
   process.env.NODE_ENV = 'production';
   process.env.BILLING_ENABLED = 'true';
@@ -116,8 +181,12 @@ test('explicit billing enablement still fails closed when production secrets are
 
   const { default: handler } = await loadModule(checkoutUrl);
   const response = await handler(postRequest('/api/billing/checkout', { period: 'monthly' }));
-  assert.equal(response.status, 503);
-  assert.match(await response.text(), /Billing is not configured/i);
+  // Fails closed without a checkout URL, but terminally: no Stripe session is
+  // created and the client is told not to retry.
+  const payload = await assertTerminalDisabledResponse(response, 'checkout (unconfigured)');
+  assert.equal(payload.billingDisabled, true);
+  assert.equal(payload.url, undefined);
+  assert.match(payload.error, /Billing is not configured/i);
 });
 
 test('checkout requires a Clerk bearer token when billing is available', async () => {

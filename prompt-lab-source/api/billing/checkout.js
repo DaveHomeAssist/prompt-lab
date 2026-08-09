@@ -11,6 +11,17 @@ import { ClerkAuthError, verifyClerkRequest } from '../_lib/verifyClerkToken.js'
 import { createNodeCompatibleHandler } from '../_lib/nodeHandler.js';
 import { isExternalFetchTimeout, isFeatureEnabled } from '../_lib/runtimeSafety.js';
 
+// Terminal response for billing-off deployments: clients must treat this as
+// a final state and stop retrying. There is no checkout URL to hand back, so
+// the payload keeps its existing `error` shape and adds the terminal flags.
+function billingDisabledResponse(request, message) {
+  return jsonResponse({
+    error: message,
+    billingDisabled: true,
+    retryable: false,
+  }, 200, {}, request);
+}
+
 function readSource(value) {
   return typeof value === 'string'
     ? value.trim().replace(/[^a-zA-Z0-9._:-]+/g, '-').slice(0, 64)
@@ -26,13 +37,13 @@ async function checkoutHandler(request) {
   }
 
   if (!isFeatureEnabled('BILLING_ENABLED')) {
-    return jsonResponse({ error: 'Billing is disabled.' }, 503, {}, request);
+    return billingDisabledResponse(request, 'Billing is disabled.');
   }
 
   try {
     assertProductionConfig({ clerk: true, stripe: true });
   } catch {
-    return jsonResponse({ error: 'Billing is not configured.' }, 503, {}, request);
+    return billingDisabledResponse(request, 'Billing is not configured.');
   }
 
   let auth;
