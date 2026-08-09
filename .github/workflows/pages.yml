@@ -7,6 +7,8 @@ on:
     paths:
       - docs/**
       - prompt-lab-source/public/**
+      - prompt-lab-source/prompt-lab-web/index.html
+      - prompt-lab-source/prompt-lab-web/public/**
       - prompt-lab-source/scripts/**
       - prompt-lab-source/package.json
       - prompt-lab-source/package-lock.json

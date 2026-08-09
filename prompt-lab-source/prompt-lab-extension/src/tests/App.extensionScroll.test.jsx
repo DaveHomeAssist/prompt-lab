@@ -258,4 +258,33 @@ describe('App extension scroll mode', () => {
     expect(screen.getByTestId('create-editor-pane')).toHaveAttribute('data-pagescroll', 'true');
     expect(screen.getByRole('tabpanel', { name: 'editor' }).className).not.toContain('overflow-hidden');
   });
+
+  it('does not apply web landing intent or attribution inside the extension shell', () => {
+    const onLandingIntentConsumed = vi.fn();
+    const onLandingAttributionConsumed = vi.fn();
+    render(
+      <MemoryRouter>
+        <App
+          landingIntent={{ upgrade: 'pro', period: 'annual', source: 'landing-pricing' }}
+          landingAttribution={{
+            version: 1,
+            events: [{
+              event: 'landing.cta_clicked',
+              placement: 'pricing_pro',
+              intent: 'upgrade',
+              destination: 'app',
+              period: 'annual',
+              timestamp: Date.now(),
+            }],
+          }}
+          onLandingIntentConsumed={onLandingIntentConsumed}
+          onLandingAttributionConsumed={onLandingAttributionConsumed}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onLandingIntentConsumed).not.toHaveBeenCalled();
+    expect(onLandingAttributionConsumed).not.toHaveBeenCalled();
+  });
 });
