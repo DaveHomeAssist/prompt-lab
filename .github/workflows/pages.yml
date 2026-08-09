@@ -7,6 +7,8 @@ on:
     paths:
       - docs/**
       - prompt-lab-source/public/**
+      - prompt-lab-source/prompt-lab-web/index.html
+      - prompt-lab-source/prompt-lab-web/public/**
       - prompt-lab-source/scripts/**
       - prompt-lab-source/package.json
       - prompt-lab-source/package-lock.json
@@ -35,7 +37,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version-file: prompt-lab-source/.nvmrc
           cache: npm
           cache-dependency-path: prompt-lab-source/package-lock.json
 

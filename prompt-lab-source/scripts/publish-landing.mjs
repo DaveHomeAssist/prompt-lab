@@ -24,7 +24,8 @@ const mobileRedirectMeta = `  <meta name="description" content="Redirect to the 
   <meta name="twitter:title" content="PromptLab Mobile Prototype">
   <meta name="twitter:description" content="Redirect to the Prompt Lab mobile prototype for testing touch-first prompt workflows and compact editing surfaces.">
   <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
-const privacyRedirectMeta = `  <meta name="description" content="Redirect to the Prompt Lab privacy policy covering local prompt storage, extension behavior, account data, and contact details.">
+const privacyRedirectMeta = `  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="description" content="Redirect to the Prompt Lab privacy policy covering local prompt storage, extension behavior, account data, and contact details.">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Prompt Lab">

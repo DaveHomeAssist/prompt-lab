@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Prompt Lab | Privacy Policy</title>
 <meta name="description" content="Prompt Lab is a prompt engineering workbench for writing, testing, comparing, and organizing prompts across AI providers.">
@@ -64,6 +65,28 @@ body {
   min-height: 100vh;
 }
 
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-180%);
+  background: var(--surface-100);
+  color: var(--surface-950);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus { transform: translateY(0); }
+
+a:focus-visible {
+  outline: 3px solid var(--lab-violet-light);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
 .site-nav {
   position: sticky;
   top: 0;
@@ -93,6 +116,9 @@ body {
   font-size: 0.75rem;
   font-weight: 500;
   padding: 0.35rem 0.7rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   border-radius: 6px;
   transition: color 0.15s, background 0.15s;
 }
@@ -113,7 +139,7 @@ h1 {
 
 .subtitle {
   font-size: 0.85rem;
-  color: var(--surface-500);
+  color: var(--surface-400);
   margin-bottom: 2.5rem;
 }
 
@@ -128,6 +154,9 @@ h2 {
 }
 
 p { margin-bottom: 1rem; font-size: 0.92rem; }
+.wrapper a {
+  color: var(--lab-violet-light);
+}
 
 ul {
   margin-bottom: 1rem;
@@ -152,7 +181,7 @@ footer {
   text-align: center;
   padding: 2rem;
   font-size: 0.72rem;
-  color: var(--surface-500);
+  color: var(--surface-400);
   border-top: 1px solid var(--glass-border);
   margin-top: 3rem;
 }
@@ -162,14 +191,23 @@ footer a {
 }
 
 @media (max-width: 640px) {
-  .site-nav { padding: 0.5rem 1rem; }
-  .site-nav-links a:not(.active) { display: none; }
+  .site-nav {
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+  .site-nav-links {
+    width: 100%;
+    flex-wrap: wrap;
+  }
   .wrapper { padding: 2rem 1rem 3rem; }
   h1 { font-size: 1.4rem; }
 }
 </style>
 </head>
 <body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <nav class="site-nav" aria-label="Site navigation">
   <a href="./" class="site-nav-brand">
@@ -180,15 +218,15 @@ footer a {
     <a href="./index.html">Home</a>
     <a href="./guide.html">Guide</a>
     <a href="./setup.html">Setup</a>
-    <a href="./privacy.html" class="active" style="color:var(--surface-100);">Privacy</a>
-    <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a>
+    <a href="./privacy.html" class="active" aria-current="page" style="color:var(--surface-100);">Privacy</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a>
   </div>
 </nav>
 
-<div class="wrapper">
+<main class="wrapper" id="main-content" tabindex="-1">
 
 <h1>Privacy Policy</h1>
-<p class="subtitle">Last updated: March 31, 2026</p>
+<p class="subtitle">Last updated: August 6, 2026</p>
 
 <h2>Local-First Architecture</h2>
 <p>Prompt Lab stores prompts, API keys, settings, and experiment results locally on your device. Those artifacts do not leave your browser unless you explicitly send a request to an AI provider.</p>
@@ -198,7 +236,7 @@ footer a {
   <li>No cookies (beyond what your browser stores locally)</li>
   <li>No prompt text or model responses stored in a developer-controlled backend</li>
   <li>No provider API keys stored in a developer-controlled backend</li>
-  <li>No mandatory user account, login, or registration flow for the editor itself</li>
+  <li>No Prompt Lab web account is required for the local extension or desktop shells; the hosted web app requires a Clerk account and sign-in</li>
 </ul>
 
 <h2>API Keys</h2>
@@ -211,22 +249,23 @@ footer a {
 <p>Prompt Lab uses Stripe for checkout, subscription management, and customer portal flows. If you start a Pro upgrade, Prompt Lab and Stripe process billing metadata such as your billing email, Stripe customer ID, subscription status, and configured Prompt Lab price IDs. Prompt Lab uses that metadata to sync Pro access locally on your device.</p>
 
 <h2>Usage Insights</h2>
-<p>Prompt Lab can send lightweight usage events to developer-controlled endpoints. These events include event names, app surface, anonymous device/session identifiers, plan state, and an optional contact email if you choose to provide one in Settings. Prompt text, model responses, and provider API keys are not included in usage insights payloads.</p>
+<p>Prompt Lab sends lightweight usage events to developer-controlled endpoints only after you allow analytics. These events include event names, app surface, anonymous device/session identifiers, plan state, and an optional contact email if you choose to provide one in Settings. You can deny analytics when first asked or change the setting later.</p>
+<p>The landing page may temporarily place a bounded, content-free attribution record in same-origin session storage so the web app can understand which Prompt Lab action you selected. That record is limited to allowlisted values such as CTA placement, destination, pricing period, demo mode, result count, schema version, and timestamp. The app removes it after your analytics choice is applied. Prompt text, model responses, documentation search terms, arbitrary URLs, email addresses, and provider API keys are never included in landing attribution or usage-event context.</p>
 
 <h2>Data Export and Import</h2>
 <p>You can export your library, experiments, and settings as a local JSON file at any time. Imported data is processed entirely in the browser. No data is uploaded to external services during import or export.</p>
 
 <h2>Open Source</h2>
-<p>Prompt Lab is open source. You can inspect the full codebase on <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener">GitHub</a> to verify these claims.</p>
+<p>Prompt Lab is open source. You can inspect the full codebase on <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a> to verify these claims.</p>
 
 <h2>Contact</h2>
-<p>Questions about this policy can be directed to the project's <a href="https://github.com/DaveHomeAssist/prompt-lab/issues" target="_blank" rel="noopener">GitHub Issues</a> page.</p>
+<p>Questions about this policy can be directed to the project's <a href="https://github.com/DaveHomeAssist/prompt-lab/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a> page.</p>
 
-</div>
+</main>
 
 <footer>
   <span>&aleph;</span> Prompt Lab v1.7.0
-  <br><a href="./index.html">Home</a> &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a>
+  <br><a href="./index.html">Home</a> &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" rel="noopener noreferrer">Source</a>
 </footer>
 
 </body>

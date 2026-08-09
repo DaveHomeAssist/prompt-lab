@@ -1,8 +1,19 @@
 {
-  "buildCommand": "cd prompt-lab-web && npm install && npm run build",
+  "buildCommand": "cd prompt-lab-web && npm ci && npm run build",
   "installCommand": "echo 'skip'",
   "outputDirectory": "prompt-lab-web/dist",
   "framework": null,
+  "functions": {
+    "api/proxy.js": {
+      "maxDuration": 10
+    },
+    "api/telemetry.js": {
+      "maxDuration": 10
+    },
+    "api/billing/*.js": {
+      "maxDuration": 10
+    }
+  },
   "redirects": [
     { "source": "/privatepolicy", "destination": "/privacy.html", "permanent": true }
   ],
@@ -24,15 +35,5 @@
     { "source": "/app/(.*)", "destination": "/app/index.html" },
     { "source": "/embed", "destination": "/prompt-embed.html" },
     { "source": "/api/(.*)", "destination": "/api/$1" }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Authorization, Content-Type, Stripe-Signature" }
-      ]
-    }
   ]
 }

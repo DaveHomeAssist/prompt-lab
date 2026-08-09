@@ -74,6 +74,30 @@ function checkTests() {
   }
 }
 
+function checkLandingTests() {
+  if (quick) { skip('Landing tests', '--quick flag, skipped'); return; }
+  console.log('  Running landing tests...');
+  const result = run('npm run test:landing', sourceDir);
+  if (result.ok) {
+    pass('Landing tests', 'Narrative and semantic gates passed');
+  } else {
+    const detail = (result.stderr || result.stdout).split('\n').slice(-12).join('\n');
+    fail('Landing tests', detail);
+  }
+}
+
+function checkApiTests() {
+  if (quick) { skip('Production API safety tests', '--quick flag, skipped'); return; }
+  console.log('  Running production API safety tests...');
+  const result = run('npm run test:api', sourceDir);
+  if (result.ok) {
+    pass('Production API safety tests', 'Flags, auth, timeouts, storage, and runtime contracts passed');
+  } else {
+    const detail = (result.stderr || result.stdout).split('\n').slice(-12).join('\n');
+    fail('Production API safety tests', detail);
+  }
+}
+
 // ── 3. EXTENSION BUILD ──
 function checkExtensionBuild() {
   console.log('  Building extension...');
@@ -104,6 +128,40 @@ function checkLandingPublish() {
     pass('Landing publish', 'Success');
   } else {
     fail('Landing publish', result.stderr.split('\n').slice(-5).join('\n'));
+  }
+}
+
+async function checkLandingParity() {
+  const parityTargets = [
+    [join(webDir, 'index.html'), join(docsDir, 'index.html')],
+    [join(webDir, 'public', 'guide.html'), join(docsDir, 'guide.html')],
+    [join(webDir, 'public', 'setup.html'), join(docsDir, 'setup.html')],
+    [join(webDir, 'public', 'prompt-embed.html'), join(docsDir, 'prompt-embed.html')],
+    [join(webDir, 'public', 'privacy.html'), join(docsDir, 'privacy.html')],
+    [join(webDir, 'public', 'tools.html'), join(docsDir, 'tools.html')],
+    [join(webDir, 'public', 'robots.txt'), join(docsDir, 'robots.txt')],
+    [join(webDir, 'public', 'sitemap.xml'), join(docsDir, 'sitemap.xml')],
+  ];
+  const mismatches = [];
+
+  for (const [sourcePath, generatedPath] of parityTargets) {
+    try {
+      const [source, generated] = await Promise.all([
+        readFile(sourcePath),
+        readFile(generatedPath),
+      ]);
+      if (!source.equals(generated)) {
+        mismatches.push(relative(repoDir, generatedPath));
+      }
+    } catch {
+      mismatches.push(relative(repoDir, generatedPath));
+    }
+  }
+
+  if (mismatches.length === 0) {
+    pass('Landing generated parity', 'Canonical landing and published copies match');
+  } else {
+    fail('Landing generated parity', `Missing or stale generated files: ${mismatches.join(', ')}`);
   }
 }
 
@@ -282,9 +340,12 @@ async function main() {
 
   checkGitStatus();
   checkTests();
+  checkLandingTests();
+  checkApiTests();
   checkExtensionBuild();
   checkWebBuild();
   checkLandingPublish();
+  await checkLandingParity();
   await checkDistArtifacts();
   await checkBundleSize();
   await checkLandingAssets();

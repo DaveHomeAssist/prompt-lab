@@ -73,3 +73,7 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-02] [PLB] [fix] Tolerate Markdown-fenced and preambled enhance contract JSON on iOS (012)
 [2026-08-02] [PLB] [fix] Surface Anthropic error bodies instead of bare HTTP status codes (013)
 [2026-08-02] [PLB] [test] Verify native suite on iPad Pro simulator, 14/14 passing
+[2026-08-08] [PLB] [feature] Add Dave's project-specific verify-only prompt instruments starter library
+[2026-08-09] [PLB] [build] Complete Node 22 remediation: engines/guards/CI to 22.x, four pinned upgrades, lockfiles regenerated, dependency-health workflow, audit gate zero high/critical
+[2026-08-09] [PLB] [landing] Reconcile the landing redesign with Node 22 and the shared dependency health gate
+[2026-08-09] [PLB] [ios] Reconcile the universal native prototype with the verified landing and Node 22 release baseline

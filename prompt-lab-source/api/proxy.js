@@ -1,13 +1,35 @@
 export const config = { runtime: 'edge' };
 
+import {
+  fetchWithTimeout,
+  isExternalFetchTimeout,
+  isFeatureEnabled,
+  readBoundedIntEnv,
+} from './_lib/runtimeSafety.js';
+
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
+const SUPPORTED_ORIGIN = `https://${SUPPORTED_HOST}`;
+const SUPPORTED_PATH = '/v1/messages';
+const DEFAULT_WEB_ORIGIN = 'https://promptlab.tools';
+const CHROME_EXTENSION_ORIGIN = /^chrome-extension:\/\/[a-p]{32}$/;
+const LOCAL_WEB_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
+const ALLOWED_UPSTREAM_HEADERS = new Set([
+  'accept',
+  'anthropic-beta',
+  'anthropic-version',
+  'authorization',
+  'content-type',
+  'x-api-key',
+]);
 const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-6'];
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
 const DEMO_WINDOW_MS = 24 * 60 * 60_000;
 const DEFAULT_MAX_TOKENS = 2048;
+const ANTHROPIC_TIMEOUT_MS = 8000;
+const REDIS_TIMEOUT_MS = 2000;
 
 const burstHits = new Map();
 const demoHits = new Map();
@@ -26,6 +48,64 @@ function readListEnv(name, fallback) {
     .map((value) => value.trim())
     .filter(Boolean);
   return parsed.length > 0 ? parsed : fallback;
+}
+
+function normalizeAllowedOrigin(value) {
+  const raw = String(value || '').trim().replace(/\/$/, '');
+  if (CHROME_EXTENSION_ORIGIN.test(raw)) return raw;
+
+  try {
+    const parsed = new URL(raw);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) return '';
+    if (parsed.pathname !== '/') return '';
+    return parsed.origin;
+  } catch {
+    return '';
+  }
+}
+
+function getAllowedRequestOrigins() {
+  const configured = [
+    DEFAULT_WEB_ORIGIN,
+    process.env.PROMPTLAB_WEB_ORIGIN,
+    process.env.VITE_PROMPTLAB_WEB_ORIGIN,
+    ...readListEnv('PROMPTLAB_PROXY_ALLOWED_ORIGINS', []),
+  ];
+  return new Set(configured.map(normalizeAllowedOrigin).filter(Boolean));
+}
+
+function getRequestOrigin(request) {
+  return String(request?.headers?.get?.('Origin') || '').trim().replace(/\/$/, '');
+}
+
+function isAllowedRequestOrigin(request) {
+  const origin = getRequestOrigin(request);
+  if (!origin) return false;
+  if (getAllowedRequestOrigins().has(origin)) return true;
+  return process.env.NODE_ENV !== 'production' && LOCAL_WEB_ORIGIN.test(origin);
+}
+
+function corsHeadersForRequest(request, extraHeaders = {}) {
+  const origin = getRequestOrigin(request);
+  return {
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    Vary: 'Origin',
+    ...(origin && isAllowedRequestOrigin(request) ? { 'Access-Control-Allow-Origin': origin } : {}),
+    ...extraHeaders,
+  };
+}
+
+function corsRejectionResponse(request) {
+  if (isAllowedRequestOrigin(request)) return null;
+  return new Response(JSON.stringify({ error: 'Origin is not allowed.' }), {
+    status: 403,
+    headers: {
+      'Content-Type': 'application/json',
+      Vary: 'Origin',
+    },
+  });
 }
 
 function getAllowedModels() {
@@ -56,8 +136,11 @@ function normalizeHeaders(headers) {
   const normalized = {};
   for (const [key, value] of Object.entries(headers || {})) {
     if (value == null) continue;
-    normalized[String(key).toLowerCase()] = String(value);
+    const normalizedKey = String(key).toLowerCase();
+    if (!ALLOWED_UPSTREAM_HEADERS.has(normalizedKey)) continue;
+    normalized[normalizedKey] = String(value);
   }
+  normalized['content-type'] = 'application/json';
   return normalized;
 }
 
@@ -94,9 +177,12 @@ async function redisCommand(command, ...parts) {
   if (!config) return null;
 
   const path = [command, ...parts].map((part) => encodeURIComponent(String(part))).join('/');
-  const response = await fetch(`${config.url}/${path}`, {
+  const response = await fetchWithTimeout(`${config.url}/${path}`, {
     method: 'GET',
     headers: { Authorization: `Bearer ${config.token}` },
+  }, {
+    service: 'Redis',
+    timeoutMs: readBoundedIntEnv('PROMPTLAB_REDIS_TIMEOUT_MS', REDIS_TIMEOUT_MS, { max: 5000 }),
   });
 
   if (!response.ok) {
@@ -187,14 +273,12 @@ function getServerKey(host) {
   return '';
 }
 
-function jsonResponse(body, status, extraHeaders = {}) {
+function jsonResponse(body, status, extraHeaders = {}, request = null) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      ...corsHeadersForRequest(request),
       ...extraHeaders,
     },
   });
@@ -208,12 +292,15 @@ function validateTargetUrl(targetUrl) {
     throw new Error('Invalid targetUrl');
   }
 
-  if (parsed.protocol !== 'https:') {
-    throw new Error('HTTPS required');
-  }
-
-  if (parsed.hostname !== SUPPORTED_HOST) {
-    throw new Error('Hosted Prompt Lab currently supports Anthropic only.');
+  if (
+    parsed.origin !== SUPPORTED_ORIGIN
+    || parsed.pathname !== SUPPORTED_PATH
+    || parsed.username
+    || parsed.password
+    || parsed.search
+    || parsed.hash
+  ) {
+    throw new Error('Hosted Prompt Lab only supports the Anthropic Messages endpoint.');
   }
 
   return parsed;
@@ -278,19 +365,22 @@ function injectServerKey(url, headers, usingSharedKey) {
 }
 
 export default async function handler(request) {
+  const corsRejection = corsRejectionResponse(request);
+  if (corsRejection) return corsRejection;
+
+  if (!isFeatureEnabled('HOSTED_PROXY_ENABLED')) {
+    return jsonResponse({ error: 'Hosted proxy is disabled.' }, 503, {}, request);
+  }
+
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+      headers: corsHeadersForRequest(request),
     });
   }
 
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed' }, 405);
+    return jsonResponse({ error: 'Method not allowed' }, 405, {}, request);
   }
 
   const clientIp =
@@ -307,6 +397,7 @@ export default async function handler(request) {
         'X-RateLimit-Store': burstState.store,
         ...(burstState.resetAt ? { 'X-RateLimit-Reset': new Date(burstState.resetAt).toISOString() } : {}),
       },
+      request,
     );
   }
 
@@ -314,23 +405,30 @@ export default async function handler(request) {
   try {
     payload = await request.json();
   } catch {
-    return jsonResponse({ error: 'Invalid JSON body' }, 400);
+    return jsonResponse({ error: 'Invalid JSON body' }, 400, {}, request);
   }
 
   const { targetUrl, headers = {}, body } = payload || {};
 
   if (!targetUrl) {
-    return jsonResponse({ error: 'Missing targetUrl' }, 400);
+    return jsonResponse({ error: 'Missing targetUrl' }, 400, {}, request);
   }
 
   let parsedUrl;
   try {
     parsedUrl = validateTargetUrl(targetUrl);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Invalid targetUrl' }, 403);
+    return jsonResponse({ error: error.message || 'Invalid targetUrl' }, 403, {}, request);
   }
 
   const auth = resolveAuth(headers);
+
+  const sharedKeyEnabled = isFeatureEnabled('HOSTED_SHARED_KEY_ENABLED');
+  if (auth.usingSharedKey && !sharedKeyEnabled) {
+    return jsonResponse({
+      error: 'Hosted shared-key access is disabled. Add your own Anthropic key to continue.',
+    }, 403, {}, request);
+  }
 
   let demoState = null;
   if (auth.usingSharedKey) {
@@ -348,6 +446,7 @@ export default async function handler(request) {
           'X-RateLimit-Store': demoState.store,
           ...(demoState.resetAt ? { 'X-Demo-Reset': new Date(demoState.resetAt).toISOString() } : {}),
         },
+        request,
       );
     }
   }
@@ -356,28 +455,30 @@ export default async function handler(request) {
   try {
     sanitizedBody = sanitizeAnthropicBody(body);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400);
+    return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400, {}, request);
   }
 
   let injected;
   try {
     injected = injectServerKey(parsedUrl.toString(), auth.headers, auth.usingSharedKey);
   } catch (error) {
-    return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503);
+    return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
   }
 
   try {
-    const upstream = await fetch(injected.url, {
+    const upstream = await fetchWithTimeout(injected.url, {
       method: 'POST',
       headers: injected.headers,
       body: sanitizedBody.body,
+      signal: request.signal,
+    }, {
+      service: 'Anthropic',
+      timeoutMs: readBoundedIntEnv('PROMPTLAB_ANTHROPIC_TIMEOUT_MS', ANTHROPIC_TIMEOUT_MS, { max: 8000 }),
     });
 
     const responseHeaders = {
       'Content-Type': upstream.headers.get('Content-Type') || 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      ...corsHeadersForRequest(request),
       'X-Hosted-Provider': 'anthropic',
       'X-Hosted-Model': sanitizedBody.model,
       'X-Hosted-Max-Tokens': String(sanitizedBody.maxTokens),
@@ -408,8 +509,9 @@ export default async function handler(request) {
   } catch (error) {
     return jsonResponse(
       { error: error.message || 'Upstream fetch failed' },
-      502,
+      isExternalFetchTimeout(error) ? 504 : 502,
       { 'X-RateLimit-Store': auth.usingSharedKey ? demoState?.store || burstState.store : burstState.store },
+      request,
     );
   }
 }

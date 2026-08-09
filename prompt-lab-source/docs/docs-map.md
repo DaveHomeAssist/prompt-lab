@@ -27,6 +27,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
+- `feature-health-dashboard.md`
 - `next-3-sprints-plan.md`
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
@@ -71,6 +72,7 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 
 ### Internal audits and technical notes
 
+- `feature-health-dashboard.md`
 - `create-evaluate-restructure-plan.md`
 - `next-3-sprints-plan.md`
 - `UX_AUDIT_2026-03-17.md`
@@ -97,6 +99,13 @@ These are working-context files, not canonical product documentation.
 - `../prompt-lab-web/README.md`
 - `../vercel.json`
 - `../api/proxy.js`
+
+### I need current feature health or the next upgrade
+
+- `feature-health-dashboard.md`
+
+Use the dashboard for the current-main feature inventory, shared grading rubric,
+verified health evidence, and highest-priority executable prompt.
 
 ### I need the menu or navigation model
 

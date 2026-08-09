@@ -39,6 +39,16 @@ function shouldRevalidate(state) {
 }
 
 function normalizeResponseState(payload, previousState) {
+  if (payload?.billingDisabled) {
+    // Terminal billing-off contract: the server has no entitlement data, so
+    // keep whatever this device already knows and stamp the validation clock
+    // so revalidation stops retrying.
+    return normalizeBillingState({
+      ...previousState,
+      validationError: '',
+      lastValidatedAt: new Date().toISOString(),
+    });
+  }
   const hasField = (name) => Object.prototype.hasOwnProperty.call(payload || {}, name);
   return normalizeBillingState({
     ...previousState,
@@ -58,14 +68,22 @@ function normalizeResponseState(payload, previousState) {
   });
 }
 
-async function parseErrorMessage(response, fallback) {
+async function buildResponseError(response, fallback) {
+  let payload = null;
   try {
-    const payload = await response.json();
-    if (typeof payload?.error === 'string' && payload.error.trim()) return payload.error.trim();
+    payload = await response.json();
   } catch {
     // Ignore malformed responses.
   }
-  return fallback;
+  const message = typeof payload?.error === 'string' && payload.error.trim()
+    ? payload.error.trim()
+    : fallback;
+  const error = new Error(message);
+  error.status = response.status;
+  error.retryable = typeof payload?.retryable === 'boolean'
+    ? payload.retryable
+    : response.status === 429 || response.status >= 500;
+  return error;
 }
 
 export default function useBillingState({ notify, telemetry, clerkUser, clerkGetToken }) {
@@ -74,6 +92,11 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   ));
   const [busyAction, setBusyAction] = useState('');
   const autoSyncKeyRef = useRef('');
+  const revalidateKeyRef = useRef('');
+  // Latest-state ref so callbacks can read fresh state without depending on
+  // it, which would recreate them (and re-fire effects) on every state write.
+  const stateRef = useRef(state);
+  stateRef.current = state;
   const apiBase = getBillingApiBase();
 
   // Sync Clerk identity into billing state when available
@@ -106,7 +129,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
-      const requiresAuth = path === '/billing/license' || path === '/billing/portal';
+      const requiresAuth = path === '/billing/license'
+        || path === '/billing/portal'
+        || path === '/billing/checkout';
       const headers = { ...(init?.headers || {}) };
       let token = '';
       if (clerkGetToken) {
@@ -125,7 +150,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         signal: controller.signal,
       });
       if (!response.ok) {
-        throw new Error(await parseErrorMessage(response, 'Billing request failed.'));
+        throw await buildResponseError(response, 'Billing request failed.');
       }
       return response.json();
     } catch (err) {
@@ -167,8 +192,8 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [clerkGetToken, requestBilling, state.clerkUserId, state.customerEmail, state.customerId, state.plan]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
-    if (state.status === 'owner') return true;
-    if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
+    if (stateRef.current.status === 'owner') return true;
+    if (!stateRef.current.customerEmail && !stateRef.current.customerId && !stateRef.current.clerkUserId) return false;
 
     if (!silent) setBusyAction('validate');
     try {
@@ -180,8 +205,8 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         }),
       });
 
-      const nextState = normalizeResponseState(payload, state);
-      setState(nextState);
+      const nextState = normalizeResponseState(payload, stateRef.current);
+      setState(() => nextState);
       if (!silent) notify?.(nextState.plan === 'pro' ? 'Prompt Lab Pro verified.' : 'Billing verified.');
       if (!silent) {
         telemetry?.track?.('billing.license_validated', {
@@ -196,17 +221,24 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         ...prev,
         status: prev.plan === 'pro' ? 'offline' : 'error',
         validationError: error.message || 'Could not verify billing.',
+        // Stamp even on failure: a failed validation is still a completed
+        // attempt, and leaving the clock stale is what caused revalidation
+        // to retry in a loop.
+        lastValidatedAt: new Date().toISOString(),
       }));
       if (!silent) notify?.(error.message || 'Could not verify billing.');
-      return state.plan === 'pro';
+      return stateRef.current.plan === 'pro';
     } finally {
       if (!silent) setBusyAction('');
     }
-  }, [notify, requestBilling, state]);
+  }, [notify, requestBilling]);
 
   useEffect(() => {
     if (clerkGetToken && state.plan !== 'pro') return;
     if (!shouldRevalidate(state)) return;
+    const revalidateKey = `${state.clerkUserId}:${state.customerEmail || ''}:${state.customerId || ''}:${state.lastValidatedAt || ''}`;
+    if (revalidateKeyRef.current === revalidateKey) return;
+    revalidateKeyRef.current = revalidateKey;
     refreshLicense({ silent: true });
   }, [clerkGetToken, refreshLicense, state]);
 
@@ -261,7 +293,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     return nextState;
   }, [notify, telemetry]);
 
-  const startCheckout = useCallback(async (period, source = 'billing-modal', metadata = {}, overrides = {}) => {
+  const startCheckout = useCallback(async (period, source = 'billing-modal') => {
     setBusyAction(`checkout:${period}`);
     try {
       const payload = await requestBilling('/billing/checkout', {
@@ -269,13 +301,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           period,
-          email: overrides?.email || state.customerEmail || telemetry?.contactEmail || '',
-          clerkUserId: state.clerkUserId || '',
           source,
-          deviceId: metadata?.deviceId || telemetry?.deviceId || '',
-          sessionId: metadata?.sessionId || telemetry?.sessionId || '',
-          surface: metadata?.surface || telemetry?.surface || '',
-          contactEmail: telemetry?.contactEmail || '',
         }),
       });
       if (!payload?.url) {
@@ -286,13 +312,13 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       telemetry?.track?.('billing.checkout_started', {
         period,
         source,
-        surface: metadata?.surface || telemetry?.surface || '',
+        surface: telemetry?.surface || '',
       });
       return true;
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, state.clerkUserId, state.customerEmail, telemetry]);
+  }, [notify, requestBilling, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
     if (state.status === 'owner' || state.billingPeriod === 'owner') {

@@ -25,7 +25,7 @@ Verified Stack:
 - Vite
 - Chrome / Vivaldi MV3 extension
 - Tauri 2 desktop shell
-- Node 20
+- Node 22
 - Vitest
 - Hosted web deployment with Vercel routing
 

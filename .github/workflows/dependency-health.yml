@@ -1,0 +1,90 @@
+name: Dependency Health
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .nvmrc
+      - prompt-lab-source/.nvmrc
+      - prompt-lab-source/package.json
+      - prompt-lab-source/package-lock.json
+      - prompt-lab-source/prompt-lab-extension/.nvmrc
+      - prompt-lab-source/prompt-lab-extension/package.json
+      - prompt-lab-source/prompt-lab-extension/package-lock.json
+      - prompt-lab-source/prompt-lab-web/package.json
+      - prompt-lab-source/prompt-lab-web/package-lock.json
+      - prompt-lab-source/prompt-lab-desktop/package.json
+      - prompt-lab-source/prompt-lab-desktop/package-lock.json
+      - prompt-lab-source/scripts/audit-workspaces.mjs
+      - prompt-lab-source/scripts/require-node.mjs
+      - prompt-lab-source/tests/audit-workspaces.test.mjs
+      - prompt-lab-source/tests/runtime-contract.test.mjs
+      - .github/workflows/dependency-health.yml
+  pull_request:
+    paths:
+      - .nvmrc
+      - prompt-lab-source/.nvmrc
+      - prompt-lab-source/package.json
+      - prompt-lab-source/package-lock.json
+      - prompt-lab-source/prompt-lab-extension/.nvmrc
+      - prompt-lab-source/prompt-lab-extension/package.json
+      - prompt-lab-source/prompt-lab-extension/package-lock.json
+      - prompt-lab-source/prompt-lab-web/package.json
+      - prompt-lab-source/prompt-lab-web/package-lock.json
+      - prompt-lab-source/prompt-lab-desktop/package.json
+      - prompt-lab-source/prompt-lab-desktop/package-lock.json
+      - prompt-lab-source/scripts/audit-workspaces.mjs
+      - prompt-lab-source/scripts/require-node.mjs
+      - prompt-lab-source/tests/audit-workspaces.test.mjs
+      - prompt-lab-source/tests/runtime-contract.test.mjs
+      - .github/workflows/dependency-health.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-health-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: prompt-lab-source
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: |
+            prompt-lab-source/package-lock.json
+            prompt-lab-source/prompt-lab-extension/package-lock.json
+            prompt-lab-source/prompt-lab-web/package-lock.json
+            prompt-lab-source/prompt-lab-desktop/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install extension dependencies
+        run: npm ci --prefix prompt-lab-extension
+
+      - name: Install web dependencies
+        run: npm ci --prefix prompt-lab-web
+
+      - name: Install desktop dependencies
+        run: npm ci --prefix prompt-lab-desktop
+
+      - name: Test runtime and audit tooling
+        run: npm run test:tooling
+
+      - name: Enforce dependency audit gate
+        run: npm run audit:all

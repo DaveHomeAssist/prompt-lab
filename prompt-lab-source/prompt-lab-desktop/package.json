@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
-    "check:node": "node ../scripts/require-node-20.mjs",
+    "check:node": "node ../scripts/require-node.mjs",
     "dev": "npm run check:node && vite",
     "build": "npm run check:node && vite build",
     "tauri": "npm run check:node && tauri",
@@ -20,14 +20,14 @@
     "diff-match-patch": "^1.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.26",
     "tailwindcss": "^3.4.17",
-    "vite": "^8.0.10"
+    "vite": "^8.2.1"
   }
 }

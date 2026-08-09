@@ -1,0 +1,39 @@
+name: API Safety
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-safety-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  production-api-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: prompt-lab-source
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: prompt-lab-source/package-lock.json
+
+      - name: Install API dependencies
+        run: npm ci
+
+      - name: Run production API safety gates
+        run: npm run test:api
