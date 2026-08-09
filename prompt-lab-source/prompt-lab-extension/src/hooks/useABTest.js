@@ -10,6 +10,10 @@ const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false }
 export default function useABTest({ notify }) {
   const [abA, setAbA] = useState(EMPTY_VARIANT);
   const [abB, setAbB] = useState(EMPTY_VARIANT);
+  // Per-side provider/model selection; null = the settings-default provider.
+  const [abProviders, setAbProviders] = useState({ a: null, b: null });
+  // Library entry each side was loaded from, so arena runs land in prompt-scoped history.
+  const [abSource, setAbSource] = useState({ a: null, b: null });
   const [abWinner, setAbWinner] = useState(null);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -61,20 +65,24 @@ export default function useABTest({ notify }) {
     if (!state.prompt.trim()) return;
     const startedAt = nowMs();
     setter(prev => ({ ...prev, loading: true, response: '', error: false }));
+    const selection = abProviders[side];
+    const source = abSource[side];
     try {
       const data = await callWithRetry({
-        model: 'claude-sonnet-4-6',
+        model: selection?.model || 'claude-sonnet-4-6',
         max_tokens: 800,
         messages: [{ role: 'user', content: state.prompt }],
+        ...(selection?.provider ? { provider: selection.provider } : {}),
       });
       if (abReqRef.current[side] !== reqId) return;
       const responseText = extractTextFromAnthropic(data);
       setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
       await saveEvalRun({
-        promptTitle: `A/B Variant ${side.toUpperCase()}`,
+        promptId: source?.entryId || null,
+        promptTitle: source?.title || `A/B Variant ${side.toUpperCase()}`,
         mode: 'ab',
-        provider: data?.provider || 'unknown',
-        model: data?.model || 'unknown',
+        provider: data?.provider || selection?.provider || 'unknown',
+        model: data?.model || selection?.model || 'unknown',
         variantLabel: `Variant ${side.toUpperCase()}`,
         input: state.prompt,
         output: responseText,
@@ -94,10 +102,15 @@ export default function useABTest({ notify }) {
     setAbWinner(null);
   };
 
-  const loadVariant = (side, prompt) => {
+  const setSideProvider = (side, descriptor) => {
+    setAbProviders(prev => ({ ...prev, [side]: descriptor || null }));
+  };
+
+  const loadVariant = (side, prompt, source = null) => {
     const setter = side === 'a' ? setAbA : setAbB;
     const nextPrompt = typeof prompt === 'string' ? prompt : '';
     abReqRef.current = { ...abReqRef.current, [side]: abReqRef.current[side] + 1 };
+    setAbSource(prev => ({ ...prev, [side]: source }));
     setter((prev) => ({
       ...prev,
       prompt: nextPrompt,
@@ -147,6 +160,9 @@ export default function useABTest({ notify }) {
     setShowRuns,
     activeSide,
     setActiveSide,
+    abProviders,
+    setSideProvider,
+    abSource,
     loadVariant,
     runAB,
     resetAB,

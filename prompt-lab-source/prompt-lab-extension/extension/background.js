@@ -2,7 +2,7 @@
 // This is the ONLY place API credentials are used.
 // panel.html sends messages here; this worker calls configured providers.
 
-import { PROVIDER_SETTINGS_KEYS } from './lib/providerRegistry.js';
+import { DEFAULTS, PROVIDER_SETTINGS_KEYS } from './lib/providerRegistry.js';
 import { callProvider, listOllamaModels, normalizeProvider } from './lib/providers.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -22,6 +22,25 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  // Configured-provider discovery — descriptors only, raw keys never leave the worker.
+  if (msg?.type === 'GET_PROVIDER_SETTINGS') {
+    (async () => {
+      try {
+        const store = await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS);
+        const providers = [];
+        if (store.apiKey) providers.push({ provider: 'anthropic', model: store.anthropicModel || DEFAULTS.anthropicModel });
+        if (store.openaiApiKey) providers.push({ provider: 'openai', model: store.openaiModel || DEFAULTS.openaiModel });
+        if (store.geminiApiKey) providers.push({ provider: 'gemini', model: store.geminiModel || DEFAULTS.geminiModel });
+        if (store.openrouterApiKey) providers.push({ provider: 'openrouter', model: store.openrouterModel || DEFAULTS.openrouterModel });
+        if (store.ollamaBaseUrl) providers.push({ provider: 'ollama', model: store.ollamaModel || DEFAULTS.ollamaModel });
+        sendResponse({ providers });
+      } catch (error) {
+        sendResponse({ error: error?.message || String(error) });
+      }
+    })();
+    return true;
+  }
+
   if (msg?.type !== 'MODEL_REQUEST') return;
 
   (async () => {
@@ -29,7 +48,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       const store = await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS);
       sendResponse({
         data: await callProvider({
-          provider: normalizeProvider(store.provider),
+          // A payload-level provider (e.g. an arena column) overrides the settings default.
+          provider: normalizeProvider(msg.payload?.provider || store.provider),
           payload: msg.payload,
           settings: store,
         }),

@@ -164,7 +164,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       const side = target.slice(-1);
       const promptText = normalized.enhanced || normalized.original;
       if (!promptText.trim() || typeof setABVariant !== 'function') return;
-      setABVariant(side, promptText);
+      setABVariant(side, promptText, { entryId: normalized.id, title: normalized.title });
       if (typeof lib.bumpUse === 'function') {
         lib.bumpUse(normalized.id);
       }

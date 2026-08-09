@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Ic from './icons';
 import DiffPane from './DiffPane';
+import { getConfiguredProviders } from './lib/platform.js';
 
 export default function ABTestTab({
   m,
@@ -20,13 +21,24 @@ export default function ABTestTab({
   setShowRuns,
   activeSide,
   setActiveSide,
+  abProviders = { a: null, b: null },
+  setSideProvider,
   runAB,
   resetAB,
   pickWinner,
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
+  const [availableProviders, setAvailableProviders] = useState([]);
   const bothReady = Boolean(abA.response && !abA.error && abB.response && !abB.error);
+
+  useEffect(() => {
+    let active = true;
+    getConfiguredProviders()
+      .then((list) => { if (active) setAvailableProviders(Array.isArray(list) ? list : []); })
+      .catch(() => { /* provider discovery is best-effort; the default provider still works */ });
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
@@ -71,9 +83,24 @@ export default function ABTestTab({
       <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : ''}`}>
         {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => (
           <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
-            <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-              <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
-              <div className="flex gap-2">
+            <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between gap-2 shrink-0`}>
+              <span className="text-xs font-bold text-violet-400 uppercase shrink-0">Variant {side}</span>
+              {availableProviders.length > 0 && typeof setSideProvider === 'function' && (
+                <select
+                  aria-label={`Provider for variant ${side}`}
+                  value={abProviders[side.toLowerCase()]?.provider || ''}
+                  onChange={(e) => {
+                    const descriptor = availableProviders.find((p) => p.provider === e.target.value) || null;
+                    setSideProvider(side.toLowerCase(), descriptor);
+                  }}
+                  className={`text-xs ${m.input} border rounded px-1.5 py-1 min-w-0 flex-1 focus:outline-none focus:border-violet-500`}>
+                  <option value="">Default provider</option>
+                  {availableProviders.map((p) => (
+                    <option key={p.provider} value={p.provider}>{p.provider} · {p.model}</option>
+                  ))}
+                </select>
+              )}
+              <div className="flex gap-2 shrink-0">
                 <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()}
                   className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
                   {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
