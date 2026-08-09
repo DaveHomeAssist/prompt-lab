@@ -76,6 +76,18 @@ test.afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH;
 });
 
+// Telemetry-off is a terminal contract: the client replays queued events until
+// one is accepted, so a 5xx here means the queue never drains. A non-error
+// status with retryable: false lets the client drop the event and move on.
+async function assertTerminalDisabledResponse(response, label) {
+  assert.ok(response.status < 400, `${label} status ${response.status} should be < 400`);
+  assert.equal(response.headers.get('Retry-After'), null, `${label} must not send Retry-After`);
+  const payload = await response.json();
+  assert.equal(payload.retryable, false, `${label} must mark the response non-retryable`);
+  assert.equal(payload.telemetryDisabled, true, `${label} must flag telemetry as disabled`);
+  return payload;
+}
+
 test('production telemetry defaults off without reading or persisting the payload', async () => {
   process.env.NODE_ENV = 'production';
   delete process.env.PROMPTLAB_TELEMETRY_ENABLED;
@@ -83,8 +95,8 @@ test('production telemetry defaults off without reading or persisting the payloa
 
   const { default: handler } = await loadModule(telemetryUrl);
   const response = await handler(telemetryRequest(validEvent()));
-  assert.equal(response.status, 503);
-  assert.match(await response.text(), /Telemetry is disabled/i);
+  const payload = await assertTerminalDisabledResponse(response, 'telemetry (feature off)');
+  assert.match(payload.error, /Telemetry is disabled/i);
 });
 
 test('production telemetry enablement fails closed without durable storage', async () => {
@@ -98,8 +110,8 @@ test('production telemetry enablement fails closed without durable storage', asy
 
   const { default: handler } = await loadModule(telemetryUrl);
   const response = await handler(telemetryRequest(validEvent()));
-  assert.equal(response.status, 503);
-  assert.match(await response.text(), /storage is not configured/i);
+  const payload = await assertTerminalDisabledResponse(response, 'telemetry (unconfigured)');
+  assert.match(payload.error, /storage is not configured/i);
 });
 
 test('telemetry rejects an explicit opt-out payload', async () => {

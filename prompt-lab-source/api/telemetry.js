@@ -14,6 +14,17 @@ import {
 import { assertProductionConfig } from './_lib/assertProductionConfig.js';
 import { isExternalFetchTimeout, isFeatureEnabled } from './_lib/runtimeSafety.js';
 
+// Terminal response for telemetry-off deployments: clients must treat this as
+// a final state and drop the queued event instead of replaying it forever.
+// Keeps the existing `error` payload shape and adds the terminal flags.
+function telemetryDisabledResponse(message) {
+  return jsonResponse({
+    error: message,
+    telemetryDisabled: true,
+    retryable: false,
+  }, 200);
+}
+
 export default async function handler(request) {
   if (request.method === 'OPTIONS') return optionsResponse();
   if (request.method !== 'POST') {
@@ -21,13 +32,13 @@ export default async function handler(request) {
   }
 
   if (!isFeatureEnabled('PROMPTLAB_TELEMETRY_ENABLED')) {
-    return jsonResponse({ error: 'Telemetry is disabled.' }, 503);
+    return telemetryDisabledResponse('Telemetry is disabled.');
   }
 
   try {
     assertProductionConfig({ durableStore: true });
   } catch {
-    return jsonResponse({ error: 'Telemetry storage is not configured.' }, 503);
+    return telemetryDisabledResponse('Telemetry storage is not configured.');
   }
 
   try {
