@@ -65,3 +65,6 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-07-26] [PLB] [feature] Add on-demand follow-up prompt suggestions with editor/composer chaining
 [2026-07-26] [PLB] [docs] Add native Swift iPad app plan (IPAD_NATIVE_APP_PLAN.md)
 [2026-07-28] [PLB] [feature] Add Recent Surface Sweep maintenance prompt to Workspace Cleanup seed library
+[2026-08-08] [PLB] [feature] Add Dave's project-specific verify-only prompt instruments starter library
+[2026-08-09] [PLB] [build] Complete Node 22 remediation: engines/guards/CI to 22.x, four pinned upgrades, lockfiles regenerated, dependency-health workflow, audit gate zero high/critical
+[2026-08-09] [PLB] [landing] Reconcile the landing redesign with Node 22 and the shared dependency health gate

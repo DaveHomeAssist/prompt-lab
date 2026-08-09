@@ -77,7 +77,7 @@ npm run test:notion-agent
 
 ## Notes
 
-- The agent is dependency-free and uses the Node 20 runtime declared in `.nvmrc`.
+- The agent is dependency-free and uses the Node 22 runtime declared in `.nvmrc`.
 - When `DOCS_AGENT_PROVIDER=none`, summaries are deterministic and do not require an external model API key.
 - Notion pages are created or updated as direct children of `NOTION_PARENT_PAGE_ID`.
 - The page title is scoped by workflow name and branch so repeated runs update the same logical page instead of creating a new page for every run.

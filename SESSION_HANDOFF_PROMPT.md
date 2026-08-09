@@ -10,7 +10,7 @@
   - Vite
   - Chrome / Vivaldi MV3 extension
   - Tauri 2 desktop shell
-  - Node 20
+  - Node 22
   - Vitest
   - hosted web app with Vercel routing and edge proxy
 - Live URLs:

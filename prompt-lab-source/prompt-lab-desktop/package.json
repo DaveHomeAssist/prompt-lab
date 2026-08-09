@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
-    "check:node": "node ../scripts/require-node-20.mjs",
+    "check:node": "node ../scripts/require-node.mjs",
     "dev": "npm run check:node && vite",
     "build": "npm run check:node && vite build",
     "tauri": "npm run check:node && tauri",

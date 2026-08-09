@@ -163,3 +163,52 @@ describe('seedTransform', () => {
     });
   });
 });
+
+describe("Dave's project prompt instruments", () => {
+  const expectedPromptIDs = [
+    'pi_gos_p1_coupling_001',
+    'pi_gos_p2_persistence_002',
+    'pi_gos_p3_determinism_003',
+    'pi_gos_g1_trust_004',
+    'pi_gos_g2_rewards_005',
+    'pi_gos_g3_worldgen_006',
+    'pi_gos_g4_gate_007',
+    'pi_rb1_seam_008',
+    'pi_rb2_contract_009',
+    'pi_plb1_surface_010',
+    'pi_tk1_fetch_011',
+    'pi_a2_offline_012',
+    'pi_df1_delivery_013',
+    'pi_st1_checkout_014',
+  ];
+
+  it('ships the complete project-specific instrument index', () => {
+    const pack = seedData.libraries.find(
+      (library) => library.id === 'lib_project_prompt_instruments'
+    );
+
+    expect(pack).toBeDefined();
+    expect(pack.prompt_count).toBe(expectedPromptIDs.length);
+    expect(pack.prompts.map((prompt) => prompt.id)).toEqual(expectedPromptIDs);
+  });
+
+  it('keeps every instrument standalone and verify-only', () => {
+    const pack = seedData.libraries.find(
+      (library) => library.id === 'lib_project_prompt_instruments'
+    );
+
+    pack.prompts.forEach((prompt) => {
+      expect(prompt.prompt).toContain('RUN WHEN');
+      expect(prompt.prompt).toContain('SHARED CONVENTIONS');
+      expect(prompt.prompt).toContain('BUILT');
+      expect(prompt.prompt).toContain('PARTIAL');
+      expect(prompt.prompt).toContain('SPEC-ONLY');
+      expect(prompt.prompt).toContain('Verify only:');
+      expect(prompt.prompt).toContain('ROLE');
+      expect(prompt.prompt).toContain('SCOPE');
+      expect(prompt.prompt).toContain('METHOD');
+      expect(prompt.prompt).toContain('OUTPUT');
+      expect(prompt.prompt).toContain('CONSTRAINTS');
+    });
+  });
+});

@@ -9,7 +9,7 @@ on:
       - "prompt-lab-source/package.json"
       - "prompt-lab-source/package-lock.json"
       - "prompt-lab-source/scripts/preflight.mjs"
-      - "prompt-lab-source/scripts/check-app-dependency-audit*.mjs"
+      - "prompt-lab-source/scripts/audit-workspaces.mjs"
       - "prompt-lab-source/scripts/publish-landing.mjs"
       - "prompt-lab-source/scripts/landing-funnel-report.mjs"
       - "prompt-lab-source/scripts/landing-funnel-report.test.mjs"
@@ -47,7 +47,7 @@ on:
       - "prompt-lab-source/package.json"
       - "prompt-lab-source/package-lock.json"
       - "prompt-lab-source/scripts/preflight.mjs"
-      - "prompt-lab-source/scripts/check-app-dependency-audit*.mjs"
+      - "prompt-lab-source/scripts/audit-workspaces.mjs"
       - "prompt-lab-source/scripts/publish-landing.mjs"
       - "prompt-lab-source/scripts/landing-funnel-report.mjs"
       - "prompt-lab-source/scripts/landing-funnel-report.test.mjs"
@@ -99,7 +99,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
           node-version-file: prompt-lab-source/.nvmrc
@@ -122,14 +122,11 @@ jobs:
       - name: Run production API safety gates
         run: npm run test:api
 
-      - name: Run app dependency audit policy tests
-        run: npm run test:audit:apps
+      - name: Run runtime and audit policy tests
+        run: npm run test:tooling
 
-      - name: Audit production dependencies
-        run: npm run audit:root:production
-
-      - name: Audit app dependencies
-        run: npm run audit:apps
+      - name: Audit all package roots
+        run: npm run audit:all
 
       - name: Run app handoff gates
         run: npm test --prefix prompt-lab-extension

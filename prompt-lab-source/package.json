@@ -4,18 +4,15 @@
   "version": "1.7.0",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
-    "check:node": "node scripts/require-node-20.mjs",
+    "check:node": "node scripts/require-node.mjs",
     "dev": "npm run check:node && npm run dev --prefix prompt-lab-extension",
     "build": "npm run check:node && npm run build --prefix prompt-lab-extension",
     "test": "npm run check:node && npm test --prefix prompt-lab-extension",
     "docs:lint": "npm run check:node && markdownlint-cli2",
     "docs:check": "npm run docs:lint",
-    "audit:root:production": "npm run check:node && npm audit --omit=dev --package-lock-only",
-    "audit:apps": "npm run check:node && node scripts/check-app-dependency-audit.mjs",
-    "test:audit:apps": "npm run check:node && node --test scripts/check-app-dependency-audit.test.mjs",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
     "test:landing": "npm run check:node && node --test tests/landing*.test.mjs scripts/landing-funnel-report.test.mjs",
     "test:api": "npm run check:node && node --test tests/api-safety.test.mjs tests/production-config.test.mjs tests/proxy.test.mjs tests/telemetry-safety.test.mjs tests/stripeBilling.test.mjs tests/billing-auth.test.mjs tests/billing-cors.test.mjs tests/web-production-env.test.mjs tests/vercel-deploy.test.mjs",
@@ -27,10 +24,12 @@
     "deploy:prod": "npm run check:node && node scripts/vercel-deploy.mjs --prod",
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
-    "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs"
+    "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs",
+    "test:tooling": "npm run check:node && node --test tests/runtime-contract.test.mjs tests/audit-workspaces.test.mjs",
+    "audit:all": "npm run check:node && node scripts/audit-workspaces.mjs"
   },
   "devDependencies": {
-    "markdownlint-cli2": "^0.18.1"
+    "markdownlint-cli2": "^0.23.2"
   },
   "dependencies": {
     "@clerk/backend": "^3.8.4",
