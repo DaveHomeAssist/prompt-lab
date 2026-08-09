@@ -45,6 +45,7 @@ import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
+import { createPromptEntry } from './lib/promptSchema.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -468,6 +469,26 @@ export default function App({
     setSaveTitle(suggestion.title);
     notify('Follow-up loaded into editor.');
   };
+  const saveComposerChain = (blocks) => {
+    const steps = (Array.isArray(blocks) ? blocks : [])
+      .filter((block) => (block?.content || '').trim())
+      .map((block) => ({ label: block.label || 'Step', template: block.content }));
+    if (steps.length === 0) {
+      notify('Add composer blocks with content before saving a chain.');
+      return null;
+    }
+    const title = `Chain: ${steps[0].label}${steps.length > 1 ? ` +${steps.length - 1}` : ''}`;
+    const entry = createPromptEntry({
+      title,
+      original: steps.map((step) => `# ${step.label}\n${step.template}`).join('\n\n---\n\n'),
+      enhanced: '',
+      tags: ['chain'],
+      metadata: { chain: { version: 1, steps } },
+    });
+    lib.setLibrary((prev) => [entry, ...prev]);
+    notify(`Saved ${steps.length}-step chain to the library.`);
+    return entry;
+  };
   const handleChainFollowUp = (suggestion) => {
     trackTelemetry('composer.block_added', {
       source: 'follow-up',
@@ -734,7 +755,7 @@ export default function App({
       {tab === 'composer' && (
         <div className="pl-tab-panel">
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={pageScroll} />
+          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
         </div>
       )}
 

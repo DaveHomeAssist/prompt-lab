@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Ic from './icons';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
+import ChainRunnerPanel from './ChainRunnerPanel.jsx';
 
 const STARTER_COLLECTIONS = new Set([
   'Handoff Templates',
@@ -114,12 +115,13 @@ function buildComposerSections(entries) {
   return sections;
 }
 
-export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, compact = false, pageScroll = false }) {
+export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, saveChain, compact = false, pageScroll = false }) {
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
   const [mobileView, setMobileView] = useState('canvas');
   const [search, setSearch] = useState('');
+  const [showChainLab, setShowChainLab] = useState(false);
 
   const composedPrompt = composerBlocks.map(b => `# ${b.label}\n${b.content}`).join('\n\n---\n\n');
   const filtered = library.filter(entry => matchesLibrarySearch(entry, search));
@@ -244,6 +246,16 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             {composerBlocks.length > 0 && <>
               <button onClick={() => copy(composedPrompt, 'Composed prompt copied!')} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy All</button>
               <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
+              {typeof saveChain === 'function' && (
+                <button onClick={() => { const saved = saveChain(composerBlocks); if (saved) setShowChainLab(true); }} disabled={composerBlocks.length === 0}
+                  className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 px-2 py-1 rounded-lg transition-colors`}>
+                  <Ic n="GitBranch" size={11} />Save as Chain
+                </button>
+              )}
+              <button onClick={() => setShowChainLab(p => !p)}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${showChainLab ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+                <Ic n="GitBranch" size={11} />Chain Lab
+              </button>
               <button onClick={() => setComposerBlocks([])} className={`flex items-center gap-1 text-xs ${m.dangerBtn} px-2 py-1 rounded-lg transition-colors`}><Ic n="Trash2" size={11} />Clear</button>
             </>}
           </div>
@@ -372,6 +384,17 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           )}
         </div>
       </div>
+      {showChainLab && (
+        <ChainRunnerPanel
+          m={m}
+          library={library}
+          notify={notify}
+          copy={copy}
+          setRaw={setRaw}
+          setTab={setTab}
+          onClose={() => setShowChainLab(false)}
+        />
+      )}
     </div>
   );
 }

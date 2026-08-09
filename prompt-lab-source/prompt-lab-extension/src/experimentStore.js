@@ -11,10 +11,12 @@ const DB_NAME = 'prompt_lab_local';
 const EXPERIMENT_STORE = 'experiments';
 const EVAL_RUN_STORE = 'eval_runs';
 const TEST_CASE_STORE = 'test_cases';
-const VERSION = 3;
+const RUNS_STORE = 'runs';
+const VERSION = 4;
 const EXPERIMENT_LS_KEY = 'pl2-experiment-fallback';
 const EVAL_RUN_LS_KEY = 'pl2-eval-run-fallback';
 const TEST_CASE_LS_KEY = 'pl2-test-case-fallback';
+const RUNS_LS_KEY = 'pl2-run-fallback';
 
 let dbPromise;
 
@@ -42,6 +44,11 @@ function openDb() {
         store.createIndex('promptId', 'promptId');
         store.createIndex('createdAt', 'createdAt');
         store.createIndex('updatedAt', 'updatedAt');
+      }
+      if (!db.objectStoreNames.contains(RUNS_STORE)) {
+        const store = db.createObjectStore(RUNS_STORE, { keyPath: 'run_id' });
+        store.createIndex('trace_id', 'trace_id');
+        store.createIndex('started_at', 'started_at');
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -81,6 +88,34 @@ function txDone(tx) {
     tx.onerror = () => reject(tx.error);
     tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
   });
+}
+
+export async function saveRunRecord(record) {
+  if (!record || !record.run_id) return null;
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  if (!db) {
+    const next = [record, ...readFallback(RUNS_LS_KEY).filter((row) => row.run_id !== record.run_id)].slice(0, 1000);
+    writeFallback(RUNS_LS_KEY, next);
+    return record;
+  }
+  const tx = db.transaction(RUNS_STORE, 'readwrite');
+  tx.objectStore(RUNS_STORE).put(record);
+  await txDone(tx);
+  return record;
+}
+
+export async function listRunsByTrace(traceId) {
+  const id = String(traceId || '').trim();
+  if (!id) return [];
+  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  let records = [];
+  if (!db) {
+    records = readFallback(RUNS_LS_KEY).filter((row) => row.trace_id === id);
+  } else {
+    const tx = db.transaction(RUNS_STORE, 'readonly');
+    records = (await txRequest(tx.objectStore(RUNS_STORE).index('trace_id').getAll(id))) || [];
+  }
+  return records.sort((left, right) => (left.started_at || 0) - (right.started_at || 0));
 }
 
 export function normalizeExperimentRecord(record) {
