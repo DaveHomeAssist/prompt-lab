@@ -2,9 +2,9 @@
 
 Audited: 2026-08-09
 
-Code baseline: `9c0661b1f733c4663ac488d066661c4925bed5b4` on `main`
+Code baseline: `8d3b23cb81afd68eee7812bd085a0d2839c4b549` on `main`
 
-Current product health: **🟡 Amber · 84/100 · B**
+Current product health: **🟢 Green · 85/100 · B**
 
 This is the canonical, code-grounded feature inventory and health rubric for the
 current web, extension, and desktop product. The dashboard commit itself does not
@@ -18,42 +18,42 @@ Commit and push directly to main; never create a pull request. Preserve unrelate
 work and do not invoke Anthropic, OpenAI, Gemini, OpenRouter, Stripe, billing,
 telemetry, or any other paid provider request.
 
-Objective: remove PromptLab's cross-surface dependency and Node runtime health
-blockers without changing product behavior.
+Objective: add a deterministic, zero-cost provider contract and prompt-quality
+evaluation corpus that measures PromptLab's core promise across all three product
+surfaces without invoking a paid provider.
 
-1. Verify origin/main, the four package roots under prompt-lab-source, all
-   package engines, .nvmrc, require-node script, and GitHub workflow Node versions.
-2. Choose one supported Node LTS contract from repository evidence. Prefer Node 22
-   if no dependency or deployment constraint requires Node 20, because extension,
-   desktop, and release CI already execute on Node 22. Document the decision.
-3. Reconcile .nvmrc, engines, the node guard, local commands, and every workflow to
-   that one version. The guard must fail clearly on an unsupported major version.
-4. Audit all four lockfiles. Upgrade dependencies deliberately to remove every
-   high and critical advisory. Do not use a blind forced audit fix. Inspect major
-   migrations, especially Vite, React Router, PostCSS, and markdownlint-cli2.
-5. Add or strengthen regression coverage for routing, persistence, provider
-   settings, production builds, and the Node contract wherever an upgrade creates
-   risk.
-6. Run all 472+ unit tests, all 52 API safety tests, docs checks, extension/web/
-   desktop builds, and Playwright extension and responsive smoke tests.
-7. Run npm audit in all four package roots and report direct versus transitive
-   findings. Zero high/critical advisories is the release gate. If one cannot be
-   removed safely, document the exact package, reachable surface, mitigation, and
-   executable follow-up instead of claiming success.
-8. Update this feature health dashboard with the new evidence and scores.
-9. Review the diff, commit only the intended files, push directly to main, verify
-   the remote ref and applicable GitHub workflows, observe the production deploy,
-   and smoke-test the live app without invoking provider or billing endpoints.
+1. Inventory the provider registry, request builders, streaming parsers, score and
+   lint engines, golden responses, test cases, and evaluation-run schema on current
+   `origin/main`.
+2. Define a versioned fixture contract for Anthropic, OpenAI, Gemini, OpenRouter,
+   and Ollama request/response shapes, including streaming, malformed, timeout,
+   cancellation, and provider-error cases. Never include real credentials or
+   production payloads.
+3. Create a representative prompt corpus with expected structural properties,
+   lint findings, score ranges, PII behavior, and golden-response comparisons.
+   Prefer stable assertions over subjective exact-output matching.
+4. Add one local deterministic provider server or adapter fixture shared by the
+   extension, hosted web, and desktop smoke paths. It must reject external network
+   access and record only privacy-safe request metadata.
+5. Exercise create → enhance → save → test → history → reload on extension, web,
+   and desktop with that fixture. Assert cancellation and failed-run persistence.
+6. Add the corpus and cross-surface smoke gates to CI with bounded timeouts and no
+   schedule. Do not weaken the existing Node, dependency, API-safety, or cost gates.
+7. Report coverage by provider and surface, known semantic blind spots, bundle
+   impact, and exact commands. Keep real-provider quality explicitly unverified.
+8. Recalculate this dashboard, commit and push directly to `main`, and verify the
+   exact SHA through GitHub Actions and the applicable deployment without invoking
+   provider, billing, or telemetry routes.
 
-Success: one enforced Node contract; zero high/critical npm advisories across all
-four lockfiles; tests, checks, builds, routing, and persistence pass; no paid or
-telemetry request occurs; main, CI, deployment, and the live URL are verified.
+Success: one reproducible zero-cost contract exercises all five provider adapters
+and all three shells; prompt-quality expectations are versioned; failure and reload
+behavior pass; no external provider or cost-bearing request occurs.
 ```
 
-Why this is next: dependency security is the only Red system gate, and the
-Node 20/22 split makes every local, CI, release, and remediation result less
-reproducible. This repair improves every feature surface before more product work
-is added.
+Why this is next: runtime and dependency health are now Green. The largest
+remaining product-evidence gap is whether PromptLab improves representative prompts
+consistently across providers and shells; current tests prove mechanics with mocks,
+not a versioned quality contract.
 
 ## Product intent and implementation model
 
@@ -161,14 +161,14 @@ The compact score is `V/C/R/X/S/E → total` using the rubric above.
 | Theme, density, responsive UI, and accessibility | Adapt contrast, spacing, layouts, focus, keyboard behavior, and touch controls across viewport sizes. | `18/18/13/14/14/10 → 87` | 🟢 | Theme/a11y unit tests and 400/768 px Playwright smoke tests pass. No automated screen-reader or full visual-diff suite exists. |
 | Session restore and error recovery | Restore editor/UI state and present explicit blocked, failed, canceled, and boundary-error states. | `18/19/14/14/14/9 → 88` | 🟢 | Session, execution-flow, failed-run, and ErrorBoundary coverage pass. Browser crash/interrupted-write recovery is untested. |
 
-### Providers and product surfaces — 79.5/100 · 10% of product score
+### Providers and product surfaces — 81.0/100 · 10% of product score
 
 | Feature/surface | Intent and current implementation | Score | 🚦 | Evidence and open gate |
 | --- | --- | ---: | --- | --- |
 | Provider registry and settings | Normalize Anthropic, OpenAI, Gemini, OpenRouter, and Ollama models, credentials, payloads, and results behind one adapter contract. | `18/16/10/10/14/10 → 78` | 🟡 | Adapter/settings tests pass. No zero-cost provider contract server or real-provider matrix currently proves runtime parity. |
-| Chrome extension | Deliver the full local-first workbench in an MV3 side panel with service-worker provider calls and Chrome storage. | `18/17/12/13/13/9 → 82` | 🟡 | Current-main Extension CI and mocked Playwright flow pass. Seven advisories remain, bundle JS is 613.81 kB, and Chrome Web Store release is not complete. |
-| Hosted web app | Provide a signed-in convenience/evaluation surface at `/app/` using the guarded proxy and shared frontend. | `18/17/11/12/13/9 → 80` | 🟡 | Build, API safety, deployment, and starter-library production flow pass. The full authenticated create→enhance→evaluate path was not run, and paid-provider execution remains deliberately unexercised. |
-| Tauri desktop | Deliver the full provider workbench as a desktop shell with local settings and distributable artifacts. | `17/16/10/12/13/10 → 78` | 🟡 | Frontend build passes; the latest applicable Desktop Build workflow is green. Five advisories remain, JS is 614.34 kB, and an installed/signed current-baseline runtime was not exercised. |
+| Chrome extension | Deliver the full local-first workbench in an MV3 side panel with service-worker provider calls and Chrome storage. | `18/17/12/13/15/10 → 85` | 🟡 | Exact-main Extension CI, 472 unit tests, build, mocked flow, responsive smoke, and 14-title reload persistence pass; audits are clean. The 611.43 kB JS chunk still warns and Chrome Web Store release is incomplete. |
+| Hosted web app | Provide a signed-in convenience/evaluation surface at `/app/` using the guarded proxy and shared frontend. | `18/17/11/12/14/9 → 81` | 🟡 | Exact-SHA build, API safety, Vercel production, public bundle, and fail-closed cost flags pass. The current authenticated production library rerun stopped at Clerk; the last signed-in production proof remains the prior baseline, and paid execution is deliberately unexercised. |
+| Tauri desktop | Deliver the full provider workbench as a desktop shell with local settings and distributable artifacts. | `17/16/10/13/14/10 → 80` | 🟡 | Frontend build and exact-main macOS universal, Ubuntu, and Windows CI builds pass with clean audits. An installed, signed current-baseline runtime was not exercised. |
 
 ### Safety, identity, and cost controls — 88.0/100 · 10% of product score
 
@@ -178,27 +178,28 @@ The compact score is `V/C/R/X/S/E → total` using the rubric above.
 | Telemetry and privacy defaults | Keep telemetry explicit, opt-in, redacted, and disabled when storage or configuration is unavailable. | `17/19/15/14/15/13 → 93` | 🟢 | Privacy-safe telemetry and production-default tests pass; no telemetry action was invoked. |
 | Proxy, API safety, and paid-call guards | Allowlist origins/providers, validate requests, constrain failure modes, and keep disabled backends terminal. | `18/19/14/13/15/11 → 90` | 🟢 | All 52 API safety tests pass. This audit made no provider or billing request. |
 
-### Documentation and delivery system — 65.3/100 · 5% of product score
+### Documentation and delivery system — 80.3/100 · 5% of product score
 
 | System gate | Current implementation | Score | 🚦 | Evidence and open gate |
 | --- | --- | ---: | --- | --- |
 | Product docs and onboarding truth | README, architecture, roadmap, menu, feature specs, public guide, and handoff artifacts describe overlapping product states. | `14/12/9/11/14/6 → 66` | 🔴 | Docs lint passes, but Run Timeline, Ghost Variables, Golden Response, and URL-routing docs contradict shipped code; working reports are stale. |
-| CI, release, and Node contract | API Safety, Extension CI, Docs CI, Pages, Desktop Build, and Release workflows cover different paths. | `17/16/10/10/14/5 → 72` | 🟡 | Current-main API Safety/Extension CI/Pages pass. `.nvmrc`, engines, docs, and guards require Node 20 while extension/desktop/release CI runs Node 22; the guard only warns. |
-| Dependency security | Four lockfiles support docs, extension, web, and desktop packages. | `16/11/8/9/8/3 → 55` | 🔴 | Audit reports: docs root 2 high/2 moderate; extension 6 high/1 low; web 5 high; desktop 5 high. Fixes exist, but several require deliberate major upgrades. |
-| Bundle and runtime performance | Vite builds all surfaces; web splits provider code while extension/desktop ship a larger shared bundle. | `15/13/9/10/14/7 → 68` | 🔴 | Builds pass. Extension JS is 613.81 kB (180.56 kB gzip) and desktop JS is 614.34 kB (180.73 kB gzip), both above Vite's 500 kB warning threshold; no performance budget exists. |
+| CI, release, and Node contract | API Safety, Dependency Health, Extension CI, Docs CI, Pages, Desktop Build, and Release workflows cover different paths. | `17/19/13/14/15/13 → 91` | 🟢 | Three `.nvmrc` files, four engines, a fail-closed guard, and every setup-node step enforce Node 22. Exact-main API Safety, Dependency Health, Docs, Extension, Pages, and three-platform Desktop Build pass; manual Release was not dispatched. |
+| Dependency security | Four lockfiles support docs, extension, web, and desktop packages. | `16/20/15/15/15/15 → 96` | 🟢 | All four clean installs and audits pass with zero info, low, moderate, high, or critical findings. CI reruns the tooling tests and aggregate high/critical gate on relevant dependency changes. |
+| Bundle and runtime performance | Vite builds all surfaces; web splits provider code while extension/desktop ship a larger shared bundle. | `15/13/9/10/14/7 → 68` | 🔴 | Builds pass. Extension JS is 611.43 kB (179.89 kB gzip) and desktop JS is 611.38 kB (179.88 kB gzip), both above Vite's 500 kB warning threshold; no performance budget exists. |
 
 ## Evidence ledger
 
 | Check | Baseline result | What it proves | What it does not prove |
 | --- | --- | --- | --- |
-| Shared unit suite | 49 files, 472 tests passed | Broad deterministic behavior across hooks, schemas, components, providers, persistence, billing, PII, telemetry, and evaluation mechanics | Real provider correctness or semantic output quality |
+| Shared unit suite | 49 files, 472 tests passed under Node 22.22.1 and locked Vitest 4.1.5 | Broad deterministic behavior across hooks, schemas, components, providers, persistence, billing, PII, telemetry, and evaluation mechanics | Real provider correctness or semantic output quality |
 | API safety suite | 52 tests passed | Proxy, disabled-backend, webhook/billing boundary, configuration, and fail-closed contracts | Live third-party provider or Stripe behavior |
 | Extension Playwright smoke | Refine/save mocked flow passed | Built MV3 shell launches and completes its primary local workflow | Store installation or real provider execution |
 | Responsive Playwright smoke | 400 px and 768 px passed | Core controls remain visible and operable at tested widths | Full visual fidelity or assistive-technology behavior |
-| Production Starter Library smoke | 14/14 titles, reload persistence, no console errors, no failed app requests | The exact audited code baseline reached production and its new library workflow works live | Full authenticated authoring/evaluation coverage |
-| Builds | Extension, hosted web, and desktop frontend passed | All shared frontend targets compile | Installed desktop behavior, CWS behavior, or semantic quality |
-| Current-main GitHub checks | API Safety, Extension CI, and Pages succeeded at `9c0661b` | Applicable current-main workflows are green | Exact-baseline Desktop Build, release signing, or store publishing |
-| Dependency audits | 4/4 package roots queried | Current advisory counts and fix availability are known | Exploitability; reachability still requires package-by-package review |
+| Starter Library smoke | Current Node 22 MV3 build shows all 14 exact titles before and after reload, persists all 14 entries and Loaded state, and emits zero forbidden requests | The shared frontend's exact pack and reload behavior pass on an intended runtime surface | The current production rerun stopped at Clerk auth; the prior signed-in production baseline remains historical evidence only |
+| Builds | Extension, hosted web, and desktop frontend passed; Desktop Build also passed macOS universal, Ubuntu, and Windows | All shared frontend targets compile and current desktop packages build on release platforms | Installed/signed desktop behavior, CWS behavior, or semantic quality |
+| Current-main GitHub checks | API Safety, Dependency Health, Docs CI, Extension CI, Pages, pages deployment, and all Desktop Build jobs succeeded at `8d3b23c` | Applicable exact-remediation workflows are green | Manual Release signing or store publishing |
+| Vercel production and live bundle | `dpl_5yhy6RTZPKT7o2rW9UktFdGYFCbJ` is READY/production on Node 22.x, metadata SHA `8d3b23c`, and aliases `promptlab.tools`; public `/app/` and `app-AKU46xWA.js` return 200 from Vercel | The canonical project deployed the audited SHA and the public alias serves its app bundle | Authenticated in-app behavior or any provider/billing route |
+| Dependency audits | Root, extension, web, and desktop each report zero vulnerabilities at every severity | The current lockfiles clear the aggregate dependency release gate | Future advisory publication or exploitability outside npm's database |
 
 No Anthropic, OpenAI, Gemini, OpenRouter, Stripe, billing, or telemetry action was
 invoked to produce this dashboard.
@@ -230,19 +231,17 @@ part of that surface's contract.
 
 ## Ranked upgrade queue
 
-1. **Dependency and Node contract remediation** — execute the prompt at the top of
-   this dashboard. Exit: one enforced Node LTS and zero high/critical advisories.
-2. **Deterministic prompt-quality evaluation corpus** — version representative raw
+1. **Deterministic prompt-quality evaluation corpus** — version representative raw
    prompts, expected lint/score properties, provider-response fixtures, golden
    comparisons, and regression thresholds. Exit: the core promise is measured,
    not only the UI mechanics.
-3. **Cross-surface primary-flow smoke matrix** — exercise create→enhance→save→test→
+2. **Cross-surface primary-flow smoke matrix** — exercise create→enhance→save→test→
    history→reload with a local deterministic provider fixture on extension, web,
    and desktop. Exit: no paid request and three surface-specific passes.
-4. **Bundle budgets and code splitting** — lazy-load evaluation/provider-heavy
+3. **Bundle budgets and code splitting** — lazy-load evaluation/provider-heavy
    areas and enforce build budgets. Exit: no Vite large-chunk warnings and tracked
    load/interaction budgets.
-5. **Documentation reconciliation** — update or archive contradictory active
+4. **Documentation reconciliation** — update or archive contradictory active
    specs and make this dashboard the feature-status source of truth. Exit: active
    docs agree with routes, shipped features, runtime contract, and release state.
 
