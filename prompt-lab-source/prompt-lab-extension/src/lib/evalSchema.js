@@ -16,6 +16,24 @@ function normalizeStatus(value) {
   return EVAL_STATUSES.includes(value) ? value : 'success';
 }
 
+function normalizeTraitStringList(value) {
+  return Array.isArray(value)
+    ? value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 12)
+    : [];
+}
+
+export function normalizeTraitResults(value) {
+  if (!value || typeof value !== 'object') return null;
+  const passedTraits = normalizeTraitStringList(value.passedTraits);
+  const failedTraits = normalizeTraitStringList(value.failedTraits);
+  const excludedHits = normalizeTraitStringList(value.excludedHits);
+  const verdict = value.verdict === 'pass' || value.verdict === 'fail' ? value.verdict : null;
+  if (!verdict && passedTraits.length === 0 && failedTraits.length === 0 && excludedHits.length === 0) {
+    return null;
+  }
+  return { passedTraits, failedTraits, excludedHits, verdict };
+}
+
 export function normalizeEvalRunRecord(record) {
   const status = normalizeStatus(record.status);
   return {
@@ -37,6 +55,8 @@ export function normalizeEvalRunRecord(record) {
     status,
     testCaseId: normalizeEntityId(record.testCaseId),
     goldenScore: Number.isFinite(record.goldenScore) ? Math.max(0, Math.min(1, record.goldenScore)) : null,
+    traitResults: normalizeTraitResults(record.traitResults),
+    regression: record.regression === true,
   };
 }
 
@@ -67,6 +87,8 @@ export function filterEvalRuns(records, filters = {}) {
     provider = '',
     model = '',
     status = '',
+    verdict = '',
+    regression = false,
     dateRange = '',
     dateFrom = '',
     dateTo = '',
@@ -96,6 +118,12 @@ export function filterEvalRuns(records, filters = {}) {
       if (providerFilter && row.provider !== providerFilter) return false;
       if (modelFilter && row.model !== modelFilter) return false;
       if (statusFilter && row.status !== statusFilter) return false;
+      if (verdict === 'pass' || verdict === 'fail') {
+        // Automated trait verdicts win over manual ratings when both exist.
+        const effectiveVerdict = row.traitResults?.verdict || row.verdict;
+        if (effectiveVerdict !== verdict) return false;
+      }
+      if (regression === true && row.regression !== true) return false;
       const createdAtMs = row.createdAt ? new Date(row.createdAt).getTime() : 0;
       if (rangeStartMs && createdAtMs < rangeStartMs) return false;
       if (dateFromFilter && createdAtMs < new Date(`${dateFromFilter}T00:00:00`).getTime()) return false;

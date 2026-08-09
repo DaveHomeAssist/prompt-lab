@@ -357,6 +357,12 @@ export default function usePromptLibrary(notify) {
     updateLibraryEntry(entryId, entry => updatePromptEntry(entry, { goldenThreshold: threshold }));
   };
 
+  // Suite summaries live in metadata so they round-trip export/import without touching version history.
+  const recordSuiteResult = (entryId, suite) => updateLibraryEntry(entryId, entry => ({
+    ...entry,
+    metadata: { ...(entry.metadata || {}), suite },
+  }));
+
   const exportLib = () => {
     if (library.length === 0) {
       notify('Library is empty.');
@@ -568,7 +574,7 @@ export default function usePromptLibrary(notify) {
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
-    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold,
+    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult,
     exportLib, importLib, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,

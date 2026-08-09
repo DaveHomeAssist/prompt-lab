@@ -392,6 +392,13 @@ const LibraryPanel = memo(function LibraryPanel({
                     <p className={`text-sm font-semibold ${m.text} truncate flex items-center gap-1.5`}>
                       {entry.title}
                       {(entry.metadata?.status === 'draft' || (!entry.enhanced?.trim() && !entry.original?.trim())) && <DraftBadge tone="warning">draft</DraftBadge>}
+                      {entry.metadata?.suite?.verdict && (
+                        <span
+                          title={`Test suite: ${entry.metadata.suite.passed}/${entry.metadata.suite.total} passed (${new Date(entry.metadata.suite.lastRunAt).toLocaleString()})`}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${entry.metadata.suite.verdict === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                          {entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}
+                        </span>
+                      )}
                     </p>
                   )}
                   <div className={`flex items-center gap-2 text-xs ${m.textMuted} mt-0.5 flex-wrap`}>

@@ -332,6 +332,41 @@ export function ngramSimilarity(a, b, n = 3) {
   return union === 0 ? 0 : intersection / union;
 }
 
+export function checkTraits(outputText, expectedTraits = [], expectedExclusions = []) {
+  const text = String(outputText || '');
+  const lower = text.toLowerCase();
+  const matches = (needle) => {
+    const raw = String(needle || '').trim();
+    if (!raw) return false;
+    if (raw.length > 2 && raw.startsWith('/') && raw.endsWith('/')) {
+      try {
+        return new RegExp(raw.slice(1, -1), 'i').test(text);
+      } catch {
+        // Invalid regex traits degrade to a literal match instead of failing the case.
+        return lower.includes(raw.toLowerCase());
+      }
+    }
+    return lower.includes(raw.toLowerCase());
+  };
+  const traits = (Array.isArray(expectedTraits) ? expectedTraits : [])
+    .map((item) => String(item || '').trim()).filter(Boolean).slice(0, 12);
+  const exclusions = (Array.isArray(expectedExclusions) ? expectedExclusions : [])
+    .map((item) => String(item || '').trim()).filter(Boolean).slice(0, 12);
+  if (traits.length === 0 && exclusions.length === 0) {
+    return { passedTraits: [], failedTraits: [], excludedHits: [], verdict: null };
+  }
+  const passedTraits = [];
+  const failedTraits = [];
+  traits.forEach((trait) => (matches(trait) ? passedTraits : failedTraits).push(trait));
+  const excludedHits = exclusions.filter(matches);
+  return {
+    passedTraits,
+    failedTraits,
+    excludedHits,
+    verdict: failedTraits.length === 0 && excludedHits.length === 0 ? 'pass' : 'fail',
+  };
+}
+
 export { isRetryable as isTransientError } from './lib/errorTaxonomy.js';
 
 export {
