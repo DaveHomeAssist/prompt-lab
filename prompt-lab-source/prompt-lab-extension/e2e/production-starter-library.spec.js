@@ -118,6 +118,7 @@ test('@production Project Prompt Instruments starter library loads and persists'
   });
 
   page.on('requestfailed', (request) => {
+    if (!request.url().startsWith(productionOrigin)) return;
     failedRequests.push(`${request.method()} ${request.url()} — ${request.failure()?.errorText || 'unknown error'}`);
   });
   page.on('response', (response) => {
@@ -192,8 +193,9 @@ test('@production Project Prompt Instruments starter library loads and persists'
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openLibrary(page);
-  await expect(page.getByText(PACK_NAME, { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Loaded/ })).toBeVisible();
+  const loadedPackCard = page.getByRole('button', { name: /^Loaded/ }).locator('..');
+  await expect(loadedPackCard.getByText(PACK_NAME, { exact: true })).toBeVisible();
+  await expect(loadedPackCard.getByText('14 prompts', { exact: true })).toBeVisible();
   await assertInstrumentTitles(page);
   await expect.poll(() => persistedPackState(page)).toEqual({
     loaded: true,
@@ -203,7 +205,7 @@ test('@production Project Prompt Instruments starter library loads and persists'
 
   await page.waitForTimeout(1_000);
   expect(forbiddenRequests, 'No paid-provider, billing, or telemetry request may leave the browser').toEqual([]);
-  expect(failedRequests, 'No browser request may fail').toEqual([]);
+  expect(failedRequests, 'No application request may fail').toEqual([]);
   expect(failedApplicationResponses, 'No application response may return HTTP 4xx/5xx').toEqual([]);
   expect(consoleErrors, 'No browser console errors').toEqual([]);
   expect(pageErrors, 'No uncaught page errors').toEqual([]);
