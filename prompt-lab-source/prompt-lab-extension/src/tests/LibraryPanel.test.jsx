@@ -7,7 +7,9 @@ vi.mock('../icons', () => ({
 }));
 
 vi.mock('../TagChip', () => ({
-  default: ({ tag }) => <span>{tag}</span>,
+  default: ({ tag, onClick, selected }) => (
+    <button type="button" onClick={onClick} aria-pressed={selected}>{tag}</button>
+  ),
 }));
 
 vi.mock('../TestCasesPanel', () => ({
@@ -236,5 +238,70 @@ describe('LibraryPanel actions', () => {
     expect(setSearch).toHaveBeenCalledWith('');
     expect(setActiveTag).toHaveBeenCalledWith(null);
     expect(setActiveCollection).toHaveBeenCalledWith(null);
+  });
+
+  it('caps a large tag wall, expands it, and filters tags by text', () => {
+    const tags = Array.from({ length: 14 }, (_, index) => `tag-${String(index + 1).padStart(2, '0')}`);
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        allLibTags: tags,
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByRole('button', { name: 'tag-12' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tag-13' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all tags (14)' }));
+    expect(screen.getByRole('button', { name: 'tag-14' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Filter library tags' }), { target: { value: '14' } });
+    expect(screen.getByRole('button', { name: 'tag-14' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'tag-01' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the selected tag visible when the tag wall is collapsed', () => {
+    const tags = Array.from({ length: 14 }, (_, index) => `tag-${String(index + 1).padStart(2, '0')}`);
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        allLibTags: tags,
+        activeTag: 'tag-14',
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    expect(screen.getByRole('button', { name: 'tag-14' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Remove tag-14 filter' })).toBeInTheDocument();
+  });
+
+  it('removes active collection, tag, and search filters independently', () => {
+    const setSearch = vi.fn();
+    const setActiveTag = vi.fn();
+    const setActiveCollection = vi.fn();
+    const props = makeProps({
+      lib: {
+        ...makeProps().lib,
+        search: 'incident',
+        activeTag: 'ops',
+        activeCollection: 'Launch',
+        setSearch,
+        setActiveTag,
+        setActiveCollection,
+      },
+    });
+
+    render(<LibraryPanel {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Launch filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove ops filter' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove “incident” filter' }));
+
+    expect(setActiveCollection).toHaveBeenCalledWith(null);
+    expect(setActiveTag).toHaveBeenCalledWith(null);
+    expect(setSearch).toHaveBeenCalledWith('');
   });
 });

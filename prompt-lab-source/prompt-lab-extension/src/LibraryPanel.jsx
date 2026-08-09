@@ -36,6 +36,25 @@ function StarterPackCard({ pack, m, onLoad }) {
   );
 }
 
+const TAG_WALL_CAP = 12;
+
+function FilterChip({ label, icon, onRemove, m }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border ${m.border} ${m.codeBlock} ${m.textAlt} px-2 py-0.5 text-[11px] font-medium`}>
+      {icon && <Ic n={icon} size={9} />}
+      <span className="max-w-[140px] truncate">{label}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
+        className={`ui-control -mr-0.5 leading-none ${m.textMuted} transition-colors`}
+      >
+        <Ic n="X" size={10} />
+      </button>
+    </span>
+  );
+}
+
 /**
  * Library sidebar panel — extracted from App.jsx to prevent re-renders
  * when typing in the editor input field.
@@ -60,6 +79,8 @@ const LibraryPanel = memo(function LibraryPanel({
 }) {
   const [searchDraft, setSearchDraft] = useState(lib.search);
   const [showImportPanel, setShowImportPanel] = useState(false);
+  const [tagFilter, setTagFilter] = useState('');
+  const [showAllTags, setShowAllTags] = useState(false);
   const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
   const primaryStarterPack = unloadedStarterPacks[0] || null;
   const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
@@ -72,6 +93,16 @@ const LibraryPanel = memo(function LibraryPanel({
   const accentSoftButtonClass = 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18';
   const accentPanelClass = 'border border-orange-400/20 bg-gradient-to-br from-orange-500/10 via-transparent to-amber-500/10';
   const accentToggleActiveClass = 'bg-orange-500/90 text-white';
+  const tagQuery = tagFilter.trim().toLowerCase();
+  const matchedTags = tagQuery
+    ? lib.allLibTags.filter((tag) => tag.toLowerCase().includes(tagQuery))
+    : lib.allLibTags;
+  const tagsCollapsed = !showAllTags && !tagQuery && matchedTags.length > TAG_WALL_CAP;
+  let visibleTags = tagsCollapsed ? matchedTags.slice(0, TAG_WALL_CAP) : matchedTags;
+
+  if (tagsCollapsed && lib.activeTag && matchedTags.includes(lib.activeTag) && !visibleTags.includes(lib.activeTag)) {
+    visibleTags = [lib.activeTag, ...visibleTags.slice(0, TAG_WALL_CAP - 1)];
+  }
 
   useEffect(() => {
     setSearchDraft(lib.search);
@@ -154,11 +185,79 @@ const LibraryPanel = memo(function LibraryPanel({
           </div>
         )}
         {lib.allLibTags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {lib.allLibTags.map(t => <TagChip key={t} tag={t} selected={lib.activeTag === t} onClick={() => lib.setActiveTag(p => p === t ? null : t)} />)}
+          <div className="flex flex-col gap-1.5">
+            {lib.allLibTags.length > TAG_WALL_CAP && (
+              <div className="relative">
+                <Ic n="Search" size={10} className={`absolute left-2 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
+                <input
+                  className={`w-full ${m.input} border rounded-lg py-1 pl-6 pr-2 text-[11px] focus:outline-none ${accentFocusClass} ${m.text}`}
+                  aria-label="Filter library tags"
+                  placeholder="Filter tags…"
+                  value={tagFilter}
+                  onChange={(event) => setTagFilter(event.target.value)}
+                />
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1">
+              {visibleTags.map((tag) => (
+                <TagChip
+                  key={tag}
+                  tag={tag}
+                  selected={lib.activeTag === tag}
+                  onClick={() => lib.setActiveTag((currentTag) => currentTag === tag ? null : tag)}
+                />
+              ))}
+              {tagQuery && matchedTags.length === 0 && (
+                <span className={`py-0.5 text-[11px] ${m.textMuted}`}>No tags match “{tagFilter.trim()}”.</span>
+              )}
+              {!tagQuery && matchedTags.length > TAG_WALL_CAP && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags((current) => !current)}
+                  aria-expanded={showAllTags}
+                  className={`ui-control rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${m.btn} ${m.textAlt}`}
+                >
+                  {showAllTags ? 'Show less' : `Show all tags (${matchedTags.length})`}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
+      {hasLibraryFilters && (
+        <div className={`flex shrink-0 flex-wrap items-center gap-1.5 border-b p-3 ${m.border}`}>
+          <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.textMuted}`}>Active</span>
+          {lib.activeCollection && (
+            <FilterChip
+              m={m}
+              icon="FolderOpen"
+              label={lib.activeCollection}
+              onRemove={() => lib.setActiveCollection(null)}
+            />
+          )}
+          {lib.activeTag && (
+            <FilterChip m={m} label={lib.activeTag} onRemove={() => lib.setActiveTag(null)} />
+          )}
+          {lib.search && (
+            <FilterChip
+              m={m}
+              icon="Search"
+              label={`“${lib.search}”`}
+              onRemove={() => {
+                setSearchDraft('');
+                lib.setSearch('');
+              }}
+            />
+          )}
+          <button
+            type="button"
+            onClick={clearLibraryFilters}
+            className="ui-control ml-auto text-[11px] text-orange-300 transition-colors hover:text-orange-200"
+          >
+            Clear
+          </button>
+        </div>
+      )}
       {showImportPanel && (
         <PresetImportPanel
           m={m}
