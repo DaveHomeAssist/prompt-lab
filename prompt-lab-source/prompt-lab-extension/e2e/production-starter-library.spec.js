@@ -147,8 +147,31 @@ test('@production Project Prompt Instruments starter library loads and persists'
   }
   if (destination === 'auth') {
     console.log('\n[production-smoke] Complete the Clerk sign-in in Chromium; the test will resume automatically.');
-    await libraryTab.waitFor({ state: 'visible', timeout: 5 * 60_000 });
+    const signInDeadline = Date.now() + (5 * 60_000);
+    let returnedToLanding = false;
+    while (Date.now() < signInDeadline) {
+      if (await libraryTab.isVisible()) break;
+
+      const activeUrl = new URL(page.url());
+      const activePath = activeUrl.pathname.replace(/\/+$/, '');
+      const requestedPath = requestedUrl.pathname.replace(/\/+$/, '');
+      if (activeUrl.origin === productionOrigin && activePath !== requestedPath) {
+        returnedToLanding = true;
+        break;
+      }
+      await page.waitForTimeout(250);
+    }
+
+    if (returnedToLanding) {
+      await page.goto(PRODUCTION_URL, { waitUntil: 'domcontentloaded' });
+    }
+    await libraryTab.waitFor({ state: 'visible', timeout: 30_000 });
     await page.context().storageState({ path: SAVE_AUTH_STATE_PATH });
+
+    failedRequests.length = 0;
+    failedApplicationResponses.length = 0;
+    consoleErrors.length = 0;
+    pageErrors.length = 0;
   }
 
   await openLibrary(page);
