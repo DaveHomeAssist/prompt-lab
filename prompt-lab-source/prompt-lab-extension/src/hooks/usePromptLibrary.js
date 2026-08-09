@@ -363,6 +363,22 @@ export default function usePromptLibrary(notify) {
     metadata: { ...(entry.metadata || {}), suite },
   }));
 
+  const removeEntriesByPackId = (packId) => {
+    const id = ensureString(packId).trim();
+    if (!id) return 0;
+    let removed = 0;
+    setLibrary(prev => {
+      const next = prev.filter(entry => {
+        const isPackEntry = ensureString(entry?.metadata?.packId).trim() === id;
+        if (isPackEntry) removed += 1;
+        return !isPackEntry;
+      });
+      libraryRef.current = next;
+      return next;
+    });
+    return removed;
+  };
+
   const exportLib = () => {
     if (library.length === 0) {
       notify('Library is empty.');
@@ -574,7 +590,7 @@ export default function usePromptLibrary(notify) {
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
-    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult,
+    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId,
     exportLib, importLib, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,

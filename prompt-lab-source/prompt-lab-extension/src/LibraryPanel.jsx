@@ -6,6 +6,7 @@ import TestCasesPanel from './TestCasesPanel';
 import MarkdownPreview from './MarkdownPreview';
 import DraftBadge from './DraftBadge.jsx';
 import PresetImportPanel from './PresetImportPanel.jsx';
+import PackStudioPanel from './PackStudioPanel.jsx';
 
 function StarterPackCard({ pack, m, onLoad }) {
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,7 @@ const LibraryPanel = memo(function LibraryPanel({
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [tagFilter, setTagFilter] = useState('');
   const [showAllTags, setShowAllTags] = useState(false);
+  const [showPackStudio, setShowPackStudio] = useState(false);
   const unloadedStarterPacks = (lib.starterLibraries || []).filter((pack) => !pack.loaded);
   const primaryStarterPack = unloadedStarterPacks[0] || null;
   const hasLibraryFilters = Boolean(lib.search || lib.activeTag || lib.activeCollection);
@@ -157,6 +159,9 @@ const LibraryPanel = memo(function LibraryPanel({
             )}
             <button type="button" onClick={() => setShowImportPanel(p => !p)} aria-label="Import preset pack" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showImportPanel ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
               <span className="flex items-center gap-1"><Ic n="Upload" size={11} />Import Pack</span>
+            </button>
+            <button type="button" onClick={() => setShowPackStudio(p => !p)} aria-label="Open pack studio" className={`ui-control px-2.5 rounded-lg text-xs transition-colors ${showPackStudio ? accentToggleActiveClass : `${m.btn} ${m.textAlt}`} ${compact ? 'flex-1 py-1.5' : ''}`}>
+              <span className="flex items-center gap-1"><Ic n="Layers" size={11} />Packs</span>
             </button>
           </div>
         </div>
@@ -264,6 +269,14 @@ const LibraryPanel = memo(function LibraryPanel({
           lib={lib}
           compact={compact}
           onClose={() => setShowImportPanel(false)}
+        />
+      )}
+      {showPackStudio && (
+        <PackStudioPanel
+          m={m}
+          lib={lib}
+          compact={compact}
+          onClose={() => setShowPackStudio(false)}
         />
       )}
       <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-3`}>
