@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check:node": "node ../scripts/require-node-20.mjs",
+    "check:node": "node ../scripts/require-node.mjs",
     "dev": "npm run check:node && vite",
     "build": "npm run check:node && vite build && node scripts/assemble.js",
     "preview": "npm run check:node && vite preview",
@@ -19,13 +19,13 @@
     "build:cws": "npm run check:node && vite build --outDir dist-cws --minify false && node scripts/assemble.js dist-cws"
   },
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "dependencies": {
     "diff-match-patch": "^1.0.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.18.2"
   },
   "overrides": {
     "@rolldown/pluginutils": "1.0.0-rc.9"
@@ -39,9 +39,9 @@
     "autoprefixer": "10.4.20",
     "jiti": "^2.6.1",
     "jsdom": "^28.1.0",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.26",
     "tailwindcss": "3.4.17",
-    "vite": "^8.0.10",
+    "vite": "^8.2.1",
     "vitest": "^4.1.5"
   }
 }

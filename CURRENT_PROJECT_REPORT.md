@@ -10,7 +10,7 @@
   - Vite
   - Chrome / Vivaldi MV3 extension
   - Tauri 2 desktop shell
-  - Node 20
+  - Node 22
   - Vitest
 - Live surfaces:
   - Public landing page: `https://promptlab.tools/`
@@ -112,7 +112,7 @@ These edits look product-correct in direction. They are not random copy churn.
 - `prompt-lab-source/public/prompt-lab-landing.html`
   - landing source for the hosted/public presentation layer, currently dirty
 - `prompt-lab-source/package.json`
-  - Node 20 contract and scripts for build, test, preflight, and Notion docs agent
+  - Node 22 contract and scripts for build, test, preflight, and Notion docs agent
 - `prompt-lab-source/NOTION_DOCS_AGENT.md`
   - repo-local Notion sync agent doc and workflow assumptions
 
