@@ -77,3 +77,8 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-09] [PLB] [build] Complete Node 22 remediation: engines/guards/CI to 22.x, four pinned upgrades, lockfiles regenerated, dependency-health workflow, audit gate zero high/critical
 [2026-08-09] [PLB] [landing] Reconcile the landing redesign with Node 22 and the shared dependency health gate
 [2026-08-09] [PLB] [ios] Reconcile the universal native prototype with the verified landing and Node 22 release baseline
+[2026-08-09] [PLB] [feature] Prompt CI: automated trait/exclusion verdicts, suite badges, golden regression guard, verdict/regression timeline filters
+[2026-08-09] [PLB] [feature] Model Arena: per-side provider/model selection in A/B via getConfiguredProviders; arena runs land in prompt-scoped history
+[2026-08-09] [PLB] [feature] Pack Studio: pl2-packs registry, publish selected prompts as schema-valid packs, pack uninstall
+[2026-08-09] [PLB] [feature] Prompt Chains: chain runner wired into the trace layer (runs store v4), Composer Save-as-Chain + Chain Lab
+[2026-08-09] [PLB] [feature] Capture Page: activeTab selection into {{context}} with PII gate (extension surface)
