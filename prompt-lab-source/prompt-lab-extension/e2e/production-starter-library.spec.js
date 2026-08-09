@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const PRODUCTION_URL = process.env.PROMPT_LAB_PRODUCTION_URL || 'https://promptlab.tools/app/';
 const AUTH_STATE_PATH = process.env.PROMPT_LAB_AUTH_STATE;
+const SAVE_AUTH_STATE_PATH = process.env.PROMPT_LAB_SAVE_AUTH_STATE;
 if (AUTH_STATE_PATH) {
   test.use({ storageState: AUTH_STATE_PATH });
 }
@@ -74,6 +75,7 @@ async function assertInstrumentTitles(page) {
 }
 
 test('@production Project Prompt Instruments starter library loads and persists', async ({ page }) => {
+  test.setTimeout(SAVE_AUTH_STATE_PATH ? 6 * 60_000 : 60_000);
   const requestedUrl = new URL(PRODUCTION_URL);
   const productionOrigin = new URL(PRODUCTION_URL).origin;
   const forbiddenRequests = [];
@@ -132,15 +134,21 @@ test('@production Project Prompt Instruments starter library loads and persists'
   const currentUrl = new URL(page.url());
   expect(currentUrl.origin).toBe(requestedUrl.origin);
   expect(currentUrl.pathname.replace(/\/+$/, '')).toBe(requestedUrl.pathname.replace(/\/+$/, ''));
+  const libraryTab = page.getByRole('tab', { name: 'Library', exact: true });
   const destination = await Promise.race([
-    page.getByRole('tab', { name: 'Library', exact: true }).waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'app'),
+    libraryTab.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'app'),
     page.getByRole('heading', { name: 'Sign in to Prompt Lab' }).waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'auth'),
   ]);
-  if (destination === 'auth') {
+  if (destination === 'auth' && !SAVE_AUTH_STATE_PATH) {
     throw new Error(
-      'Production authentication is required. Set PROMPT_LAB_AUTH_STATE to a Playwright '
-      + 'storage-state JSON file created from an authorized Prompt Lab session.',
+      'Production authentication is required. Set PROMPT_LAB_AUTH_STATE to an authorized '
+      + 'Playwright storage-state JSON file, or set PROMPT_LAB_SAVE_AUTH_STATE and run headed.',
     );
+  }
+  if (destination === 'auth') {
+    console.log('\n[production-smoke] Complete the Clerk sign-in in Chromium; the test will resume automatically.');
+    await libraryTab.waitFor({ state: 'visible', timeout: 5 * 60_000 });
+    await page.context().storageState({ path: SAVE_AUTH_STATE_PATH });
   }
 
   await openLibrary(page);
