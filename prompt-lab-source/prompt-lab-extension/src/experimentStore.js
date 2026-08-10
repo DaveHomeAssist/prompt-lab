@@ -134,7 +134,8 @@ export async function saveExperiment(record) {
   const normalized = normalizeExperimentRecord(record);
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    const next = [normalized, ...readFallback(EXPERIMENT_LS_KEY)].slice(0, 500);
+    const existing = readFallback(EXPERIMENT_LS_KEY).filter((entry) => entry.id !== normalized.id);
+    const next = [normalized, ...existing].slice(0, 500);
     writeFallback(EXPERIMENT_LS_KEY, next);
     return normalized;
   }

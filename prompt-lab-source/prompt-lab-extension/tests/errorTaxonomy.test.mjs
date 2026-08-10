@@ -1,127 +1,78 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeError } from '../src/errorTaxonomy.js';
+import {
+  AppError,
+  ErrorCategory,
+  normalizeError,
+  providerError,
+  validationError,
+} from '../src/lib/errorTaxonomy.js';
 
-// ── Category routing ────────────────────────────────────────────────────────
+test('auth errors expose settings recovery without retry', () => {
+  const result = normalizeError(new Error('401 Unauthorized'), 'anthropic');
 
-test('auth: 401 status code', () => {
-  const r = normalizeError(new Error('401 Unauthorized'));
-  assert.equal(r.category, 'auth');
-  assert.ok(r.suggestions.length > 0);
-  assert.ok(r.actions.includes('open_provider_settings'));
+  assert.equal(result.category, ErrorCategory.AUTH);
+  assert.equal(result.source, 'anthropic');
+  assert.equal(result.retryable, false);
+  assert.ok(result.actions.includes('open_provider_settings'));
+  assert.ok(result.suggestions.length > 0);
 });
 
-test('auth: invalid api key string', () => {
-  assert.equal(normalizeError(new Error('Invalid API key provided')).category, 'auth');
+test('auth classification handles API-key text and explicit status', () => {
+  assert.equal(normalizeError(new Error('Invalid API key')).category, ErrorCategory.AUTH);
+  assert.equal(normalizeError({ message: 'Forbidden', status: 403 }).category, ErrorCategory.AUTH);
 });
 
-test('auth: 403 forbidden', () => {
-  assert.equal(normalizeError(new Error('403 Forbidden')).category, 'auth');
+test('rate-limit errors are retryable', () => {
+  const result = normalizeError(new Error('429 Too Many Requests'), 'openai');
+
+  assert.equal(result.category, ErrorCategory.RATE_LIMIT);
+  assert.equal(result.retryable, true);
+  assert.ok(result.actions.includes('retry'));
 });
 
-test('auth: missing api key', () => {
-  assert.equal(normalizeError(new Error('Missing API key')).category, 'auth');
-});
-
-test('quota: 429 rate limit', () => {
-  const r = normalizeError(new Error('429 Too Many Requests'));
-  assert.equal(r.category, 'quota');
-  assert.ok(r.actions.includes('retry'));
-});
-
-test('quota: insufficient_quota', () => {
-  assert.equal(normalizeError(new Error('insufficient_quota')).category, 'quota');
-});
-
-test('network: failed to fetch', () => {
-  const r = normalizeError(new Error('Failed to fetch'));
-  assert.equal(r.category, 'network');
-});
-
-test('network: DNS error', () => {
-  assert.equal(normalizeError(new Error('DNS resolution failed')).category, 'network');
-});
-
-test('network: SSL error', () => {
-  assert.equal(normalizeError(new Error('SSL certificate expired')).category, 'network');
-});
-
-test('network: CORS error', () => {
-  assert.equal(normalizeError(new Error('CORS policy blocked')).category, 'network');
-});
-
-test('timeout: timed out', () => {
-  const r = normalizeError(new Error('Request timed out'));
-  assert.equal(r.category, 'timeout');
-});
-
-test('timeout: 504 gateway', () => {
-  assert.equal(normalizeError(new Error('504 Gateway Timeout')).category, 'timeout');
-});
-
-test('timeout: context length exceeded', () => {
-  assert.equal(normalizeError(new Error('context length exceeded')).category, 'timeout');
-});
-
-test('schema: unexpected token', () => {
-  const r = normalizeError(new Error('Unexpected token < in JSON'));
-  assert.equal(r.category, 'schema');
-});
-
-test('schema: malformed response', () => {
-  assert.equal(normalizeError(new Error('Malformed response body')).category, 'schema');
-});
-
-test('provider: unknown error falls through', () => {
-  const r = normalizeError(new Error('Something totally weird happened'));
-  assert.equal(r.category, 'provider');
-  assert.ok(r.actions.includes('retry'));
-});
-
-// ── Edge cases ──────────────────────────────────────────────────────────────
-
-test('handles null error', () => {
-  const r = normalizeError(null);
-  assert.equal(r.category, 'provider');
-});
-
-test('handles undefined error', () => {
-  const r = normalizeError(undefined);
-  assert.equal(r.category, 'provider');
-});
-
-test('handles plain string instead of Error', () => {
-  const r = normalizeError('rate limit exceeded');
-  assert.equal(r.category, 'quota');
-});
-
-test('handles error with stack trace in details', () => {
-  const err = new Error('authentication failed');
-  const r = normalizeError(err);
-  assert.ok(r.details.includes('authentication failed'));
-});
-
-test('code extraction picks 3-letter uppercase codes', () => {
-  const r = normalizeError(new Error('ERR_CONNECTION_REFUSED network'));
-  assert.equal(r.code, 'ERR_CONNECTION_REFUSED');
-});
-
-test('code extraction picks first matching code token', () => {
-  const r = normalizeError(new Error('HTTP 503 Service Unavailable'));
-  // pickCode grabs first 3+ char uppercase or 3-digit numeric — 'HTTP' matches first
-  assert.equal(r.code, 'HTTP');
-});
-
-test('all results have required shape', () => {
-  const cases = [null, '', new Error('test'), 'string error', { message: '429' }];
-  for (const input of cases) {
-    const r = normalizeError(input);
-    assert.ok(r.category);
-    assert.ok(r.code);
-    assert.ok(typeof r.userMessage === 'string');
-    assert.ok(typeof r.details === 'string');
-    assert.ok(Array.isArray(r.suggestions));
-    assert.ok(Array.isArray(r.actions));
+test('network errors include fetch, DNS, and timeout failures', () => {
+  for (const message of ['Failed to fetch', 'DNS resolution failed', 'Request timeout']) {
+    assert.equal(normalizeError(new Error(message)).category, ErrorCategory.NETWORK);
   }
+});
+
+test('provider status is preserved and controls retryability', () => {
+  const badRequest = normalizeError({ message: 'Request failed', status: 400 }, 'anthropic');
+  const unavailable = normalizeError(new Error('Request failed (503)'), 'anthropic');
+
+  assert.equal(badRequest.category, ErrorCategory.PROVIDER);
+  assert.equal(badRequest.status, 400);
+  assert.equal(badRequest.retryable, false);
+  assert.equal(unavailable.category, ErrorCategory.PROVIDER);
+  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.retryable, true);
+});
+
+test('unknown values produce a safe AppError envelope', () => {
+  for (const input of [null, undefined, 'Something unexpected']) {
+    const result = normalizeError(input);
+    assert.ok(result instanceof AppError);
+    assert.equal(result.category, ErrorCategory.UNKNOWN);
+    assert.equal(typeof result.userMessage, 'string');
+    assert.equal(typeof result.debugMessage, 'string');
+  }
+});
+
+test('existing AppErrors retain identity and validation recovery shape', () => {
+  const original = validationError('enhance', 'Prompt text is required.');
+
+  assert.equal(normalizeError(original), original);
+  assert.equal(original.category, ErrorCategory.VALIDATION);
+  assert.deepEqual(original.actions, []);
+  assert.ok(original.suggestions.includes('Check your input and try again.'));
+});
+
+test('provider factory returns user-safe details', () => {
+  const result = providerError('anthropic', 500, 'upstream trace data');
+
+  assert.equal(result.userMessage, 'anthropic request failed (500).');
+  assert.equal(result.debugMessage, 'upstream trace data');
+  assert.equal(result.retryable, true);
 });
