@@ -5,7 +5,7 @@
   "framework": null,
   "functions": {
     "api/proxy.js": {
-      "maxDuration": 10
+      "maxDuration": 25
     },
     "api/telemetry.js": {
       "maxDuration": 10

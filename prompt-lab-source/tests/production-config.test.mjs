@@ -103,9 +103,9 @@ test('cost-bearing production features default off and require explicit true val
   }
 });
 
-test('Vercel caps cost-bearing API function duration explicitly', async () => {
+test('Vercel gives the provider proxy enough time while keeping other API durations capped', async () => {
   const config = JSON.parse(await readFile(vercelConfigPath, 'utf8'));
-  assert.equal(config.functions?.['api/proxy.js']?.maxDuration, 10);
+  assert.equal(config.functions?.['api/proxy.js']?.maxDuration, 25);
   assert.equal(config.functions?.['api/telemetry.js']?.maxDuration, 10);
   assert.equal(config.functions?.['api/billing/*.js']?.maxDuration, 10);
 });

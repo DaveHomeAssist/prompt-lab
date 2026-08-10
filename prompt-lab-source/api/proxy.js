@@ -28,7 +28,7 @@ const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
 const DEMO_WINDOW_MS = 24 * 60 * 60_000;
 const DEFAULT_MAX_TOKENS = 2048;
-const ANTHROPIC_TIMEOUT_MS = 8000;
+const ANTHROPIC_TIMEOUT_MS = 20_000;
 const REDIS_TIMEOUT_MS = 2000;
 
 const burstHits = new Map();
@@ -473,7 +473,7 @@ export default async function handler(request) {
       signal: request.signal,
     }, {
       service: 'Anthropic',
-      timeoutMs: readBoundedIntEnv('PROMPTLAB_ANTHROPIC_TIMEOUT_MS', ANTHROPIC_TIMEOUT_MS, { max: 8000 }),
+      timeoutMs: readBoundedIntEnv('PROMPTLAB_ANTHROPIC_TIMEOUT_MS', ANTHROPIC_TIMEOUT_MS, { max: 20_000 }),
     });
 
     const responseHeaders = {
