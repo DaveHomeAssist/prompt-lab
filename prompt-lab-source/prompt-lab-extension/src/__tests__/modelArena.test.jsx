@@ -79,6 +79,34 @@ describe('model arena (multi-provider A/B)', () => {
     act(() => { result.current.setSideProvider('a', null); });
     expect(result.current.abProviders.a).toBeNull();
   });
+
+  it('scales from two to five variants and runs every populated column concurrently', async () => {
+    callModel.mockResolvedValue({ provider: 'mock', model: 'mock-model', content: [{ text: 'out' }] });
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+    act(() => {
+      result.current.setAbA((prev) => ({ ...prev, prompt: 'A' }));
+      result.current.setAbB((prev) => ({ ...prev, prompt: 'B' }));
+      result.current.addVariant();
+    });
+    act(() => { result.current.addVariant(); });
+    act(() => { result.current.addVariant(); });
+    expect(result.current.variants.map((variant) => variant.label)).toEqual(['A', 'B', 'C', 'D', 'E']);
+    act(() => {
+      ['c', 'd', 'e'].forEach((id) => result.current.setVariant(id, (prev) => ({ ...prev, prompt: id.toUpperCase() })));
+    });
+    await act(async () => { await result.current.runAll(); });
+    expect(callModel).toHaveBeenCalledTimes(5);
+    expect(result.current.variants.every((variant) => variant.response === 'out')).toBe(true);
+  });
+
+  it('promotes a completed sourced variant to the prompt golden response', () => {
+    const pinGoldenResponse = vi.fn(() => true);
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+    act(() => { result.current.loadVariant('a', 'prompt', { entryId: 'entry-1', title: 'Source' }); });
+    act(() => { result.current.setAbA((prev) => ({ ...prev, response: 'winning output' })); });
+    expect(result.current.promoteToGolden('a', pinGoldenResponse)).toBe(true);
+    expect(pinGoldenResponse).toHaveBeenCalledWith('entry-1', expect.objectContaining({ text: 'winning output' }));
+  });
 });
 
 describe('getConfiguredProvidersDirect', () => {

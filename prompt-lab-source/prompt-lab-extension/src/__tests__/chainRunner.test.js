@@ -109,6 +109,8 @@ describe('runChain', () => {
   });
 
   it('reports canceled when the signal aborts mid-chain', async () => {
+    const terminalEvents = [];
+    on('run:error', (payload) => terminalEvents.push(payload));
     const controller = new AbortController();
     const execute = vi.fn().mockImplementation(async () => {
       controller.abort();
@@ -127,6 +129,8 @@ describe('runChain', () => {
     });
     expect(result.status).toBe('canceled');
     expect(execute).toHaveBeenCalledTimes(1);
+    expect(terminalEvents).toHaveLength(2);
+    expect(terminalEvents.every((event) => event.status === 'canceled')).toBe(true);
   });
 
   it('emits a parent chain run with per-step child spans sharing the trace', async () => {

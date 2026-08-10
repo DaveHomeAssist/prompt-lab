@@ -98,7 +98,7 @@ export async function runChain({
       const error = 'Chain canceled.';
       onStepUpdate?.(index, { status: 'canceled', label });
       results.push({ index, label, status: 'canceled' });
-      parent.error(new Error(error));
+      parent.cancel({ reason: error });
       return { status: 'canceled', results, traceId: parent.trace_id };
     }
 
@@ -142,10 +142,12 @@ export async function runChain({
     } catch (caught) {
       const canceled = signal?.aborted || caught?.name === 'AbortError';
       const error = canceled ? 'Chain canceled.' : (caught?.message || 'Chain step failed.');
-      stepRun.error(caught, { name: label });
+      if (canceled) stepRun.cancel({ name: label, reason: error });
+      else stepRun.error(caught, { name: label });
       onStepUpdate?.(index, { status: canceled ? 'canceled' : 'error', label, error });
       results.push({ index, label, status: canceled ? 'canceled' : 'error', error });
-      parent.error(caught);
+      if (canceled) parent.cancel({ reason: error });
+      else parent.error(caught);
       return { status: canceled ? 'canceled' : 'error', error, results, traceId: parent.trace_id };
     }
   }

@@ -12,7 +12,7 @@
  * Events:
  *   run:start  — emitted when a run begins
  *   run:end    — emitted when a run completes successfully
- *   run:error  — emitted when a run fails
+ *   run:error  — emitted when a run fails or is canceled
  *
  * Required fields on every event payload:
  *   run_id, trace_id, parent_run_id, run_type, status,
@@ -86,7 +86,7 @@ export function newRunId() {
 
 /**
  * Start a run. Emits `run:start` and returns a context object
- * with `end()` and `error()` methods.
+ * with `end()`, `error()`, and `cancel()` methods.
  *
  * @param {object} opts
  * @param {string} opts.run_type - 'enhance' | 'ab' | 'test-case'
@@ -95,7 +95,7 @@ export function newRunId() {
  * @param {string} [opts.trace_id] - reuse an existing trace, or auto-generate
  * @param {string} [opts.parent_run_id] - parent run for nested spans
  * @param {string} [opts.retry_of] - run_id of the run this retries
- * @returns {{ run_id: string, trace_id: string, end: (extra?) => RunEvent, error: (err, extra?) => RunEvent }}
+ * @returns {{ run_id: string, trace_id: string, end: (extra?) => RunEvent, error: (err, extra?) => RunEvent, cancel: (extra?) => RunEvent }}
  */
 export function startRun({
   run_type,
@@ -152,6 +152,20 @@ export function startRun({
         status: 'error',
         ended_at: Date.now(),
         error: err?.message || String(err),
+      };
+      emit('run:error', payload);
+      return payload;
+    },
+
+    /**
+     * Mark the run as explicitly canceled without misclassifying it as an error.
+     */
+    cancel(extra = {}) {
+      const payload = {
+        ...startPayload,
+        ...extra,
+        status: 'canceled',
+        ended_at: Date.now(),
       };
       emit('run:error', payload);
       return payload;

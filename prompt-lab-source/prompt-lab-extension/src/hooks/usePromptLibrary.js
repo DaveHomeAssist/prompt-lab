@@ -27,6 +27,7 @@ import {
   matchesLibrarySearch,
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
+import { stampPackMembership } from '../lib/packStore.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 
@@ -379,6 +380,20 @@ export default function usePromptLibrary(notify) {
     return removed;
   };
 
+  const assignEntriesToPack = (entryIds, packId, packName) => {
+    const ids = new Set(Array.isArray(entryIds) ? entryIds : []);
+    const id = ensureString(packId).trim();
+    if (!id || ids.size === 0) return 0;
+    let assigned = 0;
+    setLibrary(prev => {
+      assigned = prev.filter((entry) => ids.has(entry.id)).length;
+      const next = stampPackMembership(prev, [...ids], { id, title: packName });
+      libraryRef.current = next;
+      return next;
+    });
+    return assigned;
+  };
+
   const exportLib = () => {
     if (library.length === 0) {
       notify('Library is empty.');
@@ -590,7 +605,7 @@ export default function usePromptLibrary(notify) {
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
     doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
-    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId,
+    pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
     exportLib, importLib, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,

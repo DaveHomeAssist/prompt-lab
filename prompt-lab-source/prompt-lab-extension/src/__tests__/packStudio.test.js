@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadPackRegistry, reconcilePacks, removePack, upsertPack } from '../lib/packStore.js';
-import { exportPackFromEntries } from '../lib/packExport.js';
+import { loadPackRegistry, reconcilePacks, removePack, stampPackMembership, upsertPack } from '../lib/packStore.js';
+import { buildPackShareUrl, decodePackShare, exportPackFromEntries } from '../lib/packExport.js';
 import { importPresetPack, validatePresetPack } from '../lib/presetImport.js';
 import { createPromptEntry } from '../lib/promptSchema.js';
 
@@ -52,6 +52,14 @@ describe('packStore', () => {
     const rows = reconcilePacks([]);
     expect(rows.find((row) => row.id === 'ghost-pack').entryCount).toBe(0);
   });
+
+  it('stamps only selected authored entries so uninstall targets exact membership', () => {
+    const first = makeEntry({ id: 'first' });
+    const second = makeEntry({ id: 'second' });
+    const result = stampPackMembership([first, second], ['second'], { id: 'my-pack', title: 'My Pack' });
+    expect(result[0].metadata.packId).toBeUndefined();
+    expect(result[1].metadata).toMatchObject({ packId: 'my-pack', packName: 'My Pack', packSource: 'authored' });
+  });
 });
 
 describe('exportPackFromEntries', () => {
@@ -65,6 +73,13 @@ describe('exportPackFromEntries', () => {
     expect(pack.id).toBe('dave-pack');
     expect(pack.presets).toHaveLength(2);
     expect(pack.presets[0].prompt).toBe('enhanced text');
+  });
+
+  it('round-trips a Unicode pack through a portable share URL payload', () => {
+    const pack = exportPackFromEntries([makeEntry({ title: 'Résumé', enhanced: 'Use café context.' })], { title: 'Café Pack' });
+    const url = buildPackShareUrl(pack, { origin: 'https://promptlab.tools', pathname: '/app/' });
+    expect(url).toMatch(/^https:\/\/promptlab\.tools\/app\/#pack=/);
+    expect(decodePackShare(url.split('#pack=')[1])).toEqual(pack);
   });
 
   it('round-trips through importPresetPack and stamps packId membership', async () => {
@@ -83,9 +98,41 @@ describe('exportPackFromEntries', () => {
     expect(loadPackRegistry()['rt-pack'].source).toBe('imported');
   });
 
-  it('deduplicates preset ids from same-titled entries', () => {
-    const pack = exportPackFromEntries([makeEntry({ title: 'Twin' }), makeEntry({ title: 'Twin' })], { title: 'Twins' });
+  it('applies per-preset keep, replace, and skip conflict resolutions', async () => {
+    const existing = [
+      makeEntry({ id: 'replace-me', title: 'Replace Me', enhanced: 'old replace' }),
+      makeEntry({ id: 'keep-me', title: 'Keep Me', enhanced: 'same keep' }),
+      makeEntry({ id: 'skip-me', title: 'Skip Me', enhanced: 'same skip' }),
+    ];
+    const pack = exportPackFromEntries([
+      makeEntry({ title: 'Replace Me', enhanced: 'new replace' }),
+      makeEntry({ title: 'Keep Me', enhanced: 'same keep' }),
+      makeEntry({ title: 'Skip Me', enhanced: 'same skip' }),
+    ], { title: 'Conflict Pack' });
+    let saved = null;
+    const result = await importPresetPack(pack, {
+      load: async () => existing,
+      save: async (library) => { saved = library; },
+    }, {
+      resolutions: {
+        'replace-me': { action: 'replace', existingId: 'replace-me' },
+        'keep-me': { action: 'keep', existingId: 'keep-me' },
+        'skip-me': { action: 'skip', existingId: 'skip-me' },
+      },
+    });
+    expect(saved.find((entry) => entry.id === 'replace-me').enhanced).toBe('new replace');
+    expect(saved.filter((entry) => entry.title === 'Keep Me')).toHaveLength(2);
+    expect(saved.filter((entry) => entry.title === 'Skip Me')).toHaveLength(1);
+    expect(result.skipped).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'skip-me' })]));
+  });
+
+  it('deduplicates three or more preset ids from same-titled entries with monotonic suffixes', () => {
+    const pack = exportPackFromEntries([
+      makeEntry({ title: 'Twin' }),
+      makeEntry({ title: 'Twin' }),
+      makeEntry({ title: 'Twin' }),
+    ], { title: 'Twins' });
     const ids = pack.presets.map((preset) => preset.id);
-    expect(new Set(ids).size).toBe(2);
+    expect(ids).toEqual(['twin', 'twin-2', 'twin-3']);
   });
 });

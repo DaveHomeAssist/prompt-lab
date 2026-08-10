@@ -44,6 +44,25 @@ export function removePack(packId) {
   return true;
 }
 
+export function stampPackMembership(entries, entryIds, { id, title, source = 'authored' }) {
+  const ids = new Set(Array.isArray(entryIds) ? entryIds : []);
+  const packId = ensureString(id).trim();
+  if (!packId || ids.size === 0) return Array.isArray(entries) ? entries : [];
+  return (Array.isArray(entries) ? entries : []).map((entry) => (
+    ids.has(entry.id)
+      ? {
+          ...entry,
+          metadata: {
+            ...(entry.metadata || {}),
+            packId,
+            packName: ensureString(title).trim() || packId,
+            packSource: source,
+          },
+        }
+      : entry
+  ));
+}
+
 /**
  * Derive the pack list shown in the studio: every registry row plus any pack id
  * present on library entries that the registry does not know yet (e.g. starter

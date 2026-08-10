@@ -809,7 +809,7 @@ export default function App({
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
             {runsView === 'compare' && canUseAbTesting
-              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...abTest} />
+              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} pinGoldenResponse={lib.pinGoldenResponse} {...abTest} />
               : runsView === 'compare'
                 ? (
                   <div className="flex h-full items-center justify-center p-6">

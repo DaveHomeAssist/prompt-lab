@@ -18,8 +18,13 @@ export function exportPackFromEntries(entries, { id, title, version = '1.0.0', d
   const usedIds = new Set();
 
   const presets = list.map((entry) => {
-    let presetId = slugify(entry.title, 'prompt');
-    while (usedIds.has(presetId)) presetId = `${presetId}-2`;
+    const baseId = slugify(entry.title, 'prompt');
+    let presetId = baseId;
+    let suffix = 2;
+    while (usedIds.has(presetId)) {
+      presetId = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
     usedIds.add(presetId);
     const promptText = ensureString(entry.enhanced).trim() || ensureString(entry.original);
     return {
@@ -45,4 +50,30 @@ export function exportPackFromEntries(entries, { id, title, version = '1.0.0', d
     updatedAt: stamp,
     presets,
   };
+}
+
+export function encodePackShare(pack) {
+  const json = JSON.stringify(pack);
+  const bytes = new TextEncoder().encode(json);
+  let binary = '';
+  bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/g, '');
+}
+
+export function decodePackShare(value) {
+  try {
+    const normalized = ensureString(value).replaceAll('-', '+').replaceAll('_', '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return null;
+  }
+}
+
+export function buildPackShareUrl(pack, locationLike = window.location) {
+  const origin = ensureString(locationLike?.origin);
+  const pathname = ensureString(locationLike?.pathname) || '/';
+  return `${origin}${pathname}#pack=${encodePackShare(pack)}`;
 }

@@ -2,6 +2,25 @@ import { describe, expect, it } from 'vitest';
 import { buildGraphDataset } from '../runs/buildGraphDataset.js';
 
 describe('buildGraphDataset', () => {
+  it('renders raw run-emitter records without requiring a second schema conversion', () => {
+    const dataset = buildGraphDataset([{
+      run_id: 'chain-1',
+      parent_run_id: null,
+      trace_id: 'trace-1',
+      run_type: 'chain',
+      status: 'canceled',
+      started_at: 1_000,
+      ended_at: 1_250,
+      provider: 'chain',
+      model: 'Demo chain',
+    }], { traceId: 'trace-1', rootRunId: 'chain-1' });
+    expect(dataset.nodes[0]).toMatchObject({
+      label: 'Chain:Demo chain',
+      status: 'canceled',
+      meta: { runtime: '250ms', tags: ['chain', 'Demo chain'] },
+    });
+  });
+
   it('maps run records into the graph dataset contract deterministically', () => {
     const runs = [
       {

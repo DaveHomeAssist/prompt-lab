@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import Ic from './icons';
 import { reconcilePacks, removePack, upsertPack } from './lib/packStore.js';
-import { exportPackFromEntries } from './lib/packExport.js';
+import { buildPackShareUrl, exportPackFromEntries } from './lib/packExport.js';
+
+function nextPatchVersion(value) {
+  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(value || ''));
+  if (!match) return '1.0.1';
+  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
+}
 
 /**
  * Pack Studio — list installed/authored packs, publish selected prompts as a
@@ -29,19 +35,53 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
     });
   };
 
-  const publishPack = () => {
-    const entries = lib.library.filter((entry) => selectedIds.has(entry.id));
-    if (entries.length === 0 || !packTitle.trim()) return;
-    const pack = exportPackFromEntries(entries, { title: packTitle });
+  const downloadPack = (pack) => {
     upsertPack({ id: pack.id, title: pack.title, version: pack.version, source: 'authored' });
     const url = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
     const anchor = Object.assign(document.createElement('a'), { href: url, download: `${pack.id}-v${pack.version}.json` });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+
+  const publishPack = () => {
+    const entries = lib.library.filter((entry) => selectedIds.has(entry.id));
+    if (entries.length === 0 || !packTitle.trim()) return;
+    const pack = exportPackFromEntries(entries, { title: packTitle });
+    lib.assignEntriesToPack?.(entries.map((entry) => entry.id), pack.id, pack.title);
+    downloadPack(pack);
     setStatusLine(`Exported ${entries.length} prompts as ${pack.title}.`);
     setPackTitle('');
     setSelectedIds(new Set());
     setRefreshTick((tick) => tick + 1);
+  };
+
+  const buildInstalledPack = (pack, version = pack.version || '1.0.0') => {
+    const entries = lib.library.filter((entry) => entry?.metadata?.packId === pack.id);
+    return exportPackFromEntries(entries, {
+      id: pack.id,
+      title: pack.title,
+      version,
+    });
+  };
+
+  const updatePack = (pack) => {
+    const next = buildInstalledPack(pack, nextPatchVersion(pack.version));
+    if (next.presets.length === 0) return;
+    downloadPack(next);
+    setStatusLine(`Updated ${pack.title} to v${next.version} with ${next.presets.length} prompts.`);
+    setRefreshTick((tick) => tick + 1);
+  };
+
+  const sharePack = async (pack) => {
+    const share = buildInstalledPack(pack);
+    if (share.presets.length === 0) return;
+    const url = buildPackShareUrl(share);
+    try {
+      await navigator.clipboard.writeText(url);
+      setStatusLine(`Share link copied for ${pack.title}.`);
+    } catch {
+      setStatusLine('Could not copy the share link. Export the JSON instead.');
+    }
   };
 
   const uninstallPack = (pack) => {
@@ -74,10 +114,16 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
                 <span className={`font-semibold ${m.text} truncate block`}>{pack.title}</span>
                 <span className={m.textMuted}>{pack.entryCount} prompts · {pack.source}{pack.version ? ` · v${pack.version}` : ''}</span>
               </div>
-              <button type="button" onClick={() => uninstallPack(pack)}
-                className="ui-control px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors shrink-0">
-                Uninstall
-              </button>
+              <div className="flex flex-wrap justify-end gap-1 shrink-0">
+                <button type="button" onClick={() => sharePack(pack)} disabled={pack.entryCount === 0}
+                  className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 transition-colors`}>Share</button>
+                <button type="button" onClick={() => updatePack(pack)} disabled={pack.entryCount === 0}
+                  className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 transition-colors`}>Update</button>
+                <button type="button" onClick={() => uninstallPack(pack)}
+                  className="ui-control px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors">
+                  Uninstall
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -6,6 +6,8 @@ import { runChain } from './lib/chainRunner.js';
 import { isChainEntry } from './lib/chainSchema.js';
 import { initRunPersistence } from './lib/runPersistence.js';
 import { scanSensitiveData } from './piiScanner.js';
+import { listRunsByTrace } from './experimentStore.js';
+import { buildGraphDataset } from './runs/buildGraphDataset.js';
 
 const STEP_BADGE = {
   running: 'bg-violet-500/20 text-violet-300',
@@ -27,6 +29,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
   const [running, setRunning] = useState(false);
   const [finalOutput, setFinalOutput] = useState('');
   const [runStatus, setRunStatus] = useState('');
+  const [traceGraph, setTraceGraph] = useState(null);
   const abortRef = useRef(null);
 
   useEffect(() => { initRunPersistence(); }, []);
@@ -58,6 +61,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
     })));
     setFinalOutput('');
     setRunStatus('');
+    setTraceGraph(null);
 
     const result = await runChain({
       chainEntry: selected,
@@ -74,6 +78,17 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
     setRunning(false);
     abortRef.current = null;
     setRunStatus(result.status);
+    if (result.traceId) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const traceRuns = await listRunsByTrace(result.traceId);
+      const root = traceRuns.find((record) => record.parent_run_id == null) || traceRuns[0];
+      if (root) {
+        setTraceGraph(buildGraphDataset(traceRuns, {
+          traceId: result.traceId,
+          rootRunId: root.run_id,
+        }));
+      }
+    }
     if (result.status === 'success') {
       setFinalOutput(result.output || '');
       notify?.(`Chain finished: ${result.results.length} steps.`);
@@ -161,6 +176,23 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
               <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2 text-xs ${m.textBody} whitespace-pre-wrap max-h-48 overflow-y-auto`}>
                 {finalOutput}
               </div>
+            </div>
+          )}
+          {traceGraph?.nodes?.length > 0 && (
+            <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2`} data-testid="chain-trace-graph">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Trace graph</span>
+                <span className={`text-[11px] ${m.textMuted}`}>{traceGraph.nodes.length} nodes · {traceGraph.edges.length} edges</span>
+              </div>
+              <ol className="flex flex-col gap-1">
+                {traceGraph.nodes.map((node) => (
+                  <li key={node.id} className={`flex items-center gap-2 text-xs ${m.textBody}`}>
+                    <span className={`w-2 h-2 rounded-full ${node.status === 'success' ? 'bg-emerald-400' : node.status === 'canceled' ? 'bg-gray-400' : 'bg-red-400'}`} />
+                    <span className="font-mono truncate">{node.label}</span>
+                    <span className={`ml-auto ${m.textMuted}`}>{node.meta.runtime || node.status}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
           )}
         </>

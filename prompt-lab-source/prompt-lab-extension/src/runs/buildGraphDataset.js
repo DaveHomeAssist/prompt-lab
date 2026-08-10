@@ -10,14 +10,15 @@ const RUN_LAYER_MAP = Object.freeze({
 });
 
 function parseTimestamp(value) {
+  if (Number.isFinite(value)) return value;
   const ms = Date.parse(value || '');
   return Number.isFinite(ms) ? ms : null;
 }
 
 function getDeterministicExportedAt(runs) {
   const latestMs = runs.reduce((max, run) => {
-    const endMs = parseTimestamp(run.end_ts);
-    const startMs = parseTimestamp(run.start_ts);
+    const endMs = parseTimestamp(run.end_ts ?? run.ended_at);
+    const startMs = parseTimestamp(run.start_ts ?? run.started_at);
     return Math.max(max, endMs ?? startMs ?? 0);
   }, 0);
   return new Date(latestMs || 0).toISOString();
@@ -62,15 +63,15 @@ export function buildGraphDataset(runs, { traceId, rootRunId, variantId = 'main'
 
   const nodes = records.map((run) => {
     const layer = RUN_LAYER_MAP[run.run_type] || 'Unknown';
-    const startMs = parseTimestamp(run.start_ts);
-    const endMs = parseTimestamp(run.end_ts);
+    const startMs = parseTimestamp(run.start_ts ?? run.started_at);
+    const endMs = parseTimestamp(run.end_ts ?? run.ended_at);
     const runtimeMs = startMs != null && endMs != null ? Math.max(0, endMs - startMs) : null;
-    const meta = run.meta || {};
+    const meta = { provider: run.provider, model: run.model, ...(run.meta || {}) };
     const childCount = childCounts[run.run_id] || 0;
 
     return {
       id: run.run_id,
-      label: `${layer}:${run.name}`,
+      label: `${layer}:${run.name || run.model || run.run_type}`,
       type: run.run_type,
       layer,
       status: run.status,
