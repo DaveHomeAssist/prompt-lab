@@ -139,8 +139,17 @@ test('production shared-key mode requires both hosted feature flags', async () =
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_PROXY_ENABLED = 'true';
   process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
 
-  globalThis.fetch = async (_url, init) => {
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://redis.example.test/')) {
+      const result = String(url).includes('/pttl/') ? 60_000 : 1;
+      return new Response(JSON.stringify({ result }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     assert.equal(init.headers['x-api-key'], 'server-key');
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -366,6 +375,26 @@ test('proxy enforces the shared-key daily limit', async () => {
   }));
   assert.equal(second.status, 429);
   assert.match(await second.text(), /daily hosted demo limit reached/i);
+});
+
+test('production shared-key requests fail closed when durable rate limiting is unavailable', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  delete process.env.KV_REST_API_URL;
+  delete process.env.KV_REST_API_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  globalThis.fetch = assert.fail;
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /usage protection is unavailable/i);
 });
 
 test('proxy returns upstream streaming bodies without buffering them first', async () => {

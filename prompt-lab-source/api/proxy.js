@@ -226,13 +226,18 @@ async function incrementPersistentWindow(namespace, key, windowMs) {
   };
 }
 
-async function incrementWindow(namespace, key, windowMs, memoryMap) {
+async function incrementWindow(namespace, key, windowMs, memoryMap, { requirePersistent = false } = {}) {
   if (getRedisConfig()) {
     try {
       return await incrementPersistentWindow(namespace, key, windowMs);
     } catch (error) {
       console.warn(`[proxy] persistent rate limit unavailable for ${namespace}: ${error.message}`);
+      if (requirePersistent) throw error;
     }
+  }
+
+  if (requirePersistent) {
+    throw new Error(`Persistent rate limiting is required for ${namespace}.`);
   }
 
   return incrementMemoryWindow(memoryMap, key, windowMs);
@@ -259,7 +264,9 @@ async function getDemoState(ip) {
     return { limited: false, remaining: null, resetAt: null, store: getRedisConfig() ? 'kv' : 'memory' };
   }
 
-  const state = await incrementWindow('demo', ip, DEMO_WINDOW_MS, demoHits);
+  const state = await incrementWindow('demo', ip, DEMO_WINDOW_MS, demoHits, {
+    requirePersistent: process.env.NODE_ENV === 'production',
+  });
   return {
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
@@ -432,7 +439,13 @@ export default async function handler(request) {
 
   let demoState = null;
   if (auth.usingSharedKey) {
-    demoState = await getDemoState(clientIp);
+    try {
+      demoState = await getDemoState(clientIp);
+    } catch {
+      return jsonResponse({
+        error: 'Hosted usage protection is unavailable. Try again shortly.',
+      }, 503, {}, request);
+    }
     if (demoState.limited) {
       return jsonResponse(
         {
