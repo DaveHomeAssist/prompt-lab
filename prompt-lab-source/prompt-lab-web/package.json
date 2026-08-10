@@ -12,6 +12,7 @@
     "dev": "npm run check:node && vite",
     "build": "npm run check:production-env && vite build",
     "preview": "npm run check:node && vite preview",
+    "test:e2e:app": "npm run check:node && playwright test --config=playwright.app.config.js",
     "test:e2e:landing": "npm run check:node && playwright test --config=playwright.landing.config.js"
   },
   "dependencies": {

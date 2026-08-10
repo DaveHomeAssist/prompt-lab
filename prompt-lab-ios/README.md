@@ -54,7 +54,7 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 - Byte-identical re-export of an untouched web library, including unknown metadata and empty collections
 - Empty, in-flight, completed, API-error, cancelled, and no-key states
 
-The checked-in QA suite contains 11 tests. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
+The checked-in QA suite contains 15 tests: 14 credential-free tests plus one optional live Anthropic smoke test. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
 
 ```sh
 xcrun simctl launch booted com.davehomeassist.promptlab.prototype \

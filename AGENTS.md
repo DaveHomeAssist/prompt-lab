@@ -82,3 +82,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-09] [PLB] [feature] Pack Studio: pl2-packs registry, publish selected prompts as schema-valid packs, pack uninstall
 [2026-08-09] [PLB] [feature] Prompt Chains: chain runner wired into the trace layer (runs store v4), Composer Save-as-Chain + Chain Lab
 [2026-08-09] [PLB] [feature] Capture Page: activeTab selection into {{context}} with PII gate (extension surface)
+[2026-08-10] [PLB] [test] Restore legacy and desktop smoke coverage, add hosted web/mobile E2E, and prevent stale mobile outputs across Composer handoffs

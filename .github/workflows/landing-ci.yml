@@ -35,7 +35,9 @@ on:
       - "prompt-lab-source/prompt-lab-web/app/**"
       - "prompt-lab-source/prompt-lab-web/package.json"
       - "prompt-lab-source/prompt-lab-web/package-lock.json"
+      - "prompt-lab-source/prompt-lab-web/playwright.app.config.js"
       - "prompt-lab-source/prompt-lab-web/playwright.landing.config.js"
+      - "prompt-lab-source/prompt-lab-web/tests/app/**"
       - "prompt-lab-source/prompt-lab-web/public/**"
       - "prompt-lab-source/prompt-lab-web/tests/landing/**"
       - "prompt-lab-source/prompt-lab-web/vite.config.js"
@@ -73,7 +75,9 @@ on:
       - "prompt-lab-source/prompt-lab-web/app/**"
       - "prompt-lab-source/prompt-lab-web/package.json"
       - "prompt-lab-source/prompt-lab-web/package-lock.json"
+      - "prompt-lab-source/prompt-lab-web/playwright.app.config.js"
       - "prompt-lab-source/prompt-lab-web/playwright.landing.config.js"
+      - "prompt-lab-source/prompt-lab-web/tests/app/**"
       - "prompt-lab-source/prompt-lab-web/public/**"
       - "prompt-lab-source/prompt-lab-web/tests/landing/**"
       - "prompt-lab-source/prompt-lab-web/vite.config.js"
@@ -145,6 +149,9 @@ jobs:
 
       - name: Run browser landing gates
         run: npm run test:e2e:landing
+
+      - name: Run hosted app browser gates
+        run: npm run test:e2e:app --prefix prompt-lab-web
 
       - name: Upload browser failure evidence
         if: failure()

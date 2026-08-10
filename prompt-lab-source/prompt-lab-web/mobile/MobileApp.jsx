@@ -10,6 +10,17 @@ import {
 } from './mobileState.js';
 import { generateCopyReadyPrompt } from './mobileProvider.js';
 
+function composerInputPatch(composerText, extra = {}) {
+  return {
+    composerText,
+    output: '',
+    streaming: false,
+    lastProvider: '',
+    lastModel: '',
+    ...extra,
+  };
+}
+
 export default function MobileApp() {
   const [state, setState] = useState(loadMobileState);
   const [toast, setToast] = useState(null);
@@ -220,7 +231,14 @@ function PromptDetail({ state, patch, notify, feedback }) {
           className="primary-btn"
           type="button"
           onClick={() => {
-            patch({ composerText: text, activeTab: 'compose', detailPromptId: null, lastUsedPromptId: prompt.id });
+            patch(composerInputPatch(text, {
+              activeTab: 'compose',
+              detailPromptId: null,
+              lastUsedPromptId: prompt.id,
+              prompts: state.prompts.map((item) => item.id === prompt.id
+                ? { ...item, uses: (item.uses || 0) + 1 }
+                : item),
+            }));
             notify('Loaded into Composer', 'success', 'composer');
           }}
         >
@@ -254,7 +272,7 @@ function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt
         <textarea
           className={`field ${feedback.errorTarget === 'composer' ? 'is-error' : ''} ${feedback.successTarget === 'composer' ? 'is-success' : ''}`}
           value={state.composerText}
-          onChange={(event) => patch({ composerText: event.target.value })}
+          onChange={(event) => patch(composerInputPatch(event.target.value))}
           placeholder="Write or paste a rough prompt"
         />
         <div className="next-panel" aria-label="Suggested next actions">
@@ -263,7 +281,7 @@ function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt
               className="quick-action suggested"
               type="button"
               onClick={() => {
-                patch({ composerText: lastPrompt.enhanced || lastPrompt.body, lastUsedPromptId: lastPrompt.id });
+                patch(composerInputPatch(lastPrompt.enhanced || lastPrompt.body, { lastUsedPromptId: lastPrompt.id }));
                 notify('Started from recent prompt', 'success', 'composer');
               }}
             >
@@ -275,7 +293,7 @@ function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt
               className="quick-action"
               type="button"
               onClick={() => {
-                patch({ composerText: `Turn these notes into a reusable prompt:\n\n${latestPad.body}` });
+                patch(composerInputPatch(`Turn these notes into a reusable prompt:\n\n${latestPad.body}`));
                 notify('Loaded latest pad', 'success', 'composer');
               }}
             >
@@ -383,7 +401,10 @@ function PadDetail({ state, patch, setState, notify, feedback }) {
       <input className="search" value={pad.title} onChange={(event) => updatePad({ title: event.target.value })} aria-label="Pad title" />
       <textarea className={`note-field ${feedback.successTarget === 'pad' ? 'is-success' : ''}`} value={pad.body} onChange={(event) => updatePad({ body: event.target.value })} aria-label="Pad body" />
       <div className="split">
-        <button className="primary-btn" type="button" onClick={() => patch({ composerText: `Turn these notes into a reusable prompt:\n\n${pad.body}`, activeTab: 'compose', detailPadId: null })}>To Composer</button>
+        <button className="primary-btn" type="button" onClick={() => patch(composerInputPatch(
+          `Turn these notes into a reusable prompt:\n\n${pad.body}`,
+          { activeTab: 'compose', detailPadId: null },
+        ))}>To Composer</button>
         <button className="quiet-btn" type="button" onClick={() => copyText(pad.body, notify)}>Copy</button>
       </div>
       <button className="danger-btn" type="button" onClick={deletePad}>Delete note</button>
@@ -513,7 +534,7 @@ function VoiceSheet({ state, patch, notify, voiceTimer, feedback }) {
       notify('Capture or type transcript first', 'error', 'voice');
       return;
     }
-    patch({ composerText: state.voiceTranscript, activeTab: 'compose', sheet: null });
+    patch(composerInputPatch(state.voiceTranscript, { activeTab: 'compose', sheet: null }));
   };
 
   return (
@@ -561,10 +582,12 @@ function enhancePrompt(state, patch, notify) {
     notify('Write a prompt first', 'error', 'composer');
     return;
   }
-  patch({
-    composerText: `You are helping produce a high-quality result.\n\nTask:\n${text}\n\nRequirements:\n- Ask only for missing context that blocks the work.\n- Return a structured answer with concise headings.\n- Include assumptions, risks, and a concrete next action.\n- Keep the tone direct and practical.`,
+  patch(composerInputPatch(
+    `You are helping produce a high-quality result.\n\nTask:\n${text}\n\nRequirements:\n- Ask only for missing context that blocks the work.\n- Return a structured answer with concise headings.\n- Include assumptions, risks, and a concrete next action.\n- Keep the tone direct and practical.`,
+    {
     lastComposerAction: 'refine',
-  });
+    },
+  ));
   notify('Prompt refined', 'success', 'composer');
 }
 
