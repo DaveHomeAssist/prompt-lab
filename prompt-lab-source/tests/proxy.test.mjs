@@ -518,6 +518,38 @@ test('proxy aborts a stalled Anthropic request within the configured safety time
   assert.match(await response.text(), /Anthropic request timed out/i);
 });
 
+test('proxy allows an active Anthropic stream to complete beyond the legacy timeout ceiling', async () => {
+  process.env.PROMPTLAB_ANTHROPIC_TIMEOUT_MS = '40';
+  const encoder = new TextEncoder();
+
+  globalThis.fetch = async () => new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: first\n\n'));
+        setTimeout(() => {
+          controller.enqueue(encoder.encode('data: second\n\n'));
+          controller.close();
+        }, 25);
+      },
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    },
+  );
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'data: first\n\ndata: second\n\n');
+});
+
 test('proxy keeps the Anthropic timeout active after streaming headers arrive', async () => {
   process.env.PROMPTLAB_ANTHROPIC_TIMEOUT_MS = '10';
   let upstreamAborted = false;

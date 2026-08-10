@@ -209,7 +209,14 @@ export function normalizeError(err, source = 'unknown') {
   }
 
   // Network
-  if (msg.includes('failed to fetch') || msg.includes('network') || msg.includes('timeout') || msg.includes('dns') || msg.includes('econnrefused')) {
+  if (
+    msg.includes('failed to fetch')
+    || msg.includes('network')
+    || msg.includes('timeout')
+    || msg.includes('dns')
+    || msg.includes('econnrefused')
+    || (msg.includes('stream') && (msg.includes('aborted') || msg.includes('terminated')))
+  ) {
     return networkError(source, rawMessage);
   }
 
