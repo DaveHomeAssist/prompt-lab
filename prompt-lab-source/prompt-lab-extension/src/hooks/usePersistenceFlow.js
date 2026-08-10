@@ -36,6 +36,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const templateLoadReqRef = useRef(0);
   const activeEntryRef = useRef(null);
   const varValsRef = useRef({});
+  const sharedHashHandledRef = useRef(false);
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -50,13 +51,17 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   useSessionSave({ raw, enhanced, variants, notes, tab, enhMode });
 
   useEffect(() => {
+    if (sharedHashHandledRef.current) return;
     const hash = window.location.hash;
     if (hash.startsWith('#pack=')) {
+      if (!lib.libReady) return;
       const pack = decodePackShare(hash.slice(6));
       if (!pack) {
+        sharedHashHandledRef.current = true;
         notify('Shared pack is invalid.');
         return;
       }
+      sharedHashHandledRef.current = true;
       void importPresetPack(pack, {
         load: async () => lib.library,
         save: async (library) => {
@@ -70,6 +75,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       return;
     }
     if (!hash.startsWith('#share=')) return;
+    sharedHashHandledRef.current = true;
 
     const decoded = decodeShare(hash.slice(7));
     const normalized = normalizeEntry({ ...decoded, id: crypto.randomUUID() });
@@ -86,7 +92,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSaveTitle(normalized.title || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
-  }, []);
+  }, [lib.libReady]);
 
   const copy = async (text, msg = 'Copied!') => {
     const value = ensureString(text);
