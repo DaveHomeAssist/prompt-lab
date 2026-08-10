@@ -26,13 +26,16 @@ const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-6'];
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
+const DEFAULT_GLOBAL_DAILY_LIMIT = 100;
 const DEMO_WINDOW_MS = 24 * 60 * 60_000;
 const DEFAULT_MAX_TOKENS = 2048;
+const DEFAULT_MAX_INPUT_CHARS = 50_000;
 const ANTHROPIC_TIMEOUT_MS = 20_000;
 const REDIS_TIMEOUT_MS = 2000;
 
 const burstHits = new Map();
 const demoHits = new Map();
+const globalDemoHits = new Map();
 
 function readIntEnv(name, fallback) {
   const raw = process.env[name];
@@ -120,8 +123,16 @@ function getDemoDailyLimit() {
   return readIntEnv('HOSTED_DEMO_DAILY_LIMIT', DEFAULT_DEMO_DAILY_LIMIT);
 }
 
+function getGlobalDailyLimit() {
+  return readIntEnv('HOSTED_GLOBAL_DAILY_LIMIT', DEFAULT_GLOBAL_DAILY_LIMIT);
+}
+
 function getHostedMaxTokens() {
   return readIntEnv('HOSTED_MAX_TOKENS', DEFAULT_MAX_TOKENS);
+}
+
+function getHostedMaxInputChars() {
+  return readIntEnv('HOSTED_MAX_INPUT_CHARS', DEFAULT_MAX_INPUT_CHARS);
 }
 
 function pruneMap(map, now) {
@@ -275,6 +286,23 @@ async function getDemoState(ip) {
   };
 }
 
+async function getGlobalDemoState() {
+  const limit = getGlobalDailyLimit();
+  if (limit <= 0) {
+    return { limited: false, remaining: null, resetAt: null, store: getRedisConfig() ? 'kv' : 'memory' };
+  }
+
+  const state = await incrementWindow('global-demo', 'shared-key', DEMO_WINDOW_MS, globalDemoHits, {
+    requirePersistent: process.env.NODE_ENV === 'production',
+  });
+  return {
+    limited: state.count > limit,
+    remaining: Math.max(0, limit - state.count),
+    resetAt: state.resetAt,
+    store: state.store,
+  };
+}
+
 function getServerKey(host) {
   if (host === SUPPORTED_HOST) return process.env.ANTHROPIC_API_KEY || '';
   return '';
@@ -314,10 +342,16 @@ function validateTargetUrl(targetUrl) {
 }
 
 function sanitizeAnthropicBody(rawBody) {
+  const serializedBody = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
+  const maxInputChars = Math.max(1, getHostedMaxInputChars());
+  if (typeof serializedBody !== 'string' || serializedBody.length > maxInputChars) {
+    throw new Error(`Provider request body exceeds the hosted ${maxInputChars}-character limit.`);
+  }
+
   let payload;
 
   try {
-    payload = typeof rawBody === 'string' ? JSON.parse(rawBody) : rawBody;
+    payload = typeof rawBody === 'string' ? JSON.parse(serializedBody) : rawBody;
   } catch {
     throw new Error('Invalid provider request body');
   }
@@ -438,6 +472,7 @@ export default async function handler(request) {
   }
 
   let demoState = null;
+  let globalDemoState = null;
   if (auth.usingSharedKey) {
     try {
       demoState = await getDemoState(clientIp);
@@ -478,6 +513,36 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
   }
 
+  if (auth.usingSharedKey) {
+    try {
+      globalDemoState = await getGlobalDemoState();
+    } catch {
+      return jsonResponse({
+        error: 'Hosted global usage protection is unavailable. Try again shortly.',
+      }, 503, {}, request);
+    }
+    if (globalDemoState.limited) {
+      return jsonResponse(
+        {
+          error: 'Hosted service daily budget reached. Try again after the reset window.',
+          global_remaining: 0,
+          global_reset_at: globalDemoState.resetAt
+            ? new Date(globalDemoState.resetAt).toISOString()
+            : null,
+        },
+        429,
+        {
+          'X-Global-Remaining': '0',
+          'X-RateLimit-Store': globalDemoState.store,
+          ...(globalDemoState.resetAt
+            ? { 'X-Global-Reset': new Date(globalDemoState.resetAt).toISOString() }
+            : {}),
+        },
+        request,
+      );
+    }
+  }
+
   try {
     const upstream = await fetchWithTimeout(injected.url, {
       method: 'POST',
@@ -504,6 +569,13 @@ export default async function handler(request) {
       responseHeaders['X-Demo-Remaining'] = String(demoState.remaining);
       if (demoState.resetAt) {
         responseHeaders['X-Demo-Reset'] = new Date(demoState.resetAt).toISOString();
+      }
+    }
+
+    if (auth.usingSharedKey && globalDemoState?.remaining != null) {
+      responseHeaders['X-Global-Remaining'] = String(globalDemoState.remaining);
+      if (globalDemoState.resetAt) {
+        responseHeaders['X-Global-Reset'] = new Date(globalDemoState.resetAt).toISOString();
       }
     }
 
