@@ -261,6 +261,36 @@ function normalizeParsedPayload(payload) {
   };
 }
 
+function extractCompleteJsonStringField(text, fieldName) {
+  const fieldPattern = new RegExp(`"${fieldName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}"\\s*:\\s*"`, 'g');
+  const match = fieldPattern.exec(text);
+  if (!match) return '';
+
+  const valueStart = match.index + match[0].length;
+  let escaped = false;
+
+  for (let index = valueStart; index < text.length; index += 1) {
+    const char = text[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char !== '"') continue;
+
+    try {
+      return JSON.parse(`"${text.slice(valueStart, index)}"`);
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+}
+
 export function parseEnhancedPayload(rawText) {
   const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
   if (!cleaned) throw new Error('Model returned empty content. Try again.');
@@ -276,6 +306,22 @@ export function parseEnhancedPayload(rawText) {
       try {
         parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
       } catch {}
+    }
+  }
+
+  // Hosted responses can hit the bounded output ceiling after finishing the
+  // first field but before variants/notes close. Preserve only a fully closed
+  // JSON string; never surface a partially generated enhanced prompt.
+  if (parsed === null) {
+    const recoveredEnhanced = extractCompleteJsonStringField(cleaned, 'enhanced');
+    if (recoveredEnhanced.trim()) {
+      parsed = {
+        enhanced: recoveredEnhanced,
+        variants: [],
+        notes: 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
+        assumptions: [],
+        tags: [],
+      };
     }
   }
 

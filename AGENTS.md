@@ -85,3 +85,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-10] [PLB] [security] Add persistent service-wide hosted-provider budget cap and input-size ceiling
 [2026-08-10] [PLB] [test] Restore legacy and desktop smoke coverage, add hosted web/mobile E2E, and prevent stale mobile outputs across Composer handoffs
 [2026-08-10] [PLB] [fix] Extend bounded hosted Anthropic streaming window and classify interrupted streams as retryable network failures
+[2026-08-10] [PLB] [fix] Recover complete enhanced prompts from max-token-truncated hosted JSON without increasing paid output limits
