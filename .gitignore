@@ -5,6 +5,7 @@ node_modules/
 
 # Build artifacts
 prompt-lab-source/prompt-lab-extension/dist/
+prompt-lab-source/prompt-lab-extension/dist-cws/
 prompt-lab-source/prompt-lab-extension/test-results/
 prompt-lab-source/prompt-lab-extension/playwright-report/
 prompt-lab-source/prompt-lab-web/dist/

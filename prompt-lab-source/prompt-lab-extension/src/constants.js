@@ -1,6 +1,6 @@
 // ── Shared constants ─────────────────────────────────────────────────────────
 
-export const APP_VERSION = '1.7.0';
+export const APP_VERSION = '1.7.1';
 
 export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-6';
 export const DEFAULT_ENHANCE_MAX_TOKENS = 4096;
