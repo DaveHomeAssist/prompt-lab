@@ -47,6 +47,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importError, setImportError] = useState('');
+  const [conflictResolutions, setConflictResolutions] = useState({});
 
   const preview = useMemo(() => {
     const text = sourceText.trim();
@@ -94,6 +95,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
     setSourceLabel(label);
     setImportResult(null);
     setImportError('');
+    setConflictResolutions({});
   };
 
   const handleFile = async (file) => {
@@ -125,7 +127,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
 
     setImporting(true);
     try {
-      const result = await importPresetPack(preview.pack, adapter);
+      const result = await importPresetPack(preview.pack, adapter, { resolutions: conflictResolutions });
       setImportResult(result);
     } catch (error) {
       setImportResult(null);
@@ -322,11 +324,28 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-200">Possible duplicates</p>
                 <div className="mt-2 flex flex-col gap-1">
-                  {preview.duplicates.slice(0, 4).map((item) => (
-                    <p key={`${item.a.id}-${item.b.id}-${item.reason}`} className="text-xs text-amber-100">
-                      {item.a.title} ↔ {item.b.title} ({item.reason})
-                    </p>
-                  ))}
+                  {preview.duplicates.filter((item, index, rows) => rows.findIndex((row) => row.a.id === item.a.id) === index).map((item) => {
+                    const selected = conflictResolutions[item.a.id]?.action
+                      || (item.reason === 'prompt-exact-match' ? 'skip' : 'keep');
+                    return (
+                      <div key={`${item.a.id}-${item.b.id}`} className="flex flex-col gap-1 rounded-md border border-amber-400/20 p-2">
+                        <p className="text-xs text-amber-100">{item.a.title} ↔ {item.b.title}</p>
+                        <select
+                          aria-label={`Conflict action for ${item.a.title}`}
+                          value={selected}
+                          onChange={(event) => setConflictResolutions((prev) => ({
+                            ...prev,
+                            [item.a.id]: { action: event.target.value, existingId: item.b.id },
+                          }))}
+                          className={`text-xs ${m.input} border rounded px-1.5 py-1 focus:outline-none`}
+                        >
+                          <option value="keep">Keep both</option>
+                          <option value="replace">Replace existing</option>
+                          <option value="skip">Skip incoming</option>
+                        </select>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -345,7 +364,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
 
       <div className={`flex ${compact ? 'flex-col' : 'items-center justify-between'} gap-2`}>
         <p className={`text-xs ${m.textMuted}`}>
-          Exact prompt matches are skipped automatically. ID collisions are imported with a safe suffix.
+          Resolve each conflict independently. Unresolved exact matches skip; other ID collisions keep both with a safe suffix.
         </p>
         <button
           type="button"

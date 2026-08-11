@@ -261,6 +261,36 @@ function normalizeParsedPayload(payload) {
   };
 }
 
+function extractCompleteJsonStringField(text, fieldName) {
+  const fieldPattern = new RegExp(`"${fieldName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}"\\s*:\\s*"`, 'g');
+  const match = fieldPattern.exec(text);
+  if (!match) return '';
+
+  const valueStart = match.index + match[0].length;
+  let escaped = false;
+
+  for (let index = valueStart; index < text.length; index += 1) {
+    const char = text[index];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char !== '"') continue;
+
+    try {
+      return JSON.parse(`"${text.slice(valueStart, index)}"`);
+    } catch {
+      return '';
+    }
+  }
+
+  return '';
+}
+
 export function parseEnhancedPayload(rawText) {
   const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
   if (!cleaned) throw new Error('Model returned empty content. Try again.');
@@ -276,6 +306,22 @@ export function parseEnhancedPayload(rawText) {
       try {
         parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
       } catch {}
+    }
+  }
+
+  // Hosted responses can hit the bounded output ceiling after finishing the
+  // first field but before variants/notes close. Preserve only a fully closed
+  // JSON string; never surface a partially generated enhanced prompt.
+  if (parsed === null) {
+    const recoveredEnhanced = extractCompleteJsonStringField(cleaned, 'enhanced');
+    if (recoveredEnhanced.trim()) {
+      parsed = {
+        enhanced: recoveredEnhanced,
+        variants: [],
+        notes: 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
+        assumptions: [],
+        tags: [],
+      };
     }
   }
 
@@ -330,6 +376,41 @@ export function ngramSimilarity(a, b, n = 3) {
     union += Math.max(l, r);
   });
   return union === 0 ? 0 : intersection / union;
+}
+
+export function checkTraits(outputText, expectedTraits = [], expectedExclusions = []) {
+  const text = String(outputText || '');
+  const lower = text.toLowerCase();
+  const matches = (needle) => {
+    const raw = String(needle || '').trim();
+    if (!raw) return false;
+    if (raw.length > 2 && raw.startsWith('/') && raw.endsWith('/')) {
+      try {
+        return new RegExp(raw.slice(1, -1), 'i').test(text);
+      } catch {
+        // Invalid regex traits degrade to a literal match instead of failing the case.
+        return lower.includes(raw.toLowerCase());
+      }
+    }
+    return lower.includes(raw.toLowerCase());
+  };
+  const traits = (Array.isArray(expectedTraits) ? expectedTraits : [])
+    .map((item) => String(item || '').trim()).filter(Boolean).slice(0, 12);
+  const exclusions = (Array.isArray(expectedExclusions) ? expectedExclusions : [])
+    .map((item) => String(item || '').trim()).filter(Boolean).slice(0, 12);
+  if (traits.length === 0 && exclusions.length === 0) {
+    return { passedTraits: [], failedTraits: [], excludedHits: [], verdict: null };
+  }
+  const passedTraits = [];
+  const failedTraits = [];
+  traits.forEach((trait) => (matches(trait) ? passedTraits : failedTraits).push(trait));
+  const excludedHits = exclusions.filter(matches);
+  return {
+    passedTraits,
+    failedTraits,
+    excludedHits,
+    verdict: failedTraits.length === 0 && excludedHits.length === 0 ? 'pass' : 'fail',
+  };
 }
 
 export { isRetryable as isTransientError } from './lib/errorTaxonomy.js';

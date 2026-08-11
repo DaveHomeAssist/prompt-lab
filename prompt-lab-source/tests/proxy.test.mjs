@@ -20,9 +20,11 @@ const ENV_KEYS = [
   'PROMPTLAB_PROXY_ALLOWED_ORIGINS',
   'HOSTED_ALLOWED_ANTHROPIC_MODELS',
   'HOSTED_MAX_TOKENS',
+  'HOSTED_MAX_INPUT_CHARS',
   'PROMPTLAB_ANTHROPIC_TIMEOUT_MS',
   'PROMPTLAB_REDIS_TIMEOUT_MS',
   'HOSTED_DEMO_DAILY_LIMIT',
+  'HOSTED_GLOBAL_DAILY_LIMIT',
   'HOSTED_BURST_LIMIT',
   'KV_REST_API_URL',
   'KV_REST_API_TOKEN',
@@ -52,6 +54,7 @@ function makeRequest({
   targetUrl = 'https://api.anthropic.com/v1/messages',
   headers = {},
   requestOrigin = 'https://promptlab.tools',
+  clientIp = '203.0.113.10',
   body = {
     model: 'claude-sonnet-4-6',
     max_tokens: 800,
@@ -63,6 +66,7 @@ function makeRequest({
     headers: {
       'Content-Type': 'application/json',
       ...(requestOrigin ? { Origin: requestOrigin } : {}),
+      ...(clientIp ? { 'x-forwarded-for': clientIp } : {}),
     },
     body: JSON.stringify({
       targetUrl,
@@ -139,8 +143,17 @@ test('production shared-key mode requires both hosted feature flags', async () =
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_PROXY_ENABLED = 'true';
   process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
 
-  globalThis.fetch = async (_url, init) => {
+  globalThis.fetch = async (url, init) => {
+    if (String(url).startsWith('https://redis.example.test/')) {
+      const result = String(url).includes('/pttl/') ? 60_000 : 1;
+      return new Response(JSON.stringify({ result }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     assert.equal(init.headers['x-api-key'], 'server-key');
     return new Response(JSON.stringify({ ok: true }), {
       status: 200,
@@ -313,6 +326,26 @@ test('proxy locks traffic to the exact Anthropic Messages endpoint and clamps mo
   assert.equal(captured[0].max_tokens, 1024);
 });
 
+test('proxy rejects oversized hosted provider inputs before the provider call', async () => {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_MAX_INPUT_CHARS = '100';
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
+  globalThis.fetch = assert.fail;
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+    body: {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: 'x'.repeat(200) }],
+    },
+  }));
+
+  assert.equal(response.status, 400);
+  assert.match(await response.text(), /100-character limit/i);
+});
+
 test('proxy forwards only the provider header allowlist', async () => {
   let capturedHeaders;
   globalThis.fetch = async (_url, init) => {
@@ -366,6 +399,58 @@ test('proxy enforces the shared-key daily limit', async () => {
   }));
   assert.equal(second.status, 429);
   assert.match(await second.text(), /daily hosted demo limit reached/i);
+});
+
+test('proxy enforces a shared global daily limit across client IPs', async () => {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '10';
+  process.env.HOSTED_GLOBAL_DAILY_LIMIT = '1';
+
+  let providerCalls = 0;
+  globalThis.fetch = async () => {
+    providerCalls += 1;
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+
+  const handler = await loadHandler();
+  const first = await handler(makeRequest({
+    clientIp: '203.0.113.10',
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+  assert.equal(first.status, 200);
+  assert.equal(first.headers.get('X-Global-Remaining'), '0');
+
+  const second = await handler(makeRequest({
+    clientIp: '203.0.113.11',
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+  assert.equal(second.status, 429);
+  assert.match(await second.text(), /service daily budget reached/i);
+  assert.equal(second.headers.get('X-Global-Remaining'), '0');
+  assert.equal(providerCalls, 1);
+});
+
+test('production shared-key requests fail closed when durable rate limiting is unavailable', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  delete process.env.KV_REST_API_URL;
+  delete process.env.KV_REST_API_TOKEN;
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  globalThis.fetch = assert.fail;
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': '__plb_hosted_shared_key__' },
+  }));
+
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /usage protection is unavailable/i);
 });
 
 test('proxy returns upstream streaming bodies without buffering them first', async () => {
@@ -431,6 +516,38 @@ test('proxy aborts a stalled Anthropic request within the configured safety time
 
   assert.equal(response.status, 504);
   assert.match(await response.text(), /Anthropic request timed out/i);
+});
+
+test('proxy allows an active Anthropic stream to complete beyond the legacy timeout ceiling', async () => {
+  process.env.PROMPTLAB_ANTHROPIC_TIMEOUT_MS = '40';
+  const encoder = new TextEncoder();
+
+  globalThis.fetch = async () => new Response(
+    new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: first\n\n'));
+        setTimeout(() => {
+          controller.enqueue(encoder.encode('data: second\n\n'));
+          controller.close();
+        }, 25);
+      },
+    }),
+    {
+      status: 200,
+      headers: { 'Content-Type': 'text/event-stream' },
+    },
+  );
+
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: {
+      'x-api-key': 'user-key',
+      'anthropic-version': '2023-06-01',
+    },
+  }));
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'data: first\n\ndata: second\n\n');
 });
 
 test('proxy keeps the Anthropic timeout active after streaming headers arrive', async () => {

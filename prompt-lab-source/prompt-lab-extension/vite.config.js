@@ -21,9 +21,12 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.js'],
-    include: ['src/__tests__/**/*.test.{js,jsx}', 'src/tests/**/*.test.{js,jsx}'],
-    // Smoke tests run via `npm run test:desktop` — keep them out of the unit pool
-    exclude: ['tests/desktop-smoke.test.mjs', 'node_modules/**'],
+    include: [
+      'src/__tests__/**/*.test.{js,jsx}',
+      'src/tests/**/*.test.{js,jsx}',
+      'tests/**/*.vitest.mjs',
+    ],
+    exclude: ['node_modules/**'],
     // jsdom is stable under threads on Node 22; the forked pool hit repeated
     // bootstrap failures in cssstyle/jsdom before test collection completed.
     pool: 'threads',

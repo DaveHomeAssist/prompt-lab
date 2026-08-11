@@ -58,7 +58,8 @@ function withDemoKeys(settings, provider) {
 
 export async function callModelDirect(payload, { settingsOverride, onChunk, signal } = {}) {
   const s = normalizeHostedSettings(settingsOverride || loadSettings());
-  const provider = IS_WEB ? HOSTED_PROVIDER : normalizeProvider(s.provider);
+  // A payload-level provider (e.g. an arena column) overrides the settings default; hosted web stays proxied.
+  const provider = IS_WEB ? HOSTED_PROVIDER : normalizeProvider(payload?.provider || s.provider);
   return callProvider({
     provider,
     payload,
@@ -67,6 +68,20 @@ export async function callModelDirect(payload, { settingsOverride, onChunk, sign
     onChunk,
     signal,
   });
+}
+
+export async function getConfiguredProvidersDirect() {
+  const s = loadSettings();
+  if (IS_WEB) {
+    return [{ provider: HOSTED_PROVIDER, model: s.anthropicModel || DEFAULTS.anthropicModel }];
+  }
+  const providers = [];
+  if (s.apiKey) providers.push({ provider: 'anthropic', model: s.anthropicModel || DEFAULTS.anthropicModel });
+  if (s.openaiApiKey) providers.push({ provider: 'openai', model: s.openaiModel || DEFAULTS.openaiModel });
+  if (s.geminiApiKey) providers.push({ provider: 'gemini', model: s.geminiModel || DEFAULTS.geminiModel });
+  if (s.openrouterApiKey) providers.push({ provider: 'openrouter', model: s.openrouterModel || DEFAULTS.openrouterModel });
+  if (s.ollamaBaseUrl) providers.push({ provider: 'ollama', model: s.ollamaModel || DEFAULTS.ollamaModel });
+  return providers;
 }
 
 export async function listOllamaModelsDirect(baseUrl) {

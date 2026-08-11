@@ -70,6 +70,38 @@ function extListOllamaModels(baseUrl) {
   });
 }
 
+function extCaptureContext() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'CAPTURE_CONTEXT' }, (response) => {
+      if (chrome.runtime.lastError) {
+        return resolve({ ok: false, reason: chrome.runtime.lastError.message });
+      }
+      resolve(response || { ok: false, reason: 'No response while capturing context.' });
+    });
+  });
+}
+
+// Page capture only exists on the extension surface.
+const desktopCaptureContext = () => Promise.resolve(null);
+
+function extGetConfiguredProviders() {
+  return new Promise((resolve, reject) => {
+    chrome.runtime.sendMessage(
+      { type: 'GET_PROVIDER_SETTINGS' },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          return reject(new Error(chrome.runtime.lastError.message));
+        }
+        if (!response) {
+          return reject(new Error('No response while loading provider settings.'));
+        }
+        if (response.error) return reject(new Error(response.error));
+        resolve(Array.isArray(response.providers) ? response.providers : []);
+      }
+    );
+  });
+}
+
 function extLoadProviderSettings() {
   return Promise.reject(new Error('Provider settings are managed through the extension options page.'));
 }
@@ -107,6 +139,11 @@ async function desktopLoadProviderSettings() {
 async function desktopSaveProviderSettings(settings) {
   const { saveSettings } = await getDesktopApi();
   return saveSettings(settings);
+}
+
+async function desktopGetConfiguredProviders() {
+  const { getConfiguredProvidersDirect } = await getDesktopApi();
+  return getConfiguredProvidersDirect();
 }
 
 async function desktopTestProviderConnection(payload, settings) {
@@ -158,6 +195,8 @@ export const listOllamaModels = IS_EXTENSION ? extListOllamaModels : desktopList
 export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : desktopLoadProviderSettings;
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;
 export const testProviderConnection = IS_EXTENSION ? extTestProviderConnection : desktopTestProviderConnection;
+export const getConfiguredProviders = IS_EXTENSION ? extGetConfiguredProviders : desktopGetConfiguredProviders;
+export const captureContext = IS_EXTENSION ? extCaptureContext : desktopCaptureContext;
 export const sessionGet = IS_EXTENSION ? extSessionGet : desktopSessionGet;
 export const sessionSet = IS_EXTENSION ? extSessionSet : desktopSessionSet;
 export const openSettings = IS_EXTENSION ? extOpenSettings : desktopOpenSettings;

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Ic from './icons';
 import DiffPane from './DiffPane';
+import { getConfiguredProviders } from './lib/platform.js';
 
 export default function ABTestTab({
   m,
@@ -8,9 +9,7 @@ export default function ABTestTab({
   compact = false,
   pageScroll = false,
   abA,
-  setAbA,
   abB,
-  setAbB,
   abWinner,
   history,
   showHistory,
@@ -20,30 +19,58 @@ export default function ABTestTab({
   setShowRuns,
   activeSide,
   setActiveSide,
+  abProviders = { a: null, b: null },
+  setSideProvider,
   runAB,
   resetAB,
   pickWinner,
+  variants = [],
+  setVariant,
+  addVariant,
+  removeVariant,
+  runAll,
+  promoteToGolden,
+  pinGoldenResponse,
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
-  const bothReady = Boolean(abA.response && !abA.error && abB.response && !abB.error);
+  const [availableProviders, setAvailableProviders] = useState([]);
+  const [baselineId, setBaselineId] = useState('a');
+  const arenaVariants = variants.length >= 2 ? variants : [
+    { id: 'a', label: 'A', ...abA },
+    { id: 'b', label: 'B', ...abB },
+  ];
+  const baseline = arenaVariants.find((variant) => variant.id === baselineId) || arenaVariants[0];
+  const diffTarget = arenaVariants.find((variant) => variant.id !== baseline.id && variant.response && !variant.error);
+  const canDiff = Boolean(baseline?.response && !baseline.error && diffTarget);
+  const anyLoading = arenaVariants.some((variant) => variant.loading);
+
+  useEffect(() => {
+    let active = true;
+    getConfiguredProviders()
+      .then((list) => { if (active) setAvailableProviders(Array.isArray(list) ? list : []); })
+      .catch(() => { /* provider discovery is best-effort; the default provider still works */ });
+    return () => { active = false; };
+  }, []);
 
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>A/B Prompt Testing</p>
+        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Model Arena · {arenaVariants.length} variants</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
-          <button type="button" onClick={() => { runAB('a'); runAB('b'); }} disabled={abA.loading || abB.loading}
+          <button type="button" onClick={runAll} disabled={anyLoading || !arenaVariants.some((variant) => variant.prompt.trim())}
             className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
-            <Ic n="FlaskConical" size={12} />Run Both
+            <Ic n="FlaskConical" size={12} />Run All
           </button>
+          <button type="button" onClick={addVariant} disabled={arenaVariants.length >= 5}
+            className={`ui-control px-2.5 py-1.5 rounded-lg text-xs font-semibold ${m.btn} ${m.textAlt} disabled:opacity-40 transition-colors`}>+ Variant</button>
           <button
             type="button"
             onClick={() => setShowDiff(true)}
-            disabled={!bothReady}
-            className={`ui-control flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${bothReady ? 'bg-violet-600 hover:bg-violet-500 text-white' : `${m.btn} ${m.textMuted} cursor-not-allowed`}`}
-            title={bothReady ? 'Compare variant outputs' : 'Run both variants first'}
+            disabled={!canDiff}
+            className={`ui-control flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canDiff ? 'bg-violet-600 hover:bg-violet-500 text-white' : `${m.btn} ${m.textMuted} cursor-not-allowed`}`}
+            title={canDiff ? 'Compare the baseline with another completed output' : 'Run at least two variants first'}
           >
             <Ic n="GitBranch" size={11} />Sync View
           </button>
@@ -52,7 +79,7 @@ export default function ABTestTab({
       </div>
       <div className={`px-4 py-2 border-b ${m.border}`}>
         <p className={`text-xs ${m.textAlt}`}>
-          Compare two prompt variants inside Evaluate. Each side is sent exactly as one isolated user message with no extra context.
+          Compare 2–5 prompt/model combinations concurrently. Each variant is sent as one isolated user message with no extra context.
         </p>
         <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
           Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
@@ -60,26 +87,48 @@ export default function ABTestTab({
       </div>
       {compact && (
         <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
-          {[['A', abA], ['B', abB]].map(([side, state]) => (
-            <button key={side} type="button" onClick={() => setActiveSide(side)}
-              className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === side ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
-              Variant {side}{state.response ? ' Ready' : ''}
+          {arenaVariants.map((state) => (
+            <button key={state.id} type="button" onClick={() => setActiveSide(state.label)}
+              className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === state.label ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              Variant {state.label}{state.response ? ' Ready' : ''}
             </button>
           ))}
         </div>
       )}
-      <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : ''}`}>
-        {([['A', abA, setAbA], ['B', abB, setAbB]]).filter(([side]) => !compact || side === activeSide).map(([side, state, setter]) => (
-          <div key={side} className={`flex-1 flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
-            <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-              <span className="text-xs font-bold text-violet-400 uppercase">Variant {side}</span>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => runAB(side.toLowerCase())} disabled={state.loading || !state.prompt.trim()}
+      <div className={`flex ${pageScroll ? '' : 'flex-1 overflow-hidden'} ${compact ? 'flex-col' : 'overflow-x-auto'}`}>
+        {arenaVariants.filter((state) => !compact || state.label === activeSide).map((state) => {
+          const side = state.label;
+          const setter = (updater) => setVariant(state.id, updater);
+          return (
+          <div key={state.id} className={`flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'} ${compact ? 'flex-1' : 'min-w-[19rem] flex-1'}`}>
+            <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between gap-2 shrink-0`}>
+              <span className="text-xs font-bold text-violet-400 uppercase shrink-0">Variant {side}</span>
+              {availableProviders.length > 0 && typeof setSideProvider === 'function' && (
+                <select
+                  aria-label={`Provider for variant ${side}`}
+                  value={abProviders[state.id] ? `${abProviders[state.id].provider}::${abProviders[state.id].model}` : ''}
+                  onChange={(e) => {
+                    const descriptor = availableProviders.find((p) => `${p.provider}::${p.model}` === e.target.value) || null;
+                    setSideProvider(state.id, descriptor);
+                  }}
+                  className={`text-xs ${m.input} border rounded px-1.5 py-1 min-w-0 flex-1 focus:outline-none focus:border-violet-500`}>
+                  <option value="">Default provider</option>
+                  {availableProviders.map((p) => (
+                    <option key={`${p.provider}-${p.model}`} value={`${p.provider}::${p.model}`}>{p.provider} · {p.model}</option>
+                  ))}
+                </select>
+              )}
+              <div className="flex gap-2 shrink-0">
+                <button type="button" onClick={() => runAB(state.id)} disabled={state.loading || !state.prompt.trim()}
                   className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
                   {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                 </button>
                 {state.response && !abWinner && (
                   <button type="button" onClick={() => pickWinner(side)} className="ui-control flex items-center gap-1 text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="Check" size={10} />Pick {side}</button>
+                )}
+                {arenaVariants.length > 2 && state.id !== 'a' && state.id !== 'b' && (
+                  <button type="button" onClick={() => removeVariant(state.id)} aria-label={`Remove variant ${side}`}
+                    className="ui-control text-xs text-red-300 px-1">×</button>
                 )}
               </div>
             </div>
@@ -102,15 +151,24 @@ export default function ABTestTab({
                   }
                   {state.error && (
                     <div className="flex gap-3 mt-2">
-                      <button type="button" onClick={() => runAB(side.toLowerCase())} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
+                      <button type="button" onClick={() => runAB(state.id)} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
                     </div>
                   )}
-                  {state.response && !state.error && <button type="button" onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors mt-1`}><Ic n="Copy" size={10} />Copy response</button>}
+                  {state.response && !state.error && (
+                    <div className="mt-1 flex flex-wrap gap-3">
+                      <button type="button" onClick={() => copy(state.response)} className={`flex items-center gap-1 text-xs ${m.textSub} hover:text-white transition-colors`}><Ic n="Copy" size={10} />Copy response</button>
+                      <button type="button" onClick={() => promoteToGolden(state.id, pinGoldenResponse)}
+                        className="text-xs text-amber-300 hover:text-amber-200 transition-colors">Promote to Golden</button>
+                      <label className={`flex items-center gap-1 text-xs ${m.textMuted}`}>
+                        <input type="radio" name="arena-baseline" checked={baselineId === state.id} onChange={() => setBaselineId(state.id)} />Baseline
+                      </label>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
-        ))}
+        );})}
       </div>
       <div className={`border-t ${m.border} shrink-0`}>
         <button type="button" onClick={() => setShowRuns(p => !p)}
@@ -169,10 +227,10 @@ export default function ABTestTab({
           </div>
         )}
       </div>
-      {showDiff && bothReady && (
+      {showDiff && canDiff && (
         <DiffPane
-          textA={abA.response}
-          textB={abB.response}
+          textA={baseline.response}
+          textB={diffTarget.response}
           onClose={() => setShowDiff(false)}
           copy={copy}
           m={m}

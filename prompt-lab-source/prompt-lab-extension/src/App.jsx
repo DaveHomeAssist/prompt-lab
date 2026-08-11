@@ -3,7 +3,11 @@ import {
   scorePrompt,
   ngramSimilarity,
   suggestTitleFromText,
+  extractVars,
 } from './promptUtils';
+import { scanSensitiveData } from './piiScanner.js';
+import { captureContext } from './lib/platform.js';
+import { buildCaptureInsertion } from './lib/captureContext.js';
 import { T } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
@@ -45,6 +49,7 @@ import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
+import { createPromptEntry } from './lib/promptSchema.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -468,6 +473,56 @@ export default function App({
     setSaveTitle(suggestion.title);
     notify('Follow-up loaded into editor.');
   };
+  const handleCaptureContext = async () => {
+    try {
+      const response = await captureContext();
+      if (!response?.ok || !response.capture) {
+        notify(response?.reason || 'Nothing captured from the page.');
+        return;
+      }
+      const value = response.capture.selection || response.capture.title || '';
+      const { matches } = scanSensitiveData({ prompt: value });
+      if (matches.length > 0) {
+        notify('Capture blocked: sensitive data detected in the page selection.');
+        return;
+      }
+      const insertion = buildCaptureInsertion(response.capture, raw, extractVars(raw));
+      if (!insertion) {
+        notify('Nothing captured from the page.');
+        return;
+      }
+      if (insertion.type === 'var') {
+        setVarVals((prev) => ({ ...prev, [insertion.name]: insertion.value }));
+        setShowVarForm(true);
+        notify(`Filled {{${insertion.name}}} from the page.`);
+      } else {
+        setRaw(raw + insertion.block);
+        notify('Page context appended to the prompt.');
+      }
+    } catch (caught) {
+      notify(caught?.message || 'Capture failed.');
+    }
+  };
+  const saveComposerChain = (blocks) => {
+    const steps = (Array.isArray(blocks) ? blocks : [])
+      .filter((block) => (block?.content || '').trim())
+      .map((block) => ({ label: block.label || 'Step', template: block.content }));
+    if (steps.length === 0) {
+      notify('Add composer blocks with content before saving a chain.');
+      return null;
+    }
+    const title = `Chain: ${steps[0].label}${steps.length > 1 ? ` +${steps.length - 1}` : ''}`;
+    const entry = createPromptEntry({
+      title,
+      original: steps.map((step) => `# ${step.label}\n${step.template}`).join('\n\n---\n\n'),
+      enhanced: '',
+      tags: ['chain'],
+      metadata: { chain: { version: 1, steps } },
+    });
+    lib.setLibrary((prev) => [entry, ...prev]);
+    notify(`Saved ${steps.length}-step chain to the library.`);
+    return entry;
+  };
   const handleChainFollowUp = (suggestion) => {
     trackTelemetry('composer.block_added', {
       source: 'follow-up',
@@ -652,6 +707,7 @@ export default function App({
               m={m}
               compact={compact}
               pageScroll={pageScroll}
+              onCaptureContext={isExtension ? handleCaptureContext : undefined}
               colorMode={colorMode}
               quickInject={lib.quickInject}
               recentPrompts={lib.recentPrompts}
@@ -734,7 +790,7 @@ export default function App({
       {tab === 'composer' && (
         <div className="pl-tab-panel">
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} compact={compact} pageScroll={pageScroll} />
+          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
         </div>
       )}
 
@@ -753,7 +809,7 @@ export default function App({
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
             {runsView === 'compare' && canUseAbTesting
-              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} {...abTest} />
+              ? <ABTestTab m={m} copy={copy} compact={compact} pageScroll={pageScroll} pinGoldenResponse={lib.pinGoldenResponse} {...abTest} />
               : runsView === 'compare'
                 ? (
                   <div className="flex h-full items-center justify-center p-6">

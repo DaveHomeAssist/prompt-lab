@@ -123,6 +123,8 @@ describe('RunTimelinePanel', () => {
         provider: '',
         model: '',
         status: '',
+        verdict: '',
+        regression: false,
         dateRange: '30d',
         search: '',
         showModelCompare: false,

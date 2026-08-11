@@ -2,6 +2,7 @@ import presetPackSchema from '../../../docs/preset-pack-schema.json';
 import { createPromptEntry, normalizeLibrary } from './promptSchema.js';
 import { getLibraryEntrySignature } from './libraryMatching.js';
 import { ensureString } from './utils.js';
+import { upsertPack } from './packStore.js';
 
 const PACK_REQUIRED_FIELDS = ['version', 'type', 'id', 'title', 'presets'];
 const PRESET_REQUIRED_FIELDS = ['id', 'title', 'prompt'];
@@ -606,7 +607,7 @@ export function detectEmptyPrompts(presets) {
  * @param {{ save: (library: Array<object>) => unknown, load?: () => unknown, get?: () => unknown, read?: () => unknown, library?: Array<object> }} storageAdapter
  * @returns {Promise<{ imported: Array<object>, skipped: Array<object>, conflicts: Array<object> }>}
  */
-export async function importPresetPack(pack, storageAdapter) {
+export async function importPresetPack(pack, storageAdapter, { resolutions = {} } = {}) {
   if (!storageAdapter || typeof storageAdapter.save !== 'function') {
     throw new Error('storageAdapter.save is required.');
   }
@@ -637,16 +638,22 @@ export async function importPresetPack(pack, storageAdapter) {
 
   asArray(normalizedPack.presets).forEach((preset) => {
     const presetId = ensureString(preset.id);
+    const resolution = resolutions[presetId] || null;
     if (emptyIds.has(presetId)) {
       skipped.push({ id: presetId, title: ensureString(preset.title), reason: 'empty-prompt' });
       return;
     }
-    if (exactMatchIds.has(presetId)) {
-      skipped.push({ id: presetId, title: ensureString(preset.title), reason: 'prompt-exact-match' });
+    if (resolution?.action === 'skip' || (exactMatchIds.has(presetId) && !resolution)) {
+      skipped.push({
+        id: presetId,
+        title: ensureString(preset.title),
+        reason: resolution?.action === 'skip' ? 'user-skip' : 'prompt-exact-match',
+      });
       return;
     }
 
-    const resolvedId = makeImportedId(presetId, usedIds);
+    const replaceId = resolution?.action === 'replace' ? ensureString(resolution.existingId).trim() : '';
+    const resolvedId = replaceId || makeImportedId(presetId, usedIds);
     if (resolvedId !== presetId) {
       conflicts.push({
         a: summarizeItem(preset),
@@ -681,17 +688,34 @@ export async function importPresetPack(pack, storageAdapter) {
         status: ensureString(preset.status),
         compatibility: Array.isArray(preset.platforms) ? preset.platforms : [],
         riskLevel: '',
+        // Starter-library sources stamp their own packId upstream; keep it.
+        packId: ensureString(isObject(preset.metadata) ? preset.metadata.packId : '') || ensureString(normalizedPack.id),
       },
       schema_version: ensureString(normalizedPack.version),
       version: ensureString(normalizedPack.version),
     });
 
-    mergedLibrary.push(entry);
+    if (replaceId) {
+      const replaceIndex = mergedLibrary.findIndex((existing) => existing.id === replaceId);
+      if (replaceIndex >= 0) mergedLibrary.splice(replaceIndex, 1, entry);
+      else mergedLibrary.push(entry);
+    } else {
+      mergedLibrary.push(entry);
+    }
     imported.push({ id: entry.id, title: entry.title });
   });
 
   const normalizedMergedLibrary = normalizeLibrary(mergedLibrary);
   await storageAdapter.save(normalizedMergedLibrary);
+
+  if (imported.length > 0 && ensureString(normalizedPack.id).trim()) {
+    upsertPack({
+      id: normalizedPack.id,
+      title: normalizedPack.title,
+      version: normalizedPack.version,
+      source: 'imported',
+    });
+  }
 
   return {
     imported,

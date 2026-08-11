@@ -180,7 +180,11 @@ describe('usePersistenceFlow share + template paths', () => {
       result.current.applyTemplate();
     });
 
-    expect(setABVariant).toHaveBeenCalledWith('a', 'Hello Dana from 2026-03-18');
+    expect(setABVariant).toHaveBeenCalledWith(
+      'a',
+      'Hello Dana from 2026-03-18',
+      expect.objectContaining({ title: 'Templated Prompt' }),
+    );
     expect(setTab).toHaveBeenCalledWith('abtest');
     expect(bumpUse).toHaveBeenCalledWith(entry.id);
     expect(notify).toHaveBeenCalledWith('Loaded Templated Prompt into Variant A');

@@ -28,6 +28,14 @@ describe('piiEngine', () => {
     expect(scanForPII('4111 1111 1111 1112').findings.some((finding) => finding.type === 'credit_card')).toBe(false);
   });
 
+  it('detects AWS access key IDs as API credentials', () => {
+    const { findings } = scanForPII('aws AKIAIOSFODNN7EXAMPLE');
+
+    expect(findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'api_key', value: 'AKIAIOSFODNN7EXAMPLE' }),
+    ]));
+  });
+
   it('supports limiting enabled patterns', () => {
     const { findings } = scanForPII('test@example.com 123-45-6789', {
       patterns: {

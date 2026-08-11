@@ -259,6 +259,20 @@ describe('parseEnhancedPayload', () => {
     expect(result.enhanced).toBe('Hello');
   });
 
+  it('recovers a complete enhanced string when optional JSON fields are truncated', () => {
+    const json = '{"enhanced":"Keep the exact intent.\\nReturn a verified result.","variants":[{"label":"Compact","content":"Cut off';
+    const result = parseEnhancedPayload(json);
+
+    expect(result.enhanced).toBe('Keep the exact intent.\nReturn a verified result.');
+    expect(result.variants).toEqual([]);
+    expect(result.notes).toMatch(/hosted output limit/i);
+  });
+
+  it('does not recover an enhanced string that was itself truncated', () => {
+    const json = '{"enhanced":"This prompt is still being generated';
+    expect(() => parseEnhancedPayload(json)).toThrow(/not valid JSON/i);
+  });
+
   it('throws on empty content', () => {
     expect(() => parseEnhancedPayload('')).toThrow();
     expect(() => parseEnhancedPayload(null)).toThrow();

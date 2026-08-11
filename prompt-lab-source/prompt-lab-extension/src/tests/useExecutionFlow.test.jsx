@@ -15,6 +15,7 @@ const {
   suggestTitleFromText,
   isTransientError,
   ngramSimilarity,
+  checkTraits,
 } = vi.hoisted(() => ({
   callModel: vi.fn(),
   saveEvalRun: vi.fn(),
@@ -32,6 +33,7 @@ const {
   suggestTitleFromText: vi.fn(() => 'Suggested Prompt'),
   isTransientError: vi.fn((error) => /429|rate/i.test(error?.message || '')),
   ngramSimilarity: vi.fn(() => 0.82),
+  checkTraits: vi.fn(() => ({ passedTraits: [], failedTraits: [], excludedHits: [], verdict: null })),
 }));
 
 const refreshEvalRuns = vi.fn(() => Promise.resolve());
@@ -56,6 +58,7 @@ vi.mock('../promptUtils', () => ({
   suggestTitleFromText,
   isTransientError,
   ngramSimilarity,
+  checkTraits,
 }));
 
 vi.mock('../lib/platform.js', () => ({

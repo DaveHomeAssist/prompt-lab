@@ -28,6 +28,8 @@ const DEFAULT_EVALUATE_TIMELINE_FILTERS = Object.freeze({
   provider: '',
   model: '',
   status: '',
+  verdict: '',
+  regression: false,
   dateRange: '30d',
   search: '',
   showModelCompare: false,
@@ -71,6 +73,8 @@ function validateTimelineFilters(value) {
     provider: typeof value.provider === 'string' ? value.provider : DEFAULT_EVALUATE_TIMELINE_FILTERS.provider,
     model: typeof value.model === 'string' ? value.model : DEFAULT_EVALUATE_TIMELINE_FILTERS.model,
     status: ['', 'success', 'error', 'blocked', 'canceled'].includes(value.status) ? value.status : DEFAULT_EVALUATE_TIMELINE_FILTERS.status,
+    verdict: ['', 'pass', 'fail'].includes(value.verdict) ? value.verdict : DEFAULT_EVALUATE_TIMELINE_FILTERS.verdict,
+    regression: Boolean(value.regression),
     dateRange: ['7d', '30d', '90d', ''].includes(value.dateRange) ? value.dateRange : DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange,
     search: typeof value.search === 'string' ? value.search : DEFAULT_EVALUATE_TIMELINE_FILTERS.search,
     showModelCompare: Boolean(value.showModelCompare),
@@ -104,6 +108,8 @@ function buildFilterBadges(filters) {
   if (filters.provider) items.push(`Provider: ${filters.provider}`);
   if (filters.model) items.push(`Model: ${filters.model}`);
   if (filters.status) items.push(`Status: ${STATUS_LABELS[filters.status] || filters.status}`);
+  if (filters.verdict) items.push(`Verdict: ${filters.verdict}`);
+  if (filters.regression) items.push('Regressions only');
   if (filters.dateRange !== DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange) {
     items.push(`Range: ${DATE_RANGE_LABELS[filters.dateRange] || filters.dateRange}`);
   }
@@ -163,6 +169,13 @@ function ModelComparisonView({ runs, m }) {
               <span>{formatLatency(run.latencyMs)}</span>
               {run.goldenScore != null && <span className={run.goldenScore >= 0.7 ? 'text-emerald-400' : 'text-red-400'}>{Math.round(run.goldenScore * 100)}%</span>}
               {run.verdict && <span className={`px-1.5 py-0.5 rounded border text-xs font-semibold ${VERDICT_STYLES[run.verdict]}`}>{run.verdict}</span>}
+              {run.traitResults?.verdict && (
+                <span title={run.traitResults.failedTraits.concat(run.traitResults.excludedHits).join(', ') || 'All traits matched'}
+                  className={`px-1.5 py-0.5 rounded text-xs font-semibold ${run.traitResults.verdict === 'pass' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>
+                  traits {run.traitResults.passedTraits.length}/{run.traitResults.passedTraits.length + run.traitResults.failedTraits.length}
+                </span>
+              )}
+              {run.regression && <span className="px-1.5 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-300">⚠ regression</span>}
             </div>
             <p className={`${m.textBody} mt-1.5 leading-relaxed whitespace-pre-wrap line-clamp-3`}>{(run.output || '').slice(0, 200)}</p>
           </div>
@@ -394,6 +407,8 @@ export default function RunTimelinePanel({
     provider,
     model,
     status,
+    verdict,
+    regression,
     dateRange,
     search,
     showModelCompare,
@@ -450,6 +465,8 @@ export default function RunTimelinePanel({
     || provider
     || model
     || status
+    || verdict
+    || regression
     || search
     || dateRange !== DEFAULT_EVALUATE_TIMELINE_FILTERS.dateRange
     || showModelCompare
@@ -575,6 +592,16 @@ export default function RunTimelinePanel({
             <option value="blocked">Blocked</option>
             <option value="canceled">Cancelled</option>
           </select>
+          <select value={verdict} onChange={e => setTimelineFilter('verdict', e.target.value)} aria-label="Filter by verdict"
+            className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
+            <option value="">All verdicts</option>
+            <option value="pass">Pass</option>
+            <option value="fail">Fail</option>
+          </select>
+          <button type="button" onClick={() => setTimelineFilter('regression', !regression)} aria-pressed={regression}
+            className={`text-xs px-2 py-1.5 rounded border font-semibold transition-colors ${regression ? 'border-red-400/60 text-red-300' : `${m.border} ${m.textMuted}`}`}>
+            Regressions
+          </button>
           <select value={dateRange} onChange={e => setTimelineFilter('dateRange', e.target.value)} aria-label="Filter by date range"
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="7d">Last 7 days</option>

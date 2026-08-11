@@ -4,6 +4,8 @@ import { normalizeEntry } from '../lib/promptSchema.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 import { useSessionRestore, useSessionSave } from './useSessionState.js';
 import { ensureString } from '../lib/utils.js';
+import { decodePackShare } from '../lib/packExport.js';
+import { importPresetPack } from '../lib/presetImport.js';
 
 /**
  * Save/share/load controller around the library + session storage boundaries.
@@ -34,6 +36,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const templateLoadReqRef = useRef(0);
   const activeEntryRef = useRef(null);
   const varValsRef = useRef({});
+  const sharedHashHandledRef = useRef(false);
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -48,8 +51,31 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   useSessionSave({ raw, enhanced, variants, notes, tab, enhMode });
 
   useEffect(() => {
+    if (sharedHashHandledRef.current) return;
     const hash = window.location.hash;
+    if (hash.startsWith('#pack=')) {
+      if (!lib.libReady) return;
+      const pack = decodePackShare(hash.slice(6));
+      if (!pack) {
+        sharedHashHandledRef.current = true;
+        notify('Shared pack is invalid.');
+        return;
+      }
+      sharedHashHandledRef.current = true;
+      void importPresetPack(pack, {
+        load: async () => lib.library,
+        save: async (library) => {
+          lib.setLibrary(library);
+          return true;
+        },
+      }).then((result) => {
+        setTab('library');
+        notify(`Shared pack loaded: ${result.imported.length} imported, ${result.skipped.length} skipped.`);
+      }).catch(() => notify('Shared pack could not be imported.'));
+      return;
+    }
     if (!hash.startsWith('#share=')) return;
+    sharedHashHandledRef.current = true;
 
     const decoded = decodeShare(hash.slice(7));
     const normalized = normalizeEntry({ ...decoded, id: crypto.randomUUID() });
@@ -66,7 +92,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSaveTitle(normalized.title || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
-  }, []);
+  }, [lib.libReady]);
 
   const copy = async (text, msg = 'Copied!') => {
     const value = ensureString(text);
@@ -164,7 +190,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       const side = target.slice(-1);
       const promptText = normalized.enhanced || normalized.original;
       if (!promptText.trim() || typeof setABVariant !== 'function') return;
-      setABVariant(side, promptText);
+      setABVariant(side, promptText, { entryId: normalized.id, title: normalized.title });
       if (typeof lib.bumpUse === 'function') {
         lib.bumpUse(normalized.id);
       }

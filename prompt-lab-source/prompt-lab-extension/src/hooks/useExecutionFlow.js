@@ -6,6 +6,7 @@ import {
   suggestTitleFromText,
   isTransientError,
   ngramSimilarity,
+  checkTraits,
 } from '../promptUtils';
 import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { saveEvalRun } from '../experimentStore';
@@ -108,6 +109,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     const data = await callWithRetry(payload);
     const text = extractTextFromAnthropic(data);
     const parsed = parseEnhancedPayload(text);
+    const traitResults = checkTraits(
+      parsed.enhanced || text,
+      testCase.expectedTraits,
+      testCase.expectedExclusions,
+    );
 
     await saveEvalRun({
       promptId: testCase.promptId,
@@ -121,9 +127,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       latencyMs: nowMs() - startedAt,
       notes: parsed.notes || '',
       testCaseId: testCase.id,
+      traitResults,
+      verdict: traitResults.verdict,
     });
 
-    return parsed;
+    return { parsed, traitResults };
   };
 
   const enhance = async (overridePayload, meta) => {
@@ -209,12 +217,16 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       // Suggest a title without clobbering one the user already typed.
       if (!ensureString(saveTitle).trim()) setSaveTitle(nextTitle);
 
-      const goldenText = editingId
-        ? (lib.library.find((entry) => entry.id === editingId)?.goldenResponse?.text || '')
-        : '';
+      const goldenEntry = editingId
+        ? lib.library.find((entry) => entry.id === editingId)
+        : null;
+      const goldenText = goldenEntry?.goldenResponse?.text || '';
       const goldenScore = goldenText && (parsed.enhanced || txt)
         ? ngramSimilarity(goldenText, parsed.enhanced || txt)
         : null;
+      const goldenThreshold = Number.isFinite(goldenEntry?.goldenThreshold)
+        ? goldenEntry.goldenThreshold
+        : 0.7;
 
       saveEvalRun({
         promptId: editingId,
@@ -228,6 +240,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         latencyMs: nowMs() - startedAt,
         notes: parsed.notes || '',
         goldenScore,
+        regression: goldenScore !== null && goldenScore < goldenThreshold,
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
 
       setShowSave(true);
@@ -352,6 +365,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
     testCasesHook.setRunningCases(true);
     let completed = 0;
+    let suitePassed = 0;
+    let suiteFailed = 0;
     for (const testCase of cases) {
       setBatchProgress({
         active: true,
@@ -360,8 +375,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         currentLabel: testCase.title,
       });
       try {
-        await runTestCaseJob(testCase, promptTitle);
+        const { traitResults } = await runTestCaseJob(testCase, promptTitle);
         completed += 1;
+        if (traitResults?.verdict === 'pass') suitePassed += 1;
+        if (traitResults?.verdict === 'fail') suiteFailed += 1;
         setBatchProgress({
           active: true,
           completed,
@@ -369,8 +386,20 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           currentLabel: testCase.title,
         });
       } catch (caught) {
+        // Blocked or errored cases count against the suite instead of vanishing.
+        suiteFailed += 1;
         logWarn(`test case batch: ${testCase.title}`, caught);
       }
+    }
+
+    if (suitePassed > 0 || suiteFailed > 0) {
+      lib.recordSuiteResult?.(editingId, {
+        verdict: suiteFailed > 0 ? 'fail' : 'pass',
+        passed: suitePassed,
+        failed: suiteFailed,
+        total: cases.length,
+        lastRunAt: new Date().toISOString(),
+      });
     }
 
     await evalRunsHook.refreshEvalRuns(editingId);

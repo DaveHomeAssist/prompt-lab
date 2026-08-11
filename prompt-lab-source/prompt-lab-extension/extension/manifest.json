@@ -5,7 +5,9 @@
   "description": "AI prompt enhancer, library, composer, A/B tester, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
   "permissions": [
     "storage",
-    "sidePanel"
+    "sidePanel",
+    "activeTab",
+    "scripting"
   ],
   "side_panel": {
     "default_path": "panel.html"
