@@ -110,3 +110,64 @@ test('mobile Library reuse increments usage and survives reload', async ({ page 
   await page.getByRole('heading', { name: 'Bug repro extractor', exact: true }).click();
   await expect(page.getByText('Engineering - 13 uses')).toBeVisible();
 });
+
+test('Reset Draft requires confirmation and restores the cleared desktop draft', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+    localStorage.setItem('pl_telemetry_consent', 'denied');
+  });
+
+  await page.goto('/app/');
+  const promptInput = page.getByTestId('prompt-input');
+  await promptInput.fill('Keep this draft until I explicitly reset it.');
+
+  await page.getByRole('button', { name: 'Reset Draft' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Reset this draft?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(promptInput).toHaveValue('Keep this draft until I explicitly reset it.');
+
+  await page.getByRole('button', { name: 'Reset Draft' }).click();
+  await dialog.getByRole('button', { name: 'Reset draft' }).click();
+  await expect(promptInput).toHaveValue('');
+  await page.reload();
+  await page.getByRole('button', { name: 'Undo reset' }).click();
+  await expect(promptInput).toHaveValue('Keep this draft until I explicitly reset it.');
+});
+
+test('mobile Clear requires confirmation and restores the cleared composer', async ({ page }) => {
+  await page.goto('/mobile/');
+  await page.getByRole('button', { name: '+ Compose' }).click();
+  const composer = page.getByRole('textbox', { name: 'Write or paste a rough prompt' });
+  await composer.fill('Keep this mobile composer draft.');
+
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Clear composer?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(composer).toHaveValue('Keep this mobile composer draft.');
+
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Clear composer' }).click();
+  await expect(composer).toHaveValue('');
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await expect(composer).toHaveValue('Keep this mobile composer draft.');
+});
+
+test('workspace navigation keeps browser history and explains a free compare deep link', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+    localStorage.setItem('pl_telemetry_consent', 'denied');
+  });
+
+  await page.goto('/app/');
+  await page.getByTestId('nav-library').click();
+  await expect(page).toHaveURL(/\/app\/#\/library$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/app\/$/);
+  await expect(page.getByTestId('prompt-input')).toBeVisible();
+
+  await page.goto('/app/#/compare');
+  await expect(page).toHaveURL(/\/app\/#\/evaluate$/);
+  await expect(page.getByRole('dialog')).toContainText('is a Pro feature');
+});
