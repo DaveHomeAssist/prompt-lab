@@ -1,5 +1,21 @@
 # Prompt Lab Current Project Report
 
+## Update — 2026-08-12
+
+This report predates the August 2026 audit cycle. Current state on top of the
+snapshot below:
+
+- The 2026-08-11 behavioral path & failure audit
+  (`prompt-lab-source/docs/BEHAVIORAL_AUDIT_2026-08-11.md`) confirmed 19 defects
+  (6 P1 / 10 P2 / 3 P3) and put release promotion on **hold**.
+- All six P1 defects (PLB-001…006) were fixed on 2026-08-12 — branch
+  `claude/promptlab-behavioral-audit-5v4eqj`, PR #35 — covering the Notebook
+  naming crash, transport-level cancellation, acknowledged Library/Notebook
+  persistence, multi-tab pad merging, and truthful billing-disabled UI.
+- The release hold stands until the audit is rerun against the fixed build.
+  P2/P3 findings are tracked in `AGENTS.md` (issues 014-019 cover the P1s) and
+  in the audit record's status table.
+
 ## Project Snapshot
 
 - Repo: `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab`

@@ -37,6 +37,12 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 | 011 | P1 | resolved | iOS prototype dropped failed/cancelled enhance runs (regression vs 009) | Native store now writes RunRecord with status failed/canceled; attempts that never reach the provider (no API key) still record nothing |
 | 012 | P1 | resolved | iOS enhance parser rejected fenced or preambled contract JSON | Recover outermost JSON object before decoding; fences and short preambles no longer fail an otherwise-valid run |
 | 013 | P2 | resolved | iOS provider discarded Anthropic error bodies | Non-2xx responses drained (8KB cap) and decoded so invalid-key/rate-limit reasons surface instead of a bare status code |
+| 014 | P1 | resolved | Notebook New/Rename crashed embedded browsers (PLB-001) | window.prompt() replaced with a controlled React naming dialog in PadTab |
+| 015 | P1 | resolved | Cancel left hosted/extension provider requests running (PLB-002) | AbortSignal forwarded through proxyFetch; MODEL_ABORT + requestId contract added to extension messaging and background worker; abort-aware retry backoff; late success discarded |
+| 016 | P1 | resolved | Library save reported "Saved!" after rejected storage write (PLB-003) | doSave writes before success feedback; quota failure surfaces visibly and keeps draft + save panel; deleted-target update fails honestly |
+| 017 | P1 | resolved | Notebook autosave reported Saved on quota failure (PLB-004) | persistPadsState returns acknowledged result; failures show "Save failed" and keep the buffer dirty for retry |
+| 018 | P1 | resolved | Notebook multi-tab edits silently overwrote each other (PLB-005) | pl2-pads revision counter, read-merge-write per pad, storage-event adoption with same-pad conflict warning |
+| 019 | P1 | resolved | Billing-disabled production still showed live purchase controls (PLB-006) | billingDisabled propagated into billing state; checkout/portal surface server message; billing modal shows maintenance notice |
 
 ## Session Log
 
@@ -78,6 +84,10 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-09] [PLB] [landing] Reconcile the landing redesign with Node 22 and the shared dependency health gate
 [2026-08-09] [PLB] [ios] Reconcile the universal native prototype with the verified landing and Node 22 release baseline
 [2026-08-09] [PLB] [feature] Prompt CI: automated trait/exclusion verdicts, suite badges, golden regression guard, verdict/regression timeline filters
+[2026-08-11] [PLB] [review] Behavioral path & failure audit across all surfaces; 19 confirmed defects (6 P1 / 10 P2 / 3 P3), release recommendation Hold
+[2026-08-12] [PLB] [fix] Repair all six P1 audit defects (PLB-001…006): pad naming dialog, transport-level cancellation, acknowledged Library/Notebook persistence, multi-tab pad merge, truthful billing-disabled UI (issues 014-019)
+[2026-08-12] [PLB] [test] Add plbAuditFixes regression suite (12 tests); extension 566+207 passing, API safety 66/66
+[2026-08-12] [PLB] [docs] Record the behavioral audit and remediation status; update changelogs and architecture contracts (PR #35)
 [2026-08-09] [PLB] [feature] Model Arena: per-side provider/model selection in A/B via getConfiguredProviders; arena runs land in prompt-scoped history
 [2026-08-09] [PLB] [feature] Pack Studio: pl2-packs registry, publish selected prompts as schema-valid packs, pack uninstall
 [2026-08-09] [PLB] [feature] Prompt Chains: chain runner wired into the trace layer (runs store v4), Composer Save-as-Chain + Chain Lab

@@ -1,5 +1,58 @@
 # Prompt Lab — Version History
 
+## Unreleased — 2026-08-12
+
+Behavioral-audit remediation: all six P1 defects from the 2026-08-11 behavioral
+path & failure audit (PLB-001 through PLB-006). Release promotion stays held
+until this work is re-audited under the same failure conditions. See
+`docs/BEHAVIORAL_AUDIT_2026-08-11.md` for the audit record and PR #35 for the fix set.
+
+### Crash and availability
+
+- Replaced `window.prompt()` in Notebook New Pad / Rename with a controlled React
+  naming dialog, fixing the whole-app ErrorBoundary crash in embedded browsers
+  that lack native dialogs (PLB-001).
+
+### Cancellation and cost safety
+
+- Hosted web: `proxyFetch` now forwards `AbortSignal` to the `/api/proxy` fetch so
+  Cancel terminates the upstream provider request (PLB-002).
+- Extension: `MODEL_REQUEST` messages carry a `requestId`; a new `MODEL_ABORT`
+  message makes the background worker abort the in-flight provider fetch. Late
+  successes arriving after cancellation are discarded, and the enhance retry
+  backoff is abort-aware.
+
+### Acknowledged persistence
+
+- Library saves write to storage before reporting success. Rejected writes
+  (e.g. `QuotaExceededError`) surface a visible failure, keep the library
+  unchanged, and keep the save panel and draft open (PLB-003). Updating a
+  prompt that was deleted while loaded now fails honestly instead of claiming
+  "Prompt updated!".
+- Notebook autosave acknowledges the write: failures show "Save failed", keep the
+  buffer dirty for retry, and destructive pad actions refuse to proceed when
+  persistence fails (PLB-004).
+
+### Multi-tab safety
+
+- `pl2-pads` writes carry a revision counter, re-read and merge the stored payload
+  per pad before writing, and adopt other tabs' writes live via storage events.
+  Cross-pad edits from competing tabs now survive; same-pad conflicts warn instead
+  of vanishing (PLB-005). Pre-revision payloads read as revision 0 — no migration.
+
+### Truthful billing gating
+
+- `billingDisabled` from license/checkout/portal responses is kept in billing
+  state; checkout and portal surface the server's own message instead of a generic
+  missing-URL error; the billing modal replaces purchase controls with a
+  maintenance notice while billing is disabled (PLB-006).
+
+### Tests
+
+- New `src/__tests__/plbAuditFixes.test.jsx` regression suite (12 tests) covering
+  every fix above. Extension suite 566 Vitest + 207 Node tests passing; API safety
+  suite 66/66 (server contract unchanged — the billing fix is client-side).
+
 ## Unreleased — 2026-03-31
 
 Billing, hosted-web reliability, and privacy-policy follow-up after `v1.7.0`.
