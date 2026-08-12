@@ -16,6 +16,9 @@ export function createProxyFetch(proxyUrl = '/api/proxy') {
         headers,
         body: init.body,
       }),
+      // Cancellation must reach the proxy transport, or aborted runs keep
+      // consuming the hosted provider budget behind a "cancelled" UI.
+      signal: init.signal,
     });
 
     return res;

@@ -60,6 +60,7 @@ export function createDefaultBillingState() {
     lastValidatedAt: '',
     validationError: '',
     manageUrl: '',
+    billingDisabled: false,
   };
 }
 
@@ -97,6 +98,7 @@ export function normalizeBillingState(value = {}) {
     lastValidatedAt: typeof value?.lastValidatedAt === 'string' ? value.lastValidatedAt : '',
     validationError: typeof value?.validationError === 'string' ? value.validationError : '',
     manageUrl: typeof value?.manageUrl === 'string' ? value.manageUrl : '',
+    billingDisabled: value?.billingDisabled === true,
   };
 }
 

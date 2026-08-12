@@ -42,9 +42,11 @@ function normalizeResponseState(payload, previousState) {
   if (payload?.billingDisabled) {
     // Terminal billing-off contract: the server has no entitlement data, so
     // keep whatever this device already knows and stamp the validation clock
-    // so revalidation stops retrying.
+    // so revalidation stops retrying. The flag is kept so purchase UI can
+    // render a truthful disabled state instead of dead checkout controls.
     return normalizeBillingState({
       ...previousState,
+      billingDisabled: true,
       validationError: '',
       lastValidatedAt: new Date().toISOString(),
     });
@@ -63,9 +65,22 @@ function normalizeResponseState(payload, previousState) {
     customerEmail: hasField('customerEmail') ? payload.customerEmail : previousState.customerEmail,
     customerName: hasField('customerName') ? payload.customerName : previousState.customerName,
     manageUrl: hasField('manageUrl') ? payload.manageUrl : previousState.manageUrl,
+    billingDisabled: false,
     validationError: '',
     lastValidatedAt: new Date().toISOString(),
   });
+}
+
+// Server billing-off responses arrive as HTTP 200 with a terminal payload;
+// surface the server's own message and remember the state for the UI.
+function billingDisabledError(payload, fallback) {
+  const message = typeof payload?.error === 'string' && payload.error.trim()
+    ? payload.error.trim()
+    : fallback;
+  const error = new Error(message);
+  error.billingDisabled = true;
+  error.retryable = false;
+  return error;
 }
 
 async function buildResponseError(response, fallback) {
@@ -304,6 +319,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
           source,
         }),
       });
+      if (payload?.billingDisabled) {
+        setState((prev) => normalizeBillingState({ ...prev, billingDisabled: true }));
+        throw billingDisabledError(payload, 'Billing is disabled. Purchases are temporarily unavailable.');
+      }
       if (!payload?.url) {
         throw new Error('Billing checkout did not return a URL.');
       }
@@ -333,6 +352,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
+      if (payload?.billingDisabled) {
+        setState((prev) => normalizeBillingState({ ...prev, billingDisabled: true }));
+        throw billingDisabledError(payload, 'Billing is disabled. Purchase management is temporarily unavailable.');
+      }
       if (!payload?.url) {
         throw new Error('Billing portal is not configured.');
       }

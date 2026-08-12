@@ -7,6 +7,10 @@ import { callProvider, listOllamaModels, normalizeProvider } from './lib/provide
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
+// In-flight MODEL_REQUEST controllers keyed by requestId so a MODEL_ABORT can
+// terminate the underlying provider fetch, not just the UI's promise.
+const activeModelRequests = new Map();
+
 // ── Message listener ────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -22,7 +26,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true;
   }
 
+  if (msg?.type === 'MODEL_ABORT') {
+    const controller = activeModelRequests.get(msg.requestId);
+    if (controller) {
+      controller.abort();
+      activeModelRequests.delete(msg.requestId);
+    }
+    sendResponse?.({ ok: true });
+    return;
+  }
+
   if (msg?.type !== 'MODEL_REQUEST') return;
+
+  const requestId = typeof msg.requestId === 'string' ? msg.requestId : '';
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  if (requestId && controller) activeModelRequests.set(requestId, controller);
 
   (async () => {
     try {
@@ -32,10 +50,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
           provider: normalizeProvider(store.provider),
           payload: msg.payload,
           settings: store,
+          signal: controller?.signal,
         }),
       });
     } catch (error) {
       sendResponse({ error: error?.message || String(error) });
+    } finally {
+      if (requestId) activeModelRequests.delete(requestId);
     }
   })();
 
