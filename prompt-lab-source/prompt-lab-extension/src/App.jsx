@@ -63,6 +63,30 @@ Constraints:
 - keep it under 140 words
 - sound precise, not hypey`;
 
+const DRAFT_RECOVERY_STORAGE_KEY = 'pl2-draft-reset-recovery-v1';
+
+function loadDraftRecovery() {
+  try {
+    if (typeof window === 'undefined') return null;
+    const parsed = JSON.parse(window.sessionStorage.getItem(DRAFT_RECOVERY_STORAGE_KEY) || 'null');
+    return parsed && typeof parsed === 'object' && parsed.editor ? parsed : null;
+  } catch (_error) {
+    return null;
+  }
+}
+
+function persistDraftRecovery(snapshot) {
+  try {
+    if (snapshot) {
+      window.sessionStorage.setItem(DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify(snapshot));
+    } else {
+      window.sessionStorage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+    }
+  } catch (_error) {
+    // Recovery still works for the active page when session storage is unavailable.
+  }
+}
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App({
   clerkUser,
@@ -82,6 +106,8 @@ export default function App({
   const [mdPreview, setMdPreview] = useState(false);
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
+  const [showResetDraftConfirmation, setShowResetDraftConfirmation] = useState(false);
+  const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const pageScroll = isWeb || isExtension;
   const {
@@ -152,7 +178,7 @@ export default function App({
     },
   };
   const {
-    raw, setRaw, enhanced, setEnhanced, variants, notes, loading, error,
+    raw, setRaw, enhanced, setEnhanced, variants, setVariants, notes, setNotes, loading, error,
     streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
     cursor, updateCursor,
@@ -259,13 +285,78 @@ export default function App({
   };
 
   // ── Sync hash routes ↔ nav state ──
-  useRouteSync({ primaryView, setPrimaryView, workspaceView, setWorkspaceView, runsView, setRunsView });
+  const { replaceRoute } = useRouteSync({ primaryView, setPrimaryView, workspaceView, setWorkspaceView, runsView, setRunsView });
 
   useEffect(() => {
     if (primaryView === 'runs' && runsView === 'compare' && !canUseAbTesting) {
+      replaceRoute('/evaluate');
       setRunsView('history');
+      openBilling('abTesting');
     }
-  }, [canUseAbTesting, primaryView, runsView, setRunsView]);
+  }, [canUseAbTesting, primaryView, replaceRoute, runsView, setRunsView]);
+
+  const requestDraftReset = () => {
+    const hasDraftContent = Boolean(
+      raw.trim()
+      || enhanced.trim()
+      || variants.length
+      || notes.trim()
+      || editingId,
+    );
+    if (!hasDraftContent) {
+      clearEditor();
+      return;
+    }
+    setShowResetDraftConfirmation(true);
+  };
+
+  const confirmDraftReset = () => {
+    const snapshot = {
+      editor: {
+        raw,
+        enhanced,
+        variants: variants.map((variant) => ({ ...variant })),
+        notes,
+      },
+      persistence: {
+        editingId,
+        saveTitle,
+        saveTags: [...saveTags],
+        saveCollection,
+        changeNote,
+      },
+      resultTab,
+    };
+    persistDraftRecovery(snapshot);
+    setDraftRecovery(snapshot);
+    clearEditor();
+    setEnhMdPreview(false);
+    setResultTab('improved');
+    setShowResetDraftConfirmation(false);
+    notify('Draft reset. Undo is available until you dismiss it.');
+  };
+
+  const dismissDraftRecovery = () => {
+    persistDraftRecovery(null);
+    setDraftRecovery(null);
+  };
+
+  const undoDraftReset = () => {
+    if (!draftRecovery) return;
+    const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
+    setRaw(editor.raw || '');
+    setEnhanced(editor.enhanced || '');
+    setVariants(Array.isArray(editor.variants) ? editor.variants : []);
+    setNotes(editor.notes || '');
+    setEditingId(persistence?.editingId || null);
+    setSaveTitle(persistence?.saveTitle || '');
+    setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
+    setSaveCollection(persistence?.saveCollection || '');
+    setChangeNote(persistence?.changeNote || '');
+    setResultTab(recoveredResultTab || 'improved');
+    dismissDraftRecovery();
+    notify('Draft restored.');
+  };
 
   // ── Derived (view-only) ──
   const score = useMemo(() => scorePrompt(raw), [raw]);
@@ -623,7 +714,7 @@ export default function App({
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
     save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
-    clear: () => { clearEditor(); closePalette(); },
+    clear: () => { requestDraftReset(); closePalette(); },
     goEditor: () => { openSection('create'); closePalette(); },
     goLibrary: () => { openSection('library'); closePalette(); },
     goBuild: () => { openCreateView('composer'); closePalette(); },
@@ -726,7 +817,7 @@ export default function App({
               wc={wc} score={score} inp={inp}
               lintIssues={lintIssues} lintOpen={lintOpen} setLintOpen={setLintOpen} handleLintFix={handleLintFix}
               enhMode={enhMode} setEnhMode={setEnhMode}
-              enhance={handleEnhanceRequest} runAllCases={handleRunCases} clearEditor={clearEditor} cancelEnhance={cancelEnhance}
+              enhance={handleEnhanceRequest} runAllCases={handleRunCases} clearEditor={requestDraftReset} cancelEnhance={cancelEnhance}
               loading={loading} runningCases={runningCases} batchProgress={batchProgress}
               currentTestCases={currentTestCases} hasSavablePrompt={hasSavablePrompt} primaryModKey={primaryModKey}
               streaming={streaming} optimisticSaveVisible={optimisticSaveVisible} showSave={showSave}
@@ -883,7 +974,66 @@ export default function App({
         />
       )}
 
+      {draftRecovery && (
+        <div className={`mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${m.surface} ${m.border}`} role="status">
+          <span className={m.textSub}>A reset draft is available for recovery in this session.</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={undoDraftReset}
+              className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+            >
+              Undo reset
+            </button>
+            <button
+              type="button"
+              onClick={dismissDraftRecovery}
+              className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/[0.06] ${m.textSub}`}
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ══ MODALS ══ */}
+      {showResetDraftConfirmation && (
+        <div
+          className={`fixed inset-0 z-[80] flex items-center justify-center p-4 ${m.modalBg}`}
+          onClick={() => setShowResetDraftConfirmation(false)}
+        >
+          <div
+            className={`pl-modal-panel w-full max-w-md rounded-2xl border p-5 shadow-2xl ${m.modal} ${m.border} ${m.text}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-draft-title"
+            aria-describedby="reset-draft-description"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="reset-draft-title" className="text-lg font-semibold">Reset this draft?</h2>
+            <p id="reset-draft-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
+              Your prompt, generated results, notes, and unsaved save details will be cleared. You can undo the reset while this session remains open.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowResetDraftConfirmation(false)}
+                className={`ui-control rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/[0.06] ${m.textSub}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDraftReset}
+                className="ui-control rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
+              >
+                Reset draft
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showVarForm && pendingTemplate && (
         <TemplateVariablesModal
           m={m} varVals={varVals} setVarVals={setVarVals}

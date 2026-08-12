@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { resolveRouteState, stateToRoute } from '../lib/navigationRegistry.js';
 
@@ -27,6 +27,12 @@ export default function useRouteSync({
   const navigate = useNavigate();
   const suppressPush = useRef(false);
 
+  const replaceRoute = useCallback((target) => {
+    suppressPush.current = true;
+    navigate(target, { replace: true });
+    requestAnimationFrame(() => { suppressPush.current = false; });
+  }, [navigate]);
+
   // URL → state: on mount and browser back/forward
   useEffect(() => {
     const mapping = resolveRouteState(location.pathname);
@@ -48,7 +54,9 @@ export default function useRouteSync({
 
     const target = stateToRoute(primaryView, workspaceView, runsView);
     if (target !== location.pathname) {
-      navigate(target, { replace: true });
+      navigate(target);
     }
   }, [primaryView, workspaceView, runsView, navigate, location.pathname]);
+
+  return { replaceRoute };
 }
