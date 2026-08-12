@@ -22,17 +22,33 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 
 ## Codex Session Naming
 
-Name every user-facing Codex task rooted in this repository using:
+This policy applies to every user-facing Codex task whose saved project is PromptLab or whose local checkout, worktree, or cloud task resolves to the `DaveHomeAssist/prompt-lab` repository. Internal sub-agent threads and ChatGPT chats are exempt.
+
+The root agent owns the task title. Once the primary deliverable is clear, set the title using:
 
 `PromptLab | <Work Type> | <Scope>`
 
-- Work Type must be one of: Audit, Build, Design, Fix, Ops, Plan, Research, Review, Release, Verify
-- Scope should be two to five Title Case words; retain a version only when it distinguishes the deliverable
+Before the completion report, the root agent must read the title back through the supported task tools and correct any mismatch. If title management or readback is unavailable, report the exact blocker instead of guessing, bypassing an application guard, or claiming success.
+
+Choose the single Work Type that best describes the primary deliverable:
+
+- Audit: systematically inventory or test a broad product, system, or behavioral surface
+- Build: implement a new capability or artifact
+- Design: define architecture, interfaces, structure, or interaction behavior
+- Fix: correct a confirmed defect or regression
+- Ops: perform maintenance, governance, task administration, or operational housekeeping
+- Plan: produce an ordered roadmap or execution sequence
+- Research: discover and synthesize facts when the current state is not yet known
+- Review: assess the quality of a bounded artifact, change, prompt, or plan
+- Release: integrate, package, publish, deploy, or close out a release
+- Verify: prove or disprove a specific claim against its source of truth
+
+- Scope should be two to five words; use Title Case for ordinary words and preserve canonical identifiers such as `packLoadedAt`, `AGENTS.md`, routes, filenames, and model names exactly
+- Retain a version only when it distinguishes the deliverable
 - Do not include emojis, timestamps, completion badges, or sentence-style action phrases
 - Retitle a task when its material outcome changes; keep status and progress out of the title
-- Internal sub-agent threads are exempt
 
-Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | Library Tags`, `PromptLab | Release | Five Feature Hardening`
+Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | packLoadedAt Sort`, `PromptLab | Ops | Session Naming`, `PromptLab | Release | Five Feature Hardening`
 
 ## Issue Tracker
 
@@ -100,4 +116,4 @@ Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | Library Tag
 [2026-08-10] [PLB] [test] Restore legacy and desktop smoke coverage, add hosted web/mobile E2E, and prevent stale mobile outputs across Composer handoffs
 [2026-08-10] [PLB] [fix] Extend bounded hosted Anthropic streaming window and classify interrupted streams as retryable network failures
 [2026-08-10] [PLB] [fix] Recover complete enhanced prompts from max-token-truncated hosted JSON without increasing paid output limits
-[2026-08-12] [PLB] [ops] Standardize user-facing Codex session titles as PromptLab | Work Type | Scope
+[2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
