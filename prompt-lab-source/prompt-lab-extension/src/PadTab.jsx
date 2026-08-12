@@ -35,6 +35,7 @@ function buildDefaultPadsPayload(content = '', timestamp = Date.now()) {
       },
     ],
     activePadId: DEFAULT_PAD_ID,
+    revision: 0,
   };
 }
 
@@ -60,7 +61,12 @@ function readPadsPayload() {
     const raw = localStorage.getItem(PADS_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return isValidPadsPayload(parsed) ? parsed : null;
+    if (!isValidPadsPayload(parsed)) return null;
+    // Pre-revision payloads (schema v2 before conflict detection) read as revision 0.
+    return {
+      ...parsed,
+      revision: Number.isFinite(parsed.revision) ? parsed.revision : 0,
+    };
   } catch (error) {
     logWarn('read pads payload', error);
     return null;
@@ -146,12 +152,41 @@ function updateActivePadContent(prev, nextContent) {
   };
 }
 
-function persistPadsState(nextState) {
+// Another tab may have written pl2-pads since this tab last read it. Merging
+// per pad (newest timestamp wins, except pads this tab just mutated) keeps a
+// competing tab's edits to *other* pads from being silently overwritten.
+function mergePadsPayloads(local, stored, { preferLocalIds = [], removedIds = [] } = {}) {
+  const preferred = new Set(preferLocalIds);
+  const removed = new Set(removedIds);
+  const storedById = new Map(stored.pads.map((pad) => [pad.id, pad]));
+  const pads = local.pads.map((pad) => {
+    const external = storedById.get(pad.id);
+    if (!external || preferred.has(pad.id)) return pad;
+    return external.timestamp > pad.timestamp ? external : pad;
+  });
+  const localIds = new Set(local.pads.map((pad) => pad.id));
+  stored.pads.forEach((pad) => {
+    if (!localIds.has(pad.id) && !removed.has(pad.id)) pads.push(pad);
+  });
+  return { ...local, pads };
+}
+
+function persistPadsState(nextState, { lastKnownRevision = 0, preferLocalIds = [], removedIds = [] } = {}) {
   try {
-    localStorage.setItem(PADS_KEY, JSON.stringify(nextState));
+    const stored = readPadsPayload();
+    const candidate = stored && stored.revision !== lastKnownRevision
+      ? mergePadsPayloads(nextState, stored, { preferLocalIds, removedIds })
+      : nextState;
+    const payload = {
+      ...candidate,
+      revision: Math.max(stored?.revision || 0, lastKnownRevision) + 1,
+    };
+    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
     localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+    return { ok: true, state: payload };
   } catch (e) {
-    console.warn('[PadTab] persistPadsState failed (quota exceeded?)', e);
+    logWarn('persist pads state (quota exceeded?)', e);
+    return { ok: false, state: nextState, error: e };
   }
 }
 
@@ -172,6 +207,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     const payload = readPadsPayload();
     return payload || buildDefaultPadsPayload('', Date.now());
   });
+  const revisionRef = useRef(padsState.revision || 0);
 
   const activePad =
     padsState.pads.find((pad) => pad.id === padsState.activePadId) ||
@@ -180,6 +216,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
   const [text, setText] = useState(activePad?.content || '');
   const [saveState, setSaveState] = useState('idle');
   const [saveError, setSaveError] = useState('');
+  const [padNameDialog, setPadNameDialog] = useState(null);
   const [lastSavedAt, setLastSavedAt] = useState(() => {
     if (!activePad?.timestamp) return '';
     return new Date(activePad.timestamp).toISOString();
@@ -232,6 +269,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     migrationCheckedRef.current = true;
 
     const { payload, error, migrated } = migratePadStorage();
+    revisionRef.current = payload.revision || 0;
     setPadsState(payload);
     const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
     setText(active?.content || '');
@@ -254,30 +292,54 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     savedStateTimerRef.current = setTimeout(() => setSaveState('idle'), 2000);
   };
 
+  const persistPads = (nextState, opts = {}) => {
+    const result = persistPadsState(nextState, {
+      lastKnownRevision: revisionRef.current,
+      ...opts,
+    });
+    if (result.ok) revisionRef.current = result.state.revision;
+    return result;
+  };
+
+  const reportSaveFailure = () => {
+    setSaveState('idle');
+    setSaveError('Save failed — storage may be full. Copy your notes before leaving.');
+  };
+
   const commitSave = (value) => {
-    const savedAt = new Date().toISOString();
     const nextState = updateActivePadContent(padsState, value);
-    persistPadsState(nextState);
-    setPadsState(nextState);
+    const result = persistPads(nextState, { preferLocalIds: [padsState.activePadId] });
+    if (!result.ok) {
+      // The text buffer stays dirty relative to padsState so later saves retry.
+      reportSaveFailure();
+      return false;
+    }
+    setPadsState(result.state);
+    const savedAt = new Date().toISOString();
     setLastSavedAt(savedAt);
     setRelativeSavedAt(formatRelativeTime(savedAt));
     setSaveError('');
     setSaveState('saved');
     scheduleIdleStatus();
+    return true;
   };
 
   const flushActivePad = ({ silent = false } = {}) => {
     clearTimeout(timerRef.current);
     if (!activePad || text === activePad.content) {
-      return padsState;
+      return { state: padsState, ok: true };
     }
 
     const nextState = updateActivePadContent(padsState, text);
-    persistPadsState(nextState);
-    setPadsState(nextState);
+    const result = persistPads(nextState, { preferLocalIds: [padsState.activePadId] });
+    if (!result.ok) {
+      reportSaveFailure();
+      return { state: padsState, ok: false };
+    }
+    setPadsState(result.state);
 
     const savedAt = new Date(
-      nextState.pads.find((pad) => pad.id === nextState.activePadId)?.timestamp || Date.now()
+      result.state.pads.find((pad) => pad.id === result.state.activePadId)?.timestamp || Date.now()
     ).toISOString();
     setLastSavedAt(savedAt);
     setRelativeSavedAt(formatRelativeTime(savedAt));
@@ -285,17 +347,73 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
 
     if (silent) {
       setSaveState('idle');
-      return nextState;
+      return { state: result.state, ok: true };
     }
 
     setSaveState('saved');
     scheduleIdleStatus();
-    return nextState;
+    return { state: result.state, ok: true };
   };
 
   // Keep a stable ref to the latest flushActivePad for event listeners.
   const flushRef = useRef(flushActivePad);
   useEffect(() => { flushRef.current = flushActivePad; });
+  const textStateRef = useRef(text);
+  useEffect(() => { textStateRef.current = text; });
+  const padsStateRef = useRef(padsState);
+  useEffect(() => { padsStateRef.current = padsState; });
+
+  // Adopt writes from other tabs so competing edits merge instead of silently
+  // overwriting each other (storage events only fire in non-writing tabs).
+  useEffect(() => {
+    const onStorage = (event) => {
+      if (event.key !== PADS_KEY || !event.newValue) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(event.newValue);
+      } catch {
+        return;
+      }
+      if (!isValidPadsPayload(parsed)) return;
+
+      const incoming = {
+        ...parsed,
+        revision: Number.isFinite(parsed.revision) ? parsed.revision : 0,
+      };
+      revisionRef.current = incoming.revision;
+
+      const prev = padsStateRef.current;
+      const prevActive = prev.pads.find((pad) => pad.id === prev.activePadId);
+      const activeId = incoming.pads.some((pad) => pad.id === prev.activePadId)
+        ? prev.activePadId
+        : incoming.activePadId;
+      const incomingActive = incoming.pads.find((pad) => pad.id === activeId) || incoming.pads[0];
+      const localText = textStateRef.current;
+      const hasPendingEdits = prevActive ? localText !== prevActive.content : Boolean(localText);
+
+      setPadsState({ ...incoming, activePadId: activeId });
+
+      if (activeId !== prev.activePadId) {
+        // The pad open here was deleted in another tab; show its replacement.
+        loadPadView(incomingActive);
+        notify?.('This pad was removed in another tab.');
+        return;
+      }
+      if (!hasPendingEdits) {
+        if (incomingActive && incomingActive.content !== localText) {
+          setText(incomingActive.content);
+          const savedAt = incomingActive.timestamp ? new Date(incomingActive.timestamp).toISOString() : '';
+          setLastSavedAt(savedAt);
+          setRelativeSavedAt(savedAt ? formatRelativeTime(savedAt) : '');
+        }
+      } else if (incomingActive && prevActive && incomingActive.content !== prevActive.content) {
+        notify?.('This pad changed in another tab — your unsaved edits here will replace that change when saved.');
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notify]);
 
   const buildFilename = () => {
     const now = new Date();
@@ -316,13 +434,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     clearTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
     timerRef.current = setTimeout(() => {
-      try {
-        commitSave(v);
-      } catch (e) {
-        logWarn('pad save', e);
-        setSaveState('idle');
-        setSaveError('Save failed');
-      }
+      commitSave(v);
     }, 600);
   };
 
@@ -401,51 +513,81 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
 
   const handleSelectPad = (padId) => {
     if (padId === padsState.activePadId) return;
-    const baseState = flushActivePad({ silent: true });
-    const nextState = { ...baseState, activePadId: padId };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    const nextPad = nextState.pads.find((pad) => pad.id === padId) || nextState.pads[0];
+    const flushed = flushActivePad({ silent: true });
+    if (!flushed.ok) {
+      notify('Could not save this pad — free up storage before switching pads.');
+      return;
+    }
+    const nextState = { ...flushed.state, activePadId: padId };
+    const result = persistPads(nextState);
+    setPadsState(result.state);
+    const nextPad = result.state.pads.find((pad) => pad.id === padId) || result.state.pads[0];
     loadPadView(nextPad);
   };
 
+  // window.prompt() is unavailable in embedded browsers (Tauri, side panel)
+  // and crashed the whole app — naming goes through a controlled dialog instead.
   const handleCreatePad = () => {
-    const baseState = flushActivePad({ silent: true });
-    const suggestedName = `${NEW_PAD_NAME_PREFIX} ${baseState.pads.length + 1}`;
-    const requestedName = window.prompt('Name the new pad:', suggestedName);
-    if (requestedName === null) return;
-    const name = requestedName.trim() || suggestedName;
-    const newPad = {
-      id: buildPadId(),
-      name,
-      content: '',
-      timestamp: 0,
-    };
-    const nextState = {
-      pads: [...baseState.pads, newPad],
-      activePadId: newPad.id,
-    };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    loadPadView(newPad);
-    notify(`Created pad: ${name}`);
+    setPadNameDialog({
+      mode: 'create',
+      value: `${NEW_PAD_NAME_PREFIX} ${padsState.pads.length + 1}`,
+    });
   };
 
   const handleRenamePad = () => {
     if (!activePad) return;
-    const requestedName = window.prompt('Rename pad:', activePad.name);
-    if (requestedName === null) return;
-    const name = requestedName.trim();
-    if (!name || name === activePad.name) return;
-    const nextState = {
-      ...padsState,
-      pads: padsState.pads.map((pad) =>
-        pad.id === activePad.id ? { ...pad, name } : pad
-      ),
-    };
-    persistPadsState(nextState);
-    setPadsState(nextState);
-    notify(`Renamed pad: ${name}`);
+    setPadNameDialog({ mode: 'rename', value: activePad.name });
+  };
+
+  const submitPadNameDialog = () => {
+    if (!padNameDialog) return;
+    if (padNameDialog.mode === 'create') {
+      const suggestedName = `${NEW_PAD_NAME_PREFIX} ${padsState.pads.length + 1}`;
+      const name = padNameDialog.value.trim() || suggestedName;
+      const flushed = flushActivePad({ silent: true });
+      if (!flushed.ok) {
+        notify('Could not save the current pad — free up storage before creating a new one.');
+        return;
+      }
+      const newPad = {
+        id: buildPadId(),
+        name,
+        content: '',
+        timestamp: 0,
+      };
+      const nextState = {
+        pads: [...flushed.state.pads, newPad],
+        activePadId: newPad.id,
+      };
+      const result = persistPads(nextState, { preferLocalIds: [newPad.id] });
+      if (!result.ok) {
+        notify('Could not create pad — storage may be full.');
+        return;
+      }
+      setPadsState(result.state);
+      loadPadView(newPad);
+      notify(`Created pad: ${name}`);
+    } else {
+      const name = padNameDialog.value.trim();
+      if (!activePad || !name || name === activePad.name) {
+        setPadNameDialog(null);
+        return;
+      }
+      const nextState = {
+        ...padsState,
+        pads: padsState.pads.map((pad) =>
+          pad.id === activePad.id ? { ...pad, name } : pad
+        ),
+      };
+      const result = persistPads(nextState, { preferLocalIds: [activePad.id] });
+      if (!result.ok) {
+        notify('Could not rename pad — storage may be full.');
+        return;
+      }
+      setPadsState(result.state);
+      notify(`Renamed pad: ${name}`);
+    }
+    setPadNameDialog(null);
   };
 
   const handleDeletePad = () => {
@@ -459,14 +601,24 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
       pads: remainingPads,
       activePadId: fallbackPad.id,
     };
-    persistPadsState(nextState);
-    setPadsState(nextState);
+    const result = persistPads(nextState, { removedIds: [activePad.id] });
+    if (!result.ok) {
+      notify('Could not delete pad — storage may be full.');
+      return;
+    }
+    setPadsState(result.state);
     loadPadView(fallbackPad);
     notify(`Deleted pad: ${activePad.name}`);
   };
 
   const handleClear = () => {
     if (!window.confirm('Clear all notes?')) return;
+    const cleared = updateActivePadContent(padsState, '');
+    const result = persistPads(cleared, { preferLocalIds: [padsState.activePadId] });
+    if (!result.ok) {
+      notify('Could not clear pad — storage may be full.');
+      return;
+    }
     setText('');
     setSaveState('idle');
     setSaveError('');
@@ -474,11 +626,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     setRelativeSavedAt('');
     clearTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
-    try {
-      const cleared = updateActivePadContent(padsState, '');
-      persistPadsState(cleared);
-      setPadsState(cleared);
-    } catch (e) { logWarn('pad clear', e); }
+    setPadsState(result.state);
     notify('Pad cleared');
   };
 
@@ -678,6 +826,61 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
           </div>
         </div>
       </div>
+
+      {/* ── Pad naming dialog (replaces window.prompt, which embedded browsers lack) ── */}
+      {padNameDialog && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setPadNameDialog(null)}
+        >
+          <div
+            className={`w-full max-w-sm rounded-2xl border p-4 shadow-2xl ${m.modal || m.surface || ''} ${m.border} ${m.text}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pad-name-dialog-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2 id="pad-name-dialog-title" className={`text-sm font-semibold ${m.text}`}>
+              {padNameDialog.mode === 'create' ? 'Name the new pad' : 'Rename pad'}
+            </h2>
+            <input
+              autoFocus
+              value={padNameDialog.value}
+              onChange={(event) => {
+                const value = event.target.value;
+                setPadNameDialog((prev) => (prev ? { ...prev, value } : prev));
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  submitPadNameDialog();
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  setPadNameDialog(null);
+                }
+              }}
+              className={`mt-3 w-full rounded-lg border px-3 py-2 text-sm ${m.input} ${m.text} focus:outline-none focus:border-violet-500`}
+              aria-label="Pad name"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPadNameDialog(null)}
+                className={`text-xs px-3 py-2 rounded-lg transition-colors ${m.btn} ${m.textAlt}`}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitPadNameDialog}
+                className="text-xs px-3 py-2 rounded-lg font-semibold bg-violet-600 text-white transition-colors hover:bg-violet-500"
+              >
+                {padNameDialog.mode === 'create' ? 'Create' : 'Rename'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

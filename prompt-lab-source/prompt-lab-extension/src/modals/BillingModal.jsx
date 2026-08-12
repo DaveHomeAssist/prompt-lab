@@ -220,12 +220,23 @@ export default function BillingModal({
           )}
         </div>
 
-        {safeRequestedPeriod && (
+        {billing.billingDisabled && (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4" role="status">
+            <p className="text-sm font-semibold text-amber-300">Purchases are temporarily unavailable</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-200/90">
+              Billing is currently disabled on this deployment, so checkout and purchase management
+              are turned off. Existing Pro access on this device is unaffected. Please check back later.
+            </p>
+          </div>
+        )}
+
+        {!billing.billingDisabled && safeRequestedPeriod && (
           <p className={`mt-4 text-xs leading-relaxed ${m.textMuted}`} role="status">
             Your {safeRequestedPeriod} choice from the pricing page is highlighted. Checkout starts only when you choose it below.
           </p>
         )}
 
+        {!billing.billingDisabled && (
         <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
           <button
             type="button"
@@ -254,6 +265,7 @@ export default function BillingModal({
             )}
           </button>
         </div>
+        )}
 
         {billing.ownerAccessAvailable && billing.plan !== 'pro' && (
           <div className={`mt-4 rounded-xl border p-3 ${m.surface} ${m.border}`}>
@@ -281,8 +293,9 @@ export default function BillingModal({
             <button
               type="button"
               onClick={handleManagePurchases}
-              disabled={billing.busyAction === 'portal'}
-              className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt}`}
+              disabled={billing.busyAction === 'portal' || billing.billingDisabled}
+              title={billing.billingDisabled ? 'Billing is currently disabled on this deployment.' : undefined}
+              className={`ui-control inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
             >
               <Ic n="ArrowRight" size={11} />
               Manage Purchases

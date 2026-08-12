@@ -10,6 +10,12 @@ This is the canonical, code-grounded feature inventory and health rubric for the
 current web, extension, and desktop product. The dashboard commit itself does not
 change the audited runtime baseline.
 
+> **Related:** the 2026-08-11 behavioral path & failure audit
+> (`BEHAVIORAL_AUDIT_2026-08-11.md`) measured *runtime behavior* rather than
+> code-grounded feature presence and rated behavioral reliability 4.2/10 with a
+> release hold. Its six P1 defects were fixed on 2026-08-12 (PR #35); the two
+> rubrics are complementary, not contradictory.
+
 ## Next executable prompt
 
 ```text

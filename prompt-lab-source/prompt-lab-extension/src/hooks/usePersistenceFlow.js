@@ -293,6 +293,9 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       editingId: targetId,
       changeNote,
     });
+    // A rejected write returns null; keep the save panel and buffers so the
+    // user can retry or copy instead of losing the draft to a false success.
+    if (!saved?.id) return saved;
     if (saved?.id) {
       activeEntryRef.current = {
         ...(contentSource || activeEntryRef.current || {}),

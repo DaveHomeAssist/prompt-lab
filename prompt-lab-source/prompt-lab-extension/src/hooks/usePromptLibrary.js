@@ -113,6 +113,7 @@ export default function usePromptLibrary(notify) {
   const collectionsRef = useRef(collections);
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
+  const libraryPersistFailedRef = useRef(false);
 
   useEffect(() => { libraryRef.current = library; }, [library]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
@@ -197,7 +198,15 @@ export default function usePromptLibrary(notify) {
   useEffect(() => {
     if (!libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
-      saveJson(storageKeys.library, library);
+      const ok = saveJson(storageKeys.library, library);
+      // Surface the first rejected background write instead of failing silently;
+      // reset once a write lands so a later failure notifies again.
+      if (!ok && !libraryPersistFailedRef.current) {
+        libraryPersistFailedRef.current = true;
+        notifyRef.current?.('Library changes could not be saved — browser storage may be full.');
+      } else if (ok) {
+        libraryPersistFailedRef.current = false;
+      }
     }, 120);
     return () => window.clearTimeout(timeoutId);
   }, [library, libReady]);
@@ -234,13 +243,28 @@ export default function usePromptLibrary(notify) {
       collection: ensureString(collection),
     };
 
+    // The write is attempted before any success feedback: a rejected write
+    // (e.g. QuotaExceededError) must fail visibly and leave the draft intact.
     if (editingId) {
       let savedTitle = cleanTitle;
-      updateLibraryEntry(editingId, entry => {
+      let found = false;
+      const nextLibrary = libraryRef.current.map(entry => {
+        if (entry.id !== editingId) return entry;
+        found = true;
         const next = updatePromptEntry(entry, payload, { source: 'manual_save', changeNote: ensureString(changeNote) });
         savedTitle = next?.title || savedTitle;
-        return next;
+        return next || entry;
       });
+      if (!found) {
+        notify('Save failed: this prompt no longer exists in the library. Save it as a new prompt instead.');
+        return null;
+      }
+      if (!saveJson(storageKeys.library, nextLibrary)) {
+        notify('Save failed — browser storage may be full. Your changes are still in the editor.');
+        return null;
+      }
+      libraryRef.current = nextLibrary;
+      setLibrary(nextLibrary);
       notify('Prompt updated!');
       return { id: editingId, title: savedTitle };
     }
@@ -251,7 +275,13 @@ export default function usePromptLibrary(notify) {
       versions: [],
       testCases: [],
     });
-    setLibrary(prev => [entry, ...prev]);
+    const nextLibrary = [entry, ...libraryRef.current];
+    if (!saveJson(storageKeys.library, nextLibrary)) {
+      notify('Save failed — browser storage may be full. Your draft is still in the editor.');
+      return null;
+    }
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
     notify('Saved!');
     return { id: entry.id, title: entry.title };
   };

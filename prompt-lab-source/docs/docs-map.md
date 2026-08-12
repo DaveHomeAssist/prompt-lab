@@ -72,6 +72,7 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 
 ### Internal audits and technical notes
 
+- `BEHAVIORAL_AUDIT_2026-08-11.md`
 - `feature-health-dashboard.md`
 - `create-evaluate-restructure-plan.md`
 - `next-3-sprints-plan.md`
