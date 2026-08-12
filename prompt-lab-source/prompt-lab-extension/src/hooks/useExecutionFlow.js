@@ -62,6 +62,12 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         lastError = caught;
         if (attempt >= retries || !isTransientError(caught)) break;
         await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+        // A cancel during the retry backoff must not launch another attempt.
+        if (options?.signal?.aborted) {
+          const abortError = new Error('Request cancelled.');
+          abortError.name = 'AbortError';
+          throw abortError;
+        }
       }
       attempt += 1;
     }

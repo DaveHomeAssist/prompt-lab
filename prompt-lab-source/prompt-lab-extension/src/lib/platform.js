@@ -30,11 +30,45 @@ function getDesktopApi() {
 
 // ── Chrome Extension implementation ────────────────────────────────────────
 
-function extCallModel(payload) {
+function createAbortError() {
+  const error = new Error('Request cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
+
+function buildRequestId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function extCallModel(payload, { signal } = {}) {
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(createAbortError());
+    const requestId = buildRequestId();
+    let settled = false;
+
+    const onAbort = () => {
+      if (settled) return;
+      settled = true;
+      try {
+        // Tell the background worker to abort the in-flight provider fetch;
+        // rejecting locally alone would leave the upstream request running.
+        chrome.runtime.sendMessage({ type: 'MODEL_ABORT', requestId }, () => {
+          void chrome.runtime.lastError;
+        });
+      } catch { /* worker unavailable — local rejection still stands */ }
+      reject(createAbortError());
+    };
+    signal?.addEventListener('abort', onAbort, { once: true });
+
     chrome.runtime.sendMessage(
-      { type: 'MODEL_REQUEST', payload },
+      { type: 'MODEL_REQUEST', payload, requestId },
       (response) => {
+        signal?.removeEventListener('abort', onAbort);
+        if (settled) return; // aborted — a late success must not resolve
+        settled = true;
         if (chrome.runtime.lastError) {
           return reject(new Error(chrome.runtime.lastError.message));
         }

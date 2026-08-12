@@ -55,6 +55,9 @@ The extension uses MV3 primitives:
 
 - `chrome.storage.local` for provider settings and extension state
 - `background.js` as the network boundary for provider API calls
+  - `MODEL_REQUEST` messages carry a `requestId`; the worker keeps an
+    `AbortController` per in-flight request and a `MODEL_ABORT` message aborts
+    the underlying provider fetch, so a UI cancel terminates the real request
 - `options.html` / `options.js` for provider configuration
 - `panel.html` as the side panel entry point
 
@@ -75,7 +78,7 @@ The hosted web deployment is split into a landing route and an app route:
 - `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://promptlab.tools/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
-- `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS
+- `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS, forwarding the caller's `AbortSignal` so cancellation reaches the proxy transport
 - `api/proxy.js` is a Vercel Edge Function that validates the target domain against an allowlist, injects the hosted Anthropic key only when needed, and forwards the request
 - `vercel.json` rewrites `/app` and `/app/(.*)` to `/app/index.html`
 - Hosted web currently defaults to Anthropic and can use either the shared server key or a user-supplied Anthropic key
@@ -114,6 +117,17 @@ Provider-specific request behavior is routed through shared provider abstraction
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
+
+Persistence contracts (post 2026-08 behavioral-audit remediation):
+
+- Writes are acknowledged: Library saves and Notebook autosaves attempt the
+  storage write first and only report success when it lands. Rejected writes
+  (e.g. `QuotaExceededError`) surface a visible failure and keep the unsaved
+  buffer recoverable.
+- Notebook pads (`pl2-pads`) carry a revision counter. Writes re-read the stored
+  payload and merge per pad (newest timestamp wins, except the pad being
+  mutated), and a `storage`-event listener adopts other tabs' writes live, so
+  concurrent tabs merge instead of last-writer-wins. Same-pad conflicts warn.
 
 ## Safety layers
 

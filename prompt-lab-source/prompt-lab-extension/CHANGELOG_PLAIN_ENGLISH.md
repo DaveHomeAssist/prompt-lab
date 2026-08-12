@@ -1,5 +1,46 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-08-12
+
+## What changed after the August behavioral audit (unreleased, post-v1.7.1)
+
+An independent behavioral audit on August 11 tested 169 user paths across every
+surface and found 19 confirmed defects, six of them release blockers. The release
+was put on hold. All six blockers are now fixed:
+
+1. Creating or renaming a Notebook pad no longer crashes the app in the desktop
+   and side-panel shells — naming happens in a proper in-app dialog instead of a
+   browser popup those shells don't support.
+2. Pressing Cancel during a generation now actually stops the request on the
+   server side (hosted web and extension), instead of only hiding it in the UI
+   while the provider kept working and billing.
+3. Saving a prompt to the Library now checks that the save really landed. If the
+   browser rejects the write (storage full), you see a clear failure and your
+   draft stays in the editor — no more false "Saved!".
+4. The Notebook autosave indicator now tells the truth: a failed save shows
+   "Save failed" and keeps retrying, instead of showing "Saved" over data that
+   was never written.
+5. Editing notes in two tabs no longer silently destroys one tab's work. Tabs now
+   sync live, merge edits to different pads, and warn when the same pad was
+   changed in both places.
+6. When billing is switched off on the server, the upgrade screen now says so
+   plainly instead of showing purchase buttons that lead to a dead end.
+
+Why: these were the audit's "hold release until fixed" items — every one of them
+could lose user data, waste money, or mislead the user about what actually
+happened.
+
+## Stability check (2026-08-12)
+
+- Extension tests: pass (566 Vitest + 207 Node tests, including 12 new audit
+  regression tests)
+- API safety tests: pass (66/66)
+- Next milestone: rerun the behavioral audit against the fixed build before
+  lifting the release hold. The remaining 10 P2 and 3 P3 audit findings are
+  tracked for follow-up.
+
+---
+
 Date: 2026-03-17
 
 ## What changed in v1.7.0

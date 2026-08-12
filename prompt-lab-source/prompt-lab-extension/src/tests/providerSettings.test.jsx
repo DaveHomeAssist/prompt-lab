@@ -229,7 +229,7 @@ describe('DesktopSettingsModal', () => {
     const extensionResult = await extensionPlatform.callModel(payload);
     expect(extensionResult).toEqual({ provider: 'anthropic', model: 'ext-model' });
     expect(globalThis.chrome.runtime.sendMessage).toHaveBeenCalledWith(
-      { type: 'MODEL_REQUEST', payload },
+      { type: 'MODEL_REQUEST', payload, requestId: expect.any(String) },
       expect.any(Function),
     );
 
