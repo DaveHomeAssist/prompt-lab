@@ -20,6 +20,20 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 - Separate authoring, library, experiments, and notebook concerns even when they share one shell
 - Persist prompt, run, and settings state locally to keep the tool fast and offline tolerant where possible
 
+## Codex Session Naming
+
+Name every user-facing Codex task rooted in this repository using:
+
+`PromptLab | <Work Type> | <Scope>`
+
+- Work Type must be one of: Audit, Build, Design, Fix, Ops, Plan, Research, Review, Release, Verify
+- Scope should be two to five Title Case words; retain a version only when it distinguishes the deliverable
+- Do not include emojis, timestamps, completion badges, or sentence-style action phrases
+- Retitle a task when its material outcome changes; keep status and progress out of the title
+- Internal sub-agent threads are exempt
+
+Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | Library Tags`, `PromptLab | Release | Five Feature Hardening`
+
 ## Issue Tracker
 
 | ID | Severity | Status | Title | Notes |
@@ -86,3 +100,4 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 [2026-08-10] [PLB] [test] Restore legacy and desktop smoke coverage, add hosted web/mobile E2E, and prevent stale mobile outputs across Composer handoffs
 [2026-08-10] [PLB] [fix] Extend bounded hosted Anthropic streaming window and classify interrupted streams as retryable network failures
 [2026-08-10] [PLB] [fix] Recover complete enhanced prompts from max-token-truncated hosted JSON without increasing paid output limits
+[2026-08-12] [PLB] [ops] Standardize user-facing Codex session titles as PromptLab | Work Type | Scope
