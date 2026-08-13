@@ -25,6 +25,8 @@ export default function MobileApp() {
   const [state, setState] = useState(loadMobileState);
   const [toast, setToast] = useState(null);
   const [feedback, setFeedback] = useState({ errorTarget: null, successTarget: null });
+  const [showComposerClearConfirmation, setShowComposerClearConfirmation] = useState(false);
+  const [composerRecovery, setComposerRecovery] = useState(null);
   const providerAbortRef = useRef(null);
   const toastTimer = useRef(null);
   const voiceTimer = useRef(null);
@@ -61,6 +63,30 @@ export default function MobileApp() {
   };
 
   const closeDetails = () => patch({ detailPromptId: null, detailPadId: null });
+  const requestComposerClear = () => {
+    if (!state.composerText.trim() && !state.output.trim()) return;
+    setShowComposerClearConfirmation(true);
+  };
+  const confirmComposerClear = () => {
+    providerAbortRef.current?.abort();
+    providerAbortRef.current = null;
+    setComposerRecovery({
+      composerText: state.composerText,
+      output: state.output,
+      lastProvider: state.lastProvider,
+      lastModel: state.lastModel,
+      lastComposerAction: state.lastComposerAction,
+    });
+    patch(composerInputPatch('', { lastComposerAction: state.lastComposerAction }));
+    setShowComposerClearConfirmation(false);
+    notify('Composer cleared. Undo is available.');
+  };
+  const undoComposerClear = () => {
+    if (!composerRecovery) return;
+    patch({ ...composerRecovery, streaming: false });
+    setComposerRecovery(null);
+    notify('Composer restored.', 'success', 'composer');
+  };
 
   const activeTitle = state.detailPromptId ? 'Prompt' : state.detailPadId ? 'Pad entry' : tabMeta[state.activeTab].title;
   const activeSubtitle = state.detailPromptId
@@ -88,11 +114,27 @@ export default function MobileApp() {
             feedback={feedback}
             runPrompt={() => runPrompt(state, setState, providerAbortRef, notify)}
             enhancePrompt={() => enhancePrompt(state, patch, notify)}
+            requestComposerClear={requestComposerClear}
           />
         </section>
         <Tabbar state={state} patch={patch} />
         {state.sheet === 'settings' && <SettingsSheet state={state} patch={patch} notify={notify} />}
         {state.sheet === 'voice' && <VoiceSheet state={state} patch={patch} notify={notify} voiceTimer={voiceTimer} feedback={feedback} />}
+        {showComposerClearConfirmation && (
+          <ConfirmComposerClear
+            onCancel={() => setShowComposerClearConfirmation(false)}
+            onConfirm={confirmComposerClear}
+          />
+        )}
+        {composerRecovery && (
+          <div className="recovery-toast" role="status">
+            <span>Composer cleared. Restore it before you dismiss this notice.</span>
+            <div>
+              <button type="button" onClick={undoComposerClear}>Undo</button>
+              <button type="button" aria-label="Dismiss composer recovery" onClick={() => setComposerRecovery(null)}>Dismiss</button>
+            </div>
+          </div>
+        )}
         {toast && <div className={`toast toast-${toast.type}`}>{toast.message}</div>}
       </main>
     </div>
@@ -116,7 +158,7 @@ function Topbar({ back, title, subtitle, onBack, onSettings }) {
   );
 }
 
-function ActiveView({ state, patch, setState, notify, feedback, runPrompt, enhancePrompt }) {
+function ActiveView({ state, patch, setState, notify, feedback, runPrompt, enhancePrompt, requestComposerClear }) {
   if (state.detailPromptId) return <PromptDetail state={state} patch={patch} notify={notify} feedback={feedback} />;
   if (state.detailPadId) return <PadDetail state={state} patch={patch} setState={setState} notify={notify} feedback={feedback} />;
   if (state.activeTab === 'library') return <LibraryView state={state} patch={patch} />;
@@ -129,6 +171,7 @@ function ActiveView({ state, patch, setState, notify, feedback, runPrompt, enhan
         feedback={feedback}
         runPrompt={runPrompt}
         enhancePrompt={enhancePrompt}
+        requestComposerClear={requestComposerClear}
       />
     );
   }
@@ -250,7 +293,7 @@ function PromptDetail({ state, patch, notify, feedback }) {
   );
 }
 
-function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt }) {
+function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt, requestComposerClear }) {
   const hasText = Boolean(state.composerText.trim());
   const hasOutput = Boolean(state.output.trim());
   const lastPrompt =
@@ -322,7 +365,7 @@ function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt
         <div className="action-row">
           <button className={`primary-btn ${hasText && !hasOutput && state.lastComposerAction !== 'run' ? 'suggested' : ''}`} type="button" onClick={enhancePrompt}>Refine prompt</button>
           <button className={`pill-btn ${hasText && !hasOutput && state.lastComposerAction === 'run' ? 'suggested' : ''}`} type="button" onClick={runPrompt}>Run</button>
-          <button className="quiet-btn" type="button" onClick={() => patch({ composerText: '', output: '', streaming: false })}>Clear</button>
+          <button className="quiet-btn" type="button" onClick={requestComposerClear}>Clear</button>
         </div>
         {state.output || state.streaming ? (
           <>
@@ -344,6 +387,21 @@ function ComposerView({ state, patch, notify, feedback, runPrompt, enhancePrompt
         )}
       </div>
     </>
+  );
+}
+
+function ConfirmComposerClear({ onCancel, onConfirm }) {
+  return (
+    <div className="confirm-backdrop" onClick={onCancel}>
+      <div className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="clear-composer-title" aria-describedby="clear-composer-description" onClick={(event) => event.stopPropagation()}>
+        <h2 id="clear-composer-title">Clear composer?</h2>
+        <p id="clear-composer-description">Your current prompt and generated result will be cleared. You can undo the reset while this session remains open.</p>
+        <div className="confirm-actions">
+          <button className="quiet-btn" type="button" onClick={onCancel}>Cancel</button>
+          <button className="danger-btn" type="button" onClick={onConfirm}>Clear composer</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -732,6 +732,86 @@ button {
   color: #531717;
 }
 
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(10, 12, 15, 0.72);
+  animation: backdrop-in 160ms var(--ease-out);
+}
+
+.confirm-dialog {
+  width: min(100%, 360px);
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.42);
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.confirm-dialog p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.recovery-toast {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 90px;
+  z-index: 31;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(183, 140, 255, 0.44);
+  border-radius: 16px;
+  background: rgba(35, 29, 51, 0.98);
+  color: var(--text);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+}
+
+.recovery-toast span {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.recovery-toast div {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.recovery-toast button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .canvas-link {
   display: inline-flex;
   align-items: center;
