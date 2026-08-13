@@ -56,7 +56,7 @@ describe('usePromptLibrary sorting helpers', () => {
     const zeta = makeEntry({
       id: 'zeta',
       updatedAt: '2026-03-24T12:00:00.000Z',
-      createdAt: '2026-03-20T00:00:00.000Z',
+      createdAt: '2026-03-23T00:00:00.000Z',
     });
     const alpha = makeEntry({
       id: 'alpha',
