@@ -273,6 +273,71 @@ describe('usePersistenceFlow', () => {
     expect(result.current.saveCollection).toBe(entry.collection);
   });
 
+  it('deleting the loaded prompt clears its save target but preserves the draft', () => {
+    const entry = makeEntry();
+    const del = vi.fn(() => true);
+    const { result, doSave } = renderPersistenceFlow({ entry, libOverrides: { del } });
+
+    act(() => result.current.applyEntry(entry));
+
+    act(() => {
+      result.current.openSavePanel();
+      result.current.deleteEntry(entry.id);
+    });
+
+    expect(del).toHaveBeenCalledWith(entry.id);
+    expect(result.current.editingId).toBeNull();
+    expect(result.current.saveTargetId).toBeNull();
+    expect(result.current.raw).toBe(entry.original);
+    expect(result.current.enhanced).toBe(entry.enhanced);
+
+    act(() => {
+      result.current.openSavePanel();
+      result.current.doSave();
+    });
+
+    expect(doSave).toHaveBeenLastCalledWith(expect.objectContaining({
+      editingId: null,
+      raw: entry.original,
+      enhanced: entry.enhanced,
+    }));
+  });
+
+  it('restoring a version synchronizes a loaded editor before the next save', () => {
+    const entry = makeEntry({
+      original: 'Version two original',
+      enhanced: 'Version two enhanced',
+    });
+    const restored = makeEntry({
+      id: entry.id,
+      original: 'Version one original',
+      enhanced: 'Version one enhanced',
+    });
+    const restoreVersion = vi.fn(() => restored);
+    const { result, doSave } = renderPersistenceFlow({ entry, libOverrides: { restoreVersion } });
+
+    act(() => result.current.applyEntry(entry));
+
+    act(() => {
+      result.current.restoreEntryVersion(entry.id, { id: 'version-one' });
+    });
+
+    expect(restoreVersion).toHaveBeenCalledWith(entry.id, { id: 'version-one' });
+    expect(result.current.raw).toBe(restored.original);
+    expect(result.current.enhanced).toBe(restored.enhanced);
+
+    act(() => {
+      result.current.openSavePanel();
+      result.current.doSave();
+    });
+
+    expect(doSave).toHaveBeenLastCalledWith(expect.objectContaining({
+      editingId: entry.id,
+      raw: restored.original,
+      enhanced: restored.enhanced,
+    }));
+  });
+
   it('save_new_creates_new_id', () => {
     const { result, doSave } = renderPersistenceFlow({
       doSaveImpl: (payload) => ({ id: payload.editingId || 'new-generated-id', title: 'Fresh Prompt' }),

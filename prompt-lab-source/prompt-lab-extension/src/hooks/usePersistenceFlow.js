@@ -255,6 +255,21 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     await resolveEntryForTarget(entry, 'editor');
   };
 
+  const deleteEntry = (entryId) => {
+    if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
+    if (editingId !== entryId) return true;
+
+    // Preserve the visible draft so it can be saved as a new prompt, but never
+    // leave a deleted record as the active save target.
+    activeEntryRef.current = null;
+    setEditingId(null);
+    setSaveTargetId(current => current === entryId ? null : current);
+    setSaveSourceEntry(current => current?.id === entryId ? null : current);
+    setShowSave(false);
+    setChangeNote('');
+    return true;
+  };
+
   const restoreEntryVersion = (entryId, version) => {
     if (typeof lib.restoreVersion !== 'function') return null;
     const restoredEntry = normalizeEntry(lib.restoreVersion(entryId, version));
@@ -399,6 +414,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     doSave,
     applyEntry,
     loadEntry,
+    deleteEntry,
     restoreEntryVersion,
     sendEntryToABTest,
     applyTemplate,

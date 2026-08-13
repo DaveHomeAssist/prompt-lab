@@ -127,6 +127,7 @@ function makeProps(overrides = {}) {
     runSingleCase: vi.fn(),
     removeCase: vi.fn(),
     loadEntry: vi.fn(),
+    deleteEntry: vi.fn(),
     addToComposer: vi.fn(),
     openSavePanel: vi.fn(),
     sendToABTest: vi.fn(),
@@ -145,6 +146,17 @@ describe('LibraryPanel actions', () => {
 
     expect(props.openSavePanel).toHaveBeenCalledWith(props.lib.filtered[0]);
     expect(props.loadEntry).not.toHaveBeenCalled();
+  });
+
+  it('routes deletion through the persistence controller', () => {
+    const props = makeProps();
+
+    render(<LibraryPanel {...props} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete Prompt/ }));
+
+    expect(props.deleteEntry).toHaveBeenCalledWith(props.lib.filtered[0].id);
+    expect(props.lib.del).not.toHaveBeenCalled();
   });
 
   it('routes library prompts into the requested A/B variant', () => {
