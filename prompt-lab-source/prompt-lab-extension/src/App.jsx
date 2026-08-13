@@ -200,7 +200,7 @@ export default function App({
     editorLayout, setEditorLayout,
     composerBlocks, setComposerBlocks,
     enhance, enhanceWithMode, doSave, clearEditor, closeSavePanel, openSavePanel, openOptions, copy, cancelEnhance,
-    loadEntry, sendEntryToABTest, addToComposer,
+    loadEntry, restoreEntryVersion, sendEntryToABTest, addToComposer,
     hasSavablePrompt, currentTestCases,
   } = ed;
 
@@ -1085,7 +1085,7 @@ export default function App({
         selectedIndex={lib.diffVersionIdx}
         onSelectIndex={lib.setDiffVersionIdx}
         onClose={lib.closeVersionHistory}
-        onRestore={(version) => lib.restoreVersion(versionHistoryEntry?.id, version)}
+        onRestore={(version) => restoreEntryVersion(versionHistoryEntry?.id, version)}
         m={m}
       />
 

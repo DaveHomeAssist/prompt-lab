@@ -255,6 +255,31 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     await resolveEntryForTarget(entry, 'editor');
   };
 
+  const restoreEntryVersion = (entryId, version) => {
+    if (typeof lib.restoreVersion !== 'function') return null;
+    const restoredEntry = normalizeEntry(lib.restoreVersion(entryId, version));
+    if (!restoredEntry || editingId !== restoredEntry.id) return restoredEntry;
+
+    // Restoration already wrote the library record. Synchronize the loaded
+    // editor without routing through the normal load path, which would bump
+    // usage and emit an unrelated "Loaded" notification.
+    activeEntryRef.current = restoredEntry;
+    setEditingId(restoredEntry.id);
+    setRaw(restoredEntry.original);
+    setEnhanced(restoredEntry.enhanced);
+    setVariants(restoredEntry.variants || []);
+    setNotes(restoredEntry.notes || '');
+    setSaveTitle(restoredEntry.title || '');
+    setSaveTags(restoredEntry.tags || []);
+    setSaveCollection(restoredEntry.collection || '');
+    setSaveTargetId(null);
+    setSaveSourceEntry(null);
+    setChangeNote('');
+    setShowSave(false);
+    setShowDiff(false);
+    return restoredEntry;
+  };
+
   const sendEntryToABTest = async (entry, side) => {
     await resolveEntryForTarget(entry, `ab:${side}`);
   };
@@ -292,6 +317,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       collection: collectionValue,
       editingId: targetId,
       changeNote,
+      sourceEntry: contentSource || activeEntryRef.current,
     });
     // A rejected write returns null; keep the save panel and buffers so the
     // user can retry or copy instead of losing the draft to a false success.
@@ -373,6 +399,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     doSave,
     applyEntry,
     loadEntry,
+    restoreEntryVersion,
     sendEntryToABTest,
     applyTemplate,
     skipTemplate,

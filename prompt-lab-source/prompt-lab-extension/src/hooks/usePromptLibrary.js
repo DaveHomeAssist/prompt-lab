@@ -3,6 +3,7 @@ import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
   createPromptEntry,
+  normalizeEntry,
   normalizeLibrary,
   restorePromptVersion,
   suggestTitleFromText,
@@ -228,7 +229,38 @@ export default function usePromptLibrary(notify) {
     return changed;
   };
 
-  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote }) => {
+  const persistNewEntry = (payload, { sourceEntry = null, savedFromDeletedTarget = false } = {}) => {
+    const source = normalizeEntry(sourceEntry);
+    const entry = createPromptEntry({
+      ...(source ? {
+        versions: source.versions,
+        testCases: source.testCases,
+        goldenResponse: source.goldenResponse,
+        goldenThreshold: source.goldenThreshold,
+        inputs: source.inputs,
+        metadata: source.metadata,
+      } : {}),
+      ...payload,
+      useCount: 0,
+    });
+    const nextLibrary = [entry, ...libraryRef.current];
+    if (!saveJson(storageKeys.library, nextLibrary)) {
+      notify('Save failed — browser storage may be full. Your draft is still in the editor.');
+      return null;
+    }
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
+    notify(savedFromDeletedTarget
+      ? 'The original prompt was deleted. Saved this draft as a new prompt.'
+      : 'Saved!');
+    const result = {
+      id: entry.id,
+      title: entry.title,
+    };
+    return savedFromDeletedTarget ? { ...result, savedAsNew: true } : result;
+  };
+
+  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote, sourceEntry }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
       title: cleanTitle,
@@ -253,8 +285,10 @@ export default function usePromptLibrary(notify) {
         return next || entry;
       });
       if (!found) {
-        notify('Save failed: this prompt no longer exists in the library. Save it as a new prompt instead.');
-        return null;
+        return persistNewEntry(payload, {
+          sourceEntry,
+          savedFromDeletedTarget: true,
+        });
       }
       if (!saveJson(storageKeys.library, nextLibrary)) {
         notify('Save failed — browser storage may be full. Your changes are still in the editor.');
@@ -266,21 +300,7 @@ export default function usePromptLibrary(notify) {
       return { id: editingId, title: savedTitle };
     }
 
-    const entry = createPromptEntry({
-      ...payload,
-      useCount: 0,
-      versions: [],
-      testCases: [],
-    });
-    const nextLibrary = [entry, ...libraryRef.current];
-    if (!saveJson(storageKeys.library, nextLibrary)) {
-      notify('Save failed — browser storage may be full. Your draft is still in the editor.');
-      return null;
-    }
-    libraryRef.current = nextLibrary;
-    setLibrary(nextLibrary);
-    notify('Saved!');
-    return { id: entry.id, title: entry.title };
+    return persistNewEntry(payload);
   };
 
   const del = (id) => {
@@ -379,8 +399,25 @@ export default function usePromptLibrary(notify) {
   };
 
   const restoreVersion = (entryId, version) => {
-    updateLibraryEntry(entryId, entry => restorePromptVersion(entry, version));
+    const currentEntry = libraryRef.current.find(entry => entry.id === entryId);
+    if (!currentEntry || !version) {
+      notify('Restore failed: this prompt or version is no longer available.');
+      return null;
+    }
+    const restoredEntry = restorePromptVersion(currentEntry, version);
+    if (!restoredEntry) {
+      notify('Restore failed: this version could not be read.');
+      return null;
+    }
+    const nextLibrary = libraryRef.current.map(entry => entry.id === entryId ? restoredEntry : entry);
+    if (!saveJson(storageKeys.library, nextLibrary)) {
+      notify('Restore failed — browser storage may be full. The prompt and editor were not changed.');
+      return null;
+    }
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
     notify('Restored!');
+    return restoredEntry;
   };
 
   const openVersionHistory = (entryId, initialIdx = 0) => {
