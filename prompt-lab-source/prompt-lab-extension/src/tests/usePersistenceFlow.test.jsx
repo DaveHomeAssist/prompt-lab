@@ -32,6 +32,8 @@ function renderPersistenceFlow({
   entry = null,
   raw = 'Raw draft',
   enhanced = 'Enhanced draft',
+  variants: initialVariants = [],
+  notes: initialNotes = '',
   doSaveImpl,
   libOverrides = {},
 } = {}) {
@@ -49,8 +51,8 @@ function renderPersistenceFlow({
   const hook = renderHook(() => {
     const [rawState, setRaw] = useState(raw);
     const [enhancedState, setEnhanced] = useState(enhanced);
-    const [variants, setVariants] = useState([]);
-    const [notes, setNotes] = useState('');
+    const [variants, setVariants] = useState(initialVariants);
+    const [notes, setNotes] = useState(initialNotes);
     const [enhMode, setEnhMode] = useState('balanced');
     const [composerBlocks, setComposerBlocks] = useState([]);
 
@@ -80,6 +82,10 @@ function renderPersistenceFlow({
       notes,
       enhMode,
       composerBlocks,
+      setRaw,
+      setEnhanced,
+      setVariants,
+      setNotes,
     };
   });
 
@@ -139,8 +145,139 @@ describe('usePersistenceFlow', () => {
     expect(result.current.newCollName).toBe('');
   });
 
+  it('adopts the replacement id when a deleted loaded prompt is saved as new', () => {
+    const entry = makeEntry({
+      metadata: { owner: 'Dave', purpose: 'Recovery' },
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+    });
+    const { result, doSave } = renderPersistenceFlow({
+      entry,
+      doSaveImpl: (payload) => ({
+        id: 'replacement-entry',
+        title: payload.title,
+        savedAsNew: true,
+      }),
+    });
+
+    act(() => {
+      result.current.applyEntry(entry);
+      result.current.setRaw('Recovered raw');
+      result.current.setEnhanced('Recovered enhanced');
+      result.current.setVariants([{ label: 'Recovered', content: 'Recovered variant' }]);
+      result.current.setNotes('Recovered notes');
+      result.current.openSavePanel();
+    });
+    act(() => {
+      result.current.setSaveTitle('Recovered prompt');
+      result.current.setSaveTags(['safe']);
+      result.current.setSaveCollection('Recovered');
+    });
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave();
+    });
+
+    expect(doSave).toHaveBeenCalledWith(expect.objectContaining({
+      editingId: entry.id,
+      raw: 'Recovered raw',
+      enhanced: 'Recovered enhanced',
+      variants: [{ label: 'Recovered', content: 'Recovered variant' }],
+      notes: 'Recovered notes',
+      sourceEntry: expect.objectContaining({
+        id: entry.id,
+        metadata: expect.objectContaining({ owner: 'Dave', purpose: 'Recovery' }),
+      }),
+    }));
+    expect(saved).toEqual({
+      id: 'replacement-entry',
+      title: 'Recovered prompt',
+      savedAsNew: true,
+    });
+    expect(result.current.editingId).toBe('replacement-entry');
+
+    act(() => result.current.openSavePanel());
+    expect(result.current.saveTitle).toBe('Recovered prompt');
+    expect(result.current.saveTags).toEqual(['safe']);
+    expect(result.current.saveCollection).toBe('Recovered');
+  });
+
+  it('synchronizes every loaded editor field after an acknowledged version restore', () => {
+    const entry = makeEntry({
+      variants: [{ label: 'Current', content: 'Current variant' }],
+      notes: 'Current notes',
+    });
+    const restored = makeEntry({
+      id: entry.id,
+      title: 'Restored title',
+      original: 'Restored raw',
+      enhanced: 'Restored enhanced',
+      variants: [{ label: 'Restored', content: 'Restored variant' }],
+      notes: 'Restored notes',
+      tags: ['restored'],
+      collection: 'Archive',
+    });
+    const restoreVersion = vi.fn(() => restored);
+    const { result, notify, bumpUse, trackRecentAccess } = renderPersistenceFlow({
+      entry,
+      libOverrides: { restoreVersion },
+    });
+
+    act(() => result.current.applyEntry(entry));
+    notify.mockClear();
+    bumpUse.mockClear();
+    trackRecentAccess.mockClear();
+
+    let restoredResult;
+    act(() => {
+      restoredResult = result.current.restoreEntryVersion(entry.id, { id: 'version-1' });
+    });
+
+    expect(restoredResult).toEqual(restored);
+    expect(result.current.editingId).toBe(entry.id);
+    expect(result.current.raw).toBe('Restored raw');
+    expect(result.current.enhanced).toBe('Restored enhanced');
+    expect(result.current.variants).toEqual([{ label: 'Restored', content: 'Restored variant' }]);
+    expect(result.current.notes).toBe('Restored notes');
+    expect(result.current.saveTitle).toBe('Restored title');
+    expect(result.current.saveTags).toEqual(['restored']);
+    expect(result.current.saveCollection).toBe('Archive');
+    expect(bumpUse).not.toHaveBeenCalled();
+    expect(trackRecentAccess).not.toHaveBeenCalled();
+    expect(notify).not.toHaveBeenCalledWith('Loaded into editor!');
+  });
+
+  it('leaves the loaded editor unchanged when version persistence is rejected', () => {
+    const entry = makeEntry({
+      variants: [{ label: 'Current', content: 'Current variant' }],
+      notes: 'Current notes',
+    });
+    const restoreVersion = vi.fn(() => null);
+    const { result } = renderPersistenceFlow({ entry, libOverrides: { restoreVersion } });
+
+    act(() => result.current.applyEntry(entry));
+
+    let restoredResult;
+    act(() => {
+      restoredResult = result.current.restoreEntryVersion(entry.id, { id: 'version-1' });
+    });
+
+    expect(restoredResult).toBeNull();
+    expect(result.current.editingId).toBe(entry.id);
+    expect(result.current.raw).toBe(entry.original);
+    expect(result.current.enhanced).toBe(entry.enhanced);
+    expect(result.current.variants).toEqual(entry.variants);
+    expect(result.current.notes).toBe(entry.notes);
+    expect(result.current.saveTitle).toBe(entry.title);
+    expect(result.current.saveTags).toEqual(entry.tags);
+    expect(result.current.saveCollection).toBe(entry.collection);
+  });
+
   it('deleting the loaded prompt clears its save target but preserves the draft', () => {
-    const entry = makeEntry();
+    const entry = makeEntry({
+      metadata: { owner: 'Dave', purpose: 'Delete recovery' },
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+    });
     const del = vi.fn(() => true);
     const { result, doSave } = renderPersistenceFlow({ entry, libOverrides: { del } });
 
@@ -166,7 +303,14 @@ describe('usePersistenceFlow', () => {
       editingId: null,
       raw: entry.original,
       enhanced: entry.enhanced,
+      savedFromDeletedTarget: true,
+      sourceEntry: expect.objectContaining({
+        id: null,
+        metadata: expect.objectContaining({ owner: 'Dave', purpose: 'Delete recovery' }),
+        inputs: expect.arrayContaining([expect.objectContaining({ key: 'topic' })]),
+      }),
     }));
+    expect(result.current.editingId).toBe('new-entry-id');
   });
 
   it('restoring a version synchronizes a loaded editor before the next save', () => {

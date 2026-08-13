@@ -209,11 +209,12 @@ describe('PLB-003 — acknowledged library saves', () => {
     expect(result.current.library.length).toBe(initialLength);
   });
 
-  it('does not claim "Prompt updated!" when the target prompt was deleted', async () => {
+  it('saves a deleted target as a new prompt after the replacement write succeeds', async () => {
     const entry = createPromptEntry({
       title: 'Doomed',
       original: 'x',
       enhanced: 'x',
+      metadata: { owner: 'Dave', purpose: 'Recovery' },
       useCount: 0,
       versions: [],
       testCases: [],
@@ -231,12 +232,70 @@ describe('PLB-003 — acknowledged library saves', () => {
 
     let saved;
     act(() => {
-      saved = result.current.doSave(saveArgs({ editingId: entry.id, title: 'Doomed v2' }));
+      saved = result.current.doSave(saveArgs({
+        raw: 'Recovered raw',
+        enhanced: 'Recovered enhanced',
+        notes: 'Recovered notes',
+        tags: ['recovery'],
+        collection: 'Recovered',
+        editingId: entry.id,
+        title: 'Doomed v2',
+        sourceEntry: entry,
+      }));
     });
 
-    expect(saved).toBeNull();
+    expect(saved).toEqual(expect.objectContaining({ savedAsNew: true }));
+    expect(saved.id).not.toBe(entry.id);
     expect(notify).not.toHaveBeenCalledWith('Prompt updated!');
-    expect(notify).toHaveBeenCalledWith(expect.stringContaining('no longer exists'));
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining('Saved this draft as a new prompt'));
+    expect(result.current.library).toHaveLength(1);
+    expect(result.current.library[0]).toEqual(expect.objectContaining({
+      id: saved.id,
+      original: 'Recovered raw',
+      enhanced: 'Recovered enhanced',
+      notes: 'Recovered notes',
+      collection: 'Recovered',
+      metadata: expect.objectContaining({ owner: 'Dave', purpose: 'Recovery' }),
+    }));
+    expect(JSON.parse(localStorage.getItem(storageKeys.library))).toHaveLength(1);
+  });
+
+  it('does not change the library or claim success when a version restore write is rejected', async () => {
+    const entry = createPromptEntry({
+      title: 'Versioned prompt',
+      original: 'Current raw',
+      enhanced: 'Current enhanced',
+      versions: [{
+        id: 'version-1',
+        original: 'Restored raw',
+        enhanced: 'Restored enhanced',
+        variants: [],
+        notes: 'Restored notes',
+        savedAt: '2026-08-11T00:00:00.000Z',
+        source: 'manual_save',
+      }],
+      testCases: [],
+    });
+    localStorage.setItem(storageKeys.library, JSON.stringify([entry]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    const before = result.current.library[0];
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw makeQuotaError();
+    });
+
+    let restored;
+    act(() => {
+      restored = result.current.restoreVersion(entry.id, before.versions[0]);
+    });
+    setItem.mockRestore();
+
+    expect(restored).toBeNull();
+    expect(result.current.library[0]).toEqual(before);
+    expect(notify).not.toHaveBeenCalledWith('Restored!');
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining('Restore failed'));
   });
 });
 

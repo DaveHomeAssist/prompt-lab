@@ -256,12 +256,16 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const deleteEntry = (entryId) => {
+    const deletedSource = activeEntryRef.current?.id === entryId
+      ? activeEntryRef.current
+      : lib.library.find(entry => entry.id === entryId) || null;
     if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
     if (editingId !== entryId) return true;
 
     // Preserve the visible draft so it can be saved as a new prompt, but never
-    // leave a deleted record as the active save target.
-    activeEntryRef.current = null;
+    // leave a deleted record ID as the active save target. The ID-less source
+    // snapshot keeps versions, test cases, and metadata available to recovery.
+    activeEntryRef.current = deletedSource ? { ...deletedSource, id: null } : null;
     setEditingId(null);
     setSaveTargetId(current => current === entryId ? null : current);
     setSaveSourceEntry(current => current?.id === entryId ? null : current);
@@ -272,21 +276,25 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const restoreEntryVersion = (entryId, version) => {
     if (typeof lib.restoreVersion !== 'function') return null;
-    const restoredEntry = lib.restoreVersion(entryId, version);
-    if (!restoredEntry || editingId !== entryId) return restoredEntry;
+    const restoredEntry = normalizeEntry(lib.restoreVersion(entryId, version));
+    if (!restoredEntry || editingId !== restoredEntry.id) return restoredEntry;
 
-    // A loaded prompt must reflect the restored library version before its next
-    // save, otherwise the stale editor buffers can immediately undo the restore.
+    // Restoration already wrote the library record. Synchronize the loaded
+    // editor without routing through the normal load path, which would bump
+    // usage and emit an unrelated "Loaded" notification.
     activeEntryRef.current = restoredEntry;
+    setEditingId(restoredEntry.id);
     setRaw(restoredEntry.original);
     setEnhanced(restoredEntry.enhanced);
     setVariants(restoredEntry.variants || []);
     setNotes(restoredEntry.notes || '');
-    setSaveTags(restoredEntry.tags || []);
     setSaveTitle(restoredEntry.title || '');
+    setSaveTags(restoredEntry.tags || []);
     setSaveCollection(restoredEntry.collection || '');
     setSaveTargetId(null);
     setSaveSourceEntry(null);
+    setChangeNote('');
+    setShowSave(false);
     setShowDiff(false);
     return restoredEntry;
   };
@@ -328,6 +336,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       collection: collectionValue,
       editingId: targetId,
       changeNote,
+      sourceEntry: contentSource || activeEntryRef.current,
+      savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
     });
     // A rejected write returns null; keep the save panel and buffers so the
     // user can retry or copy instead of losing the draft to a false success.
