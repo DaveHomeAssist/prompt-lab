@@ -255,6 +255,42 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     await resolveEntryForTarget(entry, 'editor');
   };
 
+  const deleteEntry = (entryId) => {
+    if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
+    if (editingId !== entryId) return true;
+
+    // Preserve the visible draft so it can be saved as a new prompt, but never
+    // leave a deleted record as the active save target.
+    activeEntryRef.current = null;
+    setEditingId(null);
+    setSaveTargetId(current => current === entryId ? null : current);
+    setSaveSourceEntry(current => current?.id === entryId ? null : current);
+    setShowSave(false);
+    setChangeNote('');
+    return true;
+  };
+
+  const restoreEntryVersion = (entryId, version) => {
+    if (typeof lib.restoreVersion !== 'function') return null;
+    const restoredEntry = lib.restoreVersion(entryId, version);
+    if (!restoredEntry || editingId !== entryId) return restoredEntry;
+
+    // A loaded prompt must reflect the restored library version before its next
+    // save, otherwise the stale editor buffers can immediately undo the restore.
+    activeEntryRef.current = restoredEntry;
+    setRaw(restoredEntry.original);
+    setEnhanced(restoredEntry.enhanced);
+    setVariants(restoredEntry.variants || []);
+    setNotes(restoredEntry.notes || '');
+    setSaveTags(restoredEntry.tags || []);
+    setSaveTitle(restoredEntry.title || '');
+    setSaveCollection(restoredEntry.collection || '');
+    setSaveTargetId(null);
+    setSaveSourceEntry(null);
+    setShowDiff(false);
+    return restoredEntry;
+  };
+
   const sendEntryToABTest = async (entry, side) => {
     await resolveEntryForTarget(entry, `ab:${side}`);
   };
@@ -373,6 +409,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     doSave,
     applyEntry,
     loadEntry,
+    deleteEntry,
+    restoreEntryVersion,
     sendEntryToABTest,
     applyTemplate,
     skipTemplate,
