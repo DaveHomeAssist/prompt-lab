@@ -120,6 +120,64 @@ describe('usePromptLibrary', () => {
     expect(result.current.allLibTags).toEqual(['Code', 'Analysis']);
   });
 
+  it('deletes an existing prompt and reports whether the record was removed', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry()]));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+      expect(result.current.library).toHaveLength(1);
+    });
+
+    act(() => {
+      expect(result.current.del('entry-1')).toBe(true);
+    });
+
+    expect(confirm).toHaveBeenCalledWith('Delete this prompt?');
+    expect(result.current.library).toEqual([]);
+    expect(notify).toHaveBeenCalledWith('Prompt deleted.');
+  });
+
+  it('returns and persists the restored prompt version', async () => {
+    const versionOne = {
+      id: 'version-one',
+      original: 'Version one original',
+      enhanced: 'Version one enhanced',
+      savedAt: '2026-03-19T00:00:00.000Z',
+    };
+    localStorage.setItem(storageKeys.library, JSON.stringify([
+      makeEntry({
+        original: 'Version two original',
+        enhanced: 'Version two enhanced',
+        versions: [versionOne],
+      }),
+    ]));
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => {
+      expect(result.current.libReady).toBe(true);
+    });
+
+    let restored;
+    act(() => {
+      restored = result.current.restoreVersion('entry-1', versionOne);
+    });
+
+    expect(restored).toMatchObject({
+      id: 'entry-1',
+      original: versionOne.original,
+      enhanced: versionOne.enhanced,
+    });
+    expect(result.current.library[0]).toMatchObject({
+      original: versionOne.original,
+      enhanced: versionOne.enhanced,
+    });
+    expect(notify).toHaveBeenCalledWith('Restored!');
+  });
+
   it('marks the legacy library bridge as checked when recovery is unreachable', async () => {
     legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(null);
 

@@ -287,9 +287,20 @@ export default function usePromptLibrary(notify) {
   };
 
   const del = (id) => {
-    if (!window.confirm('Delete this prompt?')) return;
-    setLibrary(prev => prev.filter(entry => entry.id !== id));
+    if (!window.confirm('Delete this prompt?')) return false;
+    const nextLibrary = libraryRef.current.filter(entry => entry.id !== id);
+    if (nextLibrary.length === libraryRef.current.length) return false;
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
+    setExpandedId(prev => prev === id ? null : prev);
+    if (expandedVersionId === id) {
+      setExpandedVersionId(null);
+      setDiffVersionIdx(null);
+    }
+    setShareId(prev => prev === id ? null : prev);
+    setRenamingId(prev => prev === id ? null : prev);
     notify('Prompt deleted.');
+    return true;
   };
 
   const bumpUse = id => updateLibraryEntry(id, entry => ({
@@ -382,8 +393,17 @@ export default function usePromptLibrary(notify) {
   };
 
   const restoreVersion = (entryId, version) => {
-    updateLibraryEntry(entryId, entry => restorePromptVersion(entry, version));
+    const currentEntry = libraryRef.current.find(entry => entry.id === entryId);
+    if (!currentEntry) return null;
+    const restoredEntry = restorePromptVersion(currentEntry, version);
+    if (!restoredEntry) return null;
+    if (restoredEntry !== currentEntry) {
+      const nextLibrary = libraryRef.current.map(entry => entry.id === entryId ? restoredEntry : entry);
+      libraryRef.current = nextLibrary;
+      setLibrary(nextLibrary);
+    }
     notify('Restored!');
+    return restoredEntry;
   };
 
   const openVersionHistory = (entryId, initialIdx = 0) => {

@@ -73,7 +73,7 @@ const LibraryPanel = memo(function LibraryPanel({
   caseNotes, setCaseNotes,
   openCaseForm, resetCaseForm, saveCaseForPrompt,
   loadCaseIntoEditor, runSingleCase, removeCase,
-  loadEntry, addToComposer, openSavePanel, sendToABTest, copy,
+  loadEntry, deleteEntry, addToComposer, openSavePanel, sendToABTest, copy,
   canUseCollections = true,
   canExportLibrary = true,
   openBilling,
@@ -542,7 +542,7 @@ const LibraryPanel = memo(function LibraryPanel({
                   <div className={`pt-1 border-t ${m.border}`}>
                     <button
                       type="button"
-                      onClick={() => lib.del(entry.id)}
+                      onClick={() => deleteEntry(entry.id)}
                       className="ui-control px-2.5 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-colors flex items-center gap-1"
                     >
                       <Ic n="Trash2" size={11} />Delete Prompt
