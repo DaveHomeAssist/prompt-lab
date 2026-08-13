@@ -274,7 +274,10 @@ describe('usePersistenceFlow', () => {
   });
 
   it('deleting the loaded prompt clears its save target but preserves the draft', () => {
-    const entry = makeEntry();
+    const entry = makeEntry({
+      metadata: { owner: 'Dave', purpose: 'Delete recovery' },
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+    });
     const del = vi.fn(() => true);
     const { result, doSave } = renderPersistenceFlow({ entry, libOverrides: { del } });
 
@@ -300,7 +303,14 @@ describe('usePersistenceFlow', () => {
       editingId: null,
       raw: entry.original,
       enhanced: entry.enhanced,
+      savedFromDeletedTarget: true,
+      sourceEntry: expect.objectContaining({
+        id: null,
+        metadata: expect.objectContaining({ owner: 'Dave', purpose: 'Delete recovery' }),
+        inputs: expect.arrayContaining([expect.objectContaining({ key: 'topic' })]),
+      }),
     }));
+    expect(result.current.editingId).toBe('new-entry-id');
   });
 
   it('restoring a version synchronizes a loaded editor before the next save', () => {

@@ -256,12 +256,16 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const deleteEntry = (entryId) => {
+    const deletedSource = activeEntryRef.current?.id === entryId
+      ? activeEntryRef.current
+      : lib.library.find(entry => entry.id === entryId) || null;
     if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
     if (editingId !== entryId) return true;
 
     // Preserve the visible draft so it can be saved as a new prompt, but never
-    // leave a deleted record as the active save target.
-    activeEntryRef.current = null;
+    // leave a deleted record ID as the active save target. The ID-less source
+    // snapshot keeps versions, test cases, and metadata available to recovery.
+    activeEntryRef.current = deletedSource ? { ...deletedSource, id: null } : null;
     setEditingId(null);
     setSaveTargetId(current => current === entryId ? null : current);
     setSaveSourceEntry(current => current?.id === entryId ? null : current);
@@ -333,6 +337,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       editingId: targetId,
       changeNote,
       sourceEntry: contentSource || activeEntryRef.current,
+      savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
     });
     // A rejected write returns null; keep the save panel and buffers so the
     // user can retry or copy instead of losing the draft to a false success.

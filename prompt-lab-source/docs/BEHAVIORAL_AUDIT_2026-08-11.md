@@ -92,5 +92,5 @@ confirmation/undo (done in PR #36), 10. navigation history (done in PR #36), 11.
 - Fix set: PR #35 on `claude/promptlab-behavioral-audit-5v4eqj`
 - Exact deployed P1 re-audit: PLB-001…006 passed under the original failure conditions; release provenance was closed after PR #36 merged and production resolved to protected `main`
 - PR #36: PLB-009, PLB-011, and PLB-012 regression paths passed on the public hosted build
-- Library coherence focused regression: 34/34 tests passing across `usePromptLibrary`, `usePersistenceFlow`, and `plbAuditFixes`
-- Library coherence full verification: 582 Vitest + 207 Node tests, extension and web builds, API safety 66/66, docs lint, and quick preflight all passing under Node 22
+- Library coherence focused regression: 35/35 tests passing across `usePromptLibrary`, `usePersistenceFlow`, and `plbAuditFixes`
+- Library coherence full verification: 583 Vitest + 207 Node tests, extension and web builds, API safety 66/66, docs lint, and quick preflight all passing under Node 22

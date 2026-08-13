@@ -260,7 +260,19 @@ export default function usePromptLibrary(notify) {
     return savedFromDeletedTarget ? { ...result, savedAsNew: true } : result;
   };
 
-  const doSave = ({ raw, enhanced, variants, notes, tags, title, collection, editingId, changeNote, sourceEntry }) => {
+  const doSave = ({
+    raw,
+    enhanced,
+    variants,
+    notes,
+    tags,
+    title,
+    collection,
+    editingId,
+    changeNote,
+    sourceEntry,
+    savedFromDeletedTarget = false,
+  }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
       title: cleanTitle,
@@ -300,7 +312,10 @@ export default function usePromptLibrary(notify) {
       return { id: editingId, title: savedTitle };
     }
 
-    return persistNewEntry(payload);
+    return persistNewEntry(payload, {
+      sourceEntry,
+      savedFromDeletedTarget,
+    });
   };
 
   const del = (id) => {
