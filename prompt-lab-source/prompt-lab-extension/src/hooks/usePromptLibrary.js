@@ -67,9 +67,6 @@ export function sortLibraryEntries(entries, sortBy) {
     }
     const newestDelta = getNewestSortTimestamp(right) - getNewestSortTimestamp(left);
     if (newestDelta !== 0) return newestDelta;
-    const createdAtDelta = (parseLibraryTimestamp(right?.createdAt) || 0)
-      - (parseLibraryTimestamp(left?.createdAt) || 0);
-    if (createdAtDelta !== 0) return createdAtDelta;
     return String(left?.id || '').localeCompare(String(right?.id || ''));
   });
 }
