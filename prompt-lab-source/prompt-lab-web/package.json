@@ -10,7 +10,7 @@
     "check:node": "node ../scripts/require-node.mjs",
     "check:production-env": "npm run check:node && node scripts/check-production-env.mjs",
     "dev": "npm run check:node && vite",
-    "build": "npm run check:production-env && vite build",
+    "build": "npm run check:production-env && vite build && node scripts/instrument-google-analytics.mjs dist",
     "preview": "npm run check:node && vite preview",
     "test:e2e:app": "npm run check:node && playwright test --config=playwright.app.config.js",
     "test:e2e:landing": "npm run check:node && playwright test --config=playwright.landing.config.js"

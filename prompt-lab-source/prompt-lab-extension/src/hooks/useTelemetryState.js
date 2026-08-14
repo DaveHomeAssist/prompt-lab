@@ -66,6 +66,11 @@ export default function useTelemetryState({ notify }) {
     });
   }, [telemetryAllowed]);
 
+  useEffect(() => {
+    if (surface !== 'web' || typeof window === 'undefined') return;
+    window.PromptLabGoogleAnalytics?.setConsent?.(telemetryAllowed);
+  }, [surface, telemetryAllowed]);
+
   const sendPayload = useCallback(async (payload) => {
     const landingEvent = payload?.kind === 'event' && isLandingTelemetryEvent(payload?.event);
     const requestPayload = { ...payload };
