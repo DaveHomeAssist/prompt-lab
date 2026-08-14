@@ -74,7 +74,7 @@ describe('useBillingState', () => {
     expect(result.current.hasFeature('export')).toBe(true);
   });
 
-  it('normalizes Free owner markers to an ordinary Free state', () => {
+  it('normalizes Free owner markers without reintroducing feature gates', () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'free',
       status: 'owner',
@@ -89,7 +89,11 @@ describe('useBillingState', () => {
     expect(result.current.billingPeriod).toBe('');
     expect(result.current.planLabel).toBe('Free');
     expect(result.current.statusCopy).toBe('Free plan active. Upgrade to unlock advanced workflow features.');
-    expect(result.current.hasFeature('collections')).toBe(false);
+    expect(result.current.hasFeature('collections')).toBe(true);
+    expect(result.current.hasFeature('abTesting')).toBe(true);
+    expect(result.current.hasFeature('diffView')).toBe(true);
+    expect(result.current.hasFeature('batchRuns')).toBe(true);
+    expect(result.current.hasFeature('export')).toBe(true);
   });
 
   it('auto-syncs owner Pro for a signed-in Clerk user id without cached billing email', async () => {
