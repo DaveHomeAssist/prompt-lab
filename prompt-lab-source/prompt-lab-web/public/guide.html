@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com; font-src 'self'; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>How-To Guide — Prompt Lab</title>
 <link rel="canonical" href="https://promptlab.tools/guide.html">
@@ -22,6 +22,7 @@
 <meta name="description" content="Learn how to use Prompt Lab — enhance prompts, A/B test across providers, build modular compositions, and manage your prompt library.">
 <link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/google-analytics.js" defer></script>
 <style>
 @font-face {
   font-family: 'Outfit';

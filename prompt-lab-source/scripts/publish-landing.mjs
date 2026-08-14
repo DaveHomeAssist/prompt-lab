@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { instrumentGoogleAnalytics } from '../prompt-lab-web/scripts/instrument-google-analytics.mjs';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourceDir = resolve(scriptDir, '..');
@@ -39,6 +40,7 @@ const privacyRedirectMeta = `  <meta http-equiv="Content-Security-Policy" conten
   <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
 
 const copyTargets = [
+  ['google-analytics.js', 'google-analytics.js'],
   ['favicon.svg', 'favicon.svg'],
   ['hero-logo.png', 'hero-logo.png'],
   ['landing-product-shot.png', 'landing-product-shot.png'],
@@ -256,6 +258,7 @@ async function main() {
   await writeCname();
   await writeLegacyPrivacyRedirect();
   await writePrivacyPrettyRoute();
+  await instrumentGoogleAnalytics(docsDir);
 
   console.log(`Landing site published to ${docsDir}`);
 }

@@ -190,7 +190,7 @@ test('public landing surfaces load fonts locally without automatic third-party r
   }
 });
 
-test('public landing surfaces declare a first-party-only content security policy', () => {
+test('public landing surfaces declare a restrictive content security policy', () => {
   const pages = [
     ['landing', landingHtml],
     ['guide', guideHtml],
@@ -218,6 +218,13 @@ test('public landing surfaces declare a first-party-only content security policy
     const policy = attributeValue(policyTag, 'content') ?? '';
     for (const directive of requiredDirectives) {
       assert.ok(policy.includes(directive), `${pageName} CSP is missing ${directive}`);
+    }
+    if (pageName !== 'privacy redirect') {
+      assert.match(policy, /script-src[^;]*https:\/\/www\.googletagmanager\.com/);
+      assert.match(policy, /img-src[^;]*https:\/\/\*\.google-analytics\.com/);
+      assert.match(policy, /connect-src[^;]*https:\/\/\*\.google-analytics\.com/);
+      assert.match(policy, /connect-src[^;]*https:\/\/www\.googletagmanager\.com/);
+      continue;
     }
     assert.doesNotMatch(policy, /https?:|\*/i, `${pageName} CSP must not allow external origins or wildcards`);
   }

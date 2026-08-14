@@ -1,13 +1,22 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../lib/platform.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isExtension: false,
+}));
+
 import useTelemetryState from '../hooks/useTelemetryState.js';
 import { normalizeTelemetryState } from '../lib/telemetry.js';
 
 describe('useTelemetryState', () => {
   const originalFetch = global.fetch;
+  let setGoogleAnalyticsConsent;
 
   beforeEach(() => {
     localStorage.clear();
+    setGoogleAnalyticsConsent = vi.fn();
+    window.PromptLabGoogleAnalytics = { setConsent: setGoogleAnalyticsConsent };
     global.fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -18,6 +27,29 @@ describe('useTelemetryState', () => {
     global.fetch = originalFetch;
     vi.restoreAllMocks();
     localStorage.clear();
+    delete window.PromptLabGoogleAnalytics;
+  });
+
+  it('keeps Google Analytics aligned with the hosted web consent choice', async () => {
+    const { result } = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+
+    await waitFor(() => {
+      expect(setGoogleAnalyticsConsent).toHaveBeenLastCalledWith(false);
+    });
+
+    act(() => {
+      result.current.grantConsent();
+    });
+    await waitFor(() => {
+      expect(setGoogleAnalyticsConsent).toHaveBeenLastCalledWith(true);
+    });
+
+    act(() => {
+      result.current.denyConsent();
+    });
+    await waitFor(() => {
+      expect(setGoogleAnalyticsConsent).toHaveBeenLastCalledWith(false);
+    });
   });
 
   it('does not send telemetry before first-run consent is granted', async () => {

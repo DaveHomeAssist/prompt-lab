@@ -16,6 +16,8 @@ test('privacy account claim matches the Clerk-gated hosted web app', () => {
 
 test('privacy discloses consent-gated, content-free landing attribution', () => {
   assert.match(privacy, /only after you allow analytics/);
+  assert.match(privacy, /Google Analytics 4/);
+  assert.match(privacy, /Google Analytics may set its own cookies after you allow analytics/);
   assert.match(privacy, /same-origin session storage/);
   assert.match(privacy, /Prompt text, model responses, documentation search terms, arbitrary URLs, email addresses, and provider API keys are never included/);
 });
