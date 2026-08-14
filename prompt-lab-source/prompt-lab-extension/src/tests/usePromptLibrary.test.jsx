@@ -18,6 +18,7 @@ vi.mock('../lib/legacyLibraryMigration.js', async () => {
 
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { LEGACY_LIBRARY_CHECK_KEY } from '../lib/legacyLibraryMigration.js';
+import { reconcilePacks } from '../lib/packStore.js';
 
 function makeEntry(overrides = {}) {
   return {
@@ -223,6 +224,114 @@ describe('usePromptLibrary', () => {
     expect(result.current.library[0].inputs).toHaveLength(1);
     expect(JSON.parse(localStorage.getItem(storageKeys.library))[0].id).toBe(saved.id);
     expect(notify).toHaveBeenCalledWith('The original prompt was deleted. Saved this draft as a new prompt.');
+  });
+
+  it('recovers a removed pack prompt as an independent entry that survives later pack cleanup', async () => {
+    const sourceEntry = {
+      ...makeEntry({
+        id: 'pack-entry',
+        title: 'Pack Source',
+        tags: ['pack', 'recovery'],
+        collection: 'Operations',
+        variants: [{ label: 'Pack variant', content: 'Pack variant body' }],
+        notes: 'Pack notes',
+        versions: [{
+          id: 'version-1',
+          original: 'Version raw',
+          enhanced: 'Version enhanced',
+          variants: [],
+          notes: 'Version notes',
+          savedAt: '2026-03-19T00:00:00.000Z',
+          source: 'manual_save',
+        }],
+      }),
+      metadata: {
+        owner: 'Dave',
+        purpose: 'Pack recovery',
+        packId: 'pack-1',
+        packName: 'Recovery Pack',
+        packSource: 'authored',
+      },
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+      testCases: [{
+        id: 'case-1',
+        name: 'Pack recovery case',
+        input: 'Recover this prompt',
+        expectedTraits: ['independent'],
+        exclusions: [],
+        notes: '',
+        createdAt: '2026-03-20T00:00:00.000Z',
+        updatedAt: '2026-03-20T00:00:00.000Z',
+      }],
+      goldenResponse: {
+        text: 'Golden recovery response',
+        pinnedAt: '2026-03-20T00:00:00.000Z',
+        pinnedFromRunId: 'run-1',
+        provider: 'test',
+        model: 'fixture',
+      },
+      goldenThreshold: 0.91,
+    };
+    localStorage.setItem(storageKeys.library, JSON.stringify([sourceEntry]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    const loadedSource = result.current.library[0];
+
+    act(() => {
+      result.current.removeEntriesByPackId('pack-1');
+    });
+    expect(result.current.library).toEqual([]);
+
+    let saved;
+    act(() => {
+      saved = result.current.doSave({
+        raw: 'Recovered raw',
+        enhanced: 'Recovered enhanced',
+        variants: [{ label: 'Recovered', content: 'Recovered variant body' }],
+        notes: 'Recovered notes',
+        tags: ['safe', 'recovered'],
+        title: 'Independent recovery',
+        collection: 'Recovered',
+        editingId: sourceEntry.id,
+        changeNote: 'Recover removed pack prompt',
+        sourceEntry: loadedSource,
+      });
+    });
+
+    expect(saved).toEqual(expect.objectContaining({ savedAsNew: true }));
+    expect(saved.id).not.toBe(sourceEntry.id);
+    expect(result.current.library).toHaveLength(1);
+    expect(result.current.library[0]).toEqual(expect.objectContaining({
+      id: saved.id,
+      title: 'Independent recovery',
+      original: 'Recovered raw',
+      enhanced: 'Recovered enhanced',
+      variants: [{ label: 'Recovered', content: 'Recovered variant body' }],
+      notes: 'Recovered notes',
+      tags: ['safe', 'recovered'],
+      collection: 'Recovered',
+      metadata: expect.objectContaining({ owner: 'Dave', purpose: 'Pack recovery' }),
+      goldenThreshold: 0.91,
+    }));
+    expect(result.current.library[0].metadata).not.toHaveProperty('packId');
+    expect(result.current.library[0].metadata).not.toHaveProperty('packName');
+    expect(result.current.library[0].metadata).not.toHaveProperty('packSource');
+    expect(result.current.library[0].versions).toHaveLength(1);
+    expect(result.current.library[0].testCases).toHaveLength(1);
+    expect(result.current.library[0].inputs).toHaveLength(1);
+    expect(result.current.library[0].goldenResponse).toEqual(expect.objectContaining({
+      text: 'Golden recovery response',
+    }));
+    expect(reconcilePacks(result.current.library)).toEqual([]);
+
+    act(() => {
+      result.current.removeEntriesByPackId('pack-1');
+    });
+    expect(result.current.library).toHaveLength(1);
+    expect(result.current.library[0].id).toBe(saved.id);
+    expect(JSON.parse(localStorage.getItem(storageKeys.library))[0].id).toBe(saved.id);
   });
 
   it('restores a version only after the library write succeeds', async () => {
