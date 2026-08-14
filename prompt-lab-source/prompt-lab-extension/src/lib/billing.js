@@ -33,6 +33,10 @@ export const BILLING_FEATURES = Object.freeze({
 });
 
 const PRO_FEATURES = new Set(Object.keys(BILLING_FEATURES));
+// Prelaunch branch policy: the full workflow is open to every user while
+// commercial billing remains disabled. Keep payment routes fail-closed; this
+// flag controls only in-app feature access.
+const FEATURE_GATES_ENABLED = false;
 const ownerAccessEnabled = typeof import.meta !== 'undefined' && (
   import.meta.env?.MODE === 'test' ||
   (
@@ -121,7 +125,7 @@ export function normalizeBillingState(value = {}) {
 
 export function canAccessFeature(plan, featureId) {
   if (!PRO_FEATURES.has(featureId)) return true;
-  return plan === PLAN_PRO;
+  return !FEATURE_GATES_ENABLED || plan === PLAN_PRO;
 }
 
 export function getFeatureMeta(featureId) {
