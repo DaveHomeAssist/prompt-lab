@@ -74,6 +74,24 @@ describe('useBillingState', () => {
     expect(result.current.hasFeature('export')).toBe(true);
   });
 
+  it('normalizes Free owner markers to an ordinary Free state', () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'free',
+      status: 'owner',
+      billingPeriod: 'owner',
+      customerEmail: 'owner@example.com',
+    }));
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn() }));
+
+    expect(result.current.plan).toBe('free');
+    expect(result.current.status).toBe('free');
+    expect(result.current.billingPeriod).toBe('');
+    expect(result.current.planLabel).toBe('Free');
+    expect(result.current.statusCopy).toBe('Free plan active. Upgrade to unlock advanced workflow features.');
+    expect(result.current.hasFeature('collections')).toBe(false);
+  });
+
   it('auto-syncs owner Pro for a signed-in Clerk user id without cached billing email', async () => {
     global.fetch = vi.fn(async (_url, init) => {
       expect(init.headers.Authorization).toBe('Bearer clerk-token');
@@ -272,6 +290,69 @@ describe('useBillingState', () => {
     expect(result.current.status).toBe('active');
     expect(result.current.validationError).toBe('');
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not claim a disabled purchase sync succeeded', async () => {
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      plan: 'free',
+      status: 'free',
+      billingDisabled: true,
+      retryable: false,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const notify = vi.fn();
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const { result } = renderHook(() => useBillingState({ notify, clerkGetToken }));
+    let syncError;
+
+    await act(async () => {
+      try {
+        await result.current.activateLicense('user@example.com');
+      } catch (error) {
+        syncError = error;
+      }
+    });
+
+    expect(syncError).toBeInstanceOf(Error);
+    expect(syncError.message).toBe('Billing is temporarily unavailable. Cached access is unchanged.');
+    expect(result.current.billingDisabled).toBe(true);
+    expect(notify).not.toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
+  });
+
+  it('reports disabled billing without claiming a refresh verified access', async () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'pro',
+      status: 'active',
+      customerEmail: 'user@example.com',
+      lastValidatedAt: new Date().toISOString(),
+    }));
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      ok: true,
+      plan: 'free',
+      status: 'free',
+      billingDisabled: true,
+      retryable: false,
+    }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
+
+    const notify = vi.fn();
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const { result } = renderHook(() => useBillingState({ notify, clerkGetToken }));
+
+    await act(async () => {
+      await result.current.refreshLicense();
+    });
+
+    expect(result.current.plan).toBe('pro');
+    expect(result.current.billingDisabled).toBe(true);
+    expect(notify).toHaveBeenCalledWith('Billing is temporarily unavailable. Cached access is unchanged.');
+    expect(notify).not.toHaveBeenCalledWith('Prompt Lab Pro verified.');
   });
 
   it('stamps lastValidatedAt when validation fails so silent revalidation does not loop', async () => {

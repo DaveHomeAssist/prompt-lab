@@ -315,7 +315,8 @@ export default function BillingModal({
               <button
                 type="button"
                 onClick={handleActivate}
-                disabled={(!accessEmail.trim() && !billing.clerkUserId) || billing.busyAction === 'activate'}
+                disabled={billing.billingDisabled || (!accessEmail.trim() && !billing.clerkUserId) || billing.busyAction === 'activate'}
+                title={billing.billingDisabled ? 'Billing is currently disabled on this deployment.' : undefined}
                 className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
               >
                 Sync Purchase
@@ -323,7 +324,8 @@ export default function BillingModal({
               <button
                 type="button"
                 onClick={handleRefresh}
-                disabled={(!billing.customerEmail && !billing.customerId && !billing.clerkUserId) || billing.busyAction === 'validate'}
+                disabled={billing.billingDisabled || (!billing.customerEmail && !billing.customerId && !billing.clerkUserId) || billing.busyAction === 'validate'}
+                title={billing.billingDisabled ? 'Billing is currently disabled on this deployment.' : undefined}
                 className={`ui-control rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt} disabled:opacity-40`}
               >
                 Refresh Status
