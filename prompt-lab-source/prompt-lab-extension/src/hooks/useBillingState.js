@@ -6,6 +6,7 @@ import {
   describeBillingStatus,
   getBillingApiBase,
   getPlanLabel,
+  isOwnerProState,
   isOwnerAccessAvailable,
   normalizeBillingState,
 } from '../lib/billing.js';
@@ -207,8 +208,12 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [clerkGetToken, requestBilling, state.clerkUserId, state.customerEmail, state.customerId, state.plan]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
-    if (stateRef.current.status === 'owner') return true;
+    if (isOwnerProState(stateRef.current)) return true;
     if (!stateRef.current.customerEmail && !stateRef.current.customerId && !stateRef.current.clerkUserId) return false;
+    if (stateRef.current.billingDisabled) {
+      if (!silent) notify?.('Billing is temporarily unavailable. Cached access is unchanged.');
+      return stateRef.current.plan === 'pro';
+    }
 
     if (!silent) setBusyAction('validate');
     try {
@@ -222,6 +227,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
       const nextState = normalizeResponseState(payload, stateRef.current);
       setState(() => nextState);
+      if (payload?.billingDisabled) {
+        if (!silent) notify?.('Billing is temporarily unavailable. Cached access is unchanged.');
+        return nextState.plan === 'pro';
+      }
       if (!silent) notify?.(nextState.plan === 'pro' ? 'Prompt Lab Pro verified.' : 'Billing verified.');
       if (!silent) {
         telemetry?.track?.('billing.license_validated', {
@@ -259,6 +268,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || state.customerEmail || '').trim().toLowerCase();
+    if (stateRef.current.billingDisabled) {
+      throw billingDisabledError(null, 'Billing is temporarily unavailable. Cached access is unchanged.');
+    }
     setBusyAction('activate');
     try {
       const payload = await requestBilling('/billing/license', {
@@ -273,6 +285,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         customerEmail,
       });
       setState(nextState);
+      if (payload?.billingDisabled) {
+        throw billingDisabledError(payload, 'Billing is temporarily unavailable. Cached access is unchanged.');
+      }
       notify?.('Prompt Lab Pro synced to this device.');
       telemetry?.track?.('billing.license_activated', {
         plan: nextState.plan,
@@ -340,7 +355,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [notify, requestBilling, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
-    if (state.status === 'owner' || state.billingPeriod === 'owner') {
+    if (isOwnerProState(state)) {
       notify?.('Owner Pro access is managed by Prompt Lab owner settings.');
       return false;
     }

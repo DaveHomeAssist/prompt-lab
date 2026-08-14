@@ -80,18 +80,35 @@ export function createOwnerBillingState() {
   });
 }
 
+export function isOwnerProState(state = {}) {
+  return state?.plan === PLAN_PRO && (
+    state?.status === BILLING_STATUS_OWNER
+    || state?.billingPeriod === BILLING_STATUS_OWNER
+  );
+}
+
 export function normalizeBillingState(value = {}) {
   const fallback = createDefaultBillingState();
   const plan = value?.plan === PLAN_PRO ? PLAN_PRO : PLAN_FREE;
+  const status = typeof value?.status === 'string' && value.status.trim()
+    ? value.status.trim()
+    : fallback.status;
+  const billingPeriod = typeof value?.billingPeriod === 'string' ? value.billingPeriod : '';
+  // A local cache must never make a Free plan look like Owner Pro. A valid
+  // owner response always carries plan: 'pro', so discard only contradictory
+  // owner markers instead of promoting client-controlled state to Pro.
+  const hasInvalidOwnerMarker = plan !== PLAN_PRO && (
+    status === BILLING_STATUS_OWNER || billingPeriod === BILLING_STATUS_OWNER
+  );
   return {
     ...fallback,
     ...(value && typeof value === 'object' ? value : {}),
     plan,
-    status: typeof value?.status === 'string' && value.status.trim() ? value.status.trim() : fallback.status,
+    status: hasInvalidOwnerMarker ? fallback.status : status,
     customerId: typeof value?.customerId === 'string' ? value.customerId : '',
     subscriptionId: typeof value?.subscriptionId === 'string' ? value.subscriptionId : '',
     priceId: typeof value?.priceId === 'string' ? value.priceId : '',
-    billingPeriod: typeof value?.billingPeriod === 'string' ? value.billingPeriod : '',
+    billingPeriod: hasInvalidOwnerMarker ? fallback.billingPeriod : billingPeriod,
     productName: typeof value?.productName === 'string' ? value.productName : '',
     customerEmail: typeof value?.customerEmail === 'string' ? value.customerEmail : '',
     customerName: typeof value?.customerName === 'string' ? value.customerName : '',
@@ -134,7 +151,7 @@ export function getBillingApiBase() {
 }
 
 export function describeBillingStatus(state) {
-  if (state.billingPeriod === BILLING_STATUS_OWNER) {
+  if (isOwnerProState(state)) {
     return state.status === BILLING_STATUS_OWNER
       ? 'Owner Pro access is active on this device.'
       : 'Owner Pro access is active for this signed-in account.';
@@ -168,7 +185,7 @@ export function describeBillingStatus(state) {
 
 export function getPlanLabel(state) {
   if (state.plan === PLAN_PRO) {
-    if (state.status === BILLING_STATUS_OWNER || state.billingPeriod === BILLING_STATUS_OWNER) return 'Owner Pro';
+    if (isOwnerProState(state)) return 'Owner Pro';
     return state.billingPeriod === 'annual' ? 'Pro Annual' : 'Pro Monthly';
   }
   return 'Free';

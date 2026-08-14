@@ -29,6 +29,7 @@ function createBilling() {
     statusCopy: 'Free plan is active.',
     busyAction: '',
     validationError: '',
+    billingDisabled: false,
     ownerAccessAvailable: false,
     startCheckout: vi.fn(async () => true),
     activateLicense: vi.fn(async () => true),
@@ -79,6 +80,32 @@ describe('BillingModal landing period handoff', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(document.querySelector('[data-requested="true"]')).toBeNull();
     expect(billing.startCheckout).not.toHaveBeenCalled();
+  });
+
+  it('disables billing actions when billing is unavailable', () => {
+    const billing = {
+      ...createBilling(),
+      customerEmail: 'user@example.com',
+      billingDisabled: true,
+    };
+    render(
+      <BillingModal
+        m={theme}
+        billing={billing}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('Purchases are temporarily unavailable');
+    const syncButton = screen.getByRole('button', { name: 'Sync Purchase' });
+    const refreshButton = screen.getByRole('button', { name: 'Refresh Status' });
+    expect(syncButton).toBeDisabled();
+    expect(refreshButton).toBeDisabled();
+
+    fireEvent.click(syncButton);
+    fireEvent.click(refreshButton);
+    expect(billing.activateLicense).not.toHaveBeenCalled();
+    expect(billing.refreshLicense).not.toHaveBeenCalled();
   });
 
   it('traps focus, closes with Escape, restores focus, and isolates the background', () => {
