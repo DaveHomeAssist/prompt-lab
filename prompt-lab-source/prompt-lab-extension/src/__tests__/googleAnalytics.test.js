@@ -25,7 +25,10 @@ function dataLayerEntries() {
 afterEach(() => {
   localStorage.clear();
   document.getElementById('promptlab-google-analytics')?.remove();
+  document.getElementById('promptlab-analytics-consent')?.remove();
+  document.getElementById('promptlab-analytics-consent-style')?.remove();
   globalKeys.forEach((key) => delete window[key]);
+  window.history.replaceState({}, '', '/');
 });
 
 describe('Prompt Lab Google Analytics loader', () => {
@@ -65,5 +68,27 @@ describe('Prompt Lab Google Analytics loader', () => {
       'update',
       expect.objectContaining({ analytics_storage: 'granted' }),
     ]);
+  });
+
+  it('offers an explicit choice on public pages and activates GA4 only after approval', () => {
+    loadGoogleAnalytics();
+
+    const prompt = document.getElementById('promptlab-analytics-consent');
+    expect(prompt).not.toBeNull();
+    expect(document.getElementById('promptlab-google-analytics')).toBeNull();
+
+    prompt.querySelector('[data-action="allow"]').click();
+
+    expect(localStorage.getItem('pl_telemetry_consent')).toBe('granted');
+    expect(document.getElementById('promptlab-google-analytics')).not.toBeNull();
+    expect(document.getElementById('promptlab-analytics-consent')).toBeNull();
+  });
+
+  it('leaves the existing app consent prompt as the only choice on /app/', () => {
+    window.history.replaceState({}, '', '/app/');
+
+    loadGoogleAnalytics();
+
+    expect(document.getElementById('promptlab-analytics-consent')).toBeNull();
   });
 });
