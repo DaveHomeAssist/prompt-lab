@@ -6,6 +6,19 @@ import {
   readProductionFreeSmokeConfig,
 } from './production-auth.mjs';
 
+const CLERK_TEARDOWN_TIMEOUT_MS = 15_000;
+
+function withTimeout(promise, description) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${description} exceeded ${CLERK_TEARDOWN_TIMEOUT_MS / 1_000} seconds.`));
+    }, CLERK_TEARDOWN_TIMEOUT_MS);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
+}
+
 test('@production signed-in Free account keeps features open and billing unavailable', async ({ page }) => {
   test.setTimeout(90_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
@@ -99,10 +112,17 @@ test('@production signed-in Free account keeps features open and billing unavail
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
   } finally {
+    await page.context().clearCookies();
     if (agentSessionId) {
-      await clerkClient.sessions.revokeSession(agentSessionId);
+      await withTimeout(
+        clerkClient.sessions.revokeSession(agentSessionId),
+        'Clerk Agent Task session revocation',
+      );
     } else if (agentTask) {
-      await clerkClient.agentTasks.revoke(agentTask.agentTaskId).catch(() => undefined);
+      await withTimeout(
+        clerkClient.agentTasks.revoke(agentTask.agentTaskId),
+        'Unused Clerk Agent Task revocation',
+      ).catch(() => undefined);
     }
   }
 });
