@@ -107,16 +107,26 @@ test('@production signed-in Free account keeps features open and billing unavail
 
     reportPhase('checking terminal billing UI');
     await page.getByTestId('upgrade-trigger').click();
+    reportPhase('waiting for the billing dialog');
     const billingDialog = page.getByRole('dialog', { name: 'Unlock Prompt Lab Pro' });
     await expect(billingDialog).toBeVisible();
+    reportPhase('checking the Free plan label');
     await expect(billingDialog.locator('p').filter({ hasText: /^Free$/ })).toBeVisible();
+    reportPhase('checking Owner Pro is absent');
     await expect(billingDialog.getByText(/Owner Pro/)).toHaveCount(0);
+    reportPhase('checking the billing-disabled notice');
     await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toBeVisible();
+    reportPhase('checking disabled purchase management');
     await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeDisabled();
+    reportPhase('checking disabled purchase sync');
     await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeDisabled();
+    reportPhase('checking disabled billing refresh');
     await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeDisabled();
+    reportPhase('checking checkout actions are absent');
     await expect(billingDialog.getByRole('button', { name: /Go Pro/ })).toHaveCount(0);
+    reportPhase('checking owner self-grant is absent');
     await expect(billingDialog.getByRole('button', { name: 'Enable Owner Pro' })).toHaveCount(0);
+    reportPhase('closing the billing dialog');
     await billingDialog.getByRole('button', { name: 'Close billing modal' }).click();
     await expect(billingDialog).toHaveCount(0);
 
