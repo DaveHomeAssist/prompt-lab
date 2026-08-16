@@ -19,17 +19,24 @@ function withTimeout(promise, description) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
+function reportPhase(phase) {
+  console.info(`[production-free-smoke] ${phase}`);
+}
+
 test('@production signed-in Free account keeps features open and billing unavailable', async ({ page }) => {
   test.setTimeout(90_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
   const clerkClient = createClerkClient({ secretKey: clerkSecretKey });
+  reportPhase('checking QA session preconditions');
   const activeSessions = await clerkClient.sessions.getSessionList({
     userId: clerkUserId,
     status: 'active',
     limit: 100,
   });
   const staleAgentSessions = activeSessions.data.filter((session) => session.actor?.type === 'agent');
+  reportPhase('revoking stale Agent Task sessions');
   await Promise.all(staleAgentSessions.map((session) => clerkClient.sessions.revokeSession(session.id)));
+  reportPhase('confirming no human QA session remains');
   const sessionsAfterStaleAgentCleanup = await clerkClient.sessions.getSessionList({
     userId: clerkUserId,
     status: 'active',
@@ -63,6 +70,7 @@ test('@production signed-in Free account keeps features open and billing unavail
   });
 
   try {
+    reportPhase('creating Clerk Agent Task');
     agentTask = await clerkClient.agentTasks.create({
       onBehalfOf: { userId: clerkUserId },
       permissions: '*',
@@ -76,14 +84,18 @@ test('@production signed-in Free account keeps features open and billing unavail
       (response) => isProductionLicenseResponse(response.url(), appUrl.origin),
       { timeout: 30_000 },
     );
+    reportPhase('opening production through the Agent Task');
     await page.goto(agentTask.url, { waitUntil: 'domcontentloaded' });
+    reportPhase('waiting for the signed-in application shell');
     await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
+    reportPhase('reading disposable browser session');
     agentSessionId = await page.evaluate(() => {
       const sessionId = window.Clerk?.session?.id;
       return typeof sessionId === 'string' && sessionId.startsWith('sess_') ? sessionId : '';
     });
     expect(Boolean(agentSessionId), 'The Agent Task must create a disposable Clerk browser session.').toBe(true);
 
+    reportPhase('checking the Free license response');
     const response = await licenseResponse;
     expect(response.status()).toBe(200);
     expect(await response.json()).toMatchObject({
@@ -93,6 +105,7 @@ test('@production signed-in Free account keeps features open and billing unavail
       retryable: false,
     });
 
+    reportPhase('checking terminal billing UI');
     await page.getByTestId('upgrade-trigger').click();
     const billingDialog = page.getByRole('dialog', { name: 'Unlock Prompt Lab Pro' });
     await expect(billingDialog).toBeVisible();
@@ -107,11 +120,13 @@ test('@production signed-in Free account keeps features open and billing unavail
     await billingDialog.getByRole('button', { name: 'Close billing modal' }).click();
     await expect(billingDialog).toHaveCount(0);
 
+    reportPhase('checking Model Arena access');
     await page.goto(`${appUrl.href}#/compare`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/Model Arena/)).toBeVisible();
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
   } finally {
+    reportPhase('clearing browser cookies and revoking the disposable session');
     await page.context().clearCookies();
     if (agentSessionId) {
       await withTimeout(
