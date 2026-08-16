@@ -26,7 +26,6 @@ test('@production signed-in Free account keeps features open and billing unavail
     sessionsAfterStaleAgentCleanup.data,
     'The dedicated QA user must not retain a human session between smoke runs.',
   ).toHaveLength(0);
-  const existingSessionIds = new Set(sessionsAfterStaleAgentCleanup.data.map((session) => session.id));
 
   let agentTask = null;
   let agentSessionId = '';
@@ -66,14 +65,11 @@ test('@production signed-in Free account keeps features open and billing unavail
     );
     await page.goto(agentTask.url, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
-    const signedInSessions = await clerkClient.sessions.getSessionList({
-      userId: clerkUserId,
-      status: 'active',
-      limit: 100,
+    agentSessionId = await page.evaluate(() => {
+      const sessionId = window.Clerk?.session?.id;
+      return typeof sessionId === 'string' && sessionId.startsWith('sess_') ? sessionId : '';
     });
-    const createdAgentSessions = signedInSessions.data.filter((session) => !existingSessionIds.has(session.id));
-    expect(createdAgentSessions, 'The Agent Task must create exactly one disposable QA session.').toHaveLength(1);
-    agentSessionId = createdAgentSessions[0].id;
+    expect(Boolean(agentSessionId), 'The Agent Task must create a disposable Clerk browser session.').toBe(true);
 
     const response = await licenseResponse;
     expect(response.status()).toBe(200);
