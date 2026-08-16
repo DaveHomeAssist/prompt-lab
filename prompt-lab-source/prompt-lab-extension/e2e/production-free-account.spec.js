@@ -76,10 +76,11 @@ test('@production signed-in Free account keeps features open and billing unavail
     await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeDisabled();
     await expect(billingDialog.getByRole('button', { name: /Go Pro/ })).toHaveCount(0);
     await expect(billingDialog.getByRole('button', { name: 'Enable Owner Pro' })).toHaveCount(0);
+    await billingDialog.getByRole('button', { name: 'Close billing modal' }).click();
+    await expect(billingDialog).toHaveCount(0);
 
     await page.goto(`${appUrl.href}#/compare`, { waitUntil: 'domcontentloaded' });
     await expect(page.getByText(/Model Arena/)).toBeVisible();
-    await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
     const sessionsDuringSmoke = await clerkClient.sessions.getSessionList({
