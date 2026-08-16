@@ -68,7 +68,7 @@ test('@production signed-in Free account keeps features open and billing unavail
     await page.getByTestId('upgrade-trigger').click();
     const billingDialog = page.getByRole('dialog', { name: 'Unlock Prompt Lab Pro' });
     await expect(billingDialog).toBeVisible();
-    await expect(billingDialog.getByRole('paragraph', { name: 'Free', exact: true })).toBeVisible();
+    await expect(billingDialog.locator('p').filter({ hasText: /^Free$/ })).toBeVisible();
     await expect(billingDialog.getByText(/Owner Pro/)).toHaveCount(0);
     await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toBeVisible();
     await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeDisabled();
