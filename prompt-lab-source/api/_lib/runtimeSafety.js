@@ -33,6 +33,16 @@ export function readBoundedIntEnv(name, fallback, {
   return Math.min(max, Math.max(min, value));
 }
 
+export function readListEnv(name, fallback, { env = process.env } = {}) {
+  const raw = env[name];
+  if (!raw) return fallback;
+  const parsed = String(raw)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return parsed.length > 0 ? parsed : fallback;
+}
+
 export function isExternalFetchTimeout(error) {
   return error instanceof ExternalFetchTimeoutError || error?.code === 'EXTERNAL_FETCH_TIMEOUT';
 }

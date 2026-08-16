@@ -18,6 +18,9 @@ const clientTelemetryUrl = pathToFileURL(path.join(
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
   'NODE_ENV',
+  'PROMPTLAB_WEB_ORIGIN',
+  'VITE_PROMPTLAB_WEB_ORIGIN',
+  'PROMPTLAB_PROXY_ALLOWED_ORIGINS',
   'PROMPTLAB_TELEMETRY_ENABLED',
   'PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK',
   'PROMPTLAB_TELEMETRY_RATE_LIMIT',
@@ -42,15 +45,28 @@ async function loadModule(url) {
   return import(`${url}?t=${Date.now()}-${Math.random()}`);
 }
 
-function telemetryRequest(body, ip = '203.0.113.10') {
+const ALLOWED_WEB_ORIGIN = 'https://promptlab.tools';
+const FOREIGN_ORIGIN = 'https://evil.example';
+const EXTENSION_ORIGIN = 'chrome-extension://abcdefghijklmnopabcdefghijklmnop';
+
+// Browser clients always send Origin on POST; the default mirrors the
+// production web app so the existing behaviour tests exercise the allowed path.
+function telemetryRequest(body, ip = '203.0.113.10', { origin = ALLOWED_WEB_ORIGIN, method = 'POST' } = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Forwarded-For': ip,
+  };
+  if (origin) headers.Origin = origin;
   return new Request('https://promptlab.tools/api/telemetry', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Forwarded-For': ip,
-    },
-    body: JSON.stringify(body),
+    method,
+    headers,
+    ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
   });
+}
+
+function assertNoWildcardCors(response, label) {
+  assert.notEqual(response.headers.get('Access-Control-Allow-Origin'), '*', `${label} must never allow '*'`);
+  assert.equal(response.headers.get('Vary'), 'Origin', `${label} must vary on Origin`);
 }
 
 function validEvent(overrides = {}) {
@@ -375,4 +391,72 @@ test('Redis abuse counters abort stalled external requests', async () => {
     () => enforceTelemetryRateLimit(telemetryRequest(validEvent()), buildTelemetryConfig()),
     /Redis request timed out/i,
   );
+});
+
+test('telemetry echoes only the allowed production web origin and never a wildcard', async () => {
+  process.env.PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK = 'false';
+  const { default: handler } = await loadModule(telemetryUrl);
+
+  const response = await handler(telemetryRequest(validEvent()));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Access-Control-Allow-Origin'), ALLOWED_WEB_ORIGIN);
+  assertNoWildcardCors(response, 'allowed origin');
+});
+
+test('telemetry rejects foreign and missing origins with 403 before reading the body', async () => {
+  process.env.PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK = 'false';
+  const { default: handler } = await loadModule(telemetryUrl);
+
+  const foreign = await handler(telemetryRequest(validEvent(), '203.0.113.40', { origin: FOREIGN_ORIGIN }));
+  assert.equal(foreign.status, 403);
+  assert.deepEqual(await foreign.json(), { error: 'Origin is not allowed.' });
+  assert.equal(foreign.headers.get('Access-Control-Allow-Origin'), null, 'foreign origin must get no Allow-Origin');
+  assertNoWildcardCors(foreign, 'foreign origin');
+
+  const missing = await handler(telemetryRequest(validEvent(), '203.0.113.41', { origin: '' }));
+  assert.equal(missing.status, 403);
+  assert.equal(missing.headers.get('Access-Control-Allow-Origin'), null);
+
+  // The origin gate runs ahead of the telemetry-off terminal response, so a
+  // disallowed origin cannot even learn whether telemetry is enabled.
+  process.env.PROMPTLAB_TELEMETRY_ENABLED = 'false';
+  const disabledButForeign = await (await loadModule(telemetryUrl)).default(
+    telemetryRequest(validEvent(), '203.0.113.42', { origin: FOREIGN_ORIGIN }),
+  );
+  assert.equal(disabledButForeign.status, 403);
+});
+
+test('telemetry accepts a configured chrome-extension origin and rejects unlisted extension ids', async () => {
+  process.env.PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK = 'false';
+  process.env.PROMPTLAB_PROXY_ALLOWED_ORIGINS = EXTENSION_ORIGIN;
+  const { default: handler } = await loadModule(telemetryUrl);
+
+  const allowed = await handler(telemetryRequest(validEvent(), '203.0.113.50', { origin: EXTENSION_ORIGIN }));
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.headers.get('Access-Control-Allow-Origin'), EXTENSION_ORIGIN);
+  assertNoWildcardCors(allowed, 'extension origin');
+
+  const unlisted = await handler(telemetryRequest(validEvent(), '203.0.113.51', {
+    origin: 'chrome-extension://ponmlkjihgfedcbaponmlkjihgfedcba',
+  }));
+  assert.equal(unlisted.status, 403);
+  assert.equal(unlisted.headers.get('Access-Control-Allow-Origin'), null);
+});
+
+test('telemetry preflight is origin-specific', async () => {
+  const { default: handler } = await loadModule(telemetryUrl);
+
+  const preflight = await handler(telemetryRequest(null, '203.0.113.60', { method: 'OPTIONS' }));
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers.get('Access-Control-Allow-Origin'), ALLOWED_WEB_ORIGIN);
+  assert.match(preflight.headers.get('Access-Control-Allow-Methods') || '', /\bPOST\b/);
+  assert.match(preflight.headers.get('Access-Control-Allow-Headers') || '', /Content-Type/);
+  assertNoWildcardCors(preflight, 'preflight');
+
+  const foreignPreflight = await handler(telemetryRequest(null, '203.0.113.61', {
+    method: 'OPTIONS',
+    origin: FOREIGN_ORIGIN,
+  }));
+  assert.equal(foreignPreflight.status, 403);
+  assert.equal(foreignPreflight.headers.get('Access-Control-Allow-Origin'), null);
 });

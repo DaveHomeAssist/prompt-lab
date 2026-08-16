@@ -5,15 +5,14 @@ import {
   isExternalFetchTimeout,
   isFeatureEnabled,
   readBoundedIntEnv,
+  readListEnv,
 } from './_lib/runtimeSafety.js';
+import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
 
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
 const SUPPORTED_ORIGIN = `https://${SUPPORTED_HOST}`;
 const SUPPORTED_PATH = '/v1/messages';
-const DEFAULT_WEB_ORIGIN = 'https://promptlab.tools';
-const CHROME_EXTENSION_ORIGIN = /^chrome-extension:\/\/[a-p]{32}$/;
-const LOCAL_WEB_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
 const ALLOWED_UPSTREAM_HEADERS = new Set([
   'accept',
   'anthropic-beta',
@@ -41,74 +40,6 @@ function readIntEnv(name, fallback) {
   const raw = process.env[name];
   const parsed = Number.parseInt(raw || '', 10);
   return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function readListEnv(name, fallback) {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const parsed = raw
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return parsed.length > 0 ? parsed : fallback;
-}
-
-function normalizeAllowedOrigin(value) {
-  const raw = String(value || '').trim().replace(/\/$/, '');
-  if (CHROME_EXTENSION_ORIGIN.test(raw)) return raw;
-
-  try {
-    const parsed = new URL(raw);
-    if (!['http:', 'https:'].includes(parsed.protocol)) return '';
-    if (parsed.username || parsed.password || parsed.search || parsed.hash) return '';
-    if (parsed.pathname !== '/') return '';
-    return parsed.origin;
-  } catch {
-    return '';
-  }
-}
-
-function getAllowedRequestOrigins() {
-  const configured = [
-    DEFAULT_WEB_ORIGIN,
-    process.env.PROMPTLAB_WEB_ORIGIN,
-    process.env.VITE_PROMPTLAB_WEB_ORIGIN,
-    ...readListEnv('PROMPTLAB_PROXY_ALLOWED_ORIGINS', []),
-  ];
-  return new Set(configured.map(normalizeAllowedOrigin).filter(Boolean));
-}
-
-function getRequestOrigin(request) {
-  return String(request?.headers?.get?.('Origin') || '').trim().replace(/\/$/, '');
-}
-
-function isAllowedRequestOrigin(request) {
-  const origin = getRequestOrigin(request);
-  if (!origin) return false;
-  if (getAllowedRequestOrigins().has(origin)) return true;
-  return process.env.NODE_ENV !== 'production' && LOCAL_WEB_ORIGIN.test(origin);
-}
-
-function corsHeadersForRequest(request, extraHeaders = {}) {
-  const origin = getRequestOrigin(request);
-  return {
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    Vary: 'Origin',
-    ...(origin && isAllowedRequestOrigin(request) ? { 'Access-Control-Allow-Origin': origin } : {}),
-    ...extraHeaders,
-  };
-}
-
-function corsRejectionResponse(request) {
-  if (isAllowedRequestOrigin(request)) return null;
-  return new Response(JSON.stringify({ error: 'Origin is not allowed.' }), {
-    status: 403,
-    headers: {
-      'Content-Type': 'application/json',
-      Vary: 'Origin',
-    },
-  });
 }
 
 function getAllowedModels() {
