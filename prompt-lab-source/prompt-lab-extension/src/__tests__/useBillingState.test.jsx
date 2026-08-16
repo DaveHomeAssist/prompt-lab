@@ -96,6 +96,25 @@ describe('useBillingState', () => {
     expect(result.current.hasFeature('export')).toBe(true);
   });
 
+  it('describes Free billing-disabled access as prelaunch-open without promoting the plan', () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'free',
+      status: 'free',
+      billingDisabled: true,
+    }));
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn() }));
+
+    expect(result.current.plan).toBe('free');
+    expect(result.current.planLabel).toBe('Free');
+    expect(result.current.statusCopy).toBe('All workflow features are available during prelaunch. Purchases are temporarily unavailable.');
+    expect(result.current.hasFeature('collections')).toBe(true);
+    expect(result.current.hasFeature('abTesting')).toBe(true);
+    expect(result.current.hasFeature('diffView')).toBe(true);
+    expect(result.current.hasFeature('batchRuns')).toBe(true);
+    expect(result.current.hasFeature('export')).toBe(true);
+  });
+
   it('auto-syncs owner Pro for a signed-in Clerk user id without cached billing email', async () => {
     global.fetch = vi.fn(async (_url, init) => {
       expect(init.headers.Authorization).toBe('Bearer clerk-token');

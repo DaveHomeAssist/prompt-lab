@@ -1,5 +1,6 @@
 import Ic from './icons';
 import { APP_VERSION } from './constants';
+import { isPrelaunchOpenAccess } from './lib/billing.js';
 import { SUBVIEWS } from './lib/navigationRegistry.js';
 
 export default function AppHeader({
@@ -8,9 +9,13 @@ export default function AppHeader({
   primaryView, setPrimaryView, workspaceView, runsView,
   effectiveEditorLayout, setEditorLayout, createLayoutOptions,
   setShowCmdPalette, setCmdQuery, setShowShortcuts, setShowSettings,
-  billingPlan, billingLabel, openBilling,
+  billingPlan, billingLabel, billingDisabled, openBilling,
   clerkUserButton,
 }) {
+  const prelaunchOpenAccess = isPrelaunchOpenAccess({
+    plan: billingPlan,
+    billingDisabled,
+  });
   const createModeButtons = [
     { id: 'editor', label: 'Write', action: () => openSection('create'), active: primaryView === 'create' && workspaceView !== 'composer' },
     { id: 'composer', label: 'Compose', action: () => openCreateView('composer'), active: primaryView === 'create' && workspaceView === 'composer' },
@@ -51,11 +56,11 @@ export default function AppHeader({
           {billingPlan !== 'pro' && (
             <button
               type="button"
-              data-testid="upgrade-trigger"
+              data-testid="billing-trigger"
               onClick={() => openBilling()}
-              className="ui-control rounded-full bg-orange-500/90 px-2.5 py-1 text-[10px] font-semibold text-white transition-colors hover:bg-orange-400"
+              className={`ui-control rounded-full px-2.5 py-1 text-[10px] font-semibold text-white transition-colors ${prelaunchOpenAccess ? 'bg-emerald-600/90 hover:bg-emerald-500' : 'bg-orange-500/90 hover:bg-orange-400'}`}
             >
-              Upgrade
+              {prelaunchOpenAccess ? 'All Features Open' : 'Upgrade'}
             </button>
           )}
         </div>

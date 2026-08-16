@@ -106,9 +106,12 @@ test('@production signed-in Free account keeps features open and billing unavail
     });
 
     reportPhase('checking terminal billing UI');
-    await page.getByTestId('upgrade-trigger').click();
-    const billingDialog = page.getByRole('dialog', { name: 'Unlock Prompt Lab Pro' });
+    const billingTrigger = page.getByTestId('billing-trigger');
+    await expect(billingTrigger).toHaveText('All Features Open');
+    await billingTrigger.click();
+    const billingDialog = page.getByRole('dialog', { name: 'All workflow features are open' });
     await expect(billingDialog).toBeVisible();
+    await expect(billingDialog.getByText('All workflow features are available during prelaunch. Purchases are temporarily unavailable.', { exact: true })).toBeVisible();
     await expect(billingDialog.locator('p').filter({ hasText: /^Free$/ })).toBeVisible();
     await expect(billingDialog.getByText(/Owner Pro/)).toHaveCount(0);
     await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toBeVisible();
@@ -117,7 +120,7 @@ test('@production signed-in Free account keeps features open and billing unavail
     await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeDisabled();
     await expect(billingDialog.getByRole('button', { name: /Go Pro/ })).toHaveCount(0);
     await expect(billingDialog.getByRole('button', { name: 'Enable Owner Pro' })).toHaveCount(0);
-    await billingDialog.getByRole('button', { name: 'Close billing modal' }).click();
+    await page.keyboard.press('Escape');
     await expect(billingDialog).toHaveCount(0);
 
     reportPhase('checking Model Arena access');
@@ -126,8 +129,7 @@ test('@production signed-in Free account keeps features open and billing unavail
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
   } finally {
-    reportPhase('clearing browser cookies and revoking the disposable session');
-    await page.context().clearCookies();
+    reportPhase('revoking the disposable session');
     if (agentSessionId) {
       await withTimeout(
         clerkClient.sessions.revokeSession(agentSessionId),
