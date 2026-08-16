@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from '../icons';
-import { BILLING_FEATURES, getFeatureMeta } from '../lib/billing.js';
+import {
+  BILLING_FEATURES,
+  getFeatureMeta,
+  isPrelaunchOpenAccess,
+} from '../lib/billing.js';
 
 const FEATURE_LIST = Object.values(BILLING_FEATURES);
 
@@ -24,6 +28,7 @@ export default function BillingModal({
   const [accessEmail, setAccessEmail] = useState(billing.customerEmail || '');
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
+  const prelaunchOpenAccess = isPrelaunchOpenAccess(billing);
   const overlayRef = useRef(null);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -180,15 +185,19 @@ export default function BillingModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className={`text-[11px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
-              {billing.plan === 'pro' ? 'Billing' : 'Prompt Lab Pro'}
+              {billing.plan === 'pro' ? 'Billing' : (prelaunchOpenAccess ? 'Prompt Lab Access' : 'Prompt Lab Pro')}
             </p>
             <h2 id="billing-modal-title" className={`mt-1 text-lg font-semibold ${m.text}`}>
-              {requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro'}
+              {prelaunchOpenAccess
+                ? 'All workflow features are open'
+                : (requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro')}
             </h2>
             <p id="billing-modal-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
-              {requestedFeature
+              {prelaunchOpenAccess
+                ? 'Billing is unavailable on this deployment, but every Prompt Lab workflow remains available during prelaunch.'
+                : (requestedFeature
                 ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
-                : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.'}
+                : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.')}
             </p>
           </div>
           <button
@@ -348,7 +357,9 @@ export default function BillingModal({
         </div>
 
         <div className={`mt-5 rounded-xl border p-3 ${m.codeBlock} ${m.border}`}>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Prompt Lab Pro includes</p>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>
+            {prelaunchOpenAccess ? 'Prompt Lab includes' : 'Prompt Lab Pro includes'}
+          </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {FEATURE_LIST.map((item) => (
               <div key={item.id} className="flex items-start gap-2">

@@ -108,6 +108,28 @@ describe('BillingModal landing period handoff', () => {
     expect(billing.refreshLicense).not.toHaveBeenCalled();
   });
 
+  it('shows open prelaunch access instead of an upgrade prompt for Free billing-disabled state', () => {
+    const billing = {
+      ...createBilling(),
+      billingDisabled: true,
+      statusCopy: 'All workflow features are available during prelaunch. Purchases are temporarily unavailable.',
+    };
+    render(
+      <BillingModal
+        m={theme}
+        billing={billing}
+        requestedFeature="collections"
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'All workflow features are open' })).toBeInTheDocument();
+    expect(screen.getByText('All workflow features are available during prelaunch. Purchases are temporarily unavailable.')).toBeInTheDocument();
+    expect(screen.queryByText('Collections is a Pro feature')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unlock Prompt Lab Pro')).not.toBeInTheDocument();
+    expect(screen.getByText('Prompt Lab includes')).toBeInTheDocument();
+  });
+
   it('traps focus, closes with Escape, restores focus, and isolates the background', () => {
     const billing = createBilling();
     function Harness() {

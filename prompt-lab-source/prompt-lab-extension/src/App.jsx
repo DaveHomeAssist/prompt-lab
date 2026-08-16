@@ -752,6 +752,7 @@ export default function App({
         setShowShortcuts={setShowShortcuts} setShowSettings={setShowSettings}
         billingPlan={billing.plan}
         billingLabel={billing.planLabel}
+        billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
         clerkUserButton={clerkUser ? clerkUserButton : null}
       />

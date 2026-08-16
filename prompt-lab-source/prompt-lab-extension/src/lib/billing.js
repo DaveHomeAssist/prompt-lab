@@ -3,6 +3,7 @@ import { isExtension } from './platform.js';
 export const PLAN_FREE = 'free';
 export const PLAN_PRO = 'pro';
 export const BILLING_STATUS_OWNER = 'owner';
+export const PRELAUNCH_OPEN_ACCESS_COPY = 'All workflow features are available during prelaunch. Purchases are temporarily unavailable.';
 
 export const BILLING_FEATURES = Object.freeze({
   abTesting: {
@@ -128,6 +129,12 @@ export function canAccessFeature(plan, featureId) {
   return !FEATURE_GATES_ENABLED || plan === PLAN_PRO;
 }
 
+export function isPrelaunchOpenAccess(state = {}) {
+  return !FEATURE_GATES_ENABLED
+    && state?.plan !== PLAN_PRO
+    && state?.billingDisabled === true;
+}
+
 export function getFeatureMeta(featureId) {
   return BILLING_FEATURES[featureId] || {
     id: featureId,
@@ -155,6 +162,8 @@ export function getBillingApiBase() {
 }
 
 export function describeBillingStatus(state) {
+  if (isPrelaunchOpenAccess(state)) return PRELAUNCH_OPEN_ACCESS_COPY;
+
   if (isOwnerProState(state)) {
     return state.status === BILLING_STATUS_OWNER
       ? 'Owner Pro access is active on this device.'
