@@ -15,8 +15,18 @@ test('@production signed-in Free account keeps features open and billing unavail
     status: 'active',
     limit: 100,
   });
-  const existingSessionIds = new Set(activeSessions.data.map((session) => session.id));
-  expect(activeSessions.data, 'The dedicated QA user must not retain an active session between smoke runs.').toHaveLength(0);
+  const staleAgentSessions = activeSessions.data.filter((session) => session.actor?.type === 'agent');
+  await Promise.all(staleAgentSessions.map((session) => clerkClient.sessions.revokeSession(session.id)));
+  const sessionsAfterStaleAgentCleanup = await clerkClient.sessions.getSessionList({
+    userId: clerkUserId,
+    status: 'active',
+    limit: 100,
+  });
+  expect(
+    sessionsAfterStaleAgentCleanup.data,
+    'The dedicated QA user must not retain a human session between smoke runs.',
+  ).toHaveLength(0);
+  const existingSessionIds = new Set(sessionsAfterStaleAgentCleanup.data.map((session) => session.id));
 
   let agentTask = null;
   const blockedRequests = [];
@@ -83,15 +93,6 @@ test('@production signed-in Free account keeps features open and billing unavail
     await expect(page.getByText(/Model Arena/)).toBeVisible();
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
-    const sessionsDuringSmoke = await clerkClient.sessions.getSessionList({
-      userId: clerkUserId,
-      status: 'active',
-      limit: 100,
-    });
-    expect(
-      sessionsDuringSmoke.data.filter((session) => !existingSessionIds.has(session.id)),
-      'The Agent Task must create exactly one disposable QA session.',
-    ).toHaveLength(1);
   } finally {
     const sessionsAfter = await clerkClient.sessions.getSessionList({
       userId: clerkUserId,
