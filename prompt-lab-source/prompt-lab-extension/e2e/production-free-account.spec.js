@@ -29,6 +29,7 @@ test('@production signed-in Free account keeps features open and billing unavail
   const existingSessionIds = new Set(sessionsAfterStaleAgentCleanup.data.map((session) => session.id));
 
   let agentTask = null;
+  let agentSessionId = '';
   const blockedRequests = [];
   await page.addInitScript(() => {
     localStorage.clear();
@@ -65,6 +66,14 @@ test('@production signed-in Free account keeps features open and billing unavail
     );
     await page.goto(agentTask.url, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
+    const signedInSessions = await clerkClient.sessions.getSessionList({
+      userId: clerkUserId,
+      status: 'active',
+      limit: 100,
+    });
+    const createdAgentSessions = signedInSessions.data.filter((session) => !existingSessionIds.has(session.id));
+    expect(createdAgentSessions, 'The Agent Task must create exactly one disposable QA session.').toHaveLength(1);
+    agentSessionId = createdAgentSessions[0].id;
 
     const response = await licenseResponse;
     expect(response.status()).toBe(200);
@@ -94,14 +103,9 @@ test('@production signed-in Free account keeps features open and billing unavail
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
   } finally {
-    const sessionsAfter = await clerkClient.sessions.getSessionList({
-      userId: clerkUserId,
-      status: 'active',
-      limit: 100,
-    });
-    const sessionsCreatedBySmoke = sessionsAfter.data.filter((session) => !existingSessionIds.has(session.id));
-    await Promise.all(sessionsCreatedBySmoke.map((session) => clerkClient.sessions.revokeSession(session.id)));
-    if (sessionsCreatedBySmoke.length === 0 && agentTask) {
+    if (agentSessionId) {
+      await clerkClient.sessions.revokeSession(agentSessionId);
+    } else if (agentTask) {
       await clerkClient.agentTasks.revoke(agentTask.agentTaskId).catch(() => undefined);
     }
   }
