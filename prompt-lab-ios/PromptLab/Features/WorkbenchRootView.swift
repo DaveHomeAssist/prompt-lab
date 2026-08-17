@@ -1,10 +1,23 @@
 import SwiftData
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
+private enum WorkbenchRoute: Hashable {
+    case workspace
+    case editor
+    case results
+    case pad(UUID)
+    case runs
+    case run(String)
+}
+
 struct WorkbenchRootView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @State private var store: WorkbenchStore
+    @State private var compactPath: [WorkbenchRoute] = []
+    @State private var regularRoute: WorkbenchRoute = .editor
     private let runRecordedDemo: Bool
 
     @MainActor
@@ -17,14 +30,13 @@ struct WorkbenchRootView: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $store.columnVisibility) {
-            SidebarView()
-        } content: {
-            EditorView(store: store)
-        } detail: {
-            ResultsView(store: store)
+        Group {
+            if usesCompactLayout {
+                compactWorkbench
+            } else {
+                regularWorkbench
+            }
         }
-        .navigationSplitViewStyle(.balanced)
         .sheet(isPresented: $store.isSettingsPresented) {
             SettingsSheet()
         }
@@ -33,6 +45,103 @@ struct WorkbenchRootView: View {
             store.draft = "Analyze this product feature idea and recommend the smallest useful version."
             store.startEnhance(modelContext: modelContext)
         }
+        .onChange(of: store.state) { _, state in
+            guard state == .completed else { return }
+            if usesCompactLayout {
+                compactPath = [.results]
+            } else {
+                regularRoute = .results
+            }
+        }
+    }
+
+    private var usesCompactLayout: Bool {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-forceCompactLayout") { return true }
+        #endif
+        return horizontalSizeClass == .compact
+    }
+
+    private var compactWorkbench: some View {
+        NavigationStack(path: $compactPath) {
+            EditorView(store: store) {
+                compactPath = [.workspace]
+            }
+            .navigationDestination(for: WorkbenchRoute.self) { route in
+                compactDestination(route)
+            }
+        }
+    }
+
+    private var regularWorkbench: some View {
+        NavigationSplitView(columnVisibility: $store.columnVisibility) {
+            SidebarView(store: store, onOpen: open)
+                .navigationSplitViewColumnWidth(min: 230, ideal: 280, max: 340)
+        } content: {
+            regularContent
+                .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
+        } detail: {
+            regularDetail
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+
+    @ViewBuilder
+    private func compactDestination(_ route: WorkbenchRoute) -> some View {
+        switch route {
+        case .workspace:
+            SidebarView(store: store, onOpen: open)
+        case .editor:
+            EditorView(store: store) { compactPath = [.workspace] }
+        case .results:
+            ResultsView(store: store, onUse: useResult)
+        case let .pad(id):
+            PadEditorView(padID: id, onDelete: { compactPath = [] })
+        case .runs:
+            RunHistoryView(onOpen: open)
+        case let .run(id):
+            RunDetailView(runID: id, onReuse: reuseRun)
+        }
+    }
+
+    @ViewBuilder
+    private var regularContent: some View {
+        switch regularRoute {
+        case let .pad(id):
+            PadEditorView(padID: id, onDelete: { regularRoute = .editor })
+        case .runs, .run:
+            RunHistoryView(onOpen: open)
+        default:
+            EditorView(store: store)
+        }
+    }
+
+    @ViewBuilder
+    private var regularDetail: some View {
+        switch regularRoute {
+        case let .run(id):
+            RunDetailView(runID: id, onReuse: reuseRun)
+        default:
+            ResultsView(store: store, onUse: useResult)
+        }
+    }
+
+    private func open(_ route: WorkbenchRoute) {
+        if usesCompactLayout {
+            compactPath = route == .editor ? [] : [route]
+        } else {
+            regularRoute = route
+        }
+    }
+
+    private func useResult(_ text: String) {
+        store.useResult(text)
+        open(.editor)
+    }
+
+    private func reuseRun(_ run: RunRecord) {
+        store.loadRun(run)
+        open(.editor)
     }
 }
 
@@ -41,65 +150,124 @@ private struct SidebarView: View {
     @Query(sort: \PromptEntry.sourceIndex) private var prompts: [PromptEntry]
     @Query(sort: \Pad.updatedAt, order: .reverse) private var pads: [Pad]
     @Query(sort: \RunRecord.createdAt, order: .reverse) private var runs: [RunRecord]
+    let store: WorkbenchStore
+    let onOpen: (WorkbenchRoute) -> Void
+
     @State private var isImporting = false
     @State private var isConfirmingImport = false
+    @State private var importPreview: LibraryImportPreview?
     @State private var isExporting = false
     @State private var exportDocument: LibraryJSONDocument?
     @State private var notice: LibraryNotice?
+    @State private var renamePrompt: PromptEntry?
+    @State private var renameText = ""
+    @State private var deletePrompt: PromptEntry?
+    @State private var deletePad: Pad?
 
     var body: some View {
         List {
+            Section {
+                Button {
+                    store.startNewPrompt()
+                    onOpen(.editor)
+                } label: {
+                    Label("New Prompt", systemImage: "square.and.pencil")
+                        .fontWeight(.semibold)
+                        .frame(minHeight: 44, alignment: .leading)
+                }
+                .accessibilityIdentifier("newPromptButton")
+            }
+
             Section("Library") {
                 if prompts.isEmpty {
                     Label("No saved prompts", systemImage: "books.vertical")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(prompts) { prompt in
-                        Label(prompt.title, systemImage: "text.book.closed")
-                            .lineLimit(1)
+                        Button {
+                            store.loadPrompt(prompt)
+                            onOpen(.editor)
+                        } label: {
+                            Label(prompt.title, systemImage: "text.book.closed")
+                                .lineLimit(2)
+                                .frame(minHeight: 44, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("libraryPrompt_\(prompt.id)")
+                        .swipeActions {
+                            Button("Delete", role: .destructive) { deletePrompt = prompt }
+                            Button("Rename") { beginRename(prompt) }
+                                .tint(.blue)
+                        }
+                        .contextMenu {
+                            Button("Rename", systemImage: "pencil") { beginRename(prompt) }
+                            Button("Delete", systemImage: "trash", role: .destructive) { deletePrompt = prompt }
+                        }
                     }
                 }
             }
-            Section("Pads") {
+
+            Section {
                 if pads.isEmpty {
                     Label("No scratchpads", systemImage: "note.text")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(pads) { pad in
-                        Label(pad.title, systemImage: "note.text")
+                        Button {
+                            onOpen(.pad(pad.id))
+                        } label: {
+                            Label(pad.title, systemImage: "note.text")
+                                .lineLimit(2)
+                                .frame(minHeight: 44, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .swipeActions {
+                            Button("Delete", role: .destructive) { deletePad = pad }
+                        }
                     }
                 }
+            } header: {
+                HStack {
+                    Text("Pads")
+                    Spacer()
+                    Button {
+                        let pad = Pad(title: "New Pad")
+                        modelContext.insert(pad)
+                        try? modelContext.save()
+                        onOpen(.pad(pad.id))
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("New scratchpad")
+                    .accessibilityIdentifier("newPadButton")
+                }
             }
+
             Section("Runs") {
                 if runs.isEmpty {
                     Text("No runs yet")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(runs.prefix(8)) { run in
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(run.promptTitle)
-                                .lineLimit(1)
-                            HStack {
-                                Text(run.enhanceMode.capitalized)
-                                Spacer()
-                                Text(run.status.capitalized)
-                            }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
+                        RunRow(run: run) { onOpen(.run(run.id)) }
                     }
+                    Button("View All Runs") { onOpen(.runs) }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("viewAllRunsButton")
                 }
             }
         }
-        .navigationTitle("Prompt Lab")
+        .navigationTitle("Workspace")
         .toolbar {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button {
-                    isConfirmingImport = true
+                    isImporting = true
                 } label: {
-                    Label("Replace Library", systemImage: "square.and.arrow.down")
+                    Label("Import Library", systemImage: "square.and.arrow.down")
                 }
-                .accessibilityLabel("Replace Prompt Lab library from JSON")
+                .accessibilityLabel("Import Prompt Lab library JSON")
+                .accessibilityIdentifier("importLibraryButton")
 
                 Button {
                     do {
@@ -114,29 +282,27 @@ private struct SidebarView: View {
                 .accessibilityLabel("Export Prompt Lab library JSON")
             }
         }
-        .confirmationDialog(
-            "Replace current library?",
-            isPresented: $isConfirmingImport,
-            titleVisibility: .visible
-        ) {
-            Button("Choose Replacement File", role: .destructive) {
-                isImporting = true
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Importing replaces all saved prompts. Export a backup first if needed.")
-        }
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json]) { result in
             do {
                 let url = try result.get()
                 let accessed = url.startAccessingSecurityScopedResource()
                 defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-                let summary = try LibraryInterchange.importData(Data(contentsOf: url), into: modelContext)
-                notice = LibraryNotice(
-                    message: "Imported \(summary.promptCount) prompt\(summary.promptCount == 1 ? "" : "s") and preserved \(summary.collectionCount) collection\(summary.collectionCount == 1 ? "" : "s")."
-                )
+                importPreview = try LibraryInterchange.previewData(Data(contentsOf: url))
+                isConfirmingImport = true
             } catch {
                 notice = LibraryNotice(message: error.localizedDescription)
+            }
+        }
+        .confirmationDialog(
+            "Replace current library?",
+            isPresented: $isConfirmingImport,
+            titleVisibility: .visible
+        ) {
+            Button("Replace Library", role: .destructive) { confirmImport() }
+            Button("Cancel", role: .cancel) { importPreview = nil }
+        } message: {
+            if let summary = importPreview?.summary {
+                Text("The selected file contains \(summary.promptCount) prompts and \(summary.collectionCount) collections. Importing replaces saved prompts only after you confirm.")
             }
         }
         .fileExporter(
@@ -149,9 +315,82 @@ private struct SidebarView: View {
                 notice = LibraryNotice(message: error.localizedDescription)
             }
         }
+        .alert("Rename Prompt", isPresented: Binding(
+            get: { renamePrompt != nil },
+            set: { if !$0 { renamePrompt = nil } }
+        )) {
+            TextField("Prompt title", text: $renameText)
+            Button("Cancel", role: .cancel) { renamePrompt = nil }
+            Button("Rename") { confirmRename() }
+                .disabled(renameText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        } message: {
+            Text("Use a short title that will be easy to recognize in the library.")
+        }
+        .confirmationDialog(
+            "Delete saved prompt?",
+            isPresented: Binding(get: { deletePrompt != nil }, set: { if !$0 { deletePrompt = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { confirmDeletePrompt() }
+            Button("Cancel", role: .cancel) { deletePrompt = nil }
+        } message: {
+            Text("This removes the prompt from the local library.")
+        }
+        .confirmationDialog(
+            "Delete scratchpad?",
+            isPresented: Binding(get: { deletePad != nil }, set: { if !$0 { deletePad = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { confirmDeletePad() }
+            Button("Cancel", role: .cancel) { deletePad = nil }
+        }
         .alert(item: $notice) { notice in
             Alert(title: Text("Library"), message: Text(notice.message), dismissButton: .default(Text("OK")))
         }
+    }
+
+    private func beginRename(_ prompt: PromptEntry) {
+        renameText = prompt.title
+        renamePrompt = prompt
+    }
+
+    private func confirmRename() {
+        guard let prompt = renamePrompt else { return }
+        prompt.title = renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+        prompt.updatedAt = .now
+        prompt.isDirty = true
+        try? modelContext.save()
+        if store.currentPromptID == prompt.id { store.currentPromptTitle = prompt.title }
+        renamePrompt = nil
+    }
+
+    private func confirmDeletePrompt() {
+        guard let prompt = deletePrompt else { return }
+        if store.currentPromptID == prompt.id { store.startNewPrompt() }
+        modelContext.delete(prompt)
+        try? modelContext.save()
+        deletePrompt = nil
+    }
+
+    private func confirmDeletePad() {
+        guard let pad = deletePad else { return }
+        modelContext.delete(pad)
+        try? modelContext.save()
+        deletePad = nil
+    }
+
+    private func confirmImport() {
+        guard let importPreview else { return }
+        do {
+            let summary = try LibraryInterchange.importPreview(importPreview, into: modelContext)
+            store.startNewPrompt()
+            notice = LibraryNotice(
+                message: "Imported \(summary.promptCount) prompt\(summary.promptCount == 1 ? "" : "s") and preserved \(summary.collectionCount) collection\(summary.collectionCount == 1 ? "" : "s")."
+            )
+        } catch {
+            notice = LibraryNotice(message: error.localizedDescription)
+        }
+        self.importPreview = nil
     }
 }
 
@@ -161,21 +400,48 @@ private struct LibraryNotice: Identifiable {
 }
 
 private struct EditorView: View {
+    @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
+    var showWorkspace: (() -> Void)?
+    @State private var saveMessage = ""
+    @State private var saveFailed = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Editor")
-                    .font(.title2.bold())
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Editor")
+                        .font(.title2.bold())
+                    if store.currentPromptID != nil {
+                        Text(store.currentPromptTitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
                 Spacer()
+                Button {
+                    savePrompt()
+                } label: {
+                    Label("Save", systemImage: "tray.and.arrow.down")
+                        .frame(minHeight: 44)
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut("s", modifiers: .command)
+                .accessibilityIdentifier("savePromptButton")
+
                 Button {
                     store.isSettingsPresented = true
                 } label: {
-                    Label("API Settings", systemImage: "key")
+                    Image(systemName: "key")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(.primary)
                 }
-                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
                 .accessibilityLabel("Anthropic API settings")
+                .accessibilityIdentifier("apiSettingsButton")
             }
 
             Picker("Enhance mode", selection: $store.selectedMode) {
@@ -184,12 +450,14 @@ private struct EditorView: View {
                 }
             }
             .pickerStyle(.menu)
+            .tint(.primary)
+            .accessibilityIdentifier("enhanceModePicker")
 
             TextEditor(text: $store.draft)
                 .font(.body.monospaced())
-                .padding(8)
+                .padding(10)
                 .scrollContentBackground(.hidden)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
                 .overlay {
                     if store.draft.isEmpty {
                         ContentUnavailableView(
@@ -200,78 +468,171 @@ private struct EditorView: View {
                         .allowsHitTesting(false)
                     }
                 }
+                .frame(minHeight: 260)
+                .accessibilityLabel("Prompt editor")
+                .accessibilityIdentifier("promptEditor")
 
-            if case .noAPIKey = store.state {
-                Label("Add an Anthropic API key to enhance.", systemImage: "key.slash")
-                    .font(.callout)
-                    .foregroundStyle(.orange)
-            }
-            if case let .failed(message) = store.state {
-                Label(message, systemImage: "exclamationmark.triangle")
-                    .font(.callout)
-                    .foregroundStyle(.red)
-            }
-            if case .canceled = store.state {
-                Label("Enhance canceled. No partial run was saved.", systemImage: "xmark.circle")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+            statusMessage
 
-            HStack {
-                if store.isEnhancing {
-                    Button("Cancel", role: .cancel) {
-                        store.cancelEnhance()
-                    }
-                    .buttonStyle(.bordered)
-                }
-                Button {
-                    store.startEnhance(modelContext: modelContext)
-                } label: {
-                    Label(store.isEnhancing ? "Enhancing…" : "Enhance", systemImage: "sparkles")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(!store.canEnhance)
-                .keyboardShortcut(.return, modifiers: .command)
+            ViewThatFits(in: .horizontal) {
+                HStack { actionButtons }
+                VStack(alignment: .leading) { actionButtons }
             }
         }
         .padding()
         .navigationTitle("Editor")
+        .toolbar {
+            if let showWorkspace {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: showWorkspace) {
+                        Label("Workspace", systemImage: "sidebar.left")
+                    }
+                    .tint(.primary)
+                    .accessibilityIdentifier("workspaceButton")
+                }
+            }
+        }
     }
 
-    @Environment(\.modelContext) private var modelContext
+    @ViewBuilder
+    private var statusMessage: some View {
+        if !saveMessage.isEmpty {
+            Label(saveMessage, systemImage: saveFailed ? "exclamationmark.triangle" : "checkmark.circle")
+                .font(.callout)
+                .foregroundStyle(saveFailed ? .red : .green)
+                .accessibilityIdentifier("saveNotice")
+        }
+        if case .noAPIKey = store.state {
+            Label("Add an Anthropic API key to enhance.", systemImage: "key.slash")
+                .font(.callout)
+                .foregroundStyle(.orange)
+        }
+        if case let .failed(message) = store.state {
+            Label(message, systemImage: "exclamationmark.triangle")
+                .font(.callout)
+                .foregroundStyle(.red)
+        }
+        if case .canceled = store.state {
+            Label("Enhance canceled. The partial attempt is available in Runs.", systemImage: "xmark.circle")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+        if store.isEnhancing {
+            ProgressView("Streaming from Anthropic…")
+                .accessibilityIdentifier("enhanceProgress")
+        }
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if store.isEnhancing {
+            Button("Cancel", role: .cancel) {
+                store.cancelEnhance()
+            }
+            .buttonStyle(.bordered)
+            .keyboardShortcut(.cancelAction)
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("cancelEnhanceButton")
+        }
+        Button {
+            saveMessage = ""
+            store.startEnhance(modelContext: modelContext)
+        } label: {
+            Label(enhanceButtonTitle, systemImage: "sparkles")
+        }
+        .buttonStyle(.borderedProminent)
+        .disabled(!store.canEnhance)
+        .keyboardShortcut(.return, modifiers: .command)
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("enhanceButton")
+    }
+
+    private var enhanceButtonTitle: String {
+        if store.isEnhancing { return "Enhancing…" }
+        switch store.state {
+        case .failed, .canceled:
+            return "Retry"
+        default:
+            return "Enhance"
+        }
+    }
+
+    private func savePrompt() {
+        do {
+            let prompt = try store.saveCurrentPrompt(modelContext: modelContext)
+            saveFailed = false
+            saveMessage = "Saved \(prompt.title)."
+        } catch {
+            saveFailed = true
+            saveMessage = error.localizedDescription
+        }
+    }
 }
 
 private struct ResultsView: View {
-    let store: WorkbenchStore
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var store: WorkbenchStore
+    let onUse: (String) -> Void
+    @State private var notice = ""
+    @AccessibilityFocusState private var firstResultFocused: Bool
 
     var body: some View {
         Group {
             if let result = store.result {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
-                        ResultSection(title: "Enhanced", text: result.enhanced)
+                        Text("Results")
+                            .font(.largeTitle.bold())
+                            .accessibilityFocused($firstResultFocused)
+                        ResultCard(
+                            title: "Enhanced",
+                            text: result.enhanced,
+                            onUse: { onUse(result.enhanced) },
+                            onCopy: { copy(result.enhanced) },
+                            onSave: { save(result.enhanced) }
+                        )
+                        .accessibilityIdentifier("enhancedResultCard")
                         ForEach(result.variants, id: \.self) { variant in
-                            ResultSection(title: variant.label, text: variant.content)
+                            ResultCard(
+                                title: variant.label,
+                                text: variant.content,
+                                onUse: { onUse(variant.content) },
+                                onCopy: { copy(variant.content) },
+                                onSave: { save(variant.content) }
+                            )
                         }
-                        ResultSection(title: "Notes", text: result.notes)
+                        InformationCard(title: "Notes", text: result.notes)
                         if !result.assumptions.isEmpty {
-                            ResultSection(title: "Assumptions", text: result.assumptions.joined(separator: "\n• "), bulleted: true)
+                            InformationCard(
+                                title: "Assumptions",
+                                text: result.assumptions.map { "• \($0)" }.joined(separator: "\n")
+                            )
                         }
                         if !result.tags.isEmpty {
-                            HStack {
+                            FlowLayout(spacing: 8) {
                                 ForEach(result.tags, id: \.self) { tag in
                                     Text(tag)
-                                        .font(.caption.weight(.medium))
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 5)
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
                                         .background(.tint.opacity(0.12), in: Capsule())
                                 }
                             }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Tags: \(result.tags.joined(separator: ", "))")
+                        }
+                        if !notice.isEmpty {
+                            Label(notice, systemImage: "checkmark.circle.fill")
+                                .font(.callout)
+                                .foregroundStyle(.green)
+                                .accessibilityIdentifier("resultNotice")
                         }
                     }
+                    .frame(maxWidth: 760, alignment: .leading)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding()
                 }
+                .task { firstResultFocused = true }
             } else if store.isEnhancing {
                 VStack(spacing: 16) {
                     ProgressView("Streaming from Anthropic…")
@@ -279,6 +640,7 @@ private struct ResultsView: View {
                         ScrollView {
                             Text(store.streamedText)
                                 .font(.caption.monospaced())
+                                .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -294,21 +656,317 @@ private struct ResultsView: View {
         }
         .navigationTitle("Results")
     }
+
+    private func copy(_ text: String) {
+        UIPasteboard.general.string = text
+        notice = "Copied to the clipboard."
+    }
+
+    private func save(_ text: String) {
+        do {
+            let entry = try store.saveResult(text, modelContext: modelContext)
+            notice = "Saved \(entry.title) to Library."
+        } catch {
+            notice = error.localizedDescription
+        }
+    }
 }
 
-private struct ResultSection: View {
+private struct ResultCard: View {
     let title: String
     let text: String
-    var bulleted = false
+    let onUse: () -> Void
+    let onCopy: () -> Void
+    let onSave: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.title3.bold())
+            Text(text)
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Divider()
+            FlowLayout(spacing: 8) {
+                Button("Use", systemImage: "arrow.turn.down.left", action: onUse)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("useResultButton_\(title)")
+                Button("Copy", systemImage: "doc.on.doc", action: onCopy)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("copyResultButton_\(title)")
+                Button("Save", systemImage: "bookmark", action: onSave)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("saveResultButton_\(title)")
+                ShareLink(item: text) {
+                    Label("Share", systemImage: "square.and.arrow.up")
+                }
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("shareResultButton_\(title)")
+            }
+            .buttonStyle(.bordered)
+        }
+        .padding(18)
+        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 16))
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(.separator.opacity(0.35), lineWidth: 1)
+        }
+    }
+}
+
+private struct InformationCard: View {
+    let title: String
+    let text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
                 .font(.headline)
-            Text(bulleted ? "• \(text)" : text)
+            Text(text)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(16)
+        .background(.background.secondary.opacity(0.7), in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+private struct PadEditorView: View {
+    @Query private var pads: [Pad]
+    let onDelete: () -> Void
+
+    init(padID: UUID, onDelete: @escaping () -> Void) {
+        _pads = Query(filter: #Predicate<Pad> { $0.id == padID })
+        self.onDelete = onDelete
+    }
+
+    var body: some View {
+        if let pad = pads.first {
+            PadDocumentView(pad: pad, onDelete: onDelete)
+        } else {
+            ContentUnavailableView("Pad not found", systemImage: "note.text")
+                .navigationTitle("Pad")
+        }
+    }
+}
+
+private struct PadDocumentView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var pad: Pad
+    let onDelete: () -> Void
+    @State private var isConfirmingDelete = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            TextField("Pad title", text: $pad.title)
+                .font(.title2.bold())
+                .textFieldStyle(.roundedBorder)
+                .accessibilityIdentifier("padTitleField")
+                .onChange(of: pad.title) { _, _ in pad.updatedAt = .now }
+            TextEditor(text: $pad.content)
+                .font(.body.monospaced())
+                .padding(10)
+                .scrollContentBackground(.hidden)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                .accessibilityLabel("Scratchpad content")
+                .accessibilityIdentifier("padEditor")
+                .onChange(of: pad.content) { _, _ in pad.updatedAt = .now }
+        }
+        .padding()
+        .navigationTitle("Pad")
+        .toolbar {
+            ToolbarItem(placement: .destructiveAction) {
+                Button("Delete", systemImage: "trash", role: .destructive) {
+                    isConfirmingDelete = true
+                }
+            }
+        }
+        .task(id: pad.updatedAt) {
+            try? await Task.sleep(for: .milliseconds(350))
+            try? modelContext.save()
+        }
+        .confirmationDialog("Delete this scratchpad?", isPresented: $isConfirmingDelete) {
+            Button("Delete", role: .destructive) {
+                modelContext.delete(pad)
+                try? modelContext.save()
+                onDelete()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
+private struct RunHistoryView: View {
+    @Query(sort: \RunRecord.createdAt, order: .reverse) private var runs: [RunRecord]
+    let onOpen: (WorkbenchRoute) -> Void
+
+    var body: some View {
+        List {
+            if runs.isEmpty {
+                ContentUnavailableView(
+                    "No runs yet",
+                    systemImage: "clock.arrow.circlepath",
+                    description: Text("Successful, canceled, and failed attempts will appear here.")
+                )
+            } else {
+                ForEach(runs) { run in
+                    RunRow(run: run) { onOpen(.run(run.id)) }
+                }
+            }
+        }
+        .navigationTitle("Run History")
+        .accessibilityIdentifier("runHistoryList")
+    }
+}
+
+private struct RunRow: View {
+    let run: RunRecord
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(run.promptTitle)
+                    .lineLimit(2)
+                    .foregroundStyle(.primary)
+                HStack(spacing: 8) {
+                    Text(run.enhanceMode.capitalized)
+                    Text(run.createdAt, style: .relative)
+                    Spacer()
+                    Label(run.canonicalStatus.capitalized, systemImage: statusIcon)
+                        .foregroundStyle(statusColor)
+                }
+                .font(.caption)
+            }
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("runRow_\(run.id)")
+    }
+
+    private var statusIcon: String {
+        switch run.canonicalStatus {
+        case "success": "checkmark.circle.fill"
+        case "canceled": "xmark.circle"
+        default: "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var statusColor: Color {
+        switch run.canonicalStatus {
+        case "success": .green
+        case "canceled": .secondary
+        default: .red
+        }
+    }
+}
+
+private struct RunDetailView: View {
+    @Query private var runs: [RunRecord]
+    let onReuse: (RunRecord) -> Void
+
+    init(runID: String, onReuse: @escaping (RunRecord) -> Void) {
+        _runs = Query(filter: #Predicate<RunRecord> { $0.id == runID })
+        self.onReuse = onReuse
+    }
+
+    var body: some View {
+        if let run = runs.first {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(run.promptTitle)
+                            .font(.title2.bold())
+                        Text("\(run.provider) · \(run.model) · \(run.enhanceMode.capitalized)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(run.createdAt, format: .dateTime.month().day().year().hour().minute())
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Button("Reuse Input", systemImage: "arrow.uturn.backward") { onReuse(run) }
+                            .buttonStyle(.borderedProminent)
+                            .frame(minHeight: 44)
+                        if !run.output.isEmpty {
+                            ShareLink(item: run.output) {
+                                Label("Share Output", systemImage: "square.and.arrow.up")
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(minHeight: 44)
+                        }
+                    }
+                    InformationCard(title: "Input", text: run.input)
+                    if !run.output.isEmpty {
+                        InformationCard(title: run.canonicalStatus == "success" ? "Output" : "Partial Output", text: run.output)
+                    }
+                    if let response = run.response {
+                        ForEach(response.variants, id: \.self) { variant in
+                            InformationCard(title: variant.label, text: variant.content)
+                        }
+                    }
+                    if !run.notes.isEmpty {
+                        InformationCard(title: "Notes", text: run.notes)
+                    }
+                }
+                .frame(maxWidth: 760, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .navigationTitle("Run Detail")
+            .accessibilityIdentifier("runDetail")
+        } else {
+            ContentUnavailableView("Run not found", systemImage: "clock.badge.questionmark")
+        }
+    }
+}
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        layout(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let result = layout(proposal: proposal, subviews: subviews)
+        for (index, point) in result.points.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        let availableWidth = proposal.width ?? .infinity
+        var points: [CGPoint] = []
+        var cursor = CGPoint.zero
+        var lineHeight: CGFloat = 0
+        var usedWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if cursor.x > 0, cursor.x + size.width > availableWidth {
+                cursor.x = 0
+                cursor.y += lineHeight + spacing
+                lineHeight = 0
+            }
+            points.append(cursor)
+            cursor.x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+            usedWidth = max(usedWidth, cursor.x - spacing)
+        }
+        return (CGSize(width: min(usedWidth, availableWidth), height: cursor.y + lineHeight), points)
     }
 }
 
@@ -349,6 +1007,7 @@ private struct SettingsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {

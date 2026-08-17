@@ -20,6 +20,9 @@ final class PromptLabTests: XCTestCase {
         let prompt = try XCTUnwrap(context.fetch(FetchDescriptor<PromptEntry>()).first)
         XCTAssertEqual(prompt.id, "web-export-001")
         XCTAssertEqual(prompt.title, "Incident summary")
+        XCTAssertEqual(prompt.notes, "Adds an explicit executive structure.")
+        XCTAssertEqual(prompt.variants.map(\.label), ["Concise", "Detailed"])
+        XCTAssertEqual(prompt.tags, ["Writing", "Analysis"])
 
         let root = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
         let library = try XCTUnwrap(root["library"] as? [[String: Any]])
@@ -83,6 +86,44 @@ final class PromptLabTests: XCTestCase {
         XCTAssertTrue(prompt.contains("Available tags: Writing, Code, Research, Analysis, Creative, System, Role-play, Other."))
     }
 
+    func testSharedNativeContractMatchesRuntimeDefaults() throws {
+        let fixtureURL = try XCTUnwrap(
+            Bundle(for: Self.self).url(forResource: "promptlab-enhance-contract-v1", withExtension: "json")
+        )
+        let data = try Data(contentsOf: fixtureURL)
+        let contract = try JSONDecoder().decode(NativeContractFixture.self, from: data)
+
+        XCTAssertEqual(contract.provider.defaultModel, ProviderDefaults.model)
+        XCTAssertEqual(contract.provider.maxTokens, ProviderDefaults.maxTokens)
+        XCTAssertEqual(contract.provider.temperature, ProviderDefaults.temperature)
+        XCTAssertEqual(contract.enhance.modes, EnhanceMode.allCases.map(\.rawValue))
+        XCTAssertEqual(contract.enhance.tags, SystemPromptBuilder.availableTags)
+        XCTAssertEqual(contract.enhance.responseFields, ["enhanced", "variants", "notes", "assumptions", "tags"])
+        XCTAssertEqual(contract.enhance.statuses, ["success", "error", "blocked", "canceled"])
+        for titleCase in contract.titleCases {
+            XCTAssertEqual(PromptTitleSuggester.suggest(from: titleCase.input), titleCase.expected)
+        }
+    }
+
+    @MainActor
+    func testLibraryPreviewDoesNotReplaceUntilConfirmed() throws {
+        let fixtureURL = try XCTUnwrap(
+            Bundle(for: Self.self).url(forResource: "web-library-export-1.7.0", withExtension: "json")
+        )
+        let fixture = try Data(contentsOf: fixtureURL)
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        context.insert(PromptEntry(id: "keep-me", title: "Keep me", original: "Existing"))
+        try context.save()
+
+        let preview = try LibraryInterchange.previewData(fixture)
+        XCTAssertEqual(preview.summary, LibraryImportSummary(promptCount: 1, collectionCount: 2))
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PromptEntry>()).map(\.id), ["keep-me"])
+
+        _ = try LibraryInterchange.importPreview(preview, into: context)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<PromptEntry>()).map(\.id), ["web-export-001"])
+    }
+
     @MainActor
     func testRecordedEnhancePersistsRunAcrossContainerReopen() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -121,6 +162,8 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(records.first?.status, "success")
         XCTAssertEqual(records.first?.enhanceMode, "balanced")
         XCTAssertFalse(records.first?.output.isEmpty ?? true)
+        XCTAssertEqual(records.first?.response?.variants.count, 2)
+        XCTAssertEqual(records.first?.response?.tags, ["Analysis", "Creative"])
     }
 
     func testKeychainStoreRetrieveUpdateDelete() throws {
@@ -180,7 +223,8 @@ final class PromptLabTests: XCTestCase {
 
         let runs = try context.fetch(FetchDescriptor<RunRecord>())
         XCTAssertEqual(runs.count, 1)
-        XCTAssertEqual(runs.first?.status, "failed")
+        XCTAssertEqual(runs.first?.status, "error")
+        XCTAssertEqual(runs.first?.canonicalStatus, "error")
         XCTAssertEqual(runs.first?.notes, "Recorded API failure.")
         XCTAssertEqual(runs.first?.input, "Trigger an API error.")
     }
@@ -211,6 +255,33 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testLegacyFailedRunAndPromptDefaultsRemainReadable() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let legacyRun = RunRecord(
+            enhanceMode: "balanced",
+            provider: "anthropic",
+            model: ProviderDefaults.model,
+            input: "Legacy input",
+            output: "",
+            latencyMs: 1,
+            notes: "Historical failure",
+            status: "failed"
+        )
+        let legacyPrompt = PromptEntry(title: "Legacy prompt", original: "Legacy content")
+        context.insert(legacyRun)
+        context.insert(legacyPrompt)
+        try context.save()
+
+        XCTAssertEqual(legacyRun.canonicalStatus, "error")
+        XCTAssertNil(legacyRun.response)
+        XCTAssertEqual(legacyPrompt.notes, "")
+        XCTAssertEqual(legacyPrompt.variants, [])
+        XCTAssertEqual(legacyPrompt.tags, [])
+        XCTAssertEqual(legacyPrompt.updatedAt, legacyPrompt.createdAt)
+    }
+
+    @MainActor
     private func makeInMemoryContainer() throws -> ModelContainer {
         try ModelContainer(
             for: appSchema,
@@ -237,6 +308,30 @@ final class PromptLabTests: XCTestCase {
             }
             try await Task.sleep(for: .milliseconds(10))
         }
+    }
+}
+
+private struct NativeContractFixture: Decodable {
+    let provider: Provider
+    let enhance: Enhance
+    let titleCases: [TitleCase]
+
+    struct Provider: Decodable {
+        let defaultModel: String
+        let maxTokens: Int
+        let temperature: Double
+    }
+
+    struct Enhance: Decodable {
+        let modes: [String]
+        let tags: [String]
+        let responseFields: [String]
+        let statuses: [String]
+    }
+
+    struct TitleCase: Decodable {
+        let input: String
+        let expected: String
     }
 }
 

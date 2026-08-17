@@ -1,8 +1,8 @@
 # Prompt Lab for iPhone & iPad — Native Swift App Plan
 
-Status: proposed (ADR recorded — see `docs/DECISIONS.md` [D-011]; scaffold awaits owner greenlight)
+Status: M0–M3 implemented; M4 release preparation blocked on distribution inputs
 Created: 2026-07-26
-Updated: 2026-07-28 — retargeted from iPad-only to a **universal iPhone + iPad app** per owner decision. Core architecture is unchanged; the delta is a compact-width (iPhone) navigation model and universal deployment target.
+Updated: 2026-08-17 — native workbench closure implemented for Library, Pads, Runs, Results, compact navigation, shared-contract parity, accessibility, and iPhone/iPad CI.
 Owner: Dave Robertson
 
 ## Why this document exists
@@ -60,7 +60,7 @@ and the PII scanner (deferred until parity is worth the port).
 
 ## Architecture
 
-- **UI:** SwiftUI, `NavigationSplitView` (three-column on regular width; auto-collapses to a stacked `NavigationStack` flow on compact width). Universal target: **iOS 17+ / iPadOS 17+**.
+- **UI:** SwiftUI, explicit three-column `NavigationSplitView` at regular width and a routed `NavigationStack` at compact width. Universal target: **iOS 17+ / iPadOS 17+**.
 - **State:** `@Observable` models; one `WorkbenchStore` per window scene to support iPad Split View / Stage Manager multitasking (a single scene on iPhone).
 - **Persistence:** SwiftData for library entries, pads, and run records. Schemas mirror the web app's normalized shapes (`promptSchema.js`, `evalSchema.js`) so import/export stays lossless.
 - **Interchange:** import/export of the existing library JSON export format is a v1 requirement — it is the bridge between surfaces and removes migration risk.
@@ -86,20 +86,21 @@ prompt-lab-ios/
   README.md
 ```
 
-CI: a `macos-14` GitHub Actions job running `xcodebuild build test` for the simulator
-destination, added alongside the existing desktop matrix.
+CI: a `macos-14` GitHub Actions matrix builds and runs unit plus UI smoke suites on
+both iPhone and iPad simulator families. Native and extension jobs both watch the
+shared contract fixture and their canonical Swift/JavaScript inputs.
 
 ## Milestones
 
-1. **M0 — Scaffold (1 sprint, gated on owner greenlight):** the ADR is already recorded (`docs/DECISIONS.md` [D-011]); this milestone is the first code — create the Xcode project, SwiftData models, and library JSON import round-trip tests. No app code lands before greenlight.
-2. **M1 — Enhance end-to-end (1–2 sprints):** editor + Anthropic streaming enhance + results panel with variants/notes; Keychain key management.
-3. **M2 — Library + pads + runs (1 sprint):** saved library CRUD, scratchpads, local run history mirroring `eval_runs` fields (including `enhanceMode` and the `success/error/blocked/canceled` statuses added 2026-07-26).
-4. **M3 — Adaptive layout + polish (1–2 sprints):** compact-width (iPhone) navigation — collapse the three columns to a stacked push flow with a Results segment; Dynamic Type and safe-area correctness on iPhone. iPad-specific: hardware keyboard shortcuts (mirror `navigationRegistry.js` mappings), Split View/Stage Manager, drag-and-drop of prompts as text, share-sheet export (share sheet also covers the iPhone export path).
-5. **M4 — Beta:** TestFlight, App Store metadata reusing `store-assets/`, privacy nutrition labels (no tracking; keys on device).
+1. **M0 — Scaffold — complete:** Xcode project, SwiftData entities, lossless library round-trip fixture, and iPhone/iPad build matrix are present.
+2. **M1 — Enhance end-to-end — complete:** Anthropic BYO-key streaming, Keychain management, resilient response parsing, progress/cancel/error states, durable result cards, and full-response run persistence are implemented. A user-observed physical M1 iPad run completed successfully on August 16, 2026; automated paid-provider execution remains opt-in only.
+3. **M2 — Library + pads + runs — complete:** Library create/open/rename/delete, scratchpad create/autosave/delete, full run history/detail/reuse, canonical statuses, historical `failed` compatibility, and transactional import preview are implemented.
+4. **M3 — Adaptive layout + polish — functionally complete, device QA ongoing:** compact launches in Editor with an explicit Workspace route and Results push; regular iPad retains rebalanced three-column operation. Dynamic Type, wrapping actions/tags, accessibility focus, Command-S/Command-Return/Escape, share actions, and iPhone/iPad UI smoke coverage are present. Final manual checks remain for narrow Split View/Stage Manager, VoiceOver reading order, and hardware-keyboard behavior on current physical hardware. Drag-and-drop is deferred because it is not required for the focused workbench closure.
+5. **M4 — Beta — blocked:** TestFlight/App Store work requires an approved production bundle identifier, final app icons/store assets, Apple distribution access, privacy metadata, and explicit release criteria. No release upload is authorized by this plan update.
 
 ## Risks
 
-- **Feature drift:** every enhance-contract change in `constants.js` must be treated as a cross-surface API change; add a checklist item to `docs/PIPELINE.md` when it happens.
+- **Feature drift:** every enhance-contract change is a cross-surface API change. `contracts/promptlab-enhance-contract-v1.json`, Vitest, XCTest, and the checklist in `docs/PIPELINE.md` now enforce that boundary.
 - **Two sources of truth for schemas:** mitigated by round-trip import/export tests against fixture exports generated by the web app's test suite.
 - **App review:** BYO-key AI apps are accepted (precedent exists), but the first submission should include reviewer notes explaining the key model.
 - **Maintenance load:** if v1 retention data doesn't justify the second codebase, fall back to the Tauri Mobile roadmap — nothing in this plan blocks it.

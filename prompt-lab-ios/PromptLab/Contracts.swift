@@ -1,5 +1,11 @@
 import Foundation
 
+enum ProviderDefaults {
+    static let model = "claude-sonnet-4-6"
+    static let maxTokens = 4_096
+    static let temperature = 0.4
+}
+
 enum EnhanceMode: String, CaseIterable, Identifiable {
     case balanced
     case claude
@@ -150,5 +156,57 @@ enum EnhanceResponseParser {
             return nil
         }
         return String(text[start...end])
+    }
+}
+
+enum PromptTitleSuggester {
+    static func suggest(from value: String) -> String {
+        let rawText = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !rawText.isEmpty else { return "Untitled Prompt" }
+
+        let firstLine = rawText
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .first(where: { !$0.isEmpty }) ?? ""
+
+        var candidate = firstLine
+        if let match = firstLine.firstMatch(of: /^#{1,6}\s+(.+)$/) {
+            candidate = String(match.1)
+        }
+        candidate = candidate
+            .replacing(/^```[\w-]*/, with: "")
+            .replacing(/^[>\-*\s]+/, with: "")
+            .replacing(/[*_`]+/, with: "")
+            .replacing(/\s+/, with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if candidate.isEmpty {
+            candidate = rawText.replacing(/\s+/, with: " ")
+        }
+        candidate = candidate.replacing(/(?i)^(?:please|kindly)[,\s]+/, with: "")
+
+        if let match = candidate.firstMatch(
+            of: /(?i)^(?:you are|you're|act as|acting as|imagine you(?:'re| are))\s+(?:an?\s+|the\s+)?(.+)$/
+        ) {
+            candidate = String(match.1)
+        }
+
+        var phrase = candidate
+        if let match = candidate.firstMatch(of: /^(.+?[.!?])(?:\s|$)/), match.1.count <= 80 {
+            phrase = String(match.1)
+        }
+        phrase = phrase.replacing(/\.+$/, with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !phrase.isEmpty else { return "Untitled Prompt" }
+        phrase.replaceSubrange(phrase.startIndex...phrase.startIndex, with: phrase.first!.uppercased())
+
+        let maximum = 60
+        guard phrase.count > maximum else { return phrase }
+        let boundary = phrase.index(phrase.startIndex, offsetBy: maximum)
+        let truncated = phrase[..<boundary]
+        if let lastSpace = truncated.lastIndex(of: " "),
+           phrase.distance(from: phrase.startIndex, to: lastSpace) > Int(Double(maximum) * 0.4) {
+            return String(phrase[..<lastSpace]) + "…"
+        }
+        return String(truncated) + "…"
     }
 }

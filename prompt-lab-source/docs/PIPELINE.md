@@ -166,7 +166,26 @@ Phase milestones:
 
 Nav strategy decision pending: React Router hash mode vs state router. Must be resolved before Phase 2 UI work continues.
 
+## Native contract parity gate
+
+The universal SwiftUI app and the React/extension surfaces share data contracts, not UI code. The canonical cross-surface fixture is:
+
+- `../../contracts/promptlab-enhance-contract-v1.json`
+
+Any change to enhance provider defaults, mode IDs, tag names, response fields, run statuses, or prompt-title generation must update the fixture and both parity suites in the same pull request:
+
+- React/Vitest: `prompt-lab-extension/src/__tests__/nativeContractParity.test.js`
+- Swift/XCTest: `../../prompt-lab-ios/PromptLabTests/PromptLabTests.swift`
+
+Required gate:
+
+1. Run the extension test/build suite under the repository's pinned Node 22 runtime.
+2. Run native unit tests on at least one iOS simulator family.
+3. Run the credential-free native UI smoke suite on both iPhone and iPad simulator families.
+4. Confirm untouched web-library fixtures still export byte-identically and edited entries retain variants, notes, tags, collections, and unknown JSON fields.
+5. Keep paid provider testing opt-in: do not supply `ANTHROPIC_API_KEY` unless a live smoke call is explicitly authorized.
+
 ---
 
-*Last updated: 2026-03-31*
+*Last updated: 2026-08-17*
 *Related: CLAUDE.md, PROMPT_SYSTEM.md, DECISIONS.md*

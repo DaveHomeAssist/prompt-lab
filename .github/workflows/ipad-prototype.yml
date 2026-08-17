@@ -6,10 +6,18 @@ on:
       - main
     paths:
       - prompt-lab-ios/**
+      - contracts/promptlab-enhance-contract-v1.json
+      - prompt-lab-source/prompt-lab-extension/src/constants.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
       - .github/workflows/ipad-prototype.yml
   pull_request:
     paths:
       - prompt-lab-ios/**
+      - contracts/promptlab-enhance-contract-v1.json
+      - prompt-lab-source/prompt-lab-extension/src/constants.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
       - .github/workflows/ipad-prototype.yml
   workflow_dispatch:
 
@@ -20,7 +28,7 @@ jobs:
   native-build-and-test:
     name: Native build and test (${{ matrix.device_family }})
     runs-on: macos-14
-    timeout-minutes: 15
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -52,9 +60,19 @@ jobs:
           -scheme PromptLab
           -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
 
-      - name: Test native prototype
+      - name: Test native unit suite
         run: >-
           xcodebuild test
           -project prompt-lab-ios/PromptLab.xcodeproj
           -scheme PromptLab
           -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
+          -only-testing:PromptLabTests
+
+      - name: Test native UI smoke
+        run: >-
+          xcodebuild test
+          -project prompt-lab-ios/PromptLab.xcodeproj
+          -scheme PromptLab
+          -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
+          -parallel-testing-enabled NO
+          -only-testing:PromptLabUITests

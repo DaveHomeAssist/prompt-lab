@@ -1,8 +1,8 @@
 # Prompt Lab for iPhone & iPad
 
-Native SwiftUI prototype of the Prompt Lab workbench for iOS and iPadOS 17 and later.
+Native SwiftUI Prompt Lab workbench for iOS and iPadOS 17 and later.
 
-This is a prototype, not a replacement for the shipped React surfaces. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with the JSON contracts—not the UI—as the compatibility boundary.
+This remains a focused native v1 rather than a replacement for every React feature. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with `contracts/promptlab-enhance-contract-v1.json`—not shared UI code—as the compatibility boundary.
 
 ## Build and test
 
@@ -29,7 +29,7 @@ xcodebuild build \
   -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
-The app targets both iPhone and iPad. Regular-width iPads show Sidebar, Editor, and Results together; compact-width iPhones collapse the same `NavigationSplitView` into a stacked navigation flow.
+The app targets both iPhone and iPad. Regular-width iPads keep a rebalanced three-column `NavigationSplitView`. Compact-width launches directly into the Editor, exposes an explicit Workspace route for Library/Pads/Runs, and pushes completed work to Results. The same compact routing is used in narrow iPad Split View and Stage Manager windows.
 
 ## Add an Anthropic key
 
@@ -42,19 +42,24 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 
 ## What works
 
-- Adaptive SwiftUI workbench using `NavigationSplitView` across iPhone and iPad
+- Adaptive SwiftUI workbench using three-column `NavigationSplitView` at regular width and explicit `NavigationStack` routes at compact width
 - Scene-local observable editor and request state
-- SwiftData persistence for library entries, scratchpads, and web-shaped run records
+- SwiftData persistence for saved prompts, scratchpads, and web-shaped run records
+- Saved-prompt create/open/rename/delete, scratchpad create/autosave/delete, and complete run-history/detail/reuse flows
 - Anthropic Messages API payloads and streamed SSE text deltas
 - Strict enhance response contract: `enhanced`, two `variants`, `notes`, `assumptions`, and `tags`
-- Cancellation without saving a partial run
-- Run history that survives app and model-container relaunch
+- Durable result cards with Use, Copy, Save, and Share actions
+- Successful runs persist the full enhance response; canceled and failed attempts retain partial output and error notes
+- Canonical run statuses `success`, `error`, `blocked`, and `canceled`, with legacy `failed` records read as `error`
+- Run history that survives app and model-container relaunch and can restore input for another pass
 - Keychain save, update, retrieve, and delete
-- Web-library JSON import and export from the Sidebar toolbar
-- Byte-identical re-export of an untouched web library, including unknown metadata and empty collections
+- Web-library JSON choose → validate/preview → confirm → transactional replace flow, plus export from Workspace
+- Byte-identical re-export of an untouched web library; edited exports retain first-class variants, notes, tags, unknown metadata, and empty collections
+- Command-S save, Command-Return enhance, and Escape cancellation/close behavior where applicable
+- Dynamic Type-native typography, wrapping result actions/tags, accessibility focus on completed Results, and 44-point primary controls
 - Empty, in-flight, completed, API-error, cancelled, and no-key states
 
-The checked-in QA suite contains 15 tests: 14 credential-free tests plus one optional live Anthropic smoke test. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
+The checked-in QA suite contains 23 tests: 17 credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
 
 ```sh
 xcrun simctl launch booted com.davehomeassist.promptlab.prototype \
@@ -73,8 +78,8 @@ xcrun simctl launch booted com.davehomeassist.promptlab.prototype \
 
 ## Verification evidence
 
-- [Three-column scaffold](QA/phase2-three-column.png)
-- [Recorded streamed enhance](QA/phase3-recorded-enhance.png)
-- [Run visible after relaunch](QA/phase3-run-after-relaunch.png)
+- A physical M1 iPad install completed a real BYO-key Anthropic enhance on August 16, 2026. That user-observed result proves the shipping key/provider path on hardware; the API key was not shared with or exercised by automated tests.
+- Historical prototype captures remain available as [three-column scaffold](QA/phase2-three-column.png), [recorded streamed enhance](QA/phase3-recorded-enhance.png), and [run visible after relaunch](QA/phase3-run-after-relaunch.png). They predate the current workbench UI and are retained as baseline evidence only.
+- `contracts/promptlab-enhance-contract-v1.json` is enforced by both Vitest and XCTest so provider defaults, modes, tags, response fields, statuses, and title generation cannot silently drift.
 
-No Anthropic API key was available during prototype QA, so the real network request was not exercised. The shipping Anthropic path was built and compiled; end-to-end behavior was proven with the allowed recorded response at the provider boundary.
+Automated verification never transmits a paid provider request unless `ANTHROPIC_API_KEY` is explicitly supplied to the optional live smoke test. CI uses the recorded provider for deterministic end-to-end UI proof.
