@@ -6,7 +6,7 @@ struct PromptLabApp: App {
     private let modelContainer: ModelContainer
 
     init() {
-        let schema = Schema([PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
+        let schema = Schema(versionedSchema: PromptLabSchemaV2.self)
         let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
         if !isUITesting,
            let applicationSupport = FileManager.default.urls(
@@ -20,7 +20,11 @@ struct PromptLabApp: App {
         }
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isUITesting)
         do {
-            modelContainer = try ModelContainer(for: schema, configurations: [configuration])
+            modelContainer = try ModelContainer(
+                for: schema,
+                migrationPlan: PromptLabMigrationPlan.self,
+                configurations: [configuration]
+            )
         } catch {
             fatalError("Unable to initialize Prompt Lab storage: \(error.localizedDescription)")
         }

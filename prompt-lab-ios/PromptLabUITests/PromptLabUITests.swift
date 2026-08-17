@@ -29,13 +29,22 @@ final class PromptLabUITests: XCTestCase {
         XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
     }
 
-    func testRecordedEnhanceOpensResultsAndCanSave() {
+    func testRecordedEnhanceOpensResultsAndSupportsActions() {
         app.launchArguments.append("-runRecordedDemo")
         app.launch()
 
         waitForRecordedResults()
+        XCTAssertTrue(app.buttons["useResultButton_Enhanced"].exists)
+        XCTAssertTrue(app.buttons["copyResultButton_Enhanced"].exists)
+        XCTAssertTrue(app.buttons["saveResultButton_Enhanced"].exists)
+        XCTAssertTrue(app.buttons["shareResultButton_Enhanced"].exists)
+
+        app.buttons["copyResultButton_Enhanced"].tap()
+        XCTAssertEqual(app.descendants(matching: .any)["resultNotice"].label, "Copied to the clipboard.")
         app.buttons["saveResultButton_Enhanced"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["resultNotice"].waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["resultNotice"].label.hasPrefix("Saved ")
+        )
     }
 
     func testSavedPromptReopensAndRunDetailReusesInput() {
@@ -59,6 +68,9 @@ final class PromptLabUITests: XCTestCase {
         XCTAssertTrue(run.waitForExistence(timeout: 3))
         run.tap()
         XCTAssertTrue(app.navigationBars["Run Detail"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["useRunOutputButton"].exists)
+        XCTAssertTrue(app.staticTexts["Assumptions"].exists)
+        XCTAssertTrue(app.staticTexts["Tags"].exists)
         app.buttons["Reuse Input"].tap()
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
     }
@@ -66,7 +78,10 @@ final class PromptLabUITests: XCTestCase {
     func testPrimarySurfacePassesAccessibilityAudit() throws {
         app.launch()
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
-        try app.performAccessibilityAudit()
+        try app.performAccessibilityAudit { issue in
+            print("Accessibility audit: \(issue.compactDescription) — \(issue.detailedDescription)")
+            return false
+        }
     }
 
     private func openWorkspace() {

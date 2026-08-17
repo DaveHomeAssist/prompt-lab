@@ -101,7 +101,7 @@ struct WorkbenchRootView: View {
         case .runs:
             RunHistoryView(onOpen: open)
         case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun)
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
         }
     }
 
@@ -121,7 +121,7 @@ struct WorkbenchRootView: View {
     private var regularDetail: some View {
         switch regularRoute {
         case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun)
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
         default:
             ResultsView(store: store, onUse: useResult)
         }
@@ -248,10 +248,10 @@ private struct SidebarView: View {
 
             Section("Runs") {
                 if runs.isEmpty {
-                    Text("No runs yet")
+                    Label("No runs yet", systemImage: "clock.arrow.circlepath")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .dynamicTypeSize(.xSmall ... .accessibility5)
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
@@ -891,10 +891,16 @@ private struct RunRow: View {
 private struct RunDetailView: View {
     @Query private var runs: [RunRecord]
     let onReuse: (RunRecord) -> Void
+    let onUseOutput: (String) -> Void
 
-    init(runID: String, onReuse: @escaping (RunRecord) -> Void) {
+    init(
+        runID: String,
+        onReuse: @escaping (RunRecord) -> Void,
+        onUseOutput: @escaping (String) -> Void
+    ) {
         _runs = Query(filter: #Predicate<RunRecord> { $0.id == runID })
         self.onReuse = onReuse
+        self.onUseOutput = onUseOutput
     }
 
     var body: some View {
@@ -911,11 +917,17 @@ private struct RunDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    HStack {
+                    FlowLayout(spacing: 8) {
                         Button("Reuse Input", systemImage: "arrow.uturn.backward") { onReuse(run) }
                             .buttonStyle(.borderedProminent)
                             .frame(minHeight: 44)
                         if !run.output.isEmpty {
+                            Button("Use Output", systemImage: "arrow.turn.down.left") {
+                                onUseOutput(run.output)
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("useRunOutputButton")
                             ShareLink(item: run.output) {
                                 Label("Share Output", systemImage: "square.and.arrow.up")
                             }
@@ -930,6 +942,15 @@ private struct RunDetailView: View {
                     if let response = run.response {
                         ForEach(response.variants, id: \.self) { variant in
                             InformationCard(title: variant.label, text: variant.content)
+                        }
+                        if !response.assumptions.isEmpty {
+                            InformationCard(
+                                title: "Assumptions",
+                                text: response.assumptions.map { "• \($0)" }.joined(separator: "\n")
+                            )
+                        }
+                        if !response.tags.isEmpty {
+                            InformationCard(title: "Tags", text: response.tags.joined(separator: ", "))
                         }
                     }
                     if !run.notes.isEmpty {

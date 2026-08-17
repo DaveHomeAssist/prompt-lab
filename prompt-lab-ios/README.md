@@ -44,14 +44,14 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 
 - Adaptive SwiftUI workbench using three-column `NavigationSplitView` at regular width and explicit `NavigationStack` routes at compact width
 - Scene-local observable editor and request state
-- SwiftData persistence for saved prompts, scratchpads, and web-shaped run records
+- Versioned SwiftData persistence for saved prompts, scratchpads, and web-shaped run records, with a tested lightweight migration from the shipped prototype schema
 - Saved-prompt create/open/rename/delete, scratchpad create/autosave/delete, and complete run-history/detail/reuse flows
 - Anthropic Messages API payloads and streamed SSE text deltas
 - Strict enhance response contract: `enhanced`, two `variants`, `notes`, `assumptions`, and `tags`
 - Durable result cards with Use, Copy, Save, and Share actions
 - Successful runs persist the full enhance response; canceled and failed attempts retain partial output and error notes
 - Canonical run statuses `success`, `error`, `blocked`, and `canceled`, with legacy `failed` records read as `error`
-- Run history that survives app and model-container relaunch and can restore input for another pass
+- Run history that survives app and model-container relaunch and can restore either input or output for another pass
 - Keychain save, update, retrieve, and delete
 - Web-library JSON choose → validate/preview → confirm → transactional replace flow, plus export from Workspace
 - Byte-identical re-export of an untouched web library; edited exports retain first-class variants, notes, tags, unknown metadata, and empty collections
@@ -59,7 +59,7 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 - Dynamic Type-native typography, wrapping result actions/tags, accessibility focus on completed Results, and 44-point primary controls
 - Empty, in-flight, completed, API-error, cancelled, and no-key states
 
-The checked-in QA suite contains 23 tests: 17 credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
+The checked-in QA suite contains 24 tests: 18 credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
 
 ```sh
 xcrun simctl launch booted com.davehomeassist.promptlab.prototype \

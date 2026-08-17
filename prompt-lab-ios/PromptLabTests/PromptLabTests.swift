@@ -282,6 +282,92 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testVersionOneStoreMigratesAndPreservesHistoricalData() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("PromptLabMigrationTests-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let storeURL = directory.appendingPathComponent("PromptLab.store")
+        let createdAt = Date(timeIntervalSince1970: 1_722_000_000)
+
+        do {
+            let legacySchema = Schema(versionedSchema: PromptLabSchemaV1.self)
+            let legacyConfiguration = ModelConfiguration(
+                "PromptLab",
+                schema: legacySchema,
+                url: storeURL,
+                allowsSave: true,
+                cloudKitDatabase: .none
+            )
+            let legacyContainer = try ModelContainer(
+                for: legacySchema,
+                configurations: [legacyConfiguration]
+            )
+            let legacyContext = ModelContext(legacyContainer)
+            legacyContext.insert(PromptLabSchemaV1.PromptEntry(
+                id: "legacy-prompt",
+                title: "Legacy prompt",
+                original: "Original legacy prompt",
+                enhanced: "Enhanced legacy prompt",
+                createdAt: createdAt,
+                sourceIndex: 4
+            ))
+            legacyContext.insert(PromptLabSchemaV1.RunRecord(
+                id: "legacy-run",
+                createdAt: createdAt,
+                promptId: "legacy-prompt",
+                promptTitle: "Legacy prompt",
+                enhanceMode: "balanced",
+                provider: "anthropic",
+                model: ProviderDefaults.model,
+                input: "Original legacy prompt",
+                output: "Partial legacy output",
+                latencyMs: 42,
+                notes: "Historical failure",
+                status: "failed"
+            ))
+            try legacyContext.save()
+        }
+
+        let currentSchema = Schema(versionedSchema: PromptLabSchemaV2.self)
+        let currentConfiguration = ModelConfiguration(
+            "PromptLab",
+            schema: currentSchema,
+            url: storeURL,
+            allowsSave: true,
+            cloudKitDatabase: .none
+        )
+        let migratedContainer = try ModelContainer(
+            for: currentSchema,
+            migrationPlan: PromptLabMigrationPlan.self,
+            configurations: [currentConfiguration]
+        )
+        let migratedContext = ModelContext(migratedContainer)
+
+        let prompt = try XCTUnwrap(
+            migratedContext.fetch(
+                FetchDescriptor<PromptEntry>(predicate: #Predicate { $0.id == "legacy-prompt" })
+            ).first
+        )
+        XCTAssertEqual(prompt.title, "Legacy prompt")
+        XCTAssertEqual(prompt.enhanced, "Enhanced legacy prompt")
+        XCTAssertEqual(prompt.notes, "")
+        XCTAssertEqual(prompt.variants, [])
+        XCTAssertEqual(prompt.tags, [])
+        XCTAssertEqual(prompt.updatedAt, prompt.createdAt)
+
+        let run = try XCTUnwrap(
+            migratedContext.fetch(
+                FetchDescriptor<RunRecord>(predicate: #Predicate { $0.id == "legacy-run" })
+            ).first
+        )
+        XCTAssertEqual(run.output, "Partial legacy output")
+        XCTAssertEqual(run.canonicalStatus, "error")
+        XCTAssertNil(run.response)
+    }
+
+    @MainActor
     private func makeInMemoryContainer() throws -> ModelContainer {
         try ModelContainer(
             for: appSchema,
