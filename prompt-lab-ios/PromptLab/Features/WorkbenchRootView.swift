@@ -182,8 +182,7 @@ private struct SidebarView: View {
 
             Section("Library") {
                 if prompts.isEmpty {
-                    Label("No saved prompts", systemImage: "books.vertical")
-                        .foregroundStyle(Color.primary)
+                    SidebarEmptyRow("No saved prompts", systemImage: "books.vertical")
                 } else {
                     ForEach(prompts) { prompt in
                         Button {
@@ -211,8 +210,7 @@ private struct SidebarView: View {
 
             Section {
                 if pads.isEmpty {
-                    Label("No scratchpads", systemImage: "note.text")
-                        .foregroundStyle(Color.primary)
+                    SidebarEmptyRow("No scratchpads", systemImage: "note.text")
                 } else {
                     ForEach(pads) { pad in
                         Button {
@@ -248,8 +246,7 @@ private struct SidebarView: View {
 
             Section("Runs") {
                 if runs.isEmpty {
-                    Label("No runs yet", systemImage: "clock.arrow.circlepath")
-                        .foregroundStyle(Color.primary)
+                    SidebarEmptyRow("No runs yet", systemImage: "clock.arrow.circlepath")
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
@@ -394,6 +391,28 @@ private struct SidebarView: View {
             notice = LibraryNotice(message: error.localizedDescription)
         }
         self.importPreview = nil
+    }
+}
+
+private struct SidebarEmptyRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .accessibilityHidden(true)
+            Text(title)
+        }
+        .foregroundColor(colorScheme == .dark ? .white : .black)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
     }
 }
 
