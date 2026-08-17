@@ -673,11 +673,21 @@ private struct ResultsView: View {
                 }
                 .padding()
             } else {
-                ContentUnavailableView(
-                    "No result yet",
-                    systemImage: "sparkles",
-                    description: Text("Enhanced prompts will appear here.")
-                )
+                VStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.largeTitle)
+                        .foregroundStyle(.primary)
+                        .accessibilityHidden(true)
+                    Text("No result yet")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                    Text("Enhanced prompts will appear here.")
+                        .font(.body)
+                        .foregroundStyle(.primary)
+                }
+                .multilineTextAlignment(.center)
+                .padding()
+                .accessibilityElement(children: .combine)
             }
         }
         .navigationTitle("Results")
