@@ -544,6 +544,7 @@ private struct EditorView: View {
             Label(enhanceButtonTitle, systemImage: "sparkles")
         }
         .buttonStyle(.borderedProminent)
+        .tint(Color(red: 0, green: 0.37, blue: 0.72))
         .disabled(!store.canEnhance)
         .keyboardShortcut(.return, modifiers: .command)
         .frame(minHeight: 44)
