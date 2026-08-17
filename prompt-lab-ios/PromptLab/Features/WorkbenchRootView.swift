@@ -516,10 +516,12 @@ private struct EditorView: View {
                             description: Text("Write or paste a prompt here.")
                         )
                         .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                     }
                 }
                 .frame(minHeight: 260)
-                .accessibilityLabel("Prompt editor")
+                .accessibilityLabel(store.draft.isEmpty ? "Start a prompt" : "Prompt editor")
+                .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
                 .accessibilityIdentifier("promptEditor")
 
             statusMessage
