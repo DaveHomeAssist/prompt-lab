@@ -79,7 +79,15 @@ final class PromptLabUITests: XCTestCase {
         app.launch()
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
         try app.performAccessibilityAudit { issue in
-            print("Accessibility audit: \(issue.compactDescription) — \(issue.detailedDescription)")
+            let element = issue.element
+            print(
+                "Accessibility audit: \(issue.compactDescription) — \(issue.detailedDescription) " +
+                "| label=\(element?.label ?? "<none>") " +
+                "identifier=\(element?.identifier ?? "<none>") " +
+                "type=\(String(describing: element?.elementType)) " +
+                "frame=\(String(describing: element?.frame)) " +
+                "element=\(String(describing: element))"
+            )
             return false
         }
     }
