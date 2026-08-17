@@ -37,7 +37,7 @@ final class PromptLabTests: XCTestCase {
             PromptVariant(label: "Actions", content: "List owners and dated next steps for {{incident}}."),
         ]
         prompt.tags = ["Writing", "System"]
-        prompt.updatedAt = Date(timeIntervalSince1970: 1_722_500_000)
+        prompt.updatedAt = Date(timeIntervalSince1970: 1_786_000_000)
         prompt.isDirty = true
         try context.save()
 
