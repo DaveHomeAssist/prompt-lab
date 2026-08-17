@@ -427,10 +427,13 @@ private struct EditorView: View {
                     savePrompt()
                 } label: {
                     Label("Save", systemImage: "tray.and.arrow.down")
-                        .frame(minHeight: 44)
+                        .padding(.horizontal, 10)
+                        .frame(minWidth: 48, minHeight: 48)
+                        .contentShape(Rectangle())
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .keyboardShortcut("s", modifiers: .command)
                 .accessibilityIdentifier("savePromptButton")
 
@@ -543,11 +546,9 @@ private struct EditorView: View {
         } label: {
             Label(enhanceButtonTitle, systemImage: "sparkles")
         }
-        .buttonStyle(.borderedProminent)
-        .tint(Color(red: 0, green: 0.37, blue: 0.72))
+        .buttonStyle(HighContrastProminentButtonStyle())
         .disabled(!store.canEnhance)
         .keyboardShortcut(.return, modifiers: .command)
-        .frame(minHeight: 44)
         .accessibilityIdentifier("enhanceButton")
     }
 
@@ -570,6 +571,26 @@ private struct EditorView: View {
             saveFailed = true
             saveMessage = error.localizedDescription
         }
+    }
+}
+
+private struct HighContrastProminentButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 48)
+            .background(
+                isEnabled
+                    ? Color(red: 0, green: 0.32, blue: 0.64)
+                    : Color(red: 0.24, green: 0.24, blue: 0.26),
+                in: Capsule()
+            )
+            .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }
 
