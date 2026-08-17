@@ -78,17 +78,33 @@ final class PromptLabUITests: XCTestCase {
     func testPrimarySurfacePassesAccessibilityAudit() throws {
         app.launch()
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
-        try app.performAccessibilityAudit { issue in
-            let element = issue.element
-            print(
-                "Accessibility audit: \(issue.compactDescription) — \(issue.detailedDescription) " +
-                "| label=\(element?.label ?? "<none>") " +
-                "identifier=\(element?.identifier ?? "<none>") " +
-                "type=\(String(describing: element?.elementType)) " +
-                "frame=\(String(describing: element?.frame)) " +
-                "element=\(String(describing: element))"
-            )
-            return false
+        let auditTypes: [(name: String, type: XCUIAccessibilityAuditType)] = [
+            ("Contrast", .contrast),
+            ("Element Detection", .elementDetection),
+            ("Hit Region", .hitRegion),
+            ("Sufficient Element Description", .sufficientElementDescription),
+            ("Dynamic Type", .dynamicType),
+            ("Text Clipped", .textClipped),
+            ("Trait", .trait),
+        ]
+
+        // Running the complete audit as one all-types request can exceed XCTest's
+        // aggregate timeout on the three-column iPad surface. Serializing every
+        // public audit type preserves the same coverage and still fails on any issue.
+        for audit in auditTypes {
+            print("Starting accessibility audit: \(audit.name)")
+            try app.performAccessibilityAudit(for: audit.type) { issue in
+                let element = issue.element
+                print(
+                    "Accessibility audit [\(audit.name)]: \(issue.compactDescription) — " +
+                    "\(issue.detailedDescription) | label=\(element?.label ?? "<none>") " +
+                    "identifier=\(element?.identifier ?? "<none>") " +
+                    "type=\(String(describing: element?.elementType)) " +
+                    "frame=\(String(describing: element?.frame)) " +
+                    "element=\(String(describing: element))"
+                )
+                return false
+            }
         }
     }
 
