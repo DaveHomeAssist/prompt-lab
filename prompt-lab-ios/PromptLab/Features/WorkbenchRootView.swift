@@ -399,7 +399,6 @@ private struct SidebarView: View {
 }
 
 private struct SidebarSectionTitle: View {
-    @Environment(\.colorScheme) private var colorScheme
     let title: String
 
     init(_ title: String) {
@@ -409,7 +408,10 @@ private struct SidebarSectionTitle: View {
     var body: some View {
         Text(title)
             .font(.headline)
-            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(.black, in: RoundedRectangle(cornerRadius: 8))
             .accessibilityAddTraits(.isHeader)
     }
 }
