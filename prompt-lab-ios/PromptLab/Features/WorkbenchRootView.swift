@@ -251,7 +251,6 @@ private struct SidebarView: View {
                     Label("No runs yet", systemImage: "clock.arrow.circlepath")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                        .dynamicTypeSize(.xSmall ... .accessibility5)
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
