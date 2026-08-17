@@ -40,7 +40,7 @@ enum ProviderError: LocalizedError, Equatable {
 
 struct AnthropicProviderClient: ProviderClient {
     let providerID = "anthropic"
-    let modelID = "claude-sonnet-4-6"
+    let modelID = ProviderDefaults.model
     let requiresAPIKey = true
 
     private let endpoint: String
@@ -72,8 +72,8 @@ struct AnthropicProviderClient: ProviderClient {
                     urlRequest.httpBody = try JSONEncoder().encode(
                         AnthropicRequestBody(
                             model: modelID,
-                            maxTokens: 4_096,
-                            temperature: 0.4,
+                            maxTokens: ProviderDefaults.maxTokens,
+                            temperature: ProviderDefaults.temperature,
                             system: SystemPromptBuilder.build(mode: request.mode, tags: request.tags),
                             messages: [.init(role: "user", content: request.prompt)],
                             stream: true

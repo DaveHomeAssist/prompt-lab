@@ -16,6 +16,8 @@ enum EnhanceState: Equatable {
 final class WorkbenchStore {
     var columnVisibility: NavigationSplitViewVisibility = .all
     var draft = ""
+    var currentPromptID: String?
+    var currentPromptTitle = "Untitled Prompt"
     var selectedMode: EnhanceMode = .balanced
     private(set) var state: EnhanceState = .idle
     private(set) var streamedText = ""
@@ -40,6 +42,108 @@ final class WorkbenchStore {
 
     var canEnhance: Bool {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isEnhancing
+    }
+
+    func startNewPrompt() {
+        enhanceTask?.cancel()
+        draft = ""
+        currentPromptID = nil
+        currentPromptTitle = "Untitled Prompt"
+        streamedText = ""
+        result = nil
+        state = .idle
+    }
+
+    func loadPrompt(_ prompt: PromptEntry) {
+        enhanceTask?.cancel()
+        currentPromptID = prompt.id
+        currentPromptTitle = prompt.title
+        draft = prompt.enhanced.isEmpty ? prompt.original : prompt.enhanced
+        streamedText = ""
+        result = nil
+        state = .idle
+    }
+
+    func loadRun(_ run: RunRecord) {
+        enhanceTask?.cancel()
+        currentPromptID = run.promptId
+        currentPromptTitle = run.promptTitle
+        draft = run.input
+        selectedMode = EnhanceMode(rawValue: run.enhanceMode) ?? .balanced
+        streamedText = ""
+        result = run.response
+        // Reusing a historical input is an editor action, not a fresh completion.
+        // Keeping the response available preserves its metadata without causing
+        // the root completion observer to route straight back to Results.
+        state = .idle
+    }
+
+    @discardableResult
+    func saveCurrentPrompt(modelContext: ModelContext) throws -> PromptEntry {
+        let content = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { throw WorkbenchStoreError.emptyPrompt }
+
+        if let currentPromptID,
+           let existing = try modelContext.fetch(
+               FetchDescriptor<PromptEntry>(predicate: #Predicate { $0.id == currentPromptID })
+           ).first {
+            existing.enhanced = content
+            if existing.original.isEmpty { existing.original = content }
+            if let result {
+                existing.notes = result.notes
+                existing.variants = result.variants
+                existing.tags = result.tags
+            }
+            existing.updatedAt = .now
+            existing.isDirty = true
+            try modelContext.save()
+            currentPromptTitle = existing.title
+            return existing
+        }
+
+        let sourceIndex = (try modelContext.fetch(FetchDescriptor<PromptEntry>()).map(\.sourceIndex).max() ?? -1) + 1
+        let entry = PromptEntry(
+            title: PromptTitleSuggester.suggest(from: content),
+            original: content,
+            enhanced: content,
+            notes: result?.notes ?? "",
+            variants: result?.variants ?? [],
+            tags: result?.tags ?? [],
+            sourceIndex: sourceIndex,
+            isDirty: true
+        )
+        modelContext.insert(entry)
+        try modelContext.save()
+        currentPromptID = entry.id
+        currentPromptTitle = entry.title
+        return entry
+    }
+
+    @discardableResult
+    func saveResult(_ text: String, modelContext: ModelContext) throws -> PromptEntry {
+        let content = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !content.isEmpty else { throw WorkbenchStoreError.emptyPrompt }
+        let sourceIndex = (try modelContext.fetch(FetchDescriptor<PromptEntry>()).map(\.sourceIndex).max() ?? -1) + 1
+        let entry = PromptEntry(
+            title: PromptTitleSuggester.suggest(from: content),
+            original: draft,
+            enhanced: content,
+            notes: result?.notes ?? "",
+            variants: result?.variants ?? [],
+            tags: result?.tags ?? [],
+            sourceIndex: sourceIndex,
+            isDirty: true
+        )
+        modelContext.insert(entry)
+        try modelContext.save()
+        return entry
+    }
+
+    func useResult(_ text: String) {
+        draft = text
+        currentPromptID = nil
+        currentPromptTitle = PromptTitleSuggester.suggest(from: text)
+        state = .idle
     }
 
     func startEnhance(modelContext: ModelContext) {
@@ -92,14 +196,16 @@ final class WorkbenchStore {
             try Task.checkCancellation()
             let latency = max(0, Int(Date().timeIntervalSince(startedAt) * 1_000))
             let run = RunRecord(
-                promptTitle: String(input.prefix(60)),
+                promptId: currentPromptID,
+                promptTitle: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
                 enhanceMode: selectedMode.rawValue,
                 provider: provider.providerID,
                 model: provider.modelID,
                 input: input,
                 output: parsed.enhanced,
                 latencyMs: latency,
-                notes: parsed.notes
+                notes: parsed.notes,
+                response: parsed
             )
             modelContext.insert(run)
             do {
@@ -128,7 +234,7 @@ final class WorkbenchStore {
                 input: input,
                 output: streamedText,
                 startedAt: startedAt,
-                status: "failed",
+                status: "error",
                 notes: error.localizedDescription
             )
             result = nil
@@ -148,7 +254,8 @@ final class WorkbenchStore {
         notes: String
     ) {
         let run = RunRecord(
-            promptTitle: String(input.prefix(60)),
+            promptId: currentPromptID,
+            promptTitle: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
             enhanceMode: selectedMode.rawValue,
             provider: provider.providerID,
             model: provider.modelID,
@@ -164,5 +271,13 @@ final class WorkbenchStore {
         } catch {
             modelContext.delete(run)
         }
+    }
+}
+
+enum WorkbenchStoreError: LocalizedError {
+    case emptyPrompt
+
+    var errorDescription: String? {
+        "Write a prompt before saving."
     }
 }

@@ -19,6 +19,8 @@
 		AB000000000000000000000B /* LibraryMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000D /* LibraryMetadata.swift */; };
 		AB000000000000000000000C /* LibraryInterchange.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000E /* LibraryInterchange.swift */; };
 		AB000000000000000000000D /* web-library-export-1.7.0.json in Resources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000F /* web-library-export-1.7.0.json */; };
+		AB000000000000000000000E /* promptlab-enhance-contract-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */; };
+		AB000000000000000000000F /* PromptLabUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000011 /* PromptLabUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -47,11 +49,15 @@
 		AC000000000000000000000D /* LibraryMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryMetadata.swift; sourceTree = "<group>"; };
 		AC000000000000000000000E /* LibraryInterchange.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryInterchange.swift; sourceTree = "<group>"; };
 		AC000000000000000000000F /* web-library-export-1.7.0.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Fixtures/web-library-export-1.7.0.json"; sourceTree = "<group>"; };
+		AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "promptlab-enhance-contract-v1.json"; path = "../contracts/promptlab-enhance-contract-v1.json"; sourceTree = SOURCE_ROOT; };
+		AC0000000000000000000011 /* PromptLabUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabUITests.swift; sourceTree = "<group>"; };
+		AC0000000000000000000012 /* PromptLabUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromptLabUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		AE0000000000000000000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		AE0000000000000000000002 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		AE0000000000000000000003 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -60,6 +66,7 @@
 			children = (
 				AF0000000000000000000001 /* PromptLab */,
 				AF0000000000000000000002 /* PromptLabTests */,
+				AF0000000000000000000006 /* PromptLabUITests */,
 				AF0000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -81,13 +88,13 @@
 		};
 		AF0000000000000000000002 /* PromptLabTests */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */,);
+			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */, AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */,);
 			path = PromptLabTests;
 			sourceTree = "<group>";
 		};
 		AF0000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000008 /* PromptLab.app */, AC0000000000000000000009 /* PromptLabTests.xctest */,);
+			children = (AC0000000000000000000008 /* PromptLab.app */, AC0000000000000000000009 /* PromptLabTests.xctest */, AC0000000000000000000012 /* PromptLabUITests.xctest */,);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -101,6 +108,12 @@
 			isa = PBXGroup;
 			children = (AC0000000000000000000006 /* WorkbenchRootView.swift */,);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		AF0000000000000000000006 /* PromptLabUITests */ = {
+			isa = PBXGroup;
+			children = (AC0000000000000000000011 /* PromptLabUITests.swift */,);
+			path = PromptLabUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -128,6 +141,17 @@
 			productReference = AC0000000000000000000009 /* PromptLabTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		AA0000000000000000000003 /* PromptLabUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BA0000000000000000000003;
+			buildPhases = (BC0000000000000000000003, AE0000000000000000000003, BD0000000000000000000003,);
+			buildRules = ();
+			dependencies = (BE0000000000000000000002,);
+			name = PromptLabUITests;
+			productName = PromptLabUITests;
+			productReference = AC0000000000000000000012 /* PromptLabUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -140,6 +164,7 @@
 				TargetAttributes = {
 					AA0000000000000000000001 = {CreatedOnToolsVersion = 26.5; };
 					AA0000000000000000000002 = {CreatedOnToolsVersion = 26.5; TestTargetID = AA0000000000000000000001; };
+					AA0000000000000000000003 = {CreatedOnToolsVersion = 26.5; TestTargetID = AA0000000000000000000001; };
 				};
 			};
 			buildConfigurationList = BA0000000000000000000000;
@@ -151,13 +176,14 @@
 			productRefGroup = AF0000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (AA0000000000000000000001 /* PromptLab */, AA0000000000000000000002 /* PromptLabTests */,);
+			targets = (AA0000000000000000000001 /* PromptLab */, AA0000000000000000000002 /* PromptLabTests */, AA0000000000000000000003 /* PromptLabUITests */,);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		BD0000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D,); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D, AB000000000000000000000E,); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -173,10 +199,17 @@
 			files = (AB0000000000000000000007,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BC0000000000000000000003 = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (AB000000000000000000000F,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
 		BE0000000000000000000001 = {isa = PBXTargetDependency; target = AA0000000000000000000001 /* PromptLab */; targetProxy = AD0000000000000000000001; };
+		BE0000000000000000000002 = {isa = PBXTargetDependency; target = AA0000000000000000000001 /* PromptLab */; targetProxy = AD0000000000000000000001; };
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -252,12 +285,37 @@
 			TARGETED_DEVICE_FAMILY = "1,2";
 			TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PromptLab.app/PromptLab";
 		}; name = Release; };
+		BF0000000000000000000031 = {isa = XCBuildConfiguration; buildSettings = {
+			CODE_SIGN_STYLE = Automatic;
+			GENERATE_INFOPLIST_FILE = YES;
+			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.uitests;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			SDKROOT = iphoneos;
+			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+			SWIFT_VERSION = 5.0;
+			TARGETED_DEVICE_FAMILY = "1,2";
+			TEST_TARGET_NAME = PromptLab;
+		}; name = Debug; };
+		BF0000000000000000000032 = {isa = XCBuildConfiguration; buildSettings = {
+			CODE_SIGN_STYLE = Automatic;
+			GENERATE_INFOPLIST_FILE = YES;
+			IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+			PRODUCT_BUNDLE_IDENTIFIER = com.davehomeassist.promptlab.prototype.uitests;
+			PRODUCT_NAME = "$(TARGET_NAME)";
+			SDKROOT = iphoneos;
+			SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+			SWIFT_VERSION = 5.0;
+			TARGETED_DEVICE_FAMILY = "1,2";
+			TEST_TARGET_NAME = PromptLab;
+		}; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 		BA0000000000000000000000 = {isa = XCConfigurationList; buildConfigurations = (BF0000000000000000000001, BF0000000000000000000002,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		BA0000000000000000000001 = {isa = XCConfigurationList; buildConfigurations = (BF0000000000000000000011, BF0000000000000000000012,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		BA0000000000000000000002 = {isa = XCConfigurationList; buildConfigurations = (BF0000000000000000000021, BF0000000000000000000022,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		BA0000000000000000000003 = {isa = XCConfigurationList; buildConfigurations = (BF0000000000000000000031, BF0000000000000000000032,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = AA0000000000000000000000 /* Project object */;

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "provider": {
+    "defaultModel": "claude-sonnet-4-6",
+    "maxTokens": 4096,
+    "temperature": 0.4
+  },
+  "enhance": {
+    "modes": [
+      "balanced",
+      "claude",
+      "chatgpt",
+      "image",
+      "code",
+      "concise",
+      "detailed"
+    ],
+    "tags": [
+      "Writing",
+      "Code",
+      "Research",
+      "Analysis",
+      "Creative",
+      "System",
+      "Role-play",
+      "Other"
+    ],
+    "responseFields": [
+      "enhanced",
+      "variants",
+      "notes",
+      "assumptions",
+      "tags"
+    ],
+    "statuses": [
+      "success",
+      "error",
+      "blocked",
+      "canceled"
+    ]
+  },
+  "titleCases": [
+    {
+      "input": "# Incident Response Brief\nSummarize the outage.",
+      "expected": "Incident Response Brief"
+    },
+    {
+      "input": "You are a helpful pirate who explains networking.",
+      "expected": "Helpful pirate who explains networking"
+    },
+    {
+      "input": "Please, describe DMX lighting to a new stagehand.",
+      "expected": "Describe DMX lighting to a new stagehand"
+    },
+    {
+      "input": "",
+      "expected": "Untitled Prompt"
+    }
+  ]
+}

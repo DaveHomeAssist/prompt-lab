@@ -29,6 +29,11 @@ struct LibraryImportSummary: Equatable {
     let collectionCount: Int
 }
 
+struct LibraryImportPreview: Equatable {
+    let data: Data
+    let summary: LibraryImportSummary
+}
+
 enum LibraryInterchangeError: LocalizedError, Equatable {
     case unreadableDocument
     case invalidRoot
@@ -57,7 +62,45 @@ enum LibraryInterchangeError: LocalizedError, Equatable {
 
 @MainActor
 enum LibraryInterchange {
+    static func previewData(_ data: Data) throws -> LibraryImportPreview {
+        let decoded = try decode(data)
+        return LibraryImportPreview(
+            data: data,
+            summary: LibraryImportSummary(
+                promptCount: decoded.entries.count,
+                collectionCount: decoded.collectionCount
+            )
+        )
+    }
+
+    static func importPreview(
+        _ preview: LibraryImportPreview,
+        into modelContext: ModelContext
+    ) throws -> LibraryImportSummary {
+        try importData(preview.data, into: modelContext)
+    }
+
     static func importData(_ data: Data, into modelContext: ModelContext) throws -> LibraryImportSummary {
+        let decoded = try decode(data)
+
+        do {
+            try modelContext.fetch(FetchDescriptor<PromptEntry>()).forEach(modelContext.delete)
+            try modelContext.fetch(FetchDescriptor<LibraryMetadata>()).forEach(modelContext.delete)
+            decoded.entries.forEach(modelContext.insert)
+            modelContext.insert(LibraryMetadata(rawDocument: data))
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
+
+        return LibraryImportSummary(
+            promptCount: decoded.entries.count,
+            collectionCount: decoded.collectionCount
+        )
+    }
+
+    private static func decode(_ data: Data) throws -> (entries: [PromptEntry], collectionCount: Int) {
         let root: Any
         do {
             root = try JSONSerialization.jsonObject(with: data)
@@ -66,16 +109,16 @@ enum LibraryInterchange {
         }
 
         let rawEntries: [Any]
-        let collections: [String]
+        let collectionCount: Int
         if let envelope = root as? [String: Any] {
             guard let library = envelope["library"] as? [Any] else {
                 throw LibraryInterchangeError.missingLibrary
             }
             rawEntries = library
-            collections = (envelope["collections"] as? [Any] ?? []).compactMap { $0 as? String }
+            collectionCount = (envelope["collections"] as? [Any] ?? []).count
         } else if let library = root as? [Any] {
             rawEntries = library
-            collections = []
+            collectionCount = 0
         } else {
             throw LibraryInterchangeError.invalidRoot
         }
@@ -97,31 +140,24 @@ enum LibraryInterchange {
                 throw LibraryInterchangeError.duplicateID(id)
             }
             let title = string(object["title"]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let createdAt = parseDate(string(object["createdAt"])) ?? .now
             let rawJSON = try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
             return PromptEntry(
                 id: id,
                 title: title.isEmpty ? "Untitled Prompt" : title,
                 original: original,
                 enhanced: enhanced,
-                createdAt: parseDate(string(object["createdAt"])) ?? .now,
+                notes: string(object["notes"]).isEmpty ? string(object["description"]) : string(object["notes"]),
+                variants: variants(object["variants"]),
+                tags: strings(object["tags"]),
+                createdAt: createdAt,
+                updatedAt: parseDate(string(object["updatedAt"])) ?? createdAt,
                 rawJSON: rawJSON,
                 sourceIndex: index,
                 isDirty: false
             )
         }
-
-        do {
-            try modelContext.fetch(FetchDescriptor<PromptEntry>()).forEach(modelContext.delete)
-            try modelContext.fetch(FetchDescriptor<LibraryMetadata>()).forEach(modelContext.delete)
-            prepared.forEach(modelContext.insert)
-            modelContext.insert(LibraryMetadata(rawDocument: data))
-            try modelContext.save()
-        } catch {
-            modelContext.rollback()
-            throw error
-        }
-
-        return LibraryImportSummary(promptCount: prepared.count, collectionCount: collections.count)
+        return (prepared, collectionCount)
     }
 
     static func exportData(from modelContext: ModelContext) throws -> Data {
@@ -184,11 +220,30 @@ enum LibraryInterchange {
         object["title"] = entry.title
         object["original"] = entry.original
         object["enhanced"] = entry.enhanced
+        object["notes"] = entry.notes
+        object["variants"] = entry.variants.map { ["label": $0.label, "content": $0.content] }
+        object["tags"] = entry.tags
+        object["createdAt"] = ISO8601DateFormatter().string(from: entry.createdAt)
+        object["updatedAt"] = ISO8601DateFormatter().string(from: entry.updatedAt)
         return object
     }
 
     private static func string(_ value: Any?) -> String {
         value as? String ?? ""
+    }
+
+    private static func strings(_ value: Any?) -> [String] {
+        (value as? [Any] ?? []).compactMap { $0 as? String }
+    }
+
+    private static func variants(_ value: Any?) -> [PromptVariant] {
+        (value as? [Any] ?? []).compactMap { item in
+            guard let object = item as? [String: Any] else { return nil }
+            let label = string(object["label"]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let content = string(object["content"])
+            guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return PromptVariant(label: label.isEmpty ? "Variant" : label, content: content)
+        }
     }
 
     private static func parseDate(_ value: String) -> Date? {

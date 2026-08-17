@@ -19,6 +19,7 @@ final class RunRecord {
     var verdict: String?
     var notes: String = ""
     var status: String = "success"
+    var responseJSON: Data?
     var testCaseId: String?
     var goldenScore: Double?
 
@@ -39,6 +40,7 @@ final class RunRecord {
         verdict: String? = nil,
         notes: String,
         status: String = "success",
+        response: EnhanceResponse? = nil,
         testCaseId: String? = nil,
         goldenScore: Double? = nil
     ) {
@@ -58,7 +60,26 @@ final class RunRecord {
         self.verdict = verdict
         self.notes = notes
         self.status = status
+        responseJSON = response.flatMap { try? JSONEncoder().encode($0) }
         self.testCaseId = testCaseId
         self.goldenScore = goldenScore
+    }
+}
+
+extension RunRecord {
+    var response: EnhanceResponse? {
+        get {
+            guard let responseJSON else { return nil }
+            return try? JSONDecoder().decode(EnhanceResponse.self, from: responseJSON)
+        }
+        set {
+            responseJSON = newValue.flatMap { try? JSONEncoder().encode($0) }
+        }
+    }
+
+    /// `failed` shipped in the first prototype. Keep those records readable,
+    /// but expose the web contract's canonical `error` status everywhere new.
+    var canonicalStatus: String {
+        status == "failed" ? "error" : status
     }
 }

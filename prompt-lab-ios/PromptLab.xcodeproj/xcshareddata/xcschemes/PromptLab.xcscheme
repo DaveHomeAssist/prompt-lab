@@ -21,6 +21,20 @@
                ReferencedContainer = "container:PromptLab.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AA0000000000000000000003"
+               BuildableName = "PromptLabUITests.xctest"
+               BlueprintName = "PromptLabUITests"
+               ReferencedContainer = "container:PromptLab.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -36,6 +50,15 @@
                BlueprintIdentifier = "AA0000000000000000000002"
                BuildableName = "PromptLabTests.xctest"
                BlueprintName = "PromptLabTests"
+               ReferencedContainer = "container:PromptLab.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference skipped = "NO" parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "AA0000000000000000000003"
+               BuildableName = "PromptLabUITests.xctest"
+               BlueprintName = "PromptLabUITests"
                ReferencedContainer = "container:PromptLab.xcodeproj">
             </BuildableReference>
          </TestableReference>

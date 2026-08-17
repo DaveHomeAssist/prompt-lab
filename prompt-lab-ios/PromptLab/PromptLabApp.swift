@@ -3,11 +3,34 @@ import SwiftUI
 
 @main
 struct PromptLabApp: App {
+    private let modelContainer: ModelContainer
+
+    init() {
+        let schema = Schema([PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
+        let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
+        if !isUITesting,
+           let applicationSupport = FileManager.default.urls(
+               for: .applicationSupportDirectory,
+               in: .userDomainMask
+           ).first {
+            try? FileManager.default.createDirectory(
+                at: applicationSupport,
+                withIntermediateDirectories: true
+            )
+        }
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isUITesting)
+        do {
+            modelContainer = try ModelContainer(for: schema, configurations: [configuration])
+        } catch {
+            fatalError("Unable to initialize Prompt Lab storage: \(error.localizedDescription)")
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             rootView
         }
-        .modelContainer(for: [PromptEntry.self, Pad.self, RunRecord.self, LibraryMetadata.self])
+        .modelContainer(modelContainer)
     }
 
     @MainActor @ViewBuilder
