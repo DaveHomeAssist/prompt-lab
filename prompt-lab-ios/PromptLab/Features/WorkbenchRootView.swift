@@ -249,7 +249,9 @@ private struct SidebarView: View {
             Section("Runs") {
                 if runs.isEmpty {
                     Text("No runs yet")
+                        .font(.body)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
