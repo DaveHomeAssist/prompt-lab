@@ -595,7 +595,6 @@ private struct ResultsView: View {
                             onCopy: { copy(result.enhanced) },
                             onSave: { save(result.enhanced) }
                         )
-                        .accessibilityIdentifier("enhancedResultCard")
                         ForEach(result.variants, id: \.self) { variant in
                             ResultCard(
                                 title: variant.label,

@@ -27,7 +27,7 @@ permissions:
 jobs:
   native-build-and-test:
     name: Native build and test (${{ matrix.device_family }})
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 25
     strategy:
       fail-fast: false

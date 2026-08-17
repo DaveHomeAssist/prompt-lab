@@ -86,7 +86,7 @@ prompt-lab-ios/
   README.md
 ```
 
-CI: a `macos-14` GitHub Actions matrix builds and runs unit plus UI smoke suites on
+CI: a `macos-15` GitHub Actions matrix builds and runs unit plus UI smoke suites on
 both iPhone and iPad simulator families. Native and extension jobs both watch the
 shared contract fixture and their canonical Swift/JavaScript inputs.
 
