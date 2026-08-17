@@ -249,7 +249,6 @@ private struct SidebarView: View {
             Section("Runs") {
                 if runs.isEmpty {
                     Label("No runs yet", systemImage: "clock.arrow.circlepath")
-                        .font(.body)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(runs.prefix(8)) { run in
