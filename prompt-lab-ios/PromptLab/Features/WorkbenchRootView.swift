@@ -12,6 +12,7 @@ private enum WorkbenchRoute: Hashable {
     case run(String)
 }
 
+@MainActor
 struct WorkbenchRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
@@ -145,6 +146,7 @@ struct WorkbenchRootView: View {
     }
 }
 
+@MainActor
 private struct SidebarView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PromptEntry.sourceIndex) private var prompts: [PromptEntry]
@@ -399,6 +401,7 @@ private struct LibraryNotice: Identifiable {
     let message: String
 }
 
+@MainActor
 private struct EditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
@@ -569,6 +572,7 @@ private struct EditorView: View {
     }
 }
 
+@MainActor
 private struct ResultsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
