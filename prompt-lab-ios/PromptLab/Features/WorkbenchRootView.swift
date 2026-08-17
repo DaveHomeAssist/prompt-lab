@@ -417,7 +417,6 @@ private struct SidebarSectionTitle: View {
 }
 
 private struct SidebarEmptyRow: View {
-    @Environment(\.colorScheme) private var colorScheme
     let title: String
     let systemImage: String
 
@@ -432,7 +431,10 @@ private struct SidebarEmptyRow: View {
                 .accessibilityHidden(true)
             Text(title)
         }
-        .foregroundColor(colorScheme == .dark ? .white : .black)
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 8))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
     }
@@ -638,7 +640,6 @@ private struct HighContrastProminentButtonStyle: ButtonStyle {
 
 @MainActor
 private struct ResultsView: View {
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
     let onUse: (String) -> Void
@@ -724,8 +725,10 @@ private struct ResultsView: View {
                     Text("Enhanced prompts will appear here.")
                         .font(.body)
                 }
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
+                .padding(24)
+                .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 16))
                 .padding()
                 .accessibilityElement(children: .combine)
             }
