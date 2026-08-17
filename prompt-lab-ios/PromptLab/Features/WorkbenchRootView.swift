@@ -183,7 +183,7 @@ private struct SidebarView: View {
             Section("Library") {
                 if prompts.isEmpty {
                     Label("No saved prompts", systemImage: "books.vertical")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 } else {
                     ForEach(prompts) { prompt in
                         Button {
@@ -212,7 +212,7 @@ private struct SidebarView: View {
             Section {
                 if pads.isEmpty {
                     Label("No scratchpads", systemImage: "note.text")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 } else {
                     ForEach(pads) { pad in
                         Button {
@@ -249,7 +249,7 @@ private struct SidebarView: View {
             Section("Runs") {
                 if runs.isEmpty {
                     Label("No runs yet", systemImage: "clock.arrow.circlepath")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
