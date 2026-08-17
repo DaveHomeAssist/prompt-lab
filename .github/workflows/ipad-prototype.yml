@@ -66,6 +66,7 @@ jobs:
           -project prompt-lab-ios/PromptLab.xcodeproj
           -scheme PromptLab
           -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
+          -parallel-testing-enabled NO
           -only-testing:PromptLabTests
 
       - name: Test native UI smoke
