@@ -180,7 +180,9 @@ private struct SidebarView: View {
                 .accessibilityIdentifier("newPromptButton")
             }
 
-            Section("Library") {
+            Section {
+                SidebarSectionTitle("Library")
+
                 if prompts.isEmpty {
                     SidebarEmptyRow("No saved prompts", systemImage: "books.vertical")
                 } else {
@@ -209,6 +211,22 @@ private struct SidebarView: View {
             }
 
             Section {
+                HStack {
+                    SidebarSectionTitle("Pads")
+                    Spacer()
+                    Button {
+                        let pad = Pad(title: "New Pad")
+                        modelContext.insert(pad)
+                        try? modelContext.save()
+                        onOpen(.pad(pad.id))
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel("New scratchpad")
+                    .accessibilityIdentifier("newPadButton")
+                }
+
                 if pads.isEmpty {
                     SidebarEmptyRow("No scratchpads", systemImage: "note.text")
                 } else {
@@ -226,25 +244,11 @@ private struct SidebarView: View {
                         }
                     }
                 }
-            } header: {
-                HStack {
-                    Text("Pads")
-                    Spacer()
-                    Button {
-                        let pad = Pad(title: "New Pad")
-                        modelContext.insert(pad)
-                        try? modelContext.save()
-                        onOpen(.pad(pad.id))
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("New scratchpad")
-                    .accessibilityIdentifier("newPadButton")
-                }
             }
 
-            Section("Runs") {
+            Section {
+                SidebarSectionTitle("Runs")
+
                 if runs.isEmpty {
                     SidebarEmptyRow("No runs yet", systemImage: "clock.arrow.circlepath")
                 } else {
@@ -391,6 +395,22 @@ private struct SidebarView: View {
             notice = LibraryNotice(message: error.localizedDescription)
         }
         self.importPreview = nil
+    }
+}
+
+private struct SidebarSectionTitle: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundColor(colorScheme == .dark ? .white : .black)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
