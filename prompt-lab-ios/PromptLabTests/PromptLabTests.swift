@@ -29,6 +29,33 @@ final class PromptLabTests: XCTestCase {
         let metadata = try XCTUnwrap(library.first?["metadata"] as? [String: Any])
         XCTAssertEqual(metadata["customField"] as? String, "preserve-me")
         XCTAssertEqual(root["collections"] as? [String], ["Operations", "Empty Collection"])
+
+        prompt.enhanced = "Summarize {{incident}} for leadership with owners and follow-up dates."
+        prompt.notes = "Revised for accountable follow-up."
+        prompt.variants = [
+            PromptVariant(label: "Brief", content: "Summarize {{incident}} in three bullets."),
+            PromptVariant(label: "Actions", content: "List owners and dated next steps for {{incident}}."),
+        ]
+        prompt.tags = ["Writing", "System"]
+        prompt.updatedAt = Date(timeIntervalSince1970: 1_722_500_000)
+        prompt.isDirty = true
+        try context.save()
+
+        let editedExport = try LibraryInterchange.exportData(from: context)
+        XCTAssertNotEqual(editedExport, fixture)
+        let editedRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: editedExport) as? [String: Any])
+        let editedLibrary = try XCTUnwrap(editedRoot["library"] as? [[String: Any]])
+        let editedPrompt = try XCTUnwrap(editedLibrary.first)
+        let editedVariants = try XCTUnwrap(editedPrompt["variants"] as? [[String: Any]])
+        let editedMetadata = try XCTUnwrap(editedPrompt["metadata"] as? [String: Any])
+
+        XCTAssertEqual(editedPrompt["enhanced"] as? String, prompt.enhanced)
+        XCTAssertEqual(editedPrompt["notes"] as? String, prompt.notes)
+        XCTAssertEqual(editedPrompt["tags"] as? [String], prompt.tags)
+        XCTAssertEqual(editedVariants.compactMap { $0["label"] as? String }, ["Brief", "Actions"])
+        XCTAssertEqual(editedRoot["collections"] as? [String], ["Operations", "Empty Collection"])
+        XCTAssertEqual(editedMetadata["customField"] as? String, "preserve-me")
+        XCTAssertEqual(editedPrompt["useCount"] as? Int, 3)
     }
 
     func testEnhanceParserRejectsMalformedOutput() {
@@ -150,9 +177,15 @@ final class PromptLabTests: XCTestCase {
             await store.enhance(modelContext: context)
 
             XCTAssertEqual(store.state, .completed)
-            XCTAssertEqual(store.result?.variants.count, 2)
-            XCTAssertFalse(store.result?.notes.isEmpty ?? true)
+            let response = try XCTUnwrap(store.result)
+            XCTAssertEqual(response.variants.count, 2)
+            XCTAssertFalse(response.notes.isEmpty)
             XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 1)
+
+            let savedPrompt = try store.saveResult(response.enhanced, modelContext: context)
+            XCTAssertEqual(savedPrompt.notes, response.notes)
+            XCTAssertEqual(savedPrompt.variants, response.variants)
+            XCTAssertEqual(savedPrompt.tags, response.tags)
         }
 
         let reopenedContainer = try ModelContainer(for: schema, configurations: [configuration])
@@ -162,8 +195,21 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(records.first?.status, "success")
         XCTAssertEqual(records.first?.enhanceMode, "balanced")
         XCTAssertFalse(records.first?.output.isEmpty ?? true)
+        XCTAssertEqual(records.first?.response?.enhanced, records.first?.output)
         XCTAssertEqual(records.first?.response?.variants.count, 2)
+        XCTAssertFalse(records.first?.response?.notes.isEmpty ?? true)
+        XCTAssertEqual(
+            records.first?.response?.assumptions,
+            ["The desired output is a product recommendation rather than implementation code."]
+        )
         XCTAssertEqual(records.first?.response?.tags, ["Analysis", "Creative"])
+
+        let prompts = try reopenedContext.fetch(FetchDescriptor<PromptEntry>())
+        XCTAssertEqual(prompts.count, 1)
+        XCTAssertEqual(prompts.first?.enhanced, records.first?.response?.enhanced)
+        XCTAssertEqual(prompts.first?.notes, records.first?.response?.notes)
+        XCTAssertEqual(prompts.first?.variants, records.first?.response?.variants)
+        XCTAssertEqual(prompts.first?.tags, records.first?.response?.tags)
     }
 
     func testKeychainStoreRetrieveUpdateDelete() throws {
