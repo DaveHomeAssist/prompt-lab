@@ -638,6 +638,7 @@ private struct HighContrastProminentButtonStyle: ButtonStyle {
 
 @MainActor
 private struct ResultsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
     let onUse: (String) -> Void
@@ -717,15 +718,13 @@ private struct ResultsView: View {
                 VStack(spacing: 12) {
                     Image(systemName: "sparkles")
                         .font(.largeTitle)
-                        .foregroundStyle(.primary)
                         .accessibilityHidden(true)
                     Text("No result yet")
                         .font(.headline)
-                        .foregroundStyle(.primary)
                     Text("Enhanced prompts will appear here.")
                         .font(.body)
-                        .foregroundStyle(.primary)
                 }
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .multilineTextAlignment(.center)
                 .padding()
                 .accessibilityElement(children: .combine)
