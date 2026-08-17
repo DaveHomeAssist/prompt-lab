@@ -491,9 +491,10 @@ private struct EditorView: View {
             if let showWorkspace {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: showWorkspace) {
-                        Label("Workspace", systemImage: "sidebar.left")
+                        Image(systemName: "sidebar.left")
                     }
                     .tint(.primary)
+                    .accessibilityLabel("Workspace")
                     .accessibilityIdentifier("workspaceButton")
                 }
             }
