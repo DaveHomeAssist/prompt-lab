@@ -411,6 +411,17 @@ private struct EditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            if let showWorkspace {
+                Button(action: showWorkspace) {
+                    Label("Workspace", systemImage: "sidebar.left")
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.primary)
+                .accessibilityIdentifier("workspaceButton")
+            }
+
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Editor")
@@ -487,18 +498,6 @@ private struct EditorView: View {
         }
         .padding()
         .navigationTitle("Editor")
-        .toolbar {
-            if let showWorkspace {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: showWorkspace) {
-                        Image(systemName: "sidebar.left")
-                    }
-                    .tint(.primary)
-                    .accessibilityLabel("Workspace")
-                    .accessibilityIdentifier("workspaceButton")
-                }
-            }
-        }
     }
 
     @ViewBuilder
