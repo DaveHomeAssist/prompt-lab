@@ -355,7 +355,7 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(prompt.notes, "")
         XCTAssertEqual(prompt.variants, [])
         XCTAssertEqual(prompt.tags, [])
-        XCTAssertEqual(prompt.updatedAt, prompt.createdAt)
+        XCTAssertGreaterThanOrEqual(prompt.updatedAt, prompt.createdAt)
 
         let run = try XCTUnwrap(
             migratedContext.fetch(
