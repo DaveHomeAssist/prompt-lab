@@ -12,14 +12,6 @@ private enum WorkbenchRoute: Hashable {
     case run(String)
 }
 
-private func hasAuditLaunchArgument(_ argument: String) -> Bool {
-    #if DEBUG
-    return ProcessInfo.processInfo.arguments.contains(argument)
-    #else
-    return false
-    #endif
-}
-
 @MainActor
 struct WorkbenchRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -27,6 +19,7 @@ struct WorkbenchRootView: View {
     @State private var store: WorkbenchStore
     @State private var compactPath: [WorkbenchRoute] = []
     @State private var regularRoute: WorkbenchRoute = .editor
+    @State private var isCompactLayout = true
     private let runRecordedDemo: Bool
 
     @MainActor
@@ -39,11 +32,18 @@ struct WorkbenchRootView: View {
     }
 
     var body: some View {
-        Group {
-            if usesCompactLayout {
-                compactWorkbench
-            } else {
-                regularWorkbench
+        GeometryReader { geometry in
+            let compact = shouldUseCompactLayout(width: geometry.size.width)
+            Group {
+                if compact {
+                    compactWorkbench
+                } else {
+                    regularWorkbench
+                }
+            }
+            .onAppear { updateLayout(compact: compact) }
+            .onChange(of: compact) { _, newValue in
+                updateLayout(compact: newValue)
             }
         }
         .sheet(isPresented: $store.isSettingsPresented) {
@@ -56,7 +56,7 @@ struct WorkbenchRootView: View {
         }
         .onChange(of: store.state) { _, state in
             guard state == .completed else { return }
-            if usesCompactLayout {
+            if isCompactLayout {
                 compactPath = [.results]
             } else {
                 regularRoute = .results
@@ -64,11 +64,12 @@ struct WorkbenchRootView: View {
         }
     }
 
-    private var usesCompactLayout: Bool {
+    private func shouldUseCompactLayout(width: CGFloat) -> Bool {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-forceCompactLayout") { return true }
+        if ProcessInfo.processInfo.arguments.contains("-forceRegularLayout") { return false }
         #endif
-        return horizontalSizeClass == .compact
+        return horizontalSizeClass == .compact || width < 1_000
     }
 
     private var compactWorkbench: some View {
@@ -115,20 +116,13 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularContent: some View {
-        if hasAuditLaunchArgument("-auditTextEditorOnly") {
-            TextEditor(text: .constant(""))
-                .accessibilityLabel("Prompt editor probe")
-                .accessibilityIdentifier("auditTextEditorProbe")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            switch regularRoute {
-            case let .pad(id):
-                PadEditorView(padID: id, onDelete: { regularRoute = .editor })
-            case .runs, .run:
-                RunHistoryView(onOpen: open)
-            default:
-                EditorView(store: store)
-            }
+        switch regularRoute {
+        case let .pad(id):
+            PadEditorView(padID: id, onDelete: { regularRoute = .editor })
+        case .runs, .run:
+            RunHistoryView(onOpen: open)
+        default:
+            EditorView(store: store)
         }
     }
 
@@ -143,7 +137,7 @@ struct WorkbenchRootView: View {
     }
 
     private func open(_ route: WorkbenchRoute) {
-        if usesCompactLayout {
+        if isCompactLayout {
             compactPath = route == .editor ? [] : [route]
         } else {
             regularRoute = route
@@ -158,6 +152,17 @@ struct WorkbenchRootView: View {
     private func reuseRun(_ run: RunRecord) {
         store.loadRun(run)
         open(.editor)
+    }
+
+    private func updateLayout(compact: Bool) {
+        guard compact != isCompactLayout else { return }
+        isCompactLayout = compact
+        if compact {
+            compactPath = regularRoute == .editor ? [] : [regularRoute]
+        } else if let route = compactPath.last {
+            regularRoute = route
+            compactPath = []
+        }
     }
 }
 
@@ -550,21 +555,15 @@ private struct EditorView: View {
                 EditorEmptyHint()
             }
 
-            if hasAuditLaunchArgument("-auditEditorWithoutTextEditor") {
-                Color.clear
-                    .frame(minHeight: 260)
-                    .accessibilityHidden(true)
-            } else {
-                TextEditor(text: $store.draft)
-                    .font(.body.monospaced())
-                    .padding(10)
-                    .scrollContentBackground(.hidden)
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                    .frame(minHeight: 260)
-                    .accessibilityLabel("Prompt editor")
-                    .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
-                    .accessibilityIdentifier("promptEditor")
-            }
+            TextEditor(text: $store.draft)
+                .font(.body.monospaced())
+                .padding(10)
+                .scrollContentBackground(.hidden)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                .frame(minHeight: 260)
+                .accessibilityLabel("Prompt editor")
+                .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
+                .accessibilityIdentifier("promptEditor")
 
             statusMessage
 
@@ -678,21 +677,7 @@ private struct ResultsView: View {
     @State private var notice = ""
     @AccessibilityFocusState private var firstResultFocused: Bool
 
-    @ViewBuilder
     var body: some View {
-        if hasAuditLaunchArgument("-auditResultsTitleOnly") {
-            Color.clear
-                .navigationTitle("Results")
-        } else if hasAuditLaunchArgument("-auditResultsBodyOnly") {
-            resultsContent
-        } else {
-            resultsContent
-                .navigationTitle("Results")
-        }
-    }
-
-    @ViewBuilder
-    private var resultsContent: some View {
         Group {
             if let result = store.result {
                 ScrollView {
@@ -777,9 +762,9 @@ private struct ResultsView: View {
                 .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 16))
                 .padding()
                 .accessibilityElement(children: .combine)
-                .accessibilityIdentifier("emptyResultsState")
             }
         }
+        .navigationTitle("Results")
     }
 
     private func copy(_ text: String) {

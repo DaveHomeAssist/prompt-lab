@@ -22,14 +22,19 @@ final class PromptLabUITests: XCTestCase {
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
     }
 
-    func testForcedCompactLayoutOnAnyDeviceUsesEditorFirstFlow() {
-        app.launchArguments.append("-forceCompactLayout")
+    func testDeviceFamilyLayoutCoversCompactAndRegularRoutes() {
+        app.launchArguments.append(isIPadSimulator ? "-forceRegularLayout" : "-forceCompactLayout")
         app.launch()
 
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["workspaceButton"].waitForExistence(timeout: 3))
-        app.buttons["workspaceButton"].tap()
-        XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
+        if isIPadSimulator {
+            XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
+            XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+        } else {
+            XCTAssertTrue(app.buttons["workspaceButton"].waitForExistence(timeout: 3))
+            app.buttons["workspaceButton"].tap()
+            XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
+        }
     }
 
     func testRecordedEnhanceOpensResultsAndSupportsActions() {
@@ -92,7 +97,7 @@ final class PromptLabUITests: XCTestCase {
         ]
 
         // Running the complete audit as one all-types request can exceed XCTest's
-        // aggregate timeout on the three-column iPad surface. Serializing every
+        // aggregate timeout on larger native surfaces. Serializing every
         // public audit type preserves the same coverage and still fails on any issue.
         for audit in auditTypes {
             print("Starting accessibility audit: \(audit.name)")
@@ -109,40 +114,6 @@ final class PromptLabUITests: XCTestCase {
                 return false
             }
         }
-    }
-
-    func testRegularWidthTextEditorOnlyPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditTextEditorOnly"])
-        XCTAssertTrue(app.textViews["auditTextEditorProbe"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Text editor only")
-        try performElementDetectionAudit(surface: "Text editor only")
-    }
-
-    func testRegularWidthEditorWithoutTextEditorPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditEditorWithoutTextEditor"])
-        XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Editor without text editor")
-        try performElementDetectionAudit(surface: "Editor without text editor")
-    }
-
-    func testRegularWidthResultsTitleOnlyPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditResultsTitleOnly"])
-        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Results title only")
-        try performElementDetectionAudit(surface: "Results title only")
-    }
-
-    func testRegularWidthResultsBodyOnlyPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditResultsBodyOnly"])
-        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
-        XCTAssertTrue(
-            app.descendants(matching: .any)["emptyResultsState"].waitForExistence(timeout: 3)
-        )
-        printRegularWidthFrames(surface: "Results body only")
-        try performElementDetectionAudit(surface: "Results body only")
     }
 
     private func openWorkspace() {
@@ -165,45 +136,8 @@ final class PromptLabUITests: XCTestCase {
         openWorkspace()
     }
 
-    private func launchRegularWidthProbe(arguments: [String]) throws {
-        app.launchArguments.append(contentsOf: arguments)
-        app.launch()
-        try XCTSkipUnless(
-            app.windows.firstMatch.frame.width >= 700,
-            "The regular-width diagnostic applies only to iPad-sized windows."
-        )
-    }
-
-    private func printRegularWidthFrames(surface: String) {
-        print(
-            "Regular-width frames [\(surface)]: " +
-            "window=\(frameDescription(app.windows.firstMatch)) " +
-            "editor=\(frameDescription(app.textViews["promptEditor"])) " +
-            "results=\(frameDescription(app.navigationBars["Results"])) " +
-            "textEditorProbe=\(frameDescription(app.textViews["auditTextEditorProbe"])) " +
-            "emptyResults=\(frameDescription(app.descendants(matching: .any)["emptyResultsState"]))"
-        )
-    }
-
-    private func frameDescription(_ element: XCUIElement) -> String {
-        element.exists ? String(describing: element.frame) : "<missing>"
-    }
-
-    private func performElementDetectionAudit(surface: String) throws {
-        print("Starting accessibility audit: Element Detection (\(surface))")
-        try app.performAccessibilityAudit(for: .elementDetection) { issue in
-            let element = issue.element
-            print(
-                "Accessibility audit [Element Detection — \(surface)]: " +
-                "\(issue.compactDescription) — \(issue.detailedDescription) | " +
-                "label=\(element?.label ?? "<none>") " +
-                "identifier=\(element?.identifier ?? "<none>") " +
-                "type=\(String(describing: element?.elementType)) " +
-                "frame=\(String(describing: element?.frame)) " +
-                "element=\(String(describing: element))"
-            )
-            return false
-        }
+    private var isIPadSimulator: Bool {
+        ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"]?.hasPrefix("iPad") == true
     }
 
 }
