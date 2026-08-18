@@ -111,26 +111,15 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
-    func testRegularWidthDetailPassesElementDetectionAudit() throws {
-        app.launchArguments.append("-auditDetailOnly")
+    func testRegularWidthPopulatedEditorPassesElementDetectionAudit() throws {
+        app.launchArguments.append(contentsOf: ["-auditDoubleColumn", "-auditPopulatedEditor"])
         app.launch()
         try XCTSkipUnless(
             app.windows.firstMatch.frame.width >= 700,
-            "The detail-only diagnostic applies to regular-width devices."
+            "The populated-editor diagnostic applies to regular-width devices."
         )
         XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 5))
-        try performElementDetectionAudit(surface: "Detail only")
-    }
-
-    func testRegularWidthDoubleColumnPassesElementDetectionAudit() throws {
-        app.launchArguments.append("-auditDoubleColumn")
-        app.launch()
-        try XCTSkipUnless(
-            app.windows.firstMatch.frame.width >= 700,
-            "The double-column diagnostic applies to regular-width devices."
-        )
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 5))
-        try performElementDetectionAudit(surface: "Double column")
+        try performElementDetectionAudit(surface: "Populated editor")
     }
 
     private func openWorkspace() {

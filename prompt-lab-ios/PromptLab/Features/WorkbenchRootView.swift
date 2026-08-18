@@ -28,10 +28,11 @@ struct WorkbenchRootView: View {
     ) {
         let store = WorkbenchStore(provider: provider)
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-auditDetailOnly") {
-            store.columnVisibility = .detailOnly
-        } else if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
+        if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
             store.columnVisibility = .doubleColumn
+        }
+        if ProcessInfo.processInfo.arguments.contains("-auditPopulatedEditor") {
+            store.draft = "Accessibility audit prompt"
         }
         #endif
         _store = State(initialValue: store)
@@ -455,23 +456,15 @@ private struct LibraryNotice: Identifiable {
 
 private struct EditorEmptyHint: View {
     var body: some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Start a prompt")
-                    .font(.headline)
-                Text("Write or paste a prompt here.")
-                    .font(.callout)
-            }
-        } icon: {
-            Image(systemName: "square.and.pencil")
-                .font(.title2)
+        VStack(alignment: .leading, spacing: 2) {
+            Label("Start a prompt", systemImage: "square.and.pencil")
+                .font(.headline)
+                .accessibilityIdentifier("editorEmptyHint")
+            Text("Write or paste a prompt here.")
+                .font(.callout)
         }
         .foregroundStyle(.primary)
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Start a prompt")
-        .accessibilityHint("Write or paste a prompt here.")
-        .accessibilityIdentifier("editorEmptyHint")
     }
 }
 
@@ -500,15 +493,10 @@ private struct EditorView: View {
                 Button {
                     savePrompt()
                 } label: {
-                    ViewThatFits(in: .horizontal) {
-                        Label("Save", systemImage: "tray.and.arrow.down")
-                            .fixedSize()
-                        Image(systemName: "tray.and.arrow.down")
-                    }
-                    .padding(.horizontal, 10)
-                    .frame(minWidth: 48, minHeight: 48)
-                    .contentShape(Rectangle())
-                    .foregroundStyle(.primary)
+                    Image(systemName: "tray.and.arrow.down")
+                        .frame(width: 48, height: 48)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
