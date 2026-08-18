@@ -464,24 +464,20 @@ private struct EditorView: View {
     @State private var saveFailed = false
 
     var body: some View {
-        Group {
-            if showWorkspace == nil {
-                editorContent
-            } else {
-                editorContent
-                    .navigationTitle("Editor")
-            }
-        }
-        .toolbar {
-            if let showWorkspace {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: showWorkspace) {
-                        Label("Workspace", systemImage: "sidebar.left")
+        if let showWorkspace {
+            editorContent
+                .navigationTitle("Editor")
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: showWorkspace) {
+                            Label("Workspace", systemImage: "sidebar.left")
+                        }
+                        .tint(.primary)
+                        .accessibilityIdentifier("workspaceButton")
                     }
-                    .tint(.primary)
-                    .accessibilityIdentifier("workspaceButton")
                 }
-            }
+        } else {
+            editorContent
         }
     }
 
