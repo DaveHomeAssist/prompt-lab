@@ -445,6 +445,26 @@ private struct LibraryNotice: Identifiable {
     let message: String
 }
 
+private struct EditorPlaceholder: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "square.and.pencil")
+                .font(.largeTitle)
+                .accessibilityHidden(true)
+            Text("Start a prompt")
+                .font(.headline)
+            Text("Write or paste a prompt here.")
+                .font(.body)
+        }
+        .multilineTextAlignment(.center)
+        .allowsHitTesting(false)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Start a prompt")
+        .accessibilityHint("Write or paste a prompt here.")
+        .accessibilityIdentifier("editorPlaceholder")
+    }
+}
+
 @MainActor
 private struct EditorView: View {
     @Environment(\.modelContext) private var modelContext
@@ -510,17 +530,11 @@ private struct EditorView: View {
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
                 .overlay {
                     if store.draft.isEmpty {
-                        ContentUnavailableView(
-                            "Start a prompt",
-                            systemImage: "square.and.pencil",
-                            description: Text("Write or paste a prompt here.")
-                        )
-                        .allowsHitTesting(false)
-                        .accessibilityHidden(true)
+                        EditorPlaceholder()
                     }
                 }
                 .frame(minHeight: 260)
-                .accessibilityLabel(store.draft.isEmpty ? "Start a prompt" : "Prompt editor")
+                .accessibilityLabel("Prompt editor")
                 .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
                 .accessibilityIdentifier("promptEditor")
 
