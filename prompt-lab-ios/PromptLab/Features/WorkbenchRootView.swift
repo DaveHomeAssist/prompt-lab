@@ -242,8 +242,10 @@ private struct SidebarView: View {
                         onOpen(.pad(pad.id))
                     } label: {
                         Image(systemName: "plus.circle.fill")
-                            .frame(width: 44, height: 44)
                     }
+                    .buttonStyle(.plain)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
                     .accessibilityLabel("New scratchpad")
                     .accessibilityIdentifier("newPadButton")
                 }
