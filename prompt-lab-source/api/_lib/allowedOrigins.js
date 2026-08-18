@@ -2,7 +2,8 @@
 //
 // One implementation, used by /api/proxy and /api/telemetry, so every
 // browser-facing route answers CORS the same way:
-//   - the production web origin (https://promptlab.tools) is always allowed;
+//   - the production web origins (https://promptlab.tools and the mobile host
+//     https://mobile.promptlab.tools routed by vercel.json) are always allowed;
 //   - PROMPTLAB_WEB_ORIGIN / VITE_PROMPTLAB_WEB_ORIGIN and the comma-separated
 //     PROMPTLAB_PROXY_ALLOWED_ORIGINS list add exact origins (including
 //     chrome-extension://<32 a-p chars> extension ids);
@@ -13,6 +14,9 @@
 import { readListEnv } from './runtimeSafety.js';
 
 export const DEFAULT_WEB_ORIGIN = 'https://promptlab.tools';
+// vercel.json serves the mobile surface on this host (`has: host` rewrite to
+// /mobile/index.html); it must be able to reach /api/proxy and /api/telemetry.
+export const MOBILE_WEB_ORIGIN = 'https://mobile.promptlab.tools';
 export const CHROME_EXTENSION_ORIGIN = /^chrome-extension:\/\/[a-p]{32}$/;
 export const LOCAL_WEB_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i;
 
@@ -37,6 +41,7 @@ export function normalizeAllowedOrigin(value) {
 export function getAllowedRequestOrigins() {
   const configured = [
     DEFAULT_WEB_ORIGIN,
+    MOBILE_WEB_ORIGIN,
     process.env.PROMPTLAB_WEB_ORIGIN,
     process.env.VITE_PROMPTLAB_WEB_ORIGIN,
     ...readListEnv('PROMPTLAB_PROXY_ALLOWED_ORIGINS', []),

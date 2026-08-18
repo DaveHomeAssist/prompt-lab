@@ -237,6 +237,15 @@ test('proxy accepts only exact configured web or extension origins', async () =>
     'chrome-extension://abcdefghijklmnopabcdefghijklmnop',
   );
 
+  // vercel.json routes mobile.promptlab.tools -> /mobile/index.html; that host
+  // must reach the proxy without extra env configuration.
+  const mobileResponse = await handler(makeRequest({
+    requestOrigin: 'https://mobile.promptlab.tools',
+    headers: { 'x-api-key': 'mobile-key' },
+  }));
+  assert.equal(mobileResponse.status, 200);
+  assert.equal(mobileResponse.headers.get('Access-Control-Allow-Origin'), 'https://mobile.promptlab.tools');
+
   const evilResponse = await handler(makeRequest({
     requestOrigin: 'https://evil.example',
     headers: { 'x-api-key': 'evil-key' },
@@ -249,7 +258,7 @@ test('proxy accepts only exact configured web or extension origins', async () =>
     headers: { 'x-api-key': 'missing-origin-key' },
   }));
   assert.equal(missingOriginResponse.status, 403);
-  assert.deepEqual(capturedOrigins, ['web-key', 'extension-key']);
+  assert.deepEqual(capturedOrigins, ['web-key', 'extension-key', 'mobile-key']);
 });
 
 test('proxy preflight is origin-specific and fails closed when the route is disabled', async () => {
