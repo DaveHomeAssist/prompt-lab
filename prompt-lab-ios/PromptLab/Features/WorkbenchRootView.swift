@@ -37,6 +37,7 @@ struct WorkbenchRootView: View {
             Group {
                 if compact {
                     compactWorkbench
+                        .environment(\.horizontalSizeClass, .compact)
                 } else {
                     regularWorkbench
                 }
