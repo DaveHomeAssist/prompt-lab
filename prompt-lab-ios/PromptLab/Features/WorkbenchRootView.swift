@@ -90,8 +90,6 @@ struct WorkbenchRootView: View {
             regularDetail
         }
         .navigationSplitViewStyle(.balanced)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Prompt Lab workbench")
     }
 
     @ViewBuilder
@@ -779,7 +777,8 @@ private struct ResultsView: View {
                 .padding(24)
                 .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 16))
                 .padding()
-                .accessibilityElement(children: .combine)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("No result yet. Enhanced prompts will appear here.")
             }
         }
         .navigationTitle("Results")
