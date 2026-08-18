@@ -631,7 +631,7 @@ export default function App({
       trackTelemetry('library.prompt_saved', {
         plan: billing.plan,
         via: 'inline',
-        isVersion: Boolean(saveTargetId),
+        isVersion: Boolean(saveTargetId) && saved.savedAsNew !== true,
         hasCollection: Boolean(trackedCollection),
       });
     }
@@ -964,7 +964,7 @@ export default function App({
               trackTelemetry('library.prompt_saved', {
                 plan: billing.plan,
                 via: 'save-panel',
-                isVersion: Boolean(saveTargetId),
+                isVersion: Boolean(saveTargetId) && saved.savedAsNew !== true,
                 hasCollection: Boolean(trackedCollection),
               });
             }

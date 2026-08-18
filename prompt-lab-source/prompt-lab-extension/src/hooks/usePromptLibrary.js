@@ -231,6 +231,13 @@ export default function usePromptLibrary(notify) {
 
   const persistNewEntry = (payload, { sourceEntry = null, savedFromDeletedTarget = false } = {}) => {
     const source = normalizeEntry(sourceEntry);
+    const sourceMetadata = source?.metadata && savedFromDeletedTarget
+      ? Object.fromEntries(
+        Object.entries(source.metadata).filter(([key]) => (
+          key !== 'packId' && key !== 'packName' && key !== 'packSource'
+        )),
+      )
+      : source?.metadata;
     const entry = createPromptEntry({
       ...(source ? {
         versions: source.versions,
@@ -238,7 +245,7 @@ export default function usePromptLibrary(notify) {
         goldenResponse: source.goldenResponse,
         goldenThreshold: source.goldenThreshold,
         inputs: source.inputs,
-        metadata: source.metadata,
+        metadata: sourceMetadata,
       } : {}),
       ...payload,
       useCount: 0,

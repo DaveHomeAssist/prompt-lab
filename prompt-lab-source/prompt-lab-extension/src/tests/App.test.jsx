@@ -262,7 +262,11 @@ vi.mock('../RunTimelinePanel.jsx', () => ({
 }));
 
 vi.mock('../SavePanel.jsx', () => ({
-  default: () => <div data-testid="save-panel" />,
+  default: ({ doSave }) => (
+    <div data-testid="save-panel">
+      <button type="button" onClick={doSave}>Submit library details</button>
+    </div>
+  ),
 }));
 
 vi.mock('../VersionDiffModal.jsx', () => ({
@@ -491,5 +495,96 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Save to Library' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Library Details' }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Prompt title')).toBeInTheDocument();
+  });
+
+  it('reports deleted-target inline recovery as a new prompt save', async () => {
+    localStorage.setItem('pl_telemetry_consent', 'granted');
+    localStorage.setItem('pl2-telemetry', JSON.stringify({
+      telemetryEnabled: true,
+      contactEmail: '',
+      deviceId: 'test-device',
+      pendingEvents: [],
+      lastSyncedAt: '',
+      lastError: '',
+    }));
+    const doSave = vi.fn(() => ({
+      id: 'replacement-entry',
+      title: 'Recovered prompt',
+      savedAsNew: true,
+    }));
+    mocks.useEditorState.mockReturnValueOnce({
+      ...useDefaultMock('useEditorState'),
+      raw: 'Recovered raw',
+      enhanced: 'Recovered enhanced',
+      hasSavablePrompt: true,
+    });
+    mocks.usePersistenceFlow.mockReturnValueOnce({
+      ...useDefaultMock('usePersistenceFlow'),
+      saveTargetId: 'deleted-entry',
+      saveTitle: 'Recovered prompt',
+      doSave,
+    });
+
+    render(<MemoryRouter><App /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Save to Library' }));
+
+    await waitFor(() => {
+      const payloads = global.fetch.mock.calls
+        .map(([, init]) => init?.body && JSON.parse(init.body))
+        .filter(Boolean);
+      expect(payloads).toContainEqual(expect.objectContaining({
+        event: 'library.prompt_saved',
+        context: expect.objectContaining({
+          via: 'inline',
+          isVersion: false,
+        }),
+      }));
+    });
+  });
+
+  it('reports deleted-target save-panel recovery as a new prompt save', async () => {
+    localStorage.setItem('pl_telemetry_consent', 'granted');
+    localStorage.setItem('pl2-telemetry', JSON.stringify({
+      telemetryEnabled: true,
+      contactEmail: '',
+      deviceId: 'test-device',
+      pendingEvents: [],
+      lastSyncedAt: '',
+      lastError: '',
+    }));
+    const doSave = vi.fn(() => ({
+      id: 'replacement-entry',
+      title: 'Recovered prompt',
+      savedAsNew: true,
+    }));
+    mocks.useEditorState.mockReturnValueOnce({
+      ...useDefaultMock('useEditorState'),
+      raw: 'Recovered raw',
+      enhanced: 'Recovered enhanced',
+      hasSavablePrompt: true,
+    });
+    mocks.usePersistenceFlow.mockReturnValueOnce({
+      ...useDefaultMock('usePersistenceFlow'),
+      showSave: true,
+      saveTargetId: 'deleted-entry',
+      saveTitle: 'Recovered prompt',
+      doSave,
+    });
+
+    render(<MemoryRouter><App /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Submit library details' }));
+
+    await waitFor(() => {
+      const payloads = global.fetch.mock.calls
+        .map(([, init]) => init?.body && JSON.parse(init.body))
+        .filter(Boolean);
+      expect(payloads).toContainEqual(expect.objectContaining({
+        event: 'library.prompt_saved',
+        context: expect.objectContaining({
+          via: 'save-panel',
+          isVersion: false,
+        }),
+      }));
+    });
   });
 });
