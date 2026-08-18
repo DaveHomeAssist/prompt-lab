@@ -179,12 +179,16 @@ final class PromptLabUITests: XCTestCase {
     private func printRegularWidthFrames(surface: String) {
         print(
             "Regular-width frames [\(surface)]: " +
-            "window=\(app.windows.firstMatch.frame) " +
-            "editor=\(app.textViews["promptEditor"].frame) " +
-            "results=\(app.navigationBars["Results"].frame) " +
-            "contentProbe=\(app.staticTexts["auditContentProbe"].frame) " +
-            "detailProbe=\(app.staticTexts["auditDetailProbe"].frame)"
+            "window=\(frameDescription(app.windows.firstMatch)) " +
+            "editor=\(frameDescription(app.textViews["promptEditor"])) " +
+            "results=\(frameDescription(app.navigationBars["Results"])) " +
+            "contentProbe=\(frameDescription(app.staticTexts["auditContentProbe"])) " +
+            "detailProbe=\(frameDescription(app.staticTexts["auditDetailProbe"]))"
         )
+    }
+
+    private func frameDescription(_ element: XCUIElement) -> String {
+        element.exists ? String(describing: element.frame) : "<missing>"
     }
 
     private func performElementDetectionAudit(surface: String) throws {
