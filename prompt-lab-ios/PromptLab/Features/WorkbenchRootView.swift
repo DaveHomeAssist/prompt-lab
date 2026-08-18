@@ -84,13 +84,37 @@ struct WorkbenchRootView: View {
         NavigationSplitView(columnVisibility: $store.columnVisibility) {
             SidebarView(store: store, onOpen: open)
                 .navigationSplitViewColumnWidth(min: 230, ideal: 280, max: 340)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Workspace")
         } content: {
-            regularContent
+            regularContentColumn
                 .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Editor")
         } detail: {
-            regularDetail
+            regularDetailColumn
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("Results")
         }
         .navigationSplitViewStyle(.balanced)
+    }
+
+    @ViewBuilder
+    private var regularContentColumn: some View {
+        if hasAuditArgument("-auditNestedStacks") {
+            NavigationStack { regularContent }
+        } else {
+            regularContent
+        }
+    }
+
+    @ViewBuilder
+    private var regularDetailColumn: some View {
+        if hasAuditArgument("-auditNestedStacks") {
+            NavigationStack { regularDetail }
+        } else {
+            regularDetail
+        }
     }
 
     @ViewBuilder
@@ -113,31 +137,23 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularContent: some View {
-        if hasAuditArgument("-auditBlankContent") {
-            Color.clear
-        } else {
-            switch regularRoute {
-            case let .pad(id):
-                PadEditorView(padID: id, onDelete: { regularRoute = .editor })
-            case .runs, .run:
-                RunHistoryView(onOpen: open)
-            default:
-                EditorView(store: store)
-            }
+        switch regularRoute {
+        case let .pad(id):
+            PadEditorView(padID: id, onDelete: { regularRoute = .editor })
+        case .runs, .run:
+            RunHistoryView(onOpen: open)
+        default:
+            EditorView(store: store)
         }
     }
 
     @ViewBuilder
     private var regularDetail: some View {
-        if hasAuditArgument("-auditBlankDetail") {
-            Color.clear
-        } else {
-            switch regularRoute {
-            case let .run(id):
-                RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
-            default:
-                ResultsView(store: store, onUse: useResult)
-            }
+        switch regularRoute {
+        case let .run(id):
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
+        default:
+            ResultsView(store: store, onUse: useResult)
         }
     }
 

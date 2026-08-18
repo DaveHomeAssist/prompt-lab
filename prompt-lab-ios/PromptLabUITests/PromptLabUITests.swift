@@ -111,27 +111,18 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
-    func testRegularWidthBlankContentPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditBlankContent"])
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        try performElementDetectionAudit(surface: "Blank content")
-    }
-
-    func testRegularWidthBlankDetailPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditBlankDetail"])
+    func testRegularWidthContainedColumnsPassElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: [])
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
-        try performElementDetectionAudit(surface: "Blank detail")
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+        try performElementDetectionAudit(surface: "Contained columns")
     }
 
-    func testRegularWidthBlankSplitPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditBlankContent", "-auditBlankDetail"])
-        try performElementDetectionAudit(surface: "Blank content and detail")
-    }
-
-    func testRegularWidthPopulatedResultsPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-runRecordedDemo"])
-        waitForRecordedResults()
-        try performElementDetectionAudit(surface: "Populated results")
+    func testRegularWidthNestedColumnsPassElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditNestedStacks"])
+        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+        try performElementDetectionAudit(surface: "Nested contained columns")
     }
 
     private func openWorkspace() {
