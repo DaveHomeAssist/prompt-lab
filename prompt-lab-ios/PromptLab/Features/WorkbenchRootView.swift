@@ -26,7 +26,15 @@ struct WorkbenchRootView: View {
         provider: any ProviderClient = AnthropicProviderClient(),
         runRecordedDemo: Bool = false
     ) {
-        _store = State(initialValue: WorkbenchStore(provider: provider))
+        let store = WorkbenchStore(provider: provider)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-auditDetailOnly") {
+            store.columnVisibility = .detailOnly
+        } else if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
+            store.columnVisibility = .doubleColumn
+        }
+        #endif
+        _store = State(initialValue: store)
         self.runRecordedDemo = runRecordedDemo
     }
 
@@ -492,15 +500,20 @@ private struct EditorView: View {
                 Button {
                     savePrompt()
                 } label: {
-                    Label("Save", systemImage: "tray.and.arrow.down")
-                        .padding(.horizontal, 10)
-                        .frame(minWidth: 48, minHeight: 48)
-                        .contentShape(Rectangle())
-                        .foregroundStyle(.primary)
+                    ViewThatFits(in: .horizontal) {
+                        Label("Save", systemImage: "tray.and.arrow.down")
+                            .fixedSize()
+                        Image(systemName: "tray.and.arrow.down")
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(minWidth: 48, minHeight: 48)
+                    .contentShape(Rectangle())
+                    .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
                 .contentShape(Rectangle())
                 .keyboardShortcut("s", modifiers: .command)
+                .accessibilityLabel("Save prompt")
                 .accessibilityIdentifier("savePromptButton")
 
                 Button {

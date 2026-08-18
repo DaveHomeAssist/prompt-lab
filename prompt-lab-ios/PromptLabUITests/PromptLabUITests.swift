@@ -111,6 +111,28 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
+    func testRegularWidthDetailPassesElementDetectionAudit() throws {
+        app.launchArguments.append("-auditDetailOnly")
+        app.launch()
+        try XCTSkipUnless(
+            app.windows.firstMatch.frame.width >= 700,
+            "The detail-only diagnostic applies to regular-width devices."
+        )
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 5))
+        try performElementDetectionAudit(surface: "Detail only")
+    }
+
+    func testRegularWidthDoubleColumnPassesElementDetectionAudit() throws {
+        app.launchArguments.append("-auditDoubleColumn")
+        app.launch()
+        try XCTSkipUnless(
+            app.windows.firstMatch.frame.width >= 700,
+            "The double-column diagnostic applies to regular-width devices."
+        )
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 5))
+        try performElementDetectionAudit(surface: "Double column")
+    }
+
     private func openWorkspace() {
         if app.buttons["newPromptButton"].exists { return }
         let workspace = app.buttons["workspaceButton"]
@@ -129,5 +151,22 @@ final class PromptLabUITests: XCTestCase {
             app.navigationBars.buttons.firstMatch.tap()
         }
         openWorkspace()
+    }
+
+    private func performElementDetectionAudit(surface: String) throws {
+        print("Starting accessibility audit: Element Detection (\(surface))")
+        try app.performAccessibilityAudit(for: .elementDetection) { issue in
+            let element = issue.element
+            print(
+                "Accessibility audit [Element Detection — \(surface)]: " +
+                "\(issue.compactDescription) — \(issue.detailedDescription) | " +
+                "label=\(element?.label ?? "<none>") " +
+                "identifier=\(element?.identifier ?? "<none>") " +
+                "type=\(String(describing: element?.elementType)) " +
+                "frame=\(String(describing: element?.frame)) " +
+                "element=\(String(describing: element))"
+            )
+            return false
+        }
     }
 }
