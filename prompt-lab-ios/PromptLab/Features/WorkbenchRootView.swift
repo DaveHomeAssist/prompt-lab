@@ -12,6 +12,14 @@ private enum WorkbenchRoute: Hashable {
     case run(String)
 }
 
+private func hasAuditLaunchArgument(_ argument: String) -> Bool {
+    #if DEBUG
+    return ProcessInfo.processInfo.arguments.contains(argument)
+    #else
+    return false
+    #endif
+}
+
 @MainActor
 struct WorkbenchRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -26,13 +34,7 @@ struct WorkbenchRootView: View {
         provider: any ProviderClient = AnthropicProviderClient(),
         runRecordedDemo: Bool = false
     ) {
-        let store = WorkbenchStore(provider: provider)
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
-            store.columnVisibility = .doubleColumn
-        }
-        #endif
-        _store = State(initialValue: store)
+        _store = State(initialValue: WorkbenchStore(provider: provider))
         self.runRecordedDemo = runRecordedDemo
     }
 
@@ -85,22 +87,12 @@ struct WorkbenchRootView: View {
             SidebarView(store: store, onOpen: open)
                 .navigationSplitViewColumnWidth(min: 230, ideal: 280, max: 340)
         } content: {
-            regularContentColumn
+            regularContent
+                .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
         } detail: {
             regularDetail
         }
         .navigationSplitViewStyle(.balanced)
-    }
-
-    @ViewBuilder
-    private var regularContentColumn: some View {
-        if hasAuditArgument("-auditWideContent") {
-            regularContent
-                .navigationSplitViewColumnWidth(600)
-        } else {
-            regularContent
-                .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
-        }
     }
 
     @ViewBuilder
@@ -123,9 +115,10 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularContent: some View {
-        if hasAuditArgument("-auditSimpleContent") {
-            Text("Editor probe")
-                .accessibilityIdentifier("auditContentProbe")
+        if hasAuditLaunchArgument("-auditTextEditorOnly") {
+            TextEditor(text: .constant(""))
+                .accessibilityLabel("Prompt editor probe")
+                .accessibilityIdentifier("auditTextEditorProbe")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             switch regularRoute {
@@ -141,26 +134,12 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularDetail: some View {
-        if hasAuditArgument("-auditSimpleDetail") {
-            Text("Results probe")
-                .accessibilityIdentifier("auditDetailProbe")
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            switch regularRoute {
-            case let .run(id):
-                RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
-            default:
-                ResultsView(store: store, onUse: useResult)
-            }
+        switch regularRoute {
+        case let .run(id):
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
+        default:
+            ResultsView(store: store, onUse: useResult)
         }
-    }
-
-    private func hasAuditArgument(_ argument: String) -> Bool {
-        #if DEBUG
-        return ProcessInfo.processInfo.arguments.contains(argument)
-        #else
-        return false
-        #endif
     }
 
     private func open(_ route: WorkbenchRoute) {
@@ -571,15 +550,21 @@ private struct EditorView: View {
                 EditorEmptyHint()
             }
 
-            TextEditor(text: $store.draft)
-                .font(.body.monospaced())
-                .padding(10)
-                .scrollContentBackground(.hidden)
-                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                .frame(minHeight: 260)
-                .accessibilityLabel("Prompt editor")
-                .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
-                .accessibilityIdentifier("promptEditor")
+            if hasAuditLaunchArgument("-auditEditorWithoutTextEditor") {
+                Color.clear
+                    .frame(minHeight: 260)
+                    .accessibilityHidden(true)
+            } else {
+                TextEditor(text: $store.draft)
+                    .font(.body.monospaced())
+                    .padding(10)
+                    .scrollContentBackground(.hidden)
+                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                    .frame(minHeight: 260)
+                    .accessibilityLabel("Prompt editor")
+                    .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
+                    .accessibilityIdentifier("promptEditor")
+            }
 
             statusMessage
 
@@ -693,7 +678,21 @@ private struct ResultsView: View {
     @State private var notice = ""
     @AccessibilityFocusState private var firstResultFocused: Bool
 
+    @ViewBuilder
     var body: some View {
+        if hasAuditLaunchArgument("-auditResultsTitleOnly") {
+            Color.clear
+                .navigationTitle("Results")
+        } else if hasAuditLaunchArgument("-auditResultsBodyOnly") {
+            resultsContent
+        } else {
+            resultsContent
+                .navigationTitle("Results")
+        }
+    }
+
+    @ViewBuilder
+    private var resultsContent: some View {
         Group {
             if let result = store.result {
                 ScrollView {
@@ -777,11 +776,10 @@ private struct ResultsView: View {
                 .padding(24)
                 .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 16))
                 .padding()
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("No result yet. Enhanced prompts will appear here.")
+                .accessibilityElement(children: .combine)
+                .accessibilityIdentifier("emptyResultsState")
             }
         }
-        .navigationTitle("Results")
     }
 
     private func copy(_ text: String) {

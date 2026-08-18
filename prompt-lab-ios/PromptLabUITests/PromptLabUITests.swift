@@ -111,37 +111,38 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
-    func testRegularWidthSimpleContentPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditSimpleContent"])
-        XCTAssertTrue(app.staticTexts["auditContentProbe"].waitForExistence(timeout: 3))
+    func testRegularWidthTextEditorOnlyPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditTextEditorOnly"])
+        XCTAssertTrue(app.textViews["auditTextEditorProbe"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Simple content")
-        try performElementDetectionAudit(surface: "Simple content")
+        printRegularWidthFrames(surface: "Text editor only")
+        try performElementDetectionAudit(surface: "Text editor only")
     }
 
-    func testRegularWidthSimpleDetailPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditSimpleDetail"])
-        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["auditDetailProbe"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Simple detail")
-        try performElementDetectionAudit(surface: "Simple detail")
-    }
-
-    func testRegularWidthSimpleSplitPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditSimpleContent", "-auditSimpleDetail"])
-        XCTAssertTrue(app.staticTexts["auditContentProbe"].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts["auditDetailProbe"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Simple split")
-        try performElementDetectionAudit(surface: "Simple split")
-    }
-
-    func testRegularWidthWideEditorPassesElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditWideContent"], doubleColumn: false)
+    func testRegularWidthEditorWithoutTextEditorPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditEditorWithoutTextEditor"])
         XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+        printRegularWidthFrames(surface: "Editor without text editor")
+        try performElementDetectionAudit(surface: "Editor without text editor")
+    }
+
+    func testRegularWidthResultsTitleOnlyPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditResultsTitleOnly"])
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        printRegularWidthFrames(surface: "Wide editor")
-        try performElementDetectionAudit(surface: "Wide editor")
+        printRegularWidthFrames(surface: "Results title only")
+        try performElementDetectionAudit(surface: "Results title only")
+    }
+
+    func testRegularWidthResultsBodyOnlyPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditResultsBodyOnly"])
+        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["emptyResultsState"].waitForExistence(timeout: 3)
+        )
+        printRegularWidthFrames(surface: "Results body only")
+        try performElementDetectionAudit(surface: "Results body only")
     }
 
     private func openWorkspace() {
@@ -164,10 +165,7 @@ final class PromptLabUITests: XCTestCase {
         openWorkspace()
     }
 
-    private func launchRegularWidthProbe(arguments: [String], doubleColumn: Bool = true) throws {
-        if doubleColumn {
-            app.launchArguments.append("-auditDoubleColumn")
-        }
+    private func launchRegularWidthProbe(arguments: [String]) throws {
         app.launchArguments.append(contentsOf: arguments)
         app.launch()
         try XCTSkipUnless(
@@ -182,8 +180,8 @@ final class PromptLabUITests: XCTestCase {
             "window=\(frameDescription(app.windows.firstMatch)) " +
             "editor=\(frameDescription(app.textViews["promptEditor"])) " +
             "results=\(frameDescription(app.navigationBars["Results"])) " +
-            "contentProbe=\(frameDescription(app.staticTexts["auditContentProbe"])) " +
-            "detailProbe=\(frameDescription(app.staticTexts["auditDetailProbe"]))"
+            "textEditorProbe=\(frameDescription(app.textViews["auditTextEditorProbe"])) " +
+            "emptyResults=\(frameDescription(app.descendants(matching: .any)["emptyResultsState"]))"
         )
     }
 
