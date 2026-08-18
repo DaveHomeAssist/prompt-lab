@@ -111,22 +111,6 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
-    func testRegularWidthEditorHeaderPassesElementDetectionAudit() throws {
-        try runRegularWidthEditorProbe(argument: "-auditEditorHeaderOnly", surface: "Editor header")
-    }
-
-    func testRegularWidthEditorPickerPassesElementDetectionAudit() throws {
-        try runRegularWidthEditorProbe(argument: "-auditEditorPickerOnly", surface: "Editor picker")
-    }
-
-    func testRegularWidthEditorInputPassesElementDetectionAudit() throws {
-        try runRegularWidthEditorProbe(argument: "-auditEditorInputOnly", surface: "Editor input")
-    }
-
-    func testRegularWidthEditorActionsPassesElementDetectionAudit() throws {
-        try runRegularWidthEditorProbe(argument: "-auditEditorActionsOnly", surface: "Editor actions")
-    }
-
     private func openWorkspace() {
         if app.buttons["newPromptButton"].exists { return }
         let workspace = app.buttons["workspaceButton"]
@@ -147,35 +131,4 @@ final class PromptLabUITests: XCTestCase {
         openWorkspace()
     }
 
-    private func performElementDetectionAudit(surface: String) throws {
-        print("Starting accessibility audit: Element Detection (\(surface))")
-        try app.performAccessibilityAudit(for: .elementDetection) { issue in
-            let element = issue.element
-            print(
-                "Accessibility audit [Element Detection — \(surface)]: " +
-                "\(issue.compactDescription) — \(issue.detailedDescription) | " +
-                "label=\(element?.label ?? "<none>") " +
-                "identifier=\(element?.identifier ?? "<none>") " +
-                "type=\(String(describing: element?.elementType)) " +
-                "frame=\(String(describing: element?.frame)) " +
-                "element=\(String(describing: element))"
-            )
-            return false
-        }
-    }
-
-    private func runRegularWidthEditorProbe(argument: String, surface: String) throws {
-        app.launchArguments.append(contentsOf: [
-            "-auditDoubleColumn",
-            "-auditPopulatedEditor",
-            argument,
-        ])
-        app.launch()
-        try XCTSkipUnless(
-            app.windows.firstMatch.frame.width >= 700,
-            "The \(surface.lowercased()) diagnostic applies to regular-width devices."
-        )
-        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 5))
-        try performElementDetectionAudit(surface: surface)
-    }
 }

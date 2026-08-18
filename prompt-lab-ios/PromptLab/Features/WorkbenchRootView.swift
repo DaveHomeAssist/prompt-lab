@@ -12,14 +12,6 @@ private enum WorkbenchRoute: Hashable {
     case run(String)
 }
 
-private enum EditorAuditSurface: Equatable {
-    case all
-    case header
-    case picker
-    case input
-    case actions
-}
-
 @MainActor
 struct WorkbenchRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
@@ -34,16 +26,7 @@ struct WorkbenchRootView: View {
         provider: any ProviderClient = AnthropicProviderClient(),
         runRecordedDemo: Bool = false
     ) {
-        let store = WorkbenchStore(provider: provider)
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
-            store.columnVisibility = .doubleColumn
-        }
-        if ProcessInfo.processInfo.arguments.contains("-auditPopulatedEditor") {
-            store.draft = "Accessibility audit prompt"
-        }
-        #endif
-        _store = State(initialValue: store)
+        _store = State(initialValue: WorkbenchStore(provider: provider))
         self.runRecordedDemo = runRecordedDemo
     }
 
@@ -482,85 +465,77 @@ private struct EditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if showsAuditSurface(.header) {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Editor")
-                            .font(.title2.bold())
-                        if store.currentPromptID != nil {
-                            Text(store.currentPromptTitle)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                        }
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Editor")
+                        .font(.title2.bold())
+                    if store.currentPromptID != nil {
+                        Text(store.currentPromptTitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    Spacer()
-                    Button {
-                        savePrompt()
-                    } label: {
-                        Image(systemName: "tray.and.arrow.down")
-                            .frame(width: 48, height: 48)
-                            .contentShape(Rectangle())
-                            .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-                    .keyboardShortcut("s", modifiers: .command)
-                    .accessibilityLabel("Save prompt")
-                    .accessibilityIdentifier("savePromptButton")
-
-                    Button {
-                        store.isSettingsPresented = true
-                    } label: {
-                        Image(systemName: "key")
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                            .foregroundStyle(.primary)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Anthropic API settings")
-                    .accessibilityIdentifier("apiSettingsButton")
                 }
+                Spacer()
+                Button {
+                    savePrompt()
+                } label: {
+                    Image(systemName: "tray.and.arrow.down")
+                        .frame(width: 48, height: 48)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .keyboardShortcut("s", modifiers: .command)
+                .accessibilityLabel("Save prompt")
+                .accessibilityIdentifier("savePromptButton")
+
+                Button {
+                    store.isSettingsPresented = true
+                } label: {
+                    Image(systemName: "key")
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Anthropic API settings")
+                .accessibilityIdentifier("apiSettingsButton")
             }
 
-            if showsAuditSurface(.picker) {
-                Picker("Enhance mode", selection: $store.selectedMode) {
-                    ForEach(EnhanceMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
+            Picker("Enhance mode", selection: $store.selectedMode) {
+                ForEach(EnhanceMode.allCases) { mode in
+                    Text(mode.label).tag(mode)
                 }
-                .pickerStyle(.menu)
-                .tint(.primary)
-                .accessibilityIdentifier("enhanceModePicker")
+            }
+            .pickerStyle(.menu)
+            .tint(.primary)
+            .accessibilityIdentifier("enhanceModePicker")
+
+            if store.draft.isEmpty {
+                EditorEmptyHint()
             }
 
-            if showsAuditSurface(.input) {
-                if store.draft.isEmpty {
-                    EditorEmptyHint()
-                }
+            TextEditor(text: $store.draft)
+                .font(.body.monospaced())
+                .padding(10)
+                .scrollContentBackground(.hidden)
+                .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                .frame(minHeight: 260)
+                .accessibilityLabel("Prompt editor")
+                .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
+                .accessibilityIdentifier("promptEditor")
 
-                TextEditor(text: $store.draft)
-                    .font(.body.monospaced())
-                    .padding(10)
-                    .scrollContentBackground(.hidden)
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                    .frame(minHeight: 260)
-                    .accessibilityLabel("Prompt editor")
-                    .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
-                    .accessibilityIdentifier("promptEditor")
-            }
+            statusMessage
 
-            if showsAuditSurface(.actions) {
-                statusMessage
-
-                ViewThatFits(in: .horizontal) {
-                    HStack { actionButtons }
-                    VStack(alignment: .leading) { actionButtons }
-                }
+            ViewThatFits(in: .horizontal) {
+                HStack { actionButtons }
+                VStack(alignment: .leading) { actionButtons }
             }
         }
         .padding()
-        .navigationTitle("Editor")
+        .navigationTitle(showWorkspace == nil ? "" : "Editor")
         .toolbar {
             if let showWorkspace {
                 ToolbarItem(placement: .topBarLeading) {
@@ -572,21 +547,6 @@ private struct EditorView: View {
                 }
             }
         }
-    }
-
-    private var auditSurface: EditorAuditSurface {
-        #if DEBUG
-        let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-auditEditorHeaderOnly") { return .header }
-        if arguments.contains("-auditEditorPickerOnly") { return .picker }
-        if arguments.contains("-auditEditorInputOnly") { return .input }
-        if arguments.contains("-auditEditorActionsOnly") { return .actions }
-        #endif
-        return .all
-    }
-
-    private func showsAuditSurface(_ surface: EditorAuditSurface) -> Bool {
-        auditSurface == .all || auditSurface == surface
     }
 
     @ViewBuilder
