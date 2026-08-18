@@ -464,6 +464,28 @@ private struct EditorView: View {
     @State private var saveFailed = false
 
     var body: some View {
+        Group {
+            if showWorkspace == nil {
+                editorContent
+            } else {
+                editorContent
+                    .navigationTitle("Editor")
+            }
+        }
+        .toolbar {
+            if let showWorkspace {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: showWorkspace) {
+                        Label("Workspace", systemImage: "sidebar.left")
+                    }
+                    .tint(.primary)
+                    .accessibilityIdentifier("workspaceButton")
+                }
+            }
+        }
+    }
+
+    private var editorContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -535,18 +557,6 @@ private struct EditorView: View {
             }
         }
         .padding()
-        .navigationTitle(showWorkspace == nil ? "" : "Editor")
-        .toolbar {
-            if let showWorkspace {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: showWorkspace) {
-                        Label("Workspace", systemImage: "sidebar.left")
-                    }
-                    .tint(.primary)
-                    .accessibilityIdentifier("workspaceButton")
-                }
-            }
-        }
     }
 
     @ViewBuilder
