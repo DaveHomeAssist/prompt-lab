@@ -1,4 +1,5 @@
 import { fetchWithTimeout, readBoundedIntEnv } from './runtimeSafety.js';
+import { corsHeadersForRequest } from './allowedOrigins.js';
 import {
   isLandingTelemetryEvent,
   normalizeTelemetryEventName,
@@ -38,29 +39,29 @@ function readBooleanEnv(name, fallback = false) {
   return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
 }
 
-export function createCorsHeaders(extraHeaders = {}) {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Signature',
-    ...extraHeaders,
-  };
+// CORS headers echo the request's origin only when it is on the shared
+// allow-list (see ./allowedOrigins.js). Never emits a wildcard.
+export function createCorsHeaders(request, extraHeaders = {}) {
+  return corsHeadersForRequest(request, extraHeaders, {
+    allowMethods: 'POST, OPTIONS',
+    allowHeaders: 'Content-Type',
+  });
 }
 
-export function jsonResponse(body, status = 200, extraHeaders = {}) {
+export function jsonResponse(body, status = 200, extraHeaders = {}, request = null) {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...createCorsHeaders(extraHeaders),
+      ...createCorsHeaders(request, extraHeaders),
     },
   });
 }
 
-export function optionsResponse() {
+export function optionsResponse(request = null) {
   return new Response(null, {
     status: 204,
-    headers: createCorsHeaders(),
+    headers: createCorsHeaders(request),
   });
 }
 

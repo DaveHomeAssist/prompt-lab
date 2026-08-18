@@ -12,33 +12,39 @@ import {
   TelemetryRequestError,
 } from './_lib/telemetryStore.js';
 import { assertProductionConfig } from './_lib/assertProductionConfig.js';
+import { corsRejectionResponse } from './_lib/allowedOrigins.js';
 import { isExternalFetchTimeout, isFeatureEnabled } from './_lib/runtimeSafety.js';
 
 // Terminal response for telemetry-off deployments: clients must treat this as
 // a final state and drop the queued event instead of replaying it forever.
 // Keeps the existing `error` payload shape and adds the terminal flags.
-function telemetryDisabledResponse(message) {
+function telemetryDisabledResponse(message, request) {
   return jsonResponse({
     error: message,
     telemetryDisabled: true,
     retryable: false,
-  }, 200);
+  }, 200, {}, request);
 }
 
 export default async function handler(request) {
-  if (request.method === 'OPTIONS') return optionsResponse();
+  // Same origin policy as /api/proxy: unlisted (or missing) origins are
+  // rejected before any body is read, and never receive Allow-Origin.
+  const corsRejection = corsRejectionResponse(request);
+  if (corsRejection) return corsRejection;
+
+  if (request.method === 'OPTIONS') return optionsResponse(request);
   if (request.method !== 'POST') {
-    return jsonResponse({ error: 'Method not allowed.' }, 405);
+    return jsonResponse({ error: 'Method not allowed.' }, 405, {}, request);
   }
 
   if (!isFeatureEnabled('PROMPTLAB_TELEMETRY_ENABLED')) {
-    return telemetryDisabledResponse('Telemetry is disabled.');
+    return telemetryDisabledResponse('Telemetry is disabled.', request);
   }
 
   try {
     assertProductionConfig({ durableStore: true });
   } catch {
-    return telemetryDisabledResponse('Telemetry storage is not configured.');
+    return telemetryDisabledResponse('Telemetry storage is not configured.', request);
   }
 
   try {
@@ -54,6 +60,7 @@ export default async function handler(request) {
           'Retry-After': String(rateLimit.retryAfterSeconds),
           'X-RateLimit-Remaining': '0',
         },
+        request,
       );
     }
     const payload = body?.kind === 'identify'
@@ -76,11 +83,11 @@ export default async function handler(request) {
     const result = await persistTelemetryEvent(payload, telemetryConfig);
     return jsonResponse(result, 200, {
       'X-RateLimit-Remaining': String(rateLimit.remaining),
-    });
+    }, request);
   } catch (error) {
     const status = isExternalFetchTimeout(error)
       ? 504
       : (error instanceof TelemetryRequestError ? error.status : 400);
-    return jsonResponse({ error: error.message || 'Could not record telemetry.' }, status);
+    return jsonResponse({ error: error.message || 'Could not record telemetry.' }, status, {}, request);
   }
 }
