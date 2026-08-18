@@ -84,36 +84,22 @@ struct WorkbenchRootView: View {
         NavigationSplitView(columnVisibility: $store.columnVisibility) {
             SidebarView(store: store, onOpen: open)
                 .navigationSplitViewColumnWidth(min: 230, ideal: 280, max: 340)
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("Workspace")
         } content: {
             regularContentColumn
-                .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("Editor")
         } detail: {
-            regularDetailColumn
-                .accessibilityElement(children: .contain)
-                .accessibilityLabel("Results")
+            regularDetail
         }
         .navigationSplitViewStyle(.balanced)
     }
 
     @ViewBuilder
     private var regularContentColumn: some View {
-        if hasAuditArgument("-auditNestedStacks") {
-            NavigationStack { regularContent }
+        if hasAuditArgument("-auditWideContent") {
+            regularContent
+                .navigationSplitViewColumnWidth(600)
         } else {
             regularContent
-        }
-    }
-
-    @ViewBuilder
-    private var regularDetailColumn: some View {
-        if hasAuditArgument("-auditNestedStacks") {
-            NavigationStack { regularDetail }
-        } else {
-            regularDetail
+                .navigationSplitViewColumnWidth(min: 360, ideal: 460, max: 620)
         }
     }
 
@@ -137,23 +123,35 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularContent: some View {
-        switch regularRoute {
-        case let .pad(id):
-            PadEditorView(padID: id, onDelete: { regularRoute = .editor })
-        case .runs, .run:
-            RunHistoryView(onOpen: open)
-        default:
-            EditorView(store: store)
+        if hasAuditArgument("-auditSimpleContent") {
+            Text("Editor probe")
+                .accessibilityIdentifier("auditContentProbe")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            switch regularRoute {
+            case let .pad(id):
+                PadEditorView(padID: id, onDelete: { regularRoute = .editor })
+            case .runs, .run:
+                RunHistoryView(onOpen: open)
+            default:
+                EditorView(store: store)
+            }
         }
     }
 
     @ViewBuilder
     private var regularDetail: some View {
-        switch regularRoute {
-        case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
-        default:
-            ResultsView(store: store, onUse: useResult)
+        if hasAuditArgument("-auditSimpleDetail") {
+            Text("Results probe")
+                .accessibilityIdentifier("auditDetailProbe")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            switch regularRoute {
+            case let .run(id):
+                RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
+            default:
+                ResultsView(store: store, onUse: useResult)
+            }
         }
     }
 

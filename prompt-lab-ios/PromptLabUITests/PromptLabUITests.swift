@@ -111,18 +111,37 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
-    func testRegularWidthContainedColumnsPassElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: [])
-        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
+    func testRegularWidthSimpleContentPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditSimpleContent"])
+        XCTAssertTrue(app.staticTexts["auditContentProbe"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        try performElementDetectionAudit(surface: "Contained columns")
+        printRegularWidthFrames(surface: "Simple content")
+        try performElementDetectionAudit(surface: "Simple content")
     }
 
-    func testRegularWidthNestedColumnsPassElementDetectionAudit() throws {
-        try launchRegularWidthProbe(arguments: ["-auditNestedStacks"])
+    func testRegularWidthSimpleDetailPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditSimpleDetail"])
+        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["auditDetailProbe"].waitForExistence(timeout: 3))
+        printRegularWidthFrames(surface: "Simple detail")
+        try performElementDetectionAudit(surface: "Simple detail")
+    }
+
+    func testRegularWidthSimpleSplitPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditSimpleContent", "-auditSimpleDetail"])
+        XCTAssertTrue(app.staticTexts["auditContentProbe"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["auditDetailProbe"].waitForExistence(timeout: 3))
+        printRegularWidthFrames(surface: "Simple split")
+        try performElementDetectionAudit(surface: "Simple split")
+    }
+
+    func testRegularWidthWideEditorPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditWideContent"], doubleColumn: false)
+        XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
-        try performElementDetectionAudit(surface: "Nested contained columns")
+        printRegularWidthFrames(surface: "Wide editor")
+        try performElementDetectionAudit(surface: "Wide editor")
     }
 
     private func openWorkspace() {
@@ -145,13 +164,26 @@ final class PromptLabUITests: XCTestCase {
         openWorkspace()
     }
 
-    private func launchRegularWidthProbe(arguments: [String]) throws {
-        app.launchArguments.append("-auditDoubleColumn")
+    private func launchRegularWidthProbe(arguments: [String], doubleColumn: Bool = true) throws {
+        if doubleColumn {
+            app.launchArguments.append("-auditDoubleColumn")
+        }
         app.launchArguments.append(contentsOf: arguments)
         app.launch()
         try XCTSkipUnless(
             app.windows.firstMatch.frame.width >= 700,
             "The regular-width diagnostic applies only to iPad-sized windows."
+        )
+    }
+
+    private func printRegularWidthFrames(surface: String) {
+        print(
+            "Regular-width frames [\(surface)]: " +
+            "window=\(app.windows.firstMatch.frame) " +
+            "editor=\(app.textViews["promptEditor"].frame) " +
+            "results=\(app.navigationBars["Results"].frame) " +
+            "contentProbe=\(app.staticTexts["auditContentProbe"].frame) " +
+            "detailProbe=\(app.staticTexts["auditDetailProbe"].frame)"
         )
     }
 
