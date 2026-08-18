@@ -445,23 +445,25 @@ private struct LibraryNotice: Identifiable {
     let message: String
 }
 
-private struct EditorPlaceholder: View {
+private struct EditorEmptyHint: View {
     var body: some View {
-        VStack(spacing: 8) {
+        Label {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Start a prompt")
+                    .font(.headline)
+                Text("Write or paste a prompt here.")
+                    .font(.callout)
+            }
+        } icon: {
             Image(systemName: "square.and.pencil")
-                .font(.largeTitle)
-                .accessibilityHidden(true)
-            Text("Start a prompt")
-                .font(.headline)
-            Text("Write or paste a prompt here.")
-                .font(.body)
+                .font(.title2)
         }
-        .multilineTextAlignment(.center)
-        .allowsHitTesting(false)
+        .foregroundStyle(.primary)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Start a prompt")
         .accessibilityHint("Write or paste a prompt here.")
-        .accessibilityIdentifier("editorPlaceholder")
+        .accessibilityIdentifier("editorEmptyHint")
     }
 }
 
@@ -523,16 +525,15 @@ private struct EditorView: View {
             .tint(.primary)
             .accessibilityIdentifier("enhanceModePicker")
 
+            if store.draft.isEmpty {
+                EditorEmptyHint()
+            }
+
             TextEditor(text: $store.draft)
                 .font(.body.monospaced())
                 .padding(10)
                 .scrollContentBackground(.hidden)
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                .overlay {
-                    if store.draft.isEmpty {
-                        EditorPlaceholder()
-                    }
-                }
                 .frame(minHeight: 260)
                 .accessibilityLabel("Prompt editor")
                 .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")

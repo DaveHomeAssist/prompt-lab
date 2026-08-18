@@ -14,7 +14,7 @@ final class PromptLabUITests: XCTestCase {
 
         XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
         XCTAssertTrue(
-            app.descendants(matching: .any)["editorPlaceholder"].waitForExistence(timeout: 3)
+            app.descendants(matching: .any)["editorEmptyHint"].waitForExistence(timeout: 3)
         )
         openWorkspace()
         XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
