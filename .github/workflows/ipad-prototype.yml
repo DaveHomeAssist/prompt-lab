@@ -79,6 +79,64 @@ jobs:
           -resultBundlePath "${RUNNER_TEMP}/PromptLabUITests-${{ matrix.device_family }}.xcresult"
           -only-testing:PromptLabUITests
 
+      - name: Print failing UI diagnostics
+        if: failure()
+        shell: bash
+        env:
+          DEVICE_FAMILY: ${{ matrix.device_family }}
+        run: |
+          set -euo pipefail
+          result_path="${RUNNER_TEMP}/PromptLabUITests-${DEVICE_FAMILY}.xcresult"
+          tests_json="${RUNNER_TEMP}/PromptLabUITests-${DEVICE_FAMILY}-tests.json"
+          attachments_dir="${RUNNER_TEMP}/PromptLabUITests-${DEVICE_FAMILY}-attachments"
+
+          xcrun xcresulttool get test-results summary --path "$result_path"
+          xcrun xcresulttool get test-results tests --path "$result_path" --compact > "$tests_json"
+          test_id=$(jq -r '
+            .. | objects
+            | select(
+                .nodeType? == "Test Case"
+                and (.name? | contains("testPrimarySurfacePassesAccessibilityAudit"))
+              )
+            | .nodeIdentifierURL // .nodeIdentifier // empty
+          ' "$tests_json" | head -n 1)
+
+          if [[ -n "$test_id" ]]; then
+            xcrun xcresulttool get test-results activities \
+              --path "$result_path" \
+              --test-id "$test_id" \
+              --compact \
+              | jq '{
+                  testName,
+                  relevantActivities: [
+                    .testRuns.activities[]
+                    | recurse(.childActivities[]?)
+                    | select(.isAssociatedWithFailure or ((.attachments // []) | length > 0))
+                    | {
+                        title,
+                        isAssociatedWithFailure,
+                        attachments
+                      }
+                  ]
+                }'
+          fi
+
+          xcrun xcresulttool export attachments \
+            --path "$result_path" \
+            --output-path "$attachments_dir" \
+            --only-failures
+          cat "$attachments_dir/manifest.json"
+
+          while IFS= read -r attachment; do
+            mime_type=$(file -b --mime-type "$attachment")
+            case "$mime_type" in
+              text/*|application/json|application/xml)
+                echo "Diagnostic attachment: $(basename "$attachment")"
+                sed -n '1,500p' "$attachment"
+                ;;
+            esac
+          done < <(find "$attachments_dir" -type f ! -name manifest.json -print)
+
       - name: Upload failing UI result bundle
         if: failure()
         uses: actions/upload-artifact@v4
