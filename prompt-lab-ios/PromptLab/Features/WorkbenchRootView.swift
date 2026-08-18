@@ -90,6 +90,8 @@ struct WorkbenchRootView: View {
             regularDetail
         }
         .navigationSplitViewStyle(.balanced)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Prompt Lab workbench")
     }
 
     @ViewBuilder
