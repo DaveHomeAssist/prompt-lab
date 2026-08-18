@@ -12,12 +12,14 @@ private enum WorkbenchRoute: Hashable {
     case run(String)
 }
 
+@MainActor
 struct WorkbenchRootView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.modelContext) private var modelContext
     @State private var store: WorkbenchStore
     @State private var compactPath: [WorkbenchRoute] = []
     @State private var regularRoute: WorkbenchRoute = .editor
+    @State private var isCompactLayout = true
     private let runRecordedDemo: Bool
 
     @MainActor
@@ -30,11 +32,19 @@ struct WorkbenchRootView: View {
     }
 
     var body: some View {
-        Group {
-            if usesCompactLayout {
-                compactWorkbench
-            } else {
-                regularWorkbench
+        GeometryReader { geometry in
+            let compact = shouldUseCompactLayout(width: geometry.size.width)
+            Group {
+                if compact {
+                    compactWorkbench
+                        .environment(\.horizontalSizeClass, .compact)
+                } else {
+                    regularWorkbench
+                }
+            }
+            .onAppear { updateLayout(compact: compact) }
+            .onChange(of: compact) { _, newValue in
+                updateLayout(compact: newValue)
             }
         }
         .sheet(isPresented: $store.isSettingsPresented) {
@@ -47,7 +57,7 @@ struct WorkbenchRootView: View {
         }
         .onChange(of: store.state) { _, state in
             guard state == .completed else { return }
-            if usesCompactLayout {
+            if isCompactLayout {
                 compactPath = [.results]
             } else {
                 regularRoute = .results
@@ -55,11 +65,12 @@ struct WorkbenchRootView: View {
         }
     }
 
-    private var usesCompactLayout: Bool {
+    private func shouldUseCompactLayout(width: CGFloat) -> Bool {
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-forceCompactLayout") { return true }
+        if ProcessInfo.processInfo.arguments.contains("-forceRegularLayout") { return false }
         #endif
-        return horizontalSizeClass == .compact
+        return horizontalSizeClass == .compact || width < 1_000
     }
 
     private var compactWorkbench: some View {
@@ -100,7 +111,7 @@ struct WorkbenchRootView: View {
         case .runs:
             RunHistoryView(onOpen: open)
         case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun)
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
         }
     }
 
@@ -120,14 +131,14 @@ struct WorkbenchRootView: View {
     private var regularDetail: some View {
         switch regularRoute {
         case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun)
+            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
         default:
             ResultsView(store: store, onUse: useResult)
         }
     }
 
     private func open(_ route: WorkbenchRoute) {
-        if usesCompactLayout {
+        if isCompactLayout {
             compactPath = route == .editor ? [] : [route]
         } else {
             regularRoute = route
@@ -143,8 +154,20 @@ struct WorkbenchRootView: View {
         store.loadRun(run)
         open(.editor)
     }
+
+    private func updateLayout(compact: Bool) {
+        guard compact != isCompactLayout else { return }
+        isCompactLayout = compact
+        if compact {
+            compactPath = regularRoute == .editor ? [] : [regularRoute]
+        } else if let route = compactPath.last {
+            regularRoute = route
+            compactPath = []
+        }
+    }
 }
 
+@MainActor
 private struct SidebarView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \PromptEntry.sourceIndex) private var prompts: [PromptEntry]
@@ -178,10 +201,11 @@ private struct SidebarView: View {
                 .accessibilityIdentifier("newPromptButton")
             }
 
-            Section("Library") {
+            Section {
+                SidebarSectionTitle("Library")
+
                 if prompts.isEmpty {
-                    Label("No saved prompts", systemImage: "books.vertical")
-                        .foregroundStyle(.secondary)
+                    SidebarEmptyRow("No saved prompts", systemImage: "books.vertical")
                 } else {
                     ForEach(prompts) { prompt in
                         Button {
@@ -208,9 +232,26 @@ private struct SidebarView: View {
             }
 
             Section {
+                HStack {
+                    SidebarSectionTitle("Pads")
+                    Spacer()
+                    Button {
+                        let pad = Pad(title: "New Pad")
+                        modelContext.insert(pad)
+                        try? modelContext.save()
+                        onOpen(.pad(pad.id))
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("New scratchpad")
+                    .accessibilityIdentifier("newPadButton")
+                }
+
                 if pads.isEmpty {
-                    Label("No scratchpads", systemImage: "note.text")
-                        .foregroundStyle(.secondary)
+                    SidebarEmptyRow("No scratchpads", systemImage: "note.text")
                 } else {
                     ForEach(pads) { pad in
                         Button {
@@ -226,28 +267,13 @@ private struct SidebarView: View {
                         }
                     }
                 }
-            } header: {
-                HStack {
-                    Text("Pads")
-                    Spacer()
-                    Button {
-                        let pad = Pad(title: "New Pad")
-                        modelContext.insert(pad)
-                        try? modelContext.save()
-                        onOpen(.pad(pad.id))
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel("New scratchpad")
-                    .accessibilityIdentifier("newPadButton")
-                }
             }
 
-            Section("Runs") {
+            Section {
+                SidebarSectionTitle("Runs")
+
                 if runs.isEmpty {
-                    Text("No runs yet")
-                        .foregroundStyle(.secondary)
+                    SidebarEmptyRow("No runs yet", systemImage: "clock.arrow.circlepath")
                 } else {
                     ForEach(runs.prefix(8)) { run in
                         RunRow(run: run) { onOpen(.run(run.id)) }
@@ -259,6 +285,7 @@ private struct SidebarView: View {
             }
         }
         .navigationTitle("Workspace")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .bottomBar) {
                 Button {
@@ -394,11 +421,64 @@ private struct SidebarView: View {
     }
 }
 
+private struct SidebarSectionTitle: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .background(.black, in: RoundedRectangle(cornerRadius: 8))
+            .accessibilityAddTraits(.isHeader)
+    }
+}
+
+private struct SidebarEmptyRow: View {
+    let title: String
+    let systemImage: String
+
+    init(_ title: String, systemImage: String) {
+        self.title = title
+        self.systemImage = systemImage
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemImage)
+                .accessibilityHidden(true)
+            Text(title)
+        }
+        .foregroundColor(.white)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 8))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(title)
+    }
+}
+
 private struct LibraryNotice: Identifiable {
     let id = UUID()
     let message: String
 }
 
+private struct EditorEmptyHint: View {
+    var body: some View {
+        Label("Start a prompt", systemImage: "square.and.pencil")
+            .font(.headline)
+            .accessibilityIdentifier("editorEmptyHint")
+            .foregroundStyle(.primary)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    }
+}
+
+@MainActor
 private struct EditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
@@ -407,6 +487,23 @@ private struct EditorView: View {
     @State private var saveFailed = false
 
     var body: some View {
+        if let showWorkspace {
+            editorContent
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: showWorkspace) {
+                            Label("Workspace", systemImage: "sidebar.left")
+                        }
+                        .tint(.primary)
+                        .accessibilityIdentifier("workspaceButton")
+                    }
+                }
+        } else {
+            editorContent
+        }
+    }
+
+    private var editorContent: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -423,12 +520,15 @@ private struct EditorView: View {
                 Button {
                     savePrompt()
                 } label: {
-                    Label("Save", systemImage: "tray.and.arrow.down")
-                        .frame(minHeight: 44)
+                    Image(systemName: "tray.and.arrow.down")
+                        .frame(width: 48, height: 48)
+                        .contentShape(Rectangle())
                         .foregroundStyle(.primary)
                 }
                 .buttonStyle(.plain)
+                .contentShape(Rectangle())
                 .keyboardShortcut("s", modifiers: .command)
+                .accessibilityLabel("Save prompt")
                 .accessibilityIdentifier("savePromptButton")
 
                 Button {
@@ -453,23 +553,18 @@ private struct EditorView: View {
             .tint(.primary)
             .accessibilityIdentifier("enhanceModePicker")
 
+            if store.draft.isEmpty {
+                EditorEmptyHint()
+            }
+
             TextEditor(text: $store.draft)
                 .font(.body.monospaced())
                 .padding(10)
                 .scrollContentBackground(.hidden)
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
-                .overlay {
-                    if store.draft.isEmpty {
-                        ContentUnavailableView(
-                            "Start a prompt",
-                            systemImage: "square.and.pencil",
-                            description: Text("Write or paste a prompt here.")
-                        )
-                        .allowsHitTesting(false)
-                    }
-                }
                 .frame(minHeight: 260)
                 .accessibilityLabel("Prompt editor")
+                .accessibilityHint(store.draft.isEmpty ? "Write or paste a prompt here." : "Edit the current prompt.")
                 .accessibilityIdentifier("promptEditor")
 
             statusMessage
@@ -480,18 +575,6 @@ private struct EditorView: View {
             }
         }
         .padding()
-        .navigationTitle("Editor")
-        .toolbar {
-            if let showWorkspace {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: showWorkspace) {
-                        Label("Workspace", systemImage: "sidebar.left")
-                    }
-                    .tint(.primary)
-                    .accessibilityIdentifier("workspaceButton")
-                }
-            }
-        }
     }
 
     @ViewBuilder
@@ -540,10 +623,9 @@ private struct EditorView: View {
         } label: {
             Label(enhanceButtonTitle, systemImage: "sparkles")
         }
-        .buttonStyle(.borderedProminent)
+        .buttonStyle(HighContrastProminentButtonStyle())
         .disabled(!store.canEnhance)
         .keyboardShortcut(.return, modifiers: .command)
-        .frame(minHeight: 44)
         .accessibilityIdentifier("enhanceButton")
     }
 
@@ -569,6 +651,27 @@ private struct EditorView: View {
     }
 }
 
+private struct HighContrastProminentButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .frame(minHeight: 48)
+            .background(
+                isEnabled
+                    ? Color(red: 0, green: 0.32, blue: 0.64)
+                    : Color(red: 0.24, green: 0.24, blue: 0.26),
+                in: Capsule()
+            )
+            .contentShape(Capsule())
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+    }
+}
+
+@MainActor
 private struct ResultsView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var store: WorkbenchStore
@@ -591,7 +694,6 @@ private struct ResultsView: View {
                             onCopy: { copy(result.enhanced) },
                             onSave: { save(result.enhanced) }
                         )
-                        .accessibilityIdentifier("enhancedResultCard")
                         ForEach(result.variants, id: \.self) { variant in
                             ResultCard(
                                 title: variant.label,
@@ -647,11 +749,21 @@ private struct ResultsView: View {
                 }
                 .padding()
             } else {
-                ContentUnavailableView(
-                    "No result yet",
-                    systemImage: "sparkles",
-                    description: Text("Enhanced prompts will appear here.")
-                )
+                VStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.largeTitle)
+                        .accessibilityHidden(true)
+                    Text("No result yet")
+                        .font(.headline)
+                    Text("Enhanced prompts will appear here.")
+                        .font(.body)
+                }
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+                .padding(24)
+                .background(Color(red: 0.12, green: 0.12, blue: 0.14), in: RoundedRectangle(cornerRadius: 16))
+                .padding()
+                .accessibilityElement(children: .combine)
             }
         }
         .navigationTitle("Results")
@@ -864,10 +976,16 @@ private struct RunRow: View {
 private struct RunDetailView: View {
     @Query private var runs: [RunRecord]
     let onReuse: (RunRecord) -> Void
+    let onUseOutput: (String) -> Void
 
-    init(runID: String, onReuse: @escaping (RunRecord) -> Void) {
+    init(
+        runID: String,
+        onReuse: @escaping (RunRecord) -> Void,
+        onUseOutput: @escaping (String) -> Void
+    ) {
         _runs = Query(filter: #Predicate<RunRecord> { $0.id == runID })
         self.onReuse = onReuse
+        self.onUseOutput = onUseOutput
     }
 
     var body: some View {
@@ -884,11 +1002,17 @@ private struct RunDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    HStack {
+                    FlowLayout(spacing: 8) {
                         Button("Reuse Input", systemImage: "arrow.uturn.backward") { onReuse(run) }
                             .buttonStyle(.borderedProminent)
                             .frame(minHeight: 44)
                         if !run.output.isEmpty {
+                            Button("Use Output", systemImage: "arrow.turn.down.left") {
+                                onUseOutput(run.output)
+                            }
+                            .buttonStyle(.bordered)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("useRunOutputButton")
                             ShareLink(item: run.output) {
                                 Label("Share Output", systemImage: "square.and.arrow.up")
                             }
@@ -903,6 +1027,15 @@ private struct RunDetailView: View {
                     if let response = run.response {
                         ForEach(response.variants, id: \.self) { variant in
                             InformationCard(title: variant.label, text: variant.content)
+                        }
+                        if !response.assumptions.isEmpty {
+                            InformationCard(
+                                title: "Assumptions",
+                                text: response.assumptions.map { "• \($0)" }.joined(separator: "\n")
+                            )
+                        }
+                        if !response.tags.isEmpty {
+                            InformationCard(title: "Tags", text: response.tags.joined(separator: ", "))
                         }
                     }
                     if !run.notes.isEmpty {

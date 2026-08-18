@@ -21,6 +21,7 @@
 		AB000000000000000000000D /* web-library-export-1.7.0.json in Resources */ = {isa = PBXBuildFile; fileRef = AC000000000000000000000F /* web-library-export-1.7.0.json */; };
 		AB000000000000000000000E /* promptlab-enhance-contract-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */; };
 		AB000000000000000000000F /* PromptLabUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000011 /* PromptLabUITests.swift */; };
+		AB0000000000000000000010 /* PromptLabSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000013 /* PromptLabSchema.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "promptlab-enhance-contract-v1.json"; path = "../contracts/promptlab-enhance-contract-v1.json"; sourceTree = SOURCE_ROOT; };
 		AC0000000000000000000011 /* PromptLabUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabUITests.swift; sourceTree = "<group>"; };
 		AC0000000000000000000012 /* PromptLabUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromptLabUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC0000000000000000000013 /* PromptLabSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabSchema.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,6 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				AC0000000000000000000001 /* PromptLabApp.swift */,
+				AC0000000000000000000013 /* PromptLabSchema.swift */,
 				AC0000000000000000000002 /* WorkbenchStore.swift */,
 				AC000000000000000000000A /* Contracts.swift */,
 				AC000000000000000000000B /* ProviderClient.swift */,
@@ -190,7 +193,7 @@
 		BC0000000000000000000001 = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (AB0000000000000000000001, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A, AB000000000000000000000B, AB000000000000000000000C,);
+			files = (AB0000000000000000000001, AB0000000000000000000010, AB0000000000000000000002, AB0000000000000000000003, AB0000000000000000000004, AB0000000000000000000005, AB0000000000000000000006, AB0000000000000000000008, AB0000000000000000000009, AB000000000000000000000A, AB000000000000000000000B, AB000000000000000000000C,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		BC0000000000000000000002 = {

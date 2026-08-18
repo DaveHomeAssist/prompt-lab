@@ -86,7 +86,7 @@ prompt-lab-ios/
   README.md
 ```
 
-CI: a `macos-14` GitHub Actions matrix builds and runs unit plus UI smoke suites on
+CI: a `macos-15` GitHub Actions matrix builds and runs unit plus UI smoke suites on
 both iPhone and iPad simulator families. Native and extension jobs both watch the
 shared contract fixture and their canonical Swift/JavaScript inputs.
 
@@ -94,7 +94,7 @@ shared contract fixture and their canonical Swift/JavaScript inputs.
 
 1. **M0 — Scaffold — complete:** Xcode project, SwiftData entities, lossless library round-trip fixture, and iPhone/iPad build matrix are present.
 2. **M1 — Enhance end-to-end — complete:** Anthropic BYO-key streaming, Keychain management, resilient response parsing, progress/cancel/error states, durable result cards, and full-response run persistence are implemented. A user-observed physical M1 iPad run completed successfully on August 16, 2026; automated paid-provider execution remains opt-in only.
-3. **M2 — Library + pads + runs — complete:** Library create/open/rename/delete, scratchpad create/autosave/delete, full run history/detail/reuse, canonical statuses, historical `failed` compatibility, and transactional import preview are implemented.
+3. **M2 — Library + pads + runs — complete:** Library create/open/rename/delete, scratchpad create/autosave/delete, full run history/detail with input/output reuse, canonical statuses, historical `failed` compatibility, transactional import preview, and an on-disk V1→V2 SwiftData migration test are implemented.
 4. **M3 — Adaptive layout + polish — functionally complete, device QA ongoing:** compact launches in Editor with an explicit Workspace route and Results push; regular iPad retains rebalanced three-column operation. Dynamic Type, wrapping actions/tags, accessibility focus, Command-S/Command-Return/Escape, share actions, and iPhone/iPad UI smoke coverage are present. Final manual checks remain for narrow Split View/Stage Manager, VoiceOver reading order, and hardware-keyboard behavior on current physical hardware. Drag-and-drop is deferred because it is not required for the focused workbench closure.
 5. **M4 — Beta — blocked:** TestFlight/App Store work requires an approved production bundle identifier, final app icons/store assets, Apple distribution access, privacy metadata, and explicit release criteria. No release upload is authorized by this plan update.
 
