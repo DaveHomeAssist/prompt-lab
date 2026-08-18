@@ -26,7 +26,13 @@ struct WorkbenchRootView: View {
         provider: any ProviderClient = AnthropicProviderClient(),
         runRecordedDemo: Bool = false
     ) {
-        _store = State(initialValue: WorkbenchStore(provider: provider))
+        let store = WorkbenchStore(provider: provider)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-auditDoubleColumn") {
+            store.columnVisibility = .doubleColumn
+        }
+        #endif
+        _store = State(initialValue: store)
         self.runRecordedDemo = runRecordedDemo
     }
 
@@ -107,24 +113,40 @@ struct WorkbenchRootView: View {
 
     @ViewBuilder
     private var regularContent: some View {
-        switch regularRoute {
-        case let .pad(id):
-            PadEditorView(padID: id, onDelete: { regularRoute = .editor })
-        case .runs, .run:
-            RunHistoryView(onOpen: open)
-        default:
-            EditorView(store: store)
+        if hasAuditArgument("-auditBlankContent") {
+            Color.clear
+        } else {
+            switch regularRoute {
+            case let .pad(id):
+                PadEditorView(padID: id, onDelete: { regularRoute = .editor })
+            case .runs, .run:
+                RunHistoryView(onOpen: open)
+            default:
+                EditorView(store: store)
+            }
         }
     }
 
     @ViewBuilder
     private var regularDetail: some View {
-        switch regularRoute {
-        case let .run(id):
-            RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
-        default:
-            ResultsView(store: store, onUse: useResult)
+        if hasAuditArgument("-auditBlankDetail") {
+            Color.clear
+        } else {
+            switch regularRoute {
+            case let .run(id):
+                RunDetailView(runID: id, onReuse: reuseRun, onUseOutput: useResult)
+            default:
+                ResultsView(store: store, onUse: useResult)
+            }
         }
+    }
+
+    private func hasAuditArgument(_ argument: String) -> Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains(argument)
+        #else
+        return false
+        #endif
     }
 
     private func open(_ route: WorkbenchRoute) {

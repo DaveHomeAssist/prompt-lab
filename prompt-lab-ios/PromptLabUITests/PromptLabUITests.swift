@@ -111,6 +111,29 @@ final class PromptLabUITests: XCTestCase {
         }
     }
 
+    func testRegularWidthBlankContentPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditBlankContent"])
+        XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+        try performElementDetectionAudit(surface: "Blank content")
+    }
+
+    func testRegularWidthBlankDetailPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditBlankDetail"])
+        XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 3))
+        try performElementDetectionAudit(surface: "Blank detail")
+    }
+
+    func testRegularWidthBlankSplitPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-auditBlankContent", "-auditBlankDetail"])
+        try performElementDetectionAudit(surface: "Blank content and detail")
+    }
+
+    func testRegularWidthPopulatedResultsPassesElementDetectionAudit() throws {
+        try launchRegularWidthProbe(arguments: ["-runRecordedDemo"])
+        waitForRecordedResults()
+        try performElementDetectionAudit(surface: "Populated results")
+    }
+
     private func openWorkspace() {
         if app.buttons["newPromptButton"].exists { return }
         let workspace = app.buttons["workspaceButton"]
@@ -129,6 +152,33 @@ final class PromptLabUITests: XCTestCase {
             app.navigationBars.buttons.firstMatch.tap()
         }
         openWorkspace()
+    }
+
+    private func launchRegularWidthProbe(arguments: [String]) throws {
+        app.launchArguments.append("-auditDoubleColumn")
+        app.launchArguments.append(contentsOf: arguments)
+        app.launch()
+        try XCTSkipUnless(
+            app.windows.firstMatch.frame.width >= 700,
+            "The regular-width diagnostic applies only to iPad-sized windows."
+        )
+    }
+
+    private func performElementDetectionAudit(surface: String) throws {
+        print("Starting accessibility audit: Element Detection (\(surface))")
+        try app.performAccessibilityAudit(for: .elementDetection) { issue in
+            let element = issue.element
+            print(
+                "Accessibility audit [Element Detection — \(surface)]: " +
+                "\(issue.compactDescription) — \(issue.detailedDescription) | " +
+                "label=\(element?.label ?? "<none>") " +
+                "identifier=\(element?.identifier ?? "<none>") " +
+                "type=\(String(describing: element?.elementType)) " +
+                "frame=\(String(describing: element?.frame)) " +
+                "element=\(String(describing: element))"
+            )
+            return false
+        }
     }
 
 }
