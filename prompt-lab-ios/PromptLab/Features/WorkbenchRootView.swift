@@ -486,7 +486,6 @@ private struct EditorView: View {
     var body: some View {
         if let showWorkspace {
             editorContent
-                .navigationTitle("Editor")
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
                         Button(action: showWorkspace) {
