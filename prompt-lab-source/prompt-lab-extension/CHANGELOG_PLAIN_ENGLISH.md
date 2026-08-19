@@ -1,8 +1,15 @@
 # Prompt Lab Changelog (Plain English)
 
-Date: 2026-08-12
+Date: 2026-08-19
 
-## What changed after the August behavioral audit (unreleased, post-v1.7.1)
+## Release status
+
+- The shared package/source version is `1.7.1`, but it is not tagged or published as a GitHub Release.
+- The latest source tag is `v1.7.0`.
+- The latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
+- The native iPhone/iPad app is version `0.1.0` build `1` and has not been distributed through TestFlight or the App Store.
+
+## What changed after the August behavioral audit (unreleased 1.7.1 source line)
 
 An independent behavioral audit on August 11 tested 169 user paths across every
 surface and found 19 confirmed defects, six of them release blockers. The release

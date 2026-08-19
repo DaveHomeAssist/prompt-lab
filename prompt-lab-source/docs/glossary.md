@@ -26,6 +26,14 @@ The Tauri 2 desktop shell in `prompt-lab-desktop/` that loads the shared fronten
 
 The deployed web application served publicly at `https://promptlab.tools/app/`.
 
+### React mobile prototype
+
+The separate touch-first React UI under `prompt-lab-web/mobile/`, served at `https://promptlab.tools/mobile/`. It imports selected shared utilities but is not the shared workbench or an installed mobile release.
+
+### native iPhone and iPad app
+
+The focused SwiftUI app under `prompt-lab-ios/`. It shares versioned JSON contracts with the React codebase rather than sharing UI code.
+
 ### public landing page
 
 The static public marketing and onboarding surface at `https://promptlab.tools/`.
@@ -131,6 +139,8 @@ Prefer these exact phrases in active docs:
 - `extension`
 - `desktop`
 - `hosted web app`
+- `React mobile prototype`
+- `native iPhone and iPad app`
 - `public landing page`
 - `shared frontend`
 

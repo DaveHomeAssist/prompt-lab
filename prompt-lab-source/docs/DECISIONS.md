@@ -267,9 +267,11 @@ Decision: **Native SwiftUI universal app targeting iPhone + iPad (iOS/iPadOS 17+
 
 Rationale: The prompt workbench is a keyboard- and multitasking-heavy tool where WebView UX is a real ceiling on iPad, and the extension/desktop already run auth-free with client-side keys, so a BYO-key native app matches the existing posture. Contract-level sharing (not code-level) keeps drift risk bounded and testable via import/export round-trips.
 
-Consequences: Introduces `prompt-lab-ios/` (universal iPhone + iPad) as a fourth surface and a second UI codebase to maintain. Every change to the enhance contract in `constants.js` becomes a cross-surface API change (add a checklist item to `docs/PIPELINE.md`). Does not block the Tauri Mobile roadmap — if v1 retention doesn't justify the second codebase, that path remains open. **Next gate:** owner greenlight before the M0 Xcode scaffold; no app code lands on this ADR alone.
+Consequences: Introduces `prompt-lab-ios/` (universal iPhone + iPad) as a native surface and a second UI codebase to maintain. Every change to the enhance contract in `constants.js` becomes a cross-surface API change (add a checklist item to `docs/PIPELINE.md`). The Tauri Mobile roadmap remains a deferred fallback if native retention does not justify the second codebase.
+
+Implementation status (2026-08-19): M0-M3 are implemented in `prompt-lab-ios/`, with contract parity enforced through `contracts/promptlab-enhance-contract-v1.json`, Vitest, and XCTest. M4 distribution remains blocked on production bundle identity, store assets, Apple distribution access, privacy metadata, and release criteria.
 
 ---
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-08-19*
 *Related: CLAUDE.md, PIPELINE.md, PROMPT_SYSTEM.md, IPAD_NATIVE_APP_PLAN.md*
