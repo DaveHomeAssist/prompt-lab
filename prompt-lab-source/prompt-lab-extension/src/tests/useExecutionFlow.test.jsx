@@ -303,4 +303,60 @@ describe('useExecutionFlow', () => {
     expect(typeof savedRuns[0].output).toBe('string');
     expect(savedRuns[0].output.length).toBeGreaterThan(0);
   });
+
+  // DHA-10 / PLB-013: `loading` only disables the trigger after a render, so
+  // the guard has to be synchronous or a double activation bills twice.
+  it('rapid_enhance_activation_dispatches_one_provider_call', async () => {
+    const { result } = renderExecutionFlow();
+
+    await act(async () => {
+      // Both calls are issued inside one tick, before any re-render.
+      await Promise.all([result.current.enhance(), result.current.enhance()]);
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(savedRuns).toHaveLength(1);
+    });
+  });
+
+  it('cancel_releases_the_guard_so_a_retry_dispatches', async () => {
+    const { result } = renderExecutionFlow();
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+    expect(callModel).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.cancelEnhance();
+    });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('pii_blocked_attempt_leaves_the_guard_released', async () => {
+    scanSensitiveData.mockReturnValueOnce({
+      matches: [{ id: 'm-1', type: 'email', snippet: 'user@example.com', path: ['messages', 0, 'content'], start: 0 }],
+      settings: {},
+    });
+    const { result } = renderExecutionFlow({ raw: 'Contact me at user@example.com' });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+    expect(callModel).not.toHaveBeenCalled();
+
+    // A preflight stop must not strand the guard — the next attempt still sends.
+    scanSensitiveData.mockReturnValue({ matches: [], settings: {} });
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(1);
+  });
 });
