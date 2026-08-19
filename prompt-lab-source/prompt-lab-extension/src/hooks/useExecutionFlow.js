@@ -45,6 +45,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const [batchProgress, setBatchProgress] = useState({ active: false, completed: 0, total: 0, currentLabel: '' });
   const enhanceReqRef = useRef(0);
   const enhanceAbortRef = useRef(null);
+  // Synchronous dispatch guard. `loading` only disables the trigger after a
+  // render, so two activations inside one tick both reach the provider. This
+  // ref flips before the request leaves and is cleared by both the finally
+  // block and cancelEnhance, so cancel-then-retry stays available.
+  const enhanceInFlightRef = useRef(false);
 
   const evalRunsHook = useEvalRuns({ editingId, tab });
   const testCasesHook = useTestCases({ notify });
@@ -142,6 +147,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const enhance = async (overridePayload, meta) => {
     if (!raw.trim()) return;
+    if (enhanceInFlightRef.current) return;
     const safeOverridePayload = overridePayload && typeof overridePayload === 'object' && 'nativeEvent' in overridePayload
       ? null
       : overridePayload;
@@ -175,6 +181,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       }
     }
 
+    // Claimed only once the preflight checks have passed, so a PII-blocked
+    // attempt never strands the guard and the user can immediately retry.
+    enhanceInFlightRef.current = true;
     const reqId = enhanceReqRef.current + 1;
     enhanceReqRef.current = reqId;
     const startedAt = nowMs();
@@ -296,6 +305,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save failed eval run', err));
       }
     } finally {
+      enhanceInFlightRef.current = false;
       if (enhanceAbortRef.current === abortController) {
         enhanceAbortRef.current = null;
       }
@@ -310,6 +320,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const cancelEnhance = () => {
     enhanceReqRef.current += 1;
+    // Release the dispatch guard here as well as in the finally block: the
+    // in-flight attempt may still be unwinding, and a cancel must leave the
+    // user able to retry immediately.
+    enhanceInFlightRef.current = false;
     enhanceAbortRef.current?.abort();
     enhanceAbortRef.current = null;
     setLoading(false);
