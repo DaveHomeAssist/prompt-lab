@@ -1,5 +1,7 @@
 # Prompt Lab — Canonical Product Definition
 
+Status: Historical draft. Do not paste this document into Notion as current truth. It predates the current Vercel production routes, React mobile prototype, native SwiftUI app, and release metadata. Use `ARCHITECTURE.md`, `ROADMAP.md`, `DOCS_INVENTORY.md`, and `prompt-lab-extension/VERSION_REPORT.md` instead.
+
 > This is the replacement text for the Notion project page.
 > Copy into Notion, then move old content to an "Archive / Historical Notes" child page.
 

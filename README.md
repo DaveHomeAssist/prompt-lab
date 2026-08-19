@@ -1,8 +1,8 @@
 # Prompt Lab
 
-> A multi-surface prompt engineering workbench that runs as a Chrome extension, hosted web app, and standalone desktop app.
+> A multi-surface prompt engineering workbench spanning browser, web, desktop, and native iPhone/iPad experiences.
 
-Write, enhance, lint, A/B test, and manage prompts across Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama. The hosted web app currently defaults to Anthropic, while the extension and desktop shells retain the full multi-provider workflow.
+The extension, hosted `/app/` workbench, and Tauri desktop app reuse the same React frontend. A separate React mobile prototype is public at `/mobile/`, while the focused native SwiftUI app shares versioned JSON contracts rather than UI code. Provider and feature coverage varies by surface; the extension and desktop retain the full Anthropic, OpenAI, Gemini, OpenRouter, and Ollama workflow.
 
 ## Features
 
@@ -26,13 +26,19 @@ Write, enhance, lint, A/B test, and manage prompts across Anthropic, OpenAI, Goo
 cd prompt-lab-source/prompt-lab-extension
 npm install && npm run dev
 
-# Hosted web app
+# Hosted web app and React mobile prototype
 cd prompt-lab-source/prompt-lab-web
 npm install && npm run dev
 
 # Desktop
 cd prompt-lab-source/prompt-lab-desktop
 npm install && cargo tauri dev
+
+# Native iPhone/iPad app (choose an installed simulator)
+xcodebuild build \
+  -project prompt-lab-ios/PromptLab.xcodeproj \
+  -scheme PromptLab \
+  -destination 'platform=iOS Simulator,name=iPhone 16'
 ```
 
 ## Structure
@@ -47,22 +53,29 @@ prompt-lab-source/
     src-tauri/            # Rust backend + config
     index.html            # Entry point (imports shared src/)
   prompt-lab-web/         # Hosted web app + landing authoring source
+    mobile/               # Separate React mobile prototype at /mobile/
   api/                    # Vercel edge proxy for hosted web mode
   docs/                   # Internal technical docs, audits, and system notes
+prompt-lab-ios/            # Native SwiftUI iPhone/iPad app (iOS 17+)
+contracts/                 # Versioned cross-surface JSON contracts
 docs/                     # Published public docs/static site copy
-.github/workflows/        # CI: extension tests + cross-platform desktop builds
+.github/workflows/        # CI: web, extension, desktop, native, docs, and API gates
 ```
 
 ## Deployment
 
 | Surface | URL | Host |
 |---------|-----|------|
-| Public landing page | `https://promptlab.tools/` | GitHub Pages (`.github/workflows/pages.yml`, web root `docs/`) |
-| Hosted web app | `https://promptlab.tools/app/` | GitHub Pages static bundle (live provider runs use the Vercel proxy deployment) |
+| Public landing page | `https://promptlab.tools/` | Vercel production deployment |
+| Hosted web app | `https://promptlab.tools/app/` | Vercel static app + Edge proxy |
+| React mobile prototype | `https://promptlab.tools/mobile/` | Vercel static app + Edge proxy |
 | Chrome / Vivaldi extension | MV3 side panel, local/unpacked build; store submission materials in draft | Local build / Chrome Web Store review prep |
 | macOS desktop | Tauri 2 — `.app` / `.dmg` | Local build |
 | Windows desktop | Tauri 2 — `.exe` / `.msi` | Local build |
 | Linux desktop | Tauri 2 — `.deb` / `.AppImage` | Local build |
+| Native iPhone/iPad | SwiftUI focused v1; distribution inputs are still blocked | Xcode / native CI (no TestFlight or App Store release yet) |
+
+The GitHub Pages workflow still builds the generated `docs/` mirror, but production DNS for `promptlab.tools` resolves to Vercel.
 
 ## Tech
 
@@ -72,6 +85,8 @@ docs/                     # Published public docs/static site copy
 - Vitest + Playwright (testing)
 - Vercel edge proxy (hosted web API)
 - IndexedDB (persistence)
+- SwiftUI + SwiftData + Keychain (native iPhone/iPad app)
+- Versioned JSON contracts (React/native compatibility boundary)
 
 ## Documentation
 
@@ -80,12 +95,16 @@ docs/                     # Published public docs/static site copy
 - `prompt-lab-source/docs/docs-map.md` — task and audience routing guide
 - `prompt-lab-source/docs/docs-style-guide.md` — authoring rules
 - `prompt-lab-source/docs/glossary.md` — standard terminology
+- `prompt-lab-ios/README.md` — native app scope and verification
+- `prompt-lab-source/prompt-lab-extension/VERSION_REPORT.md` — package, tag, and release state
 
 ## Links
 
 - Landing: <https://promptlab.tools/>
 - Web app: <https://promptlab.tools/app/>
-- Source release tag: `v1.7.0` is pushed to GitHub. The GitHub Releases page may lag behind tags because only packaged desktop previews are promoted there today.
+- Current shared package/source version: `1.7.1` (unreleased)
+- Latest source tag: `v1.7.0`
+- Latest GitHub Release: `v1.5.0-desktop-preview` (prerelease)
 
 ## Conventions
 

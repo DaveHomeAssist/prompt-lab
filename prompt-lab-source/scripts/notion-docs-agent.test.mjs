@@ -27,4 +27,10 @@ test('buildReport returns a structured report in dry-run mode', async () => {
   assert.ok(Array.isArray(report.blocks));
   assert.ok(report.blocks.length > 0);
   assert.equal(report.blocks[0].type, 'heading_1');
+  assert.ok(
+    report.insights.followUps.includes(
+      'Review the generated snapshot before choosing an explicit live Notion sync.'
+    )
+  );
+  assert.ok(!report.insights.followUps.some(item => item.includes('workflow_run')));
 });

@@ -1,0 +1,71 @@
+name: Notion Docs Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      write_to_notion:
+        description: Write the generated report to Notion
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notion-docs-agent
+  cancel-in-progress: false
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: prompt-lab-source
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+          cache: npm
+          cache-dependency-path: prompt-lab-source/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test Notion docs agent
+        run: npm run test:notion-agent
+
+      - name: Require main for live sync
+        if: ${{ inputs.write_to_notion && github.ref != 'refs/heads/main' }}
+        run: |
+          echo "Live Notion sync is allowed only from main." >&2
+          exit 1
+
+      - name: Generate dry-run report
+        if: ${{ !inputs.write_to_notion }}
+        env:
+          DOCS_AGENT_DRY_RUN: "1"
+          DOCS_AGENT_MAX_CHARS_PER_DOC: ${{ vars.DOCS_AGENT_MAX_CHARS_PER_DOC }}
+          DOCS_AGENT_MAX_DOCS: ${{ vars.DOCS_AGENT_MAX_DOCS }}
+          DOCS_AGENT_PROVIDER: none
+          NOTION_DOCS_PAGE_TITLE: ${{ vars.NOTION_DOCS_PAGE_TITLE }}
+        run: npm run notion:docs-agent
+
+      - name: Sync report to Notion
+        if: ${{ inputs.write_to_notion && github.ref == 'refs/heads/main' }}
+        env:
+          DOCS_AGENT_PROVIDER: none
+          DOCS_AGENT_MAX_CHARS_PER_DOC: ${{ vars.DOCS_AGENT_MAX_CHARS_PER_DOC }}
+          DOCS_AGENT_MAX_DOCS: ${{ vars.DOCS_AGENT_MAX_DOCS }}
+          NOTION_DOCS_PAGE_TITLE: ${{ vars.NOTION_DOCS_PAGE_TITLE }}
+          NOTION_PARENT_PAGE_ID: ${{ secrets.NOTION_PARENT_PAGE_ID }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: npm run notion:docs-agent
