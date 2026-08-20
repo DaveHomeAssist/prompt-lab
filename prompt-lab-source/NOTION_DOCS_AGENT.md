@@ -49,7 +49,7 @@ The GitHub workflow deliberately pins `DOCS_AGENT_PROVIDER=none`. Local runs may
 The workflow runs only through `workflow_dispatch`.
 
 - `write_to_notion=false` (default) runs tests and prints the generated report without credentials or external writes.
-- `write_to_notion=true` is allowed only from `main` and uses `NOTION_TOKEN` plus `NOTION_PARENT_PAGE_ID` to upsert the report page.
+- `write_to_notion=true` is allowed only from `main`, verifies that `NOTION_TOKEN` can retrieve `NOTION_PARENT_PAGE_ID`, and then uses those values to upsert the report page.
 
 There are intentionally no `push` or `workflow_run` triggers. Add broader triggers only after both required secrets are configured, a manual live sync has been read back in Notion, and repeated-write behavior is verified.
 
@@ -64,7 +64,8 @@ Before enabling **Write the report to Notion**:
 1. Configure both required repository secrets.
 2. Confirm the integration can access the intended parent page.
 3. Select the `main` branch.
-4. Run once and read the resulting page back in Notion before considering any automatic trigger.
+4. Confirm the read-only parent access step succeeds before the sync step runs.
+5. Read the resulting page back in Notion before considering any automatic trigger.
 
 ## Local dry run
 
