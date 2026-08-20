@@ -133,32 +133,34 @@ export function buildResultCandidates(enhanced, variants = []) {
 }
 
 export function normalizeResultMeta(value = {}, content = {}) {
-  const assumptions = normalizeAssumptions(value.assumptions);
-  const candidates = Array.isArray(value.candidates) && value.candidates.length > 0
-    ? value.candidates.map((candidate, index) => ({
+  const source = value && typeof value === 'object' ? value : {};
+  const fallbackContent = content && typeof content === 'object' ? content : {};
+  const assumptions = normalizeAssumptions(source.assumptions);
+  const candidates = Array.isArray(source.candidates) && source.candidates.length > 0
+    ? source.candidates.map((candidate, index) => ({
       id: CANDIDATE_ROLES[index]?.id || ensureString(candidate?.id).trim() || `candidate-${index + 1}`,
       label: CANDIDATE_ROLES[index]?.label || ensureString(candidate?.label).trim() || `Candidate ${index + 1}`,
       role: CANDIDATE_ROLES[index]?.id || ensureString(candidate?.role).trim() || 'variant',
       content: ensureString(candidate?.content),
     })).filter((candidate) => candidate.content.trim()).slice(0, 3)
-    : buildResultCandidates(content.enhanced, content.variants);
-  const selectedCandidateId = candidates.some((candidate) => candidate.id === value.selectedCandidateId)
-    ? value.selectedCandidateId
+    : buildResultCandidates(fallbackContent.enhanced, fallbackContent.variants);
+  const selectedCandidateId = candidates.some((candidate) => candidate.id === source.selectedCandidateId)
+    ? source.selectedCandidateId
     : candidates[0]?.id || '';
   return {
     candidates,
     selectedCandidateId,
-    changeSummary: ensureString(value.changeSummary || value.change_summary).trim(),
-    changes: normalizeSemanticChanges(value.changes),
+    changeSummary: ensureString(source.changeSummary || source.change_summary).trim(),
+    changes: normalizeSemanticChanges(source.changes),
     assumptions,
-    reversibleEdits: normalizeReversibleEdits(value.reversibleEdits || value.reversible_edits, assumptions),
-    reasoning: ensureString(value.reasoning).trim(),
-    tags: normalizeTagList(value.tags),
-    provider: ensureString(value.provider).trim(),
-    model: ensureString(value.model).trim(),
-    latencyMs: Number.isFinite(value.latencyMs) ? Math.max(0, Math.round(value.latencyMs)) : null,
-    usage: normalizeTokenUsage(value.usage),
-    runId: ensureString(value.runId).trim(),
+    reversibleEdits: normalizeReversibleEdits(source.reversibleEdits || source.reversible_edits, assumptions),
+    reasoning: ensureString(source.reasoning).trim(),
+    tags: normalizeTagList(source.tags),
+    provider: ensureString(source.provider).trim(),
+    model: ensureString(source.model).trim(),
+    latencyMs: Number.isFinite(source.latencyMs) ? Math.max(0, Math.round(source.latencyMs)) : null,
+    usage: normalizeTokenUsage(source.usage),
+    runId: ensureString(source.runId).trim(),
   };
 }
 
