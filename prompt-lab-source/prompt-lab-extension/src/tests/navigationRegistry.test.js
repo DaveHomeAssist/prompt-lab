@@ -47,6 +47,7 @@ describe('navigationRegistry', () => {
     expect(deriveTab('runs', 'editor', 'compare')).toBe('abtest');
     expect(deriveTab('runs', 'editor', 'history')).toBe('history');
     expect(deriveTab('create', 'composer', 'history')).toBe('composer');
+    expect(deriveTab('create', 'split', 'history')).toBe('editor');
     expect(deriveTab('create', 'editor', 'history')).toBe('editor');
   });
 
@@ -77,11 +78,13 @@ describe('navigationRegistry', () => {
     expect(resolveSectionState('experiments')).toEqual({ primaryView: 'runs' });
 
     expect(resolveRouteState('/library')).toEqual({ primaryView: 'create', workspaceView: 'library' });
+    expect(resolveRouteState('/split')).toEqual({ primaryView: 'create', workspaceView: 'split' });
     expect(resolveRouteState('/compare')).toEqual({ primaryView: 'runs', runsView: 'compare' });
     expect(resolveRouteState('/unknown')).toBe(null);
 
     expect(stateToRoute('create', 'editor', 'history')).toBe('/');
     expect(stateToRoute('create', 'library', 'history')).toBe('/library');
+    expect(stateToRoute('create', 'split', 'history')).toBe('/split');
     expect(stateToRoute('runs', 'editor', 'compare')).toBe('/compare');
     expect(stateToRoute('notebook', 'editor', 'history')).toBe('/pad');
   });

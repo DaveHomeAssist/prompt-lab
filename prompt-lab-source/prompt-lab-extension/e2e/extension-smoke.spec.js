@@ -12,6 +12,7 @@ async function launchMockedExtension() {
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless: true,
+    timeout: 15_000,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -19,11 +20,12 @@ async function launchMockedExtension() {
   });
 
   let serviceWorker = context.serviceWorkers()[0];
-  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker');
+  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker', { timeout: 15_000 });
   const extensionId = new URL(serviceWorker.url()).host;
   const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
 
-  await page.goto(`chrome-extension://${extensionId}/panel.html`);
+  await page.goto(`chrome-extension://${extensionId}/panel.html`, { timeout: 15_000 });
   await page.evaluate(() => {
     const originalSendMessage = chrome.runtime.sendMessage.bind(chrome.runtime);
     window.__promptLabRequests = [];

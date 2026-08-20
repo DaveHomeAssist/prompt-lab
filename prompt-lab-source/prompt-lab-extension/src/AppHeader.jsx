@@ -16,19 +16,16 @@ export default function AppHeader({
     plan: billingPlan,
     billingDisabled,
   });
-  const createModeButtons = [
-    { id: 'editor', label: 'Write', action: () => openSection('create'), active: primaryView === 'create' && workspaceView !== 'composer' },
-    { id: 'composer', label: 'Compose', action: () => openCreateView('composer'), active: primaryView === 'create' && workspaceView === 'composer' },
-  ];
+  const createModeButtons = SUBVIEWS.create.map(({ id, label }) => ({
+    id,
+    label,
+    action: () => openCreateView(id),
+    active: primaryView === 'create' && workspaceView === id,
+  }));
   const activeTabClass = 'border border-orange-400/50 bg-orange-500/15 text-orange-50 shadow-[0_0_0_1px_rgba(251,146,60,0.12)]';
   const inactiveTabClass = `${m.btn} ${m.textAlt}`;
-  const notebookBtnClass = primaryView === 'notebook'
-    ? activeTabClass
-    : (colorMode === 'dark'
-        ? 'border border-white/10 bg-transparent text-[#c7c2bb] hover:border-orange-400/40 hover:text-orange-200'
-        : 'border border-slate-300 bg-white/70 text-slate-700 hover:border-orange-400 hover:text-orange-600');
   const utilityCopy = primaryView === 'notebook'
-    ? 'Scratchpad + working notes'
+    ? 'Scratch notes + prompt handoff'
     : activeSection === 'create'
       ? 'Prompt engineering workbench'
       : activeSection === 'evaluate'
@@ -36,7 +33,8 @@ export default function AppHeader({
         : 'Reusable library';
 
   return (
-    <header className={`px-4 py-2 ${m.header} border-b shrink-0`}>
+    <>
+      <header className={`pl-app-header px-4 py-2 ${m.header} border-b shrink-0`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex items-center gap-2">
@@ -77,24 +75,13 @@ export default function AppHeader({
       <div className={`mt-2 flex items-center gap-2 ${compact ? 'flex-wrap' : ''}`}>
         <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll flex-1' : ''}`} role="tablist" aria-label="Primary workspaces">
           <div className="pl-scroll-row">
-            {[
-              ['create', 'Workbench'],
-              ['library', 'Library'],
-              ['evaluate', 'Evaluate'],
-            ].map(([id, label]) => (
-              <button key={id} type="button" data-testid={`nav-${id}`} onClick={() => openSection(id)} role="tab" aria-selected={activeSection === id}
-                className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${activeSection === id ? activeTabClass : inactiveTabClass}`}>
-                {label}
-              </button>
-            ))}
+            <button type="button" data-testid="nav-create" onClick={() => openCreateView('editor')} role="tab" aria-selected={primaryView === 'create'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'create' ? activeTabClass : inactiveTabClass}`}>Create</button>
+            <button type="button" data-testid="nav-evaluate" onClick={() => openSection('evaluate')} role="tab" aria-selected={primaryView === 'runs'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'runs' ? activeTabClass : inactiveTabClass}`}>Evaluate</button>
+            <button type="button" data-testid="nav-scratch" onClick={() => setPrimaryView('notebook')} role="tab" aria-selected={primaryView === 'notebook'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? activeTabClass : inactiveTabClass}`}>Scratch</button>
           </div>
         </div>
         <div className={`${compact ? 'overflow-x-auto pb-1 pl-subtle-scroll w-full' : 'ml-auto min-w-0'}`} aria-label="Prompt Lab context controls">
           <div className="pl-scroll-row">
-            <button type="button" onClick={() => setPrimaryView('notebook')}
-              className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors whitespace-nowrap ${notebookBtnClass}`}>
-              Notebook
-            </button>
             {activeSection === 'evaluate' && (
               <div role="tablist" aria-label="Evaluate views" className="pl-scroll-row">
                 {SUBVIEWS.runs.map(({ id, label }) => (
@@ -105,10 +92,10 @@ export default function AppHeader({
                 ))}
               </div>
             )}
-            {activeSection === 'create' && (
+            {primaryView === 'create' && (
               <>
                 {createModeButtons.map(({ id, label, action, active }) => (
-                  <button key={id} type="button" onClick={action}
+                  <button key={id} type="button" data-testid={id === 'library' && !compact ? 'nav-library' : undefined} onClick={action}
                     className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${active ? activeTabClass : inactiveTabClass}`}>
                     {label}
                   </button>
@@ -122,11 +109,20 @@ export default function AppHeader({
               </>
             )}
             {primaryView === 'notebook' && (
-              <span className={`text-[11px] ${m.textMuted}`}>Scratchpad notes with library handoff</span>
+              <span className={`text-[11px] ${m.textMuted}`}>Markdown scratchpads with linked prompt promotion</span>
             )}
           </div>
         </div>
       </div>
-    </header>
+      </header>
+      {compact && (
+        <nav className="pl-mobile-nav" aria-label="Primary mobile navigation">
+          <button type="button" aria-current={primaryView === 'create' && workspaceView !== 'library' ? 'page' : undefined} onClick={() => openCreateView('editor')}><Ic n="Wand2" size={16} /><span>Create</span></button>
+          <button type="button" data-testid="nav-library" aria-current={primaryView === 'create' && workspaceView === 'library' ? 'page' : undefined} onClick={() => openCreateView('library')}><Ic n="FolderOpen" size={16} /><span>Library</span></button>
+          <button type="button" aria-current={primaryView === 'runs' ? 'page' : undefined} onClick={() => openSection('evaluate')}><Ic n="FlaskConical" size={16} /><span>Evaluate</span></button>
+          <button type="button" aria-current={primaryView === 'notebook' ? 'page' : undefined} onClick={() => setPrimaryView('notebook')}><Ic n="FileText" size={16} /><span>Scratch</span></button>
+        </nav>
+      )}
+    </>
   );
 }

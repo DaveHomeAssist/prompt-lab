@@ -11,7 +11,7 @@
 export const PRIMARY_VIEWS = Object.freeze([
   { id: 'create', label: 'Create' },
   { id: 'runs', label: 'Evaluate' },
-  { id: 'notebook', label: 'Notebook' },
+  { id: 'notebook', label: 'Scratch' },
 ]);
 
 // ── Subviews per primary view ────────────────────────────────────────
@@ -64,6 +64,8 @@ export function resolveTabState(nextTab) {
       return { primaryView: 'create', workspaceView: 'editor' };
     case 'composer':
       return { primaryView: 'create', workspaceView: 'composer' };
+    case 'split':
+      return { primaryView: 'create', workspaceView: 'split' };
     case 'abtest':
       return { primaryView: 'runs', runsView: 'compare' };
     case 'history':
@@ -96,6 +98,7 @@ const ROUTE_TO_STATE = Object.freeze({
   '/': { primaryView: 'create', workspaceView: 'editor' },
   '/library': { primaryView: 'create', workspaceView: 'library' },
   '/composer': { primaryView: 'create', workspaceView: 'composer' },
+  '/split': { primaryView: 'create', workspaceView: 'split' },
   '/evaluate': { primaryView: 'runs', runsView: 'history' },
   '/compare': { primaryView: 'runs', runsView: 'compare' },
   '/pad': { primaryView: 'notebook' },
@@ -116,6 +119,7 @@ export function stateToRoute(primaryView, workspaceView, runsView) {
   if (primaryView === 'runs') return runsView === 'compare' ? '/compare' : '/evaluate';
   if (workspaceView === 'library') return '/library';
   if (workspaceView === 'composer') return '/composer';
+  if (workspaceView === 'split') return '/split';
   return '/';
 }
 

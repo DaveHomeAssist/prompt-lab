@@ -1,5 +1,6 @@
 import { ensureString, normalizeVariant, randomId, safeDate } from './utils.js';
 import { normalizeTagList } from './tagSchema.js';
+import { normalizeResultMeta } from './enhancementResult.js';
 
 const MAX_PROMPT_VERSIONS = 25;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
@@ -95,13 +96,17 @@ function normalizeGoldenResponse(value) {
 }
 
 function normalizeContentShape(value) {
-  return {
+  const content = {
     original: ensureString(value?.original),
     enhanced: ensureString(value?.enhanced) || ensureString(value?.prompt) || ensureString(value?.original),
     variants: Array.isArray(value?.variants)
       ? value.variants.map(normalizeVariant).filter(item => item.content.trim())
       : [],
     notes: ensureString(value?.notes) || ensureString(value?.description),
+  };
+  return {
+    ...content,
+    resultMeta: normalizeResultMeta(value?.resultMeta || value?.enhancementResult, content),
   };
 }
 
@@ -116,6 +121,7 @@ export function arePromptSnapshotsEqual(left, right) {
   return a.original === b.original
     && a.enhanced === b.enhanced
     && a.notes === b.notes
+    && JSON.stringify(a.resultMeta) === JSON.stringify(b.resultMeta)
     && variantsEqual(a.variants, b.variants);
 }
 
@@ -176,6 +182,7 @@ export function normalizeVersion(version, fallbackTs = new Date().toISOString())
     enhanced: content.enhanced,
     variants: content.variants,
     notes: content.notes,
+    resultMeta: content.resultMeta,
     savedAt: safeDate(version.savedAt || fallbackTs),
     changeNote: ensureString(version.changeNote),
     source: ensureString(version.source) || 'manual_save',
@@ -207,6 +214,7 @@ export function getPromptSnapshot(entry, options = {}) {
     enhanced: entry?.enhanced,
     variants: entry?.variants,
     notes: entry?.notes,
+    resultMeta: entry?.resultMeta,
     savedAt: options.savedAt || entry?.updatedAt || entry?.createdAt || new Date().toISOString(),
     changeNote: options.changeNote || '',
     source: options.source || 'manual_save',
@@ -255,6 +263,7 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     enhanced: Object.prototype.hasOwnProperty.call(changes, 'enhanced') ? changes.enhanced : current.enhanced,
     variants: Object.prototype.hasOwnProperty.call(changes, 'variants') ? changes.variants : current.variants,
     notes: Object.prototype.hasOwnProperty.call(changes, 'notes') ? changes.notes : current.notes,
+    resultMeta: Object.prototype.hasOwnProperty.call(changes, 'resultMeta') ? changes.resultMeta : current.resultMeta,
   });
   const contentChanged = !arePromptSnapshotsEqual(current, nextContent);
   const withHistory = contentChanged
@@ -275,6 +284,7 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     enhanced: nextContent.enhanced,
     variants: nextContent.variants,
     notes: nextContent.notes,
+    resultMeta: nextContent.resultMeta,
     tags: Object.prototype.hasOwnProperty.call(changes, 'tags')
       ? normalizeStringList(changes.tags)
       : current.tags,
@@ -313,6 +323,7 @@ export function restorePromptVersion(entry, version, options = {}) {
     enhanced: target.enhanced,
     variants: target.variants,
     notes: target.notes,
+    resultMeta: target.resultMeta,
   }, {
     now: options.now,
     source: 'restore',
@@ -350,6 +361,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     enhanced: content.enhanced,
     variants: content.variants,
     notes: content.notes,
+    resultMeta: content.resultMeta,
     tags: normalizeTagList(entry.tags),
     collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
@@ -357,6 +369,9 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     updated_at: updatedAt || createdAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
     lastAccessedAt: entry.lastAccessedAt ? safeDate(entry.lastAccessedAt) : null,
+    favorite: entry.favorite === true,
+    sourceNoteId: ensureString(entry.sourceNoteId || entry.metadata?.sourceNoteId),
+    deletedAt: entry.deletedAt ? safeDate(entry.deletedAt) : null,
     currentVersionId: ensureString(entry.currentVersionId) || randomId(),
     version,
     schema_version: schemaVersion,

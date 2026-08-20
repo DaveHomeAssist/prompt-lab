@@ -10,6 +10,7 @@ export default function useEditorState() {
   const [enhanced, setEnhanced] = useState('');
   const [variants, setVariants] = useState([]);
   const [notes, setNotes] = useState('');
+  const [resultMeta, setResultMeta] = useState(null);
   const [enhMode, setEnhMode] = useState('balanced');
   const [showNotes, setShowNotes] = useState(true);
   const [editorLayout, setEditorLayout] = useState('editor');
@@ -63,6 +64,7 @@ export default function useEditorState() {
     setEnhanced('');
     setVariants([]);
     setNotes('');
+    setResultMeta(null);
     setCursor({ start: 0, end: 0 });
   };
 
@@ -71,6 +73,7 @@ export default function useEditorState() {
     enhanced, setEnhanced,
     variants, setVariants,
     notes, setNotes,
+    resultMeta, setResultMeta,
     enhMode, setEnhMode,
     showNotes, setShowNotes,
     editorLayout, setEditorLayout,

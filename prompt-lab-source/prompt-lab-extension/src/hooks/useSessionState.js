@@ -12,6 +12,7 @@ export function useSessionRestore(setters) {
       if ('enhanced' in s) setters.setEnhanced(s.enhanced);
       if ('variants' in s) setters.setVariants(s.variants);
       if ('notes' in s) setters.setNotes(s.notes);
+      if ('resultMeta' in s && typeof setters.setResultMeta === 'function') setters.setResultMeta(s.resultMeta);
       if ('tab' in s) setters.setTab(s.tab);
       if ('enhMode' in s) setters.setEnhMode(s.enhMode);
     });
@@ -26,5 +27,5 @@ export function useSessionSave(state) {
       sessionSet({ [SESSION_KEY]: state });
     }, DEBOUNCE_MS);
     return () => clearTimeout(timerRef.current);
-  }, [state.raw, state.enhanced, state.variants, state.notes, state.tab, state.enhMode]);
+  }, [state.raw, state.enhanced, state.variants, state.notes, state.resultMeta, state.tab, state.enhMode]);
 }

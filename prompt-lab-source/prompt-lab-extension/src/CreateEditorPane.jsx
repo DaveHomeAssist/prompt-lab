@@ -4,6 +4,7 @@ import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
 import { getLintQuickFixMeta } from './promptLint';
+import PostEnhanceResults from './PostEnhanceResults.jsx';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -80,6 +81,8 @@ export default function CreateEditorPane({
   // Results
   enhanced,
   setEnhanced,
+  resultMeta,
+  setResultMeta,
   enhMdPreview,
   setEnhMdPreview,
   resultTab,
@@ -92,6 +95,8 @@ export default function CreateEditorPane({
   saveTitle,
   setSaveTitle,
   quickSave,
+  quickSaveAsNew,
+  dismissResult,
   // Golden
   editingId,
   goldenResponse,
@@ -624,160 +629,31 @@ export default function CreateEditorPane({
               </div>
             )}
             {enhanced && <>
-              <div data-testid="output-panel" className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-                <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs uppercase tracking-widest font-semibold ${accentTextClass}`}>Results</span>
-                      {goldenVerdict && (
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
-                        </span>
-                      )}
-                    </div>
-                    <p className={`mt-1 text-xs ${m.textMuted}`}>Copy keeps plain text only. Save stores a reusable library entry or a new library version.</p>
-                  </div>
-                  <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
-                    {activeResultTab === 'improved' && (
-                      <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? accentTextClass : `${m.textSub} hover:text-white`} shrink-0`}>
-                        <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
-                      </button>
-                    )}
-                    {editingId && (
-                      <button
-                        onClick={() => lib.pinGoldenResponse(editingId, {
-                          text: enhanced,
-                          runId: evalRuns[0]?.id,
-                          provider: evalRuns[0]?.provider,
-                          model: evalRuns[0]?.model,
-                        })}
-                        disabled={!enhanced.trim()}
-                        className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors shrink-0 ${
-                          enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
-                        }`}
-                      >
-                        <Ic n="Save" size={12} />Pin Golden
-                      </button>
-                    )}
-                    <button
-                      onClick={() => copy(enhanced)}
-                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
-                    ><Ic n="Copy" size={12} />Copy Output</button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Result views">
-                  {resultTabs.map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeResultTab === id}
-                      onClick={() => {
-                        setResultTab(id);
-                        if (id !== 'improved') setEnhMdPreview(false);
-                      }}
-                      className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? accentTabClass : `${m.btn} ${m.textAlt}`}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {showDiffUpgradeHint && (
-                  <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${m.codeBlock} ${m.border}`}>
-                    <span className={m.textMuted}>Side-by-side diff is part of Prompt Lab Pro.</span>
-                    {typeof onUnlockDiff === 'function' && (
-                      <button
-                        type="button"
-                        onClick={onUnlockDiff}
-                        className="ml-2 font-semibold text-amber-300 transition-colors hover:text-amber-200"
-                      >
-                        Unlock Diff
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Inline save bar */}
-                {showInlineSaveBar && (
-                  <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 mb-3`}>
-                    <div className={`flex items-center gap-3 ${compact ? 'flex-col items-stretch' : ''}`}>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.textSub} shrink-0`}>
-                        {currentEntry ? 'Library Version' : 'Library Save'}
-                      </span>
-                      <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
-                      <input
-                        id="inline-save-title"
-                        className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-orange-400 ${m.text} min-w-0 flex-1`}
-                        placeholder={suggestedSaveTitle}
-                        value={saveTitle}
-                        onChange={(e) => setSaveTitle(e.target.value)}
-                      />
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          data-testid="save-to-library"
-                          onClick={quickSave}
-                          disabled={!canSavePanel}
-                          className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
-                        >
-                          {currentEntry ? 'Save New Version' : 'Save to Library'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openSavePanel()}
-                          className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                        >
-                          Library Details
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeResultTab === 'improved' && (
-                  enhMdPreview ? (
-                    <div className={`${inp} ${accentFieldClass} overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
-                      <MarkdownPreview text={enhanced} />
-                    </div>
-                  ) : (
-                    <textarea data-testid="output-textarea" rows={5} className={`${inp} ${accentFieldClass}`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
-                  )
-                )}
-
-                {activeResultTab === 'diff' && (
-                  <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
-                    {wordDiff(raw, enhanced).map((d, i) => (
-                      <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
-                    ))}
-                  </div>
-                )}
-
-                {activeResultTab === 'variants' && variants.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {variants.map((v, i) => (
-                      <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
-                        <div className="flex justify-between items-center mb-1 gap-3">
-                          <span className={`text-xs font-bold ${accentTextClass}`}>{v.label}</span>
-                          <div className="flex gap-3">
-                            <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}>Use</button>
-                            <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
-                          </div>
-                        </div>
-                        <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{v.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeResultTab === 'notes' && showNotes && notes && (
-                  <div className={`${m.notesBg} border rounded-lg p-3`}>
-                    <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
-                    <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{notes}</p>
-                  </div>
-                )}
-              </div>
-
+              <PostEnhanceResults
+                m={m}
+                compact={compact}
+                raw={raw}
+                enhanced={enhanced}
+                setEnhanced={setEnhanced}
+                variants={variants}
+                resultMeta={resultMeta}
+                setResultMeta={setResultMeta}
+                copy={copy}
+                enhance={enhance}
+                dismiss={dismissResult}
+                editingId={editingId}
+                lib={lib}
+                evalRuns={evalRuns}
+                showInlineSaveBar={showInlineSaveBar}
+                saveTitle={saveTitle}
+                setSaveTitle={setSaveTitle}
+                suggestedSaveTitle={suggestedSaveTitle}
+                canSavePanel={canSavePanel}
+                quickSave={quickSave}
+                quickSaveAsNew={quickSaveAsNew}
+                openSavePanel={openSavePanel}
+                currentEntry={currentEntry}
+              />
               {/* Follow-up suggestions */}
               {Boolean((enhanced || '').trim()) && !loading && typeof fetchFollowUps === 'function' && (
                 <div data-testid="follow-up-panel" className={`${m.surface} border ${m.border} rounded-lg p-3`}>

@@ -24,6 +24,8 @@ import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
 import LibraryPanel from './LibraryPanel';
+import LibraryWorkspace from './LibraryWorkspace.jsx';
+import DualPaneWorkspace from './DualPaneWorkspace.jsx';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
@@ -108,6 +110,7 @@ export default function App({
   const [resultTab, setResultTab] = useState('improved');
   const [showResetDraftConfirmation, setShowResetDraftConfirmation] = useState(false);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  const appShellRef = useRef(null);
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const pageScroll = isWeb || isExtension;
   const {
@@ -178,7 +181,7 @@ export default function App({
     },
   };
   const {
-    raw, setRaw, enhanced, setEnhanced, variants, setVariants, notes, setNotes, loading, error,
+    raw, setRaw, enhanced, setEnhanced, variants, setVariants, notes, setNotes, resultMeta, setResultMeta, loading, error,
     streamPreview, streaming, optimisticSaveVisible, batchProgress,
     enhMode, setEnhMode, showNotes, setShowNotes,
     cursor, updateCursor,
@@ -187,6 +190,7 @@ export default function App({
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
+    sourceNoteId, setSourceNoteId,
     setShowDiff,
     evalRuns, showEvalHistory, setShowEvalHistory,
     testCasesByPrompt, caseFormPromptId, editingCaseId,
@@ -240,6 +244,11 @@ export default function App({
     tab, setTab,
   });
   const { activeSection, openCreateView, openSection, openRunsView } = nav;
+  useEffect(() => {
+    if (typeof appShellRef.current?.scrollTo === 'function') {
+      appShellRef.current.scrollTo({ top: 0, left: 0 });
+    }
+  }, [primaryView, workspaceView, runsView]);
   const landingPricingIntent = normalizeLandingIntent(landingIntent);
   const landingRequestedPeriod = landingPricingIntent?.period || null;
   const landingRequestedSource = landingPricingIntent?.source || null;
@@ -317,6 +326,7 @@ export default function App({
         enhanced,
         variants: variants.map((variant) => ({ ...variant })),
         notes,
+        resultMeta,
       },
       persistence: {
         editingId,
@@ -348,6 +358,7 @@ export default function App({
     setEnhanced(editor.enhanced || '');
     setVariants(Array.isArray(editor.variants) ? editor.variants : []);
     setNotes(editor.notes || '');
+    setResultMeta(editor.resultMeta || null);
     setEditingId(persistence?.editingId || null);
     setSaveTitle(persistence?.saveTitle || '');
     setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
@@ -637,6 +648,30 @@ export default function App({
     }
     return saved;
   };
+  const quickSaveAsNew = () => {
+    const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+    const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
+      titleOverride: suggestedSaveTitle,
+      targetId: null,
+      ...saveFlowOverrides,
+    });
+    if (saved?.id) {
+      trackTelemetry('library.prompt_saved', {
+        plan: billing.plan,
+        via: 'result-save-as-new',
+        isVersion: false,
+        hasCollection: Boolean(trackedCollection),
+      });
+    }
+    return saved;
+  };
+  const dismissEnhancedResult = () => {
+    setEnhanced('');
+    setVariants([]);
+    setNotes('');
+    setResultMeta(null);
+    notify('Result dismissed. Your original prompt is still in the editor.');
+  };
   const handleRunCases = () => {
     if (!canRunBatchCases) {
       trackTelemetry('billing.feature_blocked', {
@@ -733,8 +768,9 @@ export default function App({
   return (
     <ThemeProvider mode={colorMode}>
       <div
+        ref={appShellRef}
         data-theme={colorMode}
-        className={`${isExtension ? 'h-screen overflow-y-auto' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
+        className={`pl-app-shell ${compact ? 'is-compact' : ''} ${isExtension ? 'h-screen overflow-y-auto' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
         style={{ fontFamily: 'system-ui,sans-serif' }}
       >
       <h1 className="sr-only">Prompt Lab</h1>
@@ -792,10 +828,17 @@ export default function App({
           m={m}
           compact={compact}
           pageScroll={pageScroll}
+          libraryIsWorkspace={libraryOnlyMode}
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
           editorPane={(
-            <CreateEditorPane
+            workspaceView === 'split' ? <DualPaneWorkspace
+              library={lib.library}
+              raw={raw}
+              setRaw={setRaw}
+              notify={notify}
+              openEntry={(entry) => handleLoadEntry(entry, 'create')}
+            /> : <CreateEditorPane
               m={m}
               compact={compact}
               pageScroll={pageScroll}
@@ -824,11 +867,13 @@ export default function App({
               streaming={streaming} optimisticSaveVisible={optimisticSaveVisible} showSave={showSave}
               error={error} openOptions={openOptions}
               enhanced={enhanced} setEnhanced={setEnhanced}
+              resultMeta={resultMeta} setResultMeta={setResultMeta}
               enhMdPreview={enhMdPreview} setEnhMdPreview={setEnhMdPreview}
               resultTab={resultTab} setResultTab={setResultTab}
               resultTabs={resultTabs} activeResultTab={activeResultTab} copyBtn={copyBtn}
               showInlineSaveBar={showInlineSaveBar}
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
+              quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
               goldenThreshold={goldenThreshold} goldenVerdict={goldenVerdict}
@@ -852,7 +897,15 @@ export default function App({
             />
           )}
           libraryPane={(
-            <LibraryPanel
+            libraryOnlyMode ? <LibraryWorkspace
+              m={m}
+              lib={lib}
+              loadEntry={handleLoadEntry}
+              copy={copy}
+              addToComposer={handleAddToComposer}
+              sendToABTest={handleSendToABTest}
+              openSavePanel={openSavePanel}
+            /> : <LibraryPanel
               m={m} lib={lib} compact={compact} isWeb={pageScroll}
               showEditorPane={showEditorPane}
               effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
@@ -936,13 +989,15 @@ export default function App({
       )}
 
       {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} onPromoteToLibrary={(title, content) => {
+      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} library={lib.library} onOpenLibraryEntry={(entry) => entry && handleLoadEntry(entry, 'create')} onPromoteToLibrary={(title, content, options = {}) => {
         setRaw(content);
         setEnhanced(content);
         setSaveTitle(title);
+        setSaveTags(Array.isArray(options.tags) ? options.tags : []);
+        setSourceNoteId(options.sourceNoteId || '');
         setShowSave(true);
         setTab('editor');
-        notify('Loaded into editor — save to library when ready.');
+        notify(options.selectionOnly ? 'Selection loaded into Write — save it as a linked prompt.' : 'Scratch loaded into Write — save it as a linked prompt.');
       }} /></div>}
       </main>
 

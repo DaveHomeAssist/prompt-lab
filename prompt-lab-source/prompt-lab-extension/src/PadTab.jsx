@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
+import MarkdownPreview from './MarkdownPreview.jsx';
 import { logWarn } from './lib/logger.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
 import { storageKeys } from './lib/storage.js';
@@ -9,7 +10,7 @@ const LEGACY_PAD_KEY = storageKeys.pad;                 // "pl2-pad"
 const LEGACY_PAD_META_KEY = `${storageKeys.pad}_meta`;  // "pl2-pad_meta"
 const PADS_KEY = 'pl2-pads';
 const PADS_SCHEMA_VERSION_KEY = 'pl2-pads-schema-version';
-const PADS_SCHEMA_VERSION = '2';
+const PADS_SCHEMA_VERSION = '3';
 
 const DEFAULT_PAD_ID = 'default';
 const DEFAULT_PAD_NAME = 'Scratchpad';
@@ -32,6 +33,10 @@ function buildDefaultPadsPayload(content = '', timestamp = Date.now()) {
         name: DEFAULT_PAD_NAME,
         content,
         timestamp,
+        pinned: false,
+        status: 'idea',
+        tags: [],
+        linkedPromptId: '',
       },
     ],
     activePadId: DEFAULT_PAD_ID,
@@ -65,6 +70,13 @@ function readPadsPayload() {
     // Pre-revision payloads (schema v2 before conflict detection) read as revision 0.
     return {
       ...parsed,
+      pads: parsed.pads.map((pad) => ({
+        ...pad,
+        pinned: Boolean(pad.pinned),
+        status: ['idea', 'working', 'ready'].includes(pad.status) ? pad.status : 'idea',
+        tags: Array.isArray(pad.tags) ? pad.tags.filter((tag) => typeof tag === 'string' && tag.trim()) : [],
+        linkedPromptId: typeof pad.linkedPromptId === 'string' ? pad.linkedPromptId : '',
+      })),
       revision: Number.isFinite(parsed.revision) ? parsed.revision : 0,
     };
   } catch (error) {
@@ -199,7 +211,15 @@ function buildPadId() {
 
 /* ── Component ── */
 
-export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = false, onPromoteToLibrary }) {
+export default function PadTab({
+  m,
+  colorMode = 'dark',
+  notify,
+  pageScroll = false,
+  onPromoteToLibrary,
+  library = [],
+  onOpenLibraryEntry,
+}) {
   const migrationCheckedRef = useRef(false);
   const textareaRef = useRef(null);
 
@@ -217,6 +237,8 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
   const [saveState, setSaveState] = useState('idle');
   const [saveError, setSaveError] = useState('');
   const [padNameDialog, setPadNameDialog] = useState(null);
+  const [editorView, setEditorView] = useState('write');
+  const [tagDraft, setTagDraft] = useState('');
   const [lastSavedAt, setLastSavedAt] = useState(() => {
     if (!activePad?.timestamp) return '';
     return new Date(activePad.timestamp).toISOString();
@@ -233,6 +255,10 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
     ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
     : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
   const activePadTitleClass = isDark ? 'text-violet-200' : 'text-violet-800';
+  const outline = useMemo(() => text.split('\n').map((line, index) => {
+    const match = line.match(/^(#{1,6})\s+(.+)/);
+    return match ? { level: match[1].length, label: match[2], line: index } : null;
+  }).filter(Boolean), [text]);
 
   const formatRelativeTime = (value) => {
     if (!value) return '';
@@ -474,6 +500,46 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
   const insertCodeBlock = () => insertAtCursor('\n```\n', '\n```\n');
   const insertQuote = () => insertAtCursor('\n> ');
 
+  const updatePadMetadata = (patch) => {
+    if (!activePad) return false;
+    const flushed = flushActivePad({ silent: true });
+    if (!flushed.ok) return false;
+    const nextState = {
+      ...flushed.state,
+      pads: flushed.state.pads.map((pad) => pad.id === activePad.id ? { ...pad, ...patch, timestamp: Date.now() } : pad),
+    };
+    const result = persistPads(nextState, { preferLocalIds: [activePad.id] });
+    if (!result.ok) {
+      notify?.('Could not update scratch metadata — storage may be full.');
+      return false;
+    }
+    setPadsState(result.state);
+    return true;
+  };
+
+  const promoteToLibrary = (selectionOnly = false) => {
+    if (!onPromoteToLibrary) return;
+    const selection = textareaRef.current
+      ? text.slice(textareaRef.current.selectionStart, textareaRef.current.selectionEnd).trim()
+      : '';
+    const content = selectionOnly && selection ? selection : text.trim();
+    if (!content) return;
+    onPromoteToLibrary(activePad?.name || 'Untitled', content, {
+      sourceNoteId: activePad?.id || '',
+      tags: activePad?.tags || [],
+      selectionOnly: Boolean(selectionOnly && selection),
+    });
+  };
+
+  const jumpToHeading = (item) => {
+    const offset = text.split('\n').slice(0, item.line).reduce((total, line) => total + line.length + 1, 0);
+    setEditorView('write');
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(offset, offset + item.label.length + item.level + 1);
+    }, 0);
+  };
+
   const handleCopy = () => {
     if (!text.trim()) return;
     try { navigator.clipboard.writeText(text); }
@@ -554,6 +620,10 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
         name,
         content: '',
         timestamp: 0,
+        pinned: false,
+        status: 'idea',
+        tags: [],
+        linkedPromptId: '',
       };
       const nextState = {
         pads: [...flushed.state.pads, newPad],
@@ -694,7 +764,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
   }, [exportPad, handleClear, handleCopy, insertDate]);
 
   return (
-    <div className={`${shellMinHeightClass} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
+    <div className={`${shellMinHeightClass} pl-scratch-workspace flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`}>
       {/* ── Sidebar: pad list ── */}
       <div className={`w-[220px] shrink-0 flex flex-col border-r ${m.border} ${pageScroll ? '' : 'overflow-hidden'}`}>
         <div className={`flex items-center justify-between px-3 py-2 border-b ${m.border} shrink-0`}>
@@ -709,7 +779,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
           </button>
         </div>
         <div className={`flex-1 ${pageScroll ? '' : 'overflow-y-auto'} py-1`}>
-          {padsState.pads.map((pad) => {
+          {[...padsState.pads].sort((left, right) => Number(right.pinned) - Number(left.pinned)).map((pad) => {
             const isActive = pad.id === padsState.activePadId;
             const preview = pad.content ? pad.content.slice(0, 60).replace(/\n/g, ' ') : '';
             const timeStr = pad.timestamp ? formatRelativeTime(new Date(pad.timestamp).toISOString()) : '';
@@ -724,7 +794,7 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
                     : `${m.btn} border-transparent`
                 }`}
               >
-                <div className={`text-xs font-medium truncate ${isActive ? activePadTitleClass : m.text}`}>{pad.name}</div>
+                <div className={`flex items-center gap-1 text-xs font-medium truncate ${isActive ? activePadTitleClass : m.text}`}>{pad.pinned && <Ic n="Pin" size={9} />}<span className="truncate">{pad.name}</span></div>
                 {preview && <div className={`text-[10px] truncate mt-0.5 ${m.textMuted}`}>{preview}</div>}
                 {timeStr && <div className={`text-[10px] mt-0.5 ${m.textMuted}`}>{timeStr}</div>}
               </button>
@@ -736,25 +806,28 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
       {/* ── Editor pane ── */}
       <div className={`flex-1 flex flex-col min-w-0 ${pageScroll ? '' : 'overflow-hidden'}`}>
         <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-2 border-b ${m.border} shrink-0`}>
-          <div className="flex items-center gap-3">
-            <span className={`text-sm font-semibold ${m.text}`}>{activePad?.name || 'Scratchpad'}</span>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className={`truncate text-sm font-semibold ${m.text}`}>{activePad?.name || 'Scratchpad'}</span>
+            <span className="pl-scratch-status">{activePad?.status || 'idea'}</span>
             <span className={`text-xs font-mono ${m.textMuted}`}>{wc} word{wc !== 1 ? 's' : ''} · {text.length} chars</span>
           </div>
           <div className="flex flex-wrap items-center gap-1">
             <button type="button" onClick={handleRenamePad} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Rename pad">Rename</button>
+            <button type="button" aria-pressed={Boolean(activePad?.pinned)} onClick={() => updatePadMetadata({ pinned: !activePad?.pinned })} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title={activePad?.pinned ? 'Unpin pad' : 'Pin pad'}><Ic n="Pin" size={11} /></button>
             {onPromoteToLibrary && (
               <button
                 type="button"
-                onClick={() => { if (text.trim()) onPromoteToLibrary(activePad?.name || 'Untitled', text); }}
+                onClick={() => promoteToLibrary(false)}
                 disabled={!text.trim()}
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${
                   text.trim() ? 'text-violet-400 hover:bg-violet-600/20' : `${m.textMuted} opacity-40 cursor-not-allowed`
                 }`}
                 title="Save pad content to Prompt Library"
               >
-                <Ic n="BookmarkPlus" size={11} />Library
+                <Ic n="BookmarkPlus" size={11} />Promote
               </button>
             )}
+            {onPromoteToLibrary && <button type="button" onClick={() => promoteToLibrary(true)} disabled={!text.trim()} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`} title="Promote the current selection, or all text when nothing is selected">Selection</button>}
             <button type="button" onClick={insertDate} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors min-w-[2rem]`} title="Insert date separator">📅</button>
             <button
               type="button"
@@ -785,22 +858,50 @@ export default function PadTab({ m, colorMode = 'dark', notify, pageScroll = fal
           </div>
         </div>
         {/* Formatting toolbar */}
-        <div className={`flex items-center gap-1 px-4 py-1.5 border-b ${m.border} shrink-0`}>
+        <div className={`pl-scratch-toolbar flex flex-wrap items-center gap-1 px-4 py-1.5 border-b ${m.border} shrink-0`}>
           <span className={`text-[10px] uppercase tracking-wider font-semibold ${m.textMuted} mr-2`}>Format</span>
           <button type="button" onClick={insertHeading} title="Heading (##)" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-bold`}>H</button>
           <button type="button" onClick={insertBullet} title="Bullet list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="List" size={12} /></button>
           <button type="button" onClick={insertNumbered} title="Numbered list" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>1.</button>
           <button type="button" onClick={insertCodeBlock} title="Code block" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors font-mono`}>{'{}'}</button>
           <button type="button" onClick={insertQuote} title="Blockquote" className={`text-xs px-2 py-1 rounded ${m.btn} ${m.textAlt} transition-colors`}><Ic n="Quote" size={12} /></button>
+          <div className="pl-scratch-toolbar-separator" />
+          <div className="pl-segmented" role="tablist" aria-label="Scratch editor view">
+            <button type="button" role="tab" aria-selected={editorView === 'write'} onClick={() => setEditorView('write')}>Write</button>
+            <button type="button" role="tab" aria-selected={editorView === 'preview'} onClick={() => setEditorView('preview')}>Preview</button>
+          </div>
+          <select aria-label="Scratch status" value={activePad?.status || 'idea'} onChange={(event) => updatePadMetadata({ status: event.target.value })}>
+            <option value="idea">Idea</option><option value="working">Working</option><option value="ready">Ready</option>
+          </select>
+          <label className="pl-scratch-tag-input"><span className="sr-only">Add tag</span><input value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} onKeyDown={(event) => {
+            if (event.key === 'Enter' && tagDraft.trim()) {
+              event.preventDefault();
+              updatePadMetadata({ tags: [...new Set([...(activePad?.tags || []), tagDraft.trim()])] });
+              setTagDraft('');
+            }
+          }} placeholder="Add tag + Enter" /></label>
+          {library.length > 0 && <select aria-label="Linked library prompt" value={activePad?.linkedPromptId || ''} onChange={(event) => updatePadMetadata({ linkedPromptId: event.target.value })}>
+            <option value="">No linked prompt</option>{library.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
+          </select>}
+          {activePad?.linkedPromptId && <button type="button" onClick={() => onOpenLibraryEntry?.(library.find((entry) => entry.id === activePad.linkedPromptId))} className="pl-text-button">Open link</button>}
         </div>
         <div className={`flex-1 p-4 flex flex-col gap-2 ${editorPaneMinHeightClass} ${pageScroll ? '' : 'overflow-hidden'}`}>
-          <textarea
-            id="plPadArea"
-            ref={textareaRef}
-            className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
-            aria-label="Scratchpad"
-            placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
-            value={text} onChange={onChange} spellCheck />
+          <div className="pl-scratch-editor-grid">
+            <div className="pl-scratch-editor-surface">
+              {editorView === 'write' ? <textarea
+                id="plPadArea"
+                ref={textareaRef}
+                className={`flex-1 w-full ${textareaMinHeightClass} resize-none rounded-xl border ${m.input} p-4 text-sm leading-relaxed focus:outline-none focus:border-violet-500 transition-colors ${m.text}`}
+                aria-label="Scratchpad"
+                placeholder={'Notes, ideas, prompt snippets…\n\nUse 📅 Date to timestamp entries.'}
+                value={text} onChange={onChange} spellCheck /> : <div className={`pl-scratch-preview ${textareaMinHeightClass} rounded-xl border ${m.input} p-4`}><MarkdownPreview text={text} /></div>}
+            </div>
+            <aside className="pl-scratch-outline" aria-label="Document outline">
+              <p className="pl-eyebrow">Outline</p>
+              {outline.length > 0 ? outline.map((item, index) => <button key={`${item.line}-${index}`} type="button" style={{ paddingLeft: `${0.45 + (item.level - 1) * 0.55}rem` }} onClick={() => jumpToHeading(item)}>{item.label}</button>) : <p>No headings yet. Add ## headings to navigate longer notes.</p>}
+              {(activePad?.tags || []).length > 0 && <div className="pl-scratch-tags">{activePad.tags.map((tag) => <button key={tag} type="button" onClick={() => updatePadMetadata({ tags: activePad.tags.filter((item) => item !== tag) })}>#{tag} ×</button>)}</div>}
+            </aside>
+          </div>
           <div className="flex items-center justify-start min-h-5">
             {saveError ? (
               <div className="flex items-center gap-1.5 text-xs font-mono text-red-400 transition-colors">

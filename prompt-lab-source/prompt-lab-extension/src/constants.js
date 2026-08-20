@@ -72,8 +72,8 @@ export function buildSystemPrompt(modeId, tags) {
   const tagList = Array.isArray(tags) ? tags.join(', ') : tags;
   return `You are an expert prompt engineer. ${INTENT_POLICY} ${modeObj.sys}
 Return ONLY valid JSON, no markdown, no backticks:
-{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","assumptions":["..."],"tags":["..."]}
-Produce 2 variants. In "notes", explain what you changed and why. In "assumptions", list anything you added that was not explicitly stated in the original prompt (medium, audience, tone, structure, constraints). If you added nothing, return an empty array. Available tags: ${tagList}.`;
+{"enhanced":"...","variants":[{"label":"Tighter","content":"..."},{"label":"Strict JSON","content":"..."}],"change_summary":"...","changes":[{"type":"added|removed|changed","label":"..."}],"notes":"...","reasoning":"...","assumptions":[{"text":"...","added_text":"exact text added to the enhanced prompt"}],"tags":["..."]}
+Produce exactly 2 useful variants. Make the first meaningfully tighter and the second suitable for strict structured output when that is relevant; otherwise use honest descriptive labels. In "change_summary", give one concise verdict sentence. In "changes", identify the important semantic additions, removals, or replacements. In "notes", explain what changed. In "reasoning", explain why those changes improve execution reliability. In "assumptions", list anything you added that was not explicitly stated in the original prompt and include the exact added text so it can be reverted safely. If you added nothing, return an empty array. Available tags: ${tagList}.`;
 }
 
 export { INTENT_POLICY };

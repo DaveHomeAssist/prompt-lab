@@ -138,7 +138,7 @@ describe('CreateEditorPane', () => {
     expect(screen.getByRole('button', { name: 'Write' })).toHaveClass('bg-orange-500/90', 'text-white');
     expect(screen.getByRole('tab', { name: 'Improved' })).toHaveClass('bg-orange-500/90', 'text-white');
     expect(screen.getByRole('button', { name: 'Try Again' })).toHaveClass('bg-orange-500/90', 'hover:bg-orange-400');
-    expect(screen.getByRole('button', { name: 'Unlock Diff' })).toHaveClass('text-amber-300', 'hover:text-amber-200');
+    expect(screen.getByRole('tab', { name: 'Side by side' })).toBeInTheDocument();
   });
 
   it('shows an intentional workbench empty state before any output exists', () => {

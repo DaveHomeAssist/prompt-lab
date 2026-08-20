@@ -13,8 +13,8 @@ import { importPresetPack } from '../lib/presetImport.js';
 export default function usePersistenceFlow({ ui, lib, editor }) {
   const { notify, setTab, tab, setABVariant } = ui;
   const {
-    raw, enhanced, variants, notes, enhMode,
-    setRaw, setEnhanced, setVariants, setNotes, setEnhMode,
+    raw, enhanced, variants, notes, resultMeta, enhMode,
+    setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setEnhMode,
     setComposerBlocks,
   } = editor;
 
@@ -26,6 +26,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [saveTags, setSaveTags] = useState([]);
   const [saveCollection, setSaveCollection] = useState('');
   const [changeNote, setChangeNote] = useState('');
+  const [sourceNoteId, setSourceNoteId] = useState('');
   const [showDiff, setShowDiff] = useState(false);
   const [showNewColl, setShowNewColl] = useState(false);
   const [newCollName, setNewCollName] = useState('');
@@ -47,8 +48,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setVarValsState(normalized);
   };
 
-  useSessionRestore({ setRaw, setEnhanced, setVariants, setNotes, setTab, setEnhMode });
-  useSessionSave({ raw, enhanced, variants, notes, tab, enhMode });
+  useSessionRestore({ setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode });
+  useSessionSave({ raw, enhanced, variants, notes, resultMeta, tab, enhMode });
 
   useEffect(() => {
     if (sharedHashHandledRef.current) return;
@@ -88,8 +89,10 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setEnhanced(normalized.enhanced);
     setVariants(normalized.variants || []);
     setNotes(normalized.notes || '');
+    setResultMeta?.(normalized.resultMeta || null);
     setSaveTags(normalized.tags || []);
     setSaveTitle(normalized.title || '');
+    setSourceNoteId(normalized.sourceNoteId || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
   }, [lib.libReady]);
@@ -147,9 +150,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (activeEntry) {
       setSaveTags(activeEntry.tags || []);
       setSaveCollection(activeEntry.collection || '');
+      setSourceNoteId(activeEntry.sourceNoteId || '');
     } else {
       setSaveTags([]);
       setSaveCollection('');
+      setSourceNoteId('');
     }
     setChangeNote('');
     setShowNewColl(false);
@@ -168,9 +173,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       setEnhanced(normalized.enhanced);
       setVariants(normalized.variants || []);
       setNotes(normalized.notes || '');
+      setResultMeta?.(normalized.resultMeta || null);
       setSaveTags(normalized.tags || []);
       setSaveTitle(normalized.title);
       setSaveCollection(normalized.collection || '');
+      setSourceNoteId(normalized.sourceNoteId || '');
       setShowSave(false);
       setSaveTargetId(null);
       setSaveSourceEntry(null);
@@ -288,9 +295,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setEnhanced(restoredEntry.enhanced);
     setVariants(restoredEntry.variants || []);
     setNotes(restoredEntry.notes || '');
+    setResultMeta?.(restoredEntry.resultMeta || null);
     setSaveTitle(restoredEntry.title || '');
     setSaveTags(restoredEntry.tags || []);
     setSaveCollection(restoredEntry.collection || '');
+    setSourceNoteId(restoredEntry.sourceNoteId || '');
     setSaveTargetId(null);
     setSaveSourceEntry(null);
     setChangeNote('');
@@ -331,12 +340,14 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       enhanced: contentSource?.enhanced ?? enhanced,
       variants: contentSource?.variants ?? variants,
       notes: contentSource?.notes ?? notes,
+      resultMeta: contentSource?.resultMeta ?? resultMeta,
       tags: saveTags,
       title: titleValue,
       collection: collectionValue,
       editingId: targetId,
       changeNote,
       sourceEntry: contentSource || activeEntryRef.current,
+      sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
       savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
     });
     // A rejected write returns null; keep the save panel and buffers so the
@@ -351,8 +362,10 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         enhanced: contentSource?.enhanced ?? enhanced,
         variants: contentSource?.variants ?? variants,
         notes: contentSource?.notes ?? notes,
+        resultMeta: contentSource?.resultMeta ?? resultMeta,
         tags: saveTags,
         collection: collectionValue,
+        sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
       };
       if (!contentSource) {
         setEditingId(saved.id);
@@ -363,6 +376,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSaveTargetId(null);
     setSaveSourceEntry(null);
     setChangeNote('');
+    setSourceNoteId('');
     setShowSave(false);
     return saved;
   };
@@ -407,6 +421,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     saveTags, setSaveTags,
     saveCollection, setSaveCollection,
     changeNote, setChangeNote,
+    sourceNoteId, setSourceNoteId,
     showDiff, setShowDiff,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,

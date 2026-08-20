@@ -31,6 +31,7 @@ import {
 import { stampPackMembership } from '../lib/packStore.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
+const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function parseLibraryTimestamp(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -83,6 +84,7 @@ function deriveCollectionsFromLibrary(entries) {
 
 export default function usePromptLibrary(notify) {
   const [library, setLibrary] = useState([]);
+  const [trash, setTrash] = useState([]);
   const [libReady, setLibReady] = useState(false);
   const [collections, setCollections] = useState([]);
   const [search, setSearch] = useState('');
@@ -108,12 +110,14 @@ export default function usePromptLibrary(notify) {
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
+  const trashRef = useRef(trash);
   const collectionsRef = useRef(collections);
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
   const libraryPersistFailedRef = useRef(false);
 
   useEffect(() => { libraryRef.current = library; }, [library]);
+  useEffect(() => { trashRef.current = trash; }, [trash]);
   useEffect(() => { collectionsRef.current = collections; }, [collections]);
   useEffect(() => { notifyRef.current = notify; }, [notify]);
 
@@ -150,6 +154,9 @@ export default function usePromptLibrary(notify) {
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
     const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
+    const cutoff = Date.now() - TRASH_RETENTION_MS;
+    const initialTrash = normalizeLibrary(loadJson(storageKeys.trash, []))
+      .filter((entry) => new Date(entry.deletedAt || 0).getTime() >= cutoff);
     const storedCollections = loadJson(storageKeys.collections, null);
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
@@ -159,6 +166,8 @@ export default function usePromptLibrary(notify) {
     libraryRef.current = initialLibrary;
     collectionsRef.current = initialCollections;
     setLibrary(initialLibrary);
+    trashRef.current = initialTrash;
+    setTrash(initialTrash);
     setCollections(initialCollections);
     setLoadedStarterPackIds(getLoadedPacks());
     setLibReady(true);
@@ -211,6 +220,12 @@ export default function usePromptLibrary(notify) {
 
   useEffect(() => {
     if (!libReady) return undefined;
+    const timeoutId = window.setTimeout(() => saveJson(storageKeys.trash, trash), 120);
+    return () => window.clearTimeout(timeoutId);
+  }, [trash, libReady]);
+
+  useEffect(() => {
+    if (!libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
       saveJson(storageKeys.collections, collections);
     }, 120);
@@ -219,13 +234,17 @@ export default function usePromptLibrary(notify) {
 
   const updateLibraryEntry = (entryId, updater) => {
     let changed = false;
-    setLibrary(prev => prev.map(entry => {
+    const nextLibrary = libraryRef.current.map(entry => {
       if (entry.id !== entryId) return entry;
       const next = updater(entry);
       if (!next || next === entry) return entry;
       changed = true;
       return next;
-    }));
+    });
+    if (changed) {
+      libraryRef.current = nextLibrary;
+      setLibrary(nextLibrary);
+    }
     return changed;
   };
 
@@ -272,12 +291,15 @@ export default function usePromptLibrary(notify) {
     enhanced,
     variants,
     notes,
+    resultMeta,
     tags,
     title,
     collection,
     editingId,
     changeNote,
     sourceEntry,
+    metadata,
+    sourceNoteId,
     savedFromDeletedTarget = false,
   }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
@@ -287,8 +309,11 @@ export default function usePromptLibrary(notify) {
       enhanced: ensureString(enhanced).trim() ? ensureString(enhanced) : ensureString(raw),
       variants: Array.isArray(variants) ? variants : [],
       notes: ensureString(notes),
+      resultMeta,
       tags: normalizeTagList(tags),
       collection: ensureString(collection),
+      ...(metadata && typeof metadata === 'object' ? { metadata } : {}),
+      ...(ensureString(sourceNoteId).trim() ? { sourceNoteId: ensureString(sourceNoteId).trim() } : {}),
     };
 
     // The write is attempted before any success feedback: a rejected write
@@ -325,12 +350,17 @@ export default function usePromptLibrary(notify) {
     });
   };
 
-  const del = (id) => {
-    if (!window.confirm('Delete this prompt?')) return false;
+  const del = (id, options = {}) => {
+    if (!options.skipConfirm && !window.confirm('Delete this prompt?')) return false;
+    const deletedEntry = libraryRef.current.find((entry) => entry.id === id);
+    if (!deletedEntry) return false;
     const nextLibrary = libraryRef.current.filter(entry => entry.id !== id);
     if (nextLibrary.length === libraryRef.current.length) return false;
+    const nextTrash = [{ ...deletedEntry, deletedAt: new Date().toISOString() }, ...trashRef.current.filter((entry) => entry.id !== id)];
     libraryRef.current = nextLibrary;
+    trashRef.current = nextTrash;
     setLibrary(nextLibrary);
+    setTrash(nextTrash);
     setExpandedId(prev => prev === id ? null : prev);
     if (expandedVersionId === id) {
       setExpandedVersionId(null);
@@ -340,6 +370,103 @@ export default function usePromptLibrary(notify) {
     setRenamingId(prev => prev === id ? null : prev);
     notify('Prompt deleted.');
     return true;
+  };
+
+  const restoreDeleted = (id) => {
+    const entry = trashRef.current.find((item) => item.id === id);
+    if (!entry) return null;
+    const restored = normalizeEntry({ ...entry, deletedAt: null, updatedAt: new Date().toISOString() });
+    if (!restored) return null;
+    const nextLibrary = [restored, ...libraryRef.current.filter((item) => item.id !== id)];
+    const nextTrash = trashRef.current.filter((item) => item.id !== id);
+    if (!saveJson(storageKeys.library, nextLibrary) || !saveJson(storageKeys.trash, nextTrash)) {
+      notify('Restore failed — browser storage may be full.');
+      return null;
+    }
+    libraryRef.current = nextLibrary;
+    trashRef.current = nextTrash;
+    setLibrary(nextLibrary);
+    setTrash(nextTrash);
+    notify(`Restored ${restored.title}.`);
+    return restored;
+  };
+
+  const permanentlyDelete = (id) => {
+    if (!window.confirm('Permanently delete this prompt? This cannot be undone.')) return false;
+    const nextTrash = trashRef.current.filter((item) => item.id !== id);
+    if (nextTrash.length === trashRef.current.length) return false;
+    trashRef.current = nextTrash;
+    setTrash(nextTrash);
+    notify('Prompt permanently deleted.');
+    return true;
+  };
+
+  const setFavorite = (id, favorite) => updateLibraryEntry(id, (entry) => ({
+    ...entry,
+    favorite: typeof favorite === 'boolean' ? favorite : !entry.favorite,
+  }));
+
+  const duplicateEntry = (id) => {
+    const source = libraryRef.current.find((entry) => entry.id === id);
+    if (!source) return null;
+    const duplicate = createPromptEntry({
+      ...source,
+      id: undefined,
+      title: `${source.title} copy`,
+      favorite: false,
+      useCount: 0,
+      createdAt: undefined,
+      updatedAt: undefined,
+      currentVersionId: undefined,
+    });
+    const nextLibrary = [duplicate, ...libraryRef.current];
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
+    notify(`Duplicated ${source.title}.`);
+    return duplicate;
+  };
+
+  const updateEntries = (ids, updater) => {
+    const selected = new Set(Array.isArray(ids) ? ids : []);
+    if (selected.size === 0) return 0;
+    let changed = 0;
+    const nextLibrary = libraryRef.current.map((entry) => {
+      if (!selected.has(entry.id)) return entry;
+      changed += 1;
+      return updater(entry);
+    });
+    libraryRef.current = nextLibrary;
+    setLibrary(nextLibrary);
+    return changed;
+  };
+
+  const moveEntriesToCollection = (ids, collection) => updateEntries(ids, (entry) => ({
+    ...entry,
+    collection: ensureString(collection),
+  }));
+
+  const addTagToEntries = (ids, tag) => updateEntries(ids, (entry) => ({
+    ...entry,
+    tags: normalizeTagList([...(entry.tags || []), tag]),
+  }));
+
+  const deleteEntries = (ids) => {
+    const selected = new Set(Array.isArray(ids) ? ids : []);
+    if (selected.size === 0 || !window.confirm(`Move ${selected.size} prompts to Recently Deleted?`)) return 0;
+    const deleted = libraryRef.current.filter((entry) => selected.has(entry.id));
+    if (deleted.length === 0) return 0;
+    const now = new Date().toISOString();
+    const nextTrash = [
+      ...deleted.map((entry) => ({ ...entry, deletedAt: now })),
+      ...trashRef.current.filter((entry) => !selected.has(entry.id)),
+    ];
+    const nextLibrary = libraryRef.current.filter((entry) => !selected.has(entry.id));
+    libraryRef.current = nextLibrary;
+    trashRef.current = nextTrash;
+    setLibrary(nextLibrary);
+    setTrash(nextTrash);
+    notify(`Moved ${deleted.length} prompts to Recently Deleted.`);
+    return deleted.length;
   };
 
   const bumpUse = id => updateLibraryEntry(id, entry => ({
@@ -364,6 +491,8 @@ export default function usePromptLibrary(notify) {
     libraryRef.current = [];
     collectionsRef.current = [];
     setLibrary([]);
+    trashRef.current = [];
+    setTrash([]);
     setCollections([]);
     setActiveCollection(null);
     setActiveTag(null);
@@ -717,12 +846,13 @@ export default function usePromptLibrary(notify) {
   }, [library]);
 
   return {
-    library, setLibrary, libReady, collections, setCollections,
+    library, setLibrary, trash, setTrash, libReady, collections, setCollections,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, del, bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
+    doSave, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
+    bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
     exportLib, importLib, getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,

@@ -17,7 +17,7 @@ async function launchMockedExtension(viewport) {
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless: true,
-    viewport: { width: viewport.width, height: viewport.height },
+    timeout: 15_000,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -25,11 +25,13 @@ async function launchMockedExtension(viewport) {
   });
 
   let serviceWorker = context.serviceWorkers()[0];
-  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker');
+  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker', { timeout: 15_000 });
   const extensionId = new URL(serviceWorker.url()).host;
   const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
-  await page.goto(`chrome-extension://${extensionId}/panel.html`);
+  await page.goto(`chrome-extension://${extensionId}/panel.html`, { timeout: 15_000 });
   await page.evaluate(() => {
     const originalSendMessage = chrome.runtime.sendMessage.bind(chrome.runtime);
     window.__promptLabRequests = [];
@@ -71,28 +73,32 @@ async function launchMockedExtension(viewport) {
 
 for (const viewport of viewports) {
   test(`core controls are visible and operable at ${viewport.width}px`, async () => {
-    const { page, cleanup } = await launchMockedExtension(viewport);
-
+    const { page, cleanup } = await test.step('launch mocked extension', () => launchMockedExtension(viewport));
     try {
-      await page.getByTestId('telemetry-deny').click();
-      await expect(page.getByTestId('prompt-input')).toBeVisible();
-      await expect(page.getByTestId('refine-action')).toBeVisible();
-      await expect(page.getByTestId('upgrade-trigger')).toBeVisible();
-      await expect(page.getByTestId('pro-gated-action')).toBeVisible();
+      await test.step('dismiss telemetry and verify compact controls', async () => {
+        await page.getByTestId('telemetry-deny').click();
+        await expect(page.getByTestId('prompt-input')).toBeVisible();
+        await expect(page.getByTestId('refine-action')).toBeVisible();
+        await expect(page.getByTestId('billing-trigger')).toBeVisible();
+      });
 
-      await page.getByTestId('prompt-input').fill(`Responsive prompt for ${viewport.name}`);
-      await page.getByTestId('refine-action').click();
+      await test.step('enhance the prompt', async () => {
+        await page.getByTestId('prompt-input').fill(`Responsive prompt for ${viewport.name}`);
+        await page.getByTestId('refine-action').click();
+        await expect.poll(() => page.evaluate(() => window.__promptLabRequests.length)).toBe(1);
+        await expect(page.getByTestId('output-panel')).toContainText('Improved prompt for responsive smoke test', { timeout: 15_000 });
+      });
 
-      await expect.poll(() => page.evaluate(() => window.__promptLabRequests.length)).toBe(1);
-      await expect(page.getByTestId('output-panel')).toContainText('Improved prompt for responsive smoke test', { timeout: 15_000 });
-      await expect(page.getByTestId('save-to-library').last()).toBeVisible();
-      const savedBefore = Number((await page.getByTestId('library-count').innerText()).match(/\d+/)?.[0] || '0');
-      await page.getByTestId('save-to-library').last().click();
-      await expect(page.getByTestId('library-count')).toContainText(`${savedBefore + 1} saved`);
+      await test.step('save and find the prompt in Library', async () => {
+        await expect(page.getByTestId('save-to-library').last()).toBeVisible();
+        const savedBefore = Number((await page.getByTestId('library-count').innerText()).match(/\d+/)?.[0] || '0');
+        await page.getByTestId('save-to-library').last().click();
+        await expect(page.getByTestId('library-count')).toContainText(`${savedBefore + 1} saved`);
 
-      await page.getByTestId('nav-library').click();
-      await expect(page.getByTestId('library-search')).toBeVisible();
-      await page.getByTestId('library-search').fill('responsive');
+        await page.getByTestId('nav-library').click();
+        await expect(page.getByTestId('library-search')).toBeVisible();
+        await page.getByTestId('library-search').fill('responsive');
+      });
     } finally {
       await cleanup();
     }

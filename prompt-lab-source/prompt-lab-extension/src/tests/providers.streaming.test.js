@@ -18,8 +18,10 @@ describe('current provider adapter', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       body: makeSseStream([
+        'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":31}}}\n\n',
         'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":"Improved"}}\n\n',
         'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":" prompt"}}\n\n',
+        'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":7},"delta":{}}\n\n',
       ]),
     });
     const onChunk = vi.fn();
@@ -40,6 +42,7 @@ describe('current provider adapter', () => {
       content: [{ type: 'text', text: 'Improved prompt' }],
       model: 'claude-sonnet-4-6',
       provider: 'anthropic',
+      usage: { input: 31, output: 7, total: 38 },
     });
 
     const [, init] = fetchMock.mock.calls[0];

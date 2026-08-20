@@ -1,3 +1,5 @@
+import { normalizeAssumptions, normalizeSemanticChanges, normalizeTokenUsage } from './enhancementResult.js';
+
 export const EVAL_MODES = Object.freeze(['enhance', 'ab', 'test-case']);
 export const VERDICT_VALUES = Object.freeze(['pass', 'fail', 'mixed']);
 export const EVAL_STATUSES = Object.freeze(['success', 'error', 'blocked', 'canceled']);
@@ -36,6 +38,13 @@ export function normalizeTraitResults(value) {
 
 export function normalizeEvalRunRecord(record) {
   const status = normalizeStatus(record.status);
+  const candidates = Array.isArray(record.candidates)
+    ? record.candidates.map((candidate, index) => ({
+      id: String(candidate?.id || `candidate-${index + 1}`),
+      label: String(candidate?.label || `Candidate ${index + 1}`).slice(0, 80),
+      content: String(candidate?.content || '').slice(0, 20000),
+    })).filter((candidate) => candidate.content.trim()).slice(0, 8)
+    : [];
   return {
     id: record.id || crypto.randomUUID(),
     createdAt: record.createdAt || new Date().toISOString(),
@@ -57,6 +66,13 @@ export function normalizeEvalRunRecord(record) {
     goldenScore: Number.isFinite(record.goldenScore) ? Math.max(0, Math.min(1, record.goldenScore)) : null,
     traitResults: normalizeTraitResults(record.traitResults),
     regression: record.regression === true,
+    candidates,
+    selectedCandidateId: String(record.selectedCandidateId || candidates[0]?.id || '').trim(),
+    changeSummary: String(record.changeSummary || '').slice(0, 500),
+    changes: normalizeSemanticChanges(record.changes),
+    assumptions: normalizeAssumptions(record.assumptions),
+    reasoning: String(record.reasoning || '').slice(0, 2000),
+    usage: normalizeTokenUsage(record.usage),
   };
 }
 
