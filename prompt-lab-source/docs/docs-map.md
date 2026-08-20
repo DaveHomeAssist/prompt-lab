@@ -28,6 +28,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 - `../ARCHITECTURE.md`
 - `../ROADMAP.md`
 - `feature-health-dashboard.md`
+- `enhancement-council-spec.md`
 - `next-3-sprints-plan.md`
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
@@ -107,6 +108,16 @@ These are working-context files, not canonical product documentation.
 
 Use the dashboard for the current-main feature inventory, shared grading rubric,
 verified health evidence, and highest-priority executable prompt.
+
+### I need the Enhancement Council design
+
+- `enhancement-council-spec.md`
+- `../prompt-lab-extension/src/hooks/useExecutionFlow.js`
+- `../prompt-lab-extension/src/hooks/useABTest.js`
+- `../prompt-lab-extension/src/lib/enhancementResult.js`
+
+Use the specification for the accepted Council product behavior, orchestration
+boundaries, data contracts, cost controls, failure model, and rollout gates.
 
 ### I need the menu or navigation model
 

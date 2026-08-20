@@ -67,6 +67,7 @@ Updated: 2026-08-19
 |---|---|---|---|
 | `docs/CURRENT_MENU_SYSTEM.md` | Current menu/navigation model | Active | Code-grounded reference for header layers, state mapping, and command palette/menu behavior. |
 | `docs/feature-health-dashboard.md` | Canonical feature health dashboard | Active | Current-main feature inventory, shared scoring rubric, evidence ledger, health grades, and highest-priority executable prompt. |
+| `docs/enhancement-council-spec.md` | Enhancement Council specification | Active | Product and technical contract for independent multi-model or multi-lens enhancement, blind judgment, quality gates, persistence, cost controls, and rollout. |
 | `docs/create-evaluate-restructure-plan.md` | Create/Evaluate implementation brief | Active | Phase 0 implementation brief for Create compression and Evaluate unification, including acceptance criteria and initial refactor boundaries. |
 | `docs/next-3-sprints-plan.md` | Near-term sprint execution plan | Active | Three-sprint execution plan focused on activation runway, Evaluate proof, and conversion. |
 | `docs/uxui-bold-restructure-spec.md` | UX/UI redesign spec | Active | Bold cross-surface UX/UI restructuring spec covering landing conversion, app-shell coherence, and phased execution. |
