@@ -47,8 +47,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const enhanceAbortRef = useRef(null);
   // Synchronous dispatch guard. `loading` only disables the trigger after a
   // render, so two activations inside one tick both reach the provider. This
-  // ref flips before the request leaves and is cleared by both the finally
-  // block and cancelEnhance, so cancel-then-retry stays available.
+  // ref flips before the request leaves and is cleared by cancelEnhance or by
+  // the owning request's finally block, so cancel-then-retry stays available.
   const enhanceInFlightRef = useRef(false);
 
   const evalRunsHook = useEvalRuns({ editingId, tab });
@@ -305,11 +305,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save failed eval run', err));
       }
     } finally {
-      enhanceInFlightRef.current = false;
       if (enhanceAbortRef.current === abortController) {
         enhanceAbortRef.current = null;
       }
-      if (reqId === enhanceReqRef.current) setLoading(false);
+      if (reqId === enhanceReqRef.current) {
+        enhanceInFlightRef.current = false;
+        setLoading(false);
+      }
     }
   };
 

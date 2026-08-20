@@ -162,6 +162,16 @@ function renderExecutionFlow({
   return { ...hook, notify, setTab };
 }
 
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('useExecutionFlow', () => {
   let savedRuns;
   let idCounter;
@@ -337,6 +347,54 @@ describe('useExecutionFlow', () => {
     });
 
     expect(callModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('canceled_request_finally_does_not_release_a_newer_retry_guard', async () => {
+    const firstRequest = createDeferred();
+    const retryRequest = createDeferred();
+    callModel
+      .mockImplementationOnce(() => firstRequest.promise)
+      .mockImplementationOnce(() => retryRequest.promise);
+    const { result } = renderExecutionFlow();
+
+    let firstEnhance;
+    await act(async () => {
+      firstEnhance = result.current.enhance();
+      await Promise.resolve();
+    });
+    expect(callModel).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.cancelEnhance();
+    });
+
+    let retryEnhance;
+    await act(async () => {
+      retryEnhance = result.current.enhance();
+      await Promise.resolve();
+    });
+    expect(callModel).toHaveBeenCalledTimes(2);
+
+    const abortError = new Error('Request cancelled.');
+    abortError.name = 'AbortError';
+    await act(async () => {
+      firstRequest.reject(abortError);
+      await firstEnhance;
+    });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+    expect(callModel).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      retryRequest.resolve({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'Retry output',
+      });
+      await retryEnhance;
+    });
   });
 
   it('pii_blocked_attempt_leaves_the_guard_released', async () => {
