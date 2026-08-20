@@ -8,6 +8,8 @@ export default function EditorActions({
   onEnhance,
   onRunCases,
   onSave,
+  saveLabel = 'Save as new prompt',
+  onNewPrompt,
   onClear,
   loading,
   hasInput,
@@ -23,13 +25,14 @@ export default function EditorActions({
   const batchLabel = batchProgress?.active
     ? `Run Cases ${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}`
     : 'Run Cases';
-  const refineButtonClass = 'ui-control min-w-[10rem] flex-[999_1_15rem] flex items-center justify-center gap-2 bg-orange-500/90 hover:bg-orange-400 disabled:opacity-40 text-white rounded-lg px-3 py-2 text-sm font-semibold transition-colors';
+  const refineButtonClass = 'pl-primary-button ui-control min-w-[10rem] flex-[999_1_15rem] px-3 py-2 text-sm';
   const runCasesButtonClass = runCasesLocked
     ? 'border border-orange-400/35 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18'
     : 'border border-amber-400/35 bg-amber-500/15 text-amber-100 hover:bg-amber-500/25 disabled:opacity-40';
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
+        aria-label="Enhancement mode"
         value={enhMode}
         onChange={(e) => onEnhanceModeChange(e.target.value)}
         className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none min-w-[8.25rem] max-w-[10rem] flex-[0_1_9rem]`}
@@ -92,10 +95,20 @@ export default function EditorActions({
         type="button"
         onClick={onSave}
         disabled={!hasSavablePrompt}
-        className="ui-control min-w-[8.75rem] flex-[0_1_9rem] px-2.5 bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors py-2"
+        className="pl-primary-button ui-control min-w-[9rem] flex-[0_1_10rem] px-2.5 py-2 text-xs"
       >
-        Save to Library
+        {saveLabel}
       </button>
+      {typeof onNewPrompt === 'function' && (
+        <button
+          type="button"
+          onClick={onNewPrompt}
+          disabled={loading}
+          className={`ui-control min-w-[7rem] flex-[0_0_auto] inline-flex items-center justify-center gap-1.5 px-2.5 ${m.btn} ${m.textAlt} disabled:opacity-40 rounded-lg text-xs font-semibold transition-colors py-2`}
+        >
+          <Ic n="Plus" size={11} /> New prompt
+        </button>
+      )}
       {typeof onCaptureContext === 'function' && (
         <button
           type="button"

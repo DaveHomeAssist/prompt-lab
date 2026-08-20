@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { DEFAULTS } from './lib/providerRegistry.js';
+import useDialogA11y from './hooks/useDialogA11y.js';
 import {
   isExtension,
   listOllamaModels,
@@ -35,9 +36,16 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
   const [connectionStatusType, setConnectionStatusType] = useState('neutral');
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const closeDialog = useCallback(() => closeRef.current?.(), []);
+  const dialogRef = useDialogA11y({
+    open: !isExtension && Boolean(show),
+    onClose: closeDialog,
+  });
 
-  const inputClass = `w-full px-3 py-2 rounded-lg border text-sm ${m.input} ${m.border} ${m.text}`;
-  const buttonClass = `px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
+  const inputClass = `min-h-11 w-full px-3 py-2 rounded-lg border text-sm ${m.input} ${m.border} ${m.text}`;
+  const buttonClass = `min-h-11 px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
   const readOnlyInputClass = `${inputClass} cursor-not-allowed opacity-70`;
   const isHostedWeb = !isExtension && IS_WEB;
 
@@ -163,24 +171,33 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"
+      onClick={closeDialog}
     >
       <div
-        className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl ${m.bg} ${m.border} ${m.text}`}
+        ref={dialogRef}
+        className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border p-5 shadow-2xl ${m.bg} ${m.border} ${m.text}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="provider-settings-title"
+        aria-describedby="provider-settings-description"
+        tabIndex={-1}
         onClick={event => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className={`text-base font-semibold ${m.text}`}>Provider Settings</h2>
+          <h2 id="provider-settings-title" className={`text-base font-semibold ${m.text}`}>Provider Settings</h2>
           <button
             type="button"
-            onClick={onClose}
-            className={`rounded-lg p-2 ${m.btn} ${m.textAlt}`}
+            onClick={closeDialog}
+            className={`min-h-11 min-w-11 rounded-lg p-2 ${m.btn} ${m.textAlt}`}
             aria-label="Close provider settings"
           >
             <Ic n="X" size={15} />
           </button>
         </div>
+        <p id="provider-settings-description" className="sr-only">
+          Configure the model provider and test its connection. API keys are stored using the current Prompt Lab platform settings.
+        </p>
 
         <div className="space-y-4">
           {isHostedWeb ? (
@@ -351,7 +368,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                 >
                   {isRefreshingModels ? 'Refreshing...' : 'Refresh Models'}
                 </button>
-                <span className={`text-xs ${ollamaStatusClass}`}>{ollamaStatus || 'Load available local models'}</span>
+                <span role="status" aria-live="polite" className={`text-xs ${ollamaStatusClass}`}>{ollamaStatus || 'Load available local models'}</span>
               </div>
               {ollamaModels.length > 0 && (
                 <label className="block space-y-1">
@@ -373,8 +390,14 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           )}
 
           <div className={`space-y-3 border-t ${m.border} pt-4`}>
-            {connectionStatus && <p className={`text-sm ${statusClass}`}>{connectionStatus}</p>}
-            <div className="flex items-center justify-end gap-2">
+            <p
+              role="status"
+              aria-live={connectionStatusType === 'error' ? 'assertive' : 'polite'}
+              className={`text-sm ${statusClass} ${connectionStatus ? '' : 'sr-only'}`}
+            >
+              {connectionStatus}
+            </p>
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={handleTestConnection}
@@ -386,7 +409,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
               <button
                 type="button"
                 onClick={handleSave}
-                className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500"
+                className="min-h-11 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500"
               >
                 Save
               </button>

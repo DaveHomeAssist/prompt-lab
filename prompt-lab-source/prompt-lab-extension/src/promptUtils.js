@@ -1,4 +1,9 @@
 import { ensureString } from './lib/utils.js';
+import {
+  normalizeAssumptions,
+  normalizeReversibleEdits,
+  normalizeSemanticChanges,
+} from './lib/enhancementResult.js';
 
 export function wordDiff(a, b) {
   const left = typeof a === 'string' ? a : '';
@@ -230,6 +235,7 @@ function coercePromptText(value) {
 
 function normalizeParsedPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  const assumptionDetails = normalizeAssumptions(payload.assumptions);
   return {
     ...payload,
     enhanced: coercePromptText(payload.enhanced),
@@ -252,9 +258,17 @@ function normalizeParsedPayload(payload) {
         .filter((variant) => variant.content.trim())
       : [],
     notes: coercePromptText(payload.notes),
-    assumptions: Array.isArray(payload.assumptions)
-      ? payload.assumptions.map((a) => coercePromptText(a)).filter(Boolean)
-      : [],
+    changeSummary: coercePromptText(payload.changeSummary || payload.change_summary),
+    changes: normalizeSemanticChanges(payload.changes),
+    // Keep the long-standing parser contract (string assumptions) stable while
+    // exposing the structured details needed by the reversible result UI.
+    assumptions: assumptionDetails.map((assumption) => assumption.text),
+    assumptionDetails,
+    reversibleEdits: normalizeReversibleEdits(
+      payload.reversibleEdits || payload.reversible_edits,
+      assumptionDetails,
+    ),
+    reasoning: coercePromptText(payload.reasoning),
     tags: Array.isArray(payload.tags)
       ? payload.tags.map((tag) => coercePromptText(tag)).filter(Boolean)
       : [],
@@ -320,6 +334,10 @@ export function parseEnhancedPayload(rawText) {
         variants: [],
         notes: 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
         assumptions: [],
+        assumptionDetails: [],
+        changeSummary: '',
+        changes: [],
+        reasoning: '',
         tags: [],
       };
     }

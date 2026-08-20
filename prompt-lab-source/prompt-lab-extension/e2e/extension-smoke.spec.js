@@ -12,6 +12,7 @@ async function launchMockedExtension() {
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless: true,
+    timeout: 15_000,
     args: [
       `--disable-extensions-except=${extensionPath}`,
       `--load-extension=${extensionPath}`,
@@ -19,11 +20,12 @@ async function launchMockedExtension() {
   });
 
   let serviceWorker = context.serviceWorkers()[0];
-  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker');
+  if (!serviceWorker) serviceWorker = await context.waitForEvent('serviceworker', { timeout: 15_000 });
   const extensionId = new URL(serviceWorker.url()).host;
   const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
 
-  await page.goto(`chrome-extension://${extensionId}/panel.html`);
+  await page.goto(`chrome-extension://${extensionId}/panel.html`, { timeout: 15_000 });
   await page.evaluate(() => {
     const originalSendMessage = chrome.runtime.sendMessage.bind(chrome.runtime);
     window.__promptLabRequests = [];
@@ -76,10 +78,11 @@ test('refine and save flow works with a mocked extension API response', async ()
     await expect(page.getByTestId('output-panel')).toContainText('Improved prompt for smoke test', { timeout: 15_000 });
     await expect(page.getByTestId('output-textarea')).toHaveValue('Improved prompt for smoke test');
 
-    const savedBefore = Number((await page.getByTestId('library-count').innerText()).match(/\d+/)?.[0] || '0');
+    const savedBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length);
     await expect(page.getByTestId('save-to-library').last()).toBeEnabled();
     await page.getByTestId('save-to-library').last().click();
-    await expect(page.getByTestId('library-count')).toContainText(`${savedBefore + 1} saved`);
+    await expect(page.getByRole('region', { name: /Saved “.+” · version 1/ })).toBeVisible();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(savedBefore + 1);
 
     const request = await page.evaluate(() => window.__promptLabRequests[0]);
     expect(JSON.stringify(request)).toContain('MODEL_REQUEST');

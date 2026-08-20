@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Ic from './icons';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import ChainRunnerPanel from './ChainRunnerPanel.jsx';
+import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 
 const STARTER_COLLECTIONS = new Set([
   'Handoff Templates',
@@ -55,10 +56,10 @@ function getComposerEntryProfile(entry) {
   return {
     tone: 'specialist',
     badge: collection || 'Specialized',
-    dotClass: 'bg-violet-400',
+    dotClass: 'bg-orange-400',
     buttonLabel: 'Add Block',
-    buttonClass: 'bg-violet-600 text-white hover:bg-violet-500',
-    borderClass: 'border-violet-500/20 hover:border-violet-400',
+    buttonClass: 'bg-orange-600 text-white hover:bg-orange-500',
+    borderClass: 'border-orange-500/20 hover:border-orange-400',
   };
 }
 
@@ -214,6 +215,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             <Ic n="Search" size={12} className={`absolute left-2 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
             <input
               type="text"
+              aria-label="Filter composer library"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Filter library..."
@@ -222,6 +224,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             {search && (
               <button
                 type="button"
+                aria-label="Clear library filter"
                 onClick={() => setSearch('')}
                 className={`absolute right-2 top-1/2 -translate-y-1/2 ${m.textMuted} hover:${m.text}`}
               >
@@ -245,15 +248,15 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           <div className="flex flex-wrap gap-2">
             {composerBlocks.length > 0 && <>
               <button onClick={() => copy(composedPrompt, 'Composed prompt copied!')} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy All</button>
-              <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
+              <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
               {typeof saveChain === 'function' && (
                 <button onClick={() => { const saved = saveChain(composerBlocks); if (saved) setShowChainLab(true); }} disabled={composerBlocks.length === 0}
                   className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 px-2 py-1 rounded-lg transition-colors`}>
                   <Ic n="GitBranch" size={11} />Save as Chain
                 </button>
               )}
-              <button onClick={() => setShowChainLab(p => !p)}
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${showChainLab ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              <button onClick={() => setShowChainLab(p => !p)} aria-expanded={showChainLab}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${showChainLab ? 'bg-orange-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 <Ic n="GitBranch" size={11} />Chain Lab
               </button>
               <button onClick={() => setComposerBlocks([])} className={`flex items-center gap-1 text-xs ${m.dangerBtn} px-2 py-1 rounded-lg transition-colors`}><Ic n="Trash2" size={11} />Clear</button>
@@ -262,10 +265,10 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
         </div>
 
         {compact && (
-          <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
+          <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`} role="tablist" aria-label="Composer views" onKeyDown={(event) => handleTabArrowKeys(event, mobileView, setMobileView)}>
             {[['library', `Library (${library.length})`], ['canvas', `Canvas (${composerBlocks.length})`], ['preview', 'Preview']].map(([id, label]) => (
-              <button key={id} onClick={() => setMobileView(id)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${mobileView === id ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+              <button key={id} type="button" role="tab" data-tab-id={id} aria-selected={mobileView === id} tabIndex={mobileView === id ? 0 : -1} onClick={() => setMobileView(id)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${mobileView === id ? 'bg-orange-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 {label}
               </button>
             ))}
@@ -284,6 +287,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                   <Ic n="Search" size={12} className={`absolute left-2 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
                   <input
                     type="text"
+                    aria-label="Filter composer library"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Filter library..."
@@ -292,6 +296,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                   {search && (
                     <button
                       type="button"
+                      aria-label="Clear library filter"
                       onClick={() => setSearch('')}
                       className={`absolute right-2 top-1/2 -translate-y-1/2 ${m.textMuted} hover:${m.text}`}
                     >
@@ -325,13 +330,13 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                   onDragOver={e => { e.preventDefault(); setDragOverBlockIdx(idx); }}
                   onDragLeave={() => setDragOverBlockIdx(null)}
                   onDrop={e => { e.stopPropagation(); const from = parseInt(e.dataTransfer.getData('blockIdx')); if (!isNaN(from) && from !== idx) { setComposerBlocks(prev => { const a = [...prev]; const [mv] = a.splice(from, 1); a.splice(idx, 0, mv); return a; }); } setDragOverBlockIdx(null); }}
-                  className={`border rounded-lg p-3 cursor-grab active:cursor-grabbing transition-colors ${m.composedBlock} ${m.border} ${dragOverBlockIdx === idx ? 'border-violet-500' : ''}`}>
+                  className={`border rounded-lg p-3 cursor-grab active:cursor-grabbing transition-colors ${m.composedBlock} ${m.border} ${dragOverBlockIdx === idx ? 'border-orange-500' : ''}`}>
                   <div className="flex items-start gap-2">
                     <Ic n="GripVertical" size={11} className={`${m.textMuted} mt-0.5 shrink-0`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div>
-                          <span className="text-xs font-bold text-violet-400">{block.label}</span>
+                          <span className="text-xs font-bold text-orange-400">{block.label}</span>
                           <p className={`text-[11px] ${m.textMuted} mt-1`}>Block {idx + 1} of {composerBlocks.length}</p>
                         </div>
                         <button

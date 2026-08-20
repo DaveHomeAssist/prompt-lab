@@ -15,6 +15,7 @@ import { openSettings } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
+import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
 
@@ -30,7 +31,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const { notify, setTab, tab } = ui;
   const {
     raw, enhanced, variants, notes, enhMode,
-    setRaw, setEnhanced, setVariants, setNotes,
+    setRaw, setEnhanced, setVariants, setNotes, setResultMeta,
   } = editor;
   const {
     editingId, saveTitle, setSaveTitle, setSaveTags, setShowSave, setShowDiff,
@@ -195,9 +196,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setStreaming(false);
     setStreamPreview('');
     setError(null);
-    setEnhanced('');
-    setVariants([]);
-    setNotes('');
+    // Keep the last complete result visible while a re-run is in flight. A
+    // failed or cancelled request must not destroy the candidate the user was
+    // reviewing; success replaces it atomically below.
     setOptimisticSaveVisible(true);
     setShowSave(false);
     setShowDiff(false);
@@ -215,15 +216,33 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
       const txt = extractTextFromAnthropic(data);
       const parsed = parseEnhancedPayload(txt);
+      const latencyMs = nowMs() - startedAt;
+      const runId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `enhance-${Date.now()}`;
+      const nextResultMeta = normalizeResultMeta({
+        ...parsed,
+        assumptions: parsed.assumptionDetails || parsed.assumptions,
+        reversibleEdits: parsed.reversibleEdits,
+        provider: data?.provider || 'unknown',
+        model: data?.model || payload?.model || 'unknown',
+        latencyMs,
+        usage: data?.usage,
+        runId,
+      }, {
+        enhanced: parsed.enhanced,
+        variants: parsed.variants,
+      });
 
       setEnhanced(parsed.enhanced || '');
       setVariants(parsed.variants || []);
+      setResultMeta?.(nextResultMeta);
 
       // Surface assumptions in notes panel for transparency
       const assumptions = parsed.assumptions || [];
       const notesText = parsed.notes || '';
       const assumptionBlock = assumptions.length > 0
-        ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a}`).join('\n')}`
+        ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a.text || a}`).join('\n')}`
         : '';
       setNotes(notesText + assumptionBlock);
       setSaveTags(parsed.tags || []);
@@ -244,6 +263,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         : 0.7;
 
       saveEvalRun({
+        id: runId,
         promptId: editingId,
         promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance',
@@ -252,13 +272,25 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         model: data?.model || payload?.model || 'unknown',
         input: raw,
         output: parsed.enhanced || txt,
-        latencyMs: nowMs() - startedAt,
+        latencyMs,
         notes: parsed.notes || '',
+        candidates: nextResultMeta.candidates,
+        selectedCandidateId: nextResultMeta.selectedCandidateId,
+        changeSummary: nextResultMeta.changeSummary,
+        changes: nextResultMeta.changes,
+        assumptions: nextResultMeta.assumptions,
+        reversibleEdits: nextResultMeta.reversibleEdits,
+        reasoning: nextResultMeta.reasoning,
+        tags: nextResultMeta.tags,
+        usage: nextResultMeta.usage,
         goldenScore,
         regression: goldenScore !== null && goldenScore < goldenThreshold,
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
 
-      setShowSave(true);
+      // Results own the post-enhance commit decision. Opening the legacy save
+      // drawer here duplicates those actions and makes a fresh result look as
+      // though it has already replaced the current library prompt.
+      setShowSave(false);
       setOptimisticSaveVisible(false);
       setStreamPreview('');
       setStreaming(false);
@@ -442,6 +474,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setStreaming(false);
     setOptimisticSaveVisible(false);
     setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
+    setResultMeta?.(null);
   };
 
   const currentTestCases = editingId ? (testCasesHook.testCasesByPrompt[editingId] || []) : [];
@@ -465,6 +498,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     showEvalHistory: evalRunsHook.showEvalHistory,
     setShowEvalHistory: evalRunsHook.setShowEvalHistory,
     refreshEvalRuns: evalRunsHook.refreshEvalRuns,
+    updateEvalRun: evalRunsHook.updateRun,
     testCasesByPrompt: testCasesHook.testCasesByPrompt,
     caseFormPromptId: testCasesHook.caseFormPromptId,
     editingCaseId: testCasesHook.editingCaseId,

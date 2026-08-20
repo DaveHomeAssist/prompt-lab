@@ -90,11 +90,11 @@ function AuthGate() {
             forceRedirectUrl={landingIntentRedirectUrl || undefined}
             appearance={{
               variables: {
-                colorPrimary: '#8b5cf6',
-                colorBackground: '#111827',
-                colorText: '#e2e8f0',
-                colorInputBackground: '#1e293b',
-                colorInputText: '#e2e8f0',
+                colorPrimary: '#c2410c',
+                colorBackground: '#06060a',
+                colorText: '#f0ede6',
+                colorInputBackground: '#18181b',
+                colorInputText: '#f0ede6',
                 borderRadius: '0.75rem',
               },
             }}
@@ -107,7 +107,7 @@ function AuthGate() {
             {...landingProps}
             clerkUser={user}
             clerkGetToken={getToken}
-            clerkUserButton={<UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#8b5cf6' } }} />}
+            clerkUserButton={<UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#c2410c' } }} />}
           />
         </HashRouter>
       </SignedIn>

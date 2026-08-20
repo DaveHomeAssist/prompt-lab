@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { listEvalRuns, saveEvalRun, getEvalRunById } from '../experimentStore';
+import {
+  EVAL_RUN_SIGNAL_KEY,
+  listEvalRuns,
+  patchEvalRun,
+} from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
 
 export default function useEvalRuns(optionsOrLegacy) {
@@ -74,18 +78,27 @@ export default function useEvalRuns(optionsOrLegacy) {
 
   const updateRun = useCallback(async (id, patch) => {
     try {
-      const existing = await getEvalRunById(id);
-      if (!existing) {
+      const saved = await patchEvalRun(id, patch);
+      if (!saved) {
         logWarn('update eval run', `Run ${id} not found — may have been deleted`);
         return false;
       }
-      await saveEvalRun({ ...existing, ...patch });
       refreshEvalRuns();
       return true;
     } catch (e) {
       logWarn('update eval run', e);
       return false;
     }
+  }, [refreshEvalRuns]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key === EVAL_RUN_SIGNAL_KEY || event.key === 'pl2-eval-run-fallback') {
+        refreshEvalRuns();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [refreshEvalRuns]);
 
   // Reset pagination when filters change

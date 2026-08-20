@@ -21,10 +21,10 @@ export default class ErrorBoundary extends React.Component {
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         height: '100vh', padding: '2rem', fontFamily: 'system-ui, sans-serif',
-        background: '#0f172a', color: '#e2e8f0', textAlign: 'center',
+        background: '#06060a', color: '#f0ede6', textAlign: 'center',
       }}>
         <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Something went wrong</div>
-        <p style={{ color: '#94a3b8', maxWidth: '360px', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+        <p style={{ color: '#a8a29e', maxWidth: '360px', lineHeight: 1.5, marginBottom: '1.5rem' }}>
           Prompt Lab hit an unexpected error. Your data is safe in local storage.
         </p>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -32,7 +32,7 @@ export default class ErrorBoundary extends React.Component {
             onClick={() => { this.setState({ error: null }); window.location.reload(); }}
             style={{
               padding: '0.5rem 1.25rem', borderRadius: '0.5rem', border: 'none', cursor: 'pointer',
-              background: '#7c3aed', color: '#fff', fontWeight: 600, fontSize: '0.875rem',
+              background: '#fb7a55', color: '#210b05', fontWeight: 600, fontSize: '0.875rem',
             }}
           >
             Reload panel

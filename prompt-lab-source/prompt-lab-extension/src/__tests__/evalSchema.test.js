@@ -62,6 +62,17 @@ describe('filterEvalRuns', () => {
     expect(result[0].id).toBe('2');
   });
 
+  it('returns every retained run for lossless workspace export', () => {
+    const completeHistory = Array.from({ length: 1005 }, (_, index) => ({
+      id: `run-${index}`,
+      createdAt: new Date(2024, 0, 1, 0, 0, index).toISOString(),
+      input: 'input',
+      output: 'output',
+    }));
+    expect(filterEvalRuns(completeHistory, { limit: null })).toHaveLength(1005);
+    expect(filterEvalRuns(completeHistory, { limit: 'all' })).toHaveLength(1005);
+  });
+
   it('filters by date range', () => {
     const now = Date.now();
     const recentRuns = [

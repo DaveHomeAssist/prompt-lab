@@ -256,7 +256,7 @@ describe('App extension scroll mode', () => {
     expect(shell).toHaveClass('overflow-y-auto');
     expect(screen.getByTestId('main-workspace')).toHaveAttribute('data-pagescroll', 'true');
     expect(screen.getByTestId('create-editor-pane')).toHaveAttribute('data-pagescroll', 'true');
-    expect(screen.getByRole('tabpanel', { name: 'editor' }).className).not.toContain('overflow-hidden');
+    expect(screen.getByRole('main').className).not.toContain('overflow-hidden');
   });
 
   it('does not apply web landing intent or attribution inside the extension shell', () => {

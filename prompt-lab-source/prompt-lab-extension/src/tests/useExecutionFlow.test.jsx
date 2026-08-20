@@ -222,6 +222,7 @@ describe('useExecutionFlow', () => {
     // Verify schema-level fields survive normalization
     expect(savedRuns[0].id).toEqual(expect.any(String));
     expect(savedRuns[0].createdAt).toEqual(expect.any(String));
+    expect(result.current.showSave).toBe(false);
   });
 
   it('enhance_error_does_not_corrupt_editor_state', async () => {
