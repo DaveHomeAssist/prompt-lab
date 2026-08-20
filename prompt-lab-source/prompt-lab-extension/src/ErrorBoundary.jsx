@@ -38,7 +38,7 @@ export default class ErrorBoundary extends React.Component {
             Reload panel
           </button>
           <a
-            href="https://github.com/daverobertson63/prompt-lab/issues"
+            href="https://github.com/DaveHomeAssist/prompt-lab/issues/new"
             target="_blank"
             rel="noopener noreferrer"
             style={{

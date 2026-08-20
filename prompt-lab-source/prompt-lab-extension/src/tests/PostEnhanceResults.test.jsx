@@ -8,24 +8,26 @@ vi.mock('../MarkdownPreview.jsx', () => ({ default: ({ text }) => <div>{text}</d
 
 const m = { diffAdd: 'add', diffDel: 'del', diffEq: 'same' };
 
-function Harness({ onSaveAsNew = vi.fn() }) {
+const structuredMeta = {
+  selectedCandidateId: 'improved',
+  candidates: [
+    { id: 'improved', label: 'Improved', content: 'Improved output with assumed audience.' },
+    { id: 'tighter', label: 'Tighter', content: 'Tighter output.' },
+    { id: 'json', label: 'Strict JSON', content: '{"answer":"output"}' },
+  ],
+  changeSummary: 'Clearer and easier to validate.',
+  changes: [{ id: 'c1', type: 'added', label: 'Added explicit audience' }],
+  assumptions: [{ id: 'a1', text: 'The audience is experienced.', addedText: ' with assumed audience' }],
+  reasoning: 'The constraints now have a testable form.',
+  provider: 'anthropic',
+  model: 'claude-test',
+  latencyMs: 420,
+  usage: { input: 30, output: 18, total: 48 },
+};
+
+function Harness({ onSaveAsNew = vi.fn(), initialMeta = structuredMeta }) {
   const [enhanced, setEnhanced] = useState('Improved output with assumed audience.');
-  const [meta, setMeta] = useState({
-    selectedCandidateId: 'improved',
-    candidates: [
-      { id: 'improved', label: 'Improved', content: 'Improved output with assumed audience.' },
-      { id: 'tighter', label: 'Tighter', content: 'Tighter output.' },
-      { id: 'json', label: 'Strict JSON', content: '{"answer":"output"}' },
-    ],
-    changeSummary: 'Clearer and easier to validate.',
-    changes: [{ id: 'c1', type: 'added', label: 'Added explicit audience' }],
-    assumptions: [{ id: 'a1', text: 'The audience is experienced.', addedText: ' with assumed audience' }],
-    reasoning: 'The constraints now have a testable form.',
-    provider: 'anthropic',
-    model: 'claude-test',
-    latencyMs: 420,
-    usage: { input: 30, output: 18, total: 48 },
-  });
+  const [meta, setMeta] = useState(initialMeta);
   return <PostEnhanceResults
     m={m}
     raw="Original output."
@@ -78,5 +80,12 @@ describe('PostEnhanceResults', () => {
     render(<Harness onSaveAsNew={onSaveAsNew} />);
     fireEvent.click(screen.getByRole('button', { name: 'Save as new prompt' }));
     expect(onSaveAsNew).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a legacy enhanced result when structured metadata is null', () => {
+    render(<Harness initialMeta={null} />);
+
+    expect(screen.getByRole('tab', { name: 'Improved' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Improved candidate')).toHaveValue('Improved output with assumed audience.');
   });
 });
