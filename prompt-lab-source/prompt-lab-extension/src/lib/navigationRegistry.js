@@ -99,8 +99,12 @@ const ROUTE_TO_STATE = Object.freeze({
   '/library': { primaryView: 'create', workspaceView: 'library' },
   '/composer': { primaryView: 'create', workspaceView: 'composer' },
   '/split': { primaryView: 'create', workspaceView: 'split' },
+  '/split/library': { primaryView: 'create', workspaceView: 'split', splitPane: 'library' },
+  '/split/write': { primaryView: 'create', workspaceView: 'split', splitPane: 'editor' },
   '/evaluate': { primaryView: 'runs', runsView: 'history' },
   '/compare': { primaryView: 'runs', runsView: 'compare' },
+  '/scratch': { primaryView: 'notebook' },
+  // Backward-compatible route for saved links from the Notebook-era UI.
   '/pad': { primaryView: 'notebook' },
 });
 
@@ -114,12 +118,15 @@ export function resolveRouteState(pathname) {
 /**
  * Resolve the canonical route for the current navigation state.
  */
-export function stateToRoute(primaryView, workspaceView, runsView) {
-  if (primaryView === 'notebook') return '/pad';
+export function stateToRoute(primaryView, workspaceView, runsView, options = {}) {
+  if (primaryView === 'notebook') return '/scratch';
   if (primaryView === 'runs') return runsView === 'compare' ? '/compare' : '/evaluate';
   if (workspaceView === 'library') return '/library';
   if (workspaceView === 'composer') return '/composer';
-  if (workspaceView === 'split') return '/split';
+  if (workspaceView === 'split') {
+    if (options.compact && options.splitPane) return `/split/${options.splitPane === 'library' ? 'library' : 'write'}`;
+    return '/split';
+  }
   return '/';
 }
 
@@ -138,6 +145,12 @@ export const SHORTCUTS = Object.freeze([
   { id: 'cmdPalette', key: 'k', mod: true, label: 'Command Palette', hint: '⌘K' },
   { id: 'shortcuts', key: '?', mod: false, excludeInputs: true, label: 'Shortcuts', hint: '?' },
   { id: 'escape', key: 'Escape', mod: false, label: 'Close Panel', hint: 'Esc' },
+  { id: 'navWrite', key: '1', alt: true, label: 'Go to Write', hint: 'Alt 1' },
+  { id: 'navLibrary', key: '2', alt: true, label: 'Go to Library', hint: 'Alt 2' },
+  { id: 'navCompose', key: '3', alt: true, label: 'Go to Compose', hint: 'Alt 3' },
+  { id: 'navSplit', key: '4', alt: true, label: 'Go to Dual Pane', hint: 'Alt 4' },
+  { id: 'navEvaluate', key: '5', alt: true, label: 'Go to Evaluate', hint: 'Alt 5' },
+  { id: 'navScratch', key: '6', alt: true, label: 'Go to Scratch', hint: 'Alt 6' },
 ]);
 
 /**
@@ -148,6 +161,8 @@ export function matchShortcut(event) {
   const mod = event.metaKey || event.ctrlKey;
   for (const shortcut of SHORTCUTS) {
     if (shortcut.key !== event.key) continue;
+    if (shortcut.alt && !event.altKey) continue;
+    if (!shortcut.alt && event.altKey) continue;
     if (shortcut.mod && !mod) continue;
     if (!shortcut.mod && shortcut.key !== 'Escape' && mod) continue;
     if (shortcut.excludeInputs && ['INPUT', 'TEXTAREA'].includes(event.target.tagName)) continue;
@@ -165,21 +180,23 @@ export function matchShortcut(event) {
  */
 export function buildCommandActions(handlers) {
   const {
-    enhance, save, clear,
-    goEditor, goLibrary, goBuild, goRuns, goCompare, goNotebook,
+    enhance, save, saveLabel, clear, newPrompt,
+    goEditor, goLibrary, goBuild, goSplit, goRuns, goCompare, goNotebook,
     toggleTheme, exportLib, openSettings, openOptions, showShortcuts,
   } = handlers;
 
   return [
     { label: 'Enhance Prompt', hint: '⌘↵', action: enhance },
-    { label: 'Save Prompt', hint: '⌘S', action: save },
+    { label: saveLabel || 'Save as new prompt', hint: '⌘S', action: save },
+    { label: 'New Prompt', hint: '', action: newPrompt },
     { label: 'Clear Editor', hint: '', action: clear },
     { label: 'Go to Create', hint: '', action: goEditor },
     { label: 'Go to Library', hint: '', action: goLibrary },
     { label: 'Go to Evaluate', hint: '', action: goRuns },
     { label: 'Open Compare View', hint: '', action: goCompare },
     { label: 'Open Compose Mode', hint: '', action: goBuild },
-    { label: 'Open Notebook', hint: '', action: goNotebook },
+    { label: 'Open Dual Pane', hint: '', action: goSplit },
+    { label: 'Open Scratch', hint: '', action: goNotebook },
     { label: 'Toggle Light / Dark', hint: '', action: toggleTheme },
     { label: 'Export Library', hint: '', action: exportLib },
     { label: 'Open Settings', hint: '', action: openSettings },

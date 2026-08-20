@@ -5,6 +5,7 @@ import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
 import { getLintQuickFixMeta } from './promptLint';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
+import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -97,6 +98,8 @@ export default function CreateEditorPane({
   quickSave,
   quickSaveAsNew,
   dismissResult,
+  newPrompt,
+  onCandidateSelection,
   // Golden
   editingId,
   goldenResponse,
@@ -138,21 +141,24 @@ export default function CreateEditorPane({
     : [];
   const scoreCnt = score?.points ?? scoreChecks.filter(c => c[1]).length;
   const qualityHint = 'Heuristic quality score: five equal-weight checks for role, task, format, constraints, and context.';
-  const shellClass = pageScroll
+  const scrollWithWorkspace = pageScroll || compact;
+  const shellClass = scrollWithWorkspace
     ? 'pl-tab-panel min-h-0 flex flex-col'
     : 'pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden';
-  const contentClass = pageScroll
+  const contentClass = scrollWithWorkspace
     ? 'p-4 flex flex-col gap-2'
     : 'p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden';
-  const resultsClass = pageScroll
+  const resultsClass = scrollWithWorkspace
     ? 'space-y-3'
     : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
-  const accentTextClass = 'text-orange-400';
+  const accentTextClass = colorMode === 'dark' ? 'text-orange-400' : 'text-orange-800';
   const accentHoverTextClass = 'hover:text-orange-300';
   const accentSolidClass = 'bg-orange-500/90 text-white hover:bg-orange-400';
   const accentTabClass = 'bg-orange-500/90 text-white';
   const accentFieldClass = 'border-orange-400/35';
-  const accentBadgeClass = 'bg-amber-500/15 text-amber-100';
+  const accentBadgeClass = colorMode === 'dark'
+    ? 'bg-amber-500/15 text-amber-100'
+    : 'bg-amber-100 text-amber-900';
   const hasDraftInput = Boolean(raw.trim());
   const hasActivationDraft = hasDraftInput || Boolean(currentEntry);
   const showWorkbenchEmptyState = !loading && !enhanced && !error;
@@ -315,7 +321,7 @@ export default function CreateEditorPane({
         <div>
           <div className="flex justify-between items-center mb-1">
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
+              <span id="prompt-input-label" className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
               <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                 <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
                   className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
@@ -332,6 +338,7 @@ export default function CreateEditorPane({
           ) : (
             <textarea
               data-testid="prompt-input"
+              aria-labelledby="prompt-input-label"
               ref={rawInputRef}
               rows={8}
               className={inp}
@@ -408,7 +415,9 @@ export default function CreateEditorPane({
             onEnhanceModeChange={setEnhMode}
             onEnhance={enhance}
             onRunCases={runAllCases}
-            onSave={() => openSavePanel()}
+            onSave={quickSave}
+            saveLabel={getPrimarySaveLabel(editingId)}
+            onNewPrompt={newPrompt}
             onClear={clearEditor}
             onCancelEnhance={cancelEnhance}
             loading={loading}
@@ -455,10 +464,10 @@ export default function CreateEditorPane({
                 {hasSavablePrompt && !showSave && !loading && (
                   <button
                     type="button"
-                    onClick={() => openSavePanel()}
-                    className="text-[10px] font-semibold text-green-400 hover:text-green-300 transition-colors"
+                    onClick={quickSave}
+                    className="text-[10px] font-semibold text-orange-300 hover:text-orange-200 transition-colors"
                   >
-                    Save to Library
+                    {getPrimarySaveLabel(editingId)}
                   </button>
                 )}
                 {loading && (
@@ -486,7 +495,7 @@ export default function CreateEditorPane({
         <div className={resultsClass}>
           {/* Error (moved into scroll area so it doesn't eat fixed space) */}
           {error && (
-            <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
+            <div role="alert" aria-live="assertive" className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>Recovery</p>
@@ -643,7 +652,9 @@ export default function CreateEditorPane({
                 dismiss={dismissResult}
                 editingId={editingId}
                 lib={lib}
-                evalRuns={evalRuns}
+                evalRuns={editingId
+                  ? evalRuns
+                  : evalRuns.filter((run) => run.id === resultMeta?.runId)}
                 showInlineSaveBar={showInlineSaveBar}
                 saveTitle={saveTitle}
                 setSaveTitle={setSaveTitle}
@@ -653,6 +664,7 @@ export default function CreateEditorPane({
                 quickSaveAsNew={quickSaveAsNew}
                 openSavePanel={openSavePanel}
                 currentEntry={currentEntry}
+                onCandidateSelection={onCandidateSelection}
               />
               {/* Follow-up suggestions */}
               {Boolean((enhanced || '').trim()) && !loading && typeof fetchFollowUps === 'function' && (
@@ -835,9 +847,10 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
               <div className="absolute top-0 bottom-0 w-px bg-white/50" style={{ left: `${goldenThreshold * 100}%` }} title={`Threshold: ${Math.round(goldenThreshold * 100)}%`} />
             </div>
             <div className="flex items-center justify-between gap-2 mt-2">
-              <label className={`text-xs ${m.textMuted}`}>Pass threshold</label>
+              <label htmlFor="golden-pass-threshold" className={`text-xs ${m.textMuted}`}>Pass threshold</label>
               <div className="flex items-center gap-2">
                 <input
+                  id="golden-pass-threshold"
                   type="range" min="0" max="100" step="5"
                   value={Math.round(goldenThreshold * 100)}
                   onChange={(e) => lib.setGoldenThreshold(editingId, Number(e.target.value) / 100)}
@@ -853,11 +866,12 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
                 Word Diff: Golden vs {comparisonSourceLabel}
               </p>
               <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
-                {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
-                  <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
-                    {d.v}
-                  </span>
-                ))}
+                {wordDiff(goldenResponse.text, comparisonText).map((d, i) => {
+                  const className = `${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`;
+                  if (d.t === 'add') return <ins key={i} className={className}>{d.v}</ins>;
+                  if (d.t === 'del') return <del key={i} className={className}>{d.v}</del>;
+                  return <span key={i} className={className}>{d.v}</span>;
+                })}
               </div>
             </div>
           ) : (

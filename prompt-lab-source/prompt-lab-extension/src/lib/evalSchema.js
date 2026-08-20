@@ -1,4 +1,10 @@
-import { normalizeAssumptions, normalizeSemanticChanges, normalizeTokenUsage } from './enhancementResult.js';
+import {
+  normalizeAssumptions,
+  normalizeReversibleEdits,
+  normalizeSemanticChanges,
+  normalizeTokenUsage,
+} from './enhancementResult.js';
+import { normalizeTagList } from './tagSchema.js';
 
 export const EVAL_MODES = Object.freeze(['enhance', 'ab', 'test-case']);
 export const VERDICT_VALUES = Object.freeze(['pass', 'fail', 'mixed']);
@@ -67,11 +73,15 @@ export function normalizeEvalRunRecord(record) {
     traitResults: normalizeTraitResults(record.traitResults),
     regression: record.regression === true,
     candidates,
-    selectedCandidateId: String(record.selectedCandidateId || candidates[0]?.id || '').trim(),
+    selectedCandidateId: candidates.some((candidate) => candidate.id === record.selectedCandidateId)
+      ? String(record.selectedCandidateId)
+      : String(candidates[0]?.id || '').trim(),
     changeSummary: String(record.changeSummary || '').slice(0, 500),
     changes: normalizeSemanticChanges(record.changes),
     assumptions: normalizeAssumptions(record.assumptions),
+    reversibleEdits: normalizeReversibleEdits(record.reversibleEdits || record.reversible_edits, normalizeAssumptions(record.assumptions)),
     reasoning: String(record.reasoning || '').slice(0, 2000),
+    tags: normalizeTagList(record.tags),
     usage: normalizeTokenUsage(record.usage),
   };
 }
@@ -126,7 +136,7 @@ export function filterEvalRuns(records, filters = {}) {
   })[String(dateRange || '').trim()] || 0;
   const rangeStartMs = rangeDays ? now - (rangeDays * 24 * 60 * 60 * 1000) : null;
 
-  return records
+  const matching = records
     .map(normalizeEvalRunRecord)
     .filter((row) => {
       if (promptFilter && row.promptId !== promptFilter) return false;
@@ -150,8 +160,12 @@ export function filterEvalRuns(records, filters = {}) {
       }
       return true;
     })
-    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt))
-    .slice(0, Math.max(1, Math.min(200, Number(limit) || 20)));
+    .sort((left, right) => new Date(right.createdAt) - new Date(left.createdAt));
+
+  // A null or "all" limit is reserved for lossless workspace export. Normal
+  // timeline queries retain their bounded default for rendering performance.
+  if (limit === null || limit === 'all') return matching;
+  return matching.slice(0, Math.max(1, Math.min(1000, Number(limit) || 20)));
 }
 
 export { normalizeEntityId };

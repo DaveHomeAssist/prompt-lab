@@ -1,5 +1,9 @@
 import { ensureString } from './lib/utils.js';
-import { normalizeAssumptions, normalizeSemanticChanges } from './lib/enhancementResult.js';
+import {
+  normalizeAssumptions,
+  normalizeReversibleEdits,
+  normalizeSemanticChanges,
+} from './lib/enhancementResult.js';
 
 export function wordDiff(a, b) {
   const left = typeof a === 'string' ? a : '';
@@ -260,6 +264,10 @@ function normalizeParsedPayload(payload) {
     // exposing the structured details needed by the reversible result UI.
     assumptions: assumptionDetails.map((assumption) => assumption.text),
     assumptionDetails,
+    reversibleEdits: normalizeReversibleEdits(
+      payload.reversibleEdits || payload.reversible_edits,
+      assumptionDetails,
+    ),
     reasoning: coercePromptText(payload.reasoning),
     tags: Array.isArray(payload.tags)
       ? payload.tags.map((tag) => coercePromptText(tag)).filter(Boolean)

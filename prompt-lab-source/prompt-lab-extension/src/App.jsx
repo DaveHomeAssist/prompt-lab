@@ -29,7 +29,7 @@ import DualPaneWorkspace from './DualPaneWorkspace.jsx';
 import DesktopSettingsModal from './DesktopSettingsModal';
 import VersionDiffModal from './VersionDiffModal';
 import RunTimelinePanel from './RunTimelinePanel';
-import { isExtension } from './lib/platform.js';
+import { isExtension, sessionSet } from './lib/platform.js';
 import {
   matchShortcut,
   buildCommandActions,
@@ -39,7 +39,10 @@ import MainWorkspace from './MainWorkspace';
 import CreateEditorPane from './CreateEditorPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
+import MobileNavigation from './MobileNavigation.jsx';
 import useRouteSync from './hooks/useRouteSync.js';
+import useDialogA11y from './hooks/useDialogA11y.js';
+import Ic from './icons.jsx';
 import SavePanel from './SavePanel';
 import TemplateVariablesModal from './modals/TemplateVariablesModal';
 import SettingsModal from './modals/SettingsModal';
@@ -52,6 +55,7 @@ import {
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
 import { createPromptEntry } from './lib/promptSchema.js';
+import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -102,6 +106,7 @@ export default function App({
   const ui = useUiState();
   const [showDesktopSettings, setShowDesktopSettings] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [billingReturnToSettings, setBillingReturnToSettings] = useState(false);
   const [billingFeaturePrompt, setBillingFeaturePrompt] = useState(null);
   const [requestedBillingPeriod, setRequestedBillingPeriod] = useState(null);
   const [requestedBillingSource, setRequestedBillingSource] = useState(null);
@@ -109,8 +114,18 @@ export default function App({
   const [enhMdPreview, setEnhMdPreview] = useState(false);
   const [resultTab, setResultTab] = useState('improved');
   const [showResetDraftConfirmation, setShowResetDraftConfirmation] = useState(false);
+  const [pendingResetIntent, setPendingResetIntent] = useState('reset');
+  const [splitMobilePane, setSplitMobilePane] = useState('library');
+  const [scratchOpenNoteId, setScratchOpenNoteId] = useState('');
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const appShellRef = useRef(null);
+  const settingsButtonRef = useRef(null);
+  const resetCancelRef = useRef(null);
+  const resetDialogRef = useDialogA11y({
+    open: showResetDraftConfirmation,
+    onClose: () => setShowResetDraftConfirmation(false),
+    initialFocusRef: resetCancelRef,
+  });
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   const pageScroll = isWeb || isExtension;
   const {
@@ -191,8 +206,9 @@ export default function App({
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
     sourceNoteId, setSourceNoteId,
+    lastSaveReceipt, dismissSaveReceipt,
     setShowDiff,
-    evalRuns, showEvalHistory, setShowEvalHistory,
+    evalRuns, showEvalHistory, setShowEvalHistory, updateEvalRun,
     testCasesByPrompt, caseFormPromptId, editingCaseId,
     caseTitle, setCaseTitle, caseInput, setCaseInput,
     caseTraits, setCaseTraits, caseExclusions, setCaseExclusions,
@@ -221,6 +237,8 @@ export default function App({
   };
   const closeBilling = () => {
     setShowBillingModal(false);
+    if (billingReturnToSettings) setShowSettings(true);
+    setBillingReturnToSettings(false);
     setBillingFeaturePrompt(null);
     setRequestedBillingPeriod(null);
     setRequestedBillingSource(null);
@@ -228,14 +246,16 @@ export default function App({
 
   const canUseCollections = billing.hasFeature('collections');
   const canExportLibrary = billing.hasFeature('export');
+  const canImportLibrary = billing.hasFeature('import');
+  const canUsePacks = billing.hasFeature('packs');
   const canRunBatchCases = billing.hasFeature('batchRuns');
   const canUseDiffView = billing.hasFeature('diffView');
   const canUseAbTesting = billing.hasFeature('abTesting');
   const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '' };
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
-  const kbFns = useRef({ enhance, doSave, openSavePanel });
-  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel }; });
+  const kbFns = useRef({ enhance, doSave, openSavePanel, primarySave: doSave });
+  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: quickSave }; });
 
   const nav = useNavigation({
     primaryView, setPrimaryView,
@@ -294,7 +314,14 @@ export default function App({
   };
 
   // ── Sync hash routes ↔ nav state ──
-  const { replaceRoute } = useRouteSync({ primaryView, setPrimaryView, workspaceView, setWorkspaceView, runsView, setRunsView });
+  const { replaceRoute } = useRouteSync({
+    primaryView, setPrimaryView,
+    workspaceView, setWorkspaceView,
+    runsView, setRunsView,
+    splitPane: splitMobilePane,
+    setSplitPane: setSplitMobilePane,
+    compact: viewportWidth < 720,
+  });
 
   useEffect(() => {
     if (primaryView === 'runs' && runsView === 'compare' && !canUseAbTesting) {
@@ -304,7 +331,37 @@ export default function App({
     }
   }, [canUseAbTesting, primaryView, replaceRoute, runsView, setRunsView]);
 
-  const requestDraftReset = () => {
+  const buildDraftSnapshot = (reason = 'reset') => ({
+    reason,
+    editor: {
+      raw,
+      enhanced,
+      variants: variants.map((variant) => ({ ...variant })),
+      notes,
+      resultMeta,
+      enhMode,
+      cursor,
+    },
+    persistence: {
+      editingId,
+      saveTitle,
+      saveTags: [...saveTags],
+      saveCollection,
+      changeNote,
+      sourceNoteId,
+    },
+    resultTab,
+    workspaceView,
+  });
+
+  const preserveDraftForUndo = (reason) => {
+    const snapshot = buildDraftSnapshot(reason);
+    persistDraftRecovery(snapshot);
+    setDraftRecovery(snapshot);
+    return snapshot;
+  };
+
+  const requestDraftReset = (intent = 'reset') => {
     const hasDraftContent = Boolean(
       raw.trim()
       || enhanced.trim()
@@ -314,36 +371,21 @@ export default function App({
     );
     if (!hasDraftContent) {
       clearEditor();
+      openCreateView('editor');
       return;
     }
+    setPendingResetIntent(intent === 'new' ? 'new' : 'reset');
     setShowResetDraftConfirmation(true);
   };
 
   const confirmDraftReset = () => {
-    const snapshot = {
-      editor: {
-        raw,
-        enhanced,
-        variants: variants.map((variant) => ({ ...variant })),
-        notes,
-        resultMeta,
-      },
-      persistence: {
-        editingId,
-        saveTitle,
-        saveTags: [...saveTags],
-        saveCollection,
-        changeNote,
-      },
-      resultTab,
-    };
-    persistDraftRecovery(snapshot);
-    setDraftRecovery(snapshot);
+    preserveDraftForUndo(pendingResetIntent);
     clearEditor();
+    openCreateView('editor');
     setEnhMdPreview(false);
     setResultTab('improved');
     setShowResetDraftConfirmation(false);
-    notify('Draft reset. Undo is available until you dismiss it.');
+    notify(`${pendingResetIntent === 'new' ? 'New prompt started' : 'Draft reset'}. Undo is available.`);
   };
 
   const dismissDraftRecovery = () => {
@@ -359,12 +401,16 @@ export default function App({
     setVariants(Array.isArray(editor.variants) ? editor.variants : []);
     setNotes(editor.notes || '');
     setResultMeta(editor.resultMeta || null);
+    setEnhMode(editor.enhMode || 'balanced');
+    if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
     setSaveTitle(persistence?.saveTitle || '');
     setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
     setSaveCollection(persistence?.saveCollection || '');
     setChangeNote(persistence?.changeNote || '');
+    setSourceNoteId(persistence?.sourceNoteId || '');
     setResultTab(recoveredResultTab || 'improved');
+    if (draftRecovery.workspaceView) openCreateView(draftRecovery.workspaceView);
     dismissDraftRecovery();
     notify('Draft restored.');
   };
@@ -375,19 +421,20 @@ export default function App({
     () => (typeof raw === 'string' && raw.trim() ? raw.trim().split(/\s+/).length : 0),
     [raw],
   );
-  // The extension shell is always effectively compact. Letting it participate
-  // in desktop breakpoint switching causes narrow-panel layout oscillation,
-  // which is most visible in the Library view as repeated flicker.
-  const compact = isExtension || viewportWidth < 720 || viewportHeight < 560;
+  // Navigation shape follows width across extension, hosted web, and desktop.
+  // This keeps the wide two-level hierarchy available in resized shells while
+  // preserving the flattened bottom navigation below the compact breakpoint.
+  const compact = viewportWidth < 720;
   const effectiveEditorLayout = compact && editorLayout === 'split' ? 'editor' : editorLayout;
-  const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
+  const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors placeholder-gray-400 ${m.text}`;
   const copyBtn = colorMode === 'dark'
-    ? 'border border-violet-400/30 bg-violet-500/15 text-violet-200 hover:border-violet-300 hover:bg-violet-500/25'
-    : 'border border-violet-300 bg-violet-50 text-violet-700 hover:border-violet-400 hover:bg-violet-100';
+    ? 'border border-orange-400/30 bg-orange-500/15 text-orange-200 hover:border-orange-300 hover:bg-orange-500/25'
+    : 'border border-orange-300 bg-orange-50 text-orange-700 hover:border-orange-400 hover:bg-orange-100';
   const primaryModKey = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent)
     ? 'Cmd'
     : 'Ctrl';
   const currentEntry = editingId ? lib.library.find((entry) => entry.id === editingId) || null : null;
+  const primarySaveLabel = getPrimarySaveLabel(editingId);
   const versionHistoryEntry = lib.expandedVersionId
     ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
     : null;
@@ -428,6 +475,18 @@ export default function App({
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
+  const recoveryActionLabel = draftRecovery?.reason === 'discard-result'
+    ? 'Restore discarded result'
+    : draftRecovery?.reason === 'navigation'
+      ? 'Restore previous draft'
+      : draftRecovery?.reason === 'follow-up'
+        ? 'Restore pre-follow-up draft'
+        : 'Undo reset';
+  const recoveryDescription = draftRecovery?.reason === 'discard-result'
+    ? 'Your discarded enhancement result is recoverable in this session.'
+    : draftRecovery?.reason === 'navigation'
+      ? 'The draft from before navigation is recoverable in this session.'
+      : 'The previous draft is recoverable in this session.';
 
   const appOpenTrackedRef = useRef(false);
   const lastSectionRef = useRef('');
@@ -501,9 +560,15 @@ export default function App({
       switch (shortcut.id) {
         case 'enhance': if (!loading && raw.trim()) kbFns.current.enhance(); break;
         case 'save':
-          if (hasSavablePrompt && !showSave) kbFns.current.openSavePanel();
-          else if (canSavePanel && showSave) kbFns.current.doSave();
+          if (canSavePanel && showSave) kbFns.current.doSave();
+          else if (canSavePanel) kbFns.current.primarySave();
           break;
+        case 'navWrite': openCreateView('editor'); break;
+        case 'navLibrary': openCreateView('library'); break;
+        case 'navCompose': openCreateView('composer'); break;
+        case 'navSplit': openCreateView('split'); break;
+        case 'navEvaluate': openSection('evaluate'); break;
+        case 'navScratch': setPrimaryView('notebook'); break;
         case 'cmdPalette': setShowCmdPalette(p => !p); setCmdQuery(''); break;
         case 'shortcuts': setShowShortcuts(p => !p); break;
         case 'escape':
@@ -518,7 +583,7 @@ export default function App({
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [canSavePanel, loading, raw, showSave, hasSavablePrompt]);
+  }, [canSavePanel, loading, raw, showSave, openCreateView, openSection, setPrimaryView]);
 
   useEffect(() => {
     if (isExtension) return;
@@ -560,6 +625,9 @@ export default function App({
       hasCollection: Boolean(entry?.collection),
       plan: billing.plan,
     });
+    if ((raw.trim() || enhanced.trim()) && entry?.id !== editingId) {
+      preserveDraftForUndo('navigation');
+    }
     await loadEntry(entry);
   };
   const handleAddToComposer = (entry) => {
@@ -571,6 +639,7 @@ export default function App({
   };
   const handleUseFollowUp = (suggestion) => {
     trackTelemetry('followups.loaded_into_editor', { plan: billing.plan });
+    preserveDraftForUndo('follow-up');
     setRaw(suggestion.prompt);
     setSaveTitle(suggestion.title);
     notify('Follow-up loaded into editor.');
@@ -632,27 +701,48 @@ export default function App({
     });
     addToComposer({ title: suggestion.title, enhanced: suggestion.prompt });
   };
-  const quickSave = () => {
+  const quickSave = (candidate = null) => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+    const candidateOverrides = candidate?.content
+      ? {
+          enhancedOverride: candidate.content,
+          resultMetaOverride: {
+            ...(resultMeta || {}),
+            selectedCandidateId: candidate.id,
+          },
+        }
+      : {};
     const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
       titleOverride: suggestedSaveTitle,
+      ...candidateOverrides,
       ...saveFlowOverrides,
     });
     if (saved?.id) {
       trackTelemetry('library.prompt_saved', {
         plan: billing.plan,
         via: 'inline',
-        isVersion: Boolean(saveTargetId) && saved.savedAsNew !== true,
+        isVersion: Boolean(saveTargetId || editingId) && saved.savedAsNew !== true,
         hasCollection: Boolean(trackedCollection),
       });
     }
     return saved;
   };
-  const quickSaveAsNew = () => {
+  const quickSaveAsNew = (candidate = null) => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
+    const candidateOverrides = candidate?.content
+      ? {
+          enhancedOverride: candidate.content,
+          resultMetaOverride: {
+            ...(resultMeta || {}),
+            selectedCandidateId: candidate.id,
+          },
+        }
+      : {};
     const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
       titleOverride: suggestedSaveTitle,
       targetId: null,
+      copyAsNew: true,
+      ...candidateOverrides,
       ...saveFlowOverrides,
     });
     if (saved?.id) {
@@ -666,12 +756,95 @@ export default function App({
     return saved;
   };
   const dismissEnhancedResult = () => {
+    preserveDraftForUndo('discard-result');
     setEnhanced('');
     setVariants([]);
     setNotes('');
     setResultMeta(null);
-    notify('Result dismissed. Your original prompt is still in the editor.');
+    notify('Result discarded. Restore is available from the recovery banner.');
   };
+  const handleCandidateSelection = (candidate, meta) => {
+    const runId = meta?.runId || resultMeta?.runId;
+    if (!runId || !candidate?.id) return;
+    void updateEvalRun?.(runId, {
+      selectedCandidateId: candidate.id,
+      output: candidate.content,
+      candidates: meta?.candidates || resultMeta?.candidates,
+    });
+  };
+  const autosaveDualDraft = async ({ raw: draftRaw, title }) => {
+    try {
+      const acknowledged = await sessionSet({
+        'pl2-dual-draft': { raw: draftRaw, title, updatedAt: new Date().toISOString() },
+      });
+      return acknowledged !== false;
+    } catch {
+      return false;
+    }
+  };
+  const saveDualDraft = ({ raw: draftRaw, title }, asVersion = false) => persistenceFlow.doSave(
+    executionFlow.refreshEvalRuns,
+    {
+      titleOverride: title || suggestedSaveTitle,
+      rawOverride: draftRaw,
+      enhancedOverride: draftRaw,
+      targetId: asVersion ? editingId : null,
+      copyAsNew: !asVersion,
+      ...saveFlowOverrides,
+    },
+  );
+  const sendScratchToEditor = (payload) => {
+    if (raw.trim() || enhanced.trim() || editingId) preserveDraftForUndo('scratch-handoff');
+    clearEditor();
+    setRaw(payload.content || '');
+    setSaveTitle(payload.title || suggestTitleFromText(payload.content || ''));
+    setSaveTags(Array.isArray(payload.tags) ? payload.tags : []);
+    setSourceNoteId(payload.sourceNoteId || '');
+    openCreateView('editor');
+    notify(payload.selectionOnly ? 'Scratch selection opened in Write.' : 'Scratch note opened in Write.');
+  };
+  const sendScratchToComposer = (payload) => {
+    handleAddToComposer({
+      id: payload.sourceNoteId,
+      title: payload.title,
+      enhanced: payload.content,
+      original: payload.content,
+    });
+    openCreateView('composer');
+  };
+  const sendScratchToABTest = (payload) => {
+    if (!canUseAbTesting) {
+      openBilling('abTesting');
+      return;
+    }
+    abTest.loadVariant('a', payload.content, {
+      entryId: payload.linkedPromptId || payload.sourceNoteId,
+      title: payload.title,
+    });
+    openRunsViewWithBilling('compare');
+    notify('Scratch content loaded into A/B Variant A.');
+  };
+  const promoteScratchToLibrary = (title, content, options = {}) => lib.doSave({
+    raw: content,
+    enhanced: content,
+    variants: [],
+    notes: '',
+    resultMeta: null,
+    tags: Array.isArray(options.tags) ? options.tags : [],
+    title,
+    collection: canUseCollections ? (options.collection || '') : '',
+    editingId: null,
+    changeNote: 'Promoted from Scratch',
+    sourceEntry: null,
+    sourceNoteId: options.sourceNoteId || '',
+    kind: options.kind === 'template' ? 'template' : 'prompt',
+    metadata: {
+      type: options.kind === 'template' ? 'template' : 'working-prompt',
+      sourceSurface: 'scratch',
+      sourceNoteName: options.sourceNoteName || '',
+    },
+    copyAsNew: true,
+  });
   const handleRunCases = () => {
     if (!canRunBatchCases) {
       trackTelemetry('billing.feature_blocked', {
@@ -748,11 +921,14 @@ export default function App({
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
-    save: () => { if (hasSavablePrompt) openSavePanel(); closePalette(); },
+    save: () => { if (canSavePanel) quickSave(); closePalette(); },
+    saveLabel: primarySaveLabel,
+    newPrompt: () => { requestDraftReset('new'); closePalette(); },
     clear: () => { requestDraftReset(); closePalette(); },
     goEditor: () => { openSection('create'); closePalette(); },
     goLibrary: () => { openSection('library'); closePalette(); },
     goBuild: () => { openCreateView('composer'); closePalette(); },
+    goSplit: () => { openCreateView('split'); closePalette(); },
     goRuns: () => { openSection('evaluate'); closePalette(); },
     goCompare: () => { openRunsViewWithBilling('compare'); closePalette(); },
     goNotebook: () => { setPrimaryView('notebook'); closePalette(); },
@@ -774,6 +950,7 @@ export default function App({
         style={{ fontFamily: 'system-ui,sans-serif' }}
       >
       <h1 className="sr-only">Prompt Lab</h1>
+      <a className="pl-skip-link" href="#prompt-lab-main">Skip to workspace</a>
 
       <AppHeader
         m={m} compact={compact} libraryCount={lib.library.length}
@@ -791,6 +968,8 @@ export default function App({
         billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
         clerkUserButton={clerkUser ? clerkUserButton : null}
+        settingsButtonRef={settingsButtonRef}
+        renderMobileNavigation={false}
       />
 
       {telemetryConsentPending && (
@@ -804,7 +983,7 @@ export default function App({
                 type="button"
                 data-testid="telemetry-allow"
                 onClick={telemetry.grantConsent}
-                className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                className="ui-control rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
               >
                 Allow analytics
               </button>
@@ -821,7 +1000,7 @@ export default function App({
         </div>
       )}
 
-      <main role="tabpanel" aria-label={tab} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
+      <main id="prompt-lab-main" tabIndex={-1} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <MainWorkspace
@@ -837,6 +1016,19 @@ export default function App({
               raw={raw}
               setRaw={setRaw}
               notify={notify}
+              copy={copy}
+              draftTitle={saveTitle}
+              onDraftTitleChange={setSaveTitle}
+              onAutosave={autosaveDualDraft}
+              onEnhance={({ title }) => {
+                setSaveTitle(title || suggestedSaveTitle);
+                handleEnhanceRequest();
+              }}
+              onSave={(payload) => saveDualDraft(payload, false)}
+              onSaveVersion={editingId ? (payload) => saveDualDraft(payload, true) : undefined}
+              enhancing={loading}
+              mobilePane={splitMobilePane}
+              onMobilePaneChange={setSplitMobilePane}
               openEntry={(entry) => handleLoadEntry(entry, 'create')}
             /> : <CreateEditorPane
               m={m}
@@ -874,6 +1066,8 @@ export default function App({
               showInlineSaveBar={showInlineSaveBar}
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
+              newPrompt={() => requestDraftReset('new')}
+              onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
               goldenThreshold={goldenThreshold} goldenVerdict={goldenVerdict}
@@ -903,8 +1097,19 @@ export default function App({
               loadEntry={handleLoadEntry}
               copy={copy}
               addToComposer={handleAddToComposer}
-              sendToABTest={handleSendToABTest}
+              sendToABTest={(entry) => handleSendToABTest(entry, 'a')}
               openSavePanel={openSavePanel}
+              onNewPrompt={() => requestDraftReset('new')}
+              onOpenScratchSource={(noteId) => {
+                setScratchOpenNoteId(noteId);
+                setPrimaryView('notebook');
+              }}
+              canUseCollections={canUseCollections}
+              canExportLibrary={canExportLibrary}
+              canImportLibrary={canImportLibrary}
+              canUsePacks={canUsePacks}
+              openBilling={openBilling}
+              compact={compact}
             /> : <LibraryPanel
               m={m} lib={lib} compact={compact} isWeb={pageScroll}
               showEditorPane={showEditorPane}
@@ -966,7 +1171,7 @@ export default function App({
                       <button
                         type="button"
                         onClick={() => openBilling('abTesting')}
-                        className="ui-control mt-4 rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                        className="ui-control mt-4 rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
                       >
                         Upgrade to Pro
                       </button>
@@ -988,18 +1193,36 @@ export default function App({
         </div>
       )}
 
-      {/* ══ PAD TAB ══ */}
-      {tab === 'pad' && <div className="pl-tab-panel"><PadTab m={m} colorMode={colorMode} notify={notify} pageScroll={pageScroll} library={lib.library} onOpenLibraryEntry={(entry) => entry && handleLoadEntry(entry, 'create')} onPromoteToLibrary={(title, content, options = {}) => {
-        setRaw(content);
-        setEnhanced(content);
-        setSaveTitle(title);
-        setSaveTags(Array.isArray(options.tags) ? options.tags : []);
-        setSourceNoteId(options.sourceNoteId || '');
-        setShowSave(true);
-        setTab('editor');
-        notify(options.selectionOnly ? 'Selection loaded into Write — save it as a linked prompt.' : 'Scratch loaded into Write — save it as a linked prompt.');
-      }} /></div>}
+      {/* ══ SCRATCH TAB ══ */}
+      {tab === 'pad' && (
+        <div className="pl-tab-panel">
+          <PadTab
+            m={m}
+            colorMode={colorMode}
+            notify={notify}
+            pageScroll={pageScroll}
+            library={lib.library}
+            collections={lib.collections}
+            openNoteId={scratchOpenNoteId}
+            onOpenLibraryEntry={(entry) => entry && handleLoadEntry(entry, 'scratch')}
+            onPromoteToLibrary={promoteScratchToLibrary}
+            onSendToEditor={sendScratchToEditor}
+            onSendToComposer={sendScratchToComposer}
+            onSendToABTest={sendScratchToABTest}
+          />
+        </div>
+      )}
       </main>
+
+      {compact && (
+        <MobileNavigation
+          primaryView={primaryView}
+          workspaceView={workspaceView}
+          openCreateView={openCreateView}
+          openSection={openSection}
+          setPrimaryView={setPrimaryView}
+        />
+      )}
 
       {showSave && (
         <SavePanel
@@ -1024,22 +1247,49 @@ export default function App({
               });
             }
             return saved;
-          }} closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
+          }}
+          doSaveAsNew={() => quickSaveAsNew()}
+          closeSavePanel={closeSavePanel} canSavePanel={canSavePanel}
           canUseCollections={canUseCollections}
           onRequestCollectionsUpgrade={() => openBilling('collections')}
         />
       )}
 
+      {lastSaveReceipt && (
+        <section className={`pl-save-receipt mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${m.surface} ${m.border}`} aria-labelledby="save-receipt-title">
+          <div>
+            <p id="save-receipt-title" className={`text-sm font-semibold ${m.text}`} role="status" aria-live="polite">
+              Saved “{lastSaveReceipt.title}” · version {lastSaveReceipt.versionNumber}
+            </p>
+            <p className={`mt-0.5 text-xs ${m.textMuted}`}>The editor remains linked to this library entry.</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => openCreateView('library')} className="pl-secondary-button">View in Library</button>
+            <button
+              type="button"
+              onClick={() => {
+                dismissSaveReceipt();
+                requestDraftReset('new');
+              }}
+              className="pl-primary-button"
+            >
+              New prompt
+            </button>
+            <button type="button" onClick={dismissSaveReceipt} className="pl-icon-button" aria-label="Dismiss save receipt"><Ic n="X" size={14} /></button>
+          </div>
+        </section>
+      )}
+
       {draftRecovery && (
         <div className={`mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm ${m.surface} ${m.border}`} role="status">
-          <span className={m.textSub}>A reset draft is available for recovery in this session.</span>
+          <span className={m.textSub}>{recoveryDescription}</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={undoDraftReset}
-              className="ui-control rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-violet-500"
+              className="ui-control rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-orange-500"
             >
-              Undo reset
+              {recoveryActionLabel}
             </button>
             <button
               type="button"
@@ -1059,19 +1309,22 @@ export default function App({
           onClick={() => setShowResetDraftConfirmation(false)}
         >
           <div
+            ref={resetDialogRef}
             className={`pl-modal-panel w-full max-w-md rounded-2xl border p-5 shadow-2xl ${m.modal} ${m.border} ${m.text}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="reset-draft-title"
             aria-describedby="reset-draft-description"
+            tabIndex={-1}
             onClick={(event) => event.stopPropagation()}
           >
-            <h2 id="reset-draft-title" className="text-lg font-semibold">Reset this draft?</h2>
+            <h2 id="reset-draft-title" className="text-lg font-semibold">{pendingResetIntent === 'new' ? 'Start a new prompt?' : 'Reset this draft?'}</h2>
             <p id="reset-draft-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
-              Your prompt, generated results, notes, and unsaved save details will be cleared. You can undo the reset while this session remains open.
+              Your prompt, generated results, notes, and unsaved save details will move to session recovery before the editor is cleared.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
+                ref={resetCancelRef}
                 type="button"
                 onClick={() => setShowResetDraftConfirmation(false)}
                 className={`ui-control rounded-lg px-3 py-2 text-sm font-semibold transition-colors hover:bg-white/[0.06] ${m.textSub}`}
@@ -1083,7 +1336,7 @@ export default function App({
                 onClick={confirmDraftReset}
                 className="ui-control rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-500"
               >
-                Reset draft
+                {pendingResetIntent === 'new' ? 'Start new prompt' : 'Reset draft'}
               </button>
             </div>
           </div>
@@ -1107,10 +1360,15 @@ export default function App({
           exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billing}
-          openBilling={openBilling}
+          openBilling={(featureId) => {
+            setBillingReturnToSettings(true);
+            setShowSettings(false);
+            openBilling(featureId);
+          }}
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
+          returnFocusRef={settingsButtonRef}
         />
       )}
 
@@ -1122,7 +1380,7 @@ export default function App({
       )}
 
       {showShortcuts && (
-        <ShortcutsModal m={m} primaryModKey={primaryModKey} onClose={() => setShowShortcuts(false)} />
+        <ShortcutsModal m={m} primaryModKey={primaryModKey} saveLabel={primarySaveLabel} onClose={() => setShowShortcuts(false)} />
       )}
 
       {showBillingModal && (

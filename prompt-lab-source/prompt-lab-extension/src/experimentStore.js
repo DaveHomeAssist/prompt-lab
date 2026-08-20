@@ -15,6 +15,7 @@ const RUNS_STORE = 'runs';
 const VERSION = 4;
 const EXPERIMENT_LS_KEY = 'pl2-experiment-fallback';
 const EVAL_RUN_LS_KEY = 'pl2-eval-run-fallback';
+export const EVAL_RUN_SIGNAL_KEY = 'pl2-eval-run-signal';
 const TEST_CASE_LS_KEY = 'pl2-test-case-fallback';
 const RUNS_LS_KEY = 'pl2-run-fallback';
 
@@ -72,6 +73,15 @@ function writeFallback(key, records) {
     localStorage.setItem(key, JSON.stringify(records));
   } catch (e) {
     logWarn('localStorage write failed', e);
+  }
+}
+
+function signalEvalRunsChanged(runId) {
+  try {
+    localStorage.setItem(EVAL_RUN_SIGNAL_KEY, JSON.stringify({ runId, at: Date.now() }));
+  } catch {
+    // IndexedDB remains authoritative when the lightweight cross-tab signal
+    // cannot be written.
   }
 }
 
@@ -190,14 +200,31 @@ export async function saveEvalRun(record) {
   const normalized = normalizeEvalRunRecord(record);
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY)].slice(0, 1000);
+    const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY).filter((entry) => entry.id !== normalized.id)].slice(0, 1000);
     writeFallback(EVAL_RUN_LS_KEY, next);
+    signalEvalRunsChanged(normalized.id);
     return normalized;
   }
   const tx = db.transaction(EVAL_RUN_STORE, 'readwrite');
   tx.objectStore(EVAL_RUN_STORE).put(normalized);
   await txDone(tx);
+  signalEvalRunsChanged(normalized.id);
   return normalized;
+}
+
+export async function patchEvalRun(id, patch) {
+  const existing = await getEvalRunById(id);
+  if (!existing) return null;
+  return saveEvalRun({ ...existing, ...(patch && typeof patch === 'object' ? patch : {}) });
+}
+
+export async function linkEvalRunToPrompt(id, promptId, promptVersionId = null) {
+  const normalizedPromptId = normalizePromptId(promptId);
+  if (!id || !normalizedPromptId) return null;
+  return patchEvalRun(id, {
+    promptId: normalizedPromptId,
+    promptVersionId: normalizePromptId(promptVersionId),
+  });
 }
 
 export async function listEvalRuns(filters = {}) {

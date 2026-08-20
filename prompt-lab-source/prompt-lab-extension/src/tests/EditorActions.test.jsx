@@ -52,8 +52,7 @@ describe('EditorActions', () => {
     expect(screen.queryByRole('option', { name: '⚖️ Balanced' })).not.toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /refine prompt cmd\+enter/i })).toHaveClass(
-      'bg-orange-500/90',
-      'hover:bg-orange-400'
+      'pl-primary-button'
     );
     expect(screen.getByRole('button', { name: /run cases/i })).toHaveClass(
       'border',

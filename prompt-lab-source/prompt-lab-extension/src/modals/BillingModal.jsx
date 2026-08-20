@@ -171,10 +171,10 @@ export default function BillingModal({
   }
 
   return (
-    <div ref={overlayRef} className={`fixed inset-0 z-[70] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
+    <div ref={overlayRef} className={`fixed inset-0 z-[90] flex items-center justify-center p-4 ${m.modalBg}`} onClick={onClose}>
       <div
         ref={dialogRef}
-        className={`pl-modal-panel w-full max-w-lg rounded-2xl border p-5 shadow-2xl ${m.modal} ${m.border} ${m.text}`}
+        className={`pl-modal-panel max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border p-5 shadow-2xl ${m.modal} ${m.border} ${m.text}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="billing-modal-title"
@@ -204,7 +204,7 @@ export default function BillingModal({
             ref={closeButtonRef}
             type="button"
             onClick={onClose}
-            className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
+            className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-orange-400`}
             aria-label="Close billing modal"
           >
             <Ic n="X" size={14} />
@@ -252,10 +252,10 @@ export default function BillingModal({
             onClick={() => handleCheckout('monthly')}
             disabled={billing.busyAction === 'checkout:monthly'}
             data-requested={safeRequestedPeriod === 'monthly' ? 'true' : undefined}
-            className={`ui-control rounded-xl bg-violet-600 px-4 py-3 text-left text-white transition-colors hover:bg-violet-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-violet-300' : ''}`}
+            className={`ui-control rounded-xl bg-orange-600 px-4 py-3 text-left text-white transition-colors hover:bg-orange-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-orange-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-violet-100">$9/month via Stripe</div>
+            <div className="mt-1 text-xs text-orange-100">$9/month via Stripe</div>
             {safeRequestedPeriod === 'monthly' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-white">Selected on pricing page</div>
             )}
@@ -298,7 +298,7 @@ export default function BillingModal({
 
         <div className="mt-5">
           <div className="flex items-center justify-between gap-2">
-            <p className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Billing email</p>
+            <label htmlFor="billing-email" className={`text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Billing email</label>
             <button
               type="button"
               onClick={handleManagePurchases}
@@ -312,10 +312,11 @@ export default function BillingModal({
           </div>
           <div className="mt-2 flex flex-col gap-2">
             <input
+              id="billing-email"
               value={accessEmail}
               onChange={(event) => setAccessEmail(event.target.value)}
               placeholder="Enter the email used at Stripe checkout"
-              className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-violet-500 focus:outline-none`}
+              className={`${m.input} w-full rounded-lg border px-3 py-2 text-sm ${m.border} ${m.text} focus:border-orange-500 focus:outline-none`}
             />
             <p className={`text-[11px] leading-relaxed ${m.textMuted}`}>
               Stripe keeps customer records. Prompt Lab also checks signed-in owner access from your account.
@@ -326,7 +327,7 @@ export default function BillingModal({
                 onClick={handleActivate}
                 disabled={billing.billingDisabled || (!accessEmail.trim() && !billing.clerkUserId) || billing.busyAction === 'activate'}
                 title={billing.billingDisabled ? 'Billing is currently disabled on this deployment.' : undefined}
-                className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-40"
+                className="ui-control rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-500 disabled:opacity-40"
               >
                 Sync Purchase
               </button>
@@ -352,7 +353,7 @@ export default function BillingModal({
             </div>
           </div>
           {(localError || billing.validationError) && (
-            <p className="mt-2 text-xs text-red-400">{localError || billing.validationError}</p>
+            <p role="alert" aria-live="assertive" className="mt-2 text-xs text-red-400">{localError || billing.validationError}</p>
           )}
         </div>
 

@@ -29,9 +29,53 @@ import {
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
 import { stampPackMembership } from '../lib/packStore.js';
+import { listEvalRuns, saveEvalRun } from '../experimentStore.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+function recordClock(entry) {
+  const value = entry?.deletedAt || entry?.updatedAt || entry?.updated_at || entry?.createdAt;
+  const parsed = value ? new Date(value).getTime() : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function stampRecordMutation(previous, next) {
+  const nextClock = Math.max(Date.now(), recordClock(previous) + 1, recordClock(next));
+  const updatedAt = new Date(nextClock).toISOString();
+  const stamped = { ...next, updatedAt };
+  return normalizeEntry({ ...stamped, completeness: null }, updatedAt) || stamped;
+}
+
+export function isTrashEntryRestorable(entry, now = Date.now()) {
+  const deletedAt = new Date(entry?.deletedAt || 0).getTime();
+  return Number.isFinite(deletedAt) && deletedAt >= now - TRASH_RETENTION_MS;
+}
+
+function reconcileLibraryRecords(localLibrary, localTrash, storedLibrary, storedTrash) {
+  const candidates = new Map();
+  const add = (entry, deleted) => {
+    if (!entry?.id) return;
+    const candidate = { ...entry, deletedAt: deleted ? (entry.deletedAt || new Date().toISOString()) : null };
+    const current = candidates.get(entry.id);
+    const currentTombstone = current?.tombstoneVersion || 0;
+    const nextTombstone = candidate.tombstoneVersion || 0;
+    if (!current
+      || nextTombstone > currentTombstone
+      || (nextTombstone === currentTombstone && recordClock(candidate) > recordClock(current))) {
+      candidates.set(entry.id, candidate);
+    }
+  };
+  normalizeLibrary(localLibrary).forEach((entry) => add(entry, false));
+  normalizeLibrary(localTrash).forEach((entry) => add(entry, true));
+  normalizeLibrary(storedLibrary).forEach((entry) => add(entry, false));
+  normalizeLibrary(storedTrash).forEach((entry) => add(entry, true));
+  const all = [...candidates.values()];
+  return {
+    library: all.filter((entry) => !entry.deletedAt),
+    trash: all.filter((entry) => entry.deletedAt),
+  };
+}
 
 function parseLibraryTimestamp(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -154,9 +198,8 @@ export default function usePromptLibrary(notify) {
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
     const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
-    const cutoff = Date.now() - TRASH_RETENTION_MS;
     const initialTrash = normalizeLibrary(loadJson(storageKeys.trash, []))
-      .filter((entry) => new Date(entry.deletedAt || 0).getTime() >= cutoff);
+      .filter((entry) => isTrashEntryRestorable(entry));
     const storedCollections = loadJson(storageKeys.collections, null);
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
@@ -226,11 +269,49 @@ export default function usePromptLibrary(notify) {
 
   useEffect(() => {
     if (!libReady) return undefined;
+    const purgeExpiredTrash = () => {
+      const nextTrash = trashRef.current.filter((entry) => isTrashEntryRestorable(entry));
+      if (nextTrash.length === trashRef.current.length) return;
+      trashRef.current = nextTrash;
+      setTrash(nextTrash);
+    };
+    const intervalId = window.setInterval(purgeExpiredTrash, 60 * 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, [libReady]);
+
+  useEffect(() => {
+    if (!libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
       saveJson(storageKeys.collections, collections);
     }, 120);
     return () => window.clearTimeout(timeoutId);
   }, [collections, libReady]);
+
+  useEffect(() => {
+    if (!libReady) return undefined;
+    const handleStorage = (event) => {
+      if (![storageKeys.library, storageKeys.trash, storageKeys.collections].includes(event.key)) return;
+      const reconciled = reconcileLibraryRecords(
+        libraryRef.current,
+        trashRef.current,
+        loadJson(storageKeys.library, []),
+        loadJson(storageKeys.trash, []),
+      );
+      libraryRef.current = reconciled.library;
+      const retainedTrash = reconciled.trash.filter((entry) => isTrashEntryRestorable(entry));
+      trashRef.current = retainedTrash;
+      setLibrary(reconciled.library);
+      setTrash(retainedTrash);
+      const mergedCollections = mergeCollections(
+        collectionsRef.current,
+        loadJson(storageKeys.collections, []),
+      );
+      collectionsRef.current = mergedCollections;
+      setCollections(mergedCollections);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [libReady]);
 
   const updateLibraryEntry = (entryId, updater) => {
     let changed = false;
@@ -239,7 +320,7 @@ export default function usePromptLibrary(notify) {
       const next = updater(entry);
       if (!next || next === entry) return entry;
       changed = true;
-      return next;
+      return stampRecordMutation(entry, next);
     });
     if (changed) {
       libraryRef.current = nextLibrary;
@@ -248,7 +329,11 @@ export default function usePromptLibrary(notify) {
     return changed;
   };
 
-  const persistNewEntry = (payload, { sourceEntry = null, savedFromDeletedTarget = false } = {}) => {
+  const persistNewEntry = (payload, {
+    sourceEntry = null,
+    savedFromDeletedTarget = false,
+    copyAsNew = false,
+  } = {}) => {
     const source = normalizeEntry(sourceEntry);
     const sourceMetadata = source?.metadata && savedFromDeletedTarget
       ? Object.fromEntries(
@@ -258,13 +343,21 @@ export default function usePromptLibrary(notify) {
       )
       : source?.metadata;
     const entry = createPromptEntry({
-      ...(source ? {
+      ...(source && !copyAsNew ? {
         versions: source.versions,
         testCases: source.testCases,
         goldenResponse: source.goldenResponse,
         goldenThreshold: source.goldenThreshold,
         inputs: source.inputs,
         metadata: sourceMetadata,
+      } : {}),
+      ...(source && copyAsNew ? {
+        inputs: source.inputs,
+        kind: source.kind,
+        metadata: {
+          ...(sourceMetadata || {}),
+          lineagePromptId: source.id || '',
+        },
       } : {}),
       ...payload,
       useCount: 0,
@@ -278,12 +371,14 @@ export default function usePromptLibrary(notify) {
     setLibrary(nextLibrary);
     notify(savedFromDeletedTarget
       ? 'The original prompt was deleted. Saved this draft as a new prompt.'
-      : 'Saved!');
+      : `Saved ${entry.title} as version 1.`);
     const result = {
       id: entry.id,
       title: entry.title,
+      versionId: entry.currentVersionId,
+      versionNumber: 1,
     };
-    return savedFromDeletedTarget ? { ...result, savedAsNew: true } : result;
+    return savedFromDeletedTarget || copyAsNew ? { ...result, savedAsNew: true } : result;
   };
 
   const doSave = ({
@@ -299,8 +394,10 @@ export default function usePromptLibrary(notify) {
     changeNote,
     sourceEntry,
     metadata,
+    kind,
     sourceNoteId,
     savedFromDeletedTarget = false,
+    copyAsNew = false,
   }) => {
     const cleanTitle = ensureString(title).trim() || suggestTitleFromText(enhanced || raw);
     const payload = {
@@ -313,6 +410,7 @@ export default function usePromptLibrary(notify) {
       tags: normalizeTagList(tags),
       collection: ensureString(collection),
       ...(metadata && typeof metadata === 'object' ? { metadata } : {}),
+      ...(ensureString(kind).trim() ? { kind: ensureString(kind).trim() } : {}),
       ...(ensureString(sourceNoteId).trim() ? { sourceNoteId: ensureString(sourceNoteId).trim() } : {}),
     };
 
@@ -340,13 +438,21 @@ export default function usePromptLibrary(notify) {
       }
       libraryRef.current = nextLibrary;
       setLibrary(nextLibrary);
-      notify('Prompt updated!');
-      return { id: editingId, title: savedTitle };
+      const savedEntry = nextLibrary.find((entry) => entry.id === editingId);
+      const versionNumber = (savedEntry?.versions?.length || 0) + 1;
+      notify(`Saved ${savedTitle} as version ${versionNumber}.`);
+      return {
+        id: editingId,
+        title: savedTitle,
+        versionId: savedEntry?.currentVersionId || null,
+        versionNumber,
+      };
     }
 
     return persistNewEntry(payload, {
       sourceEntry,
       savedFromDeletedTarget,
+      copyAsNew,
     });
   };
 
@@ -356,7 +462,13 @@ export default function usePromptLibrary(notify) {
     if (!deletedEntry) return false;
     const nextLibrary = libraryRef.current.filter(entry => entry.id !== id);
     if (nextLibrary.length === libraryRef.current.length) return false;
-    const nextTrash = [{ ...deletedEntry, deletedAt: new Date().toISOString() }, ...trashRef.current.filter((entry) => entry.id !== id)];
+    const deletedAt = new Date().toISOString();
+    const nextTrash = [{
+      ...deletedEntry,
+      deletedAt,
+      updatedAt: deletedAt,
+      tombstoneVersion: (deletedEntry.tombstoneVersion || 0) + 1,
+    }, ...trashRef.current.filter((entry) => entry.id !== id)];
     libraryRef.current = nextLibrary;
     trashRef.current = nextTrash;
     setLibrary(nextLibrary);
@@ -375,7 +487,20 @@ export default function usePromptLibrary(notify) {
   const restoreDeleted = (id) => {
     const entry = trashRef.current.find((item) => item.id === id);
     if (!entry) return null;
-    const restored = normalizeEntry({ ...entry, deletedAt: null, updatedAt: new Date().toISOString() });
+    if (!isTrashEntryRestorable(entry)) {
+      const nextTrash = trashRef.current.filter((item) => item.id !== id);
+      trashRef.current = nextTrash;
+      setTrash(nextTrash);
+      notify('This prompt has passed the 30-day recovery window and cannot be restored.');
+      return null;
+    }
+    const restoredAt = new Date().toISOString();
+    const restored = normalizeEntry({
+      ...entry,
+      deletedAt: null,
+      updatedAt: restoredAt,
+      tombstoneVersion: (entry.tombstoneVersion || 0) + 1,
+    });
     if (!restored) return null;
     const nextLibrary = [restored, ...libraryRef.current.filter((item) => item.id !== id)];
     const nextTrash = trashRef.current.filter((item) => item.id !== id);
@@ -433,7 +558,8 @@ export default function usePromptLibrary(notify) {
     const nextLibrary = libraryRef.current.map((entry) => {
       if (!selected.has(entry.id)) return entry;
       changed += 1;
-      return updater(entry);
+      const next = updater(entry);
+      return next && next !== entry ? stampRecordMutation(entry, next) : entry;
     });
     libraryRef.current = nextLibrary;
     setLibrary(nextLibrary);
@@ -457,7 +583,12 @@ export default function usePromptLibrary(notify) {
     if (deleted.length === 0) return 0;
     const now = new Date().toISOString();
     const nextTrash = [
-      ...deleted.map((entry) => ({ ...entry, deletedAt: now })),
+      ...deleted.map((entry) => ({
+        ...entry,
+        deletedAt: now,
+        updatedAt: now,
+        tombstoneVersion: (entry.tombstoneVersion || 0) + 1,
+      })),
       ...trashRef.current.filter((entry) => !selected.has(entry.id)),
     ];
     const nextLibrary = libraryRef.current.filter((entry) => !selected.has(entry.id));
@@ -477,7 +608,7 @@ export default function usePromptLibrary(notify) {
   const deleteCollection = useCallback((collectionName) => {
     const nextCollections = collectionsRef.current.filter((name) => name !== collectionName);
     const nextLibrary = libraryRef.current.map((entry) =>
-      entry.collection === collectionName ? { ...entry, collection: '' } : entry
+      entry.collection === collectionName ? stampRecordMutation(entry, { ...entry, collection: '' }) : entry
     );
     collectionsRef.current = nextCollections;
     libraryRef.current = nextLibrary;
@@ -632,12 +763,31 @@ export default function usePromptLibrary(notify) {
     if (!id) return 0;
     let removed = 0;
     setLibrary(prev => {
+      const removedEntries = [];
       const next = prev.filter(entry => {
         const isPackEntry = ensureString(entry?.metadata?.packId).trim() === id;
-        if (isPackEntry) removed += 1;
+        if (isPackEntry) {
+          removed += 1;
+          removedEntries.push(entry);
+        }
         return !isPackEntry;
       });
       libraryRef.current = next;
+      if (removedEntries.length > 0) {
+        const deletedAt = new Date().toISOString();
+        const removedIds = new Set(removedEntries.map((entry) => entry.id));
+        const nextTrash = [
+          ...removedEntries.map((entry) => ({
+            ...entry,
+            deletedAt,
+            updatedAt: deletedAt,
+            tombstoneVersion: (entry.tombstoneVersion || 0) + 1,
+          })),
+          ...trashRef.current.filter((entry) => !removedIds.has(entry.id)),
+        ];
+        trashRef.current = nextTrash;
+        setTrash(nextTrash);
+      }
       return next;
     });
     return removed;
@@ -650,70 +800,123 @@ export default function usePromptLibrary(notify) {
     let assigned = 0;
     setLibrary(prev => {
       assigned = prev.filter((entry) => ids.has(entry.id)).length;
-      const next = stampPackMembership(prev, [...ids], { id, title: packName });
+      const stamped = stampPackMembership(prev, [...ids], { id, title: packName });
+      const next = stamped.map((entry, index) => ids.has(entry.id)
+        ? stampRecordMutation(prev[index], entry)
+        : entry);
       libraryRef.current = next;
       return next;
     });
     return assigned;
   };
 
-  const exportLib = () => {
-    if (library.length === 0) {
-      notify('Library is empty.');
-      return;
+  const exportLib = async () => {
+    const scratch = loadJson('pl2-pads', null);
+    const runs = await listEvalRuns({ limit: null });
+    if (library.length === 0 && trash.length === 0 && !scratch && runs.length === 0) {
+      notify('Prompt Lab has no saved workspace data to export.');
+      return null;
     }
-    if (library.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
+    const sensitiveEntries = [...library, ...trash];
+    if (sensitiveEntries.some(entry => looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
       && !window.confirm('Export may include sensitive prompt content. Continue?')) return;
     const exportPayload = {
-      version: '1.7.0',
-      schemaVersion: 1,
+      product: 'Prompt Lab',
+      version: '1.7.1',
+      schemaVersion: 2,
       exportedAt: new Date().toISOString(),
       count: library.length,
       library,
+      trash,
       collections,
+      packs: loadJson(storageKeys.packs, []),
+      scratch,
+      runs,
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' }));
     const stamp = new Date().toISOString().slice(0, 10);
-    const anchor = Object.assign(document.createElement('a'), { href: url, download: `prompt-library-${stamp}.json` });
+    const anchor = Object.assign(document.createElement('a'), { href: url, download: `prompt-lab-workspace-${stamp}.json` });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
+    notify(`Exported ${library.length} prompts, ${runs.length} runs, and Scratch data.`);
+    return exportPayload;
   };
 
   const importLib = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       notify('Import failed: file is too large.');
       event.target.value = '';
       return;
     }
     const reader = new FileReader();
-    reader.onload = (readEvent) => {
+    reader.onload = async (readEvent) => {
       try {
         const parsed = JSON.parse(readEvent.target.result);
-        const payload = Array.isArray(parsed) ? parsed : parsed?.library;
-        const normalized = normalizeLibrary(payload);
-        if (!normalized.length) {
+        const payload = Array.isArray(parsed)
+          ? parsed
+          : parsed?.library || parsed?.prompts || parsed?.presets || parsed?.entries;
+        const hasWorkspaceExtras = Boolean(
+          !Array.isArray(parsed) && parsed && typeof parsed === 'object' && (
+            Array.isArray(parsed.trash)
+            || Array.isArray(parsed.collections)
+            || (parsed.packs && typeof parsed.packs === 'object')
+            || (parsed.scratch && typeof parsed.scratch === 'object')
+            || Array.isArray(parsed.runs)
+          )
+        );
+        const normalized = normalizeLibrary((Array.isArray(payload) ? payload : []).map((entry) => ({
+          ...entry,
+          original: entry?.original || entry?.prompt || entry?.content || entry?.enhanced,
+          enhanced: entry?.enhanced || entry?.prompt || entry?.content || entry?.original,
+        })));
+        if (!normalized.length && !hasWorkspaceExtras) {
           notify('Import failed: no valid prompts found.');
           return;
         }
         const result = mergeLibraryEntries(libraryRef.current, normalized, { prepend: true });
         const nextCollections = mergeCollections(
-          collectionsRef.current,
+          mergeCollections(collectionsRef.current, Array.isArray(parsed?.collections) ? parsed.collections : []),
           deriveCollectionsFromLibrary(result.library),
         );
         libraryRef.current = result.library;
         collectionsRef.current = nextCollections;
         setLibrary(result.library);
         setCollections(nextCollections);
+        if (Array.isArray(parsed?.trash)) {
+          const retainedImportedTrash = parsed.trash.filter((entry) => isTrashEntryRestorable(entry));
+          const reconciled = reconcileLibraryRecords(
+            result.library,
+            trashRef.current,
+            [],
+            retainedImportedTrash,
+          );
+          const retainedTrash = reconciled.trash.filter((entry) => isTrashEntryRestorable(entry));
+          libraryRef.current = reconciled.library;
+          trashRef.current = retainedTrash;
+          setLibrary(reconciled.library);
+          setTrash(retainedTrash);
+        }
+        if (parsed?.scratch && typeof parsed.scratch === 'object') {
+          localStorage.setItem('pl2-pads', JSON.stringify(parsed.scratch));
+        }
+        if (parsed?.packs && typeof parsed.packs === 'object') {
+          saveJson(storageKeys.packs, parsed.packs);
+        }
+        if (Array.isArray(parsed?.runs)) {
+          await Promise.all(parsed.runs.map((run) => saveEvalRun(run)));
+        }
         if (result.importedCount === 0) {
-          notify(`No new prompts imported. Skipped ${result.skippedCount} duplicates.`);
+          notify(hasWorkspaceExtras
+            ? `Imported workspace data. No new prompts; skipped ${result.skippedCount} duplicates.`
+            : `No new prompts imported. Skipped ${result.skippedCount} duplicates.`);
           return;
         }
         notify(
           result.skippedCount > 0
-            ? `Imported ${result.importedCount} prompts, skipped ${result.skippedCount} duplicates.`
-            : `Imported ${result.importedCount} prompts!`
+            ? `Imported ${result.importedCount} prompts and workspace data; skipped ${result.skippedCount} duplicates.`
+            : `Imported ${result.importedCount} prompts and workspace data.`
         );
       } catch {
         notify('Import failed');

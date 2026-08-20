@@ -10,7 +10,7 @@ import { listRunsByTrace } from './experimentStore.js';
 import { buildGraphDataset } from './runs/buildGraphDataset.js';
 
 const STEP_BADGE = {
-  running: 'bg-violet-500/20 text-violet-300',
+  running: 'bg-orange-500/20 text-orange-300',
   success: 'bg-emerald-500/20 text-emerald-300',
   error: 'bg-red-500/20 text-red-300',
   blocked: 'bg-amber-500/20 text-amber-300',
@@ -134,7 +134,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
             </select>
             {!running ? (
               <button type="button" onClick={run} disabled={!selected}
-                className="ui-control px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white transition-colors">
+                className="ui-control px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white transition-colors">
                 Run Chain
               </button>
             ) : (
@@ -170,7 +170,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
                 <span className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Final output</span>
                 <div className="flex gap-2">
                   <button type="button" onClick={() => copy?.(finalOutput)} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>Copy</button>
-                  <button type="button" onClick={sendToEditor} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Send to editor</button>
+                  <button type="button" onClick={sendToEditor} className="text-xs text-orange-400 hover:text-orange-300 transition-colors">Send to editor</button>
                 </div>
               </div>
               <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2 text-xs ${m.textBody} whitespace-pre-wrap max-h-48 overflow-y-auto`}>

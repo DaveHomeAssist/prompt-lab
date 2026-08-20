@@ -16,8 +16,15 @@ import {
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-function fakeKeyEvent(key, { meta = false, ctrl = false, target = 'DIV' } = {}) {
-  return { key, metaKey: meta, ctrlKey: ctrl, target: { tagName: target }, preventDefault: () => {} };
+function fakeKeyEvent(key, { meta = false, ctrl = false, alt = false, target = 'DIV' } = {}) {
+  return {
+    key,
+    metaKey: meta,
+    ctrlKey: ctrl,
+    altKey: alt,
+    target: { tagName: target },
+    preventDefault: () => {},
+  };
 }
 
 // ── Tests ──────────────────────────────────────────────────────────
@@ -79,14 +86,28 @@ describe('navigationRegistry', () => {
 
     expect(resolveRouteState('/library')).toEqual({ primaryView: 'create', workspaceView: 'library' });
     expect(resolveRouteState('/split')).toEqual({ primaryView: 'create', workspaceView: 'split' });
+    expect(resolveRouteState('/split/library')).toEqual({
+      primaryView: 'create',
+      workspaceView: 'split',
+      splitPane: 'library',
+    });
+    expect(resolveRouteState('/split/write')).toEqual({
+      primaryView: 'create',
+      workspaceView: 'split',
+      splitPane: 'editor',
+    });
     expect(resolveRouteState('/compare')).toEqual({ primaryView: 'runs', runsView: 'compare' });
+    expect(resolveRouteState('/scratch')).toEqual({ primaryView: 'notebook' });
+    expect(resolveRouteState('/pad')).toEqual({ primaryView: 'notebook' });
     expect(resolveRouteState('/unknown')).toBe(null);
 
     expect(stateToRoute('create', 'editor', 'history')).toBe('/');
     expect(stateToRoute('create', 'library', 'history')).toBe('/library');
     expect(stateToRoute('create', 'split', 'history')).toBe('/split');
+    expect(stateToRoute('create', 'split', 'history', { compact: true, splitPane: 'library' })).toBe('/split/library');
+    expect(stateToRoute('create', 'split', 'history', { compact: true, splitPane: 'editor' })).toBe('/split/write');
     expect(stateToRoute('runs', 'editor', 'compare')).toBe('/compare');
-    expect(stateToRoute('notebook', 'editor', 'history')).toBe('/pad');
+    expect(stateToRoute('notebook', 'editor', 'history')).toBe('/scratch');
   });
 
   // ── Cmd/Ctrl+K ────────────────────────────────────────────────────
@@ -124,6 +145,20 @@ describe('navigationRegistry', () => {
     expect(match.id).toBe('escape');
   });
 
+  it('Alt 1–6 map to the flattened Write through Scratch navigation order', () => {
+    expect(['1', '2', '3', '4', '5', '6'].map((key) => (
+      matchShortcut(fakeKeyEvent(key, { alt: true }))?.id
+    ))).toEqual([
+      'navWrite',
+      'navLibrary',
+      'navCompose',
+      'navSplit',
+      'navEvaluate',
+      'navScratch',
+    ]);
+    expect(matchShortcut(fakeKeyEvent('6'))).toBe(null);
+  });
+
   // ── View transitions via command palette ──────────────────────────
 
   it('buildCommandActions produces filterable navigation entries', () => {
@@ -132,9 +167,11 @@ describe('navigationRegistry', () => {
       enhance: () => {},
       save: () => {},
       clear: () => {},
+      newPrompt: () => { navigated = 'new-prompt'; },
       goEditor: () => { navigated = 'editor'; },
       goLibrary: () => { navigated = 'library'; },
       goBuild: () => { navigated = 'build'; },
+      goSplit: () => { navigated = 'split'; },
       goRuns: () => { navigated = 'runs'; },
       goCompare: () => { navigated = 'compare'; },
       goNotebook: () => { navigated = 'notebook'; },
@@ -145,16 +182,21 @@ describe('navigationRegistry', () => {
       showShortcuts: () => {},
     });
 
-    expect(actions.length).toBe(14);
+    expect(actions.length).toBe(16);
 
     // Filter by query
-    const filtered = filterCommands(actions, 'notebook');
+    const filtered = filterCommands(actions, 'scratch');
     expect(filtered).toHaveLength(1);
-    expect(filtered[0].label).toBe('Open Notebook');
+    expect(filtered[0].label).toBe('Open Scratch');
 
     // Execute a navigation action
     filtered[0].action();
     expect(navigated).toBe('notebook');
+
+    const newPrompt = filterCommands(actions, 'new prompt');
+    expect(newPrompt.map((entry) => entry.label)).toEqual(['Save as new prompt', 'New Prompt']);
+    newPrompt.find((entry) => entry.label === 'New Prompt').action();
+    expect(navigated).toBe('new-prompt');
   });
 
   it('buildCommandActions omits entries with missing handlers', () => {

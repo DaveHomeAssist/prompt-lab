@@ -5,6 +5,10 @@ import { logWarn } from './lib/logger.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
 import { storageKeys } from './lib/storage.js';
 
+// Stable compatibility entry point. The expanded workspace lives separately so
+// the multi-surface App import does not change while Scratch evolves.
+export { default } from './ScratchWorkspace.jsx';
+
 /* ── Multi-pad storage constants ── */
 const LEGACY_PAD_KEY = storageKeys.pad;                 // "pl2-pad"
 const LEGACY_PAD_META_KEY = `${storageKeys.pad}_meta`;  // "pl2-pad_meta"
@@ -211,7 +215,7 @@ function buildPadId() {
 
 /* ── Component ── */
 
-export default function PadTab({
+function LegacyPadTab({
   m,
   colorMode = 'dark',
   notify,

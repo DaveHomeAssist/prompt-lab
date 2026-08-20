@@ -59,11 +59,11 @@ describe('AppHeader', () => {
   it('shows every Create sub-mode from the redesign', () => {
     renderHeader();
 
-    expect(screen.getByRole('button', { name: 'Write' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Compose' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Dual Pane' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Build' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Write' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Library' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Compose' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Dual Pane' })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Build' })).not.toBeInTheDocument();
   });
 
   it('shows Compare and History sub-tabs when Evaluate is active', () => {
@@ -85,15 +85,15 @@ describe('AppHeader', () => {
 
     expect(screen.getByRole('tab', { name: 'Create' })).toHaveClass(
       'border',
-      'border-orange-400/50',
-      'bg-orange-500/15',
-      'text-orange-50'
+      'border-orange-300/55',
+      'bg-orange-400/15',
+      'text-orange-100'
     );
-    expect(screen.getByRole('button', { name: 'Write' })).toHaveClass(
+    expect(screen.getByRole('tab', { name: 'Write' })).toHaveClass(
       'border',
-      'border-orange-400/50',
-      'bg-orange-500/15',
-      'text-orange-50'
+      'border-orange-300/55',
+      'bg-orange-400/15',
+      'text-orange-100'
     );
     expect(screen.getByRole('button', { name: 'Upgrade' })).toHaveClass(
       'bg-orange-500/90',

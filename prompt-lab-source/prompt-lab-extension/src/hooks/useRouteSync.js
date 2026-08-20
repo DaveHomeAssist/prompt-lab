@@ -22,6 +22,8 @@ export default function useRouteSync({
   primaryView, setPrimaryView,
   workspaceView, setWorkspaceView,
   runsView, setRunsView,
+  splitPane, setSplitPane,
+  compact = false,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -43,20 +45,21 @@ export default function useRouteSync({
     if (mapping.primaryView) setPrimaryView(mapping.primaryView);
     if (mapping.workspaceView) setWorkspaceView(mapping.workspaceView);
     if (mapping.runsView) setRunsView(mapping.runsView);
+    if (mapping.splitPane && typeof setSplitPane === 'function') setSplitPane(mapping.splitPane);
 
     // Allow the state update to settle before re-enabling URL push
     requestAnimationFrame(() => { suppressPush.current = false; });
-  }, [location.pathname, setPrimaryView, setWorkspaceView, setRunsView]);
+  }, [location.pathname, setPrimaryView, setWorkspaceView, setRunsView, setSplitPane]);
 
   // State → URL: when nav state changes, update the URL
   useEffect(() => {
     if (suppressPush.current) return;
 
-    const target = stateToRoute(primaryView, workspaceView, runsView);
+    const target = stateToRoute(primaryView, workspaceView, runsView, { compact, splitPane });
     if (target !== location.pathname) {
       navigate(target);
     }
-  }, [primaryView, workspaceView, runsView, navigate, location.pathname]);
+  }, [primaryView, workspaceView, runsView, splitPane, compact, navigate, location.pathname]);
 
   return { replaceRoute };
 }

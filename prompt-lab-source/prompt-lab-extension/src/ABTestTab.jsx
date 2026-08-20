@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Ic from './icons';
 import DiffPane from './DiffPane';
 import { getConfiguredProviders } from './lib/platform.js';
+import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 
 export default function ABTestTab({
   m,
@@ -32,7 +33,7 @@ export default function ABTestTab({
   promoteToGolden,
   pinGoldenResponse,
 }) {
-  const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-violet-500 transition-colors placeholder-gray-400 ${m.text}`;
+  const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
   const [availableProviders, setAvailableProviders] = useState([]);
   const [baselineId, setBaselineId] = useState('a');
@@ -60,7 +61,7 @@ export default function ABTestTab({
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
           <button type="button" onClick={runAll} disabled={anyLoading || !arenaVariants.some((variant) => variant.prompt.trim())}
-            className="ui-control flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+            className="ui-control flex items-center gap-1.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
             <Ic n="FlaskConical" size={12} />Run All
           </button>
           <button type="button" onClick={addVariant} disabled={arenaVariants.length >= 5}
@@ -69,7 +70,7 @@ export default function ABTestTab({
             type="button"
             onClick={() => setShowDiff(true)}
             disabled={!canDiff}
-            className={`ui-control flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canDiff ? 'bg-violet-600 hover:bg-violet-500 text-white' : `${m.btn} ${m.textMuted} cursor-not-allowed`}`}
+            className={`ui-control flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${canDiff ? 'bg-orange-600 hover:bg-orange-500 text-white' : `${m.btn} ${m.textMuted} cursor-not-allowed`}`}
             title={canDiff ? 'Compare the baseline with another completed output' : 'Run at least two variants first'}
           >
             <Ic n="GitBranch" size={11} />Sync View
@@ -86,10 +87,10 @@ export default function ABTestTab({
         </p>
       </div>
       {compact && (
-        <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`}>
+        <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`} role="tablist" aria-label="Prompt variants" onKeyDown={(event) => handleTabArrowKeys(event, activeSide, setActiveSide)}>
           {arenaVariants.map((state) => (
-            <button key={state.id} type="button" onClick={() => setActiveSide(state.label)}
-              className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === state.label ? 'bg-violet-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
+            <button key={state.id} type="button" role="tab" data-tab-id={state.label} aria-selected={activeSide === state.label} tabIndex={activeSide === state.label ? 0 : -1} onClick={() => setActiveSide(state.label)}
+              className={`ui-control px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${activeSide === state.label ? 'bg-orange-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
               Variant {state.label}{state.response ? ' Ready' : ''}
             </button>
           ))}
@@ -102,7 +103,7 @@ export default function ABTestTab({
           return (
           <div key={state.id} className={`flex flex-col border-r last:border-r-0 ${m.border} ${pageScroll ? '' : 'overflow-hidden'} ${compact ? 'flex-1' : 'min-w-[19rem] flex-1'}`}>
             <div className={`px-3 py-2 border-b ${m.border} flex items-center justify-between gap-2 shrink-0`}>
-              <span className="text-xs font-bold text-violet-400 uppercase shrink-0">Variant {side}</span>
+              <span className="text-xs font-bold text-orange-400 uppercase shrink-0">Variant {side}</span>
               {availableProviders.length > 0 && typeof setSideProvider === 'function' && (
                 <select
                   aria-label={`Provider for variant ${side}`}
@@ -111,7 +112,7 @@ export default function ABTestTab({
                     const descriptor = availableProviders.find((p) => `${p.provider}::${p.model}` === e.target.value) || null;
                     setSideProvider(state.id, descriptor);
                   }}
-                  className={`text-xs ${m.input} border rounded px-1.5 py-1 min-w-0 flex-1 focus:outline-none focus:border-violet-500`}>
+                  className={`text-xs ${m.input} border rounded px-1.5 py-1 min-w-0 flex-1 focus:outline-none focus:border-orange-500`}>
                   <option value="">Default provider</option>
                   {availableProviders.map((p) => (
                     <option key={`${p.provider}-${p.model}`} value={`${p.provider}::${p.model}`}>{p.provider} · {p.model}</option>
@@ -120,7 +121,7 @@ export default function ABTestTab({
               )}
               <div className="flex gap-2 shrink-0">
                 <button type="button" onClick={() => runAB(state.id)} disabled={state.loading || !state.prompt.trim()}
-                  className="ui-control flex items-center gap-1 text-xs bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
+                  className="ui-control flex items-center gap-1 text-xs bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white px-2 py-1 rounded-lg transition-colors">
                   {state.loading ? <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Ic n="Wand2" size={10} />}Run {side}
                 </button>
                 {state.response && !abWinner && (
@@ -135,23 +136,23 @@ export default function ABTestTab({
             <div className="flex flex-col gap-3 p-3 flex-1 overflow-y-auto">
               <div>
                 <span className={`text-xs ${m.textSub} font-semibold uppercase tracking-wider block mb-1.5`}>Prompt</span>
-                <textarea rows={5} className={inp} placeholder={`Prompt variant ${side}…`} value={state.prompt} onChange={e => setter(p => ({ ...p, prompt: e.target.value }))} />
+                <textarea rows={5} aria-label={`Prompt for variant ${side}`} className={inp} placeholder={`Prompt variant ${side}…`} value={state.prompt} onChange={e => setter(p => ({ ...p, prompt: e.target.value }))} />
               </div>
               {(state.response || state.loading) && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-violet-400 font-semibold uppercase tracking-wider">Response</span>
+                    <span className="text-xs text-orange-400 font-semibold uppercase tracking-wider">Response</span>
                     {state.response && !state.error && <span className={`text-xs ${m.textMuted}`}>~{Math.round(state.response.length / 4)} tokens</span>}
                   </div>
                   {state.loading
-                    ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-violet-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
+                    ? <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 flex items-center gap-2`}><span className="w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin shrink-0" /><span className={`text-xs ${m.textSub}`}>Generating…</span></div>
                     : state.error
                       ? <div className={`${m.surface} border border-red-500/40 rounded-lg p-3 text-xs text-red-400 leading-relaxed`}>{state.response}</div>
                       : <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap max-h-72 overflow-y-auto`}>{state.response}</div>
                   }
                   {state.error && (
                     <div className="flex gap-3 mt-2">
-                      <button type="button" onClick={() => runAB(state.id)} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Retry</button>
+                      <button type="button" onClick={() => runAB(state.id)} className="text-xs text-orange-400 hover:text-orange-300 transition-colors">Retry</button>
                     </div>
                   )}
                   {state.response && !state.error && (

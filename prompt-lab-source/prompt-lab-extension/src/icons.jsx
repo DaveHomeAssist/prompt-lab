@@ -62,6 +62,8 @@ export default function Ic({ n, size = 14, className = '' }) {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
       className={className}
       dangerouslySetInnerHTML={{ __html: markup }}
     />

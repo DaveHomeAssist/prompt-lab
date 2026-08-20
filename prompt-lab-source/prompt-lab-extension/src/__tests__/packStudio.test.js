@@ -83,7 +83,28 @@ describe('exportPackFromEntries', () => {
   });
 
   it('round-trips through importPresetPack and stamps packId membership', async () => {
-    const pack = exportPackFromEntries([makeEntry({ title: 'Round Trip' })], { title: 'RT Pack' });
+    const entry = makeEntry({
+      title: 'Round Trip',
+      favorite: true,
+      kind: 'template',
+      sourceNoteId: 'scratch-note-7',
+      tombstoneVersion: 3,
+      resultMeta: {
+        changeSummary: 'Ready to use',
+        candidates: [{ id: 'improved', label: 'Improved', content: 'enhanced text' }],
+        selectedCandidateId: 'improved',
+      },
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+      metadata: {
+        owner: 'Dave',
+        purpose: 'Prove a lossless pack round trip.',
+        status: 'active',
+        compatibility: ['Claude'],
+        riskLevel: 'low',
+        custom: 'retained',
+      },
+    });
+    const pack = exportPackFromEntries([entry], { title: 'RT Pack' });
     let saved = null;
     const adapter = {
       load: async () => [],
@@ -94,6 +115,27 @@ describe('exportPackFromEntries', () => {
     expect(saved).toHaveLength(1);
     expect(saved[0].metadata.packId).toBe('rt-pack');
     expect(saved[0].title).toBe('Round Trip');
+    expect(saved[0]).toMatchObject({
+      favorite: true,
+      kind: 'template',
+      sourceNoteId: 'scratch-note-7',
+      tombstoneVersion: 3,
+      notes: 'a note',
+      inputs: [{ key: 'topic', label: 'Topic', type: 'text', required: true }],
+      metadata: {
+        owner: 'Dave',
+        purpose: 'Prove a lossless pack round trip.',
+        status: 'active',
+        compatibility: ['Claude'],
+        riskLevel: 'low',
+        custom: 'retained',
+      },
+    });
+    expect(saved[0].resultMeta).toMatchObject({
+      changeSummary: 'Ready to use',
+      selectedCandidateId: 'improved',
+    });
+    expect(saved[0].completeness.complete).toBe(true);
     // The import also registered the pack.
     expect(loadPackRegistry()['rt-pack'].source).toBe('imported');
   });

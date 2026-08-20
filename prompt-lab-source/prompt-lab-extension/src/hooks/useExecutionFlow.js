@@ -196,10 +196,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setStreaming(false);
     setStreamPreview('');
     setError(null);
-    setEnhanced('');
-    setVariants([]);
-    setNotes('');
-    setResultMeta?.(null);
+    // Keep the last complete result visible while a re-run is in flight. A
+    // failed or cancelled request must not destroy the candidate the user was
+    // reviewing; success replaces it atomically below.
     setOptimisticSaveVisible(true);
     setShowSave(false);
     setShowDiff(false);
@@ -224,6 +223,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       const nextResultMeta = normalizeResultMeta({
         ...parsed,
         assumptions: parsed.assumptionDetails || parsed.assumptions,
+        reversibleEdits: parsed.reversibleEdits,
         provider: data?.provider || 'unknown',
         model: data?.model || payload?.model || 'unknown',
         latencyMs,
@@ -279,7 +279,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         changeSummary: nextResultMeta.changeSummary,
         changes: nextResultMeta.changes,
         assumptions: nextResultMeta.assumptions,
+        reversibleEdits: nextResultMeta.reversibleEdits,
         reasoning: nextResultMeta.reasoning,
+        tags: nextResultMeta.tags,
         usage: nextResultMeta.usage,
         goldenScore,
         regression: goldenScore !== null && goldenScore < goldenThreshold,
@@ -496,6 +498,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     showEvalHistory: evalRunsHook.showEvalHistory,
     setShowEvalHistory: evalRunsHook.setShowEvalHistory,
     refreshEvalRuns: evalRunsHook.refreshEvalRuns,
+    updateEvalRun: evalRunsHook.updateRun,
     testCasesByPrompt: testCasesHook.testCasesByPrompt,
     caseFormPromptId: testCasesHook.caseFormPromptId,
     editingCaseId: testCasesHook.editingCaseId,

@@ -64,7 +64,7 @@ describe('Prompt Save & Load Integration', () => {
       expect(saved.id).toBeTruthy();
       expect(saved.title).toBe('My New Prompt');
       expect(result.current.library.length).toBe(initialLength + 1);
-      expect(notify).toHaveBeenCalledWith('Saved!');
+      expect(notify).toHaveBeenCalledWith('Saved My New Prompt as version 1.');
     });
 
     it('auto-generates title from enhanced text when title is empty', async () => {
@@ -165,7 +165,7 @@ describe('Prompt Save & Load Integration', () => {
       expect(updated.enhanced).toBe('Updated enhanced');
       expect(updated.tags).toEqual(['Writing']);
       expect(updated.collection).toBe('NewCol');
-      expect(notify).toHaveBeenCalledWith('Prompt updated!');
+      expect(notify).toHaveBeenCalledWith('Saved Updated Title as version 2.');
     });
 
     it('creates a version snapshot when content changes', async () => {
@@ -714,8 +714,10 @@ describe('Prompt Save & Load Integration', () => {
       await waitFor(() => expect(result.current.libReady).toBe(true));
       act(() => result.current.clearLibrary());
 
-      act(() => result.current.exportLib());
-      expect(notify).toHaveBeenCalledWith('Library is empty.');
+      await act(async () => {
+        await result.current.exportLib();
+      });
+      expect(notify).toHaveBeenCalledWith('Prompt Lab has no saved workspace data to export.');
     });
   });
 });
