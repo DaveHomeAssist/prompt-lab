@@ -14,8 +14,13 @@ import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
-import { normalizeError } from '../lib/errorTaxonomy.js';
+import { AppError, ErrorCategory, normalizeError } from '../lib/errorTaxonomy.js';
 import { normalizeResultMeta } from '../lib/enhancementResult.js';
+import {
+  assessEnhancementQuality,
+  buildEnhancementCorrectionPayload,
+  combineTokenUsage,
+} from '../lib/enhancementQuality.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
 
@@ -203,19 +208,66 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setShowSave(false);
     setShowDiff(false);
 
+    let qualityGateFailure = null;
+    let executionProvider = 'unknown';
+    let executionModel = payload?.model || 'unknown';
+    let accumulatedUsage = null;
     try {
-      const data = await callWithRetry(payload, 1, {
+      const streamOptions = {
         signal: abortController?.signal,
         onChunk: (chunk, fullText) => {
           if (reqId !== enhanceReqRef.current) return;
           setStreaming(true);
           setStreamPreview(fullText || chunk || '');
         },
-      });
+      };
+      let data = await callWithRetry(payload, 1, streamOptions);
       if (reqId !== enhanceReqRef.current) return;
+      executionProvider = data?.provider || executionProvider;
+      executionModel = data?.model || executionModel;
+      accumulatedUsage = combineTokenUsage(data?.usage);
 
-      const txt = extractTextFromAnthropic(data);
-      const parsed = parseEnhancedPayload(txt);
+      let txt = extractTextFromAnthropic(data);
+      let parsed = parseEnhancedPayload(txt);
+      const sentSource = ensureString(
+        payload?.messages?.find((message) => message?.role === 'user')?.content || raw,
+      );
+      let correctionUsed = false;
+      let qualityAssessment = assessEnhancementQuality(sentSource, parsed);
+
+      if (!qualityAssessment.passed) {
+        correctionUsed = true;
+        qualityGateFailure = qualityAssessment;
+        setStreaming(false);
+        setStreamPreview('');
+
+        const correctionPayload = buildEnhancementCorrectionPayload(payload, txt, qualityAssessment);
+        const correctionData = await callWithRetry(correctionPayload, 0, streamOptions);
+        if (reqId !== enhanceReqRef.current) return;
+        executionProvider = correctionData?.provider || executionProvider;
+        executionModel = correctionData?.model || executionModel;
+        accumulatedUsage = combineTokenUsage(data?.usage, correctionData?.usage);
+
+        const correctionText = extractTextFromAnthropic(correctionData);
+        const corrected = parseEnhancedPayload(correctionText);
+        qualityAssessment = assessEnhancementQuality(sentSource, corrected);
+        if (!qualityAssessment.passed) {
+          qualityGateFailure = qualityAssessment;
+          throw new AppError({
+            category: ErrorCategory.PROVIDER,
+            userMessage: 'The model could not produce a meaningful improvement after one corrective pass. Your draft and previous result are still here. Try another mode or run again.',
+            debugMessage: `Enhancement quality gate failed: ${qualityAssessment.failures.join(', ')}`,
+            retryable: true,
+            source: 'enhancement-quality',
+          });
+        }
+
+        data = correctionData;
+        txt = correctionText;
+        parsed = corrected;
+        qualityGateFailure = null;
+      }
+
       const latencyMs = nowMs() - startedAt;
       const runId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -224,10 +276,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         ...parsed,
         assumptions: parsed.assumptionDetails || parsed.assumptions,
         reversibleEdits: parsed.reversibleEdits,
-        provider: data?.provider || 'unknown',
-        model: data?.model || payload?.model || 'unknown',
+        provider: executionProvider,
+        model: executionModel,
         latencyMs,
-        usage: data?.usage,
+        usage: accumulatedUsage,
         runId,
       }, {
         enhanced: parsed.enhanced,
@@ -240,7 +292,10 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
       // Surface assumptions in notes panel for transparency
       const assumptions = parsed.assumptions || [];
-      const notesText = parsed.notes || '';
+      const qualityNote = correctionUsed
+        ? 'Quality check: Prompt Lab rejected the first result as a no-op or unsupported near-no-op and used one corrective pass.'
+        : '';
+      const notesText = [parsed.notes || '', qualityNote].filter(Boolean).join('\n\n');
       const assumptionBlock = assumptions.length > 0
         ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a.text || a}`).join('\n')}`
         : '';
@@ -268,12 +323,12 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance',
         enhanceMode: enhanceModeId,
-        provider: data?.provider || 'unknown',
-        model: data?.model || payload?.model || 'unknown',
+        provider: executionProvider,
+        model: executionModel,
         input: raw,
         output: parsed.enhanced || txt,
         latencyMs,
-        notes: parsed.notes || '',
+        notes: notesText,
         candidates: nextResultMeta.candidates,
         selectedCandidateId: nextResultMeta.selectedCandidateId,
         changeSummary: nextResultMeta.changeSummary,
@@ -302,12 +357,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance',
           enhanceMode: enhanceModeId,
-          provider: 'unknown',
-          model: payload?.model || 'unknown',
+          provider: executionProvider,
+          model: executionModel,
           input: raw,
           output: 'Enhance cancelled before completion.',
           latencyMs: nowMs() - startedAt,
           status: 'canceled',
+          usage: accumulatedUsage,
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save canceled eval run', err));
         if (reqId === enhanceReqRef.current) {
           setLoading(false);
@@ -327,13 +383,19 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance',
           enhanceMode: enhanceModeId,
-          provider: 'unknown',
-          model: payload?.model || 'unknown',
+          provider: executionProvider,
+          model: executionModel,
           input: raw,
           output: appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt,
           status: 'error',
-          notes: appError.category ? `Error category: ${appError.category}` : '',
+          usage: accumulatedUsage,
+          notes: [
+            appError.category ? `Error category: ${appError.category}` : '',
+            qualityGateFailure?.failures?.length
+              ? `Quality gate: ${qualityGateFailure.failures.join(', ')}`
+              : '',
+          ].filter(Boolean).join('\n'),
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save failed eval run', err));
       }
     } finally {

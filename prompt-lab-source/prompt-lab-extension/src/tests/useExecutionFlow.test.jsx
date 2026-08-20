@@ -178,6 +178,13 @@ describe('useExecutionFlow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    parseEnhancedPayload.mockImplementation((text) => ({
+      enhanced: text,
+      variants: [],
+      notes: '',
+      assumptions: [],
+      tags: [],
+    }));
     savedRuns = [];
     idCounter = 0;
     Object.defineProperty(globalThis, 'crypto', {
@@ -286,6 +293,176 @@ describe('useExecutionFlow', () => {
     expect(savedRuns[0].id).not.toBe(savedRuns[1].id);
     expect(savedRuns[0].output).toBe('First output');
     expect(savedRuns[1].output).toBe('Retry output');
+  });
+
+  it('exact_no_op_runs_one_corrective_pass_before_committing', async () => {
+    callModel
+      .mockResolvedValueOnce({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'Draft prompt',
+        usage: { input: 20, output: 10, total: 30 },
+      })
+      .mockResolvedValueOnce({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'Corrected result',
+        usage: { input: 30, output: 15, total: 45 },
+      });
+    parseEnhancedPayload.mockImplementation((text) => text === 'Draft prompt'
+      ? {
+          enhanced: 'Draft prompt',
+          variants: [],
+          notes: 'Already clear.',
+          changes: [],
+          reasoning: 'The prompt is already good as written.',
+          assumptions: [],
+          tags: [],
+        }
+      : {
+          enhanced: 'Act as an editor. Rewrite the supplied draft for clarity and return the revised copy only.',
+          variants: [],
+          notes: 'Added an explicit role and output requirement.',
+          changes: [{ type: 'added', label: 'Added editor role and output format' }],
+          reasoning: 'Added a role and output format so the task and expected response are executable.',
+          assumptions: [],
+          tags: [],
+        });
+    const { result } = renderExecutionFlow();
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(2);
+    expect(callModel.mock.calls[1][0]).toEqual(expect.objectContaining({
+      system: expect.stringContaining('QUALITY CORRECTION PASS'),
+      messages: expect.arrayContaining([
+        { role: 'assistant', content: 'Draft prompt' },
+      ]),
+    }));
+    expect(result.current.enhanced).toBe('Act as an editor. Rewrite the supplied draft for clarity and return the revised copy only.');
+    expect(result.current.notes).toContain('used one corrective pass');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toEqual(expect.objectContaining({
+      status: 'success',
+      output: 'Act as an editor. Rewrite the supplied draft for clarity and return the revised copy only.',
+      usage: { input: 50, output: 25, total: 75 },
+    }));
+    expect(savedRuns[0].notes).toContain('used one corrective pass');
+  });
+
+  it('supported_small_improvement_does_not_trigger_correction', async () => {
+    callModel.mockResolvedValueOnce({
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      text: 'Small supported improvement',
+    });
+    parseEnhancedPayload.mockReturnValueOnce({
+      enhanced: 'Write a concise summary',
+      variants: [],
+      notes: '',
+      changes: [{ type: 'added', label: 'Added a concise length constraint' }],
+      reasoning: 'Added a length constraint so the output stays focused and predictable.',
+      assumptions: [],
+      tags: [],
+    });
+    const { result } = renderExecutionFlow({ raw: 'Write a summary' });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(1);
+    expect(result.current.enhanced).toBe('Write a concise summary');
+  });
+
+  it('second_no_op_fails_honestly_and_preserves_the_previous_result', async () => {
+    callModel
+      .mockResolvedValueOnce({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'First no-op',
+      })
+      .mockResolvedValueOnce({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'Second no-op',
+      });
+    parseEnhancedPayload.mockImplementation(() => ({
+      enhanced: 'Draft prompt',
+      variants: [],
+      notes: 'No changes needed.',
+      changes: [],
+      reasoning: 'The prompt is already clear.',
+      assumptions: [],
+      tags: [],
+    }));
+    const { result } = renderExecutionFlow({ enhanced: 'Prior enhanced output' });
+
+    await act(async () => {
+      await result.current.enhance();
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(2);
+    expect(result.current.enhanced).toBe('Prior enhanced output');
+    expect(result.current.error).toEqual(expect.objectContaining({
+      name: 'AppError',
+      category: 'provider',
+      retryable: true,
+      userMessage: expect.stringContaining('could not produce a meaningful improvement'),
+    }));
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toEqual(expect.objectContaining({
+      status: 'error',
+      output: expect.stringContaining('could not produce a meaningful improvement'),
+      notes: expect.stringContaining('Quality gate: exact-no-op'),
+    }));
+  });
+
+  it('cancel_aborts_the_corrective_pass_and_blocks_late_adoption', async () => {
+    const correction = createDeferred();
+    callModel
+      .mockResolvedValueOnce({
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-6',
+        text: 'Initial no-op',
+      })
+      .mockImplementationOnce(() => correction.promise);
+    parseEnhancedPayload.mockImplementation((text) => ({
+      enhanced: text === 'Initial no-op' ? 'Draft prompt' : 'Late correction result',
+      variants: [],
+      notes: '',
+      changes: [],
+      reasoning: 'The prompt is already clear.',
+      assumptions: [],
+      tags: [],
+    }));
+    const { result } = renderExecutionFlow({ enhanced: 'Prior enhanced output' });
+
+    let enhancePromise;
+    await act(async () => {
+      enhancePromise = result.current.enhance();
+      await Promise.resolve();
+    });
+    await waitFor(() => expect(callModel).toHaveBeenCalledTimes(2));
+    const correctionSignal = callModel.mock.calls[1][1].signal;
+
+    act(() => {
+      result.current.cancelEnhance();
+    });
+    expect(correctionSignal.aborted).toBe(true);
+
+    const abortError = new Error('Request cancelled.');
+    abortError.name = 'AbortError';
+    await act(async () => {
+      correction.reject(abortError);
+      await enhancePromise;
+    });
+
+    expect(result.current.enhanced).toBe('Prior enhanced output');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0].status).toBe('canceled');
   });
 
   it('pii_block_prevents_send_and_records_blocked_run', async () => {

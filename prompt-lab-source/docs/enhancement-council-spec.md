@@ -36,6 +36,7 @@ This specification is grounded in the current shared implementation:
 - `prompt-lab-extension/src/lib/providers.js`
 - `prompt-lab-extension/src/lib/providerRegistry.js`
 - `prompt-lab-extension/src/lib/enhancementResult.js`
+- `prompt-lab-extension/src/lib/enhancementQuality.js`
 - `prompt-lab-extension/src/lib/evalSchema.js`
 - `prompt-lab-extension/src/PostEnhanceResults.jsx`
 - `api/proxy.js`
@@ -66,7 +67,10 @@ behavior and this document describes the accepted target.
 ## Product principles
 
 1. Council is a quality strategy, not a new enhancement mode.
-2. Quick remains the default and retains its current latency and cost profile.
+2. Quick remains the default and retains its existing fast-path latency and
+   cost profile when the first result passes the shared quality gate. One
+   bounded correction call is allowed only for a rejected no-op or unsupported
+   near-no-op.
 3. Every member works independently. Members never see peer responses.
 4. Judgment is blind to provider and model identity.
 5. The final result must remain compatible with PromptLab's existing Improved,
@@ -118,17 +122,22 @@ Raw prompt
   -> selected enhancement mode
   -> shared intent policy plus mode system prompt
   -> PII gate
-  -> one provider call
+  -> provider call
   -> JSON parse and normalization
+  -> deterministic material-improvement gate
+      -> pass, or one bounded corrective call
   -> post-enhance result
   -> evaluation run persistence
 ```
 
-The parser requires a nonempty enhanced string but does not prove that it is
-materially different from the source. Retries cover transient execution
-failures, not weak results. Model Arena already supports multiple concurrent
-provider/model variants, but it executes prompt responses rather than the
-structured enhancement contract and therefore is not the Council controller.
+The shared Quick baseline now rejects normalized copies, cosmetic rewrites, and
+unsupported near-no-ops before editor state changes. It can make one corrective
+call with the deterministic failure reasons, aggregates usage from both calls,
+and fails honestly while preserving the prior result if correction is still
+weak. Council must reuse this policy rather than introduce a second set of
+thresholds. Model Arena already supports multiple concurrent provider/model
+variants, but it executes prompt responses rather than the structured
+enhancement contract and therefore is not the Council controller.
 
 ## Target experience
 
@@ -928,7 +937,8 @@ Live paid-provider smoke remains opt-in and requires explicit authorization.
 
 Council v1 is complete only when all of the following are true:
 
-1. Quick remains unchanged and default.
+1. Quick remains the default and its existing result contract stays compatible;
+   the shared no-op quality gate remains active for Quick and Council.
 2. Council strategy and enhancement mode are independent controls.
 3. Exactly three members receive the same source and mode policy independently.
 4. The displayed topology matches actual provider/model diversity.
@@ -956,8 +966,9 @@ Council v1 is complete only when all of the following are true:
 
 ### Phase 0: contracts and fixtures
 
-- Add schemas, prompt builders, no-op policy, and deterministic fixtures.
-- Add optional Council summary normalization without changing Quick behavior.
+- Reuse the shipped shared no-op policy and deterministic Quick fixtures.
+- Add Council schemas, member/judge prompt builders, and optional Council
+  summary normalization without changing Quick's result contract.
 - Add contract and migration coverage.
 
 Exit gate: pure tests and all existing Quick enhancement tests pass.

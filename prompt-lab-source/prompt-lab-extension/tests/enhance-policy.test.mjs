@@ -151,6 +151,13 @@ test('buildSystemPrompt includes JSON schema', () => {
   assert.match(sys, /"assumptions"/);
 });
 
+test('buildSystemPrompt rejects generic no-op praise', () => {
+  const sys = buildSystemPrompt('balanced', ['Writing']);
+  assert.match(sys, /concrete, defensible execution improvement/i);
+  assert.match(sys, /already good/i);
+  assert.match(sys, /cosmetic changes/i);
+});
+
 // ── Mode behavioral distinctness ────────────────────────────────────────────
 
 test('modes produce meaningfully different system prompts', () => {
