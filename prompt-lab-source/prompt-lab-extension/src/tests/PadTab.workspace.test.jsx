@@ -137,6 +137,26 @@ describe('Scratch workspace v4', () => {
     })]));
   });
 
+  it('keeps a failed promotion open with the note and selection intact', async () => {
+    const promote = vi.fn().mockResolvedValue(null);
+    render(<PadTab m={theme} notify={vi.fn()} onPromoteToLibrary={promote} />);
+    const editor = screen.getByLabelText('Scratchpad');
+    fireEvent.change(editor, { target: { value: 'Keep this working prompt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Promote' }));
+    const dialog = screen.getByRole('dialog', { name: 'Promote to Prompt Library' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Continue to save' }));
+
+    await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('Could not save this prompt. The note and selection are still here.'));
+    expect(dialog).toBeInTheDocument();
+    expect(editor).toHaveValue('Keep this working prompt');
+  });
+
+  it('fills the compact viewport with the Scratch note index', () => {
+    window.innerWidth = 400;
+    render(<PadTab m={theme} notify={vi.fn()} />);
+    expect(screen.getByRole('complementary', { name: 'Scratch note index' })).toHaveClass('w-full');
+  });
+
   it('accepts a delayed onLinked handshake from a save panel', async () => {
     let acknowledgeLink;
     const promote = vi.fn((_title, _content, options) => {

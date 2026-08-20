@@ -409,7 +409,68 @@ describe('usePromptLibrary', () => {
 
     expect(confirm).toHaveBeenCalledWith('Delete this prompt?');
     expect(result.current.library).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(storageKeys.trash))).toEqual([
+      expect.objectContaining({ id: 'entry-1', deletedAt: expect.any(String) }),
+    ]);
     expect(notify).toHaveBeenCalledWith('Prompt deleted.');
+  });
+
+  it('keeps a prompt in the Library when its recovery record cannot be persisted', async () => {
+    const entry = makeEntry();
+    localStorage.setItem(storageKeys.library, JSON.stringify([entry]));
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    const originalSetItem = Storage.prototype.setItem;
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+      if (key === storageKeys.trash) {
+        throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+      }
+      return originalSetItem.call(this, key, value);
+    });
+
+    act(() => {
+      expect(result.current.del(entry.id)).toBe(false);
+    });
+
+    expect(confirm).toHaveBeenCalled();
+    expect(result.current.library).toEqual([expect.objectContaining({ id: entry.id })]);
+    expect(result.current.trash).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(storageKeys.library))).toEqual([entry]);
+    expect(notify).toHaveBeenCalledWith('Delete failed — browser storage may be full. The prompt is still in your Library.');
+    setItem.mockRestore();
+  });
+
+  it('rolls back the recovery record when removing the active prompt cannot be persisted', async () => {
+    const entry = makeEntry();
+    localStorage.setItem(storageKeys.library, JSON.stringify([entry]));
+    localStorage.setItem(storageKeys.trash, JSON.stringify([]));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    const originalSetItem = Storage.prototype.setItem;
+    let rejectLibraryWrite = true;
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function setItem(key, value) {
+      if (key === storageKeys.library && rejectLibraryWrite) {
+        rejectLibraryWrite = false;
+        throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+      }
+      return originalSetItem.call(this, key, value);
+    });
+
+    act(() => {
+      expect(result.current.del(entry.id)).toBe(false);
+    });
+
+    expect(result.current.library).toEqual([expect.objectContaining({ id: entry.id })]);
+    expect(result.current.trash).toEqual([]);
+    expect(JSON.parse(localStorage.getItem(storageKeys.trash))).toEqual([]);
+    expect(notify).toHaveBeenCalledWith('Delete failed — browser storage may be full. The prompt is still in your Library.');
+    setItem.mockRestore();
   });
 
   it('returns and persists the restored prompt version', async () => {

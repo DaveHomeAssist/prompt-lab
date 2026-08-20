@@ -469,6 +469,15 @@ export default function usePromptLibrary(notify) {
       updatedAt: deletedAt,
       tombstoneVersion: (deletedEntry.tombstoneVersion || 0) + 1,
     }, ...trashRef.current.filter((entry) => entry.id !== id)];
+    if (!saveJson(storageKeys.trash, nextTrash)) {
+      notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
+      return false;
+    }
+    if (!saveJson(storageKeys.library, nextLibrary)) {
+      saveJson(storageKeys.trash, trashRef.current);
+      notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
+      return false;
+    }
     libraryRef.current = nextLibrary;
     trashRef.current = nextTrash;
     setLibrary(nextLibrary);
@@ -592,6 +601,15 @@ export default function usePromptLibrary(notify) {
       ...trashRef.current.filter((entry) => !selected.has(entry.id)),
     ];
     const nextLibrary = libraryRef.current.filter((entry) => !selected.has(entry.id));
+    if (!saveJson(storageKeys.trash, nextTrash)) {
+      notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
+      return 0;
+    }
+    if (!saveJson(storageKeys.library, nextLibrary)) {
+      saveJson(storageKeys.trash, trashRef.current);
+      notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
+      return 0;
+    }
     libraryRef.current = nextLibrary;
     trashRef.current = nextTrash;
     setLibrary(nextLibrary);

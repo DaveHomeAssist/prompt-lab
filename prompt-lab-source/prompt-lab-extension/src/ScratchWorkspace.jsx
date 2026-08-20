@@ -733,6 +733,10 @@ export default function ScratchWorkspace({
     setPromotionError('');
     try {
       const response = await Promise.resolve(onPromoteToLibrary(promotionDraft.title.trim(), content, options));
+      if (response === null || response === false || response?.ok === false) {
+        setPromotionError('Could not save this prompt. The note and selection are still here.');
+        return;
+      }
       const link = typeof response === 'string' ? { id: response } : response;
       if (link?.id) options.onLinked({ ...link, title: link.title || promotionDraft.title });
       setPromotionDraft(null);
@@ -843,7 +847,7 @@ export default function ScratchWorkspace({
 
   return (
     <div className={`${shellMinHeightClass} pl-scratch-workspace ${isCompact ? 'pl-scratch-is-compact' : ''} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`} data-compact-pane={compactPane}>
-      <aside className={`${showSidebar ? 'flex' : 'hidden'} w-[240px] shrink-0 flex-col border-r ${m.border || ''} ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note index">
+      <aside className={`pl-scratch-sidebar ${showSidebar ? 'flex' : 'hidden'} ${isCompact ? 'w-full' : 'w-[240px]'} shrink-0 flex-col border-r ${m.border || ''} ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note index">
         <div className={`shrink-0 border-b p-3 ${m.border || ''}`}>
           <div className="flex items-center justify-between gap-2">
             <div>
