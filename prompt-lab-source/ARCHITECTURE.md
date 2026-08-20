@@ -81,7 +81,7 @@ The desktop app uses Tauri plus local browser storage:
 The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
-- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://promptlab.tools/app/`
+- `prompt-lab-web/app/index.html` loads `prompt-lab-web/app/main-web.jsx`, which mounts the shared `App` and `ErrorBoundary` and imports the shared styles; the route is currently served publicly at `https://promptlab.tools/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
 - `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS, forwarding the caller's `AbortSignal` so cancellation reaches the proxy transport
