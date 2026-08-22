@@ -74,10 +74,21 @@ Authoring rule:
 
 Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as supporting summaries.
 
+### Product status
+
+- `feature-health-dashboard.md`
+
+**`feature-health-dashboard.md` is the canonical source for feature health and
+product status.** When any other document states what does or does not work,
+the dashboard wins. Every status claim there carries the commit it was audited
+against, so a claim can always be checked for staleness against current `main`.
+
+Dated audit reports are point-in-time snapshots, not status. See below.
+
 ### Internal audits and technical notes
 
 - `BEHAVIORAL_AUDIT_2026-08-11.md`
-- `feature-health-dashboard.md`
+- `CODEBASE_AUDIT_2026-03-30.md`
 - `create-evaluate-restructure-plan.md`
 - `next-3-sprints-plan.md`
 - `UX_AUDIT_2026-03-17.md`
@@ -85,6 +96,11 @@ Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as support
 - `SCRATCHPAD_SHORTCUTS.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `RUN_OBJECT_SCHEMA_RESEARCH.md`
+
+Dated reports here are **historical snapshots and are not canonical**. Each
+records what was true at its stated commit and is never updated afterwards, so
+findings may since have been fixed, superseded, or re-prioritised. Read them for
+context and provenance; read `feature-health-dashboard.md` for current status.
 
 ### AI / operational handoff context
 

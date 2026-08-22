@@ -1,5 +1,10 @@
 # Prompt Lab Codebase Audit — 2026-03-30
 
+> **Historical snapshot — not canonical.** This report records what was true
+> at the commit it audited and is not updated afterwards. Findings may since
+> have been fixed, superseded, or re-prioritised. For current product status
+> see `feature-health-dashboard.md`.
+
 ## Scope
 
 Audit focused on the active `prompt-lab-source/` tree, with emphasis on:
