@@ -8,6 +8,11 @@ import {
   installProviderFixture,
   resolveFixtureScenario,
 } from '../lib/providerFixture.js';
+import { extractTextFromAnthropic, parseEnhancedPayload } from '../promptUtils.js';
+
+// Comfortably longer than any normal fixture body, without pinning the exact
+// padding length the fixture uses.
+const OVERSIZED_MIN_LENGTH = 300;
 
 // DHA-12: a deterministic provider stand-in for primary-flow tests — no paid
 // request, no network, no credential.
@@ -60,6 +65,61 @@ describe('success responses', () => {
     // chunks reconstruct it exactly — no dropped or duplicated slice.
     expect(chunks.at(-1)[1]).toBe(text);
     expect(chunks.map(([chunk]) => chunk).join('')).toBe(text);
+  });
+});
+
+describe('primary enhance flow contract', () => {
+  // The enhance path builds its payload with responseFormat: 'json' and feeds
+  // the response straight into parseEnhancedPayload. Before this was handled,
+  // installing the fixture made every nominal enhance fail with "Model
+  // response was not valid JSON" before reaching the success UI.
+  const jsonPayload = (prompt) => payload(prompt, { responseFormat: 'json' });
+
+  it('returns a body the real parser accepts', async () => {
+    const provider = createFixtureProvider();
+    const body = await provider(jsonPayload('Draft a release note'));
+    const text = extractTextFromAnthropic(body);
+
+    const parsed = parseEnhancedPayload(text);
+    expect(parsed.enhanced.trim()).not.toBe('');
+    expect(parsed.variants.length).toBeGreaterThan(0);
+    expect(parsed.variants[0]).toHaveProperty('label');
+    expect(parsed.variants[0]).toHaveProperty('content');
+  });
+
+  it('keeps the contract deterministic', async () => {
+    const provider = createFixtureProvider();
+    const first = parseEnhancedPayload(extractTextFromAnthropic(
+      await provider(jsonPayload('Same prompt')),
+    ));
+    const second = parseEnhancedPayload(extractTextFromAnthropic(
+      await provider(jsonPayload('Same prompt')),
+    ));
+    expect(first).toEqual(second);
+  });
+
+  it('still returns prose when the payload does not request JSON', async () => {
+    const provider = createFixtureProvider();
+    const body = await provider(payload('No JSON requested'));
+    const text = extractTextFromAnthropic(body);
+
+    expect(text).toBe(fixtureEnhancedText(payload('No JSON requested')));
+    expect(() => JSON.parse(text)).toThrow();
+  });
+
+  it('keeps the oversized case parseable so it fails on length, not syntax', async () => {
+    const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.OVERSIZED_OUTPUT });
+    const body = await provider(jsonPayload('anything'));
+
+    const parsed = parseEnhancedPayload(extractTextFromAnthropic(body));
+    expect(parsed.enhanced.length).toBeGreaterThan(OVERSIZED_MIN_LENGTH);
+  });
+
+  it('keeps malformed-contract unparseable even when JSON is requested', async () => {
+    const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.MALFORMED_CONTRACT });
+    const body = await provider(jsonPayload('anything'));
+
+    expect(() => parseEnhancedPayload(extractTextFromAnthropic(body))).toThrow();
   });
 });
 

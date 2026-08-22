@@ -24,6 +24,25 @@ options)` from `src/api.js`:
 - rejects with the same error shapes as the real transport: an `AbortError`
   on cancellation, a plain `Error` otherwise
 
+## The enhance contract
+
+The primary enhance flow builds its payload with `responseFormat: 'json'` and
+feeds the response straight into `parseEnhancedPayload`, which requires a JSON
+object with a non-empty `enhanced` string.
+
+So when a payload requests JSON, the success body **is** that contract —
+`enhanced`, `variants`, `notes`, `changeSummary`, `assumptions`, `tags` — built
+deterministically from the payload. Without this the fixture would make every
+nominal enhance attempt fail with "Model response was not valid JSON" before
+reaching the success UI, which would defeat its purpose.
+
+When a payload does not request JSON, the success body is plain prose, so
+callers that want raw text still get it.
+
+`oversized-output` also returns a *valid* contract, just a very long one, so a
+consumer fails on length rather than on parsing — otherwise it would be
+indistinguishable from `malformed-contract`.
+
 ## Determinism
 
 Output is derived from the payload by a stable hash. There is no `Date.now()`,

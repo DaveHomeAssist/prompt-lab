@@ -93,6 +93,43 @@ export function fixtureEnhancedText(payload) {
   ].join('\n');
 }
 
+/**
+ * Deterministic enhancement contract for a payload.
+ *
+ * The primary enhance flow builds its payload with `responseFormat: 'json'`
+ * and feeds the response straight into `parseEnhancedPayload`, which requires
+ * a JSON object with a non-empty `enhanced` string. A success response must
+ * therefore satisfy that contract, or installing the fixture would make every
+ * nominal enhance attempt fail before reaching the success UI.
+ */
+export function fixtureEnhancementContract(payload) {
+  const digest = fixtureDigest(payload);
+  return {
+    enhanced: fixtureEnhancedText(payload),
+    variants: [
+      { label: 'Concise', content: `Fixture concise variant ${digest}` },
+      { label: 'Detailed', content: `Fixture detailed variant ${digest}` },
+    ],
+    notes: `Deterministic fixture response for payload ${digest}.`,
+    changeSummary: 'Added a role, an explicit goal, and output constraints.',
+    changes: [],
+    assumptions: ['The caller wants a reproducible response, not a live one.'],
+    tags: ['fixture'],
+    reasoning: '',
+  };
+}
+
+function wantsJsonContract(payload) {
+  return String(payload?.responseFormat || '').toLowerCase() === 'json';
+}
+
+/** Success body: the enhancement contract when asked for JSON, else prose. */
+function successText(payload) {
+  return wantsJsonContract(payload)
+    ? JSON.stringify(fixtureEnhancementContract(payload), null, 2)
+    : fixtureEnhancedText(payload);
+}
+
 function anthropicBody(text) {
   return { content: [{ type: 'text', text }] };
 }
@@ -111,10 +148,19 @@ function bodyForScenario(scenario, payload) {
       // Valid transport response carrying an unparseable contract payload —
       // exercises the parser without faking a transport failure.
       return anthropicBody(`{"enhanced": "unterminated ${fixtureDigest(payload)}`);
-    case FIXTURE_SCENARIOS.OVERSIZED_OUTPUT:
+    case FIXTURE_SCENARIOS.OVERSIZED_OUTPUT: {
+      // Oversized but still a valid contract, so a consumer fails on length
+      // rather than on parsing — otherwise this case would be indistinguishable
+      // from malformed-contract.
+      if (wantsJsonContract(payload)) {
+        const contract = fixtureEnhancementContract(payload);
+        contract.enhanced = `${contract.enhanced}\n${'x'.repeat(OVERSIZED_REPEAT)}`;
+        return anthropicBody(JSON.stringify(contract, null, 2));
+      }
       return anthropicBody(`${fixtureEnhancedText(payload)}\n${'x'.repeat(OVERSIZED_REPEAT)}`);
+    }
     default:
-      return anthropicBody(fixtureEnhancedText(payload));
+      return anthropicBody(successText(payload));
   }
 }
 
