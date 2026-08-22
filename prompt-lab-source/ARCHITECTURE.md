@@ -121,13 +121,26 @@ The extension and desktop shells call provider APIs directly from the client wit
 
 ## Providers
 
-Prompt Lab currently supports:
+Provider support is not uniform across surfaces. The extension and desktop
+shells call five providers directly with a bring-your-own key; the hosted web
+and React mobile surfaces reach Anthropic only, because that is the sole host
+`api/proxy.js` will forward to.
 
-- Anthropic
-- OpenAI
-- Google Gemini
-- OpenRouter
-- Ollama
+| Provider | Extension · desktop | Hosted web · mobile | Native iPhone/iPad |
+| --- | --- | --- | --- |
+| Anthropic | Yes | Yes, via `api/proxy.js` | Yes |
+| OpenAI | Yes | No | No |
+| Google Gemini | Yes | No | No |
+| OpenRouter | Yes | No | No |
+| Ollama | Yes, local | No | No |
+
+The proxy validates the target against `SUPPORTED_HOST` (`api.anthropic.com`)
+and `SUPPORTED_PATH` (`/v1/messages`), and restricts models to
+`HOSTED_ALLOWED_ANTHROPIC_MODELS`, which defaults to `claude-sonnet-4-6` alone.
+A hosted client may send the `__plb_hosted_shared_key__` placeholder instead of
+a real key; the proxy strips it and substitutes the server-side
+`ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
+provider key. User-supplied keys are never persisted server-side.
 
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.
 
@@ -156,6 +169,14 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
 - Provider traffic is routed through controlled adapters
 - PII detection and redaction use the shared `src/lib/piiEngine.js`
 - The extension manifest keeps permissions narrow and host access explicit
+- `api/_lib/allowedOrigins.js` is the single request-origin allow-list shared by
+  `/api/proxy` and `/api/telemetry`. It admits the production web origin, the
+  mobile web origin, `PROMPTLAB_WEB_ORIGIN` / `VITE_PROMPTLAB_WEB_ORIGIN`, the
+  comma-separated `PROMPTLAB_PROXY_ALLOWED_ORIGINS` list (including exact
+  `chrome-extension://<32 a-p>` ids), and localhost outside production. A
+  request with a missing or unlisted origin is rejected with 403 and never
+  receives an `Access-Control-Allow-Origin` header — the allowed origin is
+  echoed explicitly and a wildcard is never emitted
 
 ## Testing
 
