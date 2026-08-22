@@ -69,8 +69,33 @@ export function normalizeBaseUrl(baseUrl, fallback) {
 
 // ── SSE stream parsers ─────────────────────────────────────────────
 
-function parseSseChunks(buffer, flush = false, pickText) {
+function normalizeUsage(input, output, total) {
+  const isCount = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  const safeInput = isCount(input) ? Math.max(0, Math.round(Number(input))) : null;
+  const safeOutput = isCount(output) ? Math.max(0, Math.round(Number(output))) : null;
+  const safeTotal = isCount(total)
+    ? Math.max(0, Math.round(Number(total)))
+    : (safeInput !== null || safeOutput !== null ? (safeInput || 0) + (safeOutput || 0) : null);
+  return safeInput === null && safeOutput === null && safeTotal === null
+    ? null
+    : { input: safeInput, output: safeOutput, total: safeTotal };
+}
+
+function mergeUsage(current, next) {
+  if (!next) return current;
+  const input = next.input ?? current?.input;
+  const output = next.output ?? current?.output;
+  const explicitTotal = next.total !== null && next.total !== undefined ? next.total : null;
+  return normalizeUsage(
+    input,
+    output,
+    explicitTotal,
+  );
+}
+
+function parseSseChunks(buffer, flush = false, inspectFrame) {
   const chunks = [];
+  let usage = null;
   let working = buffer;
   const frames = flush ? working.split('\n\n') : working.split('\n\n');
   const completeFrames = flush ? frames : frames.slice(0, -1);
@@ -83,27 +108,37 @@ function parseSseChunks(buffer, flush = false, pickText) {
       if (!payload || payload === '[DONE]') continue;
       try {
         const data = JSON.parse(payload);
-        const text = pickText(data);
+        const inspected = inspectFrame(data);
+        const text = typeof inspected === 'string' ? inspected : inspected?.text;
         if (text) chunks.push(text);
+        usage = mergeUsage(usage, typeof inspected === 'object' ? inspected?.usage : null);
       } catch {
         // Ignore malformed intermediate frames.
       }
     }
   }
 
-  return { buffer: working, chunks };
+  return { buffer: working, chunks, usage };
 }
 
 function parseAnthropicSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => {
-    if (data?.type === 'content_block_delta') return data?.delta?.text || '';
-    if (data?.type === 'message_delta') return data?.delta?.text || '';
-    return '';
+    if (data?.type === 'message_start') {
+      return { text: '', usage: { input: data?.message?.usage?.input_tokens, output: null, total: null } };
+    }
+    if (data?.type === 'content_block_delta') return { text: data?.delta?.text || '', usage: null };
+    if (data?.type === 'message_delta') {
+      return { text: data?.delta?.text || '', usage: { input: null, output: data?.usage?.output_tokens, total: null } };
+    }
+    return { text: '', usage: null };
   });
 }
 
 function parseOpenAiSse(buffer, flush = false) {
-  return parseSseChunks(buffer, flush, (data) => data?.choices?.[0]?.delta?.content || '');
+  return parseSseChunks(buffer, flush, (data) => ({
+    text: data?.choices?.[0]?.delta?.content || '',
+    usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
+  }));
 }
 
 // ── Provider descriptors ────────────────────────────────────────────
@@ -171,6 +206,7 @@ const PROVIDERS = Object.freeze({
         content: [{ type: 'text', text }],
         model: data?.model || requestBody.model,
         provider: 'anthropic',
+        usage: normalizeUsage(data?.usage?.input_tokens, data?.usage?.output_tokens, null),
       };
     },
 
@@ -212,7 +248,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.message?.content;
       if (!text) throw new Error('Ollama returned empty content.');
-      return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'ollama' };
+      return {
+        content: [{ type: 'text', text }],
+        model: requestBody.model,
+        provider: 'ollama',
+        usage: normalizeUsage(data?.prompt_eval_count, data?.eval_count, null),
+      };
     },
 
     extractText(data) {
@@ -249,6 +290,7 @@ const PROVIDERS = Object.freeze({
         messages: toChatMessages(payload),
         stream: !!options.stream,
       };
+      if (options.stream) body.stream_options = { include_usage: true };
       if (typeof payload.temperature === 'number') body.temperature = payload.temperature;
       return body;
     },
@@ -258,7 +300,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.choices?.[0]?.message?.content;
       if (!text) throw new Error('OpenAI returned empty content.');
-      return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openai' };
+      return {
+        content: [{ type: 'text', text }],
+        model: requestBody.model,
+        provider: 'openai',
+        usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
+      };
     },
 
     extractText(data) {
@@ -323,7 +370,16 @@ const PROVIDERS = Object.freeze({
         }
         throw new Error('Gemini returned empty content.');
       }
-      return { content: [{ type: 'text', text }], model: resolvedModel || 'gemini', provider: 'gemini' };
+      return {
+        content: [{ type: 'text', text }],
+        model: resolvedModel || 'gemini',
+        provider: 'gemini',
+        usage: normalizeUsage(
+          data?.usageMetadata?.promptTokenCount,
+          data?.usageMetadata?.candidatesTokenCount,
+          data?.usageMetadata?.totalTokenCount,
+        ),
+      };
     },
 
     extractText(data) {
@@ -362,6 +418,7 @@ const PROVIDERS = Object.freeze({
         messages: toChatMessages(payload),
         stream: !!options.stream,
       };
+      if (options.stream) body.stream_options = { include_usage: true };
       if (typeof payload.temperature === 'number') body.temperature = payload.temperature;
       return body;
     },
@@ -369,7 +426,12 @@ const PROVIDERS = Object.freeze({
     normalizeResponse(data, requestBody, _resolvedModel) {
       const text = data?.choices?.[0]?.message?.content;
       if (!text) throw new Error('OpenRouter returned empty content.');
-      return { content: [{ type: 'text', text }], model: requestBody.model, provider: 'openrouter' };
+      return {
+        content: [{ type: 'text', text }],
+        model: requestBody.model,
+        provider: 'openrouter',
+        usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
+      };
     },
 
     parseStream: parseOpenAiSse,

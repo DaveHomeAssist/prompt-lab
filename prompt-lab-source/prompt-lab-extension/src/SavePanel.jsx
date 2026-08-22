@@ -1,28 +1,43 @@
+import { useRef } from 'react';
 import Ic from './icons';
 import TagChip from './TagChip';
 import { ALL_TAGS } from './constants';
+import useDialogA11y from './hooks/useDialogA11y.js';
+import { getPrimarySaveLabel, SAVE_LABELS } from './lib/promptLifecycle.js';
 
 export default function SavePanel({
   m, primaryModKey, saveTargetId, saveTitle, setSaveTitle,
   saveCollection, setSaveCollection, saveTags, setSaveTags,
   changeNote, setChangeNote, collections,
   showNewColl, setShowNewColl, newCollName, setNewCollName,
-  commitNewCollection, doSave, closeSavePanel, canSavePanel,
+  commitNewCollection, doSave, doSaveAsNew, closeSavePanel, canSavePanel,
   canUseCollections = true, onRequestCollectionsUpgrade,
 }) {
+  const titleInputRef = useRef(null);
+  const dialogRef = useDialogA11y({ onClose: closeSavePanel, initialFocusRef: titleInputRef });
+  const primaryLabel = getPrimarySaveLabel(saveTargetId);
   return (
+    <div
+      className={`fixed inset-0 z-[90] ${m.modalBg}`}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) closeSavePanel();
+      }}
+    >
     <aside
-      className={`pl-modal-panel fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}
+      ref={dialogRef}
+      className={`pl-modal-panel absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l ${m.border} ${m.modal} shadow-2xl`}
       role="dialog"
-      aria-modal="false"
+      aria-modal="true"
       aria-labelledby="save-panel-title"
+      aria-describedby="save-panel-description"
+      tabIndex={-1}
     >
       <div className={`flex items-start justify-between gap-3 border-b ${m.border} px-4 py-4`}>
         <div>
           <p id="save-panel-title" className={`text-sm font-semibold ${m.text}`}>
-            {saveTargetId ? 'Save New Library Version' : 'Save Prompt to Library'}
+            {primaryLabel}
           </p>
-          <p className={`mt-1 text-xs ${m.textMuted}`}>
+          <p id="save-panel-description" className={`mt-1 text-xs ${m.textMuted}`}>
             {saveTargetId
               ? 'This stores the current draft/output as the next saved version for this prompt.'
               : 'This stores the current draft/output as a reusable prompt in your library.'}
@@ -31,7 +46,7 @@ export default function SavePanel({
         <button
           type="button"
           onClick={closeSavePanel}
-          className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-violet-400`}
+          className={`ui-control rounded-lg p-2 ${m.btn} ${m.textAlt} transition-colors hover:text-orange-400`}
           aria-label="Close save panel"
         >
           <Ic n="X" size={14} />
@@ -41,10 +56,11 @@ export default function SavePanel({
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="flex flex-col gap-4">
           <div>
-            <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Title</label>
+            <label htmlFor="save-prompt-title" className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Title</label>
             <input
-              autoFocus
-              className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 ${m.text}`}
+              id="save-prompt-title"
+              ref={titleInputRef}
+              className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
               placeholder="Prompt title…"
               value={saveTitle}
               onChange={(e) => setSaveTitle(e.target.value)}
@@ -53,7 +69,7 @@ export default function SavePanel({
 
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-2">
-              <label className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
+              <label htmlFor="save-prompt-collection" className={`block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Collection</label>
               {canUseCollections && !showNewColl && (
                 <button
                   type="button"
@@ -68,9 +84,10 @@ export default function SavePanel({
             {canUseCollections ? (
               <div className="flex flex-col gap-2">
                 <select
+                  id="save-prompt-collection"
                   value={saveCollection}
                   onChange={(e) => setSaveCollection(e.target.value)}
-                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                  className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-orange-500`}
                 >
                   <option value="">No Collection</option>
                   {collections.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -79,7 +96,8 @@ export default function SavePanel({
                   <div className="flex gap-2">
                     <input
                       autoFocus
-                      className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-violet-500`}
+                      aria-label="New collection name"
+                      className={`flex-1 ${m.input} border rounded-lg px-3 py-2 text-sm ${m.text} focus:outline-none focus:border-orange-500`}
                       placeholder="New collection name…"
                       value={newCollName}
                       onChange={(e) => setNewCollName(e.target.value)}
@@ -94,7 +112,7 @@ export default function SavePanel({
                     <button
                       type="button"
                       onClick={commitNewCollection}
-                      className="ui-control rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-500"
+                      className="ui-control rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
                     >
                       Add
                     </button>
@@ -109,7 +127,7 @@ export default function SavePanel({
                     <button
                       type="button"
                       onClick={onRequestCollectionsUpgrade}
-                      className="ui-control rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-violet-500"
+                      className="ui-control rounded-lg bg-orange-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-orange-500"
                     >
                       Unlock Collections
                     </button>
@@ -135,9 +153,10 @@ export default function SavePanel({
 
           {saveTargetId && (
             <div>
-              <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Change Note</label>
+              <label htmlFor="save-prompt-change-note" className={`mb-1.5 block text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Change Note</label>
               <input
-                className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 ${m.text}`}
+                id="save-prompt-change-note"
+                className={`${m.input} w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
                 placeholder="What changed? (optional)"
                 value={changeNote}
                 onChange={(e) => setChangeNote(e.target.value)}
@@ -148,17 +167,27 @@ export default function SavePanel({
       </div>
 
       <div className={`border-t ${m.border} px-4 py-4`}>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             data-testid="save-to-library"
             onClick={() => doSave()}
             disabled={!canSavePanel}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-green-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
+            className="pl-primary-button flex-1"
           >
             <Ic n="Save" size={12} />
-            {saveTargetId ? 'Save Version' : 'Save to Library'} {primaryModKey}+S
+            {primaryLabel} {primaryModKey}+S
           </button>
+          {saveTargetId && (
+            <button
+              type="button"
+              onClick={() => doSaveAsNew?.()}
+              disabled={!canSavePanel}
+              className="pl-secondary-button flex-1"
+            >
+              <Ic n="CopyPlus" size={12} /> {SAVE_LABELS.saveCopy}
+            </button>
+          )}
           <button
             type="button"
             onClick={closeSavePanel}
@@ -169,5 +198,6 @@ export default function SavePanel({
         </div>
       </div>
     </aside>
+    </div>
   );
 }

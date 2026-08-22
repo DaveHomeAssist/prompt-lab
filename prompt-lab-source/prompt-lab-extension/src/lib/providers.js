@@ -60,6 +60,23 @@ async function readTextStream(stream, { onChunk, parser }) {
   const decoder = new TextDecoder();
   let buffer = '';
   let fullText = '';
+  let usage = null;
+
+  const mergeUsage = (next) => {
+    if (!next) return;
+    const input = next.input ?? usage?.input ?? null;
+    const output = next.output ?? usage?.output ?? null;
+    const nextHasCompleteBreakdown = next.input !== null && next.input !== undefined
+      && next.output !== null && next.output !== undefined;
+    const total = nextHasCompleteBreakdown && next.total !== null && next.total !== undefined
+      ? next.total
+      : (input !== null && output !== null ? input + output : (next.total ?? usage?.total ?? null));
+    usage = {
+      input,
+      output,
+      total,
+    };
+  };
 
   const emitText = (text) => {
     if (!text) return;
@@ -74,14 +91,16 @@ async function readTextStream(stream, { onChunk, parser }) {
     const result = parser(buffer);
     buffer = result.buffer;
     result.chunks.forEach(emitText);
+    mergeUsage(result.usage);
   }
 
   if (buffer) {
     const result = parser(buffer, true);
     result.chunks.forEach(emitText);
+    mergeUsage(result.usage);
   }
 
-  return fullText;
+  return { text: fullText, usage };
 }
 
 async function executeProviderStream(descriptor, payload, settings, fetchImpl, options = {}) {
@@ -105,19 +124,20 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
     throw new Error(`${descriptor.label} returned no stream body.`);
   }
 
-  const text = await readTextStream(response.body, {
+  const streamed = await readTextStream(response.body, {
     onChunk: options.onChunk,
     parser: descriptor.parseStream,
   });
 
-  if (!text) {
+  if (!streamed.text) {
     throw new Error(`${descriptor.label} returned empty streamed content.`);
   }
 
   return {
-    content: [{ type: 'text', text }],
+    content: [{ type: 'text', text: streamed.text }],
     model: resolvedModel,
     provider: descriptor.id,
+    ...(streamed.usage ? { usage: streamed.usage } : {}),
   };
 }
 

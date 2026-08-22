@@ -14,7 +14,13 @@ import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
-import { normalizeError } from '../lib/errorTaxonomy.js';
+import { AppError, ErrorCategory, normalizeError } from '../lib/errorTaxonomy.js';
+import { normalizeResultMeta } from '../lib/enhancementResult.js';
+import {
+  assessEnhancementQuality,
+  buildEnhancementCorrectionPayload,
+  combineTokenUsage,
+} from '../lib/enhancementQuality.js';
 import useEvalRuns from './useEvalRuns.js';
 import useTestCases from './useTestCases.js';
 
@@ -30,7 +36,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const { notify, setTab, tab } = ui;
   const {
     raw, enhanced, variants, notes, enhMode,
-    setRaw, setEnhanced, setVariants, setNotes,
+    setRaw, setEnhanced, setVariants, setNotes, setResultMeta,
   } = editor;
   const {
     editingId, saveTitle, setSaveTitle, setSaveTags, setShowSave, setShowDiff,
@@ -47,8 +53,8 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   const enhanceAbortRef = useRef(null);
   // Synchronous dispatch guard. `loading` only disables the trigger after a
   // render, so two activations inside one tick both reach the provider. This
-  // ref flips before the request leaves and is cleared by both the finally
-  // block and cancelEnhance, so cancel-then-retry stays available.
+  // ref flips before the request leaves and is cleared by cancelEnhance or by
+  // the owning request's finally block, so cancel-then-retry stays available.
   const enhanceInFlightRef = useRef(false);
 
   const evalRunsHook = useEvalRuns({ editingId, tab });
@@ -195,35 +201,103 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setStreaming(false);
     setStreamPreview('');
     setError(null);
-    setEnhanced('');
-    setVariants([]);
-    setNotes('');
+    // Keep the last complete result visible while a re-run is in flight. A
+    // failed or cancelled request must not destroy the candidate the user was
+    // reviewing; success replaces it atomically below.
     setOptimisticSaveVisible(true);
     setShowSave(false);
     setShowDiff(false);
 
+    let qualityGateFailure = null;
+    let executionProvider = 'unknown';
+    let executionModel = payload?.model || 'unknown';
+    let accumulatedUsage = null;
     try {
-      const data = await callWithRetry(payload, 1, {
+      const streamOptions = {
         signal: abortController?.signal,
         onChunk: (chunk, fullText) => {
           if (reqId !== enhanceReqRef.current) return;
           setStreaming(true);
           setStreamPreview(fullText || chunk || '');
         },
-      });
+      };
+      let data = await callWithRetry(payload, 1, streamOptions);
       if (reqId !== enhanceReqRef.current) return;
+      executionProvider = data?.provider || executionProvider;
+      executionModel = data?.model || executionModel;
+      accumulatedUsage = combineTokenUsage(data?.usage);
 
-      const txt = extractTextFromAnthropic(data);
-      const parsed = parseEnhancedPayload(txt);
+      let txt = extractTextFromAnthropic(data);
+      let parsed = parseEnhancedPayload(txt);
+      const sentSource = ensureString(
+        payload?.messages?.find((message) => message?.role === 'user')?.content || raw,
+      );
+      let correctionUsed = false;
+      let qualityAssessment = assessEnhancementQuality(sentSource, parsed);
+
+      if (!qualityAssessment.passed) {
+        correctionUsed = true;
+        qualityGateFailure = qualityAssessment;
+        setStreaming(false);
+        setStreamPreview('');
+
+        const correctionPayload = buildEnhancementCorrectionPayload(payload, txt, qualityAssessment);
+        const correctionData = await callWithRetry(correctionPayload, 0, streamOptions);
+        if (reqId !== enhanceReqRef.current) return;
+        executionProvider = correctionData?.provider || executionProvider;
+        executionModel = correctionData?.model || executionModel;
+        accumulatedUsage = combineTokenUsage(data?.usage, correctionData?.usage);
+
+        const correctionText = extractTextFromAnthropic(correctionData);
+        const corrected = parseEnhancedPayload(correctionText);
+        qualityAssessment = assessEnhancementQuality(sentSource, corrected);
+        if (!qualityAssessment.passed) {
+          qualityGateFailure = qualityAssessment;
+          throw new AppError({
+            category: ErrorCategory.PROVIDER,
+            userMessage: 'The model could not produce a meaningful improvement after one corrective pass. Your draft and previous result are still here. Try another mode or run again.',
+            debugMessage: `Enhancement quality gate failed: ${qualityAssessment.failures.join(', ')}`,
+            retryable: true,
+            source: 'enhancement-quality',
+          });
+        }
+
+        data = correctionData;
+        txt = correctionText;
+        parsed = corrected;
+        qualityGateFailure = null;
+      }
+
+      const latencyMs = nowMs() - startedAt;
+      const runId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `enhance-${Date.now()}`;
+      const nextResultMeta = normalizeResultMeta({
+        ...parsed,
+        assumptions: parsed.assumptionDetails || parsed.assumptions,
+        reversibleEdits: parsed.reversibleEdits,
+        provider: executionProvider,
+        model: executionModel,
+        latencyMs,
+        usage: accumulatedUsage,
+        runId,
+      }, {
+        enhanced: parsed.enhanced,
+        variants: parsed.variants,
+      });
 
       setEnhanced(parsed.enhanced || '');
       setVariants(parsed.variants || []);
+      setResultMeta?.(nextResultMeta);
 
       // Surface assumptions in notes panel for transparency
       const assumptions = parsed.assumptions || [];
-      const notesText = parsed.notes || '';
+      const qualityNote = correctionUsed
+        ? 'Quality check: Prompt Lab rejected the first result as a no-op or unsupported near-no-op and used one corrective pass.'
+        : '';
+      const notesText = [parsed.notes || '', qualityNote].filter(Boolean).join('\n\n');
       const assumptionBlock = assumptions.length > 0
-        ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a}`).join('\n')}`
+        ? `\n\nAssumptions added:\n${assumptions.map((a) => `• ${a.text || a}`).join('\n')}`
         : '';
       setNotes(notesText + assumptionBlock);
       setSaveTags(parsed.tags || []);
@@ -244,21 +318,34 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         : 0.7;
 
       saveEvalRun({
+        id: runId,
         promptId: editingId,
         promptTitle: (saveTitle || nextTitle).trim() || nextTitle,
         mode: 'enhance',
         enhanceMode: enhanceModeId,
-        provider: data?.provider || 'unknown',
-        model: data?.model || payload?.model || 'unknown',
+        provider: executionProvider,
+        model: executionModel,
         input: raw,
         output: parsed.enhanced || txt,
-        latencyMs: nowMs() - startedAt,
-        notes: parsed.notes || '',
+        latencyMs,
+        notes: notesText,
+        candidates: nextResultMeta.candidates,
+        selectedCandidateId: nextResultMeta.selectedCandidateId,
+        changeSummary: nextResultMeta.changeSummary,
+        changes: nextResultMeta.changes,
+        assumptions: nextResultMeta.assumptions,
+        reversibleEdits: nextResultMeta.reversibleEdits,
+        reasoning: nextResultMeta.reasoning,
+        tags: nextResultMeta.tags,
+        usage: nextResultMeta.usage,
         goldenScore,
         regression: goldenScore !== null && goldenScore < goldenThreshold,
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
 
-      setShowSave(true);
+      // Results own the post-enhance commit decision. Opening the legacy save
+      // drawer here duplicates those actions and makes a fresh result look as
+      // though it has already replaced the current library prompt.
+      setShowSave(false);
       setOptimisticSaveVisible(false);
       setStreamPreview('');
       setStreaming(false);
@@ -270,12 +357,13 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance',
           enhanceMode: enhanceModeId,
-          provider: 'unknown',
-          model: payload?.model || 'unknown',
+          provider: executionProvider,
+          model: executionModel,
           input: raw,
           output: 'Enhance cancelled before completion.',
           latencyMs: nowMs() - startedAt,
           status: 'canceled',
+          usage: accumulatedUsage,
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save canceled eval run', err));
         if (reqId === enhanceReqRef.current) {
           setLoading(false);
@@ -295,21 +383,29 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
           mode: 'enhance',
           enhanceMode: enhanceModeId,
-          provider: 'unknown',
-          model: payload?.model || 'unknown',
+          provider: executionProvider,
+          model: executionModel,
           input: raw,
           output: appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt,
           status: 'error',
-          notes: appError.category ? `Error category: ${appError.category}` : '',
+          usage: accumulatedUsage,
+          notes: [
+            appError.category ? `Error category: ${appError.category}` : '',
+            qualityGateFailure?.failures?.length
+              ? `Quality gate: ${qualityGateFailure.failures.join(', ')}`
+              : '',
+          ].filter(Boolean).join('\n'),
         }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((err) => logWarn('save failed eval run', err));
       }
     } finally {
-      enhanceInFlightRef.current = false;
       if (enhanceAbortRef.current === abortController) {
         enhanceAbortRef.current = null;
       }
-      if (reqId === enhanceReqRef.current) setLoading(false);
+      if (reqId === enhanceReqRef.current) {
+        enhanceInFlightRef.current = false;
+        setLoading(false);
+      }
     }
   };
 
@@ -440,6 +536,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     setStreaming(false);
     setOptimisticSaveVisible(false);
     setBatchProgress({ active: false, completed: 0, total: 0, currentLabel: '' });
+    setResultMeta?.(null);
   };
 
   const currentTestCases = editingId ? (testCasesHook.testCasesByPrompt[editingId] || []) : [];
@@ -463,6 +560,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     showEvalHistory: evalRunsHook.showEvalHistory,
     setShowEvalHistory: evalRunsHook.setShowEvalHistory,
     refreshEvalRuns: evalRunsHook.refreshEvalRuns,
+    updateEvalRun: evalRunsHook.updateRun,
     testCasesByPrompt: testCasesHook.testCasesByPrompt,
     caseFormPromptId: testCasesHook.caseFormPromptId,
     editingCaseId: testCasesHook.editingCaseId,

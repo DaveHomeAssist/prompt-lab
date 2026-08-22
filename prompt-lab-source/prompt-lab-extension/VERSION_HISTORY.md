@@ -1,6 +1,8 @@
 # Prompt Lab — Version History
 
-## Unreleased — 2026-08-12
+## Unreleased — package version 1.7.1
+
+The shared package manifests and desktop metadata use `1.7.1`, but this source line is not tagged or published as a GitHub Release. The latest source tag is `v1.7.0`; the latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
 
 Behavioral-audit remediation: all six P1 defects from the 2026-08-11 behavioral
 path & failure audit (PLB-001 through PLB-006). Release promotion stays held
@@ -53,16 +55,16 @@ until this work is re-audited under the same failure conditions. See
   every fix above. Extension suite 566 Vitest + 207 Node tests passing; API safety
   suite 66/66 (server contract unchanged — the billing fix is client-side).
 
-## Unreleased — 2026-03-31
+### Earlier unreleased work — 2026-03-31
 
 Billing, hosted-web reliability, and privacy-policy follow-up after `v1.7.0`.
 
-### Billing and telemetry
+#### Billing and telemetry
 
 - Swapped the Pro purchase flow from Lemon Squeezy license activation to Stripe checkout, billing-email sync, Stripe customer portal, and Stripe webhook persistence.
 - Updated local billing state, billing modal copy, and privacy docs to reflect Stripe customer identifiers and optional usage insights preferences.
 
-### Hosted provider fixes
+#### Hosted provider fixes
 
 - Fixed hosted Anthropic requests to strip unsupported provider fields, preserve supported request fields, and honor SSE streaming in the shared web shell.
 - Preserved provider HTTP status during normalization so hosted provider failures surface as provider errors instead of generic unexpected-error recovery panels.

@@ -8,6 +8,7 @@
     "./NOTION_DOCS_AGENT.md",
     "./docs/docs-map.md",
     "./docs/docs-style-guide.md",
+    "./docs/enhancement-council-spec.md",
     "./docs/feature-health-dashboard.md",
     "./docs/glossary.md",
     "./prompt-lab-extension/*.md",

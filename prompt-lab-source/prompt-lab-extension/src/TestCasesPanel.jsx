@@ -39,39 +39,44 @@ export default function TestCasesPanel({
         {isFormOpen ? (
           <button onClick={resetCaseForm} className={`text-xs ${m.textSub} hover:text-white transition-colors`}>Cancel</button>
         ) : (
-          <button onClick={() => openCaseForm(entry.id)} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">Add Case</button>
+          <button onClick={() => openCaseForm(entry.id)} className="text-xs text-orange-400 hover:text-orange-300 transition-colors">Add Case</button>
         )}
       </div>
       {isFormOpen && (
         <div className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5 flex flex-col gap-2 mb-2`}>
           <input
-            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
+            aria-label="Test case title"
+            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 ${m.text}`}
             placeholder="Case title"
             value={caseTitle}
             onChange={(e) => setCaseTitle(e.target.value)}
           />
           <textarea
+            aria-label="Test case prompt input"
             rows={4}
-            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-violet-500 ${m.text}`}
+            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-orange-500 ${m.text}`}
             placeholder="Representative prompt input..."
             value={caseInput}
             onChange={(e) => setCaseInput(e.target.value)}
           />
           <input
-            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
+            aria-label="Expected traits"
+            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 ${m.text}`}
             placeholder="Expected traits (comma separated)"
             value={caseTraits}
             onChange={(e) => setCaseTraits(e.target.value)}
           />
           <input
-            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-violet-500 ${m.text}`}
+            aria-label="Expected exclusions"
+            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-orange-500 ${m.text}`}
             placeholder="Expected exclusions (comma separated)"
             value={caseExclusions}
             onChange={(e) => setCaseExclusions(e.target.value)}
           />
           <textarea
+            aria-label="Test case notes"
             rows={2}
-            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-violet-500 ${m.text}`}
+            className={`${m.input} border rounded-lg px-2.5 py-1.5 text-xs resize-none focus:outline-none focus:border-orange-500 ${m.text}`}
             placeholder="Notes"
             value={caseNotes}
             onChange={(e) => setCaseNotes(e.target.value)}
@@ -79,7 +84,7 @@ export default function TestCasesPanel({
           <button
             onClick={() => saveCaseForPrompt(entry.id)}
             disabled={!caseInput.trim()}
-            className="self-start px-2.5 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors"
+            className="self-start px-2.5 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white rounded-lg text-xs font-semibold transition-colors"
           >
             {editingCaseId ? 'Update Case' : 'Save Case'}
           </button>
@@ -91,11 +96,11 @@ export default function TestCasesPanel({
             <div key={testCase.id} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
               <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-xs font-semibold text-violet-400 truncate">{testCase.title}</span>
+                  <span className="text-xs font-semibold text-orange-400 truncate">{testCase.title}</span>
                   <VerdictBadge evalRuns={evalRuns} testCaseId={testCase.id} />
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => openCaseForm(entry.id, testCase)} className={`text-xs ${m.textSub} hover:text-violet-400 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Edit</button>
+                  <button onClick={() => openCaseForm(entry.id, testCase)} className={`text-xs ${m.textSub} hover:text-orange-400 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Edit</button>
                   <button onClick={() => loadCaseIntoEditor(testCase)} className={`text-xs ${m.textSub} hover:text-white hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Use</button>
                   <button onClick={() => runSingleCase(testCase, entry.title)} className="text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Run</button>
                   <button onClick={() => removeCase(testCase)} className="text-xs text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Delete</button>

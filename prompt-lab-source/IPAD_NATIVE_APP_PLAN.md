@@ -7,23 +7,17 @@ Owner: Dave Robertson
 
 ## Why this document exists
 
-The July 26 work list calls for a **native Swift iPad Prompt Lab app**. That direction
-conflicts with `MOBILE_DEPLOYMENT_ROADMAP.md`, whose stated goal is to ship iOS and
-Android **without forking the shared frontend** by wrapping the existing React app in a
-Tauri Mobile shell. A native SwiftUI app is a deliberate fork of the UI layer, so the
-decision needs to be recorded (Notion `DB | Decisions` → ADR in
-`DB | Technical Decisions Log`) before code lands. This plan captures the recommended
-scope so the ADR and the first implementation sprint have a concrete basis.
+The July 26 work list called for a **native Swift iPad Prompt Lab app**, which conflicted with the earlier Tauri Mobile direction in `MOBILE_DEPLOYMENT_ROADMAP.md`. ADR D-011 resolved that conflict in favor of a universal native SwiftUI app with JSON contracts—not shared UI—as the compatibility boundary. This plan now tracks the implemented scope and the remaining distribution gate.
 
 ## Decision framing
 
 | Option | Pros | Cons |
 |---|---|---|
-| Tauri Mobile shell (current roadmap) | One React codebase; extension/desktop parity for free | WebView UX on iPhone/iPad; weaker multitasking/pencil/keyboard support; app-review risk for WebView-heavy apps |
+| Tauri Mobile shell (earlier roadmap) | One React codebase; extension/desktop parity for free | WebView UX on iPhone/iPad; weaker multitasking/pencil/keyboard support; app-review risk for WebView-heavy apps |
 | Native SwiftUI universal app (this plan) | First-class iOS/iPadOS UX (compact-width flows on iPhone; Split View, Stage Manager, hardware keyboard, sidebar idioms on iPad); Keychain-native key storage; best App Store positioning | Second UI codebase to maintain; feature drift risk against the React app |
 | Hybrid: SwiftUI shell + shared JS core | Native chrome with shared enhance/parsing logic via JavaScriptCore | Bridging complexity; still two UI trees |
 
-**Recommendation:** Native SwiftUI app scoped to a focused feature set (below), with
+**Decision:** Native SwiftUI app scoped to a focused feature set (below), with
 the JSON contracts — not the UI — as the sharing boundary. The React app's provider
 payload/response logic is already centralized, and those contracts are portable as data, not code.
 
@@ -71,7 +65,7 @@ and the PII scanner (deferred until parity is worth the port).
 
 ## Repo layout
 
-New top-level package `prompt-lab-ios/` (universal iPhone + iPad target) beside
+Top-level package `prompt-lab-ios/` (universal iPhone + iPad target) beside
 `prompt-lab-extension/`, `prompt-lab-desktop/`, and `prompt-lab-web/`:
 
 ```

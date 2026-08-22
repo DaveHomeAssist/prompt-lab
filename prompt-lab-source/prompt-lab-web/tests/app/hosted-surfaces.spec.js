@@ -59,6 +59,69 @@ test('hosted web Enhance works without a user API key', async ({ page }) => {
   expect(requests[0].headers['x-api-key']).toBe('__plb_hosted_shared_key__');
 });
 
+test('hosted web corrects an exact no-op once before showing a result', async ({ page }) => {
+  const source = 'Write a summary';
+  const responses = [
+    {
+      enhanced: source,
+      variants: [
+        { label: 'Tighter', content: source },
+        { label: 'Strict JSON', content: source },
+      ],
+      change_summary: 'The prompt is already clear.',
+      changes: [],
+      notes: 'No changes needed.',
+      reasoning: 'The prompt is already good as written.',
+      assumptions: [],
+      reversible_edits: [],
+      tags: [],
+    },
+    {
+      enhanced: 'Summarize the supplied material in five bullets, then list two concrete next steps.',
+      variants: [
+        { label: 'Tighter', content: 'Return five summary bullets and two next steps.' },
+        { label: 'Strict JSON', content: 'Return JSON with summary_bullets and next_steps arrays.' },
+      ],
+      change_summary: 'Added a bounded output structure and action-oriented close.',
+      changes: [{ type: 'added', label: 'Added bullet count and next-step output requirements' }],
+      notes: 'The response shape is now explicit.',
+      reasoning: 'Added an output format and success criteria so the result is predictable and actionable.',
+      assumptions: [],
+      reversible_edits: [],
+      tags: ['Writing'],
+    },
+  ];
+  const requests = [];
+  await page.route('**/api/proxy', async (route) => {
+    const request = route.request().postDataJSON();
+    requests.push(request);
+    const text = JSON.stringify(responses[Math.min(requests.length - 1, responses.length - 1)]);
+    const body = [
+      `data: ${JSON.stringify({ type: 'content_block_delta', delta: { type: 'text_delta', text } })}`,
+      `data: ${JSON.stringify({ type: 'message_stop' })}`,
+      '',
+    ].join('\n\n');
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream; charset=utf-8',
+      body,
+    });
+  });
+  await page.addInitScript(() => {
+    localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+    localStorage.setItem('pl_telemetry_consent', 'denied');
+  });
+
+  await page.goto('/app/');
+  await page.getByTestId('prompt-input').fill(source);
+  await page.getByTestId('refine-action').click();
+
+  await expect(page.getByTestId('output-textarea')).toHaveValue(responses[1].enhanced);
+  expect(requests).toHaveLength(2);
+  expect(requests[1].body).toContain('QUALITY CORRECTION PASS');
+  expect(requests[1].body).toContain('duplicated the source');
+});
+
 test('mobile invalidates stale output across prompt, Pad, and voice handoffs', async ({ page }) => {
   const mobileResponse = {
     content: [{ type: 'text', text: 'Copy-ready prompt\n\nRole\nQA lead\n\nTask\nVerify the release.' }],

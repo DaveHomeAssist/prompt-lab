@@ -6,6 +6,9 @@ import { useSessionRestore, useSessionSave } from './useSessionState.js';
 import { ensureString } from '../lib/utils.js';
 import { decodePackShare } from '../lib/packExport.js';
 import { importPresetPack } from '../lib/presetImport.js';
+import { linkEvalRunToPrompt } from '../experimentStore.js';
+import { createSaveReceipt } from '../lib/promptLifecycle.js';
+import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
 /**
  * Save/share/load controller around the library + session storage boundaries.
@@ -13,8 +16,8 @@ import { importPresetPack } from '../lib/presetImport.js';
 export default function usePersistenceFlow({ ui, lib, editor }) {
   const { notify, setTab, tab, setABVariant } = ui;
   const {
-    raw, enhanced, variants, notes, enhMode,
-    setRaw, setEnhanced, setVariants, setNotes, setEnhMode,
+    raw, enhanced, variants, notes, resultMeta, enhMode,
+    setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setEnhMode,
     setComposerBlocks,
   } = editor;
 
@@ -26,6 +29,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [saveTags, setSaveTags] = useState([]);
   const [saveCollection, setSaveCollection] = useState('');
   const [changeNote, setChangeNote] = useState('');
+  const [sourceNoteId, setSourceNoteId] = useState('');
+  const [lastSaveReceipt, setLastSaveReceipt] = useState(null);
   const [showDiff, setShowDiff] = useState(false);
   const [showNewColl, setShowNewColl] = useState(false);
   const [newCollName, setNewCollName] = useState('');
@@ -47,8 +52,14 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setVarValsState(normalized);
   };
 
-  useSessionRestore({ setRaw, setEnhanced, setVariants, setNotes, setTab, setEnhMode });
-  useSessionSave({ raw, enhanced, variants, notes, tab, enhMode });
+  useSessionRestore({
+    setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode,
+    setEditingId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId,
+  });
+  useSessionSave({
+    raw, enhanced, variants, notes, resultMeta, tab, enhMode,
+    editingId, saveTitle, saveTags, saveCollection, sourceNoteId,
+  });
 
   useEffect(() => {
     if (sharedHashHandledRef.current) return;
@@ -88,8 +99,10 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setEnhanced(normalized.enhanced);
     setVariants(normalized.variants || []);
     setNotes(normalized.notes || '');
+    setResultMeta?.(normalized.resultMeta || null);
     setSaveTags(normalized.tags || []);
     setSaveTitle(normalized.title || '');
+    setSourceNoteId(normalized.sourceNoteId || '');
     setShowSave(true);
     notify('Shared prompt loaded!');
   }, [lib.libReady]);
@@ -147,9 +160,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (activeEntry) {
       setSaveTags(activeEntry.tags || []);
       setSaveCollection(activeEntry.collection || '');
+      setSourceNoteId(activeEntry.sourceNoteId || '');
     } else {
       setSaveTags([]);
       setSaveCollection('');
+      setSourceNoteId('');
     }
     setChangeNote('');
     setShowNewColl(false);
@@ -168,9 +183,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       setEnhanced(normalized.enhanced);
       setVariants(normalized.variants || []);
       setNotes(normalized.notes || '');
+      setResultMeta?.(normalized.resultMeta || null);
       setSaveTags(normalized.tags || []);
       setSaveTitle(normalized.title);
       setSaveCollection(normalized.collection || '');
+      setSourceNoteId(normalized.sourceNoteId || '');
       setShowSave(false);
       setSaveTargetId(null);
       setSaveSourceEntry(null);
@@ -288,9 +305,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setEnhanced(restoredEntry.enhanced);
     setVariants(restoredEntry.variants || []);
     setNotes(restoredEntry.notes || '');
+    setResultMeta?.(restoredEntry.resultMeta || null);
     setSaveTitle(restoredEntry.title || '');
     setSaveTags(restoredEntry.tags || []);
     setSaveCollection(restoredEntry.collection || '');
+    setSourceNoteId(restoredEntry.sourceNoteId || '');
     setSaveTargetId(null);
     setSaveSourceEntry(null);
     setChangeNote('');
@@ -317,6 +336,24 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const doSave = (onSaved, overrides = {}) => {
     const contentSource = saveSourceEntry ? normalizeEntry(saveSourceEntry) : null;
+    const originalValue = Object.prototype.hasOwnProperty.call(overrides, 'rawOverride')
+      ? overrides.rawOverride
+      : (contentSource?.original ?? raw);
+    const enhancedValue = Object.prototype.hasOwnProperty.call(overrides, 'enhancedOverride')
+      ? overrides.enhancedOverride
+      : (contentSource?.enhanced ?? enhanced);
+    const variantsValue = Object.prototype.hasOwnProperty.call(overrides, 'variantsOverride')
+      ? overrides.variantsOverride
+      : (contentSource?.variants ?? variants);
+    const notesValue = Object.prototype.hasOwnProperty.call(overrides, 'notesOverride')
+      ? overrides.notesOverride
+      : (contentSource?.notes ?? notes);
+    const resultMetaValue = Object.prototype.hasOwnProperty.call(overrides, 'resultMetaOverride')
+      ? overrides.resultMetaOverride
+      : (contentSource?.resultMeta ?? resultMeta);
+    const tagsValue = Object.prototype.hasOwnProperty.call(overrides, 'tagsOverride')
+      ? overrides.tagsOverride
+      : saveTags;
     const targetId = Object.prototype.hasOwnProperty.call(overrides, 'targetId')
       ? overrides.targetId
       : (saveTargetId ?? editingId);
@@ -327,17 +364,20 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       ? overrides.collectionOverride
       : saveCollection;
     const saved = lib.doSave({
-      raw: contentSource?.original ?? raw,
-      enhanced: contentSource?.enhanced ?? enhanced,
-      variants: contentSource?.variants ?? variants,
-      notes: contentSource?.notes ?? notes,
-      tags: saveTags,
+      raw: originalValue,
+      enhanced: enhancedValue,
+      variants: variantsValue,
+      notes: notesValue,
+      resultMeta: resultMetaValue,
+      tags: tagsValue,
       title: titleValue,
       collection: collectionValue,
       editingId: targetId,
       changeNote,
       sourceEntry: contentSource || activeEntryRef.current,
+      sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
       savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
+      copyAsNew: overrides.copyAsNew === true,
     });
     // A rejected write returns null; keep the save panel and buffers so the
     // user can retry or copy instead of losing the draft to a false success.
@@ -347,22 +387,37 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         ...(contentSource || activeEntryRef.current || {}),
         id: saved.id,
         title: saved.title || titleValue,
-        original: contentSource?.original ?? raw,
-        enhanced: contentSource?.enhanced ?? enhanced,
-        variants: contentSource?.variants ?? variants,
-        notes: contentSource?.notes ?? notes,
-        tags: saveTags,
+        original: originalValue,
+        enhanced: enhancedValue,
+        variants: variantsValue,
+        notes: notesValue,
+        resultMeta: resultMetaValue,
+        tags: tagsValue,
         collection: collectionValue,
+        sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
       };
       if (!contentSource) {
         setEditingId(saved.id);
       }
       setSaveTitle(saved.title || titleValue);
-      if (typeof onSaved === 'function') onSaved(saved.id);
+      const savedSourceNoteId = contentSource?.sourceNoteId ?? sourceNoteId;
+      const receipt = createSaveReceipt(saved, {
+        action: targetId && saved.savedAsNew !== true ? 'version' : 'new',
+        sourceNoteId: savedSourceNoteId,
+      });
+      setLastSaveReceipt(receipt);
+      if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
+      if (resultMetaValue?.runId) {
+        void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
+          .then(() => typeof onSaved === 'function' && onSaved(saved.id));
+      } else if (typeof onSaved === 'function') {
+        onSaved(saved.id);
+      }
     }
     setSaveTargetId(null);
     setSaveSourceEntry(null);
     setChangeNote('');
+    setSourceNoteId('');
     setShowSave(false);
     return saved;
   };
@@ -407,6 +462,9 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     saveTags, setSaveTags,
     saveCollection, setSaveCollection,
     changeNote, setChangeNote,
+    sourceNoteId, setSourceNoteId,
+    lastSaveReceipt,
+    dismissSaveReceipt: () => setLastSaveReceipt(null),
     showDiff, setShowDiff,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,

@@ -46,12 +46,12 @@ describe('PLB-001 — pad naming dialog', () => {
     const notify = vi.fn();
     render(<PadTab m={themeStub} notify={notify} />);
 
-    fireEvent.click(screen.getByTitle('New pad'));
-    const input = await screen.findByLabelText('Pad name');
+    fireEvent.click(screen.getByTitle('New note'));
+    const input = await screen.findByLabelText('Note name');
     fireEvent.change(input, { target: { value: 'Audit Pad' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
-    expect(notify).toHaveBeenCalledWith('Created pad: Audit Pad');
+    expect(notify).toHaveBeenCalledWith('Created note: Audit Pad');
     expect(JSON.parse(localStorage.getItem('pl2-pads')).pads.some((pad) => pad.name === 'Audit Pad')).toBe(true);
     expect(window.prompt).not.toHaveBeenCalled();
   });
@@ -64,12 +64,12 @@ describe('PLB-001 — pad naming dialog', () => {
     const notify = vi.fn();
     render(<PadTab m={themeStub} notify={notify} />);
 
-    fireEvent.click(screen.getByTitle('Rename pad'));
-    const input = await screen.findByLabelText('Pad name');
+    fireEvent.click(screen.getByTitle('Rename note'));
+    const input = await screen.findByLabelText('Note name');
     fireEvent.change(input, { target: { value: 'Renamed Pad' } });
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Rename' }));
 
-    expect(notify).toHaveBeenCalledWith('Renamed pad: Renamed Pad');
+    expect(notify).toHaveBeenCalledWith('Renamed note: Renamed Pad');
     expect(JSON.parse(localStorage.getItem('pl2-pads')).pads[0].name).toBe('Renamed Pad');
     expect(window.prompt).not.toHaveBeenCalled();
   });

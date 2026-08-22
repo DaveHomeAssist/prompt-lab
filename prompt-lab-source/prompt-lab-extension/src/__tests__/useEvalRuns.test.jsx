@@ -2,24 +2,22 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import useEvalRuns from '../hooks/useEvalRuns.js';
 
-const { listEvalRuns, getEvalRunById, saveEvalRun } = vi.hoisted(() => ({
+const { listEvalRuns, patchEvalRun } = vi.hoisted(() => ({
   listEvalRuns: vi.fn(),
-  getEvalRunById: vi.fn(),
-  saveEvalRun: vi.fn(),
+  patchEvalRun: vi.fn(),
 }));
 
 vi.mock('../experimentStore', () => ({
+  EVAL_RUN_SIGNAL_KEY: 'pl2-eval-run-signal',
   listEvalRuns,
-  getEvalRunById,
-  saveEvalRun,
+  patchEvalRun,
 }));
 
 describe('useEvalRuns', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     listEvalRuns.mockResolvedValue([]);
-    getEvalRunById.mockResolvedValue(null);
-    saveEvalRun.mockResolvedValue(null);
+    patchEvalRun.mockResolvedValue(null);
   });
 
   it('refreshEvalRuns calls listEvalRuns with promptId filter', async () => {
@@ -102,8 +100,7 @@ describe('useEvalRuns', () => {
 
   it('merges run patches through updateRun and refreshes the timeline', async () => {
     listEvalRuns.mockResolvedValue([{ id: 'run-1', notes: '' }]);
-    getEvalRunById.mockResolvedValue({ id: 'run-1', notes: '', verdict: null });
-    saveEvalRun.mockResolvedValue({ id: 'run-1', notes: 'keep', verdict: 'pass' });
+    patchEvalRun.mockResolvedValue({ id: 'run-1', notes: 'keep', verdict: 'pass' });
 
     const { result } = renderHook(() => useEvalRuns({ promptId: 'prompt-7', tab: 'history' }));
 
@@ -118,8 +115,7 @@ describe('useEvalRuns', () => {
     });
 
     expect(updated).toBe(true);
-    expect(getEvalRunById).toHaveBeenCalledWith('run-1');
-    expect(saveEvalRun).toHaveBeenCalledWith({ id: 'run-1', notes: 'keep', verdict: 'pass' });
+    expect(patchEvalRun).toHaveBeenCalledWith('run-1', { notes: 'keep', verdict: 'pass' });
     expect(listEvalRuns).toHaveBeenCalledTimes(1);
   });
 
@@ -132,6 +128,6 @@ describe('useEvalRuns', () => {
     });
 
     expect(updated).toBe(false);
-    expect(saveEvalRun).not.toHaveBeenCalled();
+    expect(patchEvalRun).toHaveBeenCalledWith('missing-run', { verdict: 'fail' });
   });
 });

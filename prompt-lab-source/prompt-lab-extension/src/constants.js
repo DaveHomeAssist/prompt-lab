@@ -71,9 +71,10 @@ export function buildSystemPrompt(modeId, tags) {
   const modeObj = MODES.find((item) => item.id === modeId) || MODES[0];
   const tagList = Array.isArray(tags) ? tags.join(', ') : tags;
   return `You are an expert prompt engineer. ${INTENT_POLICY} ${modeObj.sys}
+Before responding, compare the source with the enhanced prompt. Make at least one concrete, defensible execution improvement whenever one exists. Never use generic praise or "already good" as evidence that no improvement is possible, and do not make cosmetic changes merely to appear different.
 Return ONLY valid JSON, no markdown, no backticks:
-{"enhanced":"...","variants":[{"label":"...","content":"..."}],"notes":"...","assumptions":["..."],"tags":["..."]}
-Produce 2 variants. In "notes", explain what you changed and why. In "assumptions", list anything you added that was not explicitly stated in the original prompt (medium, audience, tone, structure, constraints). If you added nothing, return an empty array. Available tags: ${tagList}.`;
+{"enhanced":"...","variants":[{"label":"Tighter","content":"..."},{"label":"Strict JSON","content":"..."}],"change_summary":"...","changes":[{"type":"added|removed|changed","label":"..."}],"notes":"...","reasoning":"...","assumptions":[{"id":"...","text":"...","added_text":"exact text added to the enhanced prompt"}],"reversible_edits":[{"id":"...","label":"...","operation":"add|remove|replace","before":"...","after":"...","candidate_id":"improved|tighter|strict-json"}],"tags":["..."]}
+Produce exactly 2 useful variants named Tighter and Strict JSON. In "change_summary", give one concise verdict sentence. In "changes", identify the important semantic additions, removals, or replacements. In "notes", explain what changed. In "reasoning", explain why those changes improve execution reliability. In "assumptions", list anything you added that was not explicitly stated in the original prompt and include the exact added text so it can be reverted safely. Mirror every reversible semantic edit in "reversible_edits" with stable IDs and exact before/after text. If you added nothing, return empty assumptions and reversible_edits arrays. Available tags: ${tagList}.`;
 }
 
 export { INTENT_POLICY };
@@ -447,7 +448,7 @@ Return only the system prompt, ready to paste.`,
 export const T = {
   dark: {
     bg: 'bg-[#06060a]', surface: 'bg-[#101018]', border: 'border-white/10', borderHov: 'hover:border-white/20',
-    input: 'bg-[#14141d] border-white/10', text: 'text-[#f0ede6]', textSub: 'text-[#b3afaa]', textMuted: 'text-[#7c7a76]',
+    input: 'bg-[#14141d] border-white/10', text: 'text-[#f0ede6]', textSub: 'text-[#b3afaa]', textMuted: 'text-[#94908a]',
     textBody: 'text-[#d7d2cb]', textAlt: 'text-[#c7c2bb]', btn: 'bg-white/[0.04] hover:bg-white/[0.08]',
     header: 'bg-[#0a0a0f]/95 backdrop-blur-sm border-white/10', modalBg: 'bg-black/70', modal: 'bg-[#101018] border-white/10',
     notesBg: 'bg-[#c4a44a]/10 border-[#c4a44a]/25', notesText: 'text-[#d4bc73]', codeBlock: 'bg-[#06060a]',
@@ -461,7 +462,7 @@ export const T = {
   },
   light: {
     bg: 'bg-slate-100', surface: 'bg-white', border: 'border-slate-300', borderHov: 'hover:border-slate-400',
-    input: 'bg-white border-slate-300', text: 'text-slate-900', textSub: 'text-slate-600', textMuted: 'text-slate-500',
+    input: 'bg-white border-slate-300', text: 'text-slate-900', textSub: 'text-slate-600', textMuted: 'text-slate-600',
     textBody: 'text-slate-700', textAlt: 'text-slate-600', btn: 'bg-slate-100 hover:bg-slate-200',
     header: 'bg-slate-50/95 backdrop-blur-sm border-slate-200', modalBg: 'bg-black/40', modal: 'bg-white border-slate-200',
     notesBg: 'bg-amber-100/80 border-amber-300', notesText: 'text-amber-800', codeBlock: 'bg-slate-50',

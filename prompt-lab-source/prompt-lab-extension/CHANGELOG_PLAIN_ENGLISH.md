@@ -1,8 +1,47 @@
 # Prompt Lab Changelog (Plain English)
 
-Date: 2026-08-12
+Date: 2026-08-20
 
-## What changed after the August behavioral audit (unreleased, post-v1.7.1)
+## Full workspace redesign (unreleased 1.7.1 source line)
+
+1. Enhancement results now stay on screen as a verdict-first workspace with
+   editable candidates, exact changes, assumptions, reasoning, run metadata,
+   original/side-by-side views, and explicit commit choices.
+2. Prompt Lab no longer opens the legacy save drawer automatically after an
+   enhancement. Nothing is presented as saved until you choose **Save new
+   version** or **Save as new prompt**, and dismissing a result leaves the
+   original draft intact.
+3. Library is now a full three-part workspace with smart views, collections,
+   tags, bulk actions, list/tile layouts, a persistent inspector, Pack Studio,
+   Prompt CI status, and a 30-day Recently Deleted recovery path.
+4. Scratch now includes markdown write/preview, outline navigation, pinning,
+   statuses, tags, linked prompts, and selection-aware promotion into Write.
+5. Dual Pane adds a resizable Library/Editor workflow with insert, replace,
+   append, open, and pane-swap controls.
+6. Create, Library, Evaluate, and Scratch now have a responsive bottom
+   navigation on compact screens, including safe-area spacing that keeps final
+   actions reachable.
+7. Provider responses now retain available provider, model, latency, and token
+   usage data so saved runs and result summaries can show what actually ran.
+
+## Stability check (2026-08-20)
+
+- Extension tests: pass (619 Vitest + 211 Node compatibility tests)
+- Extension browser workflows: pass (6/6, including 400px and 768px paths)
+- Extension, hosted web, and desktop frontend production builds: pass
+
+---
+
+Date: 2026-08-19
+
+## Release status
+
+- The shared package/source version is `1.7.1`, but it is not tagged or published as a GitHub Release.
+- The latest source tag is `v1.7.0`.
+- The latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
+- The native iPhone/iPad app is version `0.1.0` build `1` and has not been distributed through TestFlight or the App Store.
+
+## What changed after the August behavioral audit (unreleased 1.7.1 source line)
 
 An independent behavioral audit on August 11 tested 169 user paths across every
 surface and found 19 confirmed defects, six of them release blockers. The release

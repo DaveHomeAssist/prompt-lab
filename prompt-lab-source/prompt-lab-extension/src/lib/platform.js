@@ -193,7 +193,10 @@ function extSessionGet(key, cb) {
 }
 
 function extSessionSet(obj) {
-  if (chrome.storage?.session) chrome.storage.session.set(obj);
+  if (!chrome.storage?.session) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    chrome.storage.session.set(obj, () => resolve(!chrome.runtime?.lastError));
+  });
 }
 
 function extOpenSettings() {
@@ -212,11 +215,15 @@ function desktopSessionGet(key, cb) {
   }
 }
 function desktopSessionSet(obj) {
+  let ok = true;
   for (const [k, v] of Object.entries(obj)) {
     try {
       localStorage.setItem(SESSION_PREFIX + k, JSON.stringify(v));
-    } catch { /* quota exceeded — best effort */ }
+    } catch {
+      ok = false;
+    }
   }
+  return ok;
 }
 
 function desktopOpenSettings() {

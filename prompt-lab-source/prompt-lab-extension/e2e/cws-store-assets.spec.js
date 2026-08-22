@@ -2,8 +2,8 @@
 //
 //   CWS_BUILD_DIR=<unpacked build dir> npx playwright test e2e/cws-store-assets.spec.js
 //
-// Reaches UI states by role/placeholder (the packaged v1.7.0 build has no
-// data-testids), so it does not depend on the provider message contract.
+// Reaches UI states by role/placeholder so it can exercise both current and
+// older packaged builds without depending on the provider message contract.
 // Each side-panel capture is composited onto a branded 1280x800 canvas so the
 // listing images read as a product, not a half-empty side panel. Outputs to
 // ../../store-assets/cws/. No API key or network involved.
@@ -98,6 +98,11 @@ async function tryClick(page, names) {
 async function openPanel(context, extensionId) {
   const page = await context.newPage();
   await page.setViewportSize(PANEL);
+  await page.addInitScript(() => {
+    localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+    localStorage.setItem('pl_telemetry_consent', 'denied');
+    localStorage.setItem('pl2-billing', JSON.stringify({ plan: 'pro', status: 'active', productName: 'Prompt Lab Pro' }));
+  });
   await page.goto(`chrome-extension://${extensionId}/panel.html`);
   await page.waitForTimeout(1500);
   await tryClick(page, ['Deny', 'No thanks', 'Decline', 'Dismiss']);
@@ -135,18 +140,21 @@ test('capture CWS listing screenshots and promo tile', async () => {
     captured.push('screenshot-2-library.png');
 
     // 3 — Experiments / Compare
-    const exp = await tryClick(page, ['Experiments', 'Compare']);
+    const evaluate = await tryClick(page, ['Evaluate', 'Experiments']);
+    const exp = evaluate ? await tryClick(page, ['Compare']) : null;
+    expect(exp, 'Compare view reached before screenshot').toBeTruthy();
     await frame(context, await page.screenshot(), {
       title: 'A/B compare across models and variants',
       body: 'Run one prompt against several providers or variations and compare the results side by side to find what actually works.',
     }, 'screenshot-3-experiments.png');
     captured.push('screenshot-3-experiments.png');
 
-    // 4 — Notebook / Build
-    const nb = await tryClick(page, ['Notebook', 'Build']);
+    // 4 — Scratch / Notebook
+    const nb = await tryClick(page, ['Scratch', 'Notebook']);
+    expect(nb, 'Scratch view reached before screenshot').toBeTruthy();
     await frame(context, await page.screenshot(), {
-      title: 'Compose and organize longer prompt workflows',
-      body: 'Assemble multi-step prompts and keep your working notes beside them, all in the same local-first workspace.',
+      title: 'Draft, preview, and promote working notes',
+      body: 'Keep markdown notes, outlines, tags, and linked prompts together in the same local-first workspace.',
     }, 'screenshot-4-notebook.png');
     captured.push('screenshot-4-notebook.png');
 

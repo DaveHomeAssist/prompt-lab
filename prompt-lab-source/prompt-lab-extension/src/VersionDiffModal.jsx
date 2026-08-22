@@ -1,20 +1,19 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import Ic from './icons';
 import { wordDiff } from './promptUtils';
 import { getPromptSnapshot } from './lib/promptSchema.js';
+import useDialogA11y from './hooks/useDialogA11y.js';
 
 function DiffTokens({ fromText, toText, m }) {
   const segments = wordDiff(fromText, toText);
   return (
     <div className={`text-xs leading-relaxed ${m.codeBlock} rounded-lg p-3 whitespace-pre-wrap break-words`}>
-      {segments.map((segment, index) => (
-        <span
-          key={`${segment.t}-${index}`}
-          className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}
-        >
-          {segment.v}
-        </span>
-      ))}
+      {segments.map((segment, index) => {
+        const className = `${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`;
+        if (segment.t === 'add') return <ins key={`${segment.t}-${index}`} className={className}>{segment.v}</ins>;
+        if (segment.t === 'del') return <del key={`${segment.t}-${index}`} className={className}>{segment.v}</del>;
+        return <span key={`${segment.t}-${index}`} className={className}>{segment.v}</span>;
+      })}
     </div>
   );
 }
@@ -55,19 +54,14 @@ export default function VersionDiffModal({
   onRestore,
   m,
 }) {
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  const closeDialog = useCallback(() => closeRef.current?.(), []);
+  const dialogRef = useDialogA11y({ open: Boolean(entry), onClose: closeDialog });
   const versions = Array.isArray(entry?.versions) ? [...entry.versions].reverse() : [];
   const safeIndex = versions.length === 0 ? 0 : Math.min(Math.max(selectedIndex ?? 0, 0), versions.length - 1);
   const selectedVersion = versions[safeIndex] || null;
   const currentSnapshot = entry ? getPromptSnapshot(entry) : null;
-
-  useEffect(() => {
-    if (!entry) return undefined;
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') onClose?.();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [entry, onClose]);
 
   useEffect(() => {
     if (entry && versions.length > 0 && selectedIndex == null) {
@@ -82,37 +76,40 @@ export default function VersionDiffModal({
     const confirmed = window.confirm(`Restore "${entry.title}" to the snapshot from ${new Date(selectedVersion.savedAt).toLocaleString()}?`);
     if (!confirmed) return;
     onRestore?.(selectedVersion);
-    onClose?.();
+    closeDialog();
   };
 
   return (
-    <div className={`fixed inset-0 ${m.modalBg} z-50 flex items-center justify-center p-4`} onClick={onClose}>
+    <div className={`fixed inset-0 ${m.modalBg} z-[90] flex items-center justify-center p-4`} onClick={closeDialog}>
       <div
+        ref={dialogRef}
         className={`${m.modal} border rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="version-history-title"
+        aria-describedby="version-history-description"
+        tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className={`px-5 py-4 border-b ${m.border} flex items-center justify-between gap-4`}>
+        <div className={`px-5 py-4 border-b ${m.border} flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center`}>
           <div className="min-w-0">
-            <p className={`text-[11px] uppercase tracking-[0.18em] font-semibold text-blue-400 mb-1`}>Version History</p>
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-400">Version History</p>
             <h2 id="version-history-title" className={`text-base font-semibold ${m.text} truncate`}>{entry.title}</h2>
-            <p className={`text-xs ${m.textMuted} mt-1`}>
+            <p id="version-history-description" className={`text-xs ${m.textMuted} mt-1`}>
               {versions.length} saved snapshot{versions.length === 1 ? '' : 's'}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={handleRestore}
               disabled={!selectedVersion}
-              className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-11 items-center gap-1 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Ic n="RotateCcw" size={11} />
               Restore This Version
             </button>
-            <button type="button" onClick={onClose} className={`rounded-lg p-2 ${m.btn} ${m.textAlt}`} aria-label="Close version history">
+            <button type="button" onClick={closeDialog} className={`min-h-11 min-w-11 rounded-lg p-2 ${m.btn} ${m.textAlt}`} aria-label="Close version history">
               <Ic n="X" size={14} />
             </button>
           </div>
@@ -132,12 +129,13 @@ export default function VersionDiffModal({
                     key={version.id || `${version.savedAt}-${index}`}
                     type="button"
                     onClick={() => onSelectIndex?.(index)}
-                    className={`rounded-xl border p-3 text-left transition-colors ${active ? 'border-violet-500 bg-violet-500/10' : `${m.border} ${m.btn}`}`}
+                    aria-pressed={active}
+                    className={`min-h-11 rounded-xl border p-3 text-left transition-colors ${active ? 'border-orange-500 bg-orange-500/10' : `${m.border} ${m.btn}`}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className={`text-xs font-semibold ${m.text}`}>Snapshot {versions.length - index}</span>
                       {version.source && (
-                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${version.source === 'restore' ? 'bg-blue-500/15 text-blue-400' : 'bg-violet-500/15 text-violet-400'}`}>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] ${version.source === 'restore' ? 'bg-blue-500/15 text-blue-400' : 'bg-orange-500/15 text-orange-400'}`}>
                           {version.source}
                         </span>
                       )}
@@ -162,7 +160,7 @@ export default function VersionDiffModal({
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className={`text-xs ${m.textMuted}`}>{new Date(selectedVersion.savedAt).toLocaleString()}</span>
                     {selectedVersion.source && (
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${selectedVersion.source === 'restore' ? 'bg-blue-500/15 text-blue-400' : 'bg-violet-500/15 text-violet-400'}`}>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] ${selectedVersion.source === 'restore' ? 'bg-blue-500/15 text-blue-400' : 'bg-orange-500/15 text-orange-400'}`}>
                         {selectedVersion.source}
                       </span>
                     )}

@@ -344,6 +344,22 @@ describe('App', () => {
     expect(screen.getByTestId('app-header')).toBeInTheDocument();
   });
 
+  it('renders and dismisses the post-save receipt without crashing', () => {
+    const dismissSaveReceipt = vi.fn();
+    const persistence = useDefaultMock('usePersistenceFlow');
+    mocks.usePersistenceFlow.mockImplementationOnce(() => ({
+      ...persistence,
+      lastSaveReceipt: { title: 'Launch prompt', versionNumber: 2 },
+      dismissSaveReceipt,
+    }));
+
+    render(<MemoryRouter><App /></MemoryRouter>);
+
+    expect(screen.getByText('Saved “Launch prompt” · version 2')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss save receipt' }));
+    expect(dismissSaveReceipt).toHaveBeenCalledTimes(1);
+  });
+
   it('shows first-run telemetry consent and waits for consent before sending events', async () => {
     render(<MemoryRouter><App /></MemoryRouter>);
 
@@ -492,7 +508,7 @@ describe('App', () => {
     render(<MemoryRouter><App /></MemoryRouter>);
 
     expect(screen.getByText('Results')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Save to Library' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save as new prompt' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Library Details' }).length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Prompt title')).toBeInTheDocument();
   });
@@ -526,7 +542,7 @@ describe('App', () => {
     });
 
     render(<MemoryRouter><App /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Save to Library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save as new prompt' }));
 
     await waitFor(() => {
       const payloads = global.fetch.mock.calls

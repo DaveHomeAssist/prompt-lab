@@ -16,12 +16,14 @@ async function launch(viewport) {
   const context = await chromium.launchPersistentContext(userDataDir, {
     channel: 'chromium',
     headless: true,
-    viewport: { width: viewport.width, height: viewport.height },
+    timeout: 15_000,
     args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
   });
   let worker = context.serviceWorkers()[0];
-  if (!worker) worker = await context.waitForEvent('serviceworker');
+  if (!worker) worker = await context.waitForEvent('serviceworker', { timeout: 15_000 });
   const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
+  await page.setViewportSize({ width: viewport.width, height: viewport.height });
   await page.addInitScript(() => {
     localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
     localStorage.setItem('pl_telemetry_consent', 'denied');
@@ -38,7 +40,7 @@ async function launch(viewport) {
       metadata: { suite: { verdict: 'pass', passed: 3, failed: 0, total: 3, lastRunAt: new Date().toISOString() } },
     }]));
   });
-  await page.goto(`chrome-extension://${new URL(worker.url()).host}/panel.html`);
+  await page.goto(`chrome-extension://${new URL(worker.url()).host}/panel.html`, { timeout: 15_000 });
   await page.evaluate(() => {
     const original = chrome.runtime.sendMessage.bind(chrome.runtime);
     window.__fiveFeatureRequests = [];
@@ -62,6 +64,29 @@ async function launch(viewport) {
   return { page, context, userDataDir };
 }
 
+async function openWorkspace(page, viewport, label) {
+  if (viewport.width < 720) {
+    await page.getByRole('navigation', { name: 'Primary mobile navigation' })
+      .getByRole('button', { name: label, exact: true })
+      .click();
+    return;
+  }
+
+  if (label === 'Evaluate') {
+    await page.getByRole('tablist', { name: 'Primary workspaces' })
+      .getByRole('tab', { name: 'Evaluate', exact: true })
+      .click();
+    return;
+  }
+
+  await page.getByRole('tablist', { name: 'Primary workspaces' })
+    .getByRole('tab', { name: 'Create', exact: true })
+    .click();
+  await page.getByRole('tablist', { name: 'Create views' })
+    .getByRole('tab', { name: label, exact: true })
+    .click();
+}
+
 for (const viewport of viewports) {
   test(`five-feature workflow is operable at ${viewport.width}px`, async () => {
     const { page, context, userDataDir } = await launch(viewport);
@@ -74,26 +99,31 @@ for (const viewport of viewports) {
 
       // Prompt CI suite evidence + Pack Studio
       await page.getByTestId('nav-library').click();
-      await expect(page.getByTitle(/Test suite: 3\/3 passed/)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Inspect Release Brief' })).toContainText('✓ suite');
       await page.getByRole('button', { name: 'Open pack studio' }).click();
       await expect(page.getByText('Pack Studio', { exact: true })).toBeVisible();
       await expect(page.getByText('Publish a pack', { exact: true })).toBeVisible();
 
       // Model Arena scales beyond A/B without invoking a real provider.
-      await page.getByTestId('nav-evaluate').click();
-      await page.getByRole('tab', { name: 'Compare' }).click();
+      await openWorkspace(page, viewport, 'Evaluate');
+      if (viewport.width < 720) {
+        await page.getByRole('button', { name: 'Compare View' }).click();
+      } else {
+        await page.getByRole('tablist', { name: 'Evaluate views' }).getByRole('tab', { name: 'Compare' }).click();
+      }
       await expect(page.getByText(/Model Arena · 2 variants/)).toBeVisible();
       await page.getByRole('button', { name: '+ Variant' }).click();
       await expect(page.getByText(/Model Arena · 3 variants/)).toBeVisible();
 
       // Chain Lab can be built and opened from the existing composer workflow.
-      await page.getByTestId('nav-create').click();
-      await page.getByRole('button', { name: 'Compose' }).click();
-      const libraryToggle = page.getByRole('button', { name: /Library \(1\)/ });
-      if (await libraryToggle.isVisible()) await libraryToggle.click();
+      await openWorkspace(page, viewport, 'Compose');
+      if (viewport.width < 720) {
+        await page.getByRole('tablist', { name: 'Composer views' }).getByRole('tab', { name: /Library \(1\)/ }).click();
+      }
       await page.getByRole('button', { name: /Add (Starter|Block|Popular)/ }).first().click();
-      const canvasToggle = page.getByRole('button', { name: /Canvas \(1\)/ });
-      if (await canvasToggle.isVisible()) await canvasToggle.click();
+      if (viewport.width < 720) {
+        await page.getByRole('tablist', { name: 'Composer views' }).getByRole('tab', { name: /Canvas \(1\)/ }).click();
+      }
       await page.getByRole('button', { name: 'Save as Chain' }).click();
       await expect(page.getByRole('paragraph').filter({ hasText: 'Chain Lab' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Run Chain' })).toBeVisible();
