@@ -38,6 +38,7 @@ Use these for runtime shape, platform model, UI/state mapping, and shared termin
 ### Extension work
 
 - `../prompt-lab-extension/README.md`
+- `../prompt-lab-extension/PROVIDER_FIXTURE.md`
 - `../prompt-lab-extension/PERMISSIONS_JUSTIFICATION.md`
 - `../prompt-lab-extension/PRIVACY_POLICY.md`
 - `../prompt-lab-extension/CWS_SUBMISSION_CHECKLIST.md`

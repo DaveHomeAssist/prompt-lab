@@ -12,6 +12,8 @@
  *   - sessionSet(obj)
  */
 
+import { getInstalledProviderFixture } from './providerFixture.js';
+
 const IS_EXTENSION =
   typeof chrome !== 'undefined' &&
   typeof chrome.runtime?.sendMessage === 'function';
@@ -224,7 +226,16 @@ function desktopOpenSettings() {
 
 // ── Exports ────────────────────────────────────────────────────────────────
 
-export const callModel = IS_EXTENSION ? extCallModel : desktopCallModel;
+const realCallModel = IS_EXTENSION ? extCallModel : desktopCallModel;
+
+// Deterministic provider fixture (DHA-12). Consulted per call so a test shell
+// can install or remove it between cases. Nothing sets this key in production
+// — when it is absent the real transport runs unchanged.
+export function callModel(payload, options) {
+  const fixture = getInstalledProviderFixture();
+  if (fixture) return fixture(payload, options);
+  return realCallModel(payload, options);
+}
 export const listOllamaModels = IS_EXTENSION ? extListOllamaModels : desktopListOllamaModels;
 export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : desktopLoadProviderSettings;
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;
