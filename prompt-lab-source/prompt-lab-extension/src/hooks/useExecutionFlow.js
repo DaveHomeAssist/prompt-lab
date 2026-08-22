@@ -8,7 +8,7 @@ import {
   ngramSimilarity,
   checkTraits,
 } from '../promptUtils';
-import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
+import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE, DEFAULT_GOLDEN_THRESHOLD } from '../constants';
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
@@ -315,7 +315,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         : null;
       const goldenThreshold = Number.isFinite(goldenEntry?.goldenThreshold)
         ? goldenEntry.goldenThreshold
-        : 0.7;
+        : DEFAULT_GOLDEN_THRESHOLD;
 
       saveEvalRun({
         id: runId,

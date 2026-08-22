@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "id": "golden-regression-corpus",
+  "description": "Measured ngramSimilarity scores for candidate outputs with a known relationship to a golden response. Every score in this file was produced by running the real ngramSimilarity, and goldenThreshold.test.js asserts them back. The corpus exists to justify the default regression threshold with evidence rather than assertion.",
+  "method": [
+    "Take one golden response and derive candidates whose relationship to it is known by construction.",
+    "Classify each candidate as 'acceptable' (semantically preserving) or 'regression' (loses role, constraints, or format, or changes topic).",
+    "Measure ngramSimilarity(golden, candidate) for each.",
+    "The lowest acceptable score and the highest regression score bound an empty separation band. Any threshold inside that band classifies every measured case correctly.",
+    "The default threshold is chosen inside the band, and a test fails if the band ever collapses or the threshold leaves it."
+  ],
+  "golden": "You are a senior release manager. Goal: produce a changelog entry for this release. Write it as a markdown bulleted list grouped by surface. Do not invent version numbers, and never include internal ticket IDs. Limit to eight bullets.",
+  "cases": [
+    {
+      "id": "identical",
+      "class": "acceptable",
+      "rationale": "Exact reproduction. The similarity ceiling.",
+      "candidate": "You are a senior release manager. Goal: produce a changelog entry for this release. Write it as a markdown bulleted list grouped by surface. Do not invent version numbers, and never include internal ticket IDs. Limit to eight bullets.",
+      "expectedScore": 1
+    },
+    {
+      "id": "case-shift",
+      "class": "acceptable",
+      "rationale": "Casing alone must never read as a regression; ngramSimilarity lowercases before comparing.",
+      "candidate": "YOU ARE A SENIOR RELEASE MANAGER. GOAL: PRODUCE A CHANGELOG ENTRY FOR THIS RELEASE. WRITE IT AS A MARKDOWN BULLETED LIST GROUPED BY SURFACE. DO NOT INVENT VERSION NUMBERS, AND NEVER INCLUDE INTERNAL TICKET IDS. LIMIT TO EIGHT BULLETS.",
+      "expectedScore": 1
+    },
+    {
+      "id": "reordered-sentences",
+      "class": "acceptable",
+      "rationale": "Same instructions in a different order. Every constraint survives.",
+      "candidate": "Write it as a markdown bulleted list grouped by surface. You are a senior release manager. Limit to eight bullets. Goal: produce a changelog entry for this release. Do not invent version numbers, and never include internal ticket IDs.",
+      "expectedScore": 0.9829
+    },
+    {
+      "id": "whitespace-reflow",
+      "class": "acceptable",
+      "rationale": "Line breaks instead of spaces after sentences — a formatting change only.",
+      "candidate": "You are a senior release manager.\nGoal: produce a changelog entry for this release.\nWrite it as a markdown bulleted list grouped by surface.\nDo not invent version numbers, and never include internal ticket IDs.\nLimit to eight bullets.",
+      "expectedScore": 0.9016
+    },
+    {
+      "id": "synonym-swap",
+      "class": "acceptable",
+      "rationale": "Wording drift that preserves every instruction. This is the acceptable floor — the hardest acceptable case to distinguish from a regression.",
+      "candidate": "You are a experienced release manager. Goal: produce a changelog entry for this release. Write it as a markdown bulleted list grouped by surface. Do not invent version numbers, and never include internal ticket IDs. Limit to 8 bullets.",
+      "expectedScore": 0.875
+    },
+    {
+      "id": "dropped-constraints",
+      "class": "regression",
+      "rationale": "Role, goal, and format survive but both constraints are gone. This is the regression ceiling — the hardest regression to distinguish from acceptable drift.",
+      "candidate": "You are a senior release manager. Goal: produce a changelog entry for this release. Write it as a markdown bulleted list grouped by surface.",
+      "expectedScore": 0.5948
+    },
+    {
+      "id": "truncated-half",
+      "class": "regression",
+      "rationale": "Output cut off mid-instruction, as a bounded-output ceiling would produce.",
+      "candidate": "You are a senior release manager. Goal: produce a changelog entry for this release. Write it as a markdown bu",
+      "expectedScore": 0.4612
+    },
+    {
+      "id": "dropped-role-format",
+      "class": "regression",
+      "rationale": "Only the goal and one constraint remain; role and format are lost.",
+      "candidate": "Goal: produce a changelog entry for this release. Limit to eight bullets.",
+      "expectedScore": 0.306
+    },
+    {
+      "id": "unrelated-topic",
+      "class": "regression",
+      "rationale": "Well-formed prompt about something else entirely — structure preserved, content wrong.",
+      "candidate": "You are a travel agent. Goal: plan a seven day itinerary for Lisbon with daily budgets and transit notes.",
+      "expectedScore": 0.1356
+    },
+    {
+      "id": "terse-rewrite",
+      "class": "regression",
+      "rationale": "Collapsed to a fragment; nearly all specificity lost.",
+      "candidate": "Write a changelog. Use bullets.",
+      "expectedScore": 0.0966
+    },
+    {
+      "id": "empty",
+      "class": "regression",
+      "rationale": "Empty output. The similarity floor.",
+      "candidate": "",
+      "expectedScore": 0
+    }
+  ]
+}

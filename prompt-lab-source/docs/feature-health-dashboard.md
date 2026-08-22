@@ -10,6 +10,17 @@ This is the canonical, code-grounded feature inventory and health rubric for the
 current web, extension, and desktop product. The dashboard commit itself does not
 change the audited runtime baseline.
 
+**Scores are stale relative to `main`.** The scores below were measured at
+`8d3b23c` (2026-08-09). `main` is **197 commits** further on as of `77ecf7b`
+(2026-08-20), including a full workspace UI redesign and the native iPad
+surface. No row below has been re-scored against that work.
+
+Per the refresh protocol, a score is never raised from an implementation claim
+alone, so nothing here has been adjusted without a re-audit. Treat every score
+as *last measured at the stated baseline*, not as current. The rubric,
+weighting, evidence ledger, and refresh protocol remain authoritative; only the
+numbers need re-measuring.
+
 > **Related:** the 2026-08-11 behavioral path & failure audit
 > (`BEHAVIORAL_AUDIT_2026-08-11.md`) measured *runtime behavior* rather than
 > code-grounded feature presence and rated behavioral reliability 4.2/10 with a
@@ -17,6 +28,28 @@ change the audited runtime baseline.
 > rubrics are complementary, not contradictory.
 
 ## Next executable prompt
+
+> **This prompt has been delivered — it is retained for provenance, not as
+> pending work.** The deterministic zero-cost provider contract and
+> prompt-quality corpus it asks for now exist:
+>
+> - `src/lib/providerFixture.js` — credential-free provider stand-in with
+>   contract parity to `callModel`, covering success, failure, cancellation, and
+>   boundary responses (DHA-12)
+> - `src/corpus/prompt-quality-corpus.v1.json` — versioned corpus whose expected
+>   properties are computed from `scorePrompt`, `lintPrompt`, and `extractVars`
+>   and asserted back (DHA-11)
+> - `src/corpus/golden-regression-corpus.v1.json` — measured separation band
+>   justifying `DEFAULT_GOLDEN_THRESHOLD` (DHA-13)
+>
+> None of the three invokes a paid provider or reads a credential. The gap this
+> prompt names — "current tests prove mechanics with mocks, not a versioned
+> quality contract" — is closed for the extension surface. It remains open for
+> the hosted web and desktop shells, which is DHA-14 and needs a browser and
+> Tauri runtime to exercise.
+>
+> Per refresh-protocol step 6, replace this block with the highest-risk
+> actionable gap at the next re-audit.
 
 ```text
 Work in a clean checkout of the PromptLab repository at current origin/main.

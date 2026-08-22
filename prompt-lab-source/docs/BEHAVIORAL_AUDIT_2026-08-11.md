@@ -1,5 +1,10 @@
 # PromptLab Behavioral Path & Failure Audit — 2026-08-11
 
+> **Historical snapshot — not canonical.** This report records what was true
+> at the commit it audited and is not updated afterwards. Findings may since
+> have been fixed, superseded, or re-prioritised. For current product status
+> see `feature-health-dashboard.md`.
+
 Status: **Yellow → P1 gate complete; P2 remediation in progress**
 Release recommendation at audit time: **Hold**
 Remediation: all six P1 defects fixed 2026-08-12 on `claude/promptlab-behavioral-audit-5v4eqj` (PR #35)
