@@ -4,6 +4,7 @@ import PackStudioPanel from './PackStudioPanel.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { extractVars, wordDiff } from './promptUtils.js';
+import usePersistedState from './usePersistedState.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -254,7 +255,12 @@ export default function LibraryWorkspace({
   compact = false,
 }) {
   const [smartView, setSmartView] = useState('all');
-  const [layout, setLayout] = useState('list');
+  // Persisted like the other UI preferences (pl2-mode, pl2-density) so the
+  // chosen layout survives navigating away and reloading. The validator keeps
+  // a corrupted or removed value from rendering an unknown `is-<layout>` class.
+  const [layout, setLayout] = usePersistedState('pl2-library-layout', 'list', {
+    validate: (value) => (value === 'list' || value === 'tiles' ? value : 'list'),
+  });
   const [selectedId, setSelectedId] = useState(null);
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
