@@ -254,3 +254,87 @@ describe('platform routing', () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 });
+
+// Gaps found in review: the rate-limited scenario was advertised and had its
+// own error branch but no test, install/cleanup could clobber a newer fixture,
+// and an unusable chunkCount silently produced no stream.
+describe('review gaps', () => {
+  afterEach(() => {
+    delete globalThis.__PROMPTLAB_PROVIDER_FIXTURE__;
+  });
+
+  it('rejects the rate-limited scenario with a retryable 429', async () => {
+    const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.RATE_LIMITED });
+    await expect(provider({ prompt: 'anything' })).rejects.toThrow(/429/i);
+    await expect(provider({ prompt: 'anything' })).rejects.toThrow(/rate limit/i);
+  });
+
+  it('rejects every advertised failure scenario', async () => {
+    // Guards the inventory itself: adding a failure scenario without a branch
+    // in errorForScenario would resolve here instead of rejecting.
+    const failing = [
+      FIXTURE_SCENARIOS.TRANSIENT_ERROR,
+      FIXTURE_SCENARIOS.FATAL_ERROR,
+      FIXTURE_SCENARIOS.RATE_LIMITED,
+      FIXTURE_SCENARIOS.TIMEOUT,
+    ];
+    for (const scenario of failing) {
+      const provider = createFixtureProvider({ scenario });
+      await expect(provider({ prompt: 'x' }), scenario).rejects.toBeInstanceOf(Error);
+    }
+  });
+
+  it('does not let a stale cleanup remove a newer fixture', async () => {
+    const first = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.SUCCESS });
+    const second = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.FATAL_ERROR });
+
+    const cleanupFirst = installProviderFixture(first);
+    installProviderFixture(second);
+    cleanupFirst();
+
+    // Previously this deleted `second` and every later call fell through to the
+    // real transport — the exact outcome a fixture exists to prevent.
+    expect(getInstalledProviderFixture()).toBe(second);
+  });
+
+  it('restores the previous fixture when cleaning up the current one', () => {
+    const first = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.SUCCESS });
+    const second = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.FATAL_ERROR });
+
+    installProviderFixture(first);
+    const cleanupSecond = installProviderFixture(second);
+    cleanupSecond();
+
+    expect(getInstalledProviderFixture()).toBe(first);
+  });
+
+  it('removes the key entirely when nothing was installed before', () => {
+    const only = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.SUCCESS });
+    const cleanup = installProviderFixture(only);
+    cleanup();
+
+    expect(getInstalledProviderFixture()).toBeNull();
+    expect('__PROMPTLAB_PROVIDER_FIXTURE__' in globalThis).toBe(false);
+  });
+
+  it('still streams the whole body when chunkCount is unusable', async () => {
+    // NaN previously made the chunk size NaN, so the loop pushed one empty
+    // slice and stopped: onChunk fired once with '' and the stream was lost.
+    for (const chunkCount of [NaN, 0, -5, 'three', undefined]) {
+      const provider = createFixtureProvider({
+        scenario: FIXTURE_SCENARIOS.SUCCESS,
+        chunkCount,
+      });
+      const seen = [];
+      const response = await provider(
+        { prompt: 'stream this please' },
+        { onChunk: (chunk) => seen.push(chunk) },
+      );
+
+      const text = extractTextFromAnthropic(response);
+      expect(text.length, `chunkCount=${String(chunkCount)}`).toBeGreaterThan(0);
+      expect(seen.join(''), `chunkCount=${String(chunkCount)}`).toBe(text);
+      expect(seen.every((chunk) => chunk !== '')).toBe(true);
+    }
+  });
+});

@@ -185,7 +185,11 @@ function errorForScenario(scenario) {
 
 function splitIntoChunks(text, chunkCount) {
   if (!text) return [];
-  const count = Math.max(1, Math.min(chunkCount, text.length));
+  // A non-finite or fractional chunkCount used to make `size` NaN, which meant
+  // the loop pushed one empty slice and stopped — streaming silently emitted
+  // nothing while appearing to succeed. Normalize to a usable integer first.
+  const requested = Number.isFinite(chunkCount) ? Math.floor(chunkCount) : 1;
+  const count = Math.max(1, Math.min(requested, text.length));
   const size = Math.ceil(text.length / count);
   const chunks = [];
   for (let index = 0; index < text.length; index += size) {
@@ -251,8 +255,19 @@ export function createFixtureProvider({
 export const FIXTURE_GLOBAL_KEY = '__PROMPTLAB_PROVIDER_FIXTURE__';
 
 export function installProviderFixture(provider, scope = globalThis) {
+  const previous = scope[FIXTURE_GLOBAL_KEY];
+  const hadPrevious = Object.prototype.hasOwnProperty.call(scope, FIXTURE_GLOBAL_KEY);
   scope[FIXTURE_GLOBAL_KEY] = provider;
-  return () => { delete scope[FIXTURE_GLOBAL_KEY]; };
+
+  return () => {
+    // Only undo our own install. Deleting unconditionally meant that in
+    // install A → install B → cleanupA, cleanupA removed B and every later
+    // callModel fell through to the real transport — the one outcome a fixture
+    // exists to prevent. A stale cleanup is now a no-op.
+    if (scope[FIXTURE_GLOBAL_KEY] !== provider) return;
+    if (hadPrevious) scope[FIXTURE_GLOBAL_KEY] = previous;
+    else delete scope[FIXTURE_GLOBAL_KEY];
+  };
 }
 
 export function getInstalledProviderFixture(scope = globalThis) {

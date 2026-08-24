@@ -4,7 +4,7 @@
   "description": "Representative raw prompts with objective, computed expectations for scorePrompt and lintPrompt. Every expected value in this file was produced by running the real functions, and promptCorpus.test.js asserts them back, so scoring or lint changes fail loudly instead of drifting.",
   "selectionCriteria": [
     "Span the full scorePrompt range: at least one case at each points value from 1 to 5.",
-    "Span the lint range: at least one case firing no rules and one firing every rule.",
+    "Span the lint range: at least one case firing no rules and one firing every rule in LINT_QUICK_FIX_META — checked against that inventory, not against the rules the corpus happens to reach.",
     "Isolate each scorePrompt signal (role, task, format, constraints, context) in at least one case where it is the only one present.",
     "Include a templated prompt so extractVars is exercised.",
     "Contain no user data, no credentials, and no provider-specific text — every case is synthetic and safe to run anywhere."
@@ -85,7 +85,7 @@
     {
       "id": "long-prose-no-role",
       "title": "Long unstructured prose",
-      "rationale": "Worst-case lint: long enough to be non-trivial but with no role, goal, format, or constraints, so it fires all four rules. Isolates the context signal.",
+      "rationale": "Long enough to be non-trivial but under the 420-character complexity threshold, so it fires four of the five lint rules and not example_io. Isolates the context signal.",
       "prompt": "The quarterly planning document needs a summary that captures the major themes discussed across the three workshops, including the disagreements that were not resolved, so that people who could not attend can catch up quickly without reading the full transcript of every session.",
       "expected": {
         "score": {
@@ -169,6 +169,30 @@
           "points": 5
         },
         "lintRuleIds": [],
+        "vars": []
+      }
+    },
+    {
+      "id": "long-prose-no-example",
+      "title": "Long unstructured prose past the complexity threshold",
+      "rationale": "True worst case: over promptLint's 420-character complexity threshold with no role, goal, constraints, format, or example, so it is the only case that can fire example_io. Without it the corpus could never exercise that rule, and the 'fires every rule' criterion was satisfied only against the four rules the corpus happened to reach.",
+      "prompt": "We have been collecting customer feedback from a few different places over the last quarter and it has piled up quite a lot. There are survey responses, some support tickets, a handful of app store reviews and a long thread of comments from the community forum that nobody has really gone through yet. It would be good to get a sense of what people keep bringing up, whether the same complaints appear in more than one channel, and roughly how strongly people feel about each of them so we know what to look at first.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": false,
+          "constraints": false,
+          "context": true,
+          "points": 1
+        },
+        "lintRuleIds": [
+          "constraints",
+          "example_io",
+          "goal_near_top",
+          "output_format",
+          "role_definition"
+        ],
         "vars": []
       }
     }

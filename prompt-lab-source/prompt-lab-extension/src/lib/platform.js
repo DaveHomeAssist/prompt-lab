@@ -236,11 +236,25 @@ function desktopOpenSettings() {
 const realCallModel = IS_EXTENSION ? extCallModel : desktopCallModel;
 
 // Deterministic provider fixture (DHA-12). Consulted per call so a test shell
-// can install or remove it between cases. Nothing sets this key in production
-// — when it is absent the real transport runs unchanged.
+// can install or remove it between cases.
+//
+// The lookup is gated to test and development builds. "Production never sets
+// this key" is not a security property: platform.js ships in the hosted web,
+// desktop, and extension bundles, so an unguarded per-call lookup on a
+// predictable global would let anything running in the page swap the provider
+// transport — suppressing or forging results and observing prompt payloads.
+// These are the same `import.meta.env` flags billing.js gates on, and Vite
+// replaces them statically, so the branch is eliminated from a production
+// build rather than merely skipped at runtime.
+const FIXTURES_ENABLED = Boolean(
+  import.meta.env?.MODE === 'test' || import.meta.env?.DEV,
+);
+
 export function callModel(payload, options) {
-  const fixture = getInstalledProviderFixture();
-  if (fixture) return fixture(payload, options);
+  if (FIXTURES_ENABLED) {
+    const fixture = getInstalledProviderFixture();
+    if (fixture) return fixture(payload, options);
+  }
   return realCallModel(payload, options);
 }
 export const listOllamaModels = IS_EXTENSION ? extListOllamaModels : desktopListOllamaModels;

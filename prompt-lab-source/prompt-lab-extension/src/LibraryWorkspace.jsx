@@ -5,6 +5,7 @@ import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { extractVars, wordDiff } from './promptUtils.js';
 import usePersistedState from './usePersistedState.js';
+import { DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -238,7 +239,7 @@ function InspectorContent({ selected, smartView, inspectorTab, detailsDraft, set
   if (inspectorTab === 'tests') {
     return <div className="pl-saved-tests">
       {selected.metadata?.suite && <div className={`pl-suite-summary is-${selected.metadata.suite.verdict || 'unknown'}`}><strong>Latest suite: {selected.metadata.suite.verdict || 'Unknown'}</strong><span>{selected.metadata.suite.passed || 0}/{selected.metadata.suite.total || 0} passed</span></div>}
-      {selected.goldenResponse?.text && <section><h3>Golden response</h3><pre>{selected.goldenResponse.text}</pre><small>Similarity threshold: {Math.round((selected.goldenThreshold ?? 0.7) * 100)}%</small></section>}
+      {selected.goldenResponse?.text && <section><h3>Golden response</h3><pre>{selected.goldenResponse.text}</pre><small>Similarity threshold: {Math.round((selected.goldenThreshold ?? DEFAULT_GOLDEN_THRESHOLD) * 100)}%</small></section>}
       {(selected.testCases || []).map((testCase, index) => <section key={testCase.id || index}><h3>{testCase.name || `Test ${index + 1}`}</h3><pre>{testCase.input}</pre>{testCase.expectedTraits?.length > 0 && <p><strong>Expected:</strong> {testCase.expectedTraits.join(', ')}</p>}{testCase.exclusions?.length > 0 && <p><strong>Exclude:</strong> {testCase.exclusions.join(', ')}</p>}{testCase.notes && <small>{testCase.notes}</small>}</section>)}
       {!selected.goldenResponse?.text && !(selected.testCases || []).length && <div className="pl-inspector-empty-state"><p>No tests saved.</p><small>Open the prompt in Evaluate to add cases and a golden response.</small></div>}
     </div>;

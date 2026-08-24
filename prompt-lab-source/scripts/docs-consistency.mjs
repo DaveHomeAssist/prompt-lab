@@ -12,13 +12,13 @@
  * are no hardcoded expected values to fall out of date, so the check cannot
  * pass against a stale snapshot of its own.
  *
- * Adding a check: see the "Maintaining these checks" section of
- * `docs/docs-style-guide.md`.
+ * Adding a check: see the "Documentation consistency checks" and "Adding a
+ * check" sections of `docs/docs-style-guide.md`.
  */
 
 import { readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const repoDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -29,11 +29,19 @@ function fail(contract, detail) {
   failures.push({ contract, detail });
 }
 
+// A contract that already failed must not also report ok. Without this the
+// summary printed both lines for the same contract and counted it as passing.
 function pass(contract, detail) {
+  if (failures.some((entry) => entry.contract === contract)) return;
   checked.push({ contract, detail });
 }
 
 const read = (relPath) => readFile(join(repoDir, relPath), 'utf8');
+
+// `file://${join(...)}` produces an invalid URL for Windows drive and
+// backslash paths, so `docs:consistency` failed to import anything on the
+// Windows environments this repo supports. pathToFileURL handles both.
+const moduleUrl = (relPath) => pathToFileURL(join(repoDir, relPath)).href;
 
 // ── Contract 1: hash routes ────────────────────────────────────────────────
 // ROUTE_TO_STATE in navigationRegistry.js is the source of truth for routing.
@@ -57,25 +65,68 @@ async function checkRoutes() {
 
   // Executable proof that each parsed route really resolves, so a parsing
   // mistake cannot silently weaken the check.
-  const { resolveRouteState } = await import(
-    `file://${join(repoDir, registryPath)}`
-  );
+  const { resolveRouteState } = await import(moduleUrl(registryPath));
+  const states = new Map();
   for (const route of shipped) {
-    if (!resolveRouteState(route)) {
+    const state = resolveRouteState(route);
+    if (!state) {
       fail(contract, `${route} was parsed from ROUTE_TO_STATE but does not resolve`);
+      continue;
+    }
+    states.set(route, state);
+  }
+
+  // A mention is the route as a whole token, so `/split` does not satisfy
+  // `/split/write`, and punctuation between two routes in one table cell (as
+  // in `` `/split/write`, `/split/library` ``) hides neither of them.
+  const mentions = (text, route) => {
+    const pattern = new RegExp(`(^|[^\\w/])${route.replace(/\//g, '\\/')}([^\\w/]|$)`);
+    return text.split('\n').filter((line) => pattern.test(line));
+  };
+
+  // useRouteSync.js carries a prose route map in a docblock. It is checked for
+  // coverage only — the state column there is written for humans ("dual pane"),
+  // not as machine-comparable values.
+  const commentDoc = 'prompt-lab-extension/src/hooks/useRouteSync.js';
+  const commentText = await read(commentDoc);
+  const missingFromComment = shipped.filter((route) => mentions(commentText, route).length === 0);
+  if (missingFromComment.length > 0) {
+    fail(contract, `${commentDoc} does not mention shipped route(s): ${missingFromComment.join(', ')}`);
+  }
+
+  // DECISIONS.md presents its As-shipped block as a route-to-state table and
+  // names ROUTE_TO_STATE as the source of truth, so it is held to the pairing.
+  // Route names alone are not the contract: checking only that a path appears
+  // would let a stale mapping such as `/compare → create · editor` pass. The
+  // comparison is scoped to the State cell so a token cannot be satisfied by
+  // the route's own name (`/library` "containing" the state `library`).
+  const decisionsPath = 'docs/DECISIONS.md';
+  const decisionsText = await read(decisionsPath);
+  const stateCells = new Map();
+  for (const line of decisionsText.split('\n')) {
+    const cells = line.split('|').map((cell) => cell.trim());
+    if (cells.length < 4) continue;
+    const [, routeCell, stateCell] = cells;
+    for (const [, route] of routeCell.matchAll(/`(\/[a-z/]*)`/g)) {
+      stateCells.set(route, stateCell);
     }
   }
 
-  const documents = [
-    'docs/DECISIONS.md',
-    'prompt-lab-extension/src/hooks/useRouteSync.js',
-  ];
-
-  for (const docPath of documents) {
-    const text = await read(docPath);
-    const missing = shipped.filter((route) => !text.includes(`\`${route}\``) && !text.includes(` ${route} `) && !text.includes(`${route}\n`));
-    if (missing.length > 0) {
-      fail(contract, `${docPath} does not mention shipped route(s): ${missing.join(', ')}`);
+  for (const route of shipped) {
+    const stateCell = stateCells.get(route);
+    if (stateCell === undefined) {
+      fail(contract, `${decisionsPath} As-shipped table has no row for shipped route ${route}`);
+      continue;
+    }
+    const expected = [...new Set(
+      Object.values(states.get(route) ?? {}).filter((value) => typeof value === 'string' && value),
+    )];
+    const absent = expected.filter((token) => !new RegExp(`\\b${token}\\b`).test(stateCell));
+    if (absent.length > 0) {
+      fail(
+        contract,
+        `${decisionsPath} states "${stateCell}" for ${route}, missing: ${absent.join(', ')}`,
+      );
     }
   }
 
@@ -116,10 +167,13 @@ async function checkProxyBoundary() {
     SHARED_KEY_PLACEHOLDER: literal('SHARED_KEY_PLACEHOLDER'),
   };
 
+  // A missing match must fail, not quietly drop the fact. Guarding this with
+  // `if (models)` meant renaming or reformatting DEFAULT_ALLOWED_MODELS removed
+  // the model-boundary check while the contract still reported as satisfied.
   const models = /const DEFAULT_ALLOWED_MODELS = \[([^\]]*)\]/.exec(proxy);
-  if (models) {
-    facts.DEFAULT_ALLOWED_MODELS = [...models[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).join(', ');
-  }
+  facts.DEFAULT_ALLOWED_MODELS = models
+    ? [...models[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).join(', ')
+    : null;
 
   for (const [name, value] of Object.entries(facts)) {
     if (!value) {
@@ -140,7 +194,7 @@ async function checkProxyBoundary() {
 async function checkGoldenThreshold() {
   const contract = 'golden-threshold';
   const { DEFAULT_GOLDEN_THRESHOLD } = await import(
-    `file://${join(repoDir, 'prompt-lab-extension/src/constants.js')}`
+    moduleUrl('prompt-lab-extension/src/constants.js')
   );
 
   if (typeof DEFAULT_GOLDEN_THRESHOLD !== 'number') {
@@ -149,8 +203,29 @@ async function checkGoldenThreshold() {
   }
 
   const doc = await read('prompt-lab-extension/GOLDEN_RESPONSE_THRESHOLD.md');
-  if (!doc.includes(String(DEFAULT_GOLDEN_THRESHOLD))) {
-    fail(contract, `GOLDEN_RESPONSE_THRESHOLD.md does not state the current threshold (${DEFAULT_GOLDEN_THRESHOLD})`);
+
+  // A bare substring search was too weak: the document lists measured scores,
+  // so changing the default to 0.875 would have "matched" the acceptable-floor
+  // row while the whole "Why 0.7" rationale silently went stale. Require a
+  // labelled statement of the current default instead.
+  const declared = /^Default threshold:\s*`([0-9.]+)`\s*$/m.exec(doc);
+  if (!declared) {
+    fail(contract, 'GOLDEN_RESPONSE_THRESHOLD.md has no "Default threshold: `<value>`" line to check');
+  } else if (Number(declared[1]) !== DEFAULT_GOLDEN_THRESHOLD) {
+    fail(
+      contract,
+      `GOLDEN_RESPONSE_THRESHOLD.md declares ${declared[1]} but DEFAULT_GOLDEN_THRESHOLD is ${DEFAULT_GOLDEN_THRESHOLD}`,
+    );
+  }
+
+  // The rationale section is titled after the value, so it goes stale silently
+  // when the default moves. Pin the heading to the constant too.
+  const heading = new RegExp(`^## Why ${String(DEFAULT_GOLDEN_THRESHOLD).replace('.', '\\.')}\\s*$`, 'm');
+  if (!heading.test(doc)) {
+    fail(
+      contract,
+      `GOLDEN_RESPONSE_THRESHOLD.md has no "## Why ${DEFAULT_GOLDEN_THRESHOLD}" section justifying the current default`,
+    );
   }
 
   pass(contract, `documented threshold matches DEFAULT_GOLDEN_THRESHOLD (${DEFAULT_GOLDEN_THRESHOLD})`);

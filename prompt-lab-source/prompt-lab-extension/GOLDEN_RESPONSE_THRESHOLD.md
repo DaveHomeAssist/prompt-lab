@@ -3,8 +3,12 @@
 What the regression verdict means, and why the default threshold is the value
 it is.
 
+Default threshold: `0.7`
+
 - Corpus: `src/corpus/golden-regression-corpus.v1.json`
 - Constant: `DEFAULT_GOLDEN_THRESHOLD` in `src/constants.js`
+- Verdict helpers: `resolveGoldenThreshold` / `isGoldenRegression` in
+  `src/lib/goldenVerdict.js` — used by both the product and the tests
 - Tests: `src/tests/goldenThreshold.test.js`
 
 ## What the verdict means
