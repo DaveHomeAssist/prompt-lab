@@ -1,7 +1,13 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+  EXTENSION_SOURCE_ROOTS,
+  PACKAGED_FILES,
+  resolveExtensionSource,
+} from '../../scripts/assemble.js';
 import {
   DEFAULTS,
   PROVIDER_SETTINGS_KEYS,
@@ -13,16 +19,24 @@ import {
 // every rapid click scheduled another delayed testConnection and each one
 // reached the provider — one billed duplicate per click.
 //
-// `public/options.js` is a plain script whose `./lib/providerRegistry.js`
-// import only resolves after `scripts/assemble.js` copies `extension/lib`
-// alongside it, so it cannot be imported directly from the source tree. The
-// real source is loaded here with that single import line replaced by the same
-// constants the assembled bundle would supply — everything else executes
-// verbatim, including the guard under test.
-const OPTIONS_SOURCE = readFileSync(
-  resolve(__dirname, '../../public/options.js'),
-  'utf8',
-).replace(/^import\s+\{[^}]*\}\s+from\s+'\.\/lib\/providerRegistry\.js';\s*$/m, '');
+// M-3: this suite used to read `public/options.js`, which `scripts/assemble.js`
+// never packages — `extension/options.js` shadows it — so the guard could pass
+// here while the shipped extension had none. The source under test is now
+// resolved through assemble.js's own lookup, so the test always covers exactly
+// the bytes that ship.
+const extensionRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+
+// Platform-independent repo-relative path, e.g. 'extension/options.js'.
+const asPosixPath = (absolute) => relative(extensionRoot, absolute).split(sep).join('/');
+const OPTIONS_SOURCE_PATH = resolveExtensionSource('options.js');
+
+// The packaged file is a plain script whose `./lib/providerRegistry.js` import
+// only resolves after assemble.js copies `extension/lib` alongside it, so it
+// cannot be imported directly. It is loaded here with that single import line
+// replaced by the same constants the assembled bundle supplies — everything
+// else executes verbatim, including the guard under test.
+const OPTIONS_SOURCE = readFileSync(OPTIONS_SOURCE_PATH, 'utf8')
+  .replace(/^import\s+\{[^}]*\}\s+from\s+'\.\/lib\/providerRegistry\.js';\s*$/m, '');
 
 const ELEMENT_IDS = [
   'anthropicSection', 'openaiSection', 'geminiSection', 'openrouterSection', 'ollamaSection',
@@ -80,6 +94,27 @@ afterEach(() => {
 function modelRequestCount() {
   return sendMessage.mock.calls.filter(([message]) => message?.type === 'MODEL_REQUEST').length;
 }
+
+// M-3 regression: without this the suite can silently drift back onto a source
+// file that never reaches the packaged extension.
+describe('options source under test is the packaged source', () => {
+  it('resolves options.js to the file assemble.js copies into dist', () => {
+    expect(asPosixPath(OPTIONS_SOURCE_PATH)).toBe('extension/options.js');
+  });
+
+  it('keeps exactly one options.js source across the packaging roots', () => {
+    const copies = EXTENSION_SOURCE_ROOTS
+      .map((root) => join(root, 'options.js'))
+      .filter((candidate) => existsSync(candidate))
+      .map(asPosixPath);
+
+    expect(copies).toEqual(['extension/options.js']);
+  });
+
+  it('packages options.js as part of the extension', () => {
+    expect(PACKAGED_FILES).toContain('options.js');
+  });
+});
 
 describe('options Test button dispatch guard', () => {
   it('sends one provider request for a burst of rapid activations', async () => {

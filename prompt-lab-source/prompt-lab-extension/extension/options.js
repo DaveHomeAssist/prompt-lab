@@ -35,6 +35,11 @@ const els = {
 
 let currentProvider = DEFAULTS.provider;
 let storedKeys = { apiKey: '', openaiApiKey: '', geminiApiKey: '', openrouterApiKey: '' };
+// Guards against a rapid second Test activation billing a duplicate provider
+// call: `testPending` covers the save-then-test delay, `testInFlight` the
+// request itself.
+let testInFlight = false;
+let testPending = false;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -282,6 +287,12 @@ function saveSettings() {
 // ── Test connection ──────────────────────────────────────────────────────────
 
 async function testConnection() {
+  // Every test sends a real MODEL_REQUEST through the background worker, so a
+  // second activation while one is pending bills a duplicate provider call.
+  // The flag is set synchronously, before any await, and released in finally.
+  if (testInFlight) return;
+  testInFlight = true;
+  els.testBtn.disabled = true;
   setStatus('Testing…', 'warn');
 
   try {
@@ -312,6 +323,9 @@ async function testConnection() {
     }
   } catch (e) {
     setStatus(`Connection failed: ${e.message}`, 'err');
+  } finally {
+    testInFlight = false;
+    els.testBtn.disabled = false;
   }
 }
 
@@ -347,10 +361,19 @@ els.chips.forEach(chip => {
 
 els.saveBtn.addEventListener('click', saveSettings);
 els.testBtn.addEventListener('click', () => {
+  // Ignore activations while a test is already queued or running; without this
+  // each click schedules its own delayed testConnection and every one of them
+  // reaches the provider.
+  if (testPending || testInFlight) return;
+  testPending = true;
+  els.testBtn.disabled = true;
   // Save first, then test
   saveSettings();
   // Small delay to let storage write complete
-  setTimeout(testConnection, 200);
+  setTimeout(() => {
+    testPending = false;
+    testConnection();
+  }, 200);
 });
 
 // Ollama: refresh button fetches model list
