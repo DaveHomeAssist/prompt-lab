@@ -338,3 +338,69 @@ describe('review gaps', () => {
     }
   });
 });
+
+// Two further review findings: cancellation depended on the scheduler
+// resolving, and the fixture streamed on every surface even though the real
+// extension transport never does.
+describe('cancellation does not depend on the scheduler', () => {
+  const never = () => new Promise(() => {});
+
+  it('rejects an in-flight success even if the scheduler never resolves', async () => {
+    const provider = createFixtureProvider({
+      scenario: FIXTURE_SCENARIOS.SUCCESS,
+      scheduler: never,
+    });
+    const controller = new AbortController();
+    const pending = provider({ prompt: 'hello' }, { signal: controller.signal });
+
+    controller.abort();
+    // Before waitOrAbort this promise stayed pending forever, so a cancellation
+    // test hung instead of failing.
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('rejects an in-flight stream even if the scheduler never resolves', async () => {
+    const provider = createFixtureProvider({
+      scenario: FIXTURE_SCENARIOS.SUCCESS,
+      scheduler: never,
+    });
+    const controller = new AbortController();
+    const pending = provider(
+      { prompt: 'hello' },
+      { signal: controller.signal, onChunk: () => {} },
+    );
+
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('rejects a pending failure scenario when aborted', async () => {
+    const provider = createFixtureProvider({
+      scenario: FIXTURE_SCENARIOS.FATAL_ERROR,
+      scheduler: never,
+    });
+    const controller = new AbortController();
+    const pending = provider({ prompt: 'x' }, { signal: controller.signal });
+
+    controller.abort();
+    // Abort wins over the scenario's own error while the wait is outstanding.
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('still rejects when the signal is already aborted', async () => {
+    const provider = createFixtureProvider({ scheduler: never });
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(provider({ prompt: 'x' }, { signal: controller.signal }))
+      .rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('resolves normally when nothing aborts', async () => {
+    const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.SUCCESS });
+    const controller = new AbortController();
+    const body = await provider({ prompt: 'hello' }, { signal: controller.signal });
+
+    expect(extractTextFromAnthropic(body).length).toBeGreaterThan(0);
+  });
+});

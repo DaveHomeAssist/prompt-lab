@@ -11,6 +11,15 @@
  * and rejects with the same error shapes the real transport produces
  * (`AbortError` on cancellation, a plain `Error` otherwise).
  *
+ * One asymmetry is deliberate and is handled by the caller, not here.
+ * Streaming is not uniform across surfaces: `desktopCallModel` forwards
+ * `onChunk` to `callProvider` and really streams, while `extCallModel` accepts
+ * only `signal` and never invokes the callback. This fixture always streams
+ * when given an `onChunk`, so `platform.js` strips that option on the extension
+ * path to match what production actually does. Constructing a fixture directly
+ * and passing `onChunk` therefore exercises desktop-shaped streaming — which is
+ * correct for desktop, and not what the extension would do.
+ *
  * Determinism: every output is derived from the payload by a stable hash.
  * There is no `Date.now()`, no `Math.random()`, and no wall-clock timing, so
  * the same payload always yields byte-identical output on every machine and
@@ -201,6 +210,28 @@ function splitIntoChunks(text, chunkCount) {
 const microtask = () => Promise.resolve();
 
 /**
+ * Await the scheduler, but lose the race to an abort.
+ *
+ * Awaiting the scheduler directly made cancellation depend on it resolving: an
+ * injected timer or a deliberately never-resolving scheduler left the provider
+ * promise pending forever instead of rejecting, so a cancellation test could
+ * hang rather than fail. The signal now races the wait.
+ */
+function waitOrAbort(scheduler, signal) {
+  if (signal?.aborted) return Promise.reject(abortError());
+  if (!signal) return Promise.resolve(scheduler());
+
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(abortError());
+    signal.addEventListener('abort', onAbort, { once: true });
+    Promise.resolve(scheduler()).then(
+      (value) => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      (error) => { signal.removeEventListener('abort', onAbort); reject(error); },
+    );
+  });
+}
+
+/**
  * Build a deterministic `callModel`-compatible provider.
  *
  * @param {object}   [options]
@@ -220,8 +251,7 @@ export function createFixtureProvider({
     const active = resolveFixtureScenario(payload, scenario);
     const failure = errorForScenario(active);
     if (failure) {
-      await scheduler();
-      if (signal?.aborted) throw abortError();
+      await waitOrAbort(scheduler, signal);
       throw failure;
     }
 
@@ -231,15 +261,14 @@ export function createFixtureProvider({
     if (typeof onChunk === 'function' && text) {
       let streamed = '';
       for (const chunk of splitIntoChunks(text, chunkCount)) {
-        await scheduler();
         // Cancellation is checked between chunks so an abort mid-stream
         // rejects instead of resolving with a partial body.
-        if (signal?.aborted) throw abortError();
+        await waitOrAbort(scheduler, signal);
         streamed += chunk;
         onChunk(chunk, streamed);
       }
     } else {
-      await scheduler();
+      await waitOrAbort(scheduler, signal);
     }
 
     if (signal?.aborted) throw abortError();

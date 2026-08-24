@@ -253,9 +253,23 @@ const FIXTURES_ENABLED = Boolean(
 export function callModel(payload, options) {
   if (FIXTURES_ENABLED) {
     const fixture = getInstalledProviderFixture();
-    if (fixture) return fixture(payload, options);
+    if (fixture) return fixture(payload, fixtureOptionsFor(options));
   }
   return realCallModel(payload, options);
+}
+
+// Streaming is not uniform across surfaces, and the fixture must not paper over
+// that. `desktopCallModel` forwards `onChunk` down to `callProvider`, which
+// really streams; `extCallModel` destructures only `signal` and sends a single
+// MODEL_REQUEST, so on the extension the callback is never invoked. A fixture
+// that streamed on both would let extension primary-flow tests assert incremental
+// output that production never produces — the opposite of contract parity.
+// Dropping `onChunk` here mirrors what the real extension transport does, so a
+// test author does not have to know the difference.
+function fixtureOptionsFor(options) {
+  if (!IS_EXTENSION || !options?.onChunk) return options;
+  const { onChunk, ...rest } = options;
+  return rest;
 }
 export const listOllamaModels = IS_EXTENSION ? extListOllamaModels : desktopListOllamaModels;
 export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : desktopLoadProviderSettings;
