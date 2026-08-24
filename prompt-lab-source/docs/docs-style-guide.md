@@ -165,5 +165,50 @@ Before closing a docs change:
 
 Current validation entry point:
 
-- from `prompt-lab-source/`, run `npm run docs:lint`
-- CI also runs `.github/workflows/docs-ci.yml` for markdown lint and internal link validation
+- from `prompt-lab-source/`, run `npm run docs:check` — markdown lint plus the
+  consistency checks below
+- CI also runs `.github/workflows/docs-ci.yml` for markdown lint, internal link
+  validation, and documentation consistency
+
+## Documentation consistency checks
+
+`scripts/docs-consistency.mjs` pins a small number of high-risk documentation
+contracts — facts stated in prose that are expensive to get wrong — against the
+modules that define them. Markdown lint catches formatting and lychee catches
+dead links; neither notices when a document states something the code no longer
+does.
+
+Currently pinned:
+
+| Contract | Source of truth | Documents checked |
+| --- | --- | --- |
+| Hash routes | `ROUTE_TO_STATE` in `navigationRegistry.js` | `docs/DECISIONS.md`, `useRouteSync.js` |
+| Hosted proxy boundary | `SUPPORTED_HOST`, `SUPPORTED_PATH`, `SHARED_KEY_PLACEHOLDER`, `DEFAULT_ALLOWED_MODELS` in `api/proxy.js` | `ARCHITECTURE.md` |
+| Golden regression threshold | `DEFAULT_GOLDEN_THRESHOLD` in `constants.js` | `GOLDEN_RESPONSE_THRESHOLD.md` |
+
+### When a check fails
+
+A failure means a document and the code disagree. Decide which is right:
+
+- the code changed and the document is now stale — update the document
+- the document states the intended contract and the code drifted — fix the code
+
+Never satisfy a check by loosening it. If a contract genuinely no longer applies,
+delete the check and say why in the commit.
+
+### Adding a check
+
+Add a function to `scripts/docs-consistency.mjs` and call it from `main()`.
+Two rules keep the checks trustworthy:
+
+1. **Read the expectation from current source at run time.** Import the module
+   or parse the current file; never hardcode the expected value. A check with a
+   literal expectation becomes a second thing to keep in sync, and will pass
+   against a stale snapshot of itself.
+2. **Add the source-of-truth file to both `paths` filters in
+   `docs-ci.yml`.** Otherwise a code change that breaks a documentation
+   contract will not trigger Docs CI, and the drift ships.
+
+Pin a contract only when it is high-risk: stated in prose, load-bearing for a
+reader, and cheap to check. Broad prose is better served by review than by a
+brittle assertion.

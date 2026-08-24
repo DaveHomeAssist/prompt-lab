@@ -9,6 +9,7 @@ import {
   checkTraits,
 } from '../promptUtils';
 import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
+import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict.js';
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData, redactPayload } from '../piiScanner';
 import { openSettings } from '../lib/platform.js';
@@ -313,9 +314,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       const goldenScore = goldenText && (parsed.enhanced || txt)
         ? ngramSimilarity(goldenText, parsed.enhanced || txt)
         : null;
-      const goldenThreshold = Number.isFinite(goldenEntry?.goldenThreshold)
-        ? goldenEntry.goldenThreshold
-        : 0.7;
+      const goldenThreshold = resolveGoldenThreshold(goldenEntry);
 
       saveEvalRun({
         id: runId,
@@ -339,7 +338,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         tags: nextResultMeta.tags,
         usage: nextResultMeta.usage,
         goldenScore,
-        regression: goldenScore !== null && goldenScore < goldenThreshold,
+        regression: isGoldenRegression(goldenScore, goldenThreshold),
       }).then(() => evalRunsHook.refreshEvalRuns(editingId)).catch((caught) => logWarn('save eval run', caught));
 
       // Results own the post-enhance commit decision. Opening the legacy save

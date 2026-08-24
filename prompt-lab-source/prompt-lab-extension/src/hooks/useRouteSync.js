@@ -6,13 +6,19 @@ import { resolveRouteState, stateToRoute } from '../lib/navigationRegistry.js';
  * useRouteSync — bidirectional sync between React Router hash routes
  * and the existing useUiState / useNavigation state model.
  *
- * Route map:
- *   /           → create / editor
- *   /library    → create / library
- *   /composer   → create / composer
- *   /evaluate   → runs / history
- *   /compare    → runs / compare
- *   /pad        → notebook
+ * Route map — `ROUTE_TO_STATE` in navigationRegistry.js is the source of truth;
+ * this list mirrors it:
+ *   /              → create / editor
+ *   /library       → create / library
+ *   /composer      → create / composer
+ *   /split         → create / dual pane
+ *   /split/write   → create / dual pane, compact, editor pane
+ *   /split/library → create / dual pane, compact, library pane
+ *   /evaluate      → runs / history
+ *   /compare       → runs / compare
+ *   /scratch       → notebook (canonical)
+ *   /pad           → notebook (legacy alias; accepted on the way in, but
+ *                    stateToRoute always emits /scratch)
  *
  * This hook reads the URL on mount and pushes state → URL on nav changes.
  * It preserves the existing state model so all current code keeps working.

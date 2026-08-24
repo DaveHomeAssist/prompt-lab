@@ -3,6 +3,22 @@
 export const APP_VERSION = '1.7.1';
 
 export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-6';
+
+/**
+ * Default Golden Response regression threshold (DHA-13).
+ *
+ * A run is flagged as a regression when its ngramSimilarity to the pinned
+ * golden response falls below this. The value is not a guess: measured against
+ * `src/corpus/golden-regression-corpus.v1.json`, semantically preserving
+ * variants score no lower than 0.875 and genuine regressions score no higher
+ * than 0.5948, leaving an empty separation band between them. 0.7 sits inside
+ * that band and classifies every measured case correctly, with 0.105 of margin
+ * below the acceptable floor and 0.175 above the regression ceiling.
+ *
+ * `goldenThreshold.test.js` fails if the band collapses or this value leaves
+ * it, so the threshold cannot silently stop being meaningful.
+ */
+export const DEFAULT_GOLDEN_THRESHOLD = 0.7;
 export const DEFAULT_ENHANCE_MAX_TOKENS = 4096;
 export const DEFAULT_ENHANCE_TEMPERATURE = 0.4;
 

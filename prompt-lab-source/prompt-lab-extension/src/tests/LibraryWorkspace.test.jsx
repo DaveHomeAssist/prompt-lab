@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LibraryWorkspace from '../LibraryWorkspace.jsx';
 
 vi.mock('../icons.jsx', () => ({ default: () => null }));
@@ -236,5 +236,74 @@ describe('LibraryWorkspace', () => {
     expect(lib.restoreDeleted).toHaveBeenCalledWith('trash');
     fireEvent.click(screen.getByLabelText('Permanently delete Deleted prompt'));
     expect(lib.permanentlyDelete).toHaveBeenCalledWith('trash');
+  });
+});
+
+// DHA-20: the layout toggle shipped with the workspace redesign, but the choice
+// was held in plain useState and reset on every remount. These cover the
+// persistence contract and that tile cards keep their affordances.
+describe('LibraryWorkspace layout preference', () => {
+  const KEY = 'pl2-library-layout';
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  function resultsList() {
+    return screen.getByRole('list', { name: 'Saved prompts' });
+  }
+
+  it('defaults to list view', () => {
+    renderLibrary();
+    expect(resultsList().className).toContain('is-list');
+    expect(screen.getByLabelText('List view')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Tile view')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches to tiles and records the choice', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByLabelText('Tile view'));
+
+    expect(resultsList().className).toContain('is-tiles');
+    expect(screen.getByLabelText('Tile view')).toHaveAttribute('aria-pressed', 'true');
+    expect(JSON.parse(localStorage.getItem(KEY))).toBe('tiles');
+  });
+
+  it('restores the chosen layout on a fresh mount', () => {
+    const first = renderLibrary();
+    fireEvent.click(screen.getByLabelText('Tile view'));
+    first.unmount();
+
+    // A remount stands in for navigating away and back, or reloading.
+    renderLibrary();
+    expect(resultsList().className).toContain('is-tiles');
+    expect(screen.getByLabelText('Tile view')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('falls back to list when the stored value is unusable', () => {
+    localStorage.setItem(KEY, JSON.stringify('mosaic'));
+    renderLibrary();
+    expect(resultsList().className).toContain('is-list');
+
+    localStorage.setItem(KEY, 'not json');
+    renderLibrary();
+    expect(screen.getAllByRole('list', { name: 'Saved prompts' })[1].className).toContain('is-list');
+  });
+
+  it('keeps card actions and identifying metadata in tile view', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByLabelText('Tile view'));
+
+    const [tile] = within(resultsList()).getAllByRole('listitem');
+
+    // Identification and organisation survive the denser layout.
+    expect(within(tile).getByText('Favorite prompt')).toBeInTheDocument();
+    expect(within(tile).getByText('Ops')).toBeInTheDocument();
+    expect(within(tile).getByText('#template')).toBeInTheDocument();
+    expect(within(tile).getByText('4 uses')).toBeInTheDocument();
+
+    // And so do the actions needed to select and open a prompt.
+    expect(within(tile).getByLabelText('Select Favorite prompt')).toBeInTheDocument();
+    expect(within(tile).getByLabelText('Inspect Favorite prompt')).toBeInTheDocument();
   });
 });
