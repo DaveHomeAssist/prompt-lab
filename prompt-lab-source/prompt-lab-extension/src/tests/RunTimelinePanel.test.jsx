@@ -193,6 +193,50 @@ describe('RunTimelinePanel', () => {
     expect(onQuickStart).toHaveBeenCalledTimes(1);
   });
 
+  // M-2: Evaluate rendered a verdict select and a "Regressions only" toggle,
+  // badged them as active filters, and never passed either into the query --
+  // so both controls changed the chrome while the run list stayed put.
+  it('passes the verdict and regression filters into the run query', async () => {
+    renderPanel();
+
+    fireEvent.change(screen.getByLabelText('Filter by verdict'), { target: { value: 'fail' } });
+
+    await waitFor(() => {
+      expect(useEvalRunsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ verdict: 'fail' })
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Regressions' }));
+
+    await waitFor(() => {
+      expect(useEvalRunsMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ verdict: 'fail', regression: true })
+      );
+    });
+  });
+
+  it('rehydrates a persisted verdict and regression filter into the query', () => {
+    localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
+      mode: '',
+      provider: '',
+      model: '',
+      status: '',
+      verdict: 'pass',
+      regression: true,
+      dateRange: '30d',
+      search: '',
+      showModelCompare: false,
+    }));
+
+    renderPanel();
+
+    expect(screen.getByLabelText('Filter by verdict')).toHaveValue('pass');
+    expect(useEvalRunsMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ verdict: 'pass', regression: true })
+    );
+  });
+
   it('shows a no-match state when filters are active but no runs match', () => {
     localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
       mode: '',

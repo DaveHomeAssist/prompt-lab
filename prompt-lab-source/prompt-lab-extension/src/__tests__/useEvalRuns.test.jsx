@@ -48,6 +48,9 @@ describe('useEvalRuns', () => {
     });
   });
 
+  // M-2: this used to claim the "full" filter set while omitting verdict and
+  // regression, so the two filters the Evaluate panel could not apply were
+  // also the two this test did not cover.
   it('forwards the full Evaluate filter set into listEvalRuns', async () => {
     const { result } = renderHook(() => useEvalRuns({
       promptId: null,
@@ -56,6 +59,8 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
+      verdict: 'pass',
+      regression: true,
       search: 'regression',
       dateRange: '7d',
     }));
@@ -70,8 +75,51 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
+      verdict: 'pass',
+      regression: true,
       search: 'regression',
       dateRange: '7d',
+    });
+  });
+
+  it('omits verdict and regression when they are unset', async () => {
+    const { result } = renderHook(() => useEvalRuns({
+      promptId: null,
+      tab: 'history',
+      mode: 'ab',
+      verdict: '',
+      regression: false,
+    }));
+
+    await act(async () => {
+      await result.current.refreshEvalRuns();
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'ab' });
+  });
+
+  it('re-queries when the verdict or regression filter changes', async () => {
+    const { rerender } = renderHook((props) => useEvalRuns(props), {
+      initialProps: { promptId: null, tab: 'history', verdict: '', regression: false },
+    });
+
+    await waitFor(() => {
+      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'enhance' });
+    });
+
+    rerender({ promptId: null, tab: 'history', verdict: 'fail', regression: false });
+    await waitFor(() => {
+      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'enhance', verdict: 'fail' });
+    });
+
+    rerender({ promptId: null, tab: 'history', verdict: 'fail', regression: true });
+    await waitFor(() => {
+      expect(listEvalRuns).toHaveBeenLastCalledWith({
+        limit: 200,
+        mode: 'enhance',
+        verdict: 'fail',
+        regression: true,
+      });
     });
   });
 

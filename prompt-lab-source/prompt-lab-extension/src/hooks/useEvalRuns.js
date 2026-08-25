@@ -15,6 +15,8 @@ export default function useEvalRuns(optionsOrLegacy) {
   const providerFilter = opts.provider ?? '';
   const modelFilter = opts.model ?? '';
   const statusFilter = opts.status ?? '';
+  const verdictFilter = opts.verdict ?? '';
+  const regressionFilter = opts.regression === true;
   const searchFilter = opts.search ?? '';
   const dateRangeFilter = opts.dateRange ?? '';
 
@@ -48,6 +50,8 @@ export default function useEvalRuns(optionsOrLegacy) {
       if (providerFilter) filters.provider = providerFilter;
       if (modelFilter) filters.model = modelFilter;
       if (statusFilter) filters.status = statusFilter;
+      if (verdictFilter) filters.verdict = verdictFilter;
+      if (regressionFilter) filters.regression = true;
       if (searchFilter) filters.search = searchFilter;
       if (dateRangeFilter) filters.dateRange = dateRangeFilter;
 
@@ -69,7 +73,7 @@ export default function useEvalRuns(optionsOrLegacy) {
         setLoading(false);
       }
     }
-  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter]);
+  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);
@@ -104,12 +108,12 @@ export default function useEvalRuns(optionsOrLegacy) {
   // Reset pagination when filters change
   useEffect(() => {
     displayLimit.current = limit;
-  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, limit]);
+  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter, limit]);
 
   // Refresh when tab or filters change
   useEffect(() => {
     if (tab === 'editor' || tab === 'history') refreshEvalRuns();
-  }, [promptId, tab, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, refreshEvalRuns]);
+  }, [promptId, tab, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter, refreshEvalRuns]);
 
   // Cleanup on unmount
   useEffect(() => {
