@@ -24,10 +24,16 @@ export default function useRouteSync({
   runsView, setRunsView,
   splitPane, setSplitPane,
   compact = false,
+  onUnknownRoute,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const suppressPush = useRef(false);
+  const onUnknownRouteRef = useRef(onUnknownRoute);
+  useEffect(() => { onUnknownRouteRef.current = onUnknownRoute; }, [onUnknownRoute]);
+  // L-2 loop guard: remembers the pathname we already recovered from so an
+  // unresolvable route can never trigger more than one redirect attempt.
+  const recoveredFromRef = useRef(null);
 
   const replaceRoute = useCallback((target) => {
     suppressPush.current = true;
@@ -38,7 +44,22 @@ export default function useRouteSync({
   // URL → state: on mount and browser back/forward
   useEffect(() => {
     const mapping = resolveRouteState(location.pathname);
-    if (!mapping) return;
+    if (!mapping) {
+      // L-2: an unknown route used to fall through silently — nav state kept
+      // its previous workspace and the dead link stayed in history. Recover
+      // deliberately: report the path, then replace the entry with the
+      // canonical Write route (re-running this effect against its mapping).
+      // The recovery is one-shot per pathname and never fires for '/' itself,
+      // so an environment where no route resolves cannot redirect-loop.
+      if (location.pathname === '/' || recoveredFromRef.current === location.pathname) return;
+      recoveredFromRef.current = location.pathname;
+      if (typeof onUnknownRouteRef.current === 'function') {
+        onUnknownRouteRef.current(location.pathname);
+      }
+      replaceRoute('/');
+      return;
+    }
+    recoveredFromRef.current = null;
 
     suppressPush.current = true;
 
