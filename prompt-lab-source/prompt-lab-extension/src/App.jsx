@@ -8,7 +8,7 @@ import {
 import { scanSensitiveData } from './piiScanner.js';
 import { captureContext } from './lib/platform.js';
 import { buildCaptureInsertion } from './lib/captureContext.js';
-import { T } from './constants';
+import { T, DEFAULT_GOLDEN_THRESHOLD } from './constants';
 import useLibrary from './hooks/usePromptLibrary.js';
 import useUiState from './hooks/useUiState.js';
 import useNavigation from './hooks/useNavigation.js';
@@ -454,7 +454,7 @@ export default function App({
   const goldenSimilarity = goldenResponse?.text && comparisonText
     ? ngramSimilarity(goldenResponse.text, comparisonText)
     : 0;
-  const goldenThreshold = currentEntry?.goldenThreshold ?? 0.7;
+  const goldenThreshold = currentEntry?.goldenThreshold ?? DEFAULT_GOLDEN_THRESHOLD;
   const goldenVerdict = goldenResponse?.text && comparisonText
     ? (goldenSimilarity >= goldenThreshold ? 'pass' : 'fail')
     : null;

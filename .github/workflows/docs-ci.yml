@@ -15,6 +15,11 @@ on:
       - "prompt-lab-source/.markdownlint-cli2.jsonc"
       - ".lychee.toml"
       - ".github/workflows/docs-ci.yml"
+      - "prompt-lab-source/scripts/docs-consistency.mjs"
+      - "prompt-lab-source/api/proxy.js"
+      - "prompt-lab-source/prompt-lab-extension/src/constants.js"
+      - "prompt-lab-source/prompt-lab-extension/src/lib/navigationRegistry.js"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useRouteSync.js"
   pull_request:
     paths:
       - "*.md"
@@ -27,6 +32,11 @@ on:
       - "prompt-lab-source/.markdownlint-cli2.jsonc"
       - ".lychee.toml"
       - ".github/workflows/docs-ci.yml"
+      - "prompt-lab-source/scripts/docs-consistency.mjs"
+      - "prompt-lab-source/api/proxy.js"
+      - "prompt-lab-source/prompt-lab-extension/src/constants.js"
+      - "prompt-lab-source/prompt-lab-extension/src/lib/navigationRegistry.js"
+      - "prompt-lab-source/prompt-lab-extension/src/hooks/useRouteSync.js"
 
 permissions:
   contents: read
@@ -53,6 +63,9 @@ jobs:
 
       - name: Run markdown lint
         run: npm run docs:lint
+
+      - name: Check documentation consistency
+        run: npm run docs:consistency
 
   docs-links:
     runs-on: ubuntu-latest

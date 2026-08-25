@@ -1,5 +1,13 @@
 # Codex Prompt: App.jsx UI Wiring for Ghost Variables + Golden Response
 
+> **Archived — delivered.** This build prompt asked for App.jsx wiring for
+> Ghost Variables and Golden Response. Both shipped: `isGhostVar` /
+> `resolveGhostVars` in `promptUtils.js`, `pinGoldenResponse` /
+> `clearGoldenResponse` in `usePromptLibrary.js`, and the `GoldenBenchmark`
+> panel in `CreateEditorPane.jsx`. Its line-number references point at a
+> pre-redesign `App.jsx` and no longer resolve. Retained for provenance only.
+
+
 **Target file (modify only this):**
 - `prompt-lab-extension/src/App.jsx`
 

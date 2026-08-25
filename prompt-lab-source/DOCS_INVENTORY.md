@@ -43,6 +43,9 @@ Updated: 2026-08-19
 | `prompt-lab-extension/VERSION_HISTORY.md` | Release history | Active | Canonical changelog across extension, web, and desktop milestones. |
 | `prompt-lab-extension/VERSION_REPORT.md` | Current release-state snapshot | Active | Separates package version, latest source tag, latest GitHub Release, and native app version. |
 | `prompt-lab-extension/CHANGELOG_PLAIN_ENGLISH.md` | Non-technical release notes | Active | Product-facing summary of the current unreleased package line and historical releases. |
+| `prompt-lab-extension/PROVIDER_FIXTURE.md` | Test-provider reference | Active | Deterministic zero-cost `callModel` fixture: scenarios, contract parity, and how to install it in a test shell (DHA-12). |
+| `prompt-lab-extension/PROMPT_QUALITY_CORPUS.md` | Prompt corpus reference | Active | Versioned prompt-quality corpus, its selection criteria, and how recorded expectations are re-measured (DHA-11). |
+| `prompt-lab-extension/GOLDEN_RESPONSE_THRESHOLD.md` | Golden regression reference | Active | What the regression verdict means and the measurements justifying `DEFAULT_GOLDEN_THRESHOLD` (DHA-13). |
 | `vercel.json` | Vercel config | Active | Root build config for the hosted web deployment, including `/app` rewrites and `/api` passthrough. |
 | `api/proxy.js` | CORS proxy edge function | Active | Domain-allowlisted pass-through proxy for provider APIs. |
 | `.vercelignore` | Vercel upload filter | Active | Excludes local dependencies, build artifacts, and Tauri output from deployments. |

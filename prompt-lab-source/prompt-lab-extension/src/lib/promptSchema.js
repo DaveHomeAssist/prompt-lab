@@ -1,6 +1,7 @@
 import { ensureString, normalizeVariant, randomId, safeDate } from './utils.js';
 import { normalizeTagList } from './tagSchema.js';
 import { normalizeResultMeta } from './enhancementResult.js';
+import { DEFAULT_GOLDEN_THRESHOLD } from '../constants.js';
 
 const MAX_PROMPT_VERSIONS = 25;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
@@ -46,7 +47,7 @@ function normalizeCompleteness(value, entry) {
 }
 
 function normalizeGoldenThreshold(value) {
-  if (!Number.isFinite(value)) return 0.7;
+  if (!Number.isFinite(value)) return DEFAULT_GOLDEN_THRESHOLD;
   return Math.max(0, Math.min(1, value));
 }
 
