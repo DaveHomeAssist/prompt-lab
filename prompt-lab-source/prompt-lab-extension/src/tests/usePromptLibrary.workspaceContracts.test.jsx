@@ -5,11 +5,15 @@ import { storageKeys } from '../lib/storage.js';
 const experimentMocks = vi.hoisted(() => ({
   listEvalRuns: vi.fn(),
   saveEvalRun: vi.fn(),
+  listTestCases: vi.fn(),
+  saveTestCase: vi.fn(),
 }));
 
 vi.mock('../experimentStore.js', () => ({
   listEvalRuns: experimentMocks.listEvalRuns,
   saveEvalRun: experimentMocks.saveEvalRun,
+  listTestCases: experimentMocks.listTestCases,
+  saveTestCase: experimentMocks.saveTestCase,
 }));
 
 vi.mock('../lib/legacyLibraryMigration.js', async () => {
@@ -137,6 +141,20 @@ const packRegistry = {
   },
 };
 
+// M-4: the privacy page promises an experiments export; saved experiment test
+// cases live in their own store and must round-trip with the workspace file.
+const experimentTestCase = {
+  id: 'case-standalone-1',
+  promptId: 'prompt-1',
+  title: 'Verifies the release gate',
+  input: 'Run the release checklist against staging.',
+  expectedTraits: ['names the gate'],
+  expectedExclusions: ['skips verification'],
+  notes: 'Covers the strict path.',
+  createdAt: '2026-08-19T09:00:00.000Z',
+  updatedAt: '2026-08-19T09:30:00.000Z',
+};
+
 const evalRun = {
   id: 'run-1',
   createdAt: '2026-08-20T10:00:00.000Z',
@@ -167,6 +185,8 @@ describe('workspace export and import contract', () => {
     vi.clearAllMocks();
     experimentMocks.listEvalRuns.mockResolvedValue([evalRun]);
     experimentMocks.saveEvalRun.mockImplementation(async (run) => run);
+    experimentMocks.listTestCases.mockResolvedValue([experimentTestCase]);
+    experimentMocks.saveTestCase.mockImplementation(async (testCase) => testCase);
     vi.stubGlobal('FileReader', ImmediateFileReader);
     Object.defineProperty(URL, 'createObjectURL', {
       configurable: true,
@@ -216,6 +236,7 @@ describe('workspace export and import contract', () => {
       packs: packRegistry,
       scratch: scratchWorkspace,
       runs: [evalRun],
+      testCases: [experimentTestCase],
     }));
 
     exportedHook.unmount();
@@ -237,6 +258,9 @@ describe('workspace export and import contract', () => {
     await waitFor(() => {
       expect(importedHook.result.current.library).toHaveLength(1);
       expect(experimentMocks.saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-1' }));
+      expect(experimentMocks.saveTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'case-standalone-1' }),
+      );
     });
 
     expect(importedHook.result.current.library[0]).toEqual(expect.objectContaining({

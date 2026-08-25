@@ -29,7 +29,7 @@ import {
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
 import { stampPackMembership } from '../lib/packStore.js';
-import { listEvalRuns, saveEvalRun } from '../experimentStore.js';
+import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -831,7 +831,10 @@ export default function usePromptLibrary(notify) {
   const exportLib = async () => {
     const scratch = loadJson('pl2-pads', null);
     const runs = await listEvalRuns({ limit: null });
-    if (library.length === 0 && trash.length === 0 && !scratch && runs.length === 0) {
+    // M-4: saved experiment test cases are part of the promised experiments
+    // export and must leave with the workspace file.
+    const testCases = await listTestCases({ limit: 500 });
+    if (library.length === 0 && trash.length === 0 && !scratch && runs.length === 0 && testCases.length === 0) {
       notify('Prompt Lab has no saved workspace data to export.');
       return null;
     }
@@ -850,13 +853,14 @@ export default function usePromptLibrary(notify) {
       packs: loadJson(storageKeys.packs, []),
       scratch,
       runs,
+      testCases,
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' }));
     const stamp = new Date().toISOString().slice(0, 10);
     const anchor = Object.assign(document.createElement('a'), { href: url, download: `prompt-lab-workspace-${stamp}.json` });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
-    notify(`Exported ${library.length} prompts, ${runs.length} runs, and Scratch data.`);
+    notify(`Exported ${library.length} prompts, ${runs.length} runs, ${testCases.length} test cases, and Scratch data.`);
     return exportPayload;
   };
 
@@ -882,6 +886,7 @@ export default function usePromptLibrary(notify) {
             || (parsed.packs && typeof parsed.packs === 'object')
             || (parsed.scratch && typeof parsed.scratch === 'object')
             || Array.isArray(parsed.runs)
+            || Array.isArray(parsed.testCases)
           )
         );
         const normalized = normalizeLibrary((Array.isArray(payload) ? payload : []).map((entry) => ({
@@ -924,6 +929,9 @@ export default function usePromptLibrary(notify) {
         }
         if (Array.isArray(parsed?.runs)) {
           await Promise.all(parsed.runs.map((run) => saveEvalRun(run)));
+        }
+        if (Array.isArray(parsed?.testCases)) {
+          await Promise.all(parsed.testCases.map((testCase) => saveTestCase(testCase)));
         }
         if (result.importedCount === 0) {
           notify(hasWorkspaceExtras
