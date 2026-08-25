@@ -57,7 +57,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   // the owning request's finally block, so cancel-then-retry stays available.
   const enhanceInFlightRef = useRef(false);
 
-  const evalRunsHook = useEvalRuns({ editingId, tab });
+  // defaultMode keeps the editor's inline history scoped to enhance runs while
+  // no saved prompt narrows the query (M-2: the fallback is explicit now).
+  const evalRunsHook = useEvalRuns({ editingId, tab, defaultMode: 'enhance' });
   const testCasesHook = useTestCases({ notify });
 
   const callWithRetry = async (payload, retries = 1, options = {}) => {

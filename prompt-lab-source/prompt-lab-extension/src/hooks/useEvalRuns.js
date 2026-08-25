@@ -11,6 +11,11 @@ export default function useEvalRuns(optionsOrLegacy) {
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
   const limit = opts.limit ?? 12;
+  // M-2: mode fallback for surfaces that want one (the editor's inline
+  // history). It is only applied while no prompt narrows the query and no
+  // explicit mode filter is set, so the Evaluate timeline's "All modes"
+  // stays truthful: it queries with no mode restriction at all.
+  const defaultMode = opts.defaultMode ?? null;
   const modeFilter = opts.mode ?? '';
   const providerFilter = opts.provider ?? '';
   const modelFilter = opts.model ?? '';
@@ -45,7 +50,7 @@ export default function useEvalRuns(optionsOrLegacy) {
     try {
       const filters = { limit: 200 };
       if (pid) filters.promptId = pid;
-      else filters.mode = 'enhance';
+      else if (defaultMode) filters.mode = defaultMode;
       if (modeFilter) filters.mode = modeFilter;
       if (providerFilter) filters.provider = providerFilter;
       if (modelFilter) filters.model = modelFilter;
@@ -73,7 +78,7 @@ export default function useEvalRuns(optionsOrLegacy) {
         setLoading(false);
       }
     }
-  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
+  }, [promptId, defaultMode, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);

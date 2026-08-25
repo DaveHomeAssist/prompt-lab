@@ -30,14 +30,53 @@ describe('useEvalRuns', () => {
     expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, promptId: 'prompt-1' });
   });
 
-  it('refreshEvalRuns without promptId uses mode:\'enhance\' filter', async () => {
+  // M-2: without a prompt selected the hook used to pin mode:'enhance' on its
+  // own, so the Evaluate timeline's "All modes" option silently hid A/B and
+  // test-case runs. The pin is now opt-in via defaultMode; a caller that does
+  // not ask for it gets exactly the filters it declared.
+  it('refreshEvalRuns without promptId or defaultMode queries all modes', async () => {
     const { result } = renderHook(() => useEvalRuns({ editingId: null, tab: 'library' }));
 
     await act(async () => {
       await result.current.refreshEvalRuns();
     });
 
-    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200, mode: 'enhance' });
+    expect(listEvalRuns).toHaveBeenCalledWith({ limit: 200 });
+  });
+
+  it('applies defaultMode only while no prompt is selected', async () => {
+    const { result } = renderHook(() => useEvalRuns({
+      editingId: null,
+      tab: 'library',
+      defaultMode: 'enhance',
+    }));
+
+    await act(async () => {
+      await result.current.refreshEvalRuns();
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'enhance' });
+
+    await act(async () => {
+      await result.current.refreshEvalRuns('prompt-7');
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, promptId: 'prompt-7' });
+  });
+
+  it('lets an explicit mode filter override defaultMode', async () => {
+    const { result } = renderHook(() => useEvalRuns({
+      promptId: null,
+      tab: 'history',
+      defaultMode: 'enhance',
+      mode: 'ab',
+    }));
+
+    await act(async () => {
+      await result.current.refreshEvalRuns();
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'ab' });
   });
 
   it('effect triggers refresh when tab is editor', async () => {
@@ -104,19 +143,18 @@ describe('useEvalRuns', () => {
     });
 
     await waitFor(() => {
-      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'enhance' });
+      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200 });
     });
 
     rerender({ promptId: null, tab: 'history', verdict: 'fail', regression: false });
     await waitFor(() => {
-      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'enhance', verdict: 'fail' });
+      expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, verdict: 'fail' });
     });
 
     rerender({ promptId: null, tab: 'history', verdict: 'fail', regression: true });
     await waitFor(() => {
       expect(listEvalRuns).toHaveBeenLastCalledWith({
         limit: 200,
-        mode: 'enhance',
         verdict: 'fail',
         regression: true,
       });

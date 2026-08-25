@@ -78,6 +78,18 @@ describe('RunTimelinePanel', () => {
     });
   });
 
+  // M-2: with no prompt selected the query used to pin mode:'enhance' behind
+  // the panel's back, so "All modes" hid A/B and test-case runs. The Evaluate
+  // timeline must request exactly what its filter controls say.
+  it('queries all modes when no prompt is selected and mode is All modes', () => {
+    renderPanel();
+
+    expect(useEvalRunsMock).toHaveBeenCalled();
+    const query = useEvalRunsMock.mock.calls.at(-1)[0];
+    expect(query).toMatchObject({ promptId: null, mode: '' });
+    expect(query).not.toHaveProperty('defaultMode');
+  });
+
   it('rehydrates persisted Evaluate filters on mount', () => {
     localStorage.setItem('pl2-evaluate-timeline-filters', JSON.stringify({
       mode: 'ab',
