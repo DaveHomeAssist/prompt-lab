@@ -430,6 +430,8 @@ export default function RunTimelinePanel({
     provider,
     model,
     status,
+    verdict,
+    regression,
     search,
     dateRange,
   });

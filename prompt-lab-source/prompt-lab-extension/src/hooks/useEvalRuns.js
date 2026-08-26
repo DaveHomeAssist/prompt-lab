@@ -11,10 +11,15 @@ export default function useEvalRuns(optionsOrLegacy) {
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
   const limit = opts.limit ?? 12;
+  // Callers that pass a mode key (even '') own mode scoping; legacy callers
+  // without one keep the enhance-only default for promptless queries.
+  const hasModeOption = Object.prototype.hasOwnProperty.call(opts, 'mode');
   const modeFilter = opts.mode ?? '';
   const providerFilter = opts.provider ?? '';
   const modelFilter = opts.model ?? '';
   const statusFilter = opts.status ?? '';
+  const verdictFilter = opts.verdict ?? '';
+  const regressionFilter = opts.regression === true;
   const searchFilter = opts.search ?? '';
   const dateRangeFilter = opts.dateRange ?? '';
 
@@ -43,11 +48,13 @@ export default function useEvalRuns(optionsOrLegacy) {
     try {
       const filters = { limit: 200 };
       if (pid) filters.promptId = pid;
-      else filters.mode = 'enhance';
+      else if (!hasModeOption) filters.mode = 'enhance';
       if (modeFilter) filters.mode = modeFilter;
       if (providerFilter) filters.provider = providerFilter;
       if (modelFilter) filters.model = modelFilter;
       if (statusFilter) filters.status = statusFilter;
+      if (verdictFilter) filters.verdict = verdictFilter;
+      if (regressionFilter) filters.regression = true;
       if (searchFilter) filters.search = searchFilter;
       if (dateRangeFilter) filters.dateRange = dateRangeFilter;
 
@@ -69,7 +76,7 @@ export default function useEvalRuns(optionsOrLegacy) {
         setLoading(false);
       }
     }
-  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter]);
+  }, [promptId, hasModeOption, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);
@@ -104,12 +111,12 @@ export default function useEvalRuns(optionsOrLegacy) {
   // Reset pagination when filters change
   useEffect(() => {
     displayLimit.current = limit;
-  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, limit]);
+  }, [promptId, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter, limit]);
 
   // Refresh when tab or filters change
   useEffect(() => {
     if (tab === 'editor' || tab === 'history') refreshEvalRuns();
-  }, [promptId, tab, modeFilter, providerFilter, modelFilter, statusFilter, searchFilter, dateRangeFilter, refreshEvalRuns]);
+  }, [promptId, tab, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter, refreshEvalRuns]);
 
   // Cleanup on unmount
   useEffect(() => {

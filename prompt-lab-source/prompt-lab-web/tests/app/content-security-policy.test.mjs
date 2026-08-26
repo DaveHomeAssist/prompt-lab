@@ -18,3 +18,11 @@ test('app CSP permits the configured Clerk runtime and API domain without a wild
   assert.match(csp, /connect-src[^;]*\bhttps:\/\/clerk\.promptlab\.tools\b/);
   assert.doesNotMatch(csp, /https:\/\/\*\.clerk\./);
 });
+
+test('app CSP permits Clerk blob workers and provider imagery', async () => {
+  const csp = await readAppCsp();
+
+  assert.match(csp, /worker-src[^;]*'self'/);
+  assert.match(csp, /worker-src[^;]*\bblob:/);
+  assert.match(csp, /img-src[^;]*\bhttps:\/\/img\.clerk\.com\b/);
+});

@@ -56,6 +56,8 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
+      verdict: 'fail',
+      regression: true,
       search: 'regression',
       dateRange: '7d',
     }));
@@ -70,9 +72,21 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
+      verdict: 'fail',
+      regression: true,
       search: 'regression',
       dateRange: '7d',
     });
+  });
+
+  it('leaves an explicit All-modes timeline query unscoped instead of forcing enhance', async () => {
+    const { result } = renderHook(() => useEvalRuns({ promptId: null, tab: 'history', mode: '' }));
+
+    await act(async () => {
+      await result.current.refreshEvalRuns();
+    });
+
+    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200 });
   });
 
   it('supports pagination with loadMore and reports hasMore from total rows', async () => {
