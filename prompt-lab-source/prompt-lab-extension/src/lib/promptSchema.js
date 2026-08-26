@@ -1,5 +1,7 @@
 import { ensureString, normalizeVariant, randomId, safeDate } from './utils.js';
 import { normalizeTagList } from './tagSchema.js';
+import { normalizeResultMeta } from './enhancementResult.js';
+import { DEFAULT_GOLDEN_THRESHOLD } from '../constants.js';
 
 const MAX_PROMPT_VERSIONS = 25;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
@@ -29,8 +31,23 @@ function normalizePromptMetadata(value) {
   };
 }
 
+function normalizeCompleteness(value, entry) {
+  const explicit = value && typeof value === 'object' ? value : {};
+  const missing = [];
+  if (!ensureString(entry?.title).trim()) missing.push('title');
+  if (!ensureString(entry?.enhanced || entry?.original).trim()) missing.push('content');
+  if (!normalizeTagList(entry?.tags).length) missing.push('tags');
+  if (!ensureString(entry?.metadata?.purpose).trim()) missing.push('purpose');
+  if (!ensureString(entry?.metadata?.status).trim()) missing.push('status');
+  return {
+    complete: missing.length === 0,
+    missing,
+    updatedAt: safeDate(explicit.updatedAt || entry?.updatedAt || entry?.createdAt || new Date().toISOString()),
+  };
+}
+
 function normalizeGoldenThreshold(value) {
-  if (!Number.isFinite(value)) return 0.7;
+  if (!Number.isFinite(value)) return DEFAULT_GOLDEN_THRESHOLD;
   return Math.max(0, Math.min(1, value));
 }
 
@@ -95,13 +112,17 @@ function normalizeGoldenResponse(value) {
 }
 
 function normalizeContentShape(value) {
-  return {
+  const content = {
     original: ensureString(value?.original),
     enhanced: ensureString(value?.enhanced) || ensureString(value?.prompt) || ensureString(value?.original),
     variants: Array.isArray(value?.variants)
       ? value.variants.map(normalizeVariant).filter(item => item.content.trim())
       : [],
     notes: ensureString(value?.notes) || ensureString(value?.description),
+  };
+  return {
+    ...content,
+    resultMeta: normalizeResultMeta(value?.resultMeta || value?.enhancementResult, content),
   };
 }
 
@@ -116,6 +137,7 @@ export function arePromptSnapshotsEqual(left, right) {
   return a.original === b.original
     && a.enhanced === b.enhanced
     && a.notes === b.notes
+    && JSON.stringify(a.resultMeta) === JSON.stringify(b.resultMeta)
     && variantsEqual(a.variants, b.variants);
 }
 
@@ -176,6 +198,7 @@ export function normalizeVersion(version, fallbackTs = new Date().toISOString())
     enhanced: content.enhanced,
     variants: content.variants,
     notes: content.notes,
+    resultMeta: content.resultMeta,
     savedAt: safeDate(version.savedAt || fallbackTs),
     changeNote: ensureString(version.changeNote),
     source: ensureString(version.source) || 'manual_save',
@@ -207,6 +230,7 @@ export function getPromptSnapshot(entry, options = {}) {
     enhanced: entry?.enhanced,
     variants: entry?.variants,
     notes: entry?.notes,
+    resultMeta: entry?.resultMeta,
     savedAt: options.savedAt || entry?.updatedAt || entry?.createdAt || new Date().toISOString(),
     changeNote: options.changeNote || '',
     source: options.source || 'manual_save',
@@ -255,6 +279,7 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     enhanced: Object.prototype.hasOwnProperty.call(changes, 'enhanced') ? changes.enhanced : current.enhanced,
     variants: Object.prototype.hasOwnProperty.call(changes, 'variants') ? changes.variants : current.variants,
     notes: Object.prototype.hasOwnProperty.call(changes, 'notes') ? changes.notes : current.notes,
+    resultMeta: Object.prototype.hasOwnProperty.call(changes, 'resultMeta') ? changes.resultMeta : current.resultMeta,
   });
   const contentChanged = !arePromptSnapshotsEqual(current, nextContent);
   const withHistory = contentChanged
@@ -275,6 +300,7 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     enhanced: nextContent.enhanced,
     variants: nextContent.variants,
     notes: nextContent.notes,
+    resultMeta: nextContent.resultMeta,
     tags: Object.prototype.hasOwnProperty.call(changes, 'tags')
       ? normalizeStringList(changes.tags)
       : current.tags,
@@ -300,6 +326,21 @@ export function updatePromptEntry(entry, changes = {}, options = {}) {
     metadata: Object.prototype.hasOwnProperty.call(changes, 'metadata')
       ? changes.metadata
       : current.metadata,
+    favorite: Object.prototype.hasOwnProperty.call(changes, 'favorite')
+      ? changes.favorite === true
+      : current.favorite,
+    kind: Object.prototype.hasOwnProperty.call(changes, 'kind')
+      ? changes.kind
+      : current.kind,
+    sourceNoteId: Object.prototype.hasOwnProperty.call(changes, 'sourceNoteId')
+      ? changes.sourceNoteId
+      : current.sourceNoteId,
+    deletedAt: Object.prototype.hasOwnProperty.call(changes, 'deletedAt')
+      ? changes.deletedAt
+      : current.deletedAt,
+    tombstoneVersion: Object.prototype.hasOwnProperty.call(changes, 'tombstoneVersion')
+      ? changes.tombstoneVersion
+      : current.tombstoneVersion,
   }, current.createdAt);
 }
 
@@ -313,6 +354,7 @@ export function restorePromptVersion(entry, version, options = {}) {
     enhanced: target.enhanced,
     variants: target.variants,
     notes: target.notes,
+    resultMeta: target.resultMeta,
   }, {
     now: options.now,
     source: 'restore',
@@ -343,20 +385,30 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
       .map(testCase => normalizeTestCase(testCase, createdAt))
       .filter(Boolean)
     : [];
-  return {
+  const normalizedMetadata = normalizePromptMetadata(entry.metadata);
+  const normalizedTags = normalizeTagList(entry.tags);
+  const normalized = {
     id: ensureString(entry.id) || randomId(),
     title: ensureString(entry.title).trim() || suggestTitleFromText(content.enhanced),
     original: content.original,
     enhanced: content.enhanced,
     variants: content.variants,
     notes: content.notes,
-    tags: normalizeTagList(entry.tags),
+    resultMeta: content.resultMeta,
+    tags: normalizedTags,
     collection: ensureString(entry.collection) || ensureString(entry.category),
     createdAt,
     updatedAt,
     updated_at: updatedAt || createdAt,
     useCount: Number.isFinite(entry.useCount) ? Math.max(0, entry.useCount) : 0,
     lastAccessedAt: entry.lastAccessedAt ? safeDate(entry.lastAccessedAt) : null,
+    favorite: entry.favorite === true,
+    kind: ensureString(entry.kind || entry.type).toLowerCase() === 'template' || normalizedTags.includes('template')
+      ? 'template'
+      : 'prompt',
+    sourceNoteId: ensureString(entry.sourceNoteId || entry.metadata?.sourceNoteId),
+    deletedAt: entry.deletedAt ? safeDate(entry.deletedAt) : null,
+    tombstoneVersion: Number.isFinite(entry.tombstoneVersion) ? Math.max(0, Math.round(entry.tombstoneVersion)) : 0,
     currentVersionId: ensureString(entry.currentVersionId) || randomId(),
     version,
     schema_version: schemaVersion,
@@ -365,7 +417,11 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
     goldenResponse: normalizeGoldenResponse(entry.goldenResponse),
     goldenThreshold: normalizeGoldenThreshold(entry.goldenThreshold),
     inputs: normalizePromptInputs(entry.inputs),
-    metadata: normalizePromptMetadata(entry.metadata),
+    metadata: normalizedMetadata,
+  };
+  return {
+    ...normalized,
+    completeness: normalizeCompleteness(entry.completeness, normalized),
   };
 }
 

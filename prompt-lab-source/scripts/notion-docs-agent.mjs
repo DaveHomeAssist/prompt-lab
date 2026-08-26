@@ -324,11 +324,17 @@ function buildFallbackInsights(runContext, changedDocs, repoDocs) {
     );
   }
   if (changedDocs.length === 0) {
-    followUps.push('If this workflow should react to more than markdown file changes, expand the tracked path list or trigger conditions.');
+    followUps.push(
+      runContext.eventName === 'workflow_dispatch'
+        ? 'Review the generated snapshot before choosing an explicit live Notion sync.'
+        : 'If this workflow should react to more than markdown file changes, expand the tracked path list or trigger conditions.'
+    );
   } else {
     followUps.push('Verify that the updated markdown files remain the canonical source of truth for the Notion page.');
   }
-  followUps.push('Adjust the workflow_run names in .github/workflows/notion-docs-agent.yml if your CI workflows use different titles.');
+  if (runContext.eventName === 'workflow_run') {
+    followUps.push('Adjust the workflow_run names in .github/workflows/notion-docs-agent.yml if your CI workflows use different titles.');
+  }
 
   return {
     summary: highlights.join(' '),

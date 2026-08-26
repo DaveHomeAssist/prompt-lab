@@ -132,11 +132,11 @@ const LibraryPanel = memo(function LibraryPanel({
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
             <Ic n="Search" size={11} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${m.textMuted}`} />
-            <input data-testid="library-search" className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${accentFocusClass} ${m.text}`}
+            <input data-testid="library-search" aria-label="Search prompt library" className={`w-full ${m.input} border rounded-lg pl-7 pr-3 py-1.5 text-xs focus:outline-none ${accentFocusClass} ${m.text}`}
               placeholder="Search…" value={searchDraft} onChange={e => setSearchDraft(e.target.value)} />
           </div>
           <div className={`flex gap-2 ${compact ? 'w-full' : ''}`}>
-            <select value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
+            <select aria-label="Sort prompt library" value={lib.sortBy} onChange={e => lib.setSortBy(e.target.value)}
               className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.textBody} focus:outline-none ${compact ? 'flex-1' : ''}`}>
               <option value="newest">Newest</option><option value="oldest">Oldest</option><option value="a-z">A → Z</option><option value="z-a">Z → A</option><option value="group">By collection</option><option value="most-used">Most Used</option><option value="manual">Manual</option>
             </select>
@@ -396,7 +396,7 @@ const LibraryPanel = memo(function LibraryPanel({
                 <div className="flex-1 min-w-0">
                   {lib.renamingId === entry.id ? (
                     <div className="flex gap-1.5">
-                      <input autoFocus value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
+                      <input autoFocus aria-label={`Rename ${entry.title}`} value={lib.renameValue} onChange={e => lib.setRenameValue(e.target.value)}
                         className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${accentFocusClass} ${m.text}`} />
                       <button type="button" onClick={() => lib.renameEntry(entry.id, lib.renameValue, editingId, setSaveTitle)} className={`ui-control px-2 py-1 text-xs rounded-lg transition-colors ${accentSolidButtonClass}`}>Save</button>
                       <button type="button" onClick={() => { lib.setRenamingId(null); lib.setRenameValue(''); }} className={`ui-control px-2 py-1 text-xs ${m.btn} ${m.textAlt} rounded-lg transition-colors`}>Cancel</button>
@@ -473,7 +473,7 @@ const LibraryPanel = memo(function LibraryPanel({
               {(entry.tags || []).length > 0 && <div className="flex flex-wrap gap-1 px-3 pb-2">{entry.tags.map(t => <TagChip key={t} tag={t} />)}</div>}
               {lib.shareId === entry.id && (
                 <div className={`border-t ${m.border} px-3 py-2 flex gap-2`}>
-                  <input readOnly className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
+                  <input readOnly aria-label={`Share URL for ${entry.title}`} className={`flex-1 ${m.input} border rounded-lg px-2 py-1 text-xs focus:outline-none ${m.text} font-mono`} value={shareUrl || 'Unable to create share URL'} />
                   <button type="button" onClick={() => copy(shareUrl || '')} className={`ui-control px-2 py-1 rounded-lg text-xs font-medium transition-colors ${accentSolidButtonClass}`}>Copy URL</button>
                 </div>
               )}

@@ -1,6 +1,8 @@
 # Prompt Lab Mobile Deployment Roadmap
 
-## Goal
+Status: Deferred alternative. ADR D-011 selected the native SwiftUI universal app, and `prompt-lab-ios/` now contains the implemented iPhone/iPad path. This document is retained as a possible future iOS/Android fallback; it does not describe the current architecture.
+
+## Historical goal
 
 Ship Prompt Lab on iOS and Android without forking the shared frontend unless mobile constraints force it.
 

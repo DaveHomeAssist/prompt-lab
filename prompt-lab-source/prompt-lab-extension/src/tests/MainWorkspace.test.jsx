@@ -31,4 +31,10 @@ describe('MainWorkspace layout', () => {
     expect(screen.getByText('Editor pane')).toBeInTheDocument();
     expect(screen.getByText('Library pane')).toBeInTheDocument();
   });
+
+  it('lets compact single-pane content participate in the main scroll flow', () => {
+    const { container } = renderWorkspace({ compact: true, pageScroll: false });
+    expect(container.firstChild.className).not.toContain('overflow-hidden');
+    expect(screen.getByLabelText('Prompt editor workspace').className).not.toContain('overflow-hidden');
+  });
 });

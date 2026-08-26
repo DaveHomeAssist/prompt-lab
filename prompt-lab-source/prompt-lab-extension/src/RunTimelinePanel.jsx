@@ -283,7 +283,7 @@ function RunCard({ run, prompt, m, updateRun, onSelectCompare, isCompareSelected
       {/* Notes */}
       <div className="mt-1.5">
         {editingNotes ? (
-          <input type="text" value={localNotes} onChange={e => setLocalNotes(e.target.value)}
+          <input type="text" aria-label={`Notes for ${run.promptTitle || 'run'}`} value={localNotes} onChange={e => setLocalNotes(e.target.value)}
             onBlur={saveNotes} onKeyDown={e => e.key === 'Enter' && saveNotes()}
             autoFocus
             className={`w-full text-xs ${m.input} border rounded px-2 py-1 focus:outline-none ${ACCENT_FOCUS_CLASS}`}
@@ -374,14 +374,12 @@ function ComparePanel({ runs, m, compact, copy, onClose }) {
             Copy Comparison
           </button>
         </div>
-        {diffSegments.map((segment, index) => (
-          <span
-            key={`${segment.t}-${index}`}
-            className={`${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}
-          >
-            {segment.v}
-          </span>
-        ))}
+        {diffSegments.map((segment, index) => {
+          const className = `${segment.t === 'add' ? m.diffAdd : segment.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`;
+          if (segment.t === 'add') return <ins key={`${segment.t}-${index}`} className={className}>{segment.v}</ins>;
+          if (segment.t === 'del') return <del key={`${segment.t}-${index}`} className={className}>{segment.v}</del>;
+          return <span key={`${segment.t}-${index}`} className={className}>{segment.v}</span>;
+        })}
       </div>
     </div>
   );
@@ -611,7 +609,7 @@ export default function RunTimelinePanel({
             <option value="90d">Last 90 days</option>
             <option value="">All time</option>
           </select>
-          <input type="search" value={search} onChange={e => setTimelineFilter('search', e.target.value)}
+          <input type="search" aria-label="Search evaluation runs" value={search} onChange={e => setTimelineFilter('search', e.target.value)}
             placeholder="Search runs…"
             className={`flex-1 min-w-[120px] text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS} placeholder-gray-400`} />
           {canToggleModelCompare && (

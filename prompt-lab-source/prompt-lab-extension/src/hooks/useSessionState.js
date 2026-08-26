@@ -12,8 +12,14 @@ export function useSessionRestore(setters) {
       if ('enhanced' in s) setters.setEnhanced(s.enhanced);
       if ('variants' in s) setters.setVariants(s.variants);
       if ('notes' in s) setters.setNotes(s.notes);
+      if ('resultMeta' in s && typeof setters.setResultMeta === 'function') setters.setResultMeta(s.resultMeta);
       if ('tab' in s) setters.setTab(s.tab);
       if ('enhMode' in s) setters.setEnhMode(s.enhMode);
+      if ('editingId' in s && typeof setters.setEditingId === 'function') setters.setEditingId(s.editingId || null);
+      if ('saveTitle' in s && typeof setters.setSaveTitle === 'function') setters.setSaveTitle(s.saveTitle || '');
+      if ('saveTags' in s && typeof setters.setSaveTags === 'function') setters.setSaveTags(Array.isArray(s.saveTags) ? s.saveTags : []);
+      if ('saveCollection' in s && typeof setters.setSaveCollection === 'function') setters.setSaveCollection(s.saveCollection || '');
+      if ('sourceNoteId' in s && typeof setters.setSourceNoteId === 'function') setters.setSourceNoteId(s.sourceNoteId || '');
     });
   }, []);
 }
@@ -26,5 +32,18 @@ export function useSessionSave(state) {
       sessionSet({ [SESSION_KEY]: state });
     }, DEBOUNCE_MS);
     return () => clearTimeout(timerRef.current);
-  }, [state.raw, state.enhanced, state.variants, state.notes, state.tab, state.enhMode]);
+  }, [
+    state.raw,
+    state.enhanced,
+    state.variants,
+    state.notes,
+    state.resultMeta,
+    state.tab,
+    state.enhMode,
+    state.editingId,
+    state.saveTitle,
+    state.saveTags,
+    state.saveCollection,
+    state.sourceNoteId,
+  ]);
 }

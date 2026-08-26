@@ -187,7 +187,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       </div>
 
       <div
-        className={`rounded-xl border border-dashed px-3 py-4 text-center transition-colors ${dragActive ? 'border-violet-400 bg-violet-500/10' : `${m.border} ${m.codeBlock}`}`}
+        className={`rounded-xl border border-dashed px-3 py-4 text-center transition-colors ${dragActive ? 'border-orange-400 bg-orange-500/10' : `${m.border} ${m.codeBlock}`}`}
         onDragEnter={(event) => {
           event.preventDefault();
           setDragActive(true);
@@ -214,10 +214,11 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
       </div>
 
       <textarea
+        aria-label="Preset or library JSON"
         value={sourceText}
         onChange={(event) => handleSourceText(event.target.value, sourceLabel)}
         placeholder='Paste preset pack or library JSON...'
-        className={`min-h-[9rem] w-full ${m.input} border rounded-xl px-3 py-2 text-xs leading-relaxed focus:outline-none focus:border-violet-500 ${m.text}`}
+        className={`min-h-[9rem] w-full ${m.input} border rounded-xl px-3 py-2 text-xs leading-relaxed focus:outline-none focus:border-orange-500 ${m.text}`}
       />
 
       {preview.parseError && (
@@ -370,7 +371,7 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
           type="button"
           onClick={handleImport}
           disabled={!readyToImport || importing}
-          className="ui-control inline-flex items-center justify-center gap-1 rounded-lg bg-violet-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="ui-control inline-flex items-center justify-center gap-1 rounded-lg bg-orange-600 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Ic n="Download" size={12} />
           {importing ? 'Importing…' : 'Import Presets'}

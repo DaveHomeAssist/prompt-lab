@@ -33,6 +33,16 @@ final class PromptLabUITests: XCTestCase {
             XCTAssertGreaterThan(screenSize.width, screenSize.height)
             XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
             XCTAssertTrue(app.navigationBars["Results"].waitForExistence(timeout: 3))
+
+            app.terminate()
+            app = XCUIApplication()
+            app.launchArguments = ["-uiTesting", "-recordedAnthropic", "-forceCompactLayout"]
+            app.launch()
+
+            XCTAssertTrue(app.textViews["promptEditor"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.buttons["workspaceButton"].waitForExistence(timeout: 3))
+            app.buttons["workspaceButton"].tap()
+            XCTAssertTrue(app.buttons["newPromptButton"].waitForExistence(timeout: 3))
         } else {
             XCTAssertGreaterThan(screenSize.height, screenSize.width)
             XCTAssertTrue(app.buttons["workspaceButton"].waitForExistence(timeout: 3))

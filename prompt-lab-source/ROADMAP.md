@@ -1,12 +1,16 @@
 # Prompt Lab Roadmap
 
-## Current shipped state
+## Current source and distribution state
 
-Prompt Lab is currently shipped as:
+Prompt Lab currently contains:
 
 - an MV3 side panel extension
-- a Tauri desktop app that reuses the shared frontend
-- a hosted web deployment split between the landing page on `promptlab.tools` and the currently public shared app at `https://promptlab.tools/app/`
+- a Tauri desktop app that reuses the shared React frontend
+- a public hosted React workbench at `https://promptlab.tools/app/`
+- a separate public React mobile prototype at `https://promptlab.tools/mobile/`
+- a focused native SwiftUI iPhone/iPad app with M0-M3 implemented
+
+Implemented source is not the same as marketplace distribution. Chrome Web Store materials remain in preparation, desktop builds are CI/local artifacts rather than a current public release, and native M4/TestFlight/App Store work is blocked on distribution inputs.
 
 Current shipped capabilities include:
 
@@ -15,38 +19,34 @@ Current shipped capabilities include:
 - eval run history and test cases
 - five provider support across extension and desktop, with an Anthropic-first hosted web surface
 - PII scanning
-- extension CI and desktop build CI
+- web, extension, desktop, native, docs, and API CI coverage
 
 ## Near-term priorities
 
 These are active priorities, not shipped commitments:
 
-1. Tighten desktop release packaging and distribution flow beyond local macOS validation.
-2. Finish Chrome Web Store submission materials:
+1. Re-audit the August behavioral fixes before promoting the unreleased `1.7.1` package line.
+2. Tighten desktop release packaging and distribution beyond CI/local artifacts.
+3. Finish Chrome Web Store submission materials:
    - store listing copy
    - screenshots and promo assets
    - final permission review
-3. Keep extension, desktop, and web documentation aligned as the shared architecture evolves.
-4. Keep the `promptlab.tools` landing page, the public hosted app URL, and the proxy-backed web flow aligned with the current product docs.
+4. Supply the native app's production bundle identifier, store assets, Apple distribution access, privacy metadata, and release criteria before M4.
+5. Keep the shared React surfaces, React mobile prototype, native contract, public URLs, and release metadata aligned with verified behavior.
 
-## Platform expansion strategy
+## Platform posture
 
-| Version | Focus |
-|---------|-------|
-| v1.6 | Distribution polish (CWS submission + desktop preview) |
-| v1.7 | Prompt Lab Server experiment (self-hosted browser access) |
-| v1.8 | Workflow improvements (ghost variables, golden response UI) |
-| v2.x | Mobile or public web platform |
+| Surface | Current posture |
+|---|---|
+| Extension | Primary full-provider React workbench; store submission not complete |
+| Desktop | Primary full-provider React workbench; cross-platform artifacts verified in CI |
+| Hosted `/app/` | Public Anthropic-first workbench backed by the Vercel proxy |
+| React `/mobile/` | Public touch-first prototype, not an installed mobile product |
+| Native iPhone/iPad | Focused Anthropic-first SwiftUI v1; distribution blocked at M4 |
+| Prompt Lab Server | Proposed self-hosted mode; not shipped |
+| Tauri Mobile | Deferred alternative retained for reference; not the current native path |
 
-Platform priority ladder:
-
-1. **Extension + Desktop** — current primary surfaces, zero backend
-2. **Prompt Lab Server** — self-hosted process for browser access without a public proxy
-3. **Native mobile apps** — only if demand justifies it
-4. **Public web app / PWA** — deferred until a backend is architecturally justified
-
-The hosted web app at `https://promptlab.tools/app/` is a convenience surface for evaluation
-and demo purposes. It is not the primary product and should not gate feature work.
+ADR D-011 selected the native SwiftUI universal app over the earlier Tauri Mobile plan. `MOBILE_DEPLOYMENT_ROADMAP.md` is a deferred fallback, not the active architecture.
 
 ## Next improvements under consideration
 
@@ -56,7 +56,7 @@ These are candidates, not released features:
 2. Broader end-to-end coverage for desktop and cross-platform packaging flows.
 3. More explicit release packaging for public extension builds versus developer-oriented local-provider builds.
 4. Continued cleanup of legacy duplicate trees and archived planning material.
-5. Mobile deployment via a Tauri Mobile shell after desktop CI and packaging stabilize. See `MOBILE_DEPLOYMENT_ROADMAP.md` and the ADR in Notion.
+5. Decide whether the React mobile prototype remains an evaluation surface, graduates into a supported PWA, or is retired in favor of the native app.
 
 ## Guardrails
 
@@ -64,3 +64,4 @@ These are candidates, not released features:
 - Treat `prompt-lab-source/` as the canonical source tree for active documentation.
 - Keep release notes and README content based on verified commands and current repo state.
 - **v1.x rule:** avoid introducing a public backend unless it unlocks a core feature that cannot be delivered client-side.
+- Treat package versions, Git tags, GitHub Releases, marketplace distribution, and deployed code as separate release facts.

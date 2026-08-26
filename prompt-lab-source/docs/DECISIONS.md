@@ -41,6 +41,35 @@ Rationale: VS Code webviews don't support pushState — hash routing is the only
 
 Consequences: Phase 2 UI work is unblocked. Create workflow can split into `#/create/prompt`, `#/create/config`, `#/create/run` to reduce verticality. No router library needed — reduces bundle size. If web app ever becomes the primary surface, can migrate to pushState later.
 
+As shipped: the hash-routing decision held, but the specific routes above were never built as written. The record is left intact for provenance; this block is what actually runs. Source of truth is `ROUTE_TO_STATE` in `prompt-lab-extension/src/lib/navigationRegistry.js`.
+
+State values below are the literal ones `resolveRouteState` returns, so this
+table can be checked against the registry rather than merely read alongside it.
+`scripts/docs-consistency.mjs` fails if a row drifts.
+
+| Route | State | Reads as |
+| --- | --- | --- |
+| `/` | `create` · `editor` | Create, editor |
+| `/library` | `create` · `library` | Create, library |
+| `/composer` | `create` · `composer` | Create, composer |
+| `/split` | `create` · `split` | Create, dual pane |
+| `/split/write` | `create` · `split` · `editor` | Dual pane, compact, editor pane |
+| `/split/library` | `create` · `split` · `library` | Dual pane, compact, library pane |
+| `/evaluate` | `runs` · `history` | Runs, history |
+| `/compare` | `runs` · `compare` | Runs, compare |
+| `/scratch` | `notebook` | Notebook — canonical |
+| `/pad` | `notebook` | Notebook — legacy alias, accepted but never emitted |
+
+Differences from the decision as written:
+
+- there is no `#/create`; the create surface is the root route `/`
+- there is no `#/settings` route; settings open as a modal, not a route
+- run-level deep links (`#/evaluate/run/abc123`) were never implemented
+- the `#/create/prompt` / `#/create/config` / `#/create/run` split never happened; Create gained `library`, `composer`, and `split` subviews instead
+- a router library *is* used — `useRouteSync.js` builds on `react-router-dom`, contrary to "no router library needed"
+
+`/scratch` is canonical for the notebook view. `/pad` is accepted for links saved under the Notebook-era UI, but `stateToRoute` always emits `/scratch`.
+
 ---
 
 ### [D-002] DaveLLM cluster — LLM inference engine
@@ -267,9 +296,11 @@ Decision: **Native SwiftUI universal app targeting iPhone + iPad (iOS/iPadOS 17+
 
 Rationale: The prompt workbench is a keyboard- and multitasking-heavy tool where WebView UX is a real ceiling on iPad, and the extension/desktop already run auth-free with client-side keys, so a BYO-key native app matches the existing posture. Contract-level sharing (not code-level) keeps drift risk bounded and testable via import/export round-trips.
 
-Consequences: Introduces `prompt-lab-ios/` (universal iPhone + iPad) as a fourth surface and a second UI codebase to maintain. Every change to the enhance contract in `constants.js` becomes a cross-surface API change (add a checklist item to `docs/PIPELINE.md`). Does not block the Tauri Mobile roadmap — if v1 retention doesn't justify the second codebase, that path remains open. **Next gate:** owner greenlight before the M0 Xcode scaffold; no app code lands on this ADR alone.
+Consequences: Introduces `prompt-lab-ios/` (universal iPhone + iPad) as a native surface and a second UI codebase to maintain. Every change to the enhance contract in `constants.js` becomes a cross-surface API change (add a checklist item to `docs/PIPELINE.md`). The Tauri Mobile roadmap remains a deferred fallback if native retention does not justify the second codebase.
+
+Implementation status (2026-08-19): M0-M3 are implemented in `prompt-lab-ios/`, with contract parity enforced through `contracts/promptlab-enhance-contract-v1.json`, Vitest, and XCTest. M4 distribution remains blocked on production bundle identity, store assets, Apple distribution access, privacy metadata, and release criteria.
 
 ---
 
-*Last updated: 2026-07-28*
+*Last updated: 2026-08-19*
 *Related: CLAUDE.md, PIPELINE.md, PROMPT_SYSTEM.md, IPAD_NATIVE_APP_PLAN.md*

@@ -16,7 +16,7 @@ const TAG_STYLE_BY_MODE = {
     'Role-play': 'border-orange-500/40 bg-orange-500/20 text-orange-200',
     Other: 'border-gray-500/40 bg-gray-500/20 text-gray-200',
     default: 'border-gray-500/40 bg-gray-500/20 text-gray-200',
-    selectedRing: 'ring-2 ring-violet-300 ring-offset-1 ring-offset-gray-950',
+    selectedRing: 'ring-2 ring-orange-300 ring-offset-1 ring-offset-gray-950',
   },
   light: {
     Writing: 'border-blue-300 bg-blue-50 text-blue-700',
@@ -28,7 +28,7 @@ const TAG_STYLE_BY_MODE = {
     'Role-play': 'border-orange-300 bg-orange-50 text-orange-700',
     Other: 'border-gray-300 bg-gray-50 text-gray-700',
     default: 'border-gray-300 bg-gray-50 text-gray-700',
-    selectedRing: 'ring-2 ring-violet-400 ring-offset-1 ring-offset-white',
+    selectedRing: 'ring-2 ring-orange-700 ring-offset-1 ring-offset-white',
   },
 };
 

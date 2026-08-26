@@ -4,6 +4,8 @@ import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
 import { getLintQuickFixMeta } from './promptLint';
+import PostEnhanceResults from './PostEnhanceResults.jsx';
+import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -80,6 +82,8 @@ export default function CreateEditorPane({
   // Results
   enhanced,
   setEnhanced,
+  resultMeta,
+  setResultMeta,
   enhMdPreview,
   setEnhMdPreview,
   resultTab,
@@ -92,6 +96,10 @@ export default function CreateEditorPane({
   saveTitle,
   setSaveTitle,
   quickSave,
+  quickSaveAsNew,
+  dismissResult,
+  newPrompt,
+  onCandidateSelection,
   // Golden
   editingId,
   goldenResponse,
@@ -133,21 +141,24 @@ export default function CreateEditorPane({
     : [];
   const scoreCnt = score?.points ?? scoreChecks.filter(c => c[1]).length;
   const qualityHint = 'Heuristic quality score: five equal-weight checks for role, task, format, constraints, and context.';
-  const shellClass = pageScroll
+  const scrollWithWorkspace = pageScroll || compact;
+  const shellClass = scrollWithWorkspace
     ? 'pl-tab-panel min-h-0 flex flex-col'
     : 'pl-tab-panel h-full min-h-0 flex flex-col overflow-hidden';
-  const contentClass = pageScroll
+  const contentClass = scrollWithWorkspace
     ? 'p-4 flex flex-col gap-2'
     : 'p-4 flex flex-col gap-2 h-full min-h-0 overflow-hidden';
-  const resultsClass = pageScroll
+  const resultsClass = scrollWithWorkspace
     ? 'space-y-3'
     : 'min-h-0 flex-1 overflow-y-auto pr-1 space-y-3';
-  const accentTextClass = 'text-orange-400';
+  const accentTextClass = colorMode === 'dark' ? 'text-orange-400' : 'text-orange-800';
   const accentHoverTextClass = 'hover:text-orange-300';
   const accentSolidClass = 'bg-orange-500/90 text-white hover:bg-orange-400';
   const accentTabClass = 'bg-orange-500/90 text-white';
   const accentFieldClass = 'border-orange-400/35';
-  const accentBadgeClass = 'bg-amber-500/15 text-amber-100';
+  const accentBadgeClass = colorMode === 'dark'
+    ? 'bg-amber-500/15 text-amber-100'
+    : 'bg-amber-100 text-amber-900';
   const hasDraftInput = Boolean(raw.trim());
   const hasActivationDraft = hasDraftInput || Boolean(currentEntry);
   const showWorkbenchEmptyState = !loading && !enhanced && !error;
@@ -310,7 +321,7 @@ export default function CreateEditorPane({
         <div>
           <div className="flex justify-between items-center mb-1">
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
+              <span id="prompt-input-label" className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
               <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
                 <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
                   className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
@@ -327,6 +338,7 @@ export default function CreateEditorPane({
           ) : (
             <textarea
               data-testid="prompt-input"
+              aria-labelledby="prompt-input-label"
               ref={rawInputRef}
               rows={8}
               className={inp}
@@ -403,7 +415,9 @@ export default function CreateEditorPane({
             onEnhanceModeChange={setEnhMode}
             onEnhance={enhance}
             onRunCases={runAllCases}
-            onSave={() => openSavePanel()}
+            onSave={quickSave}
+            saveLabel={getPrimarySaveLabel(editingId)}
+            onNewPrompt={newPrompt}
             onClear={clearEditor}
             onCancelEnhance={cancelEnhance}
             loading={loading}
@@ -450,10 +464,10 @@ export default function CreateEditorPane({
                 {hasSavablePrompt && !showSave && !loading && (
                   <button
                     type="button"
-                    onClick={() => openSavePanel()}
-                    className="text-[10px] font-semibold text-green-400 hover:text-green-300 transition-colors"
+                    onClick={quickSave}
+                    className="text-[10px] font-semibold text-orange-300 hover:text-orange-200 transition-colors"
                   >
-                    Save to Library
+                    {getPrimarySaveLabel(editingId)}
                   </button>
                 )}
                 {loading && (
@@ -481,7 +495,7 @@ export default function CreateEditorPane({
         <div className={resultsClass}>
           {/* Error (moved into scroll area so it doesn't eat fixed space) */}
           {error && (
-            <div className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
+            <div role="alert" aria-live="assertive" className={`rounded-xl border p-3 ${colorMode === 'dark' ? 'border-red-500/35 bg-red-950/24' : 'border-red-300 bg-red-50'}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className={`text-[11px] font-semibold uppercase tracking-wider ${colorMode === 'dark' ? 'text-red-300' : 'text-red-700'}`}>Recovery</p>
@@ -624,160 +638,34 @@ export default function CreateEditorPane({
               </div>
             )}
             {enhanced && <>
-              <div data-testid="output-panel" className={`${m.surface} border ${m.border} rounded-xl p-3`}>
-                <div className={`flex justify-between items-start gap-3 mb-3 ${compact ? 'flex-col' : ''}`}>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-xs uppercase tracking-widest font-semibold ${accentTextClass}`}>Results</span>
-                      {goldenVerdict && (
-                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${goldenVerdict === 'pass' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {goldenVerdict === 'pass' ? '✓' : '✗'} {Math.round(goldenSimilarity * 100)}%
-                        </span>
-                      )}
-                    </div>
-                    <p className={`mt-1 text-xs ${m.textMuted}`}>Copy keeps plain text only. Save stores a reusable library entry or a new library version.</p>
-                  </div>
-                  <div className={`flex items-center gap-2 ${compact ? 'w-full flex-wrap' : 'justify-end flex-wrap'} min-w-0`}>
-                    {activeResultTab === 'improved' && (
-                      <button onClick={() => setEnhMdPreview(p => !p)} className={`flex items-center gap-1 text-xs transition-colors ${enhMdPreview ? accentTextClass : `${m.textSub} hover:text-white`} shrink-0`}>
-                        <Ic n="Eye" size={10} />{enhMdPreview ? 'Edit' : 'Preview'}
-                      </button>
-                    )}
-                    {editingId && (
-                      <button
-                        onClick={() => lib.pinGoldenResponse(editingId, {
-                          text: enhanced,
-                          runId: evalRuns[0]?.id,
-                          provider: evalRuns[0]?.provider,
-                          model: evalRuns[0]?.model,
-                        })}
-                        disabled={!enhanced.trim()}
-                        className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded transition-colors shrink-0 ${
-                          enhanced.trim() ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25' : `${m.btn} ${m.textMuted} opacity-40 cursor-not-allowed`
-                        }`}
-                      >
-                        <Ic n="Save" size={12} />Pin Golden
-                      </button>
-                    )}
-                    <button
-                      onClick={() => copy(enhanced)}
-                      className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-md font-semibold transition-colors ${copyBtn} shrink-0`}
-                    ><Ic n="Copy" size={12} />Copy Output</button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Result views">
-                  {resultTabs.map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      role="tab"
-                      aria-selected={activeResultTab === id}
-                      onClick={() => {
-                        setResultTab(id);
-                        if (id !== 'improved') setEnhMdPreview(false);
-                      }}
-                      className={`ui-control rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${activeResultTab === id ? accentTabClass : `${m.btn} ${m.textAlt}`}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                {showDiffUpgradeHint && (
-                  <div className={`mb-3 rounded-lg border px-3 py-2 text-xs ${m.codeBlock} ${m.border}`}>
-                    <span className={m.textMuted}>Side-by-side diff is part of Prompt Lab Pro.</span>
-                    {typeof onUnlockDiff === 'function' && (
-                      <button
-                        type="button"
-                        onClick={onUnlockDiff}
-                        className="ml-2 font-semibold text-amber-300 transition-colors hover:text-amber-200"
-                      >
-                        Unlock Diff
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Inline save bar */}
-                {showInlineSaveBar && (
-                  <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 mb-3`}>
-                    <div className={`flex items-center gap-3 ${compact ? 'flex-col items-stretch' : ''}`}>
-                      <span className={`text-[10px] font-semibold uppercase tracking-wider ${m.textSub} shrink-0`}>
-                        {currentEntry ? 'Library Version' : 'Library Save'}
-                      </span>
-                      <label htmlFor="inline-save-title" className="sr-only">Prompt title</label>
-                      <input
-                        id="inline-save-title"
-                        className={`${m.input} border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-orange-400 ${m.text} min-w-0 flex-1`}
-                        placeholder={suggestedSaveTitle}
-                        value={saveTitle}
-                        onChange={(e) => setSaveTitle(e.target.value)}
-                      />
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          type="button"
-                          data-testid="save-to-library"
-                          onClick={quickSave}
-                          disabled={!canSavePanel}
-                          className="ui-control rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-500 disabled:opacity-40"
-                        >
-                          {currentEntry ? 'Save New Version' : 'Save to Library'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openSavePanel()}
-                          className={`ui-control rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${m.btn} ${m.textAlt}`}
-                        >
-                          Library Details
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeResultTab === 'improved' && (
-                  enhMdPreview ? (
-                    <div className={`${inp} ${accentFieldClass} overflow-y-auto`} style={{ minHeight: '8rem', maxHeight: '24rem' }}>
-                      <MarkdownPreview text={enhanced} />
-                    </div>
-                  ) : (
-                    <textarea data-testid="output-textarea" rows={5} className={`${inp} ${accentFieldClass}`} value={enhanced} onChange={e => setEnhanced(e.target.value)} />
-                  )
-                )}
-
-                {activeResultTab === 'diff' && (
-                  <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose overflow-x-auto whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
-                    {wordDiff(raw, enhanced).map((d, i) => (
-                      <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5 break-words [overflow-wrap:anywhere]`}>{d.v}</span>
-                    ))}
-                  </div>
-                )}
-
-                {activeResultTab === 'variants' && variants.length > 0 && (
-                  <div className="flex flex-col gap-2">
-                    {variants.map((v, i) => (
-                      <div key={i} className={`${m.codeBlock} border ${m.border} ${m.borderHov} rounded-lg p-3 transition-colors`}>
-                        <div className="flex justify-between items-center mb-1 gap-3">
-                          <span className={`text-xs font-bold ${accentTextClass}`}>{v.label}</span>
-                          <div className="flex gap-3">
-                            <button onClick={() => { setEnhanced(v.content); setResultTab('improved'); }} className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}>Use</button>
-                            <button onClick={() => copy(v.content)} className={`${m.textAlt} hover:text-white transition-colors`}><Ic n="Copy" size={10} /></button>
-                          </div>
-                        </div>
-                        <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{v.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {activeResultTab === 'notes' && showNotes && notes && (
-                  <div className={`${m.notesBg} border rounded-lg p-3`}>
-                    <p className={`text-xs font-bold ${m.notesText} mb-1`}>Enhancement Notes</p>
-                    <p className={`text-xs ${m.textBody} leading-relaxed whitespace-pre-wrap`}>{notes}</p>
-                  </div>
-                )}
-              </div>
-
+              <PostEnhanceResults
+                m={m}
+                compact={compact}
+                raw={raw}
+                enhanced={enhanced}
+                setEnhanced={setEnhanced}
+                variants={variants}
+                resultMeta={resultMeta}
+                setResultMeta={setResultMeta}
+                copy={copy}
+                enhance={enhance}
+                dismiss={dismissResult}
+                editingId={editingId}
+                lib={lib}
+                evalRuns={editingId
+                  ? evalRuns
+                  : evalRuns.filter((run) => run.id === resultMeta?.runId)}
+                showInlineSaveBar={showInlineSaveBar}
+                saveTitle={saveTitle}
+                setSaveTitle={setSaveTitle}
+                suggestedSaveTitle={suggestedSaveTitle}
+                canSavePanel={canSavePanel}
+                quickSave={quickSave}
+                quickSaveAsNew={quickSaveAsNew}
+                openSavePanel={openSavePanel}
+                currentEntry={currentEntry}
+                onCandidateSelection={onCandidateSelection}
+              />
               {/* Follow-up suggestions */}
               {Boolean((enhanced || '').trim()) && !loading && typeof fetchFollowUps === 'function' && (
                 <div data-testid="follow-up-panel" className={`${m.surface} border ${m.border} rounded-lg p-3`}>
@@ -959,9 +847,10 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
               <div className="absolute top-0 bottom-0 w-px bg-white/50" style={{ left: `${goldenThreshold * 100}%` }} title={`Threshold: ${Math.round(goldenThreshold * 100)}%`} />
             </div>
             <div className="flex items-center justify-between gap-2 mt-2">
-              <label className={`text-xs ${m.textMuted}`}>Pass threshold</label>
+              <label htmlFor="golden-pass-threshold" className={`text-xs ${m.textMuted}`}>Pass threshold</label>
               <div className="flex items-center gap-2">
                 <input
+                  id="golden-pass-threshold"
                   type="range" min="0" max="100" step="5"
                   value={Math.round(goldenThreshold * 100)}
                   onChange={(e) => lib.setGoldenThreshold(editingId, Number(e.target.value) / 100)}
@@ -977,11 +866,12 @@ function GoldenBenchmark({ m, editingId, goldenResponse, goldenSimilarity, golde
                 Word Diff: Golden vs {comparisonSourceLabel}
               </p>
               <div className={`${m.codeBlock} border ${m.border} rounded-lg p-3 text-sm leading-loose`}>
-                {wordDiff(goldenResponse.text, comparisonText).map((d, i) => (
-                  <span key={i} className={`${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`}>
-                    {d.v}
-                  </span>
-                ))}
+                {wordDiff(goldenResponse.text, comparisonText).map((d, i) => {
+                  const className = `${d.t === 'add' ? m.diffAdd : d.t === 'del' ? m.diffDel : m.diffEq} px-0.5 rounded mr-0.5`;
+                  if (d.t === 'add') return <ins key={i} className={className}>{d.v}</ins>;
+                  if (d.t === 'del') return <del key={i} className={className}>{d.v}</del>;
+                  return <span key={i} className={className}>{d.v}</span>;
+                })}
               </div>
             </div>
           ) : (

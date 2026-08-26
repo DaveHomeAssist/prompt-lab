@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "id": "prompt-quality-corpus",
+  "description": "Representative raw prompts with objective, computed expectations for scorePrompt and lintPrompt. Every expected value in this file was produced by running the real functions, and promptCorpus.test.js asserts them back, so scoring or lint changes fail loudly instead of drifting.",
+  "selectionCriteria": [
+    "Span the full scorePrompt range: at least one case at each points value from 1 to 5.",
+    "Span the lint range: at least one case firing no rules and one firing every rule in LINT_QUICK_FIX_META — checked against that inventory, not against the rules the corpus happens to reach.",
+    "Isolate each scorePrompt signal (role, task, format, constraints, context) in at least one case where it is the only one present.",
+    "Include a templated prompt so extractVars is exercised.",
+    "Contain no user data, no credentials, and no provider-specific text — every case is synthetic and safe to run anywhere."
+  ],
+  "cases": [
+    {
+      "id": "bare-fragment",
+      "title": "Bare task fragment",
+      "rationale": "Floor case. A task verb and nothing else — the weakest input the editor should still score rather than reject.",
+      "prompt": "summarize this",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": true,
+          "format": false,
+          "constraints": false,
+          "context": false,
+          "points": 1
+        },
+        "lintRuleIds": ["constraints", "goal_near_top", "output_format"],
+        "vars": []
+      }
+    },
+    {
+      "id": "role-only",
+      "title": "Role with no task",
+      "rationale": "Isolates the role signal. Scores the same single point as a bare task, which is what makes points alone insufficient as a quality verdict.",
+      "prompt": "You are a senior technical editor.",
+      "expected": {
+        "score": {
+          "role": true,
+          "task": false,
+          "format": false,
+          "constraints": false,
+          "context": false,
+          "points": 1
+        },
+        "lintRuleIds": ["constraints", "goal_near_top", "output_format"],
+        "vars": []
+      }
+    },
+    {
+      "id": "constraints-only",
+      "title": "Constraints with no task or role",
+      "rationale": "Isolates the constraints signal, and is the case that fires goal_near_top and output_format without firing the constraints rule.",
+      "prompt": "Do not use jargon. Avoid passive voice. Must stay under 200 words.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": false,
+          "constraints": true,
+          "context": false,
+          "points": 1
+        },
+        "lintRuleIds": ["goal_near_top", "output_format"],
+        "vars": []
+      }
+    },
+    {
+      "id": "format-only",
+      "title": "Format directive with nothing else",
+      "rationale": "Isolates the format signal, and is the only case that specifies a format without a goal — so it fires goal_near_top and constraints but not output_format.",
+      "prompt": "Respond in markdown.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": true,
+          "constraints": false,
+          "context": false,
+          "points": 1
+        },
+        "lintRuleIds": ["constraints", "goal_near_top"],
+        "vars": []
+      }
+    },
+    {
+      "id": "long-prose-no-role",
+      "title": "Long unstructured prose",
+      "rationale": "Long enough to be non-trivial but under the 420-character complexity threshold, so it fires four of the five lint rules and not example_io. Isolates the context signal.",
+      "prompt": "The quarterly planning document needs a summary that captures the major themes discussed across the three workshops, including the disagreements that were not resolved, so that people who could not attend can catch up quickly without reading the full transcript of every session.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": false,
+          "constraints": false,
+          "context": true,
+          "points": 1
+        },
+        "lintRuleIds": ["constraints", "goal_near_top", "output_format", "role_definition"],
+        "vars": []
+      }
+    },
+    {
+      "id": "task-no-structure",
+      "title": "Clear task, no structure",
+      "rationale": "The common real-world midpoint: the user says what they want but gives no role, format, or limits.",
+      "prompt": "Write a changelog entry for the release we shipped yesterday covering the API changes.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": true,
+          "format": false,
+          "constraints": false,
+          "context": true,
+          "points": 2
+        },
+        "lintRuleIds": ["constraints", "output_format"],
+        "vars": []
+      }
+    },
+    {
+      "id": "format-json-strict",
+      "title": "Strict JSON contract",
+      "rationale": "Lint-clean without a role, proving a prompt can satisfy every lint rule while still scoring mid-range. Isolates the format signal.",
+      "prompt": "Return JSON only. Goal: extract every date. Format: {\"dates\": [\"YYYY-MM-DD\"]}. Do not add commentary.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": true,
+          "constraints": true,
+          "context": true,
+          "points": 3
+        },
+        "lintRuleIds": [],
+        "vars": []
+      }
+    },
+    {
+      "id": "templated-vars",
+      "title": "Templated prompt with variables",
+      "rationale": "Exercises extractVars alongside scoring, and covers the reusable-template shape the Library stores.",
+      "prompt": "You are a {{role}}. Goal: rewrite {{input_text}} for a {{audience}} audience. Respond in markdown. Do not exceed {{max_words}} words.",
+      "expected": {
+        "score": {
+          "role": true,
+          "task": false,
+          "format": true,
+          "constraints": true,
+          "context": true,
+          "points": 4
+        },
+        "lintRuleIds": [],
+        "vars": ["role", "input_text", "audience", "max_words"]
+      }
+    },
+    {
+      "id": "complete-well-formed",
+      "title": "Complete well-formed prompt",
+      "rationale": "Ceiling case. Every scorePrompt signal present and no lint rule fired — the target a successful enhance should reach.",
+      "prompt": "You are a senior release manager. Goal: produce a changelog entry for this release. Write it as a markdown bulleted list grouped by surface. Do not invent version numbers, and never include internal ticket IDs. Limit to eight bullets.",
+      "expected": {
+        "score": {
+          "role": true,
+          "task": true,
+          "format": true,
+          "constraints": true,
+          "context": true,
+          "points": 5
+        },
+        "lintRuleIds": [],
+        "vars": []
+      }
+    },
+    {
+      "id": "long-prose-no-example",
+      "title": "Long unstructured prose past the complexity threshold",
+      "rationale": "True worst case: over promptLint's 420-character complexity threshold with no role, goal, constraints, format, or example, so it is the only case that can fire example_io. Without it the corpus could never exercise that rule, and the 'fires every rule' criterion was satisfied only against the four rules the corpus happened to reach.",
+      "prompt": "We have been collecting customer feedback from a few different places over the last quarter and it has piled up quite a lot. There are survey responses, some support tickets, a handful of app store reviews and a long thread of comments from the community forum that nobody has really gone through yet. It would be good to get a sense of what people keep bringing up, whether the same complaints appear in more than one channel, and roughly how strongly people feel about each of them so we know what to look at first.",
+      "expected": {
+        "score": {
+          "role": false,
+          "task": false,
+          "format": false,
+          "constraints": false,
+          "context": true,
+          "points": 1
+        },
+        "lintRuleIds": [
+          "constraints",
+          "example_io",
+          "goal_near_top",
+          "output_format",
+          "role_definition"
+        ],
+        "vars": []
+      }
+    }
+  ]
+}

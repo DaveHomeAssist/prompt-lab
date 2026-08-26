@@ -2,14 +2,16 @@
 
 ## Overview
 
-Prompt Lab is currently delivered through three runtime shells that share one frontend codebase, plus a public landing page:
+Prompt Lab has five user-facing runtime surfaces plus a public landing page:
 
-- Chrome / Vivaldi extension: MV3 side panel build
-- Desktop app: Tauri 2 wrapper
-- Hosted web app: Vite build deployed to Vercel with a CORS proxy edge function at `https://promptlab.tools/app/`
-- Public landing page: static marketing entry at `https://promptlab.tools/`
+- Chrome / Vivaldi extension: MV3 side panel build using the shared React workbench
+- Desktop app: Tauri 2 wrapper using the shared React workbench
+- Hosted web app: the shared React workbench at `https://promptlab.tools/app/`
+- React mobile prototype: a separate touch-first React UI at `https://promptlab.tools/mobile/`
+- Native iPhone/iPad app: a focused SwiftUI app for iOS/iPadOS 17+
+- Public landing page: marketing and onboarding at `https://promptlab.tools/`
 
-The shared React application lives in `prompt-lab-extension/src/`.
+The extension, desktop, and hosted `/app/` shells share the React application in `prompt-lab-extension/src/`. The React mobile prototype has its own UI but imports selected shared provider utilities. The native app shares versioned JSON contracts, not React UI code. Production `promptlab.tools` routes are served by Vercel; GitHub Pages builds the generated `docs/` mirror but is not the production-domain host.
 
 ## Repo layout
 
@@ -29,6 +31,7 @@ The shared React application lives in `prompt-lab-extension/src/`.
   - Public web deploy package
   - `index.html` is the landing page served at `/`
   - `app/index.html` is the shared React app shell served at `/app/`
+  - `mobile/` is the separate React mobile prototype served at `/mobile/`
   - `public/` holds static assets copied into the deployed site root
   - Vite config sets `VITE_WEB_MODE=true` to activate proxy fetch injection in the app shell
 - `api/`
@@ -36,14 +39,17 @@ The shared React application lives in `prompt-lab-extension/src/`.
 - `vercel.json`
   - Root Vercel build config for the hosted web deployment
 - `.github/workflows/`
-  - Extension CI
-  - Desktop cross-platform build workflow
+  - Web, extension, desktop, native, docs, dependency, API, and release workflows
+- `../prompt-lab-ios/`
+  - Native SwiftUI iPhone/iPad app, SwiftData models, Keychain storage, and XCTest suites
+- `../contracts/promptlab-enhance-contract-v1.json`
+  - Versioned React/native enhance contract fixture
 
 ## Runtime model
 
 ### Shared frontend
 
-The main application UI is written once and reused in both targets.
+The main React workbench is written once and reused by the extension, desktop, and hosted `/app/` targets.
 
 - `src/App.jsx` is the primary surface
 - `src/hooks/` manages editor, library, eval run, and test case state
@@ -75,7 +81,7 @@ The desktop app uses Tauri plus local browser storage:
 The hosted web deployment is split into a landing route and an app route:
 
 - `prompt-lab-web/index.html` is the public landing page for `https://promptlab.tools/`
-- `prompt-lab-web/app/index.html` imports `../../prompt-lab-extension/src/main.jsx` and is currently served publicly at `https://promptlab.tools/app/`
+- `prompt-lab-web/app/index.html` loads `prompt-lab-web/app/main-web.jsx`, which mounts the shared `App` and `ErrorBoundary` and imports the shared styles; the route is currently served publicly at `https://promptlab.tools/app/`
 - `prompt-lab-web/public/` provides shared static assets such as fonts and social images
 - `src/lib/desktopApi.js` detects web mode via `VITE_WEB_MODE` and injects a proxy-aware fetch wrapper
 - `src/lib/proxyFetch.js` reroutes provider API requests through `/api/proxy` to bypass CORS, forwarding the caller's `AbortSignal` so cancellation reaches the proxy transport
@@ -84,30 +90,57 @@ The hosted web deployment is split into a landing route and an app route:
 - Hosted web currently defaults to Anthropic and can use either the shared server key or a user-supplied Anthropic key
 - Extension and desktop continue to expose the full provider list, including direct Ollama access
 
+### React mobile prototype path
+
+- `prompt-lab-web/mobile/MobileApp.jsx` is a separate touch-first UI, not the shared workbench
+- `mobileProvider.js` imports shared Anthropic/provider helpers from the extension source
+- Vite builds `mobile/index.html` as a third web entry and Vercel rewrites `/mobile` to it
+- The prototype is a public evaluation surface, not an App Store or installed mobile release
+- `mobile.promptlab.tools` has a host rewrite in `vercel.json`, but the verified public route is `https://promptlab.tools/mobile/`; separate subdomain DNS is not configured
+
+### Native iPhone/iPad path
+
+- `prompt-lab-ios/` is a universal SwiftUI app for iOS/iPadOS 17+
+- It uses SwiftData for prompts, pads, and run history and Keychain for the Anthropic key
+- It currently supports Anthropic only and deliberately excludes A/B compare, composer chains, billing, telemetry, PII scanning, and other providers
+- `contracts/promptlab-enhance-contract-v1.json` is the compatibility boundary enforced by Vitest and XCTest
+- M0 through M3 are implemented; TestFlight/App Store distribution remains blocked on owner-supplied release inputs
+
 ## Platform runtime model
 
 | Platform | API path | Public backend? |
 |----------|----------|-----------------|
 | Extension | Service worker → provider | No |
 | Desktop | Native fetch → provider | No |
-| Web (hosted) | CORS proxy → provider | Yes (`api/proxy.js`) |
-| Server (planned) | Server process → provider | No (self-hosted) |
+| Hosted web app | Vercel Edge proxy → Anthropic | Yes (`api/proxy.js`) |
+| React mobile prototype | Vercel Edge proxy → Anthropic | Yes (`api/proxy.js`) |
+| Native iPhone/iPad | URLSession → Anthropic | No |
+| Prompt Lab Server (proposed) | Server process → provider | No (self-hosted) |
 
-The extension and desktop shells call provider APIs directly from the client with
-no intermediary. The hosted web app routes through a Vercel Edge Function proxy to
-bypass browser CORS restrictions — this is the only surface with a public backend
-dependency. A planned "Prompt Lab Server" mode would provide browser access through
-a self-hosted process, preserving the zero-public-backend property.
+The extension and desktop shells call provider APIs directly from the client with no intermediary. The hosted web app and React mobile prototype route Anthropic traffic through a Vercel Edge Function proxy to bypass browser CORS restrictions. The native app calls Anthropic directly with a Keychain-backed BYO key. Prompt Lab Server remains a proposal, not a shipped runtime.
 
 ## Providers
 
-Prompt Lab currently supports:
+Provider support is not uniform across surfaces. The extension and desktop
+shells call five providers directly with a bring-your-own key; the hosted web
+and React mobile surfaces reach Anthropic only, because that is the sole host
+`api/proxy.js` will forward to.
 
-- Anthropic
-- OpenAI
-- Google Gemini
-- OpenRouter
-- Ollama
+| Provider | Extension · desktop | Hosted web · mobile | Native iPhone/iPad |
+| --- | --- | --- | --- |
+| Anthropic | Yes | Yes, via `api/proxy.js` | Yes |
+| OpenAI | Yes | No | No |
+| Google Gemini | Yes | No | No |
+| OpenRouter | Yes | No | No |
+| Ollama | Yes, local | No | No |
+
+The proxy validates the target against `SUPPORTED_HOST` (`api.anthropic.com`)
+and `SUPPORTED_PATH` (`/v1/messages`), and restricts models to
+`HOSTED_ALLOWED_ANTHROPIC_MODELS`, which defaults to `claude-sonnet-4-6` alone.
+A hosted client may send the `__plb_hosted_shared_key__` placeholder instead of
+a real key; the proxy strips it and substitutes the server-side
+`ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
+provider key. User-supplied keys are never persisted server-side.
 
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.
 
@@ -117,6 +150,8 @@ Provider-specific request behavior is routed through shared provider abstraction
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
+- The React mobile prototype stores its local workspace in browser storage
+- The native app uses SwiftData and stores its provider key in Keychain
 
 Persistence contracts (post 2026-08 behavioral-audit remediation):
 
@@ -134,6 +169,14 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
 - Provider traffic is routed through controlled adapters
 - PII detection and redaction use the shared `src/lib/piiEngine.js`
 - The extension manifest keeps permissions narrow and host access explicit
+- `api/_lib/allowedOrigins.js` is the single request-origin allow-list shared by
+  `/api/proxy` and `/api/telemetry`. It admits the production web origin, the
+  mobile web origin, `PROMPTLAB_WEB_ORIGIN` / `VITE_PROMPTLAB_WEB_ORIGIN`, the
+  comma-separated `PROMPTLAB_PROXY_ALLOWED_ORIGINS` list (including exact
+  `chrome-extension://<32 a-p>` ids), and localhost outside production. A
+  request with a missing or unlisted origin is rejected with 403 and never
+  receives an `Access-Control-Allow-Origin` header — the allowed origin is
+  echoed explicitly and a wildcard is never emitted
 
 ## Testing
 
@@ -142,3 +185,6 @@ Current automated coverage includes:
 - Vitest + React Testing Library for hooks, providers, schemas, storage, and utilities
 - Playwright smoke coverage for the extension enhance flow
 - CI workflows for extension verification and desktop build packaging
+- Hosted web/mobile build and browser coverage
+- Native XCTest unit/UI coverage on iPhone and iPad simulator families
+- Cross-surface enhance-contract parity tests

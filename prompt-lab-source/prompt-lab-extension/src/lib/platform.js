@@ -12,6 +12,8 @@
  *   - sessionSet(obj)
  */
 
+import { getInstalledProviderFixture } from './providerFixture.js';
+
 const IS_EXTENSION =
   typeof chrome !== 'undefined' &&
   typeof chrome.runtime?.sendMessage === 'function';
@@ -191,7 +193,10 @@ function extSessionGet(key, cb) {
 }
 
 function extSessionSet(obj) {
-  if (chrome.storage?.session) chrome.storage.session.set(obj);
+  if (!chrome.storage?.session) return Promise.resolve(false);
+  return new Promise((resolve) => {
+    chrome.storage.session.set(obj, () => resolve(!chrome.runtime?.lastError));
+  });
 }
 
 function extOpenSettings() {
@@ -210,11 +215,15 @@ function desktopSessionGet(key, cb) {
   }
 }
 function desktopSessionSet(obj) {
+  let ok = true;
   for (const [k, v] of Object.entries(obj)) {
     try {
       localStorage.setItem(SESSION_PREFIX + k, JSON.stringify(v));
-    } catch { /* quota exceeded — best effort */ }
+    } catch {
+      ok = false;
+    }
   }
+  return ok;
 }
 
 function desktopOpenSettings() {
@@ -224,7 +233,44 @@ function desktopOpenSettings() {
 
 // ── Exports ────────────────────────────────────────────────────────────────
 
-export const callModel = IS_EXTENSION ? extCallModel : desktopCallModel;
+const realCallModel = IS_EXTENSION ? extCallModel : desktopCallModel;
+
+// Deterministic provider fixture (DHA-12). Consulted per call so a test shell
+// can install or remove it between cases.
+//
+// The lookup is gated to test and development builds. "Production never sets
+// this key" is not a security property: platform.js ships in the hosted web,
+// desktop, and extension bundles, so an unguarded per-call lookup on a
+// predictable global would let anything running in the page swap the provider
+// transport — suppressing or forging results and observing prompt payloads.
+// These are the same `import.meta.env` flags billing.js gates on, and Vite
+// replaces them statically, so the branch is eliminated from a production
+// build rather than merely skipped at runtime.
+const FIXTURES_ENABLED = Boolean(
+  import.meta.env?.MODE === 'test' || import.meta.env?.DEV,
+);
+
+export function callModel(payload, options) {
+  if (FIXTURES_ENABLED) {
+    const fixture = getInstalledProviderFixture();
+    if (fixture) return fixture(payload, fixtureOptionsFor(options));
+  }
+  return realCallModel(payload, options);
+}
+
+// Streaming is not uniform across surfaces, and the fixture must not paper over
+// that. `desktopCallModel` forwards `onChunk` down to `callProvider`, which
+// really streams; `extCallModel` destructures only `signal` and sends a single
+// MODEL_REQUEST, so on the extension the callback is never invoked. A fixture
+// that streamed on both would let extension primary-flow tests assert incremental
+// output that production never produces — the opposite of contract parity.
+// Dropping `onChunk` here mirrors what the real extension transport does, so a
+// test author does not have to know the difference.
+function fixtureOptionsFor(options) {
+  if (!IS_EXTENSION || !options?.onChunk) return options;
+  const { onChunk, ...rest } = options;
+  return rest;
+}
 export const listOllamaModels = IS_EXTENSION ? extListOllamaModels : desktopListOllamaModels;
 export const loadProviderSettings = IS_EXTENSION ? extLoadProviderSettings : desktopLoadProviderSettings;
 export const saveProviderSettings = IS_EXTENSION ? extSaveProviderSettings : desktopSaveProviderSettings;

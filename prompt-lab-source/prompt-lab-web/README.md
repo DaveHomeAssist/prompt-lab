@@ -2,7 +2,7 @@
 
 Prompt Lab's public web deployment lives at `https://promptlab.tools` and is built from `prompt-lab-web/`.
 
-The public site has four primary routes:
+The public site has these primary and supporting routes:
 
 - `/` - landing page and product marketing surface
 - `/tools` - public tools hub linking the hosted app and auxiliary utilities
@@ -82,4 +82,4 @@ Email addresses, usernames, profile metadata, and client-provided identity field
 - `public/mobile/` - PromptLab Mobile static backup and design handoff files
 - `../scripts/publish-landing.mjs` - syncs the canonical landing from `prompt-lab-web/` into `../docs/`
 - `../scripts/vercel-deploy.mjs` - safe preview/production deploy wrapper for the linked Vercel project
-- `vite.config.js` - sets `VITE_WEB_MODE=true` and builds both HTML entry points
+- `vite.config.js` - sets `VITE_WEB_MODE=true` and builds the landing, app, and mobile HTML entry points
