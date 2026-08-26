@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,16 +13,24 @@ import {
 // every rapid click scheduled another delayed testConnection and each one
 // reached the provider — one billed duplicate per click.
 //
-// `public/options.js` is a plain script whose `./lib/providerRegistry.js`
-// import only resolves after `scripts/assemble.js` copies `extension/lib`
-// alongside it, so it cannot be imported directly from the source tree. The
-// real source is loaded here with that single import line replaced by the same
-// constants the assembled bundle would supply — everything else executes
-// verbatim, including the guard under test.
-const OPTIONS_SOURCE = readFileSync(
+// `options.js` is a plain script whose `./lib/providerRegistry.js` import only
+// resolves after `scripts/assemble.js` copies `extension/lib` alongside it, so
+// it cannot be imported directly from the source tree. The real source is
+// loaded here with that single import line replaced by the same constants the
+// assembled bundle would supply — everything else executes verbatim, including
+// the guard under test.
+//
+// Audit M-3: the test must exercise the copy `scripts/assemble.js` actually
+// ships, which prefers `extension/options.js` over `public/options.js`. Resolve
+// with the same precedence so drift between the two copies cannot leave an
+// unguarded file in the built extension while this test stays green.
+const OPTIONS_CANDIDATES = [
+  resolve(__dirname, '../../extension/options.js'),
   resolve(__dirname, '../../public/options.js'),
-  'utf8',
-).replace(/^import\s+\{[^}]*\}\s+from\s+'\.\/lib\/providerRegistry\.js';\s*$/m, '');
+];
+const OPTIONS_PATH = OPTIONS_CANDIDATES.find((candidate) => existsSync(candidate));
+const OPTIONS_SOURCE = readFileSync(OPTIONS_PATH, 'utf8')
+  .replace(/^import\s+\{[^}]*\}\s+from\s+'\.\/lib\/providerRegistry\.js';\s*$/m, '');
 
 const ELEMENT_IDS = [
   'anthropicSection', 'openaiSection', 'geminiSection', 'openrouterSection', 'ollamaSection',
