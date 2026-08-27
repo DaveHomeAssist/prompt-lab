@@ -24,6 +24,7 @@ test('app CSP permits the configured Clerk runtime and API domain without a wild
   assert.doesNotMatch(csp, /https:\/\/\*\.clerk\./);
 });
 
+<<<<<<< HEAD
 // M-1: the policy above passed while the sign-in surface was still unusable.
 // Chromium reported three blocked directives against the 77ecf7b policy —
 // worker-src (blob), img-src (https://img.clerk.com) and frame-src
@@ -72,4 +73,12 @@ test('app CSP keeps its restrictive baseline', async () => {
   assert.match(csp, /form-action 'self'/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-eval'/);
   assert.doesNotMatch(csp, /(?:^|;)\s*(?:default|script|connect|img|frame|worker)-src[^;]*\s\*(?:\s|;|$)/);
+=======
+test('app CSP permits Clerk blob workers and provider imagery', async () => {
+  const csp = await readAppCsp();
+
+  assert.match(csp, /worker-src[^;]*'self'/);
+  assert.match(csp, /worker-src[^;]*\bblob:/);
+  assert.match(csp, /img-src[^;]*\bhttps:\/\/img\.clerk\.com\b/);
+>>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
 });

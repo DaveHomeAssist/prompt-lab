@@ -11,11 +11,17 @@ export default function useEvalRuns(optionsOrLegacy) {
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
   const limit = opts.limit ?? 12;
+<<<<<<< HEAD
   // M-2: mode fallback for surfaces that want one (the editor's inline
   // history). It is only applied while no prompt narrows the query and no
   // explicit mode filter is set, so the Evaluate timeline's "All modes"
   // stays truthful: it queries with no mode restriction at all.
   const defaultMode = opts.defaultMode ?? null;
+=======
+  // Callers that pass a mode key (even '') own mode scoping; legacy callers
+  // without one keep the enhance-only default for promptless queries.
+  const hasModeOption = Object.prototype.hasOwnProperty.call(opts, 'mode');
+>>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
   const modeFilter = opts.mode ?? '';
   const providerFilter = opts.provider ?? '';
   const modelFilter = opts.model ?? '';
@@ -50,7 +56,11 @@ export default function useEvalRuns(optionsOrLegacy) {
     try {
       const filters = { limit: 200 };
       if (pid) filters.promptId = pid;
+<<<<<<< HEAD
       else if (defaultMode) filters.mode = defaultMode;
+=======
+      else if (!hasModeOption) filters.mode = 'enhance';
+>>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
       if (modeFilter) filters.mode = modeFilter;
       if (providerFilter) filters.provider = providerFilter;
       if (modelFilter) filters.model = modelFilter;
@@ -78,7 +88,11 @@ export default function useEvalRuns(optionsOrLegacy) {
         setLoading(false);
       }
     }
+<<<<<<< HEAD
   }, [promptId, defaultMode, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
+=======
+  }, [promptId, hasModeOption, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
+>>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);
