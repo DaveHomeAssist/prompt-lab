@@ -1,10 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-<<<<<<< HEAD
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-=======
-import { resolve } from 'node:path';
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -23,7 +19,6 @@ import {
 // every rapid click scheduled another delayed testConnection and each one
 // reached the provider — one billed duplicate per click.
 //
-<<<<<<< HEAD
 // M-3: this suite used to read `public/options.js`, which `scripts/assemble.js`
 // never packages — `extension/options.js` shadows it — so the guard could pass
 // here while the shipped extension had none. The source under test is now
@@ -41,25 +36,6 @@ const OPTIONS_SOURCE_PATH = resolveExtensionSource('options.js');
 // replaced by the same constants the assembled bundle supplies — everything
 // else executes verbatim, including the guard under test.
 const OPTIONS_SOURCE = readFileSync(OPTIONS_SOURCE_PATH, 'utf8')
-=======
-// `options.js` is a plain script whose `./lib/providerRegistry.js` import only
-// resolves after `scripts/assemble.js` copies `extension/lib` alongside it, so
-// it cannot be imported directly from the source tree. The real source is
-// loaded here with that single import line replaced by the same constants the
-// assembled bundle would supply — everything else executes verbatim, including
-// the guard under test.
-//
-// Audit M-3: the test must exercise the copy `scripts/assemble.js` actually
-// ships, which prefers `extension/options.js` over `public/options.js`. Resolve
-// with the same precedence so drift between the two copies cannot leave an
-// unguarded file in the built extension while this test stays green.
-const OPTIONS_CANDIDATES = [
-  resolve(__dirname, '../../extension/options.js'),
-  resolve(__dirname, '../../public/options.js'),
-];
-const OPTIONS_PATH = OPTIONS_CANDIDATES.find((candidate) => existsSync(candidate));
-const OPTIONS_SOURCE = readFileSync(OPTIONS_PATH, 'utf8')
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
   .replace(/^import\s+\{[^}]*\}\s+from\s+'\.\/lib\/providerRegistry\.js';\s*$/m, '');
 
 const ELEMENT_IDS = [

@@ -98,11 +98,7 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
-<<<<<<< HEAD
       verdict: 'pass',
-=======
-      verdict: 'fail',
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
       regression: true,
       search: 'regression',
       dateRange: '7d',
@@ -118,18 +114,13 @@ describe('useEvalRuns', () => {
       provider: 'openai',
       model: 'gpt-4.1',
       status: 'error',
-<<<<<<< HEAD
       verdict: 'pass',
-=======
-      verdict: 'fail',
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
       regression: true,
       search: 'regression',
       dateRange: '7d',
     });
   });
 
-<<<<<<< HEAD
   it('omits verdict and regression when they are unset', async () => {
     const { result } = renderHook(() => useEvalRuns({
       promptId: null,
@@ -138,16 +129,11 @@ describe('useEvalRuns', () => {
       verdict: '',
       regression: false,
     }));
-=======
-  it('leaves an explicit All-modes timeline query unscoped instead of forcing enhance', async () => {
-    const { result } = renderHook(() => useEvalRuns({ promptId: null, tab: 'history', mode: '' }));
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
 
     await act(async () => {
       await result.current.refreshEvalRuns();
     });
 
-<<<<<<< HEAD
     expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200, mode: 'ab' });
   });
 
@@ -173,9 +159,6 @@ describe('useEvalRuns', () => {
         regression: true,
       });
     });
-=======
-    expect(listEvalRuns).toHaveBeenLastCalledWith({ limit: 200 });
->>>>>>> f3b9f1a52054b231949778e8f8bd4b3237cca746
   });
 
   it('supports pagination with loadMore and reports hasMore from total rows', async () => {
