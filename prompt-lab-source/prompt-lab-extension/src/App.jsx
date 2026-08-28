@@ -321,6 +321,12 @@ export default function App({
     splitPane: splitMobilePane,
     setSplitPane: setSplitMobilePane,
     compact: viewportWidth < 720,
+    preserveSharedHash: persistenceFlow.sharedHashPending,
+    // L-2: a dead deep link recovers to Write with a visible explanation
+    // instead of silently resolving back to the previous workspace.
+    onUnknownRoute: (pathname) => {
+      notify(`Page not found (${pathname}). Showing the Write workspace.`);
+    },
   });
 
   useEffect(() => {

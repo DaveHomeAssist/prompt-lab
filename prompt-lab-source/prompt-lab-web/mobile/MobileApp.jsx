@@ -746,9 +746,20 @@ function saveOutputToPad(state, patch, notify) {
   notify('Saved to Pad', 'success', 'pad');
 }
 
-function copyText(text, notify) {
-  if (navigator.clipboard?.writeText) {
-    void navigator.clipboard.writeText(text);
+async function copyText(text, notify) {
+  // L-1: success is only reported after the browser accepts the write. A
+  // rejected write (blocked permission, unfocused page) or a missing
+  // clipboard API surfaces as an error instead of a silent false "Copied".
+  if (!navigator.clipboard?.writeText) {
+    notify('Copy failed: clipboard unavailable in this browser', 'error', 'output');
+    return false;
   }
-  notify('Copied', 'success', 'output');
+  try {
+    await navigator.clipboard.writeText(text);
+    notify('Copied', 'success', 'output');
+    return true;
+  } catch {
+    notify('Copy failed: the browser blocked clipboard access', 'error', 'output');
+    return false;
+  }
 }

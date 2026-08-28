@@ -284,11 +284,12 @@ export async function listTestCases(filters = {}) {
     const store = tx.objectStore(TEST_CASE_STORE);
     records = (await txRequest(store.getAll())) || [];
   }
-  return records
+  const sorted = records
     .map(normalizeTestCaseRecord)
     .filter((row) => !promptFilter || row.promptId === promptFilter)
-    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-    .slice(0, Math.max(1, Math.min(500, Number(limit) || 200)));
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+  if (limit === null || limit === 'all') return sorted;
+  return sorted.slice(0, Math.max(1, Math.min(500, Number(limit) || 200)));
 }
 
 export async function deleteTestCase(id) {

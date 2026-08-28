@@ -62,6 +62,47 @@ describe('filterEvalRuns', () => {
     expect(result[0].id).toBe('2');
   });
 
+  // M-2: Evaluate offers a verdict select and a regression toggle. Both are
+  // honoured here, but nothing covered them, so the panel could quietly drop
+  // them on the way to this function without a single test going red.
+  describe('verdict and regression filters', () => {
+    const verdictRuns = [
+      { id: 'manual-pass', createdAt: '2024-01-01T00:00:00Z', verdict: 'pass', input: 'a', output: 'b' },
+      { id: 'manual-fail', createdAt: '2024-01-02T00:00:00Z', verdict: 'fail', input: 'a', output: 'b' },
+      { id: 'unrated', createdAt: '2024-01-03T00:00:00Z', input: 'a', output: 'b' },
+      { id: 'regressed', createdAt: '2024-01-04T00:00:00Z', verdict: 'fail', regression: true, input: 'a', output: 'b' },
+    ];
+
+    it('filters by manual verdict', () => {
+      expect(filterEvalRuns(verdictRuns, { verdict: 'pass' }).map((r) => r.id)).toEqual(['manual-pass']);
+      expect(filterEvalRuns(verdictRuns, { verdict: 'fail' }).map((r) => r.id))
+        .toEqual(['regressed', 'manual-fail']);
+    });
+
+    it('leaves the set untouched when no verdict is selected', () => {
+      expect(filterEvalRuns(verdictRuns, { verdict: '' })).toHaveLength(4);
+    });
+
+    it('prefers an automated trait verdict over the manual rating', () => {
+      const rows = [
+        { id: 'trait-overrides', createdAt: '2024-01-01T00:00:00Z', verdict: 'fail', traitResults: { verdict: 'pass' }, input: 'a', output: 'b' },
+      ];
+      expect(filterEvalRuns(rows, { verdict: 'pass' }).map((r) => r.id)).toEqual(['trait-overrides']);
+      expect(filterEvalRuns(rows, { verdict: 'fail' })).toHaveLength(0);
+    });
+
+    it('narrows to regressions only when the toggle is on', () => {
+      expect(filterEvalRuns(verdictRuns, { regression: true }).map((r) => r.id)).toEqual(['regressed']);
+      expect(filterEvalRuns(verdictRuns, { regression: false })).toHaveLength(4);
+    });
+
+    it('combines the verdict and regression filters', () => {
+      expect(filterEvalRuns(verdictRuns, { verdict: 'fail', regression: true }).map((r) => r.id))
+        .toEqual(['regressed']);
+      expect(filterEvalRuns(verdictRuns, { verdict: 'pass', regression: true })).toHaveLength(0);
+    });
+  });
+
   it('returns every retained run for lossless workspace export', () => {
     const completeHistory = Array.from({ length: 1005 }, (_, index) => ({
       id: `run-${index}`,

@@ -28,13 +28,24 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
   const normalizedExisting = normalizeLibrary(existingLibrary);
   const normalizedIncoming = normalizeLibrary(incomingLibrary);
   const prepend = options?.prepend === true;
-  const seen = new Set(normalizedExisting.map(getLibraryEntrySignature).filter(Boolean));
+  const signatureToPromptId = new Map(
+    normalizedExisting
+      .map((entry) => [getLibraryEntrySignature(entry), entry.id])
+      .filter(([signature, promptId]) => Boolean(signature && promptId)),
+  );
+  const promptIdMap = new Map();
   const imported = [];
 
   normalizedIncoming.forEach((entry) => {
     const signature = getLibraryEntrySignature(entry);
-    if (!signature || seen.has(signature)) return;
-    seen.add(signature);
+    if (!signature) return;
+    const survivingPromptId = signatureToPromptId.get(signature);
+    if (survivingPromptId) {
+      if (entry.id) promptIdMap.set(entry.id, survivingPromptId);
+      return;
+    }
+    signatureToPromptId.set(signature, entry.id);
+    if (entry.id) promptIdMap.set(entry.id, entry.id);
     imported.push(entry);
   });
 
@@ -46,6 +57,7 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
     library: normalizeLibrary(merged),
     importedCount: imported.length,
     skippedCount: normalizedIncoming.length - imported.length,
+    promptIdMap,
   };
 }
 
