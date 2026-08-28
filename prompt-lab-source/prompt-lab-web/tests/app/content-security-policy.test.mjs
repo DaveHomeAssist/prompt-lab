@@ -58,6 +58,7 @@ test('app CSP allows the Cloudflare Turnstile challenge Clerk embeds', async () 
 
   // Clerk bot protection renders a Turnstile widget: a script plus an iframe.
   assert.ok(frameSrc, 'CSP must declare frame-src; default-src \'self\' blocks the challenge iframe');
+  assert.ok(scriptSrc, 'CSP must declare script-src for the challenge script');
   assert.match(frameSrc, /\bhttps:\/\/challenges\.cloudflare\.com\b/);
   assert.match(scriptSrc, /\bhttps:\/\/challenges\.cloudflare\.com\b/);
 });

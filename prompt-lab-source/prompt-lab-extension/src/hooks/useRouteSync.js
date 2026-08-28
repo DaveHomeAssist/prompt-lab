@@ -30,6 +30,7 @@ export default function useRouteSync({
   runsView, setRunsView,
   splitPane, setSplitPane,
   compact = false,
+  preserveSharedHash = false,
   onUnknownRoute,
 }) {
   const location = useLocation();
@@ -49,6 +50,9 @@ export default function useRouteSync({
 
   // URL → state: on mount and browser back/forward
   useEffect(() => {
+    // Shared prompt/pack fragments are application payloads, not routes.
+    // Leave them untouched until usePersistenceFlow has decoded the payload.
+    if (preserveSharedHash) return;
     const mapping = resolveRouteState(location.pathname);
     if (!mapping) {
       // L-2: an unknown route used to fall through silently — nav state kept
@@ -76,17 +80,17 @@ export default function useRouteSync({
 
     // Allow the state update to settle before re-enabling URL push
     requestAnimationFrame(() => { suppressPush.current = false; });
-  }, [location.pathname, setPrimaryView, setWorkspaceView, setRunsView, setSplitPane]);
+  }, [location.pathname, preserveSharedHash, setPrimaryView, setWorkspaceView, setRunsView, setSplitPane]);
 
   // State → URL: when nav state changes, update the URL
   useEffect(() => {
-    if (suppressPush.current) return;
+    if (suppressPush.current || preserveSharedHash) return;
 
     const target = stateToRoute(primaryView, workspaceView, runsView, { compact, splitPane });
     if (target !== location.pathname) {
       navigate(target);
     }
-  }, [primaryView, workspaceView, runsView, splitPane, compact, navigate, location.pathname]);
+  }, [primaryView, workspaceView, runsView, splitPane, compact, navigate, location.pathname, preserveSharedHash]);
 
   return { replaceRoute };
 }

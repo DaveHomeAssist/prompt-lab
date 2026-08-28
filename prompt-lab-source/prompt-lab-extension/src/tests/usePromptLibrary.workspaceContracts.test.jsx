@@ -216,6 +216,7 @@ describe('workspace export and import contract', () => {
     });
 
     expect(experimentMocks.listEvalRuns).toHaveBeenCalledWith({ limit: null });
+    expect(experimentMocks.listTestCases).toHaveBeenCalledWith({ limit: null });
 
     expect(payload).toEqual(expect.objectContaining({
       product: 'Prompt Lab',
@@ -321,6 +322,56 @@ describe('workspace export and import contract', () => {
     expect(JSON.parse(localStorage.getItem('pl2-pads'))).toEqual(scratchWorkspace);
     expect(notify).toHaveBeenCalledWith('Imported workspace data. No new prompts; skipped 0 duplicates.');
     expect(notify).not.toHaveBeenCalledWith('Import failed: no valid prompts found.');
+  });
+
+  it('remaps imported test cases when their prompt is deduplicated to a local ID', async () => {
+    const localPrompt = {
+      ...richPrompt,
+      id: 'prompt-local',
+      title: 'Local release checklist',
+    };
+    const incomingPrompt = {
+      ...richPrompt,
+      id: 'prompt-from-backup',
+      title: 'Backup release checklist',
+    };
+    localStorage.setItem(storageKeys.library, JSON.stringify([localPrompt]));
+
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+
+    const duplicateWorkspace = {
+      product: 'Prompt Lab',
+      schemaVersion: 2,
+      library: [incomingPrompt],
+      testCases: [{
+        ...experimentTestCase,
+        promptId: 'prompt-from-backup',
+      }],
+    };
+    const input = {
+      files: [{
+        size: JSON.stringify(duplicateWorkspace).length,
+        contents: JSON.stringify(duplicateWorkspace),
+      }],
+      value: 'duplicate-workspace.json',
+    };
+
+    act(() => {
+      result.current.importLib({ target: input });
+    });
+
+    await waitFor(() => {
+      expect(experimentMocks.saveTestCase).toHaveBeenCalledWith(
+        expect.objectContaining({ promptId: 'prompt-local' }),
+      );
+      expect(input.value).toBe('');
+    });
+
+    expect(result.current.library).toHaveLength(1);
+    expect(result.current.library[0].id).toBe('prompt-local');
+    expect(notify).toHaveBeenCalledWith('Imported workspace data. No new prompts; skipped 1 duplicates.');
   });
 
   it('adopts newer cross-tab mutations for every extended prompt field', async () => {

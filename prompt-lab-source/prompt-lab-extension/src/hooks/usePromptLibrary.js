@@ -833,7 +833,7 @@ export default function usePromptLibrary(notify) {
     const runs = await listEvalRuns({ limit: null });
     // M-4: saved experiment test cases are part of the promised experiments
     // export and must leave with the workspace file.
-    const testCases = await listTestCases({ limit: 500 });
+    const testCases = await listTestCases({ limit: null });
     if (library.length === 0 && trash.length === 0 && !scratch && runs.length === 0 && testCases.length === 0) {
       notify('Prompt Lab has no saved workspace data to export.');
       return null;
@@ -931,7 +931,10 @@ export default function usePromptLibrary(notify) {
           await Promise.all(parsed.runs.map((run) => saveEvalRun(run)));
         }
         if (Array.isArray(parsed?.testCases)) {
-          await Promise.all(parsed.testCases.map((testCase) => saveTestCase(testCase)));
+          await Promise.all(parsed.testCases.map((testCase) => saveTestCase({
+            ...testCase,
+            promptId: result.promptIdMap.get(testCase?.promptId) || testCase?.promptId,
+          })));
         }
         if (result.importedCount === 0) {
           notify(hasWorkspaceExtras

@@ -126,4 +126,44 @@ describe('useRouteSync route recovery', () => {
     // also unresolvable in this environment.
     expect(props.onUnknownRoute).toHaveBeenCalledTimes(1);
   });
+
+  it.each(['/pack=encoded-pack', '/share=encoded-prompt'])(
+    'preserves the shared payload route %s until persistence consumes it',
+    async (initialPath) => {
+      const onUnknownRoute = vi.fn();
+      const hookProps = {
+        primaryView: 'create',
+        setPrimaryView: vi.fn(),
+        workspaceView: 'editor',
+        setWorkspaceView: vi.fn(),
+        runsView: 'history',
+        setRunsView: vi.fn(),
+        splitPane: 'editor',
+        setSplitPane: vi.fn(),
+        compact: false,
+        preserveSharedHash: true,
+        onUnknownRoute,
+      };
+      const view = render(
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Harness hookProps={hookProps} />
+        </MemoryRouter>,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(screen.getByTestId('pathname')).toHaveTextContent(initialPath);
+      expect(onUnknownRoute).not.toHaveBeenCalled();
+
+      view.rerender(
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Harness hookProps={{ ...hookProps, preserveSharedHash: false }} />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/$/);
+      });
+      expect(onUnknownRoute).toHaveBeenCalledWith(initialPath);
+    },
+  );
 });
