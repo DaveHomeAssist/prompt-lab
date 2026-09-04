@@ -8,7 +8,7 @@ Produce a working, runnable Prompt Lab desktop Windows build artifact (`.msi` an
 
 - Repo (canonical local checkout): `C:\Users\Dave RambleOn\Desktop\01-Projects\code\daveHomeAssist\prompt-lab`
 - Desktop app: `prompt-lab-source/prompt-lab-desktop/` (Tauri 2.x + Vite 8 + React 18)
-- Rust crate: `prompt-lab-source/prompt-lab-desktop/src-tauri/`, app version `1.7.0`, identifier `com.promptlab.desktop`
+- Rust crate: `prompt-lab-source/prompt-lab-desktop/src-tauri/`; read the app version from `tauri.conf.json`; identifier `com.promptlab.desktop`
 - Tauri config has `bundle.targets: "all"` and a Windows section already present (`digestAlgorithm: sha256`).
 - Existing CI: `.github/workflows/desktop-build.yml` already has a `windows-latest` matrix job producing `.exe` and `.msi` via `tauri-apps/tauri-action@v0`.
 - Existing release pipeline: `.github/workflows/release.yml` (manual `workflow_dispatch` with version + prerelease inputs).
@@ -46,7 +46,10 @@ Use the first one that works; do not fall through unnecessarily.
    - Push `main` (or the requested ref). Workflow runs the `windows-latest` job and uploads `prompt-lab-windows-latest` artifact.
    - Download artifact via `gh run download <run-id> --name prompt-lab-windows-latest --dir $OUT_DIR`.
 
-3. **Cut a release (only if user asked for distribution).**
+3. **Cut a release (only if user asked for distribution and the release-versioning gates pass).**
+   - Follow `prompt-lab-source/docs/release-versioning.md`.
+   - For the next feature release, run the required single version-bump command
+     for `1.8.0` before dispatching the workflow.
    - `gh workflow run release.yml -f version=$VERSION -f prerelease=true`.
    - Wait for completion: `gh run watch`.
    - Verify the GitHub Release contains the Windows assets.
@@ -71,7 +74,9 @@ Use the first one that works; do not fall through unnecessarily.
 - **Code-signing certificate.** Producing a signed installer is out of scope unless `$WINDOWS_SIGNING_CERT` is provided as an env variable. Default: unsigned, document the SmartScreen warning.
 - **Notarization / Microsoft Store submission.** Out of scope.
 - **Auto-updater configuration.** Out of scope.
-- **App version bump.** Use `1.7.0` as-is unless user specifies `$VERSION`.
+- **Independent app version edits.** Ordinary builds use the version already in
+  the canonical manifest. Release builds must use the single version-bump tool;
+  never hand-edit one desktop field in isolation.
 - **CI workflow changes.** Existing `desktop-build.yml` already covers Windows; do not modify it.
 - **Cross-compilation from non-Windows.** If Walter is unavailable, use CI; do not attempt to cross-compile from macOS or Linux.
 - **Changes to extension or web app.** Out of scope entirely.
@@ -79,7 +84,9 @@ Use the first one that works; do not fall through unnecessarily.
 
 ## Variables (resolved by Dave at execution time)
 
-- `$VERSION` — release tag if cutting a release. Format `v1.7.0`. Otherwise unused.
+- `$VERSION` — release tag if cutting a release. The next feature release is
+  `v1.8.0`, and the workflow input must match the internal version exactly.
+  Otherwise unused.
 - `$WINDOWS_SIGNING_CERT` — path to .pfx if signing is requested. Otherwise unused (build is unsigned).
 - `$OUT_DIR` — where to copy artifacts after build for Dave to pick up. Default: `prompt-lab/dist/windows/`.
 - `$REF` — git ref to build. Default: `main`.

@@ -25,14 +25,15 @@ Current shipped capabilities include:
 
 These are active priorities, not shipped commitments:
 
-1. Re-audit the August behavioral fixes before promoting the unreleased `1.7.1` package line.
-2. Tighten desktop release packaging and distribution beyond CI/local artifacts.
-3. Finish Chrome Web Store submission materials:
+1. Implement the required controls in `docs/release-versioning.md`, bump the shared product through the single version tool, and promote the next feature release as `1.8.0` only after its gates pass.
+2. Re-audit the August behavioral fixes before promoting the unreleased source line.
+3. Tighten desktop release packaging and distribution beyond CI/local artifacts.
+4. Finish Chrome Web Store submission materials:
    - store listing copy
    - screenshots and promo assets
    - final permission review
-4. Supply the native app's production bundle identifier, store assets, Apple distribution access, privacy metadata, and release criteria before M4.
-5. Keep the shared React surfaces, React mobile prototype, native contract, public URLs, and release metadata aligned with verified behavior.
+5. Supply the native app's production bundle identifier, store assets, Apple distribution access, privacy metadata, and release criteria before M4.
+6. Keep the shared React surfaces, React mobile prototype, native contract, public URLs, and release metadata aligned with verified behavior.
 
 ## Platform posture
 

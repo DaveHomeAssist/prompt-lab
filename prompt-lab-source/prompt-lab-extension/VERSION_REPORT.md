@@ -1,7 +1,8 @@
 # Prompt Lab Version Report
 
-- Date: 2026-08-19
+- Date: 2026-09-04
 - Shared package/source version: `1.7.1` (unreleased)
+- Next feature release: `1.8.0`
 - Latest source tag: `v1.7.0`
 - Latest GitHub Release: `v1.5.0-desktop-preview` (prerelease)
 - Native app version: `0.1.0` / build `1` (unreleased)
@@ -10,6 +11,12 @@
 ## Release state
 
 The shared package manifests and desktop bundle metadata are aligned on `1.7.1`, but no `v1.7.1` tag or GitHub Release exists. Do not describe `1.7.1` as released until source tagging and the intended distribution artifacts are explicitly promoted. The native app has its own `0.1.0` version line and has not been uploaded to TestFlight or the App Store.
+
+The accepted next feature release is `1.8.0`. Promotion is blocked until the
+single version-bump command, cross-surface CI consistency check, release
+tag/internal-version guard, and development build identifier defined in
+`../docs/release-versioning.md` are implemented and verified. This document
+records the decision; it does not claim those controls already exist.
 
 ## Technical state
 

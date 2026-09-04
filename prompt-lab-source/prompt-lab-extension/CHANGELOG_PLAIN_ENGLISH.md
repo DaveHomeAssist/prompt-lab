@@ -2,7 +2,7 @@
 
 Date: 2026-08-20
 
-## Full workspace redesign (unreleased 1.7.1 source line)
+## Full workspace redesign (current source 1.7.1; target release 1.8.0)
 
 1. Enhancement results now stay on screen as a verdict-first workspace with
    editable candidates, exact changes, assumptions, reasoning, run metadata,
@@ -37,11 +37,12 @@ Date: 2026-08-19
 ## Release status
 
 - The shared package/source version is `1.7.1`, but it is not tagged or published as a GitHub Release.
+- The next feature release is `1.8.0`; release promotion waits on the tooling and validation contract in `../docs/release-versioning.md`.
 - The latest source tag is `v1.7.0`.
 - The latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
 - The native iPhone/iPad app is version `0.1.0` build `1` and has not been distributed through TestFlight or the App Store.
 
-## What changed after the August behavioral audit (unreleased 1.7.1 source line)
+## What changed after the August behavioral audit (target release 1.8.0)
 
 An independent behavioral audit on August 11 tested 169 user paths across every
 surface and found 19 confirmed defects, six of them release blockers. The release

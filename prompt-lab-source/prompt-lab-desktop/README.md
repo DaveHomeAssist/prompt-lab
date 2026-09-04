@@ -40,4 +40,5 @@ cargo tauri build
 
 - `../ARCHITECTURE.md` — shared platform and runtime layout
 - `../ROADMAP.md` — current product and release priorities
+- `../docs/release-versioning.md` — shared version bump, CI, release tag, and development build identity contract
 - `../prompt-lab-web/README.md` — hosted web deployment notes
