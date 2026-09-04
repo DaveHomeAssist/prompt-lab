@@ -95,6 +95,7 @@ The GitHub Pages workflow still builds the generated `docs/` mirror, but product
 - `prompt-lab-source/docs/docs-map.md` — task and audience routing guide
 - `prompt-lab-source/docs/docs-style-guide.md` — authoring rules
 - `prompt-lab-source/docs/glossary.md` — standard terminology
+- `prompt-lab-source/docs/release-versioning.md` — canonical release version, bump, CI, tag, and build-identity contract
 - `prompt-lab-ios/README.md` — native app scope and verification
 - `prompt-lab-source/prompt-lab-extension/VERSION_REPORT.md` — package, tag, and release state
 
@@ -103,6 +104,7 @@ The GitHub Pages workflow still builds the generated `docs/` mirror, but product
 - Landing: <https://promptlab.tools/>
 - Web app: <https://promptlab.tools/app/>
 - Current shared package/source version: `1.7.1` (unreleased)
+- Next feature release: `1.8.0` (promotion blocked on the release-versioning controls)
 - Latest source tag: `v1.7.0`
 - Latest GitHub Release: `v1.5.0-desktop-preview` (prerelease)
 

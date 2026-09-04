@@ -1,8 +1,12 @@
 # Prompt Lab — Version History
 
-## Unreleased — package version 1.7.1
+## Unreleased — current source 1.7.1; next feature release 1.8.0
 
 The shared package manifests and desktop metadata use `1.7.1`, but this source line is not tagged or published as a GitHub Release. The latest source tag is `v1.7.0`; the latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
+
+The next feature release is `1.8.0`. It must not be promoted until the required
+version-bump script, CI parity check, release tag guard, and development build
+identity in `../docs/release-versioning.md` are implemented and verified.
 
 Behavioral-audit remediation: all six P1 defects from the 2026-08-11 behavioral
 path & failure audit (PLB-001 through PLB-006). Release promotion stays held

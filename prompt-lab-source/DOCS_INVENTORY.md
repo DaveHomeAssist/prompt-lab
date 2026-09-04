@@ -1,12 +1,13 @@
 # Prompt Lab Documentation Inventory
 
-Updated: 2026-08-19
+Updated: 2026-09-04
 
 ## Canonical Source Rules
 
 - `../README.md` is the contributor entry point for the repo.
 - `ARCHITECTURE.md` is the canonical system architecture reference.
 - `ROADMAP.md` is the canonical forward-looking product/runtime roadmap.
+- `docs/release-versioning.md` is the canonical release version, bump, validation, tag, and development-build identity contract.
 - `prompt-lab-extension/VERSION_HISTORY.md` is the canonical multi-surface changelog.
 - `../prompt-lab-ios/README.md` is the canonical native-app scope and verification reference.
 - `../contracts/promptlab-enhance-contract-v1.json` is the React/native enhance-contract source of truth.
@@ -24,6 +25,7 @@ Updated: 2026-08-19
 | `ARCHITECTURE.md` | Canonical system architecture | Active | Runtime layout across landing, hosted web app, extension, desktop, proxy, and shared frontend. |
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
+| `docs/release-versioning.md` | Release versioning contract | Canonical | Defines the next release, version source of truth, required bump/check tooling, release tag guard, and development build identity. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the manual-only, dry-run-first workflow and the credentials required for an explicit live sync. |
 | `IPAD_NATIVE_APP_PLAN.md` | Native implementation and release plan | Active | Tracks implemented M0-M3 scope and the blocked M4 distribution inputs. |
 
@@ -139,3 +141,4 @@ Updated: 2026-08-19
   - affected public HTML docs
 - Treat stale `prompt-lab-provider-options` references and older GitHub Pages wording as drift bugs, not acceptable historical leftovers in active docs.
 - Keep release docs explicit about package version, source tag, GitHub Release, marketplace distribution, and deployed code as separate facts.
+- Keep release implementation and CI aligned with `docs/release-versioning.md`; do not document planned controls as implemented until their checks pass.
