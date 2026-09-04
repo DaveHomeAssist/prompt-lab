@@ -157,7 +157,7 @@ export default function SettingsModal({
           </div>
         )}
         <button type="button" onClick={openOptions} className={`flex min-h-11 items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 text-orange-400 font-semibold transition-colors`}>
-          🔑 Manage API Key (Options)
+          ⚙️ Provider Settings
         </button>
         <div className={`border-t ${m.border} pt-3 flex flex-col gap-2`}>
           <button type="button" onClick={canExportLibrary ? exportLib : () => openBilling?.('export')} className={`flex min-h-11 items-center gap-2 text-sm rounded-lg px-3 py-2 transition-colors ${canExportLibrary ? `${m.btn} ${m.textBody}` : 'border border-orange-500/40 bg-orange-500/12 text-orange-200'}`}><Ic n="Download" size={12} />{canExportLibrary ? 'Export Library' : 'Export Library (Pro)'}</button>

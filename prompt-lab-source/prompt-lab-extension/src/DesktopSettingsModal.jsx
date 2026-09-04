@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
-import { DEFAULTS } from './lib/providerRegistry.js';
+import { DEFAULTS, getOllamaEndpoint, OLLAMA_ENDPOINTS } from './lib/providerRegistry.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import {
   isExtension,
@@ -97,6 +97,11 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     }
   }, [settings]);
 
+  const ollamaEndpoint = useMemo(
+    () => getOllamaEndpoint(settings.ollamaBaseUrl),
+    [settings.ollamaBaseUrl],
+  );
+
   if (isExtension || !show) return null;
 
   function updateSetting(key, value) {
@@ -115,19 +120,35 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     }
   }
 
-  async function handleRefreshModels() {
+  function ollamaEndpointLabel(baseUrl) {
+    return getOllamaEndpoint(baseUrl)?.label || 'custom Ollama server';
+  }
+
+  async function fetchAndApplyOllamaModels(baseUrl) {
+    const resolvedBaseUrl = baseUrl || DEFAULT_SETTINGS.ollamaBaseUrl;
+    const models = await listOllamaModels(resolvedBaseUrl);
+    setOllamaModels(models);
+    const modelNames = models.map((model) => model.name);
+    if (modelNames.length > 0 && !modelNames.includes(settings.ollamaModel)) {
+      updateSetting('ollamaModel', modelNames[0]);
+    }
+    const target = ollamaEndpointLabel(resolvedBaseUrl);
+    if (modelNames.length === 0) {
+      setOllamaStatus(`Ollama is running on ${target}, but no models are installed.`);
+      setOllamaStatusType('warning');
+    } else {
+      setOllamaStatus(`${modelNames.length} model${modelNames.length === 1 ? '' : 's'} found on ${target}`);
+      setOllamaStatusType('success');
+    }
+    return models;
+  }
+
+  async function refreshOllamaModels(baseUrl) {
     setIsRefreshingModels(true);
     setOllamaStatus('');
     setOllamaStatusType('neutral');
     try {
-      const models = await listOllamaModels(settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl);
-      setOllamaModels(models);
-      const modelNames = models.map((model) => model.name);
-      if (modelNames.length > 0 && !modelNames.includes(settings.ollamaModel)) {
-        updateSetting('ollamaModel', modelNames[0]);
-      }
-      setOllamaStatus(`${modelNames.length} model${modelNames.length === 1 ? '' : 's'} found`);
-      setOllamaStatusType('success');
+      await fetchAndApplyOllamaModels(baseUrl);
     } catch (error) {
       setOllamaModels([]);
       setOllamaStatus(error?.message || 'Failed to load models');
@@ -137,17 +158,46 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     }
   }
 
+  function handleOllamaEndpointChange(endpointId) {
+    if (endpointId === 'custom') {
+      updateSetting('ollamaBaseUrl', '');
+      setOllamaModels([]);
+      setOllamaStatus('Enter the Ollama server URL, then refresh models.');
+      setOllamaStatusType('neutral');
+      return;
+    }
+    const endpoint = OLLAMA_ENDPOINTS.find((candidate) => candidate.id === endpointId);
+    if (!endpoint) return;
+    updateSetting('ollamaBaseUrl', endpoint.baseUrl);
+    setOllamaModels([]);
+    void refreshOllamaModels(endpoint.baseUrl);
+  }
+
   async function handleTestConnection() {
     setIsTestingConnection(true);
     setConnectionStatus('');
     setConnectionStatusType('neutral');
     try {
+      let model = currentModel;
+      let settingsForTest = settings;
+      if (settings.provider === 'ollama') {
+        const models = await fetchAndApplyOllamaModels(settings.ollamaBaseUrl);
+        if (models.length === 0) {
+          throw new Error(`No models are installed on ${ollamaEndpointLabel(settings.ollamaBaseUrl)}. Pull a model, then refresh.`);
+        }
+        const names = models.map((candidate) => candidate.name);
+        model = names.includes(settings.ollamaModel) ? settings.ollamaModel : names[0];
+        settingsForTest = { ...settings, ollamaModel: model };
+        if (model !== settings.ollamaModel) updateSetting('ollamaModel', model);
+      }
       await testProviderConnection({
-        model: currentModel,
+        model,
         max_tokens: 10,
         messages: [{ role: 'user', content: 'Say "ok"' }],
-      }, settings);
-      setConnectionStatus('Connected!');
+      }, settingsForTest);
+      setConnectionStatus(settings.provider === 'ollama'
+        ? `Connected to ${ollamaEndpointLabel(settings.ollamaBaseUrl)}.`
+        : 'Connected!');
       setConnectionStatusType('success');
     } catch (error) {
       setConnectionStatus(error?.message || 'Connection failed.');
@@ -167,6 +217,8 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
     ? 'text-emerald-400'
     : ollamaStatusType === 'error'
       ? 'text-red-400'
+      : ollamaStatusType === 'warning'
+        ? 'text-amber-400'
       : m.textMuted;
 
   return (
@@ -232,7 +284,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                 <option value="openai">OpenAI</option>
                 <option value="gemini">Google Gemini</option>
                 <option value="openrouter">OpenRouter</option>
-                <option value="ollama">Ollama (local)</option>
+                <option value="ollama">Ollama</option>
               </select>
             </label>
           )}
@@ -342,14 +394,31 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
           {!isHostedWeb && settings.provider === 'ollama' && (
             <>
               <label className="block space-y-1">
+                <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Ollama Server</span>
+                <select
+                  value={ollamaEndpoint?.id || 'custom'}
+                  onChange={event => handleOllamaEndpointChange(event.target.value)}
+                  className={inputClass}
+                >
+                  {OLLAMA_ENDPOINTS.map((endpoint) => (
+                    <option key={endpoint.id} value={endpoint.id}>{endpoint.label}</option>
+                  ))}
+                  <option value="custom">Custom URL</option>
+                </select>
+              </label>
+              <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Base URL</span>
                 <input
                   type="text"
                   value={settings.ollamaBaseUrl}
+                  placeholder="http://host:11434"
                   onChange={event => updateSetting('ollamaBaseUrl', event.target.value)}
                   className={inputClass}
                 />
               </label>
+              <p className={`text-xs ${m.textMuted}`}>
+                Packaged desktop access is enabled for This Mac, Duncan, and Walter. Requests go only to the selected Ollama server.
+              </p>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
                 <input
@@ -362,14 +431,19 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleRefreshModels}
+                  onClick={() => refreshOllamaModels(settings.ollamaBaseUrl)}
                   disabled={isRefreshingModels}
                   className={`${buttonClass} shrink-0`}
                 >
                   {isRefreshingModels ? 'Refreshing...' : 'Refresh Models'}
                 </button>
-                <span role="status" aria-live="polite" className={`text-xs ${ollamaStatusClass}`}>{ollamaStatus || 'Load available local models'}</span>
+                <span role="status" aria-live="polite" className={`text-xs ${ollamaStatusClass}`}>{ollamaStatus || 'Load models from the selected server'}</span>
               </div>
+              {ollamaStatusType === 'warning' && (
+                <p className={`text-xs ${m.textMuted}`}>
+                  Install the default model with <code className={`rounded px-1 py-0.5 ${m.btn}`}>ollama pull {DEFAULT_SETTINGS.ollamaModel}</code>
+                </p>
+              )}
               {ollamaModels.length > 0 && (
                 <label className="block space-y-1">
                   <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Available Models</span>

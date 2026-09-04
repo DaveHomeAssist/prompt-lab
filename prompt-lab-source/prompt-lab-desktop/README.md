@@ -30,6 +30,12 @@ npm install
 cargo tauri build
 ```
 
+## Desktop Controls
+
+- Zoom with `Command +` / `Command -` on macOS or `Ctrl +` / `Ctrl -` on Windows and Linux. Reset with `Command 0` or `Ctrl 0`.
+- Provider Settings can target Ollama on This Mac, Duncan, Walter, or a custom URL. Selecting a known server refreshes its installed model list.
+- Packaged network access is allowlisted to the known Ollama hosts. A custom server must also be added to the desktop content security policy before it can be used in a packaged build.
+
 ## More Docs
 
 - `../ARCHITECTURE.md` — shared platform and runtime layout
