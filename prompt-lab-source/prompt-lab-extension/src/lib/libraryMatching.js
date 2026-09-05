@@ -1,7 +1,7 @@
-import { normalizeLibrary } from './promptSchema.js';
+import { normalizeLibrary, updatePromptEntry, arePromptSnapshotsEqual } from './promptSchema.js';
 import { ensureString } from './utils.js';
 
-function normalizePromptText(value) {
+export function normalizePromptText(value) {
   return ensureString(value).replace(/\s+/g, ' ').trim();
 }
 
@@ -20,6 +20,10 @@ function getLibraryEntryBody(entry) {
   return ensureString(entry?.enhanced) || ensureString(entry?.original) || ensureString(entry?.prompt);
 }
 
+export function getLibraryEntryCanonicalBody(entry) {
+  return normalizePromptText(getLibraryEntryBody(entry)).toLowerCase();
+}
+
 export function getLibraryEntrySignature(entry) {
   return promptHash(getLibraryEntryBody(entry));
 }
@@ -30,19 +34,45 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
   const prepend = options?.prepend === true;
   const signatureToPromptId = new Map(
     normalizedExisting
-      .map((entry) => [normalizePromptText(getLibraryEntryBody(entry)).toLowerCase(), entry.id])
+      .map((entry) => [getLibraryEntryCanonicalBody(entry), entry.id])
       .filter(([signature, promptId]) => Boolean(signature && promptId)),
   );
   const promptIdMap = new Map();
   const imported = [];
+  const replacedIds = new Set();
+  const excludedIds = new Set();
   const usedIds = new Set([...normalizedExisting.map((entry) => entry.id), ...(options.blockedIds || [])]);
 
   normalizedIncoming.forEach((entry) => {
     // Confirm the whole canonical body; a short hash alone can collide.
-    const signature = normalizePromptText(getLibraryEntryBody(entry)).toLowerCase();
+    const signature = getLibraryEntryCanonicalBody(entry);
     if (!signature) return;
     const survivingPromptId = signatureToPromptId.get(signature);
-    if (survivingPromptId) {
+    const decision = options.resolutions?.[entry.id];
+    if (decision?.action === 'skip' && !survivingPromptId) {
+      excludedIds.add(entry.id);
+      return;
+    }
+    if (decision?.action === 'replace') {
+      const target = normalizedExisting.find(row => row.id === decision.existingId)
+        || imported.find(row => row.id === decision.existingId);
+      if (!target) throw new Error('The selected replacement target is no longer available.');
+      if (replacedIds.has(target.id)) throw new Error('Choose only one incoming replacement for each existing prompt.');
+      const updated = updatePromptEntry(target, { ...entry, tombstoneVersion: target.tombstoneVersion, deletedAt: target.deletedAt }, { source: 'workspace_import' });
+      for (const version of entry.versions) {
+        const sameId = updated.versions.find(row => row.id === version.id);
+        if (sameId && arePromptSnapshotsEqual(sameId, version)) continue;
+        updated.versions.push({ ...version, id: sameId || version.id === updated.currentVersionId ? crypto.randomUUID() : version.id });
+      }
+      const rows = normalizedExisting.includes(target) ? normalizedExisting : imported;
+      rows[rows.indexOf(target)] = updated;
+      signatureToPromptId.delete(getLibraryEntryCanonicalBody(target));
+      signatureToPromptId.set(signature, target.id);
+      promptIdMap.set(entry.id, target.id);
+      replacedIds.add(target.id);
+      return;
+    }
+    if (survivingPromptId && decision?.action !== 'keep') {
       if (entry.id) promptIdMap.set(entry.id, survivingPromptId);
       return;
     }
@@ -60,8 +90,11 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
   return {
     library: normalizeLibrary(merged),
     importedCount: imported.length,
-    skippedCount: normalizedIncoming.length - imported.length,
+    skippedCount: normalizedIncoming.length - imported.length - replacedIds.size,
     promptIdMap,
+    replacedIds,
+    excludedIds,
+    replacedCount: replacedIds.size,
   };
 }
 

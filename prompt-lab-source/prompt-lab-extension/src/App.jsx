@@ -50,6 +50,7 @@ import SettingsModal from './modals/SettingsModal';
 import CommandPaletteModal from './modals/CommandPaletteModal';
 import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
+import WorkspaceImportModal from './modals/WorkspaceImportModal.jsx';
 import BillingModal from './modals/BillingModal.jsx';
 import {
   buildLandingTelemetryEvents,
@@ -1361,7 +1362,7 @@ export default function App({
         />
       )}
 
-      {showSettings && (
+      {showSettings && !lib.importPreview && (
         <SettingsModal
           m={m} showNotes={showNotes} setShowNotes={setShowNotes}
           density={density} setDensity={setDensity}
@@ -1413,6 +1414,8 @@ export default function App({
         m={m}
       />
 
+      {lib.importPreview && <WorkspaceImportModal m={m} preview={lib.importPreview} applying={lib.importApplying}
+        onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
       <PiiWarningModal m={m} piiWarning={piiWarning} piiRedactAndSend={piiRedactAndSend} piiSendAnyway={piiSendAnyway} piiCancel={piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
