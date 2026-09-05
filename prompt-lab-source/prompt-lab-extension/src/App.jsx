@@ -1413,7 +1413,7 @@ export default function App({
         m={m}
       />
 
-      <PiiWarningModal m={m} piiWarning={piiWarning} piiRedactAndSend={piiRedactAndSend} piiSendAnyway={piiSendAnyway} piiCancel={piiCancel} />
+      <PiiWarningModal m={m} piiWarning={piiWarning || abTest.piiWarning} piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiRedactAndSend} piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiSendAnyway} piiCancel={piiWarning ? piiCancel : abTest.piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api';
 import {
   extractTextFromAnthropic,
@@ -11,7 +11,8 @@ import {
 import { ALL_TAGS, buildSystemPrompt, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_MAX_TOKENS, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict.js';
 import { saveEvalRun } from '../experimentStore';
-import { scanSensitiveData, redactPayload } from '../piiScanner';
+import { scanSensitiveData } from '../piiScanner';
+import useSensitivePreflight from './useSensitivePreflight.js';
 import { openSettings } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
@@ -45,7 +46,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [piiWarning, setPiiWarning] = useState(null);
+  const preflight = useSensitivePreflight();
   const [streamPreview, setStreamPreview] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [optimisticSaveVisible, setOptimisticSaveVisible] = useState(false);
@@ -57,6 +58,26 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   // ref flips before the request leaves and is cleared by cancelEnhance or by
   // the owning request's finally block, so cancel-then-retry stays available.
   const enhanceInFlightRef = useRef(false);
+  const ownerKey = JSON.stringify([raw, editingId, enhMode]);
+  const ownerRef = useRef(ownerKey);
+  ownerRef.current = ownerKey;
+
+  useEffect(() => {
+    preflight.invalidate();
+    return () => {
+      enhanceReqRef.current += 1;
+      enhanceInFlightRef.current = false;
+      enhanceAbortRef.current?.abort();
+      enhanceAbortRef.current = null;
+    };
+  }, [ownerKey]);
+
+  useEffect(() => {
+    setLoading(false);
+    setStreaming(false);
+    setStreamPreview('');
+    setOptimisticSaveVisible(false);
+  }, [ownerKey]);
 
   // defaultMode keeps the editor's inline history scoped to enhance runs while
   // no saved prompt narrows the query (M-2: the fallback is explicit now).
@@ -166,33 +187,29 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     const payload = safeOverridePayload || buildEnhancePayload();
     const enhanceModeId = meta?.modeId || enhMode;
 
-    if (!safeOverridePayload) {
-      const { matches } = scanSensitiveData({ payload });
-      if (matches.length > 0) {
-        // Record blocked sends so preflight PII stops are visible in run history instead of disappearing.
-        try {
-          await saveEvalRun({
-            promptId: editingId,
-            promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
-            mode: 'enhance',
-            enhanceMode: enhanceModeId,
-            provider: 'blocked',
-            model: payload?.model || 'unknown',
-            input: raw,
-            output: 'Prompt blocked before send due to sensitive data detection.',
-            latencyMs: 0,
-            status: 'blocked',
-            notes: 'Sensitive data detected before send.',
-          });
-          evalRunsHook.refreshEvalRuns(editingId).catch((caught) => logWarn('refresh blocked eval runs', caught));
-        } catch (caught) {
-          logWarn('save blocked eval run', caught);
-        }
-        setPiiWarning({ matches, payload });
-        return;
-      }
+    const reviewed = preflight.review({
+      payload, scope: 'enhance', label: `Enhance (${enhanceModeId})`,
+      isCurrent: () => ownerRef.current === ownerKey,
+      resume: approvedPayload => executeEnhance(approvedPayload, enhanceModeId),
+    });
+    if (!reviewed.payload) {
+      await saveEvalRun({
+        promptId: editingId,
+        promptTitle: (saveTitle || suggestTitleFromText(raw)).trim() || suggestTitleFromText(raw),
+        mode: 'enhance', enhanceMode: enhanceModeId, provider: 'blocked',
+        model: payload?.model || 'unknown', input: raw,
+        output: 'Prompt blocked before send due to sensitive data detection.',
+        latencyMs: 0, status: 'blocked', notes: 'Sensitive data detected before send.',
+      }).then(() => evalRunsHook.refreshEvalRuns(editingId))
+        .catch(caught => logWarn('save blocked eval run', caught));
+      return;
     }
+    return executeEnhance(reviewed.payload, enhanceModeId);
+  };
 
+  // Only review() and its private one-use continuation enter this function.
+  const executeEnhance = async (payload, enhanceModeId) => {
+    if (enhanceInFlightRef.current || ownerRef.current !== ownerKey) return;
     // Claimed only once the preflight checks have passed, so a PII-blocked
     // attempt never strands the guard and the user can immediately retry.
     enhanceInFlightRef.current = true;
@@ -435,22 +452,6 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     notify('Generation cancelled.');
   };
 
-  const piiSendAnyway = () => {
-    if (!piiWarning?.payload) return;
-    const payload = piiWarning.payload;
-    setPiiWarning(null);
-    enhance(payload);
-  };
-
-  const piiRedactAndSend = () => {
-    if (!piiWarning?.payload) return;
-    const { matches, payload } = piiWarning;
-    setPiiWarning(null);
-    enhance(redactPayload(payload, matches));
-  };
-
-  const piiCancel = () => setPiiWarning(null);
-
   const loadCaseIntoEditor = (testCase) => {
     setRaw(testCase.input || '');
     setTab('editor');
@@ -533,11 +534,12 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
 
   const clearExecutionState = () => {
     enhanceReqRef.current += 1;
+    enhanceInFlightRef.current = false;
     enhanceAbortRef.current?.abort();
     enhanceAbortRef.current = null;
     setLoading(false);
     setError(null);
-    setPiiWarning(null);
+    preflight.invalidate();
     setStreamPreview('');
     setStreaming(false);
     setOptimisticSaveVisible(false);
@@ -550,14 +552,14 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
   return {
     loading,
     error,
-    piiWarning,
+    piiWarning: preflight.piiWarning,
     streamPreview,
     streaming,
     optimisticSaveVisible,
     batchProgress,
-    piiSendAnyway,
-    piiRedactAndSend,
-    piiCancel,
+    piiSendAnyway: preflight.piiSendAnyway,
+    piiRedactAndSend: preflight.piiRedactAndSend,
+    piiCancel: preflight.piiCancel,
     buildEnhancePayloadFor,
     buildEnhancePayload,
     enhance,

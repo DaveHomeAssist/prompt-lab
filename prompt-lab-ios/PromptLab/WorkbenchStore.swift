@@ -15,10 +15,10 @@ enum EnhanceState: Equatable {
 @Observable
 final class WorkbenchStore {
     var columnVisibility: NavigationSplitViewVisibility = .all
-    var draft = ""
-    var currentPromptID: String?
+    var draft = "" { didSet { if oldValue != draft { invalidateAttempt() } } }
+    var currentPromptID: String? { didSet { if oldValue != currentPromptID { invalidateAttempt() } } }
     var currentPromptTitle = "Untitled Prompt"
-    var selectedMode: EnhanceMode = .balanced
+    var selectedMode: EnhanceMode = .balanced { didSet { if oldValue != selectedMode { invalidateAttempt() } } }
     private(set) var state: EnhanceState = .idle
     private(set) var streamedText = ""
     private(set) var result: EnhanceResponse?
@@ -27,6 +27,36 @@ final class WorkbenchStore {
     @ObservationIgnored private let provider: any ProviderClient
     @ObservationIgnored private let keychain: any APIKeyStoring
     @ObservationIgnored private var enhanceTask: Task<Void, Never>?
+    @ObservationIgnored private var activeAttemptID: UUID?
+
+    private struct Attempt {
+        let id = UUID()
+        let input: String
+        let promptID: String?
+        let title: String
+        let mode: EnhanceMode
+        let startedAt = Date()
+    }
+
+    private func invalidateAttempt() {
+        guard activeAttemptID != nil else { return }
+        activeAttemptID = nil
+        enhanceTask?.cancel()
+        enhanceTask = nil
+        streamedText = ""
+        state = .idle
+    }
+
+    private func beginAttempt() -> Attempt? {
+        guard activeAttemptID == nil else { return nil }
+        let input = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !input.isEmpty else { return nil }
+        let attempt = Attempt(input: input, promptID: currentPromptID,
+                              title: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
+                              mode: selectedMode)
+        activeAttemptID = attempt.id
+        return attempt
+    }
 
     init(
         provider: any ProviderClient = AnthropicProviderClient(),
@@ -45,7 +75,7 @@ final class WorkbenchStore {
     }
 
     func startNewPrompt() {
-        enhanceTask?.cancel()
+        invalidateAttempt()
         draft = ""
         currentPromptID = nil
         currentPromptTitle = "Untitled Prompt"
@@ -55,7 +85,7 @@ final class WorkbenchStore {
     }
 
     func loadPrompt(_ prompt: PromptEntry) {
-        enhanceTask?.cancel()
+        invalidateAttempt()
         currentPromptID = prompt.id
         currentPromptTitle = prompt.title
         draft = prompt.enhanced.isEmpty ? prompt.original : prompt.enhanced
@@ -65,7 +95,7 @@ final class WorkbenchStore {
     }
 
     func loadRun(_ run: RunRecord) {
-        enhanceTask?.cancel()
+        invalidateAttempt()
         currentPromptID = run.promptId
         currentPromptTitle = run.promptTitle
         draft = run.input
@@ -147,11 +177,9 @@ final class WorkbenchStore {
     }
 
     func startEnhance(modelContext: ModelContext) {
-        guard enhanceTask == nil else { return }
+        guard let attempt = beginAttempt() else { return }
         enhanceTask = Task { [weak self] in
-            guard let self else { return }
-            await enhance(modelContext: modelContext)
-            enhanceTask = nil
+            await self?.performEnhance(attempt, modelContext: modelContext)
         }
     }
 
@@ -160,8 +188,20 @@ final class WorkbenchStore {
     }
 
     func enhance(modelContext: ModelContext) async {
-        let input = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !input.isEmpty else { return }
+        guard let attempt = beginAttempt() else { return }
+        await performEnhance(attempt, modelContext: modelContext)
+    }
+
+    private func performEnhance(_ attempt: Attempt, modelContext: ModelContext) async {
+        guard activeAttemptID == attempt.id else { return }
+        defer {
+            if activeAttemptID == attempt.id {
+                activeAttemptID = nil
+                enhanceTask = nil
+            }
+        }
+        let input = attempt.input
+        var partialText = ""
 
         let apiKey: String
         do {
@@ -183,22 +223,25 @@ final class WorkbenchStore {
         state = .inFlight
         streamedText = ""
         result = nil
-        let startedAt = Date()
-        let request = EnhanceRequest(prompt: input, mode: selectedMode)
+        let startedAt = attempt.startedAt
+        let request = EnhanceRequest(prompt: input, mode: attempt.mode)
 
         do {
             for try await chunk in provider.streamEnhance(request: request, apiKey: apiKey) {
                 try Task.checkCancellation()
-                streamedText += chunk
+                guard activeAttemptID == attempt.id else { throw CancellationError() }
+                partialText += chunk
+                streamedText = partialText
             }
             try Task.checkCancellation()
-            let parsed = try EnhanceResponseParser.parse(streamedText)
+            guard activeAttemptID == attempt.id else { throw CancellationError() }
+            let parsed = try EnhanceResponseParser.parse(partialText)
             try Task.checkCancellation()
             let latency = max(0, Int(Date().timeIntervalSince(startedAt) * 1_000))
             let run = RunRecord(
-                promptId: currentPromptID,
-                promptTitle: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
-                enhanceMode: selectedMode.rawValue,
+                promptId: attempt.promptID,
+                promptTitle: attempt.title,
+                enhanceMode: attempt.mode.rawValue,
                 provider: provider.providerID,
                 model: provider.modelID,
                 input: input,
@@ -219,26 +262,30 @@ final class WorkbenchStore {
         } catch is CancellationError {
             recordRun(
                 modelContext: modelContext,
-                input: input,
-                output: streamedText,
+                attempt: attempt,
+                output: partialText,
                 startedAt: startedAt,
                 status: "canceled",
                 notes: "Enhance canceled before completion."
             )
-            streamedText = ""
-            result = nil
-            state = .canceled
+            if activeAttemptID == attempt.id {
+                streamedText = ""
+                result = nil
+                state = .canceled
+            }
         } catch {
             recordRun(
                 modelContext: modelContext,
-                input: input,
-                output: streamedText,
+                attempt: attempt,
+                output: partialText,
                 startedAt: startedAt,
                 status: "error",
                 notes: error.localizedDescription
             )
-            result = nil
-            state = .failed(error.localizedDescription)
+            if activeAttemptID == attempt.id {
+                result = nil
+                state = .failed(error.localizedDescription)
+            }
         }
     }
 
@@ -247,19 +294,19 @@ final class WorkbenchStore {
     /// Best-effort: a run record must never mask the underlying enhance error.
     private func recordRun(
         modelContext: ModelContext,
-        input: String,
+        attempt: Attempt,
         output: String,
         startedAt: Date,
         status: String,
         notes: String
     ) {
         let run = RunRecord(
-            promptId: currentPromptID,
-            promptTitle: currentPromptID == nil ? PromptTitleSuggester.suggest(from: input) : currentPromptTitle,
-            enhanceMode: selectedMode.rawValue,
+            promptId: attempt.promptID,
+            promptTitle: attempt.title,
+            enhanceMode: attempt.mode.rawValue,
             provider: provider.providerID,
             model: provider.modelID,
-            input: input,
+            input: attempt.input,
             output: output,
             latencyMs: max(0, Int(Date().timeIntervalSince(startedAt) * 1_000)),
             notes: notes,
