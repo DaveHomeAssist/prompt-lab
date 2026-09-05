@@ -214,7 +214,7 @@ export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch) {
   }));
 }
 
-export async function callProvider({ provider = DEFAULT_PROVIDER, payload, settings = {}, fetchImpl = globalThis.fetch }) {
+async function dispatchProvider({ provider = DEFAULT_PROVIDER, payload, settings = {}, fetchImpl = globalThis.fetch }) {
   switch (normalizeProvider(provider)) {
     case 'ollama':
       return callOllama(payload, settings, fetchImpl);
@@ -227,4 +227,17 @@ export async function callProvider({ provider = DEFAULT_PROVIDER, payload, setti
     default:
       return callAnthropic(payload, settings, fetchImpl);
   }
+}
+
+export async function callProvider({ provider, payload, settings, fetchImpl = globalThis.fetch, signal }) {
+  const checkAbort = () => {
+    if (signal?.aborted) throw new DOMException('Request cancelled.', 'AbortError');
+  };
+  checkAbort();
+  const fetchWithSignal = signal
+    ? (url, init) => fetchOrThrow(fetchImpl)(url, { ...init, signal })
+    : fetchImpl;
+  const result = await dispatchProvider({ provider, payload, settings, fetchImpl: fetchWithSignal });
+  checkAbort();
+  return result;
 }

@@ -186,6 +186,12 @@ describe('CreateEditorPane', () => {
     expect(onLoadQuickStartPrompt).toHaveBeenCalledTimes(1);
   });
 
+  it('labels partial failed output separately from completed results', () => {
+    renderPane({ enhanced: '', streamPreview: 'Incomplete fixture output', loading: false });
+    expect(screen.getByText('Incomplete response — request failed')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete fixture output')).toBeInTheDocument();
+  });
+
   it('guides saved-but-unreviewed users toward Evaluate', () => {
     const onOpenEvaluate = vi.fn();
 

@@ -4,6 +4,9 @@ Date: 2026-09-05
 
 ## Local write recovery (unreleased)
 
+- Cancel now reaches the provider fetch in the packaged extension. Interrupted
+  or errored streams are recorded as failed attempts, with an incomplete preview
+  instead of a successful partial result. Partial output is not silently retried.
 - Permanent Library deletion and Clear Library now leave content-free markers
   so a stale tab or delayed local write cannot restore the removed prompts.
   Reload older Prompt Lab tabs before editing after a clear.

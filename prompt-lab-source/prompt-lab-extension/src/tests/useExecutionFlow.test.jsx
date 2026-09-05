@@ -263,6 +263,22 @@ describe('useExecutionFlow', () => {
     }));
   });
 
+  it('keeps partial streamed failure visible and records one failed attempt without automatic retry', async () => {
+    isTransientError.mockReturnValue(true);
+    callModel.mockImplementationOnce(async (_payload, options) => {
+      options.onChunk('Partial fixture', 'Partial fixture');
+      throw Object.assign(new Error('Provider stream terminated'), { partialText: 'Partial fixture' });
+    });
+    const { result } = renderExecutionFlow();
+    await act(async () => { await result.current.enhance(); });
+    expect(callModel).toHaveBeenCalledOnce();
+    expect(result.current.streamPreview).toBe('Partial fixture');
+    expect(result.current.streaming).toBe(false);
+    expect(result.current.enhanced).toBe('Prior enhanced output');
+    await waitFor(() => expect(savedRuns).toHaveLength(1));
+    expect(savedRuns[0]).toMatchObject({ status: 'error', output: 'Partial fixture' });
+  });
+
   it('retry_creates_new_eval_run', async () => {
     callModel
       .mockResolvedValueOnce({

@@ -55,12 +55,17 @@ function applySignal(init, signal) {
   return { ...init, signal };
 }
 
-async function readTextStream(stream, { onChunk, parser }) {
+function checkAbort(signal) {
+  if (signal?.aborted) throw new DOMException('Request cancelled.', 'AbortError');
+}
+
+async function readTextStream(stream, { onChunk, parser, signal }) {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
   let fullText = '';
   let usage = null;
+  let completed = false;
 
   const mergeUsage = (next) => {
     if (!next) return;
@@ -79,28 +84,44 @@ async function readTextStream(stream, { onChunk, parser }) {
   };
 
   const emitText = (text) => {
+    checkAbort(signal);
     if (!text) return;
     fullText += text;
     if (typeof onChunk === 'function') onChunk(text, fullText);
   };
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const result = parser(buffer);
+  const consume = (result) => {
     buffer = result.buffer;
     result.chunks.forEach(emitText);
     mergeUsage(result.usage);
+    completed ||= result.done === true;
+    if (result.error) throw result.error;
+  };
+  const abort = () => { reader.cancel().catch(() => {}); };
+  signal?.addEventListener('abort', abort, { once: true });
+  try {
+    checkAbort(signal);
+    while (true) {
+      const { value, done } = await reader.read();
+      checkAbort(signal);
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      consume(parser(buffer));
+    }
+    buffer += decoder.decode();
+    if (buffer) consume(parser(buffer, true));
+    checkAbort(signal);
+    if (!completed) throw new Error('Provider stream terminated before its completion event.');
+    return { text: fullText, usage };
+  } catch (error) {
+    error.partialText = fullText;
+    error.usage = usage;
+    await reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    signal?.removeEventListener('abort', abort);
+    reader.releaseLock();
   }
-
-  if (buffer) {
-    const result = parser(buffer, true);
-    result.chunks.forEach(emitText);
-    mergeUsage(result.usage);
-  }
-
-  return { text: fullText, usage };
 }
 
 async function executeProviderStream(descriptor, payload, settings, fetchImpl, options = {}) {
@@ -127,6 +148,7 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
   const streamed = await readTextStream(response.body, {
     onChunk: options.onChunk,
     parser: descriptor.parseStream,
+    signal: options.signal,
   });
 
   if (!streamed.text) {
@@ -186,9 +208,17 @@ export async function callProvider({ provider = DEFAULT_PROVIDER, payload, setti
   const resolved = normalizeProvider(provider);
   const descriptor = getProvider(resolved);
   try {
-    return await executeProvider(descriptor, payload, settings, fetchImpl, { onChunk, signal });
+    checkAbort(signal);
+    const result = await executeProvider(descriptor, payload, settings, fetchImpl, { onChunk, signal });
+    checkAbort(signal);
+    return result;
   } catch (err) {
-    throw normalizeError(err, resolved);
+    checkAbort(signal);
+    if (err?.name === 'AbortError') throw err;
+    const error = normalizeError(err, resolved);
+    if (err.partialText) error.partialText = err.partialText;
+    if (err.usage) error.usage = err.usage;
+    throw error;
   }
 }
 
