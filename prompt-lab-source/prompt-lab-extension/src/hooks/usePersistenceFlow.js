@@ -10,6 +10,11 @@ import { linkEvalRunToPrompt } from '../experimentStore.js';
 import { createSaveReceipt } from '../lib/promptLifecycle.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
+function hasSharedPayloadHash() {
+  if (typeof window === 'undefined') return false;
+  return window.location.hash.startsWith('#pack=') || window.location.hash.startsWith('#share=');
+}
+
 /**
  * Save/share/load controller around the library + session storage boundaries.
  */
@@ -32,6 +37,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [sourceNoteId, setSourceNoteId] = useState('');
   const [lastSaveReceipt, setLastSaveReceipt] = useState(null);
   const [showDiff, setShowDiff] = useState(false);
+  const [sharedHashPending, setSharedHashPending] = useState(hasSharedPayloadHash);
   const [showNewColl, setShowNewColl] = useState(false);
   const [newCollName, setNewCollName] = useState('');
   const [varVals, setVarValsState] = useState({});
@@ -66,6 +72,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const hash = window.location.hash;
     if (hash.startsWith('#pack=')) {
       if (!lib.libReady) return;
+      setSharedHashPending(false);
       const pack = decodePackShare(hash.slice(6));
       if (!pack) {
         sharedHashHandledRef.current = true;
@@ -86,6 +93,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       return;
     }
     if (!hash.startsWith('#share=')) return;
+    setSharedHashPending(false);
     sharedHashHandledRef.current = true;
 
     const decoded = decodeShare(hash.slice(7));
@@ -466,6 +474,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     lastSaveReceipt,
     dismissSaveReceipt: () => setLastSaveReceipt(null),
     showDiff, setShowDiff,
+    sharedHashPending,
     showNewColl, setShowNewColl,
     newCollName, setNewCollName,
     varVals, setVarVals,

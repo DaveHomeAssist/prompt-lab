@@ -166,6 +166,18 @@ describe('mergeLibraryEntries', () => {
     expect(result.importedCount).toBe(0);
     expect(result.skippedCount).toBe(1);
     expect(result.library).toHaveLength(1);
+    expect(result.promptIdMap.get('b')).toBe('a');
+  });
+
+  it('maps duplicate incoming prompt IDs to the first surviving import', () => {
+    const incoming = [
+      makeEntry({ id: 'first', enhanced: 'Duplicate content' }),
+      makeEntry({ id: 'second', enhanced: 'Duplicate content' }),
+    ];
+    const result = mergeLibraryEntries([], incoming);
+
+    expect(result.promptIdMap.get('first')).toBe('first');
+    expect(result.promptIdMap.get('second')).toBe('first');
   });
 
   it('handles empty existing library', () => {

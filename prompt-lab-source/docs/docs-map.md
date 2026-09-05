@@ -68,11 +68,14 @@ Authoring rule:
 
 ### Release and version work
 
+- `release-versioning.md`
 - `../prompt-lab-extension/VERSION_HISTORY.md`
 - `../prompt-lab-extension/VERSION_REPORT.md`
 - `../prompt-lab-extension/CHANGELOG_PLAIN_ENGLISH.md`
 
-Use `VERSION_HISTORY.md` as the canonical changelog. Treat the others as supporting summaries.
+Use `release-versioning.md` as the release-process contract and
+`VERSION_HISTORY.md` as the canonical changelog. Treat the others as supporting
+summaries.
 
 ### Product status
 
@@ -162,6 +165,15 @@ boundaries, data contracts, cost controls, failure model, and rollout gates.
 - `../DOCS_INVENTORY.md`
 - `docs-style-guide.md`
 - `glossary.md`
+
+### I need to bump or release a product version
+
+- `release-versioning.md`
+- `../prompt-lab-extension/VERSION_REPORT.md`
+- `../../.github/workflows/release.yml`
+
+Start with the versioning contract. Do not hand-edit a single package or launch
+the release workflow with a tag that differs from the internal product version.
 
 ## Authoring vs published copies
 

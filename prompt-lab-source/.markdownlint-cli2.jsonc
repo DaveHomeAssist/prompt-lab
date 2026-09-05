@@ -2,6 +2,7 @@
   "globs": [
     "../README.md",
     "../AGENTS.md",
+    "../RELEASE_GATES.md",
     "./ARCHITECTURE.md",
     "./DOCS_INVENTORY.md",
     "./ROADMAP.md",

@@ -1,1 +1,1 @@
-{}
+{"desktop":{"identifier":"desktop","description":"Core permissions required by the Prompt Lab desktop window.","local":true,"windows":["main"],"permissions":["core:default","core:webview:allow-set-webview-zoom"]}}

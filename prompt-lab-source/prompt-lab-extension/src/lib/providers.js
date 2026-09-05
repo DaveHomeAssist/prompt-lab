@@ -217,19 +217,33 @@ export async function callOpenRouter(payload, settings = {}, fetchImpl = globalT
 
 // ── Ollama model listing ────────────────────────────────────────────
 
-export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch) {
-  const response = await fetchOrThrow(fetchImpl)(`${normalizeBaseUrl(baseUrl, DEFAULTS.ollamaBaseUrl)}/api/tags`, {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-  });
-  if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
+export async function listOllamaModels(baseUrl, fetchImpl = globalThis.fetch, { timeoutMs = 8000 } = {}) {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  try {
+    const response = await fetchOrThrow(fetchImpl)(`${normalizeBaseUrl(baseUrl, DEFAULTS.ollamaBaseUrl)}/api/tags`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Ollama returned ${response.status}`);
 
-  const data = await response.json();
-  return (data?.models || []).map((model) => ({
-    name: model.name,
-    size: model.size,
-    modified: model.modified_at,
-    family: model.details?.family || '',
-    paramSize: model.details?.parameter_size || '',
-  }));
+    const data = await response.json();
+    return (data?.models || []).map((model) => ({
+      name: model.name,
+      size: model.size,
+      modified: model.modified_at,
+      family: model.details?.family || '',
+      paramSize: model.details?.parameter_size || '',
+    }));
+  } catch (error) {
+    if (timedOut) throw new Error(`Ollama model discovery timed out after ${timeoutMs}ms.`);
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

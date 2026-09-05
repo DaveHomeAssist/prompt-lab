@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
 
 const freshImport = (path) => import(`${path}?t=${Date.now()}-${Math.random()}`);
 
@@ -41,12 +42,15 @@ describe('desktop smoke', () => {
     });
     const result = await callProvider({
       provider: 'ollama',
-      payload: { messages: [{ role: 'user', content: 'hi' }] },
+      payload: { max_tokens: 10, messages: [{ role: 'user', content: 'hi' }] },
       settings: { ollamaBaseUrl: 'http://localhost:11434', ollamaModel: 'llama3.2:3b' },
       fetchImpl: chatFetch,
     });
     expect(result.provider).toBe('ollama');
     expect(chatFetch.mock.calls[0][0]).toContain('/api/chat');
+    expect(JSON.parse(chatFetch.mock.calls[0][1].body)).toMatchObject({
+      options: { num_predict: 10 },
+    });
 
     const tagsFetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -59,5 +63,20 @@ describe('desktop smoke', () => {
     expect(models).toEqual([
       expect.objectContaining({ name: 'llama3.2:3b', paramSize: '3B' }),
     ]);
+
+    const stalledFetch = vi.fn((_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+    }));
+    await expect(listOllamaModels('http://walter:11434', stalledFetch, { timeoutMs: 5 }))
+      .rejects.toThrow('Ollama model discovery timed out after 5ms.');
+  });
+
+  it('desktop shell enables native zoom hotkeys and its zoom capability', async () => {
+    const config = JSON.parse(await readFile('../prompt-lab-desktop/src-tauri/tauri.conf.json', 'utf8'));
+    const capability = JSON.parse(await readFile('../prompt-lab-desktop/src-tauri/capabilities/desktop.json', 'utf8'));
+
+    expect(config.app.windows[0].zoomHotkeysEnabled).toBe(true);
+    expect(capability.windows).toContain('main');
+    expect(capability.permissions).toContain('core:webview:allow-set-webview-zoom');
   });
 });

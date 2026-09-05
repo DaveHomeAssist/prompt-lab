@@ -111,6 +111,7 @@ describe('usePersistenceFlow share + template paths', () => {
     expect(result.current.notes).toBe('');
     expect(result.current.saveTags).toEqual(['shared', 'handoff']);
     expect(result.current.saveTitle).toBe('Prompt enhanced');
+    expect(result.current.sharedHashPending).toBe(false);
     expect(notify).toHaveBeenCalledWith('Shared prompt loaded!');
   });
 

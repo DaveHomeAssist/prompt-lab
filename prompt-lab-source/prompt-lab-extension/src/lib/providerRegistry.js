@@ -67,6 +67,18 @@ export function normalizeBaseUrl(baseUrl, fallback) {
   return raw.replace(/\/+$/, '');
 }
 
+export const OLLAMA_ENDPOINTS = Object.freeze([
+  Object.freeze({ id: 'local', label: 'This Mac', baseUrl: 'http://localhost:11434' }),
+  Object.freeze({ id: 'duncan', label: 'Duncan', baseUrl: 'http://duncan:11434' }),
+  Object.freeze({ id: 'walter', label: 'Walter', baseUrl: 'http://walter:11434' }),
+]);
+
+export function getOllamaEndpoint(baseUrl) {
+  if (!String(baseUrl || '').trim()) return null;
+  const normalized = normalizeBaseUrl(baseUrl, OLLAMA_ENDPOINTS[0].baseUrl);
+  return OLLAMA_ENDPOINTS.find((endpoint) => endpoint.baseUrl === normalized) || null;
+}
+
 // ── SSE stream parsers ─────────────────────────────────────────────
 
 function normalizeUsage(input, output, total) {
@@ -238,11 +250,16 @@ const PROVIDERS = Object.freeze({
     },
 
     buildPayload(payload, settings, options = {}) {
-      return {
+      const body = {
         model: this.resolveModel(payload, settings),
         stream: !!options.stream,
         messages: toChatMessages(payload),
       };
+      const ollamaOptions = {};
+      if (Number.isFinite(payload?.max_tokens)) ollamaOptions.num_predict = Math.max(1, Math.round(payload.max_tokens));
+      if (Number.isFinite(payload?.temperature)) ollamaOptions.temperature = payload.temperature;
+      if (Object.keys(ollamaOptions).length > 0) body.options = ollamaOptions;
+      return body;
     },
 
     normalizeResponse(data, requestBody, _resolvedModel) {

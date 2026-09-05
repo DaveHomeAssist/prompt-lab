@@ -30,10 +30,17 @@ export default function useRouteSync({
   runsView, setRunsView,
   splitPane, setSplitPane,
   compact = false,
+  preserveSharedHash = false,
+  onUnknownRoute,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const suppressPush = useRef(false);
+  const onUnknownRouteRef = useRef(onUnknownRoute);
+  useEffect(() => { onUnknownRouteRef.current = onUnknownRoute; }, [onUnknownRoute]);
+  // L-2 loop guard: remembers the pathname we already recovered from so an
+  // unresolvable route can never trigger more than one redirect attempt.
+  const recoveredFromRef = useRef(null);
 
   const replaceRoute = useCallback((target) => {
     suppressPush.current = true;
@@ -43,8 +50,26 @@ export default function useRouteSync({
 
   // URL → state: on mount and browser back/forward
   useEffect(() => {
+    // Shared prompt/pack fragments are application payloads, not routes.
+    // Leave them untouched until usePersistenceFlow has decoded the payload.
+    if (preserveSharedHash) return;
     const mapping = resolveRouteState(location.pathname);
-    if (!mapping) return;
+    if (!mapping) {
+      // L-2: an unknown route used to fall through silently — nav state kept
+      // its previous workspace and the dead link stayed in history. Recover
+      // deliberately: report the path, then replace the entry with the
+      // canonical Write route (re-running this effect against its mapping).
+      // The recovery is one-shot per pathname and never fires for '/' itself,
+      // so an environment where no route resolves cannot redirect-loop.
+      if (location.pathname === '/' || recoveredFromRef.current === location.pathname) return;
+      recoveredFromRef.current = location.pathname;
+      if (typeof onUnknownRouteRef.current === 'function') {
+        onUnknownRouteRef.current(location.pathname);
+      }
+      replaceRoute('/');
+      return;
+    }
+    recoveredFromRef.current = null;
 
     suppressPush.current = true;
 
@@ -55,17 +80,17 @@ export default function useRouteSync({
 
     // Allow the state update to settle before re-enabling URL push
     requestAnimationFrame(() => { suppressPush.current = false; });
-  }, [location.pathname, setPrimaryView, setWorkspaceView, setRunsView, setSplitPane]);
+  }, [location.pathname, preserveSharedHash, setPrimaryView, setWorkspaceView, setRunsView, setSplitPane]);
 
   // State → URL: when nav state changes, update the URL
   useEffect(() => {
-    if (suppressPush.current) return;
+    if (suppressPush.current || preserveSharedHash) return;
 
     const target = stateToRoute(primaryView, workspaceView, runsView, { compact, splitPane });
     if (target !== location.pathname) {
       navigate(target);
     }
-  }, [primaryView, workspaceView, runsView, splitPane, compact, navigate, location.pathname]);
+  }, [primaryView, workspaceView, runsView, splitPane, compact, navigate, location.pathname, preserveSharedHash]);
 
   return { replaceRoute };
 }

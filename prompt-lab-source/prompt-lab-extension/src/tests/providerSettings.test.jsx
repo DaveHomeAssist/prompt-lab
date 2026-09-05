@@ -177,6 +177,45 @@ describe('DesktopSettingsModal', () => {
     });
   });
 
+  it('ollama_server_selection_targets_duncan_and_loads_its_models', async () => {
+    loadProviderSettings.mockResolvedValueOnce({
+      provider: 'ollama',
+      ollamaBaseUrl: 'http://localhost:11434',
+      ollamaModel: 'llama3.2:3b',
+    });
+    listOllamaModels.mockResolvedValueOnce([
+      { name: 'qwen3-coder:30b', paramSize: '30.5B' },
+      { name: 'gpt-oss:20b', paramSize: '20.9B' },
+    ]);
+
+    await renderModal();
+    const serverSelect = await screen.findByRole('combobox', { name: 'Ollama Server' });
+    fireEvent.change(serverSelect, { target: { value: 'duncan' } });
+
+    await waitFor(() => {
+      expect(listOllamaModels).toHaveBeenCalledWith('http://duncan:11434');
+    });
+    expect(await screen.findByText('2 models found on Duncan')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Base URL' })).toHaveValue('http://duncan:11434');
+    expect(screen.getByRole('option', { name: /qwen3-coder:30b/i })).toBeInTheDocument();
+  });
+
+  it('ollama_connection_test_requires_an_installed_model', async () => {
+    loadProviderSettings.mockResolvedValueOnce({
+      provider: 'ollama',
+      ollamaBaseUrl: 'http://localhost:11434',
+      ollamaModel: 'llama3.2:3b',
+    });
+    listOllamaModels.mockResolvedValue([]);
+
+    await renderModal();
+    fireEvent.click(await screen.findByRole('button', { name: 'Test Connection' }));
+
+    expect(await screen.findByText(/No models are installed on This Mac/i)).toBeInTheDocument();
+    expect(screen.getByText(/ollama pull llama3\.2:3b/i)).toBeInTheDocument();
+    expect(testProviderConnection).not.toHaveBeenCalled();
+  });
+
   it('hosted_web_mode_locks_provider_to_anthropic_and_makes_api_key_optional', async () => {
     vi.stubEnv('VITE_WEB_MODE', 'true');
     loadProviderSettings.mockResolvedValueOnce({

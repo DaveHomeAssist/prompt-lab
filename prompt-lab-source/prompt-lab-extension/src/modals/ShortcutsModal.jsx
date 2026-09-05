@@ -29,7 +29,7 @@ export default function ShortcutsModal({ m, primaryModKey, saveLabel = 'Save as 
           <div>
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Global</p>
             <div className="flex flex-col gap-2.5">
-              {[[`${primaryModKey} ↵`, 'Enhance prompt'], [`${primaryModKey} S`, saveLabel], [`${primaryModKey} K`, 'Command palette'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
+              {[[`${primaryModKey} ↵`, 'Enhance prompt'], [`${primaryModKey} S`, saveLabel], [`${primaryModKey} K`, 'Command palette'], [`${primaryModKey} + / −`, 'Zoom in / out'], [`${primaryModKey} 0`, 'Reset zoom'], ['?', 'Show shortcuts'], ['Esc', 'Close modals']].map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between">
                   <span className={`text-sm ${m.textBody}`}>{label}</span>
                   <kbd className={`text-xs font-mono px-2 py-1 ${m.pill} rounded-md`}>{key}</kbd>
