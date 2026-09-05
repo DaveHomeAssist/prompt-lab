@@ -1,0 +1,305 @@
+1. PROJECT SUMMARY
+
+Objective: Resolve the eight selected PromptLab audit defects, complete the four selected unfinished workstreams, and preserve the two selected resolved behaviors through reproducible verification across the applicable extension, desktop, web, and native surfaces.
+
+Key Outcomes:
+- All eight selected audit defects have reproductions that fail before remediation and pass afterward, including failure and cancellation paths; required CI passes on the final PR commits and each change reaches main through a merge commit.
+- Workspace writes acknowledge durable success, readable Scratch data survives failed migration writes, permanent deletions survive stale-tab reconciliation, and imported runs retain the correct prompt association.
+- Every applicable selected provider execution path uses the established provider boundary, performs sensitive-data preflight, respects cancellation, and attaches output and history to the attempt that produced them.
+- Raw Library import presents an actionable preview, follow-up prompts retain provenance and save as independent Library entries, and the Library compatibility matrix passes without introducing a public backend.
+- The 14 existing Notion records have evidence-backed dispositions; desktop packaging has artifact and operator proof for each supported target, while unavailable signing, platform, or deployment evidence remains explicitly Unknown and prevents the corresponding closure.
+
+Assumptions and Resolved Missing Information:
+- Deliverable and authorization: the current request authorizes this implementation plan file only. The 14 pasted issue links define the planned implementation scope; they do not authorize executing the remediation. Phase 1 starts with read-only preparation. Code changes and implementation-related Notion writes begin only after Dave explicitly approves this bounded plan or a named subset. Creating this file does not change issue statuses.
+- Filename: use the user's corrected date and project format, 09-05-26_promptLab_implementation_plan.txt, with the .txt extension from the original file instruction. Interpret 09-05-26 as September 5, 2026, using the supplied America/New_York context.
+- Baseline: the conversation's reconciliation checked main at 5401444f23e56c3843b69e242ada5811573e3f3e. These are historical planning inputs, not proof of the implementation start state. Refresh main, open PRs, checks, issue pages, and source locations before editing.
+- Prior evidence: the broad review recorded 840 Vitest tests, 212 extension Node tests, 70 API tests, and successful extension, web, and desktop frontend builds. The reconciliation subsequently recorded 195 tests in 19 files and focused legacy-import/header assertions. The original 14 custom probes contained 11 expected-correctness failures and three controls; they were not rerun during reconciliation. Recreate missing probes as maintained regression tests rather than depending on temporary files.
+- Worktree: the last inspected primary checkout contained unrelated AGENTS.md changes and an untracked prompt-lab-source/docs/ISSUE_TRIAGE_UPDATE_2026-03-24.md. Preserve those artifacts. Implementation uses a clean isolated checkout based on refreshed main and a codex/ branch; do not implement against the historical audit branch or a git-archive snapshot.
+- Scope: eight audit bugs, desktop stabilization, Library convergence, follow-up provenance/save, and raw Library import are active work. Starter-pack newest sorting and collection deletion were Done at reconciliation; treat them as regression controls unless a fresh test disproves closure. Do not recreate issues or repeat already completed changes.
+- Exclusions: the selected list does not include chain replacement syntax, mobile source truncation, or release-label validation. Preserve those separate open findings. This plan cannot certify all-repo release readiness while independent release blockers remain unresolved. Skill Lab, Agent Lab, iOS product expansion, Scratch rich-text editing, billing changes, and new cloud synchronization are also outside this scope.
+- Architecture: preserve local-first data ownership, current provider wrappers, and shell boundaries. Interpret Library sync as same-storage reconciliation and explicit portable export/import; no cross-device service or public backend is approved.
+- Follow-up product default: use the current source inputs, raw/enhanced prompt, for generation. Persist their provenance and the generation attempt's actual provider/model when available. Do not claim an enhanced prompt is a downstream task answer. If the canonical issue explicitly requires downstream run output, implement that existing-source input as a separately labeled option; if no such source exists, leave that acceptance item pending instead of fabricating it.
+- Import product defaults: reuse PresetImportPanel's Keep both / Replace / Skip vocabulary. Exact body duplicates default to Skip; ambiguous title conflicts require an explicit choice before Apply. Cancel and preview do not write. A preview must be recalculated if its input changes. Older imports without new optional metadata remain readable.
+- Compatibility: do not infer supported operating-system versions, CPU architectures, mobile parity, or historical schema versions. Phase 1 extracts the supported target and schema matrix from current CI, packaging configuration, canonical records, and committed fixtures. Unknown targets receive a named gate, not a presumed pass.
+- Resources: named implementers, staffing, signing credentials, certificate identities, native Xcode access, Windows test machines, and canonical deployed runtime URLs are Unknown. Assign execution to the roles below. Dave is the product and release authority. Missing platform or signing access blocks only dependent proof; other approved work continues.
+- Provider budget: use deterministic fake transports and local fixtures by default. Do not run or recommend paid-provider smoke without explicit authorization covering provider, model, request count, and cost ceiling. Keep all credentials outside code, logs, test fixtures, and Notion.
+- Timeline: estimates are engineering working days for one primary developer with part-time QA/release support. The sequential phase ranges total approximately 19-36 working days; signing and device availability may add 1-3 calendar weeks. Parallel work can shorten elapsed time after file ownership is assigned. No additional agents or tasks are created automatically.
+
+Canonical Records and Source Map:
+- Repository: https://github.com/DaveHomeAssist/prompt-lab
+- Primary checkout: /Users/daverobertson/Code/prompt-lab
+- Shared workspace contract: /Users/daverobertson/Code/ops-hub/90-governance/WORKSPACE_OPERATING_RULES.md; read it before project AGENTS.md instructions.
+- Canonical hub: https://app.notion.com/p/31f255fc8f44807abbd8d0dd4d62cb89
+- Project roadmap: https://app.notion.com/p/341255fc8f448048adfdf1c25e1de580
+- Selected Issue Backlog: https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f
+- Backlog data source: collection://177c6bc5-3280-40dd-8961-871e040ccfe6
+- Reconciliation RUN: https://app.notion.com/p/3d2255fc8f4481008102c1f30b8fd03f, RUN-20260905-0712-PROMPTLAB-BACKLOG.
+- Source paths below are relative to the repository root. E/ means prompt-lab-source/prompt-lab-extension/; W/ means prompt-lab-source/prompt-lab-web/; N/ means prompt-lab-ios/PromptLab/. Expand these prefixes before opening or editing files.
+- Historical source line numbers may move. Locate the named functions and components with rg; do not patch by stale line number.
+
+Selected Issue Register:
+Use the following local plan identifiers only to cross-reference this document; do not replace existing Notion IDs or titles.
+
+A. Packaged extension drops provider cancellation
+   https://app.notion.com/p/3d2255fc8f448128a3c7d878a2b5d799
+   Prior status: Not started; severity: High / P1. Delivery: Phase 4.
+B. Workspace import fails to remap run associations
+   https://app.notion.com/p/3d2255fc8f44814bb93cf90f2931876e
+   Prior status: Not started; severity: High / P1. Delivery: Phase 3.
+C. Scratch migration discards readable notes when a write fails
+   https://app.notion.com/p/3d2255fc8f44814ebf3dfff35975b014
+   Prior status: Not started; severity: High / P1. Delivery: Phase 2.
+D. Fallback persistence acknowledges writes that failed
+   https://app.notion.com/p/3d2255fc8f44816b9a5ed471be3b493d
+   Prior status: Not started; severity: High / P1. Delivery: Phase 2.
+E. Alternate execution paths bypass sensitive-data preflight
+   https://app.notion.com/p/3d2255fc8f44816e82f1d4357108daad
+   Prior status: Not started; severity: High / P1. Delivery: Phase 5.
+F. Request identity can outlive its editor or variant
+   https://app.notion.com/p/3d2255fc8f4481a78178ef20130a6082
+   Prior status: Not started; severity: High / P1. Native occurrence remains a source-traced Risk until reproduced. Delivery: Phase 5.
+G. Streaming provider errors become successful partial responses
+   https://app.notion.com/p/3d2255fc8f4481a8b120e73745ee803d
+   Prior status: Not started; severity: High / P1. Delivery: Phase 4.
+H. Cross-tab reconciliation resurrects permanent deletions
+   https://app.notion.com/p/3d2255fc8f4481e1bceffa1db1ee67cb
+   Prior status: Not started; severity: High / P1. Delivery: Phase 3.
+I. Finish desktop stabilization and cross-platform packaging proof
+   https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422
+   Prior status: In progress; severity: High. Delivery: Phase 9.
+J. Converge Library navigation, sync, persistence, and compatibility
+   https://app.notion.com/p/48d82c475b0448649ff2372a00bb6e33
+   Prior status: In progress; severity: High. Delivery: Phase 8; depends on Phases 2, 3, 6, and 7.
+K. Complete follow-up prompt provenance and save-to-library workflow
+   https://app.notion.com/p/bb55eb8e71734aaf9b9f43c4dbec2bec
+   Prior status: In progress; severity: High. Delivery: Phase 7.
+L. Newest sort wrong for starter-pack prompts
+   https://app.notion.com/p/32d255fc8f448115a64cc88a7ec2f640
+   Prior status: Done; severity: High. Regression control: Phases 1 and 8. The historical duplicate, Starter Libraries cause newest-sort bug via packLoadedAt timestamp, stays linked to this canonical row; do not merge or archive either record.
+M. Import Library path has no duplicate check, preview, or conflict resolution
+   https://app.notion.com/p/32d255fc8f44817faa12dc09d3ede05d
+   Prior status: reopened to In progress; severity: High. Existing body deduplication does not satisfy preview or conflict resolution. Delivery: Phase 6.
+N. Collection deletion leaves orphaned entries and stale filter state
+   https://app.notion.com/p/32d255fc8f4481d49143d134ed1839fc
+   Prior status: Done; severity: High. Regression control: Phases 1 and 8. This is separate from H's permanent prompt-deletion defect.
+
+2. PHASED IMPLEMENTATION PLAN
+
+Phase Name: Phase 1: Confirm Scope, Baseline, and Verification Contracts
+Goal: Establish the current implementation baseline, preserve unrelated work, and convert the selected issue records into an executable acceptance matrix before remediation starts.
+Key Milestones:
+- Read the shared contract and nearest AGENTS.md; run git status --short --branch, git remote -v, gh api repos/DaveHomeAssist/prompt-lab/branches/main --jq '.commit.sha', and gh pr list --repo DaveHomeAssist/prompt-lab --state open. Record the SHA and overlapping work; refresh refs and create a clean codex/ worktree only when approved implementation begins. Respect and acquire the applicable .agent-claim without replacing another operator's claim.
+- Fetch the canonical hub, its linked Brief/ARCHITECTURE/ROADMAP records, the reconciliation RUN, the selected database schema, and all 14 issue pages. Record unavailable sources as Unknown. Build an acceptance checklist mapped to A-N, exact source files, shell, required test, negative path, and closure evidence; retain historical notes and current user edits.
+- Obtain explicit approval for the selected implementation package before modifying product code. After approval, use the existing project row and issue rows, record one Output Contract and one verb-led Next Action, and open a verification RUN in the established Status Runs destination. Fetch the destination schema before writing and read back every mutation.
+- Run node --version and require Node 22. Read package.json scripts and CI workflows before selecting install, unit, build, and smoke commands. Run the focused baseline from E/: ./node_modules/.bin/vitest run libraryMatching legacyLibraryMigration usePromptLibrary LibraryPanel LibraryWorkspace presetImport packStudio MainWorkspace AppHeader followUpSuggestions scratchSchema. Install from the committed lockfile only if dependencies are absent, using repository instructions. Record actual counts and failures.
+- Confirm L and N with starter import/newest-sort and collection-removal tests; trace the eight A-H defects at refreshed main and add failing reproduction cases in their existing test suites during the approved fix phases. Restore deleted temporary probe knowledge from the issue evidence, not from assumed /tmp files.
+- Extract the supported platform/schema matrix and actual release commands from current configuration; identify Xcode, macOS/Windows runners, extension loading, signing access, and the canonical web runtime owner. Assign an owner and an explicit blocked gate for each unavailable resource.
+Dependencies: This plan and the existing repository/Notion records; implementation approval is required for remediation and related tracking writes, but read-only baseline inspection can start immediately.
+Required Resources: Lead developer, Dave for scope authorization, git, gh, Node 22/npm, connected Notion read access, repository and CI read access; write access only when the corresponding action is authorized.
+Estimated Timeline: 0.5-1 working day, plus any time awaiting implementation approval or access.
+Owner / Responsible Party: Lead developer; Dave owns product scope and release authorization.
+Risks / Failure Points:
+- Main or the selected issue pages changed after reconciliation; stale patches could reintroduce already fixed behavior. Resolve each discrepancy against fresh source before editing.
+- The primary checkout contains user work or a fresh claim; using it for remediation risks contamination. Use an isolated clean worktree and stage an explicit file allowlist.
+- Missing canonical specifications leave umbrella acceptance ambiguous; record the missing criteria as Unknown and apply only the bounded defaults in this plan until the governing source is available.
+
+Phase Name: Phase 2: Make Persistence Acknowledgments and Scratch Recovery Truthful
+Goal: Fix D and C so storage failures remain visible, callers do not announce success prematurely, and readable notes remain available in memory and on disk.
+Key Milestones:
+- In E/src/experimentStore.js, inspect writeFallback and all save/delete callers, including saveRunRecord, saveExperiment, saveEvalRun, saveTestCase, and deleteTestCase. Replace swallowed localStorage write exceptions with the error/result convention used by the successful IndexedDB path. Audit callers so a failed write produces one visible failure and no success acknowledgment.
+- Preserve the pending record or dirty buffer when persistence fails. Separate provider completion from history-save completion so a history failure neither relabels a valid provider response nor causes another provider call; a retry writes the same record identity instead of duplicating it.
+- In E/src/lib/scratchSchema.js, retain a successfully read payload outside migration-write error handling. Avoid unnecessary rewrites of a current schema when safe under the existing contract; do not advance the schema marker before its data write succeeds. In E/src/ScratchWorkspace.jsx, display recovered content with a recoverable save error instead of applying a blank default.
+- Add negative tests with unavailable IndexedDB and throwing localStorage.setItem, plus current/legacy readable Scratch fixtures. Assert original disk data remains, visible notes remain, failure is surfaced, and a later successful retry clears the error without duplicate records. Add successful-write controls and assert corruption is distinguishable from a write failure.
+- Run the affected store/Scratch suites and caller tests, review the scoped diff, and deliver a small PR using the merge workflow in Execution Notes. Attach the exact tests and merged SHA to D/C only after readback; do not describe the original Scratch bug as proven immediate on-disk deletion.
+Dependencies: Phase 1 approved scope and baseline; the existing storage result and UI error conventions must be identified before changing signatures.
+Required Resources: JavaScript developer, Node 22, Vitest and existing fake IndexedDB/localStorage fixtures, local browser or shell test harness, GitHub write/CI access.
+Estimated Timeline: 1.5-3 working days.
+Owner / Responsible Party: Persistence developer, with QA review of failure feedback and retry behavior.
+Risks / Failure Points:
+- Turning a swallowed exception into a rejection can expose unhandled promises in callers; inventory every caller and test failure propagation before merge.
+- A failed migration can be confused with unreadable input; keep parsing and write errors separate to avoid discarding readable content.
+- Automatic retries can duplicate run writes; preserve stable record identity and retry storage only.
+
+Phase Name: Phase 3: Preserve Deletion and Import Association Invariants
+Goal: Fix H and B by making permanent deletion resistant to stale replicas and by mapping imported associations through the same canonical prompt identity resolution.
+Key Milestones:
+- In E/src/hooks/usePromptLibrary.js, trace reconcileLibraryRecords, storage-event adoption, debounced persistence, permanentlyDelete, and clearLibrary. Define durable deletion metadata that contains identity/revision information only, with a clear-generation marker for full reset; never retain prompt bodies or titles in permanent-deletion markers.
+- Merge the deletion metadata before live records and suppress stale writes consistently. Use a persisted monotonic/generation rule appropriate to the existing schema rather than wall-clock ordering alone. Preserve legacy payload reading; add the smallest schema-compatible metadata representation. Do not compact tombstones until a documented replica-expiry rule can prove stale content cannot return.
+- Add two-window event/interleaving tests: permanently delete an already trashed prompt while another tab is stale; let pending debounce timers flush; reload both tabs; replay an older snapshot. Add clear, repeated events, out-of-order events, and nonconflicting edit controls. Run the scenario in an actual browser storage context after the deterministic tests pass.
+- In the workspace import path in E/src/hooks/usePromptLibrary.js, reuse E/src/lib/libraryMatching.js's promptIdMap for run.promptId as already done for test cases. Trace version/experiment/provenance references actually present in the schema. Map associations to surviving identities, preserve intentionally unscoped history, and reject or explicitly report unresolved imported references rather than silently inventing links.
+- Add fixtures where an imported prompt deduplicates into an existing local prompt with a different ID, then verify runs and test cases resolve to the survivor after reload/export. Cover kept-new prompts, legacy exports, ID conflicts, malformed references, and failed writes. An error must not present a completed import or silently lose a retryable payload.
+- Deliver H and B as separately reviewable commits or PRs, record the compatibility/migration choice in the existing architecture record, and attach focused tests plus browser proof to the existing rows. Route permanent-deletion tests separately from N's collection-cleanup controls.
+Dependencies: Phase 2 acknowledged writes; Phase 1 schema inventory. Work on usePromptLibrary.js is serialized with Phase 6 to prevent conflicting edits.
+Required Resources: Persistence/Library developer, QA, Vitest fake timers, browser automation with two same-origin tabs, representative committed import fixtures, GitHub and Notion access.
+Estimated Timeline: 2-4 working days.
+Owner / Responsible Party: Library data owner; QA owns cross-tab and round-trip acceptance.
+Risks / Failure Points:
+- A stale older client may omit new deletion metadata; define upgrade/legacy-reader behavior and keep compatibility limitations visible instead of claiming mixed-version safety without proof.
+- Deletion markers can grow over time; retain correctness until a tested expiry/compaction policy exists, and keep markers content-free.
+- Import spans multiple stores and may lack one transaction; prevalidate the write plan and report partial completion with deterministic retry behavior instead of claiming atomicity.
+
+Phase Name: Phase 4: Repair Packaged Cancellation and Streaming Error Completion
+Goal: Fix A and G at the actual transport and assembled-artifact boundaries while preserving provider-specific response semantics.
+Key Milestones:
+- Trace E/extension/background.js through E/extension/lib/providers.js and the packaging assembly step. Forward the request AbortSignal through callProvider and every provider fetch in the packaged implementation. Test the assembled extension, because a passing E/src/lib/providers.js test does not prove the copied extension provider code forwards cancellation.
+- Make the smallest immediate cancellation patch and establish one tested provider contract across the shared and packaged boundaries. Where current packaging can safely consume the canonical implementation, consolidate through the existing build process; otherwise add explicit parity tests and document the remaining duplication rather than introducing a second new abstraction.
+- In E/src/lib/providerRegistry.js and E/src/lib/providers.js, distinguish malformed frames, provider error events, provider-specific successful termination, user cancellation, and unexpected EOF. Do not swallow errors raised by frame inspection. Preserve partial text for display/debug context but return a failed attempt when the stream reports an error or lacks the provider's required completion condition.
+- Add deterministic streams for normal completion, an Anthropic text delta followed by type:error, abrupt EOF, split UTF-8/chunk boundaries, malformed events, and abort before/during read. For other providers, use their existing committed protocol fixtures and completion conventions; do not impose one vendor's sentinel globally.
+- Verify canceled fetches observe an aborted signal, abort does not retry, late chunks do not become successful output, and stream failure does not create duplicate history writes. Build the unpacked extension, load it in Chrome, and exercise MODEL_REQUEST/MODEL_ABORT with a local fake provider from the actual background worker.
+- Run provider/background/stream tests and the relevant extension/web/desktop frontend builds; merge only after required checks pass. Record artifact identity, mock configuration, observed cancellation, and failure history in A/G and the RUN.
+Dependencies: Phase 1 provider/packaging inventory. Phase 2 is required for final persisted-history assertions; transport fixture development can start independently after approval.
+Required Resources: Provider developer, Node 22, existing build tools, Vitest/Node transport fixtures, Chrome extension development mode, local mock endpoint where required, GitHub CI.
+Estimated Timeline: 1.5-3 working days.
+Owner / Responsible Party: Provider integration developer; QA verifies the packaged extension path.
+Risks / Failure Points:
+- Shared-source tests can miss the copied packaged provider implementation; require tests importing or executing the assembled artifact.
+- Providers differ in completion markers and error framing; protocol-specific fixtures must demonstrate both valid completion and failure detection.
+- Treating aborted or partial output as retryable without attempt isolation can create duplicate history; assert retry and persistence behavior explicitly.
+
+Phase Name: Phase 5: Enforce Preflight and Immutable Request Ownership
+Goal: Fix E and F so sensitive input cannot bypass the established confirmation path and asynchronous completions cannot overwrite another editor or variant.
+Key Milestones:
+- Trace E/src/hooks/useExecutionFlow.js's enhance, enhanceWithMode, piiSendAnyway, and redact flow alongside E/src/hooks/useABTest.js. Replace the implicit safeOverridePayload exemption with an explicit preflight decision bound to the exact outgoing payload and attempt. Route alternate enhancement modes and Arena through the same established scanner/confirmation policy before invoking provider wrappers.
+- Use fake transports with synthetic sensitive strings to verify no request occurs before approval, Send anyway sends only the approved payload, Redact sends the redacted payload, Cancel sends nothing, and editing input/provider context invalidates stale approval where it changes the outbound payload. Preserve intentionally scoped native policy from D-011; do not add an unapproved native PII feature.
+- Give each Arena attempt an immutable snapshot of prompt text, prompt identity, variant identity, provider/model, and mode plus a unique lifetime token. Invalidate or cancel active attempts on relevant edits, removals, and replacement. Do not reset reusable numeric request identities on addVariant; guard result and error UI updates against the active token.
+- Add controllable-promise tests for edit-mid-run, remove/re-add the same variant label, overlapping attempts completing in reverse order, cancellation, and unmount. Persist captured attempt context exactly once where current history policy requires it; stale completion must not update the current variant's UI.
+- In N/WorkbenchStore.swift, reproduce the source-traced Risk with loadPrompt/startNewPrompt/loadRun during an in-flight enhance. Snapshot prompt identity, title, mode, and request context before suspension; write canceled/failed history against the original attempt, and guard editor/status updates by active ownership. Add Swift tests for prompt A cancellation while prompt B is active. If Xcode remains unavailable, leave the native portion Unknown and F open until a native runner supplies proof.
+- Verify the approved paths in the relevant shell UI using local fixtures, run hook and native suites where available, and merge scoped changes. Record which shells and native targets were exercised; do not close F on JavaScript tests alone when its native occurrence remains unresolved.
+Dependencies: Phase 4 transport cancellation/error behavior; Phase 2 reliable history writes. Native proof requires a working Xcode toolchain with the SwiftData macro support previously missing on this host.
+Required Resources: React/provider developer, Swift developer or equivalent owner, Vitest controlled promises, synthetic PII fixtures, Xcode and suitable simulator/macOS test target, GitHub CI.
+Estimated Timeline: 2-4 working days, excluding native toolchain access delay.
+Owner / Responsible Party: Execution-flow developer; native owner handles WorkbenchStore.swift; QA verifies approval and stale-result scenarios.
+Risks / Failure Points:
+- Reusing an approval after payload changes leaks unapproved content; bind approval to the prepared payload and invalidate on modification.
+- UI guards alone can conceal misattributed persisted history; assert both visible state and saved record ownership.
+- Native cancellation callbacks may mutate newly selected editor state after suspension; test controlled interleavings on an actual native test runner.
+
+Phase Name: Phase 6: Add Raw Library Import Preview and Conflict Choices
+Goal: Complete M by extending the existing raw Library import path with a reversible preview and explicit conflict decisions while retaining canonical deduplication and association mapping.
+Key Milestones:
+- Refactor the FileReader.onload import path in E/src/hooks/usePromptLibrary.js into parse/validate, pure import-plan construction, and explicit apply stages. Reuse E/src/lib/libraryMatching.js for normalization/deduplication and E/src/PresetImportPanel.jsx's existing conflict vocabulary and interaction conventions; avoid a second matching algorithm.
+- Show the destination Library, record counts, exact duplicates, title conflicts, invalid entries, and related run/test-case effects before any write. Exact-body duplicates default to Skip; ambiguous conflicts remain unresolved until the user selects Keep both, Replace, or Skip. Disable Apply while unresolved choices or invalid required references remain.
+- Give Cancel a zero-write path. Before Apply, revalidate the current Library/deletion generation against the preview's source revision; if another tab changed it, rebuild the preview and require renewed confirmation. Apply the chosen IDs consistently to related records using Phase 3's mapping.
+- Use acknowledged storage operations and deterministic IDs across retry. Prevalidate all planned records and preserve the import file/choices on failure. If existing stores cannot commit atomically, show which stages committed and retry only unfinished stages; do not claim full success or silently discard prior data.
+- Add tests for duplicate-only input, mixed new/conflicting prompts, all three choices, malformed JSON, legacy exports, cancellation, concurrent Library changes, partial write failure, and repeat Apply after failure. Exercise keyboard focus, visible error text, and narrow-screen preview behavior with a reproducible browser path.
+- Merge the feature with updated help text and focused tests, then update M's verification evidence. Existing PresetImportPanel behavior and legacy full-body deduplication must remain passing controls.
+Dependencies: Phases 2 and 3; agreement on the explicit defaults in Project Summary and Phase 1's canonical acceptance checklist.
+Required Resources: Library developer, UI/QA reviewer, existing import fixtures and browser harness, no new backend or paid provider access.
+Estimated Timeline: 2-4 working days.
+Owner / Responsible Party: Library/import developer; QA owns preview, cancellation, and retry acceptance.
+Risks / Failure Points:
+- Preview and apply can use different normalized input or Library revisions; reuse one plan representation and reject stale plans.
+- Replace can accidentally detach histories or overwrite unrelated IDs; test association behavior per conflict choice before exposing Apply.
+- Partial writes can make a second import duplicate successful stages; persist or retain stable operation identity and report staged outcomes precisely.
+
+Phase Name: Phase 7: Complete Follow-Up Provenance and Independent Saving
+Goal: Complete K by retaining the origin of each suggestion and making editor handoff/save create the intended independent Library prompt without overwriting the source prompt.
+Key Milestones:
+- Trace E/src/hooks/useFollowUpSuggestions.js, E/src/lib/followUpSuggestions.js, and E/src/App.jsx's handleUseFollowUp through the existing Library save path. Define optional provenance fields using current schema conventions: source prompt identity/version when present, originating attempt/run identity when present, actual generation provider/model, source kind, and generation time. Record unavailable values as absent/Unknown rather than fabricated identifiers.
+- Capture provenance at generation time with an immutable attempt token. Invalidate stale suggestion UI when its source changes. Keep title/prompt parsing compatible with existing responses and preserve old stored Library entries that have no provenance fields.
+- Make Use in editor explicitly initialize a new draft and clear inherited editingId or equivalent update-target state. Preserve the existing undo/draft behavior and source prompt. Add Save to Library through the established acknowledged save flow so a suggestion receives its own ID and provenance; keep current Composer handoff behavior intact.
+- Serialize provenance through the existing Library persistence and export/import boundary. Apply Phase 3's ID mapping to references where required; retain an explicit external/unresolved origin when the source was not imported. Do not store API keys, raw secret-bearing provider settings, or gratuitous copies of source content in metadata.
+- Test generation success/failure/cancellation, source switch before completion, independent saving while a source prompt is open, storage rejection, reload, and export/import round-trip. Assert the source entry's body and identity are unchanged, the new entry has its own ID, and displayed provenance points to the captured source or clearly reports its absence.
+- Exercise the workflow from the current Create/Composer surfaces, merge with required checks, and link the accepted reproduction paths to K. Keep any canonical downstream-output requirement separately pending if its needed source surface is unavailable.
+Dependencies: Phases 2, 3, and 5 for write acknowledgments, association mapping, and attempt ownership; Phase 6 import-plan integration before round-trip closure.
+Required Resources: React/Library developer, existing suggestion/provider fixtures, browser QA, canonical issue acceptance record, no paid-provider calls.
+Estimated Timeline: 3-5 working days.
+Owner / Responsible Party: Authoring workflow developer; QA verifies independent save and provenance round-trip.
+Risks / Failure Points:
+- A retained editingId can overwrite the parent prompt; assert a new identity before saving and keep an unchanged-source regression.
+- Provenance can drift when a later editor value is read instead of the generation snapshot; capture it once at attempt creation.
+- New metadata can break older imports or be dropped by serializers; use optional backward-compatible fields and round-trip tests.
+
+Phase Name: Phase 8: Verify Library Convergence and Preserve Resolved Behaviors
+Goal: Complete J's bounded navigation, reconciliation, persistence, and compatibility acceptance while maintaining L and N as proven controls.
+Key Milestones:
+- Map every J acceptance item to implemented code and a shell-specific scenario. Trace shared Library navigation, search through matchesLibrarySearch, active collection/tag/sort filters, filtered reordering, save/update, and explicit import/export. Identify actual shell-specific exceptions rather than claiming parity from shared source alone.
+- Run the common scenario set in web, packaged extension, and Tauri desktop where supported: create/save/reload; search from Library and Composer; import a starter pack and sort newest; filter and reorder a visible subset; delete the active collection; verify remaining entries lose its assignment and the filter resets.
+- Run local reconciliation and failure scenarios from Phases 2/3/6: stale-tab permanent deletion, clear, storage rejection with retained draft, import preview cancellation/conflicts, and cross-surface export/import with runs, test cases, and optional provenance. Exercise native JSON compatibility only to the boundary established by D-011, not full shared-UI parity.
+- Remove only confirmed duplicated utilities or inconsistent call sites required by these acceptance items. Canonicalize matching, import planning, acknowledgment, and attempt ownership at existing module boundaries; do not rewrite unrelated UI or add remote synchronization.
+- Re-run the focused Library suites and relevant full shell builds; record keyboard/narrow-screen checks and actual tab/window storage behavior. Confirm L and N remain Done only with fresh passing controls; reopen them only for a reproduced regression with evidence.
+- Review J against its canonical checklist and close it only when every bounded acceptance item has evidence. Append linked completion notes to J/L/N and the RUN, preserving navigation blocks, historical notes, and duplicate links.
+Dependencies: Phases 2-7 merged and verified; desktop runtime access from Phase 1. Phase 9 supplies final installer/distribution evidence but is not replaced by this functional matrix.
+Required Resources: QA lead, Library developer, Chrome, canonical/local web surface, Tauri desktop runtime, fixture exports, browser automation and operator keyboard checks.
+Estimated Timeline: 2-4 working days.
+Owner / Responsible Party: QA lead with the Library owner; Dave accepts any unresolved product-level scope decision.
+Risks / Failure Points:
+- Shared React code may behave differently under Chrome storage, web localStorage, and desktop persistence; test the real storage adapters and packaged shells.
+- Passing unit tests may miss focus, filter, or physical reordering failures; include reproducible user interaction checks.
+- The umbrella may contain broader unsatisfied canonical requirements; leave those items open rather than narrowing the definition silently.
+
+Phase Name: Phase 9: Prove Desktop Stabilization and Supported Packaging
+Goal: Complete I with current artifact, installation, persistence, and platform evidence; distinguish a frontend build from a working distributed desktop application.
+Key Milestones:
+- Use the supported platform/architecture matrix and packaging commands discovered in Phase 1. Build from one candidate commit SHA with Node 22, the repository's Rust/Tauri toolchain, and current release-versioning rules. Record versions, artifact paths/checksums, runner OS/architecture, and CI links. Do not label the historical v1.5.0-desktop-preview release as proof for current code.
+- Verify each supported installer/package on a clean test account or disposable VM: install, launch a visible app window, navigate core surfaces, perform fixture-based provider operations, save data, quit/relaunch, and recover the same data. Test zoom/Ollama-related paths only to their existing desktop contract, with a local stub or explicitly configured local service.
+- Exercise upgrade from the supported previous release and recheck Library/Scratch/history/settings compatibility. Exercise the documented rollback or pre-upgrade restore procedure on disposable data. Test uninstall behavior in the disposable environment against the documented retention policy; do not uninstall the user's working application or delete their data.
+- Run packaged cancellation, error, preflight, and Library scenarios that apply to desktop. For Windows MSI/NSIS and macOS universal targets present in the current matrix, verify actual installation/launch on the matching host instead of inferring acceptance from artifact existence.
+- Obtain and verify signing/notarization/distribution identities only where the release contract requires them. Missing credentials or machines keep the relevant target Unknown and I open. Keep credentials in established secret storage; record certificate identity/status without secret values.
+- Attach the per-target checklist and evidence to I and the RUN. Build/package verification can complete before public release authorization, but a published release, store submission, or paid smoke must wait for its explicit authorization and current release gates.
+Dependencies: Phase 8 accepted candidate; Phase 1 access requests should start early. Provider/persistence fixes must be merged before testing final artifacts.
+Required Resources: Release engineer, QA operator, macOS and Windows machines or CI runners matching the supported matrix, Rust/Tauri dependencies, signing access where required, disposable test profiles and prior supported installer.
+Estimated Timeline: 3-6 working days of execution; missing machines, signing, or notarization access may add 1-3 calendar weeks.
+Owner / Responsible Party: Release engineer; QA owns clean-install/upgrade proof; Dave owns release authorization and unavailable credentials.
+Risks / Failure Points:
+- A valid frontend bundle can coexist with a broken native package; require actual visible application launch and persisted-data reload.
+- A schema change can make rollback destructive; test the documented recovery path with exported disposable fixtures before distribution.
+- Missing target hardware or signing access prevents cross-platform completion; report each unverified target separately and do not substitute another platform's success.
+
+Phase Name: Phase 10: Integrate, Verify Final State, and Reconcile Closure
+Goal: Produce a final candidate and issue ledger whose claims are supported by current repository, CI, artifact, runtime, and Notion evidence.
+Key Milestones:
+- After each phase's immediate PR merge, refresh main and record merged SHAs. For the final integration run, use the exact resulting main SHA and run the relevant full unit/Node/API/tooling/docs suites and extension/web/desktop builds using current package/CI commands. Run node scripts/release-gates.mjs where still present; explain every warning and distinguish out-of-scope existing blockers from regressions.
+- Re-run the highest-risk negative paths on the assembled/final candidate: packaged abort, provider error after partial output, sensitive-data cancellation, stale attempt completion, rejected writes, Scratch recovery, stale-tab deletion, import remapping/preview, and independent follow-up saving. Include L/N positive controls. Record expected and observed results, not just test counts.
+- Verify required CI on the exact PR heads, merge commits on protected main, and deployment provider state where automatic deployment applies. Discover the canonical runtime from its current governing record/provider and verify its user-facing behavior against the candidate. If no applicable deployment exists for the plan's artifact, mark it not applicable; if expected runtime access is unavailable, mark it Unknown.
+- Fetch the live Notion schema and each selected row immediately before updating it. Preserve existing titles, severity, area, type, source, navigation, and historical evidence. Use only the live status options; the reconciled schema used Not started, In progress, and Done. Append dated evidence with merged SHA, CI links, reproduction path, gaps, and one verb-led Next Action; do not bulk move, merge, archive, or change the schema.
+- Create or complete the implementation RUN with a traffic-light title, sources checked, specific evidence, gaps, and next action. Read back every page write and query all 14 dispositions. A row becomes Done only when its entire acceptance contract passes; broad J/I/F remain open when dependent platform or native proof is missing.
+- Deliver a compact handoff separating source changes, main/remote/CI, packaged artifacts, deployment/live verification, Notion updates, and remaining excluded findings. Read back the Codex task title using the supported task tool. Call this scoped implementation complete only after its gates pass; do not claim overall PromptLab production readiness while unresolved release blockers or required human acceptance remain.
+Dependencies: All applicable preceding phases and their merged changes; source/CI/runtime/Notion access for the evidence being claimed.
+Required Resources: Lead developer, QA lead, release engineer, gh/git, current repository verification tools, canonical deployment access, connected Notion write access, Dave for explicit public-release or acceptance decisions when required.
+Estimated Timeline: 1-2 working days, excluding remediation of newly failing gates or unavailable external proof.
+Owner / Responsible Party: Lead developer owns integration and the final ledger; QA/release owners supply runtime and artifact proof.
+Risks / Failure Points:
+- A new main commit can invalidate earlier integration evidence; pin and recheck the final candidate instead of attaching old green checks.
+- Test/build success may be overstated as deployment or human acceptance; maintain separate evidence fields for every stage.
+- Updating an umbrella to Done can conceal an unresolved child or native/platform gap; review every linked acceptance item and retain Unknowns.
+
+3. EXECUTION NOTES
+
+Critical Sequencing Constraints:
+- Approval for implementation precedes remediation and its tracking writes. The planning request alone authorizes neither product changes nor automatic execution of this plan. Read-only preparation can proceed without that approval.
+- Preserve the primary checkout and resolve concurrent claims before creating implementation worktrees. Start approved changes from refreshed main; verify exact changed-file scope before staging.
+- Acknowledged persistence precedes workflows that depend on trustworthy save/import/history results. Deletion generations and promptIdMap behavior precede the raw import apply path. Immutable attempt identity precedes follow-up provenance. Functional convergence precedes final packaged acceptance.
+- Capture failing correctness cases before each fix and pair them with valid-path controls. Keep provider transport/protocol failures separate from storage failures so a save error cannot trigger another billable request.
+- Each phase that changes source completes its own git add with an explicit file allowlist, git commit, git push, PR creation, and required checks immediately. Use gh pr checks to inspect required CI. If checks are still running, enable merge-commit auto-merge with gh pr merge <PR> --merge --auto; if all required checks pass, mark any draft ready and merge with --merge. Never merge a failed required check, force-push, or delete source branches. Verify remote refs and the resulting main merge SHA.
+- If a push rejects because the remote advanced, fetch and inspect, integrate compatible changes without overwriting user work, rerun affected checks, and push again. Do not stop with uncommitted intended changes or an undisclosed failed gate.
+- Automatic deployment required by the repository follows its normal CI workflow and needs live verification. Public releases, store submissions, new paid infrastructure, and provider charges require the applicable explicit authorization; missing authorization does not stop independent local verification.
+- Notion closure follows the actual merged/runtime proof relevant to that issue. Fetch before each edit, preserve histories, read back each write, and record the exact external mutation targets and returned identifiers.
+
+Parallelizable Work:
+- After Phase 1 approval, provider fixture development in Phase 4 can run alongside persistence work in Phases 2/3 because the source ownership is separate. Merge integration/history assertions only after the persistence contract is settled.
+- Xcode access, native fixture setup, Windows/macOS test environment preparation, and signing-access discovery can start during Phase 1 while JavaScript fixes proceed.
+- QA can prepare the A-N scenario matrix and disposable import/Scratch fixtures while implementation proceeds; tests must target the eventual merged candidate before closure.
+- Native WorkbenchStore.swift work can run alongside React request-identity work after agreeing on captured-attempt semantics. Assign separate owners and do not overwrite another worker's files.
+- Do not concurrently modify usePromptLibrary.js for deletion, import mapping, preview, and convergence. Land those changes in sequence or use explicit ownership and integration checkpoints. Parallel agent delegation requires an explicit request; the listed workstreams do not launch agents automatically.
+
+Quick Wins:
+- Under one day: refresh the 14 issue pages and main SHA, populate the acceptance matrix, and confirm that L/N remain valid regression controls.
+- Under one day: add the focused packaged AbortSignal reproduction and patch its missing forwarding, subject to the actual artifact test and CI gate.
+- Under one day: add the same-content/different-ID run import fixture and apply the existing promptIdMap to run associations; broader conflict/partial-write work remains in Phases 3/6.
+- Under one day: keep readable Scratch payloads in memory when a migration write fails and add the negative quota test; complete caller/UI verification before closing C.
+- Under one day: add a regression demonstrating that selecting a follow-up must not retain the parent's editingId. Full provenance and import compatibility remain Phase 7 work.
+
+Long-Lead Tasks:
+- Working Xcode/SwiftData tooling and supported native test targets; the previous source-only native Risk cannot be closed by JavaScript verification.
+- Matching macOS/Windows environments, supported prior installers, and signing/notarization credentials needed for desktop acceptance.
+- Canonical deployment access and human/operator acceptance when those are part of the current release contract.
+- Any separately authorized public release or store review. Keep these calendar dependencies distinct from engineering-day estimates and do not silently substitute unsigned artifacts or CI success for distribution acceptance.
+
+4. NEXT ACTIONS
+
+1. In /Users/daverobertson/Code/prompt-lab, run git status --short --branch and record the existing modifications and any .agent-claim without changing them.
+2. Run gh api repos/DaveHomeAssist/prompt-lab/branches/main --jq '.commit.sha' and record the current main SHA beside the historical 5401444f23e56c3843b69e242ada5811573e3f3e baseline.
+3. Fetch the selected Issue Backlog and its 14 linked pages through the Notion connector; produce the A-N acceptance checklist with current statuses and unresolved criteria.
+4. Have the release engineer inventory Xcode, supported macOS/Windows test environments, and signing access from the current packaging matrix; return a single access/gate checklist without exposing credentials.
+5. Submit the bounded A-N implementation scope and acceptance checklist to Dave for explicit execution approval; record the approved phases before creating remediation branches or changing product code.
