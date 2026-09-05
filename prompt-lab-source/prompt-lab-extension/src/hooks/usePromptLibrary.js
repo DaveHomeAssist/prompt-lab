@@ -28,6 +28,7 @@ import {
   matchesLibrarySearch,
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
+import { filterDeletedLibraryRecords, isLibraryDeletionKey, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState, stampLibraryGeneration } from '../lib/libraryDeletion.js';
 import { stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 
@@ -127,7 +128,7 @@ function deriveCollectionsFromLibrary(entries) {
 }
 
 export default function usePromptLibrary(notify) {
-  const [library, setLibrary] = useState([]);
+  const [library, setLibraryState] = useState([]);
   const [trash, setTrash] = useState([]);
   const [libReady, setLibReady] = useState(false);
   const [collections, setCollections] = useState([]);
@@ -155,10 +156,23 @@ export default function usePromptLibrary(notify) {
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
   const trashRef = useRef(trash);
+  const generationRef = useRef('0');
   const collectionsRef = useRef(collections);
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
   const libraryPersistFailedRef = useRef(false);
+
+  const setLibrary = useCallback((update) => {
+    const proposed = typeof update === 'function' ? update(libraryRef.current) : update;
+    const next = filterDeletedLibraryRecords(stampLibraryGeneration(proposed, generationRef.current));
+    libraryRef.current = next;
+    setLibraryState(next);
+  }, []);
+
+  const persistRecords = (key, records) => {
+    const next = filterDeletedLibraryRecords(stampLibraryGeneration(records, generationRef.current));
+    return saveJson(key, next) && next.length === records.length;
+  };
 
   useEffect(() => { libraryRef.current = library; }, [library]);
   useEffect(() => { trashRef.current = trash; }, [trash]);
@@ -197,9 +211,16 @@ export default function usePromptLibrary(notify) {
   useEffect(() => {
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
-    const initialLibrary = normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS);
-    const initialTrash = normalizeLibrary(loadJson(storageKeys.trash, []))
-      .filter((entry) => isTrashEntryRestorable(entry));
+    const deletionState = readLibraryDeletionState();
+    generationRef.current = deletionState.generation;
+    const initialLibrary = stampLibraryGeneration(filterDeletedLibraryRecords(
+      normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS), deletionState,
+    ), deletionState.generation);
+    const storedTrash = normalizeLibrary(loadJson(storageKeys.trash, []));
+    const expiredIds = storedTrash.filter((entry) => !isTrashEntryRestorable(entry)).map((entry) => entry.id);
+    try { markLibraryDeleted(expiredIds); } catch { notifyRef.current?.('Expired prompt cleanup could not be saved.'); }
+    const initialTrash = stampLibraryGeneration(filterDeletedLibraryRecords(storedTrash)
+      .filter((entry) => isTrashEntryRestorable(entry)), deletionState.generation);
     const storedCollections = loadJson(storageKeys.collections, null);
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
@@ -248,7 +269,7 @@ export default function usePromptLibrary(notify) {
   useEffect(() => {
     if (!libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
-      const ok = saveJson(storageKeys.library, library);
+      const ok = persistRecords(storageKeys.library, library);
       // Surface the first rejected background write instead of failing silently;
       // reset once a write lands so a later failure notifies again.
       if (!ok && !libraryPersistFailedRef.current) {
@@ -263,15 +284,20 @@ export default function usePromptLibrary(notify) {
 
   useEffect(() => {
     if (!libReady) return undefined;
-    const timeoutId = window.setTimeout(() => saveJson(storageKeys.trash, trash), 120);
+    const timeoutId = window.setTimeout(() => persistRecords(storageKeys.trash, trash), 120);
     return () => window.clearTimeout(timeoutId);
   }, [trash, libReady]);
 
   useEffect(() => {
     if (!libReady) return undefined;
     const purgeExpiredTrash = () => {
-      const nextTrash = trashRef.current.filter((entry) => isTrashEntryRestorable(entry));
-      if (nextTrash.length === trashRef.current.length) return;
+      const expiredIds = trashRef.current.filter((entry) => !isTrashEntryRestorable(entry)).map((entry) => entry.id);
+      if (!expiredIds.length) return;
+      try { markLibraryDeleted(expiredIds); } catch {
+        notifyRef.current?.('Expired prompt cleanup could not be saved.');
+        return;
+      }
+      const nextTrash = filterDeletedLibraryRecords(trashRef.current);
       trashRef.current = nextTrash;
       setTrash(nextTrash);
     };
@@ -290,21 +316,25 @@ export default function usePromptLibrary(notify) {
   useEffect(() => {
     if (!libReady) return undefined;
     const handleStorage = (event) => {
-      if (![storageKeys.library, storageKeys.trash, storageKeys.collections].includes(event.key)) return;
+      if (![storageKeys.library, storageKeys.trash, storageKeys.collections].includes(event.key) && !isLibraryDeletionKey(event.key)) return;
+      const deletionState = readLibraryDeletionState();
+      const generationChanged = generationRef.current !== deletionState.generation;
+      generationRef.current = deletionState.generation;
       const reconciled = reconcileLibraryRecords(
         libraryRef.current,
         trashRef.current,
         loadJson(storageKeys.library, []),
         loadJson(storageKeys.trash, []),
       );
+      reconciled.library = filterDeletedLibraryRecords(reconciled.library, deletionState);
       libraryRef.current = reconciled.library;
-      const retainedTrash = reconciled.trash.filter((entry) => isTrashEntryRestorable(entry));
+      const retainedTrash = filterDeletedLibraryRecords(reconciled.trash, deletionState).filter((entry) => isTrashEntryRestorable(entry));
       trashRef.current = retainedTrash;
       setLibrary(reconciled.library);
       setTrash(retainedTrash);
       const mergedCollections = mergeCollections(
-        collectionsRef.current,
-        loadJson(storageKeys.collections, []),
+        generationChanged ? [] : collectionsRef.current,
+        generationChanged ? [] : loadJson(storageKeys.collections, []),
       );
       collectionsRef.current = mergedCollections;
       setCollections(mergedCollections);
@@ -363,7 +393,7 @@ export default function usePromptLibrary(notify) {
       useCount: 0,
     });
     const nextLibrary = [entry, ...libraryRef.current];
-    if (!saveJson(storageKeys.library, nextLibrary)) {
+    if (!persistRecords(storageKeys.library, nextLibrary)) {
       notify('Save failed — browser storage may be full. Your draft is still in the editor.');
       return null;
     }
@@ -432,7 +462,7 @@ export default function usePromptLibrary(notify) {
           savedFromDeletedTarget: true,
         });
       }
-      if (!saveJson(storageKeys.library, nextLibrary)) {
+      if (!persistRecords(storageKeys.library, nextLibrary)) {
         notify('Save failed — browser storage may be full. Your changes are still in the editor.');
         return null;
       }
@@ -469,12 +499,12 @@ export default function usePromptLibrary(notify) {
       updatedAt: deletedAt,
       tombstoneVersion: (deletedEntry.tombstoneVersion || 0) + 1,
     }, ...trashRef.current.filter((entry) => entry.id !== id)];
-    if (!saveJson(storageKeys.trash, nextTrash)) {
+    if (!persistRecords(storageKeys.trash, nextTrash)) {
       notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
       return false;
     }
-    if (!saveJson(storageKeys.library, nextLibrary)) {
-      saveJson(storageKeys.trash, trashRef.current);
+    if (!persistRecords(storageKeys.library, nextLibrary)) {
+      persistRecords(storageKeys.trash, trashRef.current);
       notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
       return false;
     }
@@ -497,6 +527,10 @@ export default function usePromptLibrary(notify) {
     const entry = trashRef.current.find((item) => item.id === id);
     if (!entry) return null;
     if (!isTrashEntryRestorable(entry)) {
+      try { markLibraryDeleted([id]); } catch {
+        notify('Expired prompt cleanup could not be saved.');
+        return null;
+      }
       const nextTrash = trashRef.current.filter((item) => item.id !== id);
       trashRef.current = nextTrash;
       setTrash(nextTrash);
@@ -513,7 +547,7 @@ export default function usePromptLibrary(notify) {
     if (!restored) return null;
     const nextLibrary = [restored, ...libraryRef.current.filter((item) => item.id !== id)];
     const nextTrash = trashRef.current.filter((item) => item.id !== id);
-    if (!saveJson(storageKeys.library, nextLibrary) || !saveJson(storageKeys.trash, nextTrash)) {
+    if (!persistRecords(storageKeys.library, nextLibrary) || !persistRecords(storageKeys.trash, nextTrash)) {
       notify('Restore failed — browser storage may be full.');
       return null;
     }
@@ -529,9 +563,16 @@ export default function usePromptLibrary(notify) {
     if (!window.confirm('Permanently delete this prompt? This cannot be undone.')) return false;
     const nextTrash = trashRef.current.filter((item) => item.id !== id);
     if (nextTrash.length === trashRef.current.length) return false;
+    try { markLibraryDeleted([id]); } catch {
+      notify('Permanent deletion failed. The prompt remains recoverable.');
+      return false;
+    }
+    const nextLibrary = filterDeletedLibraryRecords(libraryRef.current);
+    const cleaned = persistRecords(storageKeys.trash, nextTrash) && persistRecords(storageKeys.library, nextLibrary);
     trashRef.current = nextTrash;
     setTrash(nextTrash);
-    notify('Prompt permanently deleted.');
+    setLibrary(nextLibrary);
+    notify(cleaned ? 'Prompt permanently deleted.' : 'Prompt deletion recorded, but stored content cleanup failed. Free browser storage and retry.');
     return true;
   };
 
@@ -601,12 +642,12 @@ export default function usePromptLibrary(notify) {
       ...trashRef.current.filter((entry) => !selected.has(entry.id)),
     ];
     const nextLibrary = libraryRef.current.filter((entry) => !selected.has(entry.id));
-    if (!saveJson(storageKeys.trash, nextTrash)) {
+    if (!persistRecords(storageKeys.trash, nextTrash)) {
       notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
       return 0;
     }
-    if (!saveJson(storageKeys.library, nextLibrary)) {
-      saveJson(storageKeys.trash, trashRef.current);
+    if (!persistRecords(storageKeys.library, nextLibrary)) {
+      persistRecords(storageKeys.trash, trashRef.current);
       notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
       return 0;
     }
@@ -637,6 +678,11 @@ export default function usePromptLibrary(notify) {
   }, [notify]);
 
   const clearLibrary = useCallback(() => {
+    try { generationRef.current = markLibraryCleared(); } catch {
+      notify('Clear failed. The Library has not been removed.');
+      return false;
+    }
+    const cleaned = persistRecords(storageKeys.library, []) && persistRecords(storageKeys.trash, []) && saveJson(storageKeys.collections, []);
     libraryRef.current = [];
     collectionsRef.current = [];
     setLibrary([]);
@@ -655,7 +701,8 @@ export default function usePromptLibrary(notify) {
     setDragOverLibraryId(null);
     setLoadedStarterPackIds([]);
     saveJson('pl2-loaded-packs', []);
-    notify('Library cleared.');
+    notify(cleaned ? 'Library cleared.' : 'Library clear recorded, but stored content cleanup failed. Free browser storage and retry.');
+    return cleaned;
   }, [notify]);
 
   const moveLibraryEntry = (sourceId, targetId, position = 'before') => {
@@ -721,7 +768,7 @@ export default function usePromptLibrary(notify) {
       return null;
     }
     const nextLibrary = libraryRef.current.map(entry => entry.id === entryId ? restoredEntry : entry);
-    if (!saveJson(storageKeys.library, nextLibrary)) {
+    if (!persistRecords(storageKeys.library, nextLibrary)) {
       notify('Restore failed — browser storage may be full. The prompt and editor were not changed.');
       return null;
     }

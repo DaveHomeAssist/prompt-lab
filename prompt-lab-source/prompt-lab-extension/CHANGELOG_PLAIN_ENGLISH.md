@@ -4,6 +4,9 @@ Date: 2026-09-05
 
 ## Local write recovery (unreleased)
 
+- Permanent Library deletion and Clear Library now leave content-free markers
+  so a stale tab or delayed local write cannot restore the removed prompts.
+  Reload older Prompt Lab tabs before editing after a clear.
 - Scratch keeps readable notes on screen when a storage upgrade cannot be saved,
   and offers a retry after browser storage becomes available.
 - Failed run, experiment, and test-case writes now show a retry notice. Keep the

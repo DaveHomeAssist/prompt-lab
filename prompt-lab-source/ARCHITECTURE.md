@@ -155,6 +155,19 @@ Provider-specific request behavior is routed through shared provider abstraction
 
 Persistence contracts (post 2026-08 behavioral-audit remediation):
 
+- Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
+  with value `1`; the marker contains no title or body. Clear Library appends a
+  `pl2-library-clear:<counter>:<uuid>` key. A logical counter and deterministic
+  UUID tie-break order concurrent clears without trusting wall-clock time.
+  Live/trash records carry `metadata.libraryGeneration`; missing values mean
+  the original generation. Readers, storage-event adoption, and delayed writes
+  exclude deleted IDs and records from earlier clear generations.
+- Deletion metadata is not compacted. Older clients can still write legacy
+  arrays, but updated clients reject stale generations and scrub those arrays.
+  Reload older tabs before editing after a clear; mixed-version clients cannot
+  be made to honor a contract absent from their code. Explicit new imports are
+  a separate operation from replaying an old replica. Workspace exports do not
+  transfer one installation's permanent-deletion log to another installation.
 - Experiment-store writes reject on fallback storage failure. A session-local
   recovery queue retains the normalized record and its ID; retrying only repeats
   persistence, never provider execution. Same-record writes are serialized and
