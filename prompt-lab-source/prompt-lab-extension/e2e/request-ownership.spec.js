@@ -52,6 +52,7 @@ for (const width of [400, 1180]) {
         await page.getByRole('tablist', { name: 'Evaluate views' }).getByRole('tab', { name: 'Compare' }).click();
       }
       await page.getByRole('textbox', { name: 'Prompt for variant A' }).fill('Contact first@example.com');
+      if (width < 720) await page.getByRole('tablist', { name: 'Prompt variants' }).getByRole('tab', { name: 'Variant B', exact: true }).click();
       await page.getByRole('textbox', { name: 'Prompt for variant B' }).fill('Contact second@example.com');
       await page.getByRole('button', { name: 'Run All', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Sensitive Data Detected' });
@@ -61,6 +62,7 @@ for (const width of [400, 1180]) {
       await expect(dialog.getByText('Arena Variant B')).toBeVisible();
       await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
       expect(await page.evaluate(() => JSON.stringify(window.__attempts[0].message))).not.toContain('first@example.com');
+      if (width < 720) await page.getByRole('tablist', { name: 'Prompt variants' }).getByRole('tab', { name: 'Variant A', exact: true }).click();
       await page.getByRole('textbox', { name: 'Prompt for variant A' }).fill('New input after approval');
       expect(await page.evaluate(() => window.__aborts.length)).toBe(1);
       await page.evaluate(() => window.__attempts[0].callback({ data: { content: [{ text: 'Stale response' }] } }));
