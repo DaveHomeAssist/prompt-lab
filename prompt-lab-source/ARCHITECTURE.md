@@ -155,6 +155,13 @@ Provider-specific request behavior is routed through shared provider abstraction
 
 Persistence contracts (post 2026-08 behavioral-audit remediation):
 
+- Experiment-store writes reject on fallback storage failure. A session-local
+  recovery queue retains the normalized record and its ID; retrying only repeats
+  persistence, never provider execution. Same-record writes are serialized and
+  newer edits supersede failed older writes. A visible retry notice and unload
+  warning remain while records are unsaved; this queue does not survive tab close.
+- Scratch migration keeps readable notes in memory when saving the upgrade fails.
+  Unreadable storage is preserved and blocks editing until loading succeeds.
 - Writes are acknowledged: Library saves and Notebook autosaves attempt the
   storage write first and only report success when it lands. Rejected writes
   (e.g. `QuotaExceededError`) surface a visible failure and keep the unsaved

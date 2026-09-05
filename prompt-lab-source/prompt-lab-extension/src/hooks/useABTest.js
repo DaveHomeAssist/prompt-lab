@@ -4,6 +4,7 @@ import { extractTextFromAnthropic, isTransientError } from '../promptUtils.js';
 import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
+import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 const EXTRA_LABELS = ['C', 'D', 'E'];
@@ -23,6 +24,7 @@ export default function useABTest({ notify }) {
   const [showRuns, setShowRuns] = useState(false);
   const [activeSide, setActiveSide] = useState('A');
   const abReqRef = useRef({ a: 0, b: 0 });
+  const experimentIdRef = useRef(null);
 
   const variants = [
     { id: 'a', label: 'A', ...abA },
@@ -45,11 +47,13 @@ export default function useABTest({ notify }) {
   };
 
   useEffect(() => {
-    listExperiments().then(setHistory).catch((e) => logWarn('load experiments', e));
-  }, []);
-
-  useEffect(() => {
-    listEvalRuns({ mode: 'ab', limit: 12 }).then(setEvalRuns).catch((e) => logWarn('load eval runs', e));
+    const refresh = () => {
+      listExperiments().then(setHistory).catch((e) => logWarn('load experiments', e));
+      listEvalRuns({ mode: 'ab', limit: 12 }).then(setEvalRuns).catch((e) => logWarn('load eval runs', e));
+    };
+    refresh();
+    window.addEventListener(RECORDS_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(RECORDS_CHANGED_EVENT, refresh);
   }, []);
 
   const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
@@ -112,6 +116,9 @@ export default function useABTest({ notify }) {
         input: state.prompt,
         output: responseText,
         latencyMs: nowMs() - startedAt,
+      }).catch((error) => {
+        logWarn('save arena run', error);
+        notify('Response complete, but run history was not saved. Retry saving records.');
       });
       refreshEvalRuns();
     } catch (error) {
@@ -121,6 +128,7 @@ export default function useABTest({ notify }) {
   };
 
   const resetAB = () => {
+    experimentIdRef.current = null;
     abReqRef.current = Object.fromEntries(Object.entries(abReqRef.current).map(([id, value]) => [id, value + 1]));
     setAbA(EMPTY_VARIANT);
     setAbB(EMPTY_VARIANT);
@@ -180,8 +188,12 @@ export default function useABTest({ notify }) {
     const winnerLabel = `Variant ${side}`;
     setAbWinner(winnerLabel);
     try {
+      const snapshotKey = JSON.stringify(variants.map(({ id, prompt, response }) => ({ id, prompt, response })));
+      if (experimentIdRef.current?.snapshotKey !== snapshotKey) {
+        experimentIdRef.current = { id: crypto.randomUUID(), snapshotKey };
+      }
       const record = {
-        id: crypto.randomUUID(),
+        id: experimentIdRef.current.id,
         createdAt: new Date().toISOString(),
         label: `${variants.length === 2 ? 'A/B' : 'Arena'}: ${variants[0]?.prompt.slice(0, 40) || 'Untitled'}`,
         variants: variants.map((variant) => ({
@@ -199,6 +211,7 @@ export default function useABTest({ notify }) {
       notify('Experiment saved');
     } catch (e) {
       logWarn('save experiment', e);
+      notify('Experiment was not saved. Retry saving records.');
     }
   };
 

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { saveTestCase, listTestCases, deleteTestCase } from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
+import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 export default function useTestCases({ notify }) {
   const [testCasesByPrompt, setTestCasesByPrompt] = useState({});
@@ -12,6 +13,7 @@ export default function useTestCases({ notify }) {
   const [caseExclusions, setCaseExclusions] = useState('');
   const [caseNotes, setCaseNotes] = useState('');
   const [runningCases, setRunningCases] = useState(false);
+  const draftIdRef = useRef(null);
 
   const refreshTestCases = async () => {
     try {
@@ -31,9 +33,12 @@ export default function useTestCases({ notify }) {
 
   useEffect(() => {
     refreshTestCases();
+    window.addEventListener(RECORDS_CHANGED_EVENT, refreshTestCases);
+    return () => window.removeEventListener(RECORDS_CHANGED_EVENT, refreshTestCases);
   }, []);
 
   const resetCaseForm = () => {
+    draftIdRef.current = null;
     setCaseFormPromptId(null);
     setEditingCaseId(null);
     setCaseTitle('');
@@ -49,6 +54,7 @@ export default function useTestCases({ notify }) {
     .filter(Boolean);
 
   const openCaseForm = (promptId, existingCase = null) => {
+    draftIdRef.current = existingCase?.id || crypto.randomUUID();
     setCaseFormPromptId(promptId);
     if (existingCase) {
       setEditingCaseId(existingCase.id);
@@ -70,6 +76,7 @@ export default function useTestCases({ notify }) {
   const saveCaseForPrompt = async (promptId) => {
     try {
       const payload = {
+        id: editingCaseId || (draftIdRef.current ??= crypto.randomUUID()),
         promptId,
         title: caseTitle,
         input: caseInput,
