@@ -319,8 +319,13 @@ describe('workspace export and import contract', () => {
 
     expect(result.current.library).toEqual([]);
     expect(JSON.parse(localStorage.getItem(storageKeys.packs))).toEqual(packRegistry);
-    expect(JSON.parse(localStorage.getItem('pl2-pads'))).toEqual(scratchWorkspace);
-    expect(notify).toHaveBeenCalledWith('Imported workspace data. No new prompts; skipped 0 duplicates.');
+    expect(JSON.parse(localStorage.getItem('pl2-pads')).pads[0]).toEqual({
+      ...scratchWorkspace.pads[0], linkedPromptId: null, unresolvedPromptLinks: ['prompt-1'],
+    });
+    expect(experimentMocks.saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({
+      promptId: null, promptVersionId: null, notes: expect.stringContaining('prompt prompt-1'),
+    }));
+    expect(notify).toHaveBeenCalledWith(expect.stringContaining('2 unresolved source references'));
     expect(notify).not.toHaveBeenCalledWith('Import failed: no valid prompts found.');
   });
 

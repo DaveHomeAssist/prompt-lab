@@ -29,6 +29,7 @@ import {
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
 import { filterDeletedLibraryRecords, isLibraryDeletionKey, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState, stampLibraryGeneration } from '../lib/libraryDeletion.js';
+import { prepareWorkspaceImport } from '../lib/workspaceImport.js';
 import { stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 
@@ -153,6 +154,8 @@ export default function usePromptLibrary(notify) {
   const [draggingLibraryId, setDraggingLibraryId] = useState(null);
   const [dragOverLibraryId, setDragOverLibraryId] = useState(null);
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
+  const [pendingImport, setPendingImport] = useState(null);
+  const importBusyRef = useRef(false);
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
   const trashRef = useRef(trash);
@@ -911,9 +914,58 @@ export default function usePromptLibrary(notify) {
     return exportPayload;
   };
 
+  const applyImport = async (plan) => {
+    if (!plan || importBusyRef.current) return;
+    importBusyRef.current = true;
+    setPendingImport(plan);
+    try {
+      if (readLibraryDeletionState().generation !== plan.generation) {
+        throw new Error('Library was cleared after import preparation. Select the file again to prepare a new import.');
+      }
+      const presentIds = new Set(libraryRef.current.map((entry) => entry.id));
+      const reconciled = reconcileLibraryRecords(
+        [...plan.newEntries.filter((entry) => !presentIds.has(entry.id)), ...libraryRef.current],
+        trashRef.current, [], plan.trash,
+      );
+      const nextCollections = mergeCollections(
+        mergeCollections(collectionsRef.current, plan.parsed.collections || []),
+        deriveCollectionsFromLibrary(reconciled.library),
+      );
+      if (!persistRecords(storageKeys.library, reconciled.library)
+        || !persistRecords(storageKeys.trash, reconciled.trash)
+        || !saveJson(storageKeys.collections, nextCollections)) throw new Error('Library storage write failed.');
+      setLibrary(reconciled.library);
+      trashRef.current = reconciled.trash;
+      setTrash(reconciled.trash);
+      collectionsRef.current = nextCollections;
+      setCollections(nextCollections);
+      if (plan.scratch && typeof plan.scratch === 'object') {
+        localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch));
+      }
+      if (plan.parsed.packs && typeof plan.parsed.packs === 'object'
+        && !saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
+      for (const [records, save] of [[plan.testCases, saveTestCase], [plan.runs, saveEvalRun]]) {
+        const writes = await Promise.allSettled(records.map((record) => save(record)));
+        const failed = writes.find((write) => write.status === 'rejected');
+        if (failed) throw failed.reason;
+      }
+      setPendingImport(null);
+      const summary = plan.importedCount === 0
+        ? `Imported workspace data. No new prompts; skipped ${plan.skippedCount} duplicates.`
+        : plan.skippedCount > 0
+          ? `Imported ${plan.importedCount} prompts and workspace data; skipped ${plan.skippedCount} duplicates.`
+          : `Imported ${plan.importedCount} prompts and workspace data.`;
+      notify(plan.warnings.length ? `${summary} ${plan.warnings.length} unresolved source references are retained in run notes or import metadata.` : summary);
+    } catch (error) {
+      notify(`Import incomplete: ${error.message || 'storage write failed'}. The file is retained in this tab; use Retry import in Settings.`);
+    } finally {
+      importBusyRef.current = false;
+    }
+  };
+
   const importLib = (event) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || importBusyRef.current) return;
     if (file.size > 50 * 1024 * 1024) {
       notify('Import failed: file is too large.');
       event.target.value = '';
@@ -922,80 +974,26 @@ export default function usePromptLibrary(notify) {
     const reader = new FileReader();
     reader.onload = async (readEvent) => {
       try {
-        const parsed = JSON.parse(readEvent.target.result);
-        const payload = Array.isArray(parsed)
-          ? parsed
-          : parsed?.library || parsed?.prompts || parsed?.presets || parsed?.entries;
-        const hasWorkspaceExtras = Boolean(
-          !Array.isArray(parsed) && parsed && typeof parsed === 'object' && (
-            Array.isArray(parsed.trash)
-            || Array.isArray(parsed.collections)
-            || (parsed.packs && typeof parsed.packs === 'object')
-            || (parsed.scratch && typeof parsed.scratch === 'object')
-            || Array.isArray(parsed.runs)
-            || Array.isArray(parsed.testCases)
-          )
-        );
-        const normalized = normalizeLibrary((Array.isArray(payload) ? payload : []).map((entry) => ({
-          ...entry,
-          original: entry?.original || entry?.prompt || entry?.content || entry?.enhanced,
-          enhanced: entry?.enhanced || entry?.prompt || entry?.content || entry?.original,
-        })));
-        if (!normalized.length && !hasWorkspaceExtras) {
-          notify('Import failed: no valid prompts found.');
+        const raw = readEvent.target.result;
+        if (pendingImport?.raw === raw && pendingImport.generation === readLibraryDeletionState().generation) {
+          await applyImport(pendingImport);
           return;
         }
-        const result = mergeLibraryEntries(libraryRef.current, normalized, { prepend: true });
-        const nextCollections = mergeCollections(
-          mergeCollections(collectionsRef.current, Array.isArray(parsed?.collections) ? parsed.collections : []),
-          deriveCollectionsFromLibrary(result.library),
-        );
-        libraryRef.current = result.library;
-        collectionsRef.current = nextCollections;
-        setLibrary(result.library);
-        setCollections(nextCollections);
-        if (Array.isArray(parsed?.trash)) {
-          const retainedImportedTrash = parsed.trash.filter((entry) => isTrashEntryRestorable(entry));
-          const reconciled = reconcileLibraryRecords(
-            result.library,
-            trashRef.current,
-            [],
-            retainedImportedTrash,
-          );
-          const retainedTrash = reconciled.trash.filter((entry) => isTrashEntryRestorable(entry));
-          libraryRef.current = reconciled.library;
-          trashRef.current = retainedTrash;
-          setLibrary(reconciled.library);
-          setTrash(retainedTrash);
-        }
-        if (parsed?.scratch && typeof parsed.scratch === 'object') {
-          localStorage.setItem('pl2-pads', JSON.stringify(parsed.scratch));
-        }
-        if (parsed?.packs && typeof parsed.packs === 'object') {
-          saveJson(storageKeys.packs, parsed.packs);
-        }
-        if (Array.isArray(parsed?.runs)) {
-          await Promise.all(parsed.runs.map((run) => saveEvalRun(run)));
-        }
-        if (Array.isArray(parsed?.testCases)) {
-          await Promise.all(parsed.testCases.map((testCase) => saveTestCase({
-            ...testCase,
-            promptId: result.promptIdMap.get(testCase?.promptId) || testCase?.promptId,
-          })));
-        }
-        if (result.importedCount === 0) {
-          notify(hasWorkspaceExtras
-            ? `Imported workspace data. No new prompts; skipped ${result.skippedCount} duplicates.`
-            : `No new prompts imported. Skipped ${result.skippedCount} duplicates.`);
-          return;
-        }
-        notify(
-          result.skippedCount > 0
-            ? `Imported ${result.importedCount} prompts and workspace data; skipped ${result.skippedCount} duplicates.`
-            : `Imported ${result.importedCount} prompts and workspace data.`
-        );
-      } catch {
-        notify('Import failed');
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') throw new Error('Expected a workspace object or prompt array.');
+        const retained = Array.isArray(parsed) ? parsed : {
+          ...parsed, trash: Array.isArray(parsed.trash) ? parsed.trash.filter((entry) => isTrashEntryRestorable(entry)) : parsed.trash,
+        };
+        const [runs, testCases] = await Promise.all([listEvalRuns({ limit: null }), listTestCases({ limit: null })]);
+        const plan = prepareWorkspaceImport(retained, {
+          library: libraryRef.current, trash: trashRef.current, runs, testCases, ...readLibraryDeletionState(),
+        });
+        const hasExtras = !Array.isArray(parsed) && ['trash', 'collections', 'packs', 'scratch', 'runs', 'testCases'].some((key) => parsed[key] != null);
+        if (!plan.importedCount && !plan.skippedCount && !hasExtras) throw new Error('No valid prompts found.');
+        const existingIds = new Set(libraryRef.current.map((entry) => entry.id));
+        await applyImport({ ...plan, raw, parsed: retained, newEntries: plan.library.filter((entry) => !existingIds.has(entry.id)) });
+      } catch (error) {
+        notify(`Import failed: ${error.message || 'invalid file'}`);
       } finally {
         event.target.value = '';
       }
@@ -1133,7 +1131,7 @@ export default function usePromptLibrary(notify) {
     doSave, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
     bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
-    exportLib, importLib, getShareUrl,
+    exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport: () => applyImport(pendingImport), getShareUrl,
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject, recentPrompts, trackRecentAccess,

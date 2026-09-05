@@ -12,6 +12,8 @@ export default function SettingsModal({
   deleteCollection,
   exportLib,
   importLib,
+  pendingImport = false,
+  retryImport,
   clearLibrary,
   openOptions,
   onClose,
@@ -163,6 +165,7 @@ export default function SettingsModal({
           <button type="button" onClick={canExportLibrary ? exportLib : () => openBilling?.('export')} className={`flex min-h-11 items-center gap-2 text-sm rounded-lg px-3 py-2 transition-colors ${canExportLibrary ? `${m.btn} ${m.textBody}` : 'border border-orange-500/40 bg-orange-500/12 text-orange-200'}`}><Ic n="Download" size={12} />{canExportLibrary ? 'Export Library' : 'Export Library (Pro)'}</button>
           <input ref={importInputRef} type="file" accept=".json" onChange={importLib} className="hidden" tabIndex={-1} aria-hidden="true" />
           <button type="button" onClick={() => importInputRef.current?.click()} className={`flex min-h-11 items-center gap-2 text-sm ${m.btn} rounded-lg px-3 py-2 ${m.textBody} cursor-pointer transition-colors`}><Ic n="Upload" size={12} />Import Library</button>
+          {pendingImport && <button type="button" onClick={retryImport} className={`min-h-11 rounded-lg px-3 py-2 text-sm ${m.btn} ${m.textBody}`}>Retry import</button>}
           <button type="button" onClick={() => { if (window.confirm('Clear all prompts from the library?')) clearLibrary(); }} className="flex min-h-11 items-center gap-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-lg px-3 py-2 transition-colors"><Ic n="Trash2" size={12} />Clear All Prompts</button>
         </div>
       </div>
