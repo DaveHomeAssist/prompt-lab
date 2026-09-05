@@ -147,6 +147,7 @@ function renderExecutionFlow({
     return {
       ...flow,
       raw: rawState,
+      setRaw,
       enhanced: enhancedState,
       variants,
       notes: notesState,
@@ -611,4 +612,47 @@ describe('useExecutionFlow', () => {
 
     expect(callModel).toHaveBeenCalledTimes(1);
   });
+  it.each(['mode', 'override'])('scans %s payloads and preserves the reviewed mode', async (entry) => {
+    scanSensitiveData.mockReturnValue({ matches: [{ id: 'email', type: 'email', snippet: 'person@example.com' }] });
+    callModel.mockResolvedValue({ text: 'A substantially improved and more precise prompt with a clear task and expected output.' });
+    const { result } = renderExecutionFlow();
+    await act(async () => {
+      if (entry === 'mode') await result.current.enhanceWithMode('creative');
+      else await result.current.enhance({ messages: [{ role: 'user', content: 'person@example.com' }] }, { modeId: 'creative' });
+    });
+    expect(callModel).not.toHaveBeenCalled();
+    expect(result.current.piiWarning).toBeTruthy();
+    await act(async () => result.current.piiSendAnyway());
+    expect(callModel).toHaveBeenCalled();
+    expect(saveEvalRun.mock.calls.every(([run]) => run.enhanceMode === 'creative')).toBe(true);
+  });
+
+  it('revokes a pending approval after the editor input changes', async () => {
+    scanSensitiveData.mockReturnValue({ matches: [{ id: 'email', type: 'email', snippet: 'person@example.com' }] });
+    const { result } = renderExecutionFlow();
+    await act(async () => result.current.enhance());
+    const send = result.current.piiSendAnyway;
+    act(() => result.current.setRaw('A different prompt'));
+    await act(async () => send());
+    expect(callModel).not.toHaveBeenCalled();
+  });
+
+  it('aborts old editor work, discards late success, and releases the dispatch guard', async () => {
+    const pending = createDeferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const { result } = renderExecutionFlow();
+    let request;
+    act(() => { request = result.current.enhance(); });
+    const signal = callModel.mock.calls[0][1].signal;
+    act(() => result.current.setRaw('A different prompt'));
+    expect(signal.aborted).toBe(true);
+    expect(result.current.loading).toBe(false);
+    await act(async () => { pending.resolve({ text: 'Old result' }); await request; });
+    expect(result.current.enhanced).toBe('Prior enhanced output');
+    expect(saveEvalRun).not.toHaveBeenCalled();
+    callModel.mockResolvedValue({ text: 'New prompt with a specific objective and a structured output format.' });
+    await act(async () => result.current.enhance());
+    expect(callModel.mock.calls.length).toBeGreaterThan(1);
+  });
+
 });

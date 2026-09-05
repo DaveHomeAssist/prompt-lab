@@ -46,7 +46,7 @@ describe('model arena (multi-provider A/B)', () => {
     expect(callModel).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'ollama',
       model: 'llama3.2:3b',
-    }));
+    }), { signal: expect.any(AbortSignal) });
     await waitFor(() => expect(saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({
       promptId: 'entry-1',
       promptTitle: 'My Prompt',

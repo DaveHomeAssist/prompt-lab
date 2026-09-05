@@ -1416,7 +1416,7 @@ export default function App({
 
       {lib.importPreview && <WorkspaceImportModal m={m} preview={lib.importPreview} applying={lib.importApplying}
         onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
-      <PiiWarningModal m={m} piiWarning={piiWarning} piiRedactAndSend={piiRedactAndSend} piiSendAnyway={piiSendAnyway} piiCancel={piiCancel} />
+      <PiiWarningModal m={m} piiWarning={piiWarning || abTest.piiWarning} piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiRedactAndSend} piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiSendAnyway} piiCancel={piiWarning ? piiCancel : abTest.piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (
