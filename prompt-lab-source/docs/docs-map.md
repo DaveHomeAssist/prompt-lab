@@ -65,6 +65,7 @@ Authoring rule:
 ### Desktop work
 
 - `../prompt-lab-desktop/README.md`
+- `DESKTOP_ACCEPTANCE_CHECKLIST.md`
 - `../ARCHITECTURE.md`
 
 ### Release and version work
