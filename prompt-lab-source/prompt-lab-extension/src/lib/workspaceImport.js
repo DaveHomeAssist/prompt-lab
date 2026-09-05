@@ -34,6 +34,9 @@ export function prepareWorkspaceImport(parsed, {
   for (const key of ['runs', 'testCases', 'trash', 'collections']) {
     if (parsed?.[key] != null && !Array.isArray(parsed[key])) throw new Error(`${key} must be an array.`);
   }
+  if (parsed?.packs != null && (typeof parsed.packs !== 'object' || Array.isArray(parsed.packs))) {
+    throw new Error('Packs must be a registry object.');
+  }
   if (parsed?.scratch != null && (!Array.isArray(parsed.scratch.pads)
     || !parsed.scratch.pads.length || parsed.scratch.pads.some((pad) => !pad || typeof pad.content !== 'string'))) {
     throw new Error('Scratch must contain readable note records.');

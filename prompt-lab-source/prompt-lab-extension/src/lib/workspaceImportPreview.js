@@ -41,30 +41,32 @@ export function buildWorkspaceImportPreview(source, context, resolutions = {}) {
   const byBody = new Map();
   const byTitle = new Map();
   const byId = new Map();
-  const uniqueTargets = entries => [...new Map(entries.map(entry => [entry.id, entry])).values()];
-  const indexEntry = entry => {
+  const uniqueTargets = entries => [...new Map(entries.map(entry => [JSON.stringify([entry.targetSource, entry.id]), entry])).values()];
+  const indexEntry = (record, targetSource) => {
+    const entry = { ...record, targetSource };
     const body = getLibraryEntryCanonicalBody(entry);
     const title = normalizePromptText(entry.title).toLowerCase();
     if (!byBody.has(body)) byBody.set(body, []);
     if (!byTitle.has(title)) byTitle.set(title, []);
     byBody.get(body).push(entry);
     byTitle.get(title).push(entry);
-    byId.set(entry.id, entry);
+    if (!byId.has(entry.id)) byId.set(entry.id, []);
+    byId.get(entry.id).push(entry);
   };
-  context.library.forEach(indexEntry);
+  context.library.forEach(entry => indexEntry(entry, 'existing'));
   const effective = {};
   for (const entry of source.library) {
     const exact = uniqueTargets(byBody.get(getLibraryEntryCanonicalBody(entry)) || []);
     const conflicts = exact.length ? exact : uniqueTargets([
       ...(byTitle.get(normalizePromptText(entry.title).toLowerCase()) || []),
-      ...(byId.has(entry.id) ? [byId.get(entry.id)] : []),
+      ...(byId.get(entry.id) || []),
     ]);
     const choice = resolutions[entry.id] || (exact.length ? { action: 'skip', existingId: exact[0].id } : conflicts.length ? null : { action: 'keep' });
     if (choice && !['keep', 'replace', 'skip'].includes(choice.action)) throw new Error('Unknown import conflict choice.');
-    if (choice?.action === 'replace' && !conflicts.some(target => target.id === choice.existingId)) throw new Error('Select a listed replacement target.');
+    if (choice?.action === 'replace' && !conflicts.some(target => target.id === choice.existingId && target.targetSource === (choice.targetSource || 'existing'))) throw new Error('Select a listed replacement target.');
     rows.push({ entry, kind: exact.length ? 'duplicate' : conflicts.length ? 'conflict' : 'new', conflicts, choice });
     if (choice) effective[entry.id] = choice;
-    indexEntry(entry);
+    if (choice?.action !== 'skip' || exact.length) indexEntry(entry, 'incoming');
   }
   const unresolved = rows.filter(row => !row.choice).length;
   let plan = null;
