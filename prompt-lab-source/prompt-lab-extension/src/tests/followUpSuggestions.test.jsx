@@ -21,7 +21,7 @@ describe('buildFollowUpPayload', () => {
   it('prefers the enhanced text over the raw prompt', () => {
     const payload = buildFollowUpPayload({ raw: 'raw text', enhanced: 'enhanced text' });
     expect(payload.messages).toEqual([{ role: 'user', content: 'enhanced text' }]);
-    expect(payload.system).toBe(FOLLOW_UP_SYSTEM_PROMPT);
+    expect(payload.system).toContain(FOLLOW_UP_SYSTEM_PROMPT);
     expect(payload.responseFormat).toBe('json');
   });
 
@@ -75,7 +75,7 @@ describe('useFollowUpSuggestions', () => {
       await result.current.fetchFollowUps();
     });
 
-    expect(result.current.followUps).toEqual([{ title: 'Refine tone', prompt: 'Adjust the tone for executives.' }]);
+    expect(result.current.followUps).toEqual([expect.objectContaining({ title: 'Refine tone', prompt: 'Adjust the tone for executives.', id: expect.any(String), origin: expect.objectContaining({ sourceKind: 'enhanced-prompt' }) })]);
     expect(result.current.followUpsError).toBe('');
     expect(result.current.followUpsLoading).toBe(false);
   });
@@ -117,4 +117,41 @@ describe('useFollowUpSuggestions', () => {
       expect(result.current.followUps).toEqual([]);
     });
   });
+  it('sends actual selected output and captures the source and generation models', async () => {
+    callModel.mockResolvedValueOnce({ ...respondWith([{ title: 'Next', prompt: 'Next step' }]), provider: 'openai', model: 'actual-model' });
+    const source = { text: 'Actual saved answer', kind: 'run-output', runId: 'run-1', promptId: 'parent', promptVersionId: 'v1', provider: 'anthropic', model: 'source-model' };
+    const { result } = renderHook(() => useFollowUpSuggestions({ raw: 'Draft', enhanced: 'Enhanced instructions', source }));
+    await act(async () => { await result.current.fetchFollowUps(); });
+    expect(callModel.mock.calls[0][0].messages[0].content).toBe('Actual saved answer');
+    expect(result.current.followUps[0].origin).toMatchObject({ sourceKind: 'run-output', sourceRunId: 'run-1', sourcePromptId: 'parent', sourceModel: 'source-model', generationModel: 'actual-model', generationProvider: 'openai' });
+  });
+
+  it('aborts old owners and ignores late completion while a new request is active', async () => {
+    let resolveOld;
+    callModel.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }));
+    const { result, rerender, unmount } = renderHook(({ raw }) => useFollowUpSuggestions({ raw, enhanced: '' }), { initialProps: { raw: 'Old draft' } });
+    let old;
+    act(() => { old = result.current.fetchFollowUps(); result.current.fetchFollowUps(); });
+    expect(callModel).toHaveBeenCalledTimes(1);
+    const signal = callModel.mock.calls[0][1].signal;
+    rerender({ raw: 'New draft' });
+    expect(signal.aborted).toBe(true);
+    callModel.mockResolvedValueOnce(respondWith([{ title: 'New', prompt: 'New next step' }]));
+    await act(async () => { await result.current.fetchFollowUps(); });
+    await act(async () => { resolveOld(respondWith([{ title: 'Old', prompt: 'Old next step' }])); await old; });
+    expect(result.current.followUps[0].title).toBe('New');
+    unmount();
+  });
+
+  it('requires preflight for sensitive saved output and marks redaction in provenance', async () => {
+    callModel.mockResolvedValueOnce(respondWith([{ title: 'Next', prompt: 'Safe next step' }]));
+    const { result } = renderHook(() => useFollowUpSuggestions({ raw: '', enhanced: '', source: { kind: 'run-output', text: 'Contact alice@example.com about the result', runId: 'private-run' } }));
+    await act(async () => { await result.current.fetchFollowUps(); });
+    expect(callModel).not.toHaveBeenCalled();
+    expect(result.current.piiWarning).toBeTruthy();
+    await act(async () => { await result.current.piiRedactAndSend(); });
+    expect(callModel.mock.calls[0][0].messages[0].content).not.toContain('alice@example.com');
+    expect(result.current.followUps[0].origin.redacted).toBe(true);
+  });
+
 });

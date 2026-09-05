@@ -1,6 +1,7 @@
 import { ensureString, normalizeVariant, randomId, safeDate } from './utils.js';
 import { normalizeTagList } from './tagSchema.js';
 import { normalizeResultMeta } from './enhancementResult.js';
+import { normalizeFollowUpOrigin } from './followUpProvenance.js';
 import { DEFAULT_GOLDEN_THRESHOLD } from '../constants.js';
 
 const MAX_PROMPT_VERSIONS = 25;
@@ -23,6 +24,7 @@ function normalizePromptMetadata(value) {
   const metadata = value && typeof value === 'object' ? value : {};
   return {
     ...metadata,
+    ...(metadata.followUpOrigin ? { followUpOrigin: normalizeFollowUpOrigin(metadata.followUpOrigin) } : {}),
     owner: ensureString(metadata.owner),
     purpose: ensureString(metadata.purpose),
     status: ensureString(metadata.status),

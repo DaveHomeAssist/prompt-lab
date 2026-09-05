@@ -1,3 +1,4 @@
+import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { useState } from 'react';
 import Ic from './icons';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
@@ -348,6 +349,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                           <Ic n="X" size={11} />
                         </button>
                       </div>
+                      {block.followUpOrigin && <FollowUpOrigin origin={block.followUpOrigin} library={library} m={m} />}
                       <div className="flex flex-wrap gap-2 mb-2">
                         <button
                           type="button"

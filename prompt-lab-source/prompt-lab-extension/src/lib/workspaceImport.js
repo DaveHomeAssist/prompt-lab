@@ -1,5 +1,6 @@
 import { arePromptSnapshotsEqual, normalizeLibrary } from './promptSchema.js';
 import { normalizeEvalRunRecord, normalizeTestCaseRecord } from './evalSchema.js';
+import { normalizeFollowUpOrigin } from './followUpProvenance.js';
 import { mergeLibraryEntries } from './libraryMatching.js';
 
 function reference(value, label) {
@@ -119,6 +120,30 @@ export function prepareWorkspaceImport(parsed, {
     if (record.id) runIdMap.set(record.id, normalized.id);
     return normalized;
   });
+  const mapFollowUpOrigin = (value) => {
+    const origin = normalizeFollowUpOrigin(value);
+    if (!origin) return origin;
+    const unresolvedReferences = { ...origin.unresolvedReferences };
+    // Only imported identities prove ownership across devices; a coincidentally
+    // equal local ID must not attach an external follow-up to an unrelated record.
+    const source = sources.get(origin.sourcePromptId);
+    const sourcePromptId = source ? result.promptIdMap.get(source.id) || null : null;
+    const survivor = survivors.get(sourcePromptId);
+    const sourceVersion = versions(source).find(version => version.id === origin.sourcePromptVersionId);
+    const sourcePromptVersionId = sourceVersion && versions(survivor).find(version => arePromptSnapshotsEqual(sourceVersion, version))?.id || null;
+    const sourceRunId = runIdMap.get(origin.sourceRunId) || null;
+    const run = mappedRuns.find(record => record.id === sourceRunId);
+    const sourceCandidateId = run?.candidates?.find(candidate => candidate.id === origin.sourceCandidateId)?.id || null;
+    for (const [field, original, mapped] of [
+      ['promptId', origin.sourcePromptId, sourcePromptId],
+      ['promptVersionId', origin.sourcePromptVersionId, sourcePromptVersionId],
+      ['runId', origin.sourceRunId, sourceRunId],
+      ['candidateId', origin.sourceCandidateId, sourceCandidateId],
+    ]) if (original && !mapped) unresolvedReferences[field] = original;
+    return normalizeFollowUpOrigin({ ...origin, sourcePromptId, sourcePromptVersionId, sourceRunId, sourceCandidateId,
+      ...(Object.values(unresolvedReferences).some(Boolean) ? { unresolvedReferences } : {}),
+    });
+  };
   const mapPromptReferences = (entry) => {
     const unresolved = [];
     const mapRunReference = (id) => {
@@ -129,6 +154,7 @@ export function prepareWorkspaceImport(parsed, {
     };
     const mapped = {
       ...entry,
+      metadata: { ...entry.metadata, ...(entry.metadata?.followUpOrigin ? { followUpOrigin: mapFollowUpOrigin(entry.metadata.followUpOrigin) } : {}) },
       resultMeta: entry.resultMeta && { ...entry.resultMeta, runId: mapRunReference(entry.resultMeta.runId) },
       goldenResponse: entry.goldenResponse && { ...entry.goldenResponse, pinnedFromRunId: mapRunReference(entry.goldenResponse.pinnedFromRunId) },
       versions: entry.versions.map((version) => ({
@@ -136,7 +162,7 @@ export function prepareWorkspaceImport(parsed, {
       })),
     };
     if (unresolved.length) {
-      mapped.metadata = { ...entry.metadata, unresolvedRunIds: [...new Set(unresolved)] };
+      mapped.metadata = { ...mapped.metadata, unresolvedRunIds: [...new Set(unresolved)] };
       warnings.push(`Imported prompt ${entry.id} has unresolved run references: ${unresolved.join(', ')}.`);
     }
     return mapped;

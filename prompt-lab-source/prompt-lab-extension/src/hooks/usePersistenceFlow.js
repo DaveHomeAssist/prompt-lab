@@ -8,6 +8,7 @@ import { decodePackShare } from '../lib/packExport.js';
 import { importPresetPack } from '../lib/presetImport.js';
 import { linkEvalRunToPrompt } from '../experimentStore.js';
 import { createSaveReceipt } from '../lib/promptLifecycle.js';
+import { normalizeFollowUpOrigin } from '../lib/followUpProvenance.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
 function hasSharedPayloadHash() {
@@ -35,6 +36,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const [saveCollection, setSaveCollection] = useState('');
   const [changeNote, setChangeNote] = useState('');
   const [sourceNoteId, setSourceNoteId] = useState('');
+  const [followUpOrigin, setFollowUpOriginState] = useState(null);
+  const setFollowUpOrigin = value => setFollowUpOriginState(normalizeFollowUpOrigin(value));
   const [lastSaveReceipt, setLastSaveReceipt] = useState(null);
   const [showDiff, setShowDiff] = useState(false);
   const [sharedHashPending, setSharedHashPending] = useState(hasSharedPayloadHash);
@@ -60,11 +63,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   useSessionRestore({
     setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode,
-    setEditingId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId,
+    setEditingId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId, setFollowUpOrigin,
   });
   useSessionSave({
     raw, enhanced, variants, notes, resultMeta, tab, enhMode,
-    editingId, saveTitle, saveTags, saveCollection, sourceNoteId,
+    editingId, saveTitle, saveTags, saveCollection, sourceNoteId, followUpOrigin,
   });
 
   useEffect(() => {
@@ -187,6 +190,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (target === 'editor') {
       activeEntryRef.current = normalized;
       setEditingId(normalized.id);
+      setFollowUpOrigin(normalized.metadata?.followUpOrigin);
       setRaw(normalized.original);
       setEnhanced(normalized.enhanced);
       setVariants(normalized.variants || []);
@@ -371,6 +375,10 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const collectionValue = Object.prototype.hasOwnProperty.call(overrides, 'collectionOverride')
       ? overrides.collectionOverride
       : saveCollection;
+    const metadata = {
+      ...(contentSource?.metadata || lib.library?.find(entry => entry.id === targetId)?.metadata || activeEntryRef.current?.metadata || {}),
+      ...(followUpOrigin && !contentSource ? { followUpOrigin } : {}),
+    };
     const saved = lib.doSave({
       raw: originalValue,
       enhanced: enhancedValue,
@@ -382,6 +390,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       collection: collectionValue,
       editingId: targetId,
       changeNote,
+      metadata,
       sourceEntry: contentSource || activeEntryRef.current,
       sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
       savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
@@ -403,6 +412,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         tags: tagsValue,
         collection: collectionValue,
         sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
+        metadata,
       };
       if (!contentSource) {
         setEditingId(saved.id);
@@ -433,7 +443,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const addToComposer = (entry) => {
     setComposerBlocks((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), label: entry.title, content: entry.enhanced, sourceId: entry.id },
+      { id: crypto.randomUUID(), label: entry.title, content: entry.enhanced, sourceId: entry.id,
+        ...(entry.metadata?.followUpOrigin ? { followUpOrigin: normalizeFollowUpOrigin(entry.metadata.followUpOrigin) } : {}) },
     ]);
     if (typeof lib.bumpUse === 'function') {
       lib.bumpUse(entry.id);
@@ -447,6 +458,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const clearPersistenceState = () => {
     templateLoadReqRef.current += 1;
     activeEntryRef.current = null;
+    setFollowUpOrigin(null);
+    setSourceNoteId('');
     setShowSave(false);
     setEditingId(null);
     setSaveTargetId(null);
@@ -463,6 +476,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   return {
     showSave, setShowSave,
+    followUpOrigin, setFollowUpOrigin,
     editingId, setEditingId,
     saveTargetId,
     hasPanelSaveSource: Boolean(saveSourceEntry),

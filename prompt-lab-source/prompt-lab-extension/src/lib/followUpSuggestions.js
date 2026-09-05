@@ -9,11 +9,12 @@ export const MAX_FOLLOW_UP_SUGGESTIONS = 3;
 export const DEFAULT_FOLLOW_UP_MAX_TOKENS = 1024;
 export const DEFAULT_FOLLOW_UP_TEMPERATURE = 0.6;
 
-export const FOLLOW_UP_SYSTEM_PROMPT = `You are a prompt engineering assistant inside a prompt workbench. The user message contains a prompt the user just finished refining. Suggest the ${MAX_FOLLOW_UP_SUGGESTIONS} most useful FOLLOW-UP prompts the user would naturally run next, so the prompts can be chained into a multi-step workflow.
+export const FOLLOW_UP_SYSTEM_PROMPT = `You are a prompt engineering assistant inside a prompt workbench. The user message contains source material selected in the workbench. It may be an actual saved run output, an enhanced prompt, or an editor draft. Suggest the ${MAX_FOLLOW_UP_SUGGESTIONS} most useful FOLLOW-UP prompts the user would naturally run next, so the prompts can be chained into a multi-step workflow.
 
 Rules:
 - Each suggestion must be a complete, ready-to-run prompt, not advice about the prompt.
 - Suggestions should build on the original prompt's output or extend its workflow (e.g. critique it, transform its output, take the next step) — never rephrase the original prompt.
+- Ground suggestions in the actual supplied source. When the source is a prompt or draft, do not claim to have seen its future task output.
 - Stay within the user's domain, subject, and terminology. Do not invent new goals.
 - Keep each prompt under 120 words.
 
@@ -21,13 +22,13 @@ Return ONLY valid JSON, no markdown, no backticks:
 {"suggestions":[{"title":"...","prompt":"..."}]}
 "title" is a short imperative label (max 8 words). "prompt" is the full follow-up prompt text.`;
 
-export function buildFollowUpPayload({ raw = '', enhanced = '' } = {}) {
-  const promptText = String(enhanced || raw || '').trim();
+export function buildFollowUpPayload({ raw = '', enhanced = '', source = null } = {}) {
+  const promptText = String(source ? source.text || '' : enhanced || raw || '').trim();
   return {
     model: DEFAULT_ENHANCE_MODEL,
     max_tokens: DEFAULT_FOLLOW_UP_MAX_TOKENS,
     temperature: DEFAULT_FOLLOW_UP_TEMPERATURE,
-    system: FOLLOW_UP_SYSTEM_PROMPT,
+    system: `${FOLLOW_UP_SYSTEM_PROMPT}\n\nSource kind: ${source?.kind || (enhanced ? 'enhanced-prompt' : 'draft-prompt')}.`,
     messages: [{ role: 'user', content: promptText }],
     responseFormat: 'json',
   };

@@ -471,4 +471,23 @@ describe('usePersistenceFlow', () => {
     expect(result.current.composerBlocks).toHaveLength(1);
     expect(notify).toHaveBeenCalledWith('Added to Composer!');
   });
+  it('saves a follow-up as an independent draft after clearing the parent context', () => {
+    const parent = makeEntry();
+    const original = JSON.stringify(parent);
+    const { result, doSave } = renderPersistenceFlow({ entry: parent });
+    act(() => { result.current.applyEntry(parent); });
+    act(() => {
+      result.current.clearPersistenceState();
+      result.current.setRaw('Independent follow-up');
+      result.current.setEnhanced('');
+      result.current.setSaveTitle('Next step');
+      result.current.setFollowUpOrigin({ sourcePromptId: parent.id, sourceRunId: 'run-1', sourceKind: 'run-output' });
+    });
+    act(() => { result.current.doSave(); });
+    expect(doSave).toHaveBeenLastCalledWith(expect.objectContaining({ editingId: null, sourceEntry: null,
+      raw: 'Independent follow-up', metadata: expect.objectContaining({ followUpOrigin: expect.objectContaining({ sourcePromptId: parent.id, sourceRunId: 'run-1' }) }),
+    }));
+    expect(JSON.stringify(parent)).toBe(original);
+  });
+
 });

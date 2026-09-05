@@ -278,3 +278,12 @@ prepared IDs and skip completed stages. Closing a partially applied import retai
 its pending operation in the tab and does not imply rollback. Scratch and pack
 registry replacement are disclosed explicitly before Apply. Preview rows paginate
 so large files do not mount an unbounded list of conflict controls.
+
+### Follow-up source and independent prompt contract
+
+- Follow-up generation captures an immutable source descriptor and attempt ID. The source selector distinguishes actual successful saved run output from enhanced instructions; missing source or generation model values remain Unknown. Source changes, cancellation, and unmount invalidate the attempt. The shared sensitive-data preflight reviews the exact outgoing payload.
+- `metadata.followUpOrigin` stores optional source prompt/version/run/candidate references, source kind, generation time/provider/model, and redaction state. It excludes provider credentials and duplicate copies of source output. The provenance panel resolves the referenced output on demand and reports missing local sources explicitly.
+- Use in editor clears the inherited update target and opens an independent draft with undo recovery. Save to Library uses acknowledged persistence and a per-suggestion receipt, so rejected writes can retry and successful double activation cannot duplicate the child. Neither operation changes the parent.
+- Session drafts, Library saves, and workspace exports preserve optional provenance. Import remaps included source identities and retains absent/external references as unresolved metadata; coincidentally equal local IDs are not proof of external identity. Older entries without provenance remain valid.
+- Add to Composer creates the existing editable block with its source metadata. It does not execute the separate Prompt Chains pipeline. Provenance is visible in Create, expanded Library records, and Composer blocks.
+- Regression paths: `src/tests/followUpSuggestions.test.jsx`, `src/tests/followUpProvenance.test.js`, `src/tests/usePersistenceFlow.test.jsx`, and `e2e/follow-up-provenance.spec.js` in the extension project. Browser fixtures exercise actual saved output, storage rejection/retry, parent preservation, independent draft handoff, and reload at 400px and 1180px without paid-provider calls.
