@@ -144,6 +144,24 @@ provider key. User-supplied keys are never persisted server-side.
 
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.
 
+Transport verification contracts:
+
+- The assembled extension still copies the standalone adapters in
+  `prompt-lab-extension/extension/lib/`; they predate the descriptor-based shared
+  adapters and differ in response metadata/error normalization. Cancellation is
+  patched at that dispatch boundary to preserve its existing nonstreaming
+  behavior. `packagedProviderCancellation.test.js` imports a fresh assembled
+  artifact and runs the same five-provider abort contract against both adapters.
+  Consolidating their other behavior requires explicit parity work.
+- Shared streaming adapters require Anthropic `message_stop` or OpenAI-compatible
+  `[DONE]` completion. Error events, malformed complete frames, and EOF without
+  completion fail the attempt. Partial text remains available as an incomplete
+  preview and failed history output; it is never committed as a successful
+  enhancement or silently retried. User cancellation remains nonretryable.
+- Protocol references: [Anthropic streaming](https://platform.claude.com/docs/en/build-with-claude/streaming),
+  [OpenAI Chat Completions](https://platform.openai.com/docs/api-reference/chat/create),
+  [OpenRouter streaming](https://openrouter.ai/docs/api_reference/streaming).
+
 ## Persistence
 
 - Prompt library and app state use local browser persistence in the shared app

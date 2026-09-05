@@ -105,36 +105,61 @@ function mergeUsage(current, next) {
   );
 }
 
-function parseSseChunks(buffer, flush = false, inspectFrame) {
+function streamFrameError(data) {
+  const detail = data?.error;
+  const message = typeof detail === 'string' ? detail : detail?.message;
+  const error = new Error(message || 'Provider reported a streaming error.');
+  const statusByType = {
+    overloaded_error: 529, rate_limit_error: 429, authentication_error: 401,
+    permission_error: 403, invalid_request_error: 400, not_found_error: 404,
+    api_error: 500, server_error: 502,
+  };
+  const code = Number(detail?.code || detail?.status);
+  error.status = Number.isInteger(code) && code >= 400 && code < 600
+    ? code : statusByType[detail?.type || detail?.code] || 502;
+  return error;
+}
+
+function parseSseChunks(buffer, flush = false, inspectFrame, acceptsDoneMarker = false) {
   const chunks = [];
   let usage = null;
-  let working = buffer;
-  const frames = flush ? working.split('\n\n') : working.split('\n\n');
+  let done = false;
+  let error = null;
+  const frames = buffer.split(/\r?\n\r?\n/);
   const completeFrames = flush ? frames : frames.slice(0, -1);
-  working = flush ? '' : (frames[frames.length - 1] || '');
+  const working = flush ? '' : (frames[frames.length - 1] || '');
 
   for (const frame of completeFrames) {
-    const lines = frame.split('\n').filter((line) => line.startsWith('data:'));
-    for (const line of lines) {
-      const payload = line.slice(5).trim();
-      if (!payload || payload === '[DONE]') continue;
-      try {
-        const data = JSON.parse(payload);
-        const inspected = inspectFrame(data);
-        const text = typeof inspected === 'string' ? inspected : inspected?.text;
-        if (text) chunks.push(text);
-        usage = mergeUsage(usage, typeof inspected === 'object' ? inspected?.usage : null);
-      } catch {
-        // Ignore malformed intermediate frames.
-      }
+    const payload = frame.split(/\r?\n/).filter((line) => line.startsWith('data:'))
+      .map((line) => line.slice(5).replace(/^ /, '')).join('\n').trim();
+    if (!payload) continue; // SSE comments and keepalive events carry no data.
+    if (payload === '[DONE]' && acceptsDoneMarker) { done = true; continue; }
+    let data;
+    try {
+      data = JSON.parse(payload);
+    } catch {
+      error = new Error('Malformed provider stream event.');
+      error.status = 502;
+      break;
     }
+    if (data?.error || data?.type === 'error' || (Array.isArray(data?.choices) && data.choices.some((choice) => choice.finish_reason === 'error'))) {
+      error = streamFrameError(data);
+      break;
+    }
+    // Inspection errors propagate; a valid error event must never disappear
+    // inside the JSON parse catch. Keep earlier text from this transport chunk.
+    const inspected = inspectFrame(data);
+    if (inspected?.text) chunks.push(inspected.text);
+    usage = mergeUsage(usage, inspected?.usage);
+    done ||= inspected?.done === true;
   }
 
-  return { buffer: working, chunks, usage };
+  return { buffer: working, chunks, usage, done, error };
 }
 
 function parseAnthropicSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => {
+    if (data?.type === 'message_stop') return { done: true };
     if (data?.type === 'message_start') {
       return { text: '', usage: { input: data?.message?.usage?.input_tokens, output: null, total: null } };
     }
@@ -150,7 +175,7 @@ function parseOpenAiSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => ({
     text: data?.choices?.[0]?.delta?.content || '',
     usage: normalizeUsage(data?.usage?.prompt_tokens, data?.usage?.completion_tokens, data?.usage?.total_tokens),
-  }));
+  }), true);
 }
 
 // ── Provider descriptors ────────────────────────────────────────────

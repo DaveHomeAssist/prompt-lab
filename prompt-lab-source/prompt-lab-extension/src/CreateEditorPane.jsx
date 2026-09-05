@@ -610,6 +610,10 @@ export default function CreateEditorPane({
           )}
 
           {/* Enhanced results */}
+          {!loading && error && streamPreview && <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>
+            <p className={`text-xs font-semibold ${m.text}`}>Incomplete response — request failed</p>
+            <pre className={`${m.codeBlock} mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-lg p-3 text-xs`}>{streamPreview}</pre>
+          </div>}
           {(loading || enhanced) && <>
             {loading && !enhanced && (
               <div className={`${m.surface} border ${m.border} rounded-xl p-3`}>

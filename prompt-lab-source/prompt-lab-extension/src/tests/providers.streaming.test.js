@@ -22,6 +22,7 @@ describe('current provider adapter', () => {
         'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":"Improved"}}\n\n',
         'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"text":" prompt"}}\n\n',
         'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":7},"delta":{}}\n\n',
+        'event: message_stop\ndata: {"type":"message_stop"}\n\n',
       ]),
     });
     const onChunk = vi.fn();

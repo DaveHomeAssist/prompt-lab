@@ -73,6 +73,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         if (options?.signal?.aborted || caught?.name === 'AbortError') {
           throw caught;
         }
+        // Preserve partial output for review; retrying it silently would start
+        // another provider attempt after already receiving billable output.
+        if (caught?.partialText) throw caught;
         lastError = caught;
         if (attempt >= retries || !isTransientError(caught)) break;
         await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
@@ -376,7 +379,9 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       }
       if (reqId === enhanceReqRef.current) {
         setOptimisticSaveVisible(false);
+        setStreaming(false);
         const appError = normalizeError(caught, 'execution');
+        if (caught?.partialText) setStreamPreview(caught.partialText);
         setError(appError);
         // Failed attempts are part of the running enhancement record too.
         saveEvalRun({
@@ -387,7 +392,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
           provider: executionProvider,
           model: executionModel,
           input: raw,
-          output: appError.userMessage || appError.message || 'Enhance failed.',
+          output: caught?.partialText || appError.userMessage || appError.message || 'Enhance failed.',
           latencyMs: nowMs() - startedAt,
           status: 'error',
           usage: accumulatedUsage,
