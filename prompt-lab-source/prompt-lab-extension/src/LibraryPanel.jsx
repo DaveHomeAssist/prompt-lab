@@ -5,6 +5,7 @@ import TagChip from './TagChip';
 import TestCasesPanel from './TestCasesPanel';
 import MarkdownPreview from './MarkdownPreview';
 import DraftBadge from './DraftBadge.jsx';
+import FollowUpOrigin from './FollowUpOrigin.jsx';
 import PresetImportPanel from './PresetImportPanel.jsx';
 import PackStudioPanel from './PackStudioPanel.jsx';
 
@@ -491,6 +492,12 @@ const LibraryPanel = memo(function LibraryPanel({
                     }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Share2" size={11} />Share link</button>
                     <button type="button" onClick={() => { lib.setRenamingId(entry.id); lib.setRenameValue(entry.title); }} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Rename</button>
                   </div>
+                  {entry.metadata?.followUpOrigin && <FollowUpOrigin origin={entry.metadata.followUpOrigin} library={lib.library} onOpenParent={loadEntry} m={m} />}
+                  {lib.library.some(child => child.metadata?.followUpOrigin?.sourcePromptId === entry.id) && <div className={`text-xs ${m.textSub}`}>
+                    <p className="font-semibold">Follow-up prompts</p>
+                    {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === entry.id).map(child => <button key={child.id} type="button" onClick={() => loadEntry(child)}
+                      className={`min-h-11 rounded-lg px-2 mr-2 mt-1 ${m.btn} ${m.textBody}`}>{child.title}</button>)}
+                  </div>}
                   <TestCasesPanel
                     m={m} entry={entry} cases={testCasesByPrompt[entry.id] || []}
                     evalRuns={evalRuns} editingCaseId={editingCaseId}

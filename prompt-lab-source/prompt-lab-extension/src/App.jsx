@@ -16,6 +16,7 @@ import useEditorState from './hooks/useEditorState.js';
 import useExecutionFlow from './hooks/useExecutionFlow.js';
 import usePersistenceFlow from './hooks/usePersistenceFlow.js';
 import useFollowUpSuggestions from './hooks/useFollowUpSuggestions.js';
+import { resolveFollowUpSource } from './lib/followUpProvenance.js';
 import useABTest from './hooks/useABTest.js';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
@@ -182,9 +183,18 @@ export default function App({
     editor: editorState,
   });
   const executionFlow = useExecutionFlow({ ui, lib, editor: editorState, persistence: persistenceFlow });
+  const [followUpSourceRunId, setFollowUpSourceRunId] = useState('');
+  const [savedFollowUps, setSavedFollowUps] = useState({});
+  const savedFollowUpsRef = useRef(new Map());
+  const followUpRuns = executionFlow.evalRuns.filter(run => run.output?.trim() && (!run.status || run.status === 'success'));
+  const selectedFollowUpRun = followUpRuns.find(run => run.id === followUpSourceRunId) || null;
+  const followUpSource = resolveFollowUpSource({
+    raw: editorState.raw, enhanced: editorState.enhanced, resultMeta: editorState.resultMeta,
+    entry: lib.library.find(entry => entry.id === persistenceFlow.editingId), run: selectedFollowUpRun,
+  });
+  useEffect(() => { setFollowUpSourceRunId(''); }, [persistenceFlow.editingId]);
   const followUpSuggestions = useFollowUpSuggestions({
-    raw: editorState.raw,
-    enhanced: editorState.enhanced,
+    raw: editorState.raw, enhanced: editorState.enhanced, source: followUpSource,
   });
   const ed = {
     ...editorState,
@@ -207,7 +217,7 @@ export default function App({
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
-    sourceNoteId, setSourceNoteId,
+    sourceNoteId, setSourceNoteId, followUpOrigin, setFollowUpOrigin,
     lastSaveReceipt, dismissSaveReceipt,
     setShowDiff,
     evalRuns, showEvalHistory, setShowEvalHistory, updateEvalRun,
@@ -357,6 +367,7 @@ export default function App({
       saveCollection,
       changeNote,
       sourceNoteId,
+      followUpOrigin,
     },
     resultTab,
     workspaceView,
@@ -417,6 +428,7 @@ export default function App({
     setSaveCollection(persistence?.saveCollection || '');
     setChangeNote(persistence?.changeNote || '');
     setSourceNoteId(persistence?.sourceNoteId || '');
+    setFollowUpOrigin(persistence?.followUpOrigin || null);
     setResultTab(recoveredResultTab || 'improved');
     if (draftRecovery.workspaceView) openCreateView(draftRecovery.workspaceView);
     dismissDraftRecovery();
@@ -648,9 +660,26 @@ export default function App({
   const handleUseFollowUp = (suggestion) => {
     trackTelemetry('followups.loaded_into_editor', { plan: billing.plan });
     preserveDraftForUndo('follow-up');
+    clearEditor();
+    setFollowUpOrigin(suggestion.origin);
     setRaw(suggestion.prompt);
     setSaveTitle(suggestion.title);
-    notify('Follow-up loaded into editor.');
+    openCreateView('editor');
+    notify('Follow-up opened as a new draft. The source prompt is unchanged.');
+  };
+  const handleSaveFollowUp = (suggestion) => {
+    if (!suggestion?.id || !suggestion.prompt?.trim()) return null;
+    if (savedFollowUpsRef.current.has(suggestion.id)) return savedFollowUpsRef.current.get(suggestion.id);
+    const saved = lib.doSave({
+      raw: suggestion.prompt, enhanced: '', variants: [], notes: '', tags: [],
+      title: suggestion.title, collection: '', editingId: null, sourceEntry: null,
+      metadata: { followUpOrigin: suggestion.origin },
+    });
+    if (saved?.id) {
+      savedFollowUpsRef.current.set(suggestion.id, saved);
+      setSavedFollowUps(prev => ({ ...prev, [suggestion.id]: saved.id }));
+    }
+    return saved;
   };
   const handleCaptureContext = async () => {
     try {
@@ -707,7 +736,7 @@ export default function App({
       source: 'follow-up',
       plan: billing.plan,
     });
-    addToComposer({ title: suggestion.title, enhanced: suggestion.prompt });
+    addToComposer({ title: suggestion.title, enhanced: suggestion.prompt, metadata: { followUpOrigin: suggestion.origin } });
   };
   const quickSave = (candidate = null) => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
@@ -1098,6 +1127,15 @@ export default function App({
               fetchFollowUps={followUpSuggestions.fetchFollowUps}
               onUseFollowUp={handleUseFollowUp}
               onChainFollowUp={handleChainFollowUp}
+              onSaveFollowUp={handleSaveFollowUp}
+              savedFollowUps={savedFollowUps}
+              followUpSource={followUpSource}
+              followUpRuns={followUpRuns}
+              followUpSourceRunId={selectedFollowUpRun?.id || ''}
+              setFollowUpSourceRunId={setFollowUpSourceRunId}
+              cancelFollowUps={followUpSuggestions.clearFollowUps}
+              draftFollowUpOrigin={followUpOrigin}
+              onOpenFollowUpParent={handleLoadEntry}
             />
           )}
           libraryPane={(
@@ -1416,7 +1454,11 @@ export default function App({
 
       {lib.importPreview && <WorkspaceImportModal m={m} preview={lib.importPreview} applying={lib.importApplying}
         onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
-      <PiiWarningModal m={m} piiWarning={piiWarning || abTest.piiWarning} piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiRedactAndSend} piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiSendAnyway} piiCancel={piiWarning ? piiCancel : abTest.piiCancel} />
+      <PiiWarningModal m={m}
+        piiWarning={piiWarning || abTest.piiWarning || followUpSuggestions.piiWarning}
+        piiRedactAndSend={piiWarning ? piiRedactAndSend : abTest.piiWarning ? abTest.piiRedactAndSend : followUpSuggestions.piiRedactAndSend}
+        piiSendAnyway={piiWarning ? piiSendAnyway : abTest.piiWarning ? abTest.piiSendAnyway : followUpSuggestions.piiSendAnyway}
+        piiCancel={piiWarning ? piiCancel : abTest.piiWarning ? abTest.piiCancel : followUpSuggestions.piiCancel} />
 
       {toast && <Toast message={toast} onDone={() => setToast(null)} />}
       {!isExtension && (

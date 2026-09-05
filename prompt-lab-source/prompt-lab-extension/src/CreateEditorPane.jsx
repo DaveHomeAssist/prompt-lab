@@ -4,6 +4,8 @@ import { wordDiff } from './promptUtils';
 import MarkdownPreview from './MarkdownPreview';
 import EditorActions from './EditorActions';
 import { getLintQuickFixMeta } from './promptLint';
+import FollowUpOrigin from './FollowUpOrigin.jsx';
+import { describeFollowUpSource } from './lib/followUpProvenance.js';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
@@ -133,6 +135,15 @@ export default function CreateEditorPane({
   fetchFollowUps,
   onUseFollowUp,
   onChainFollowUp,
+  onSaveFollowUp,
+  savedFollowUps = {},
+  followUpSource = null,
+  followUpRuns = [],
+  followUpSourceRunId = '',
+  setFollowUpSourceRunId,
+  cancelFollowUps,
+  draftFollowUpOrigin = null,
+  onOpenFollowUpParent,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
@@ -317,6 +328,7 @@ export default function CreateEditorPane({
           </div>
         )}
 
+        {draftFollowUpOrigin && <FollowUpOrigin origin={draftFollowUpOrigin} library={lib.library} onOpenParent={onOpenFollowUpParent} m={m} />}
         {/* ── Input ── */}
         <div>
           <div className="flex justify-between items-center mb-1">
@@ -685,29 +697,40 @@ export default function CreateEditorPane({
                       {followUpsLoading ? 'Suggesting…' : followUps.length > 0 ? 'Refresh' : 'Suggest Follow-ups'}
                     </button>
                   </div>
+                  {setFollowUpSourceRunId && <label className={`mt-2 block text-xs ${m.textSub}`}>
+                    Follow-up source
+                    <select aria-label="Follow-up source" value={followUpSourceRunId} onChange={event => setFollowUpSourceRunId(event.target.value)}
+                      className={`mt-1 min-h-11 w-full rounded-lg border px-2 ${m.input} ${m.text}`}>
+                      <option value="">Current enhanced prompt</option>
+                      {followUpRuns.map(run => <option key={run.id} value={run.id}>Run output: {run.promptTitle || run.variantLabel || 'Untitled'} · {run.model || 'Unknown model'} · {new Date(run.createdAt).toLocaleString()}</option>)}
+                    </select>
+                  </label>}
+                  <p className={`mt-2 text-xs ${m.textSub}`}>{describeFollowUpSource({ sourceKind: followUpSource?.kind || 'enhanced-prompt' })}. Prompt-based suggestions do not have a task answer unless you select a saved run output.</p>
+                  {followUpsLoading && cancelFollowUps && <button type="button" onClick={cancelFollowUps} className={`mt-1 min-h-11 px-2 rounded ${m.btn} ${m.textBody}`}>Cancel suggestions</button>}
                   {followUpsError && (
                     <p className="mt-2 text-xs text-red-400">{followUpsError}</p>
                   )}
+                  <p className={`mt-1 text-xs ${m.textSub}`}>Add to Composer creates a block. Prompt Chains is the separate pipeline runner.</p>
                   {followUps.length > 0 && (
                     <div className="mt-2 flex flex-col gap-2">
                       {followUps.map((suggestion, index) => (
-                        <div key={`${suggestion.title}-${index}`} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
-                          <div className="flex items-center justify-between gap-2 mb-1">
+                        <div key={suggestion.id || `${suggestion.title}-${index}`} className={`${m.codeBlock} border ${m.border} rounded-lg p-2.5`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                             <span className={`text-xs font-bold ${accentTextClass} truncate`}>{suggestion.title}</span>
-                            <div className="flex gap-2 shrink-0">
+                            <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
                                 onClick={() => onUseFollowUp?.(suggestion)}
-                                className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
+                                className={`min-h-11 px-2 text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
                               >
-                                Use
+                                Use in editor
                               </button>
                               <button
                                 type="button"
                                 onClick={() => onChainFollowUp?.(suggestion)}
-                                className={`text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
+                                className={`min-h-11 px-2 text-xs ${m.textAlt} ${accentHoverTextClass} transition-colors`}
                               >
-                                Chain
+                                Add to Composer
                               </button>
                               <button
                                 type="button"
@@ -720,6 +743,9 @@ export default function CreateEditorPane({
                             </div>
                           </div>
                           <p className={`text-xs ${m.textAlt} leading-relaxed whitespace-pre-wrap`}>{suggestion.prompt}</p>
+                          {onSaveFollowUp && <button type="button" onClick={() => onSaveFollowUp(suggestion)} disabled={Boolean(savedFollowUps[suggestion.id])}
+                            className={`mt-2 min-h-11 rounded-lg px-3 text-xs font-semibold ${m.btn} ${m.textBody} disabled:opacity-50`}>{savedFollowUps[suggestion.id] ? 'Saved to Library' : 'Save to Library'}</button>}
+                          <FollowUpOrigin key={suggestion.id} origin={suggestion.origin} library={lib.library} onOpenParent={onOpenFollowUpParent} m={m} />
                         </div>
                       ))}
                     </div>

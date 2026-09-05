@@ -19,6 +19,7 @@ export function useSessionRestore(setters) {
       if ('saveTitle' in s && typeof setters.setSaveTitle === 'function') setters.setSaveTitle(s.saveTitle || '');
       if ('saveTags' in s && typeof setters.setSaveTags === 'function') setters.setSaveTags(Array.isArray(s.saveTags) ? s.saveTags : []);
       if ('saveCollection' in s && typeof setters.setSaveCollection === 'function') setters.setSaveCollection(s.saveCollection || '');
+      if ('followUpOrigin' in s && typeof setters.setFollowUpOrigin === 'function') setters.setFollowUpOrigin(s.followUpOrigin);
       if ('sourceNoteId' in s && typeof setters.setSourceNoteId === 'function') setters.setSourceNoteId(s.sourceNoteId || '');
     });
   }, []);
@@ -45,5 +46,6 @@ export function useSessionSave(state) {
     state.saveTags,
     state.saveCollection,
     state.sourceNoteId,
+    state.followUpOrigin,
   ]);
 }
