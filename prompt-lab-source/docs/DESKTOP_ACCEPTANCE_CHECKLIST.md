@@ -52,6 +52,10 @@ Stop the owned fixture with Ctrl-C, then restart it with `slow` for a 30-second 
 
 ## Per-platform operator procedure
 
+The `Desktop Build` workflow also runs an installed-binary smoke on disposable Windows and Linux runners. It installs the freshly built MSI/DEB, uses the platform's native WebDriver through `tauri-driver`, captures Tauri-window screenshots, exercises fixture Enhance/Save/Scratch/quit/relaunch/Cancel/error, then uninstalls and reinstalls to check retained data. `native-acceptance-<runner>` artifacts contain the observed results and installer hashes. A failing native job is not installer acceptance. This initial automation does not prove previous-version upgrades, NSIS/AppImage lifecycle, macOS acceptance, or every Library/follow-up scenario.
+
+The test-only driver is installed from the official Cargo registry with its lockfile; the documented Windows matching-driver installer is pinned to commit `8c4b34f51b45f5cf08013366d703de464ab871d1`. No runtime dependency or application security policy changes are needed. Platform support follows [Tauri's native WebDriver setup](https://v2.tauri.app/develop/tests/webdriver/manual-setup/) and [CI guide](https://v2.tauri.app/develop/tests/webdriver/ci/). The standard driver does not cover macOS; no paid driver service is introduced.
+
 Record PASS, FAIL or Unknown for every step, with a screenshot or exported synthetic fixture and observed result. Never substitute a browser preview for the native window.
 
 1. Restore a clean VM snapshot or sign into the designated disposable account. Record OS, architecture, candidate SHA, installer name/hash, operator, and date. Confirm there is no personal Prompt Lab data or configured paid-provider key in this profile.
