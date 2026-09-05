@@ -549,4 +549,28 @@ describe('usePromptLibrary', () => {
 
     expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
   });
+  it('retains collection assignments after a rejected write and succeeds on explicit retry', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ collection: 'Ops' })]));
+    localStorage.setItem(storageKeys.collections, JSON.stringify(['Ops']));
+    const notify = vi.fn();
+    const { result } = renderHook(() => usePromptLibrary(notify));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    act(() => result.current.setActiveCollection('Ops'));
+    const original = Storage.prototype.setItem;
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (key === storageKeys.library) throw new DOMException('Fixture quota', 'QuotaExceededError');
+      return original.call(this, key, value);
+    });
+    try {
+      act(() => expect(result.current.deleteCollection('Ops')).toBe(false));
+      expect(result.current.library[0].collection).toBe('Ops');
+      expect(result.current.collections).toEqual(['Ops']);
+      expect(result.current.activeCollection).toBe('Ops');
+    } finally { write.mockRestore(); }
+    act(() => expect(result.current.deleteCollection('Ops')).toBe(true));
+    expect(JSON.parse(localStorage.getItem(storageKeys.library))[0].collection).toBe('');
+    expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual([]);
+    expect(result.current.activeCollection).toBeNull();
+  });
+
 });

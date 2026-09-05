@@ -110,7 +110,11 @@ export function matchesLibrarySearch(entry, rawQuery = '') {
     entry?.original,
     entry?.enhanced,
     ...(Array.isArray(entry?.tags) ? entry.tags : []),
+    entry?.metadata?.purpose, entry?.metadata?.owner, entry?.metadata?.status,
+    ...(Array.isArray(entry?.metadata?.compatibility) ? entry.metadata.compatibility : []),
   ];
 
-  return fields.some((value) => ensureString(value).toLowerCase().includes(query));
+  // Every term may match a different field, consistently in Library and Composer.
+  const corpus = fields.map(value => ensureString(value).toLowerCase()).join('\n');
+  return query.split(/\s+/).every(term => corpus.includes(term));
 }

@@ -87,7 +87,15 @@
           "claude-sonnet-4-6"
         ],
         "riskLevel": "medium",
-        "customField": "preserve-me"
+        "customField": "preserve-me",
+        "followUpOrigin": {
+          "version": 1,
+          "sourceKind": "run-output",
+          "sourcePromptId": "external-parent",
+          "sourceRunId": "external-run",
+          "generationModel": "fixture-model",
+          "generatedAt": "2026-09-05T00:00:00.000Z"
+        }
       }
     }
   ],

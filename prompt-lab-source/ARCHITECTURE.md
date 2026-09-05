@@ -287,3 +287,7 @@ so large files do not mount an unbounded list of conflict controls.
 - Session drafts, Library saves, and workspace exports preserve optional provenance. Import remaps included source identities and retains absent/external references as unresolved metadata; coincidentally equal local IDs are not proof of external identity. Older entries without provenance remain valid.
 - Add to Composer creates the existing editable block with its source metadata. It does not execute the separate Prompt Chains pipeline. Provenance is visible in Create, expanded Library records, and Composer blocks.
 - Regression paths: `src/tests/followUpSuggestions.test.jsx`, `src/tests/followUpProvenance.test.js`, `src/tests/usePersistenceFlow.test.jsx`, and `e2e/follow-up-provenance.spec.js` in the extension project. Browser fixtures exercise actual saved output, storage rejection/retry, parent preservation, independent draft handoff, and reload at 400px and 1180px without paid-provider calls.
+
+### Library compatibility and synchronization
+
+[Library compatibility contract](docs/LIBRARY_COMPATIBILITY_CONTRACT.md) defines canonical navigation, shared search/sort behavior, local persistence, explicit export/import synchronization, field preservation across shells, and the separate runtime acceptance gates.

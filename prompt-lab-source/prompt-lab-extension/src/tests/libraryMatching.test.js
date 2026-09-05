@@ -69,5 +69,8 @@ describe('libraryMatching', () => {
     expect(matchesLibrarySearch(entry, 'security')).toBe(true);
     expect(matchesLibrarySearch(entry, 'staffing plan')).toBe(true);
     expect(matchesLibrarySearch(entry, 'nonexistent')).toBe(false);
+    expect(matchesLibrarySearch(entry, 'security venue')).toBe(true);
+    expect(matchesLibrarySearch({ ...entry, metadata: { owner: 'Alex', compatibility: ['Local model'] } }, 'alex local')).toBe(true);
+    expect(matchesLibrarySearch(entry, 'security absent')).toBe(false);
   });
 });

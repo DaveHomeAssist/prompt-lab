@@ -28,6 +28,8 @@ final class PromptLabTests: XCTestCase {
         let library = try XCTUnwrap(root["library"] as? [[String: Any]])
         let metadata = try XCTUnwrap(library.first?["metadata"] as? [String: Any])
         XCTAssertEqual(metadata["customField"] as? String, "preserve-me")
+        let origin = try XCTUnwrap(metadata["followUpOrigin"] as? [String: Any])
+        XCTAssertEqual(origin["sourceRunId"] as? String, "external-run")
         XCTAssertEqual(root["collections"] as? [String], ["Operations", "Empty Collection"])
 
         prompt.enhanced = "Summarize {{incident}} for leadership with owners and follow-up dates."
@@ -55,6 +57,9 @@ final class PromptLabTests: XCTestCase {
         XCTAssertEqual(editedVariants.compactMap { $0["label"] as? String }, ["Brief", "Actions"])
         XCTAssertEqual(editedRoot["collections"] as? [String], ["Operations", "Empty Collection"])
         XCTAssertEqual(editedMetadata["customField"] as? String, "preserve-me")
+        let editedOrigin = try XCTUnwrap(editedMetadata["followUpOrigin"] as? [String: Any])
+        XCTAssertEqual(editedOrigin["sourceRunId"] as? String, "external-run")
+        XCTAssertEqual(editedOrigin["generationModel"] as? String, "fixture-model")
         XCTAssertEqual(editedPrompt["useCount"] as? Int, 3)
     }
 
