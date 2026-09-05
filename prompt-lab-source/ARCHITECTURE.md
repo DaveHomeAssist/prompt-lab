@@ -155,6 +155,30 @@ Provider-specific request behavior is routed through shared provider abstraction
 
 Persistence contracts (post 2026-08 behavioral-audit remediation):
 
+- Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
+  with value `1`; the marker contains no title or body. Clear Library appends a
+  `pl2-library-clear:<counter>:<uuid>` key. A logical counter and deterministic
+  UUID tie-break order concurrent clears without trusting wall-clock time.
+  Live/trash records carry `metadata.libraryGeneration`; missing values mean
+  the original generation. Readers, storage-event adoption, and delayed writes
+  exclude deleted IDs and records from earlier clear generations.
+- Deletion metadata is not compacted. Older clients can still write legacy
+  arrays, but updated clients reject stale generations and scrub those arrays.
+  Reload older tabs before editing after a clear; mixed-version clients cannot
+  be made to honor a contract absent from their code. Explicit new imports are
+  a separate operation from replaying an old replica. Workspace exports do not
+  transfer one installation's permanent-deletion log to another installation.
+- Workspace import prepares stable IDs before writes. Prompt deduplication maps
+  runs and test cases to the surviving prompt; version references resolve only
+  to a matching stored snapshot. Scratch links and imported result/golden run
+  references follow the same ID maps. Missing source references are reported in
+  import feedback and retained as unresolved notes/metadata rather than linked
+  to an unrelated record. Conflicting IDs allocate new identities.
+- An explicit backup import joins the current clear generation and allocates a
+  fresh ID for a permanently deleted prompt. Multi-store import is not atomic:
+  failures retain the prepared file/IDs for **Retry import** in Settings, and
+  completion is reported only after every write is acknowledged. Recovery is
+  session-local; keep the tab open until it completes.
 - Experiment-store writes reject on fallback storage failure. A session-local
   recovery queue retains the normalized record and its ID; retrying only repeats
   persistence, never provider execution. Same-record writes are serialized and

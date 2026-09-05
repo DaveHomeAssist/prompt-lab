@@ -1367,6 +1367,7 @@ export default function App({
           density={density} setDensity={setDensity}
           collections={lib.collections} deleteCollection={lib.deleteCollection}
           exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
+          pendingImport={lib.pendingImport} retryImport={lib.retryImport}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billing}
           openBilling={(featureId) => {

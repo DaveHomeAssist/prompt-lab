@@ -30,23 +30,27 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
   const prepend = options?.prepend === true;
   const signatureToPromptId = new Map(
     normalizedExisting
-      .map((entry) => [getLibraryEntrySignature(entry), entry.id])
+      .map((entry) => [normalizePromptText(getLibraryEntryBody(entry)).toLowerCase(), entry.id])
       .filter(([signature, promptId]) => Boolean(signature && promptId)),
   );
   const promptIdMap = new Map();
   const imported = [];
+  const usedIds = new Set([...normalizedExisting.map((entry) => entry.id), ...(options.blockedIds || [])]);
 
   normalizedIncoming.forEach((entry) => {
-    const signature = getLibraryEntrySignature(entry);
+    // Confirm the whole canonical body; a short hash alone can collide.
+    const signature = normalizePromptText(getLibraryEntryBody(entry)).toLowerCase();
     if (!signature) return;
     const survivingPromptId = signatureToPromptId.get(signature);
     if (survivingPromptId) {
       if (entry.id) promptIdMap.set(entry.id, survivingPromptId);
       return;
     }
-    signatureToPromptId.set(signature, entry.id);
-    if (entry.id) promptIdMap.set(entry.id, entry.id);
-    imported.push(entry);
+    const id = usedIds.has(entry.id) ? crypto.randomUUID() : entry.id;
+    usedIds.add(id);
+    signatureToPromptId.set(signature, id);
+    if (entry.id) promptIdMap.set(entry.id, id);
+    imported.push({ ...entry, id });
   });
 
   const merged = prepend
