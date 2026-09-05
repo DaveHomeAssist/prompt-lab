@@ -48,6 +48,7 @@ for (const width of [400, 1180]) {
       expect(await page.evaluate(() => window.__followupRequests[0].payload.messages[0].content)).toBe('Actual answer from the saved run');
       await panel.getByRole('button', { name: 'View source output', exact: true }).click();
       await expect(panel.getByText('Actual answer from the saved run', { exact: true })).toBeVisible();
+      await page.waitForFunction(() => JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'parent')?.completeness);
       const parentBefore = await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'parent'));
       await page.evaluate(() => {
         const original = Storage.prototype.setItem;

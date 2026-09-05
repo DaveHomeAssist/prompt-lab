@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
+import FollowUpOrigin from './FollowUpOrigin.jsx';
+import { matchesLibrarySearch } from './lib/libraryMatching.js';
+import { sortLibraryEntries } from './hooks/usePromptLibrary.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
@@ -76,34 +79,6 @@ function trashExpiryLabel(entry) {
   const expiresAt = deletedAt + (30 * 24 * 60 * 60 * 1000);
   const days = Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
   return days === 0 ? 'Removed today' : `${days} ${days === 1 ? 'day' : 'days'} left`;
-}
-
-function searchMatches(entry, query) {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return true;
-  const corpus = [
-    entry?.title, entry?.original, entry?.enhanced, entry?.notes, entry?.collection,
-    ...(entry?.tags || []), entry?.metadata?.purpose, entry?.metadata?.owner,
-    entry?.metadata?.status, ...(entry?.metadata?.compatibility || []),
-  ].filter(Boolean).join('\n').toLowerCase();
-  return normalized.split(/\s+/).every((term) => corpus.includes(term));
-}
-
-function sortEntries(entries, sortBy) {
-  const list = [...entries];
-  if (sortBy === 'manual') return list;
-  return list.sort((left, right) => {
-    if (sortBy === 'oldest') return timestamp(left.createdAt) - timestamp(right.createdAt);
-    if (sortBy === 'most-used') return (right.useCount || 0) - (left.useCount || 0);
-    if (sortBy === 'a-z') return (left.title || '').localeCompare(right.title || '', undefined, { sensitivity: 'base' });
-    if (sortBy === 'z-a') return (right.title || '').localeCompare(left.title || '', undefined, { sensitivity: 'base' });
-    if (sortBy === 'group') {
-      const collection = (left.collection || '').localeCompare(right.collection || '', undefined, { sensitivity: 'base' });
-      return collection || (left.title || '').localeCompare(right.title || '', undefined, { sensitivity: 'base' });
-    }
-    return timestamp(right.updatedAt || right.updated_at || right.createdAt)
-      - timestamp(left.updatedAt || left.updated_at || left.createdAt);
-  });
 }
 
 function detailsForEntry(entry) {
@@ -283,6 +258,16 @@ export default function LibraryWorkspace({
   });
 
   useEffect(() => setSearchDraft(lib.search || ''), [lib.search]);
+  useEffect(() => {
+    const invalidCollection = smartView === 'collection' && (!lib.activeCollection || !lib.collections.includes(lib.activeCollection));
+    const invalidTag = smartView === 'tag' && (!lib.activeTag || !lib.allLibTags.includes(lib.activeTag));
+    if (invalidCollection || invalidTag) {
+      if (invalidCollection) lib.setActiveCollection(null);
+      if (invalidTag) lib.setActiveTag(null);
+      setSmartView('all');
+      setCheckedIds([]);
+    }
+  }, [smartView, lib.activeCollection, lib.activeTag, lib.collections, lib.allLibTags]);
   const selected = useMemo(() => (smartView === 'trash' ? lib.trash : lib.library).find((entry) => entry.id === selectedId) || null, [lib.library, lib.trash, selectedId, smartView]);
   useEffect(() => setDetailsDraft(detailsForEntry(selected)), [selected?.id, selected?.updatedAt, selected?.updated_at]);
   const expectedDetails = useMemo(() => detailsForEntry(selected), [selected]);
@@ -290,7 +275,7 @@ export default function LibraryWorkspace({
 
   const entries = useMemo(() => {
     let source = smartView === 'trash' ? [...lib.trash] : [...lib.library];
-    source = source.filter((entry) => searchMatches(entry, searchDraft));
+    source = source.filter((entry) => matchesLibrarySearch(entry, searchDraft));
     if (statusFilter) source = source.filter((entry) => entry.metadata?.status === statusFilter);
     if (smartView === 'favorites') source = source.filter((entry) => entry.favorite);
     if (smartView === 'templates') source = source.filter(isTemplate);
@@ -300,7 +285,7 @@ export default function LibraryWorkspace({
     if (smartView === 'recent') return source.sort((left, right) => timestamp(right.lastAccessedAt || right.updatedAt) - timestamp(left.lastAccessedAt || left.updatedAt));
     if (smartView === 'frequent') return source.sort((left, right) => (right.useCount || 0) - (left.useCount || 0));
     if (smartView === 'trash') return source.sort((left, right) => timestamp(right.deletedAt) - timestamp(left.deletedAt));
-    return sortEntries(source, lib.sortBy);
+    return sortLibraryEntries(source, lib.sortBy);
   }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter]);
 
   const checkedEntries = useMemo(() => {
@@ -459,13 +444,17 @@ export default function LibraryWorkspace({
       {entries.length === 0
         ? <div className="pl-library-empty"><Ic n={smartView === 'trash' ? 'Trash2' : 'Search'} size={22} /><h3>Nothing here yet</h3><p>{hasFilters ? 'Change or clear the active filters.' : 'Save a prompt from the Editor to start your reusable library.'}</p>{hasFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : <button type="button" onClick={handleNewPrompt}>Create a prompt</button>}</div>
         : <div className={`pl-library-results is-${layout}`} role="list" aria-label="Saved prompts">
-          {entries.map((entry) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
+          {entries.map((entry, index) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
               <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
               <span className="pl-library-card-meta"><span>{entry.versions?.length || 0} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
+              {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>
+                <button type="button" aria-label={`Move ${entry.title} up`} disabled={index === 0} onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, entries)}><Ic n="ChevronUp" size={13} /></button>
+                <button type="button" aria-label={`Move ${entry.title} down`} disabled={index === entries.length - 1} onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, entries)}><Ic n="ChevronDown" size={13} /></button>
+              </>}
               {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`}><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry))} aria-label={`Copy ${entry.title}`}><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`}><Ic n="Star" size={13} /></button></>}
             </div>
           </article>)}
@@ -491,6 +480,11 @@ export default function LibraryWorkspace({
           {INSPECTOR_TABS.map(([id, label]) => <button key={id} type="button" role="tab" data-tab-id={id} id={`library-tab-${id}`} aria-controls="library-inspector-panel" aria-selected={inspectorTab === id} tabIndex={inspectorTab === id ? 0 : -1} onClick={() => setInspectorTab(id)}>{label}</button>)}
         </div>
         <div className="pl-inspector-content" role="tabpanel" id="library-inspector-panel" aria-labelledby={`library-tab-${inspectorTab}`} tabIndex={0}>
+          {selected.metadata?.followUpOrigin && <FollowUpOrigin origin={selected.metadata.followUpOrigin} library={lib.library} onOpenParent={selectEntry} m={m} />}
+          {lib.library.some(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id) && <section aria-label="Follow-up prompts">
+            <h3>Follow-up prompts</h3>
+            {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
+          </section>}
           <InspectorContent selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={setDetailsDraft} detailsDirty={detailsDirty} saveDetails={saveDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} />
         </div>
         <footer>

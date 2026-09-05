@@ -30,7 +30,7 @@ import {
 } from '../lib/libraryMatching.js';
 import { filterDeletedLibraryRecords, isLibraryDeletionKey, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState, stampLibraryGeneration } from '../lib/libraryDeletion.js';
 import { buildWorkspaceImportPreview, normalizeWorkspaceImportSource, workspaceImportRevision } from '../lib/workspaceImportPreview.js';
-import { stampPackMembership } from '../lib/packStore.js';
+import { loadPackRegistry, stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
@@ -678,12 +678,21 @@ export default function usePromptLibrary(notify) {
     const nextLibrary = libraryRef.current.map((entry) =>
       entry.collection === collectionName ? stampRecordMutation(entry, { ...entry, collection: '' }) : entry
     );
-    collectionsRef.current = nextCollections;
+    if (!persistRecords(storageKeys.library, nextLibrary)) {
+      notify('Collection removal failed. Prompt assignments are unchanged; retry when storage is available.');
+      return false;
+    }
     libraryRef.current = nextLibrary;
-    setCollections(nextCollections);
     setLibrary(nextLibrary);
+    if (!saveJson(storageKeys.collections, nextCollections)) {
+      notify('Prompts were unassigned, but the collection could not be removed. Retry collection removal.');
+      return false;
+    }
+    collectionsRef.current = nextCollections;
+    setCollections(nextCollections);
     setActiveCollection(prev => prev === collectionName ? null : prev);
     notify(`Removed collection: ${collectionName}`);
+    return true;
   }, [notify]);
 
   const clearLibrary = useCallback(() => {
@@ -906,7 +915,7 @@ export default function usePromptLibrary(notify) {
       library,
       trash,
       collections,
-      packs: loadJson(storageKeys.packs, []),
+      packs: loadPackRegistry(),
       scratch,
       runs,
       testCases,

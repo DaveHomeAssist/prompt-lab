@@ -32,6 +32,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 - `next-3-sprints-plan.md`
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
+- `LIBRARY_COMPATIBILITY_CONTRACT.md`
 - `glossary.md`
 
 Use these for runtime shape, platform model, UI/state mapping, and shared terminology.

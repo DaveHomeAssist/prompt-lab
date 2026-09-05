@@ -306,4 +306,28 @@ describe('LibraryWorkspace layout preference', () => {
     expect(within(tile).getByLabelText('Select Favorite prompt')).toBeInTheDocument();
     expect(within(tile).getByLabelText('Inspect Favorite prompt')).toBeInTheDocument();
   });
+  it('sorts newly loaded starter prompts before newer-authored older imports', () => {
+    const starter = { ...entries[1], id: 'starter', title: 'Loaded starter', createdAt: '2020-01-01T00:00:00Z', updatedAt: '2020-01-01T00:00:00Z', metadata: { packLoadedAt: '2026-09-05T00:00:00Z' } };
+    renderLibrary({ lib: makeLib({ library: [entries[0], starter] }) });
+    expect(within(screen.getByRole('list', { name: 'Saved prompts' })).getAllByRole('listitem')[0]).toHaveTextContent('Loaded starter');
+  });
+
+  it('returns to All prompts when the active collection disappears', () => {
+    const lib = makeLib({ activeCollection: 'Ops' });
+    const { rerender, callbacks } = renderLibrary({ lib });
+    fireEvent.click(screen.getByRole('button', { name: /^Ops/ }));
+    rerender(<LibraryWorkspace lib={{ ...lib, collections: [], activeCollection: null, library: entries.map(entry => ({ ...entry, collection: '' })) }} {...callbacks} />);
+    expect(screen.getByRole('list', { name: 'Saved prompts' })).toHaveTextContent('Favorite prompt');
+    expect(screen.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('clears the removed tag when leaving an invalid tag view', () => {
+    const lib = makeLib({ activeTag: 'template' });
+    const { rerender, callbacks } = renderLibrary({ lib });
+    fireEvent.click(screen.getByRole('button', { name: '#template', exact: true }));
+    rerender(<LibraryWorkspace lib={{ ...lib, allLibTags: [], library: entries.map(entry => ({ ...entry, tags: [] })) }} {...callbacks} />);
+    expect(lib.setActiveTag).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
+  });
+
 });

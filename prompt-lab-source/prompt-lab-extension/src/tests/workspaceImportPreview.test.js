@@ -108,4 +108,10 @@ describe('workspace import preview', () => {
     expect(result.error).toContain('Packs must be a registry object');
   });
 
+  it('accepts the empty registry shape emitted by older schema-2 workspace exports', () => {
+    const result = preview({ product: 'Prompt Lab', schemaVersion: 2, library: [], collections: [], packs: [] });
+    expect(result.error).toBe('');
+    expect(result.source).not.toHaveProperty('packs');
+  });
+
 });

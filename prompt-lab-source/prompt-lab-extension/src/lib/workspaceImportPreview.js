@@ -24,7 +24,14 @@ export function normalizeWorkspaceImportSource(parsed) {
     original: entry.original || entry.prompt || entry.content || entry.enhanced,
     enhanced: entry.enhanced || entry.prompt || entry.content || entry.original,
   })));
-  return { ...(Array.isArray(parsed) ? {} : parsed), library };
+  // Older schema-2 exports represented an absent pack registry as an empty array.
+  const legacyEmptyPacks = parsed.product === 'Prompt Lab' && parsed.schemaVersion === 2
+    && Array.isArray(parsed.packs) && parsed.packs.length === 0;
+  const source = { ...(Array.isArray(parsed) ? {} : parsed), library };
+  // This legacy value meant no registry was exported, not a request to clear
+  // authored destination packs (including packs with no prompt members).
+  if (legacyEmptyPacks) delete source.packs;
+  return source;
 }
 
 export function workspaceImportRevision(context) {
