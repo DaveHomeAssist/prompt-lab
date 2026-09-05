@@ -26,7 +26,7 @@
     "preflight": "npm run check:node && node scripts/preflight.mjs",
     "preflight:quick": "npm run check:node && node scripts/preflight.mjs --quick",
     "dashboard:update": "npm run check:node && node scripts/notionDashboardUpdate.mjs",
-    "test:tooling": "npm run check:node && node --test tests/runtime-contract.test.mjs tests/audit-workspaces.test.mjs",
+    "test:tooling": "npm run check:node && node --test tests/runtime-contract.test.mjs tests/audit-workspaces.test.mjs scripts/desktop-fixture-server.test.mjs",
     "audit:all": "npm run check:node && node scripts/audit-workspaces.mjs"
   },
   "devDependencies": {

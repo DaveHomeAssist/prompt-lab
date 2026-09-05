@@ -26,6 +26,7 @@ Updated: 2026-09-05
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
 | `docs/LIBRARY_COMPATIBILITY_CONTRACT.md` | Library shell and transfer contract | Active | Canonical search/sort, local storage, explicit export/import synchronization, field compatibility, and runtime proof boundaries. |
+| `docs/DESKTOP_ACCEPTANCE_CHECKLIST.md` | Desktop operator acceptance | Active | Candidate/artifact provenance, local fixture, native lifecycle checks, rollback, and explicit unresolved platform gates. |
 | `docs/release-versioning.md` | Release versioning contract | Canonical | Defines the next release, version source of truth, required bump/check tooling, release tag guard, and development build identity. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the manual-only, dry-run-first workflow and the credentials required for an explicit live sync. |
 | `IPAD_NATIVE_APP_PLAN.md` | Native implementation and release plan | Active | Tracks implemented M0-M3 scope and the blocked M4 distribution inputs. |
