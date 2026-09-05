@@ -25,9 +25,12 @@ let fixture;
 const events = [];
 
 async function command(method, route, body) {
+  evidence.lastCommand = `${method} ${route}`;
   const response = await fetch(`http://127.0.0.1:4444${route}`, {
     method, headers: { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30_000),
+    // Cold WebView2 startup can exceed an ordinary command's deadline. Allow
+    // the native driver to return its session-creation diagnostic first.
+    body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(method === 'POST' && route === '/session' ? 120_000 : 30_000),
   });
   const result = await response.json();
   if (!response.ok || result.value?.error) throw new Error(`${route}: ${result.value?.error || response.status} ${result.value?.message || ''}`);
@@ -144,6 +147,7 @@ try {
 } catch (error) {
   evidence.status = 'failed';
   evidence.error = error.message;
+  evidence.failedCommand = evidence.lastCommand;
   if (session) await screenshot('failure').catch(() => {});
   process.exitCode = 1;
 } finally {
