@@ -84,11 +84,12 @@ async function startFixture(mode) {
 }
 async function checkPersisted() {
   const library = await readLibrary();
-  assert.equal(library.length, 1);
-  assert.match(library[0].enhanced, /Fixture enhanced prompt/);
+  const saved = library.filter(row => row.original === 'Summarize this synthetic native acceptance note.');
+  assert.equal(saved.length, 1, 'Exactly one acceptance prompt persists alongside bundled starters');
+  assert.match(saved[0].enhanced, /Fixture enhanced prompt/);
   const notes = await execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null");');
   assert.ok(notes?.pads.some(pad => pad.content.includes('Survives native restart')));
-  return library[0];
+  return saved[0];
 }
 
 try {
@@ -100,7 +101,9 @@ try {
     await checkPersisted();
     evidence.checks.push('Library and Scratch survived OS uninstall and reinstall');
   } else {
-    assert.equal((await readLibrary()).length, 0, 'Disposable runner must start without saved prompts');
+    const baseline = await readLibrary();
+    assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
+    evidence.baselinePromptCount = baseline.length;
     await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); return true;');
     await command('POST', `/session/${session}/refresh`, {});
     await startFixture('success');
@@ -108,8 +111,9 @@ try {
     await click('[data-testid="refine-action"]');
     await waitFor(() => execute('return document.body.innerText.includes("Fixture enhanced prompt");'), 'fixture enhancement');
     await click('[data-testid="save-to-library"]');
-    const saved = await waitFor(async () => { const rows = await readLibrary(); return rows.length === 1 && rows[0]; }, 'acknowledged Library save');
+    const saved = await waitFor(async () => { const rows = await readLibrary(); return rows.length === baseline.length + 1 && rows.find(row => row.original === 'Summarize this synthetic native acceptance note.'); }, 'acknowledged Library save');
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
+    evidence.savedPromptId = saved.id;
     evidence.checks.push('Enhance reached only the loopback fixture and saved through the native UI');
     await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Scratch")]', 'xpath');
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
