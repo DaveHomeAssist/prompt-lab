@@ -54,8 +54,9 @@ export function mergeLibraryEntries(existingLibrary, incomingLibrary, options = 
       return;
     }
     if (decision?.action === 'replace') {
-      const target = normalizedExisting.find(row => row.id === decision.existingId)
-        || imported.find(row => row.id === decision.existingId);
+      const targetId = decision.targetSource === 'incoming' ? promptIdMap.get(decision.existingId) : decision.existingId;
+      const target = normalizedExisting.find(row => row.id === targetId)
+        || imported.find(row => row.id === targetId);
       if (!target) throw new Error('The selected replacement target is no longer available.');
       if (replacedIds.has(target.id)) throw new Error('Choose only one incoming replacement for each existing prompt.');
       const updated = updatePromptEntry(target, { ...entry, tombstoneVersion: target.tombstoneVersion, deletedAt: target.deletedAt }, { source: 'workspace_import' });

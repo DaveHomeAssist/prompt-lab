@@ -89,4 +89,23 @@ describe('workspace import preview', () => {
     expect(result.plan.library[0].tombstoneVersion).toBe(4);
   });
 
+  it('replaces a kept incoming collision without overwriting the existing same-ID prompt', () => {
+    const result = preview([prompt('old', 'Incoming title', 'Kept incoming'), prompt('later', 'Incoming title', 'Final incoming')], {
+      old: { action: 'keep' }, later: { action: 'replace', existingId: 'old', targetSource: 'incoming' },
+    });
+    expect(result.error).toBe('');
+    expect(result.plan.library.find(row => row.id === 'old').enhanced).toBe('Original body');
+    const kept = result.plan.library.find(row => row.id !== 'old');
+    expect(kept.enhanced).toBe('Final incoming');
+    expect(kept.versions.some(row => row.enhanced === 'Kept incoming')).toBe(true);
+    expect(result.plan.promptIdMap.get('old')).toBe(kept.id);
+    expect(result.plan.promptIdMap.get('later')).toBe(kept.id);
+  });
+
+  it.each(['bad registry', [], 42, true])('rejects malformed pack registries before Apply: %j', packs => {
+    const result = preview({ library: [], packs });
+    expect(result.plan).toBeNull();
+    expect(result.error).toContain('Packs must be a registry object');
+  });
+
 });

@@ -52,7 +52,7 @@ export default function WorkspaceImportModal({ m, preview, applying, onChoice, o
                 <label className={`text-xs ${m.textBody}`}>
                   Conflict action for {entry.title}
                   <select aria-label={`Conflict action for ${entry.title}`} disabled={applying} value={choice?.action || ''}
-                    onChange={event => onChoice(entry.id, { action: event.target.value, existingId: choice?.existingId || conflicts[0].id })}
+                    onChange={event => onChoice(entry.id, { action: event.target.value, existingId: choice?.existingId || conflicts[0].id, targetSource: choice?.targetSource || conflicts[0].targetSource })}
                     className={`mt-1 block min-h-11 w-full rounded-lg border px-2 ${m.input} ${m.text}`}>
                     <option value="" disabled>Choose an action</option>
                     <option value="keep">Keep both</option>
@@ -62,10 +62,10 @@ export default function WorkspaceImportModal({ m, preview, applying, onChoice, o
                 </label>
                 {choice?.action === 'replace' && <label className={`text-xs ${m.textBody}`}>
                   Replace target
-                  <select aria-label={`Replace target for ${entry.title}`} disabled={applying} value={choice.existingId}
-                    onChange={event => onChoice(entry.id, { action: 'replace', existingId: event.target.value })}
+                  <select aria-label={`Replace target for ${entry.title}`} disabled={applying} value={JSON.stringify([choice.targetSource || 'existing', choice.existingId])}
+                    onChange={event => { const [targetSource, existingId] = JSON.parse(event.target.value); onChoice(entry.id, { action: 'replace', existingId, targetSource }); }}
                     className={`mt-1 block min-h-11 w-full rounded-lg border px-2 ${m.input} ${m.text}`}>
-                    {conflicts.map(target => <option key={target.id} value={target.id}>{target.title} ({target.id})</option>)}
+                    {conflicts.map(target => <option key={JSON.stringify([target.targetSource, target.id])} value={JSON.stringify([target.targetSource, target.id])}>{target.title} ({target.targetSource === 'incoming' ? 'Incoming' : 'Existing'}: {target.id})</option>)}
                   </select>
                 </label>}
               </>}
