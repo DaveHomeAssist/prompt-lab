@@ -154,3 +154,15 @@ it('shows malformed JSON errors without writing', async () => {
   expect(tab.result.current.pendingImport).toBe(false);
   expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
 });
+
+it('preserves authored destination packs when an older export omitted its registry as an empty array', async () => {
+  const registry = { 'authored-empty': { id: 'authored-empty', title: 'Empty authored pack', version: '1.0.0', source: 'authored' } };
+  localStorage.setItem('pl2-packs', JSON.stringify(registry));
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, { product: 'Prompt Lab', schemaVersion: 2, library: [prompt('source')], packs: [] });
+  expect(tab.result.current.importPreview.error).toBe('');
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview).toBeNull();
+  expect(JSON.parse(localStorage.getItem('pl2-packs'))).toEqual(registry);
+});

@@ -259,8 +259,11 @@ export default function LibraryWorkspace({
 
   useEffect(() => setSearchDraft(lib.search || ''), [lib.search]);
   useEffect(() => {
-    if ((smartView === 'collection' && (!lib.activeCollection || !lib.collections.includes(lib.activeCollection)))
-      || (smartView === 'tag' && (!lib.activeTag || !lib.allLibTags.includes(lib.activeTag)))) {
+    const invalidCollection = smartView === 'collection' && (!lib.activeCollection || !lib.collections.includes(lib.activeCollection));
+    const invalidTag = smartView === 'tag' && (!lib.activeTag || !lib.allLibTags.includes(lib.activeTag));
+    if (invalidCollection || invalidTag) {
+      if (invalidCollection) lib.setActiveCollection(null);
+      if (invalidTag) lib.setActiveTag(null);
       setSmartView('all');
       setCheckedIds([]);
     }

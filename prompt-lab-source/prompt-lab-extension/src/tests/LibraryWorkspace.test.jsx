@@ -321,4 +321,13 @@ describe('LibraryWorkspace layout preference', () => {
     expect(screen.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('clears the removed tag when leaving an invalid tag view', () => {
+    const lib = makeLib({ activeTag: 'template' });
+    const { rerender, callbacks } = renderLibrary({ lib });
+    fireEvent.click(screen.getByRole('button', { name: '#template', exact: true }));
+    rerender(<LibraryWorkspace lib={{ ...lib, allLibTags: [], library: entries.map(entry => ({ ...entry, tags: [] })) }} {...callbacks} />);
+    expect(lib.setActiveTag).toHaveBeenLastCalledWith(null);
+    expect(screen.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
+  });
+
 });
