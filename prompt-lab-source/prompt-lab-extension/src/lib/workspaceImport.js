@@ -26,12 +26,15 @@ function versions(entry) {
 // Pure preparation: all generated IDs and association decisions are retained
 // in this plan so a failed write can retry without duplicating records.
 export function prepareWorkspaceImport(parsed, {
-  library = [], trash = [], runs = [], testCases = [], generation = '0', deletedIds = new Set(),
+  library = [], trash = [], runs = [], testCases = [], generation = '0', deletedIds = new Set(), resolutions = {},
 } = {}) {
   const payload = Array.isArray(parsed) ? parsed : parsed?.library || parsed?.prompts || parsed?.presets || parsed?.entries || [];
   if (!Array.isArray(payload)) throw new Error('The prompt list must be an array.');
   for (const key of ['runs', 'testCases', 'trash', 'collections']) {
     if (parsed?.[key] != null && !Array.isArray(parsed[key])) throw new Error(`${key} must be an array.`);
+  }
+  if (parsed?.packs != null && (typeof parsed.packs !== 'object' || Array.isArray(parsed.packs))) {
+    throw new Error('Packs must be a registry object.');
   }
   if (parsed?.scratch != null && (!Array.isArray(parsed.scratch.pads)
     || !parsed.scratch.pads.length || parsed.scratch.pads.some((pad) => !pad || typeof pad.content !== 'string'))) {
@@ -51,7 +54,7 @@ export function prepareWorkspaceImport(parsed, {
     ...entry, metadata: { ...entry.metadata, libraryGeneration: generation },
   })));
   const result = mergeLibraryEntries(library, incoming, {
-    prepend: true, blockedIds: new Set([...deletedIds, ...trash.map((entry) => entry.id)]),
+    prepend: true, resolutions, blockedIds: new Set([...deletedIds, ...trash.map((entry) => entry.id)]),
   });
   const usedIds = new Set([...deletedIds, ...result.library.map((entry) => entry.id)]);
   const mappedTrash = incomingTrash.map((entry) => {
@@ -63,10 +66,11 @@ export function prepareWorkspaceImport(parsed, {
   const survivors = new Map([...trash, ...result.library, ...mappedTrash].map((entry) => [entry.id, entry]));
   const sources = new Map([...incoming, ...incomingTrash].map((entry) => [entry.id, entry]));
   const warnings = [];
-  const resolvePrompt = (id) => result.promptIdMap.get(id) || (survivors.has(id) ? id : null);
+  const resolvePrompt = (id) => result.excludedIds.has(id) ? null : result.promptIdMap.get(id) || (survivors.has(id) ? id : null);
   const caseIdMap = new Map();
   const runIdMap = new Map();
-  const mappedCases = (parsed?.testCases || []).map((record) => {
+  const excludedCaseIds = new Set((parsed?.testCases || []).filter(record => result.excludedIds.has(record.promptId)).map(record => record.id).filter(Boolean));
+  const mappedCases = (parsed?.testCases || []).filter(record => !result.excludedIds.has(record.promptId)).map((record) => {
     const sourceId = reference(record.promptId, 'Test case promptId');
     const promptId = resolvePrompt(sourceId);
     if (!promptId) throw new Error(`Test case ${record.id || '(new)'} references unavailable prompt ${sourceId || '(none)'}.`);
@@ -81,7 +85,7 @@ export function prepareWorkspaceImport(parsed, {
     if (record.id) caseIdMap.set(record.id, normalized.id);
     return normalized;
   });
-  const mappedRuns = (parsed?.runs || []).map((record) => {
+  const mappedRuns = (parsed?.runs || []).filter(record => !result.excludedIds.has(record.promptId) && !excludedCaseIds.has(record.testCaseId)).map((record) => {
     const sourceId = reference(record.promptId, 'Run promptId');
     const promptId = resolvePrompt(sourceId);
     const sourceVersionId = reference(record.promptVersionId, 'Run promptVersionId');
@@ -163,7 +167,7 @@ export function prepareWorkspaceImport(parsed, {
   };
   return {
     ...result,
-    library: result.library.map((entry) => existingIds.has(entry.id) ? entry : mapPromptReferences(entry)),
+    library: result.library.map((entry) => existingIds.has(entry.id) && !result.replacedIds.has(entry.id) ? entry : mapPromptReferences(entry)),
     trash: mappedTrash.map(mapPromptReferences),
     runs: mappedRuns, testCases: mappedCases, warnings, generation, scratch,
   };

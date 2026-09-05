@@ -255,6 +255,8 @@ describe('workspace export and import contract', () => {
     act(() => {
       importedHook.result.current.importLib({ target: input });
     });
+    await waitFor(() => expect(importedHook.result.current.importPreview?.plan).toBeTruthy());
+    await act(async () => importedHook.result.current.confirmImport());
 
     await waitFor(() => {
       expect(importedHook.result.current.library).toHaveLength(1);
@@ -286,7 +288,7 @@ describe('workspace export and import contract', () => {
     expect(JSON.parse(localStorage.getItem(storageKeys.packs))).toEqual(packRegistry);
     expect(JSON.parse(localStorage.getItem('pl2-pads'))).toEqual(scratchWorkspace);
     expect(input.value).toBe('');
-    expect(importNotify).toHaveBeenCalledWith('Imported 1 prompts and workspace data.');
+    expect(importNotify).toHaveBeenCalledWith('Imported 1 prompts and workspace data; replaced 0, skipped 0.');
   });
 
   it('accepts a workspace backup containing only packs, Scratch notes, and runs', async () => {
@@ -311,6 +313,8 @@ describe('workspace export and import contract', () => {
     act(() => {
       result.current.importLib({ target: input });
     });
+    await waitFor(() => expect(result.current.importPreview?.plan).toBeTruthy());
+    await act(async () => result.current.confirmImport());
 
     await waitFor(() => {
       expect(experimentMocks.saveEvalRun).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-1' }));
@@ -366,6 +370,8 @@ describe('workspace export and import contract', () => {
     act(() => {
       result.current.importLib({ target: input });
     });
+    await waitFor(() => expect(result.current.importPreview?.plan).toBeTruthy());
+    await act(async () => result.current.confirmImport());
 
     await waitFor(() => {
       expect(experimentMocks.saveTestCase).toHaveBeenCalledWith(
@@ -376,7 +382,7 @@ describe('workspace export and import contract', () => {
 
     expect(result.current.library).toHaveLength(1);
     expect(result.current.library[0].id).toBe('prompt-local');
-    expect(notify).toHaveBeenCalledWith('Imported workspace data. No new prompts; skipped 1 duplicates.');
+    expect(notify).toHaveBeenCalledWith('Imported 0 prompts and workspace data; replaced 0, skipped 1.');
   });
 
   it('adopts newer cross-tab mutations for every extended prompt field', async () => {

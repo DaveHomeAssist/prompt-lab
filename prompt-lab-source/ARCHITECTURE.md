@@ -259,3 +259,22 @@ The native `WorkbenchStore` captures input, prompt ID/title, and mode before tas
 suspension. Each attempt accumulates its own partial stream. Navigation and edits
 cancel and invalidate ownership; late cancellation/error history retains the old
 source, while only the current owner can update the editor or clear its task handle.
+
+## Workspace import preview and acknowledged stages
+
+Raw Library import normalizes its source once and prepares a read-only preview.
+Exact full-body duplicates default to Skip; title/ID conflicts require an explicit
+Keep both, Replace existing, or Skip incoming choice. Matching uses the canonical
+Library normalization. Replace retains the target ID, creation date, restore
+counter, and previous versions; incoming history is mapped to matching snapshots.
+Skip on a different-body conflict excludes that source's incoming test cases and
+runs. Exact-body Skip instead maps associated history to the surviving prompt.
+
+Apply rereads the Library, deletion markers/generation, related records, and
+workspace extras. A changed revision rebuilds the preview and requires renewed
+confirmation. Cancel before writes has no import side effects. Successful storage
+stages and individual history writes are acknowledged separately; retries retain
+prepared IDs and skip completed stages. Closing a partially applied import retains
+its pending operation in the tab and does not imply rollback. Scratch and pack
+registry replacement are disclosed explicitly before Apply. Preview rows paginate
+so large files do not mount an unbounded list of conflict controls.

@@ -29,7 +29,7 @@ import {
   mergeLibraryEntries,
 } from '../lib/libraryMatching.js';
 import { filterDeletedLibraryRecords, isLibraryDeletionKey, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState, stampLibraryGeneration } from '../lib/libraryDeletion.js';
-import { prepareWorkspaceImport } from '../lib/workspaceImport.js';
+import { buildWorkspaceImportPreview, normalizeWorkspaceImportSource, workspaceImportRevision } from '../lib/workspaceImportPreview.js';
 import { stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 
@@ -156,6 +156,12 @@ export default function usePromptLibrary(notify) {
   const [recoveringLegacyLibrary, setRecoveringLegacyLibrary] = useState(false);
   const [pendingImport, setPendingImport] = useState(null);
   const importBusyRef = useRef(false);
+  const importReadRef = useRef(0);
+  useEffect(() => () => { importReadRef.current += 1; }, []);
+  const pendingImportRef = useRef(null);
+  const [importPreview, setImportPreview] = useState(null);
+  const importPreviewRef = useRef(null);
+  const [importApplying, setImportApplying] = useState(false);
   const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
   const libraryRef = useRef(library);
   const trashRef = useRef(trash);
@@ -914,94 +920,172 @@ export default function usePromptLibrary(notify) {
     return exportPayload;
   };
 
-  const applyImport = async (plan) => {
-    if (!plan || importBusyRef.current) return;
+  const showImportPreview = (preview) => {
+    importPreviewRef.current = preview;
+    setImportPreview(preview);
+  };
+
+  const readImportContext = async () => {
+    const [runs, testCases] = await Promise.all([listEvalRuns({ limit: null }), listTestCases({ limit: null })]);
+    const read = (key, fallback) => {
+      const value = localStorage.getItem(key);
+      return value == null ? fallback : JSON.parse(value);
+    };
+    const known = new Map([...(importPreviewRef.current?.context?.library || []),
+      ...(importPreviewRef.current?.context?.trash || []), ...libraryRef.current, ...trashRef.current].map(entry => [entry.id, entry]));
+    const stableLegacyRows = rows => rows.map(entry => ({
+      ...entry,
+      createdAt: entry.createdAt || known.get(entry.id)?.createdAt,
+      currentVersionId: entry.currentVersionId || known.get(entry.id)?.currentVersionId,
+    }));
+    const reconciled = reconcileLibraryRecords(libraryRef.current, trashRef.current,
+      stableLegacyRows(read(storageKeys.library, [])), stableLegacyRows(read(storageKeys.trash, [])));
+    return {
+      library: filterDeletedLibraryRecords(reconciled.library),
+      trash: filterDeletedLibraryRecords(reconciled.trash), runs, testCases,
+      collections: read(storageKeys.collections, collectionsRef.current),
+      packs: read(storageKeys.packs, []), scratch: read('pl2-pads', null),
+      ...readLibraryDeletionState(),
+    };
+  };
+
+  const chooseImportResolution = (id, choice) => {
+    const preview = importPreviewRef.current;
+    if (!preview?.source || pendingImportRef.current || importBusyRef.current) return;
+    showImportPreview({
+      ...buildWorkspaceImportPreview(preview.source, preview.context, { ...preview.resolutions, [id]: choice }),
+      fileName: preview.fileName,
+    });
+  };
+
+  const cancelImportPreview = () => {
+    if (importBusyRef.current) return;
+    importReadRef.current += 1;
+    showImportPreview(null);
+    if (pendingImportRef.current?.completed.size === 0) {
+      pendingImportRef.current = null;
+      setPendingImport(null);
+    }
+    // After partial writes, closing the dialog keeps the operation available
+    // for retry; it does not pretend to roll back acknowledged records.
+  };
+
+  const applyImport = async (retainedPlan = null) => {
+    if (importBusyRef.current) return;
+    const preview = importPreviewRef.current;
+    if (!retainedPlan && (!preview?.plan || preview.unresolved || preview.error)) return;
     importBusyRef.current = true;
-    setPendingImport(plan);
+    setImportApplying(true);
+    let plan = retainedPlan;
     try {
-      if (readLibraryDeletionState().generation !== plan.generation) {
-        throw new Error('Library was cleared after import preparation. Select the file again to prepare a new import.');
+      const context = await readImportContext();
+      if (plan && !plan.completed.size && workspaceImportRevision(context) !== plan.revision) {
+        pendingImportRef.current = null;
+        setPendingImport(null);
+        showImportPreview({ ...buildWorkspaceImportPreview(plan.parsed, context), fileName: plan.fileName,
+          notice: 'The workspace changed before any import write succeeded. Review the refreshed choices and apply again.' });
+        return;
       }
-      const presentIds = new Set(libraryRef.current.map((entry) => entry.id));
-      const reconciled = reconcileLibraryRecords(
-        [...plan.newEntries.filter((entry) => !presentIds.has(entry.id)), ...libraryRef.current],
-        trashRef.current, [], plan.trash,
-      );
-      const nextCollections = mergeCollections(
-        mergeCollections(collectionsRef.current, plan.parsed.collections || []),
-        deriveCollectionsFromLibrary(reconciled.library),
-      );
-      if (!persistRecords(storageKeys.library, reconciled.library)
-        || !persistRecords(storageKeys.trash, reconciled.trash)
-        || !saveJson(storageKeys.collections, nextCollections)) throw new Error('Library storage write failed.');
-      setLibrary(reconciled.library);
-      trashRef.current = reconciled.trash;
-      setTrash(reconciled.trash);
-      collectionsRef.current = nextCollections;
-      setCollections(nextCollections);
-      if (plan.scratch && typeof plan.scratch === 'object') {
-        localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch));
+      if (!plan) {
+        if (workspaceImportRevision(context) !== preview.revision) {
+          showImportPreview({ ...buildWorkspaceImportPreview(preview.source, context), fileName: preview.fileName,
+            notice: 'The workspace changed after preview. Review the refreshed choices and apply again.' });
+          return;
+        }
+        plan = { ...preview.plan, parsed: preview.source, fileName: preview.fileName, revision: preview.revision, completed: new Set() };
       }
-      if (plan.parsed.packs && typeof plan.parsed.packs === 'object'
-        && !saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
-      for (const [records, save] of [[plan.testCases, saveTestCase], [plan.runs, saveEvalRun]]) {
-        const writes = await Promise.allSettled(records.map((record) => save(record)));
-        const failed = writes.find((write) => write.status === 'rejected');
+      if (context.generation !== plan.generation || [...plan.promptIdMap.values()].some(id => context.deletedIds.has(id))) {
+        throw new Error('The import destination was deleted or cleared. No remaining stages were applied.');
+      }
+      pendingImportRef.current = plan;
+      setPendingImport(plan);
+      const reportProgress = (error = '') => showImportPreview({
+        ...(importPreviewRef.current || preview), fileName: plan.fileName, error,
+        completedStages: [...plan.completed], partial: true,
+      });
+      const stage = async (name, write) => {
+        if (plan.completed.has(name)) return;
+        await write();
+        plan.completed.add(name);
+        reportProgress();
+      };
+      await stage('Library', () => {
+        if (!persistRecords(storageKeys.library, plan.library)) throw new Error('Library storage write failed.');
+        setLibrary(plan.library);
+      });
+      await stage('Trash', () => {
+        const next = reconcileLibraryRecords([], context.trash, [], plan.trash).trash;
+        if (!persistRecords(storageKeys.trash, next)) throw new Error('Trash storage write failed.');
+        trashRef.current = next;
+        setTrash(next);
+      });
+      await stage('Collections', () => {
+        const next = mergeCollections(mergeCollections(context.collections, plan.parsed.collections || []), deriveCollectionsFromLibrary(plan.library));
+        if (!saveJson(storageKeys.collections, next)) throw new Error('Collection storage write failed.');
+        collectionsRef.current = next;
+        setCollections(next);
+      });
+      if (plan.scratch) await stage('Scratch', () => localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch)));
+      if (plan.parsed.packs) await stage('Packs', () => {
+        if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
+      });
+      for (const [label, records, save] of [['Test case', plan.testCases, saveTestCase], ['Run', plan.runs, saveEvalRun]]) {
+        const writes = await Promise.allSettled(records.map(record => stage(`${label} ${record.id}`, () => save(record))));
+        const failed = writes.find(write => write.status === 'rejected');
         if (failed) throw failed.reason;
       }
+      pendingImportRef.current = null;
       setPendingImport(null);
-      const summary = plan.importedCount === 0
-        ? `Imported workspace data. No new prompts; skipped ${plan.skippedCount} duplicates.`
-        : plan.skippedCount > 0
-          ? `Imported ${plan.importedCount} prompts and workspace data; skipped ${plan.skippedCount} duplicates.`
-          : `Imported ${plan.importedCount} prompts and workspace data.`;
+      showImportPreview(null);
+      const summary = `Imported ${plan.importedCount} prompts and workspace data; replaced ${plan.replacedCount || 0}, skipped ${plan.skippedCount}.`;
       notify(plan.warnings.length ? `${summary} ${plan.warnings.length} unresolved source references are retained in run notes or import metadata.` : summary);
     } catch (error) {
-      notify(`Import incomplete: ${error.message || 'storage write failed'}. The file is retained in this tab; use Retry import in Settings.`);
+      const message = error.message || 'Storage write failed.';
+      showImportPreview({ ...(importPreviewRef.current || preview), error: message,
+        partial: Boolean(plan), completedStages: [...(plan?.completed || [])] });
+      notify(`Import incomplete: ${message}. The file and completed stages are retained in this tab; retry the remaining stages.`);
     } finally {
       importBusyRef.current = false;
+      setImportApplying(false);
     }
   };
+
+  const retryImport = () => applyImport(pendingImportRef.current);
 
   const importLib = (event) => {
     const file = event.target.files?.[0];
     if (!file || importBusyRef.current) return;
+    if (pendingImportRef.current) {
+      notify('Finish the pending import with Retry import before choosing another file.');
+      event.target.value = '';
+      return;
+    }
+    const readId = ++importReadRef.current;
+    const fail = message => {
+      if (readId !== importReadRef.current) return;
+      showImportPreview({ fileName: file.name || 'Selected JSON', error: message, rows: [], unresolved: 0 });
+      notify(`Import failed: ${message}`);
+    };
     if (file.size > 50 * 1024 * 1024) {
-      notify('Import failed: file is too large.');
+      fail('File is too large.');
       event.target.value = '';
       return;
     }
     const reader = new FileReader();
     reader.onload = async (readEvent) => {
       try {
-        const raw = readEvent.target.result;
-        if (pendingImport?.raw === raw && pendingImport.generation === readLibraryDeletionState().generation) {
-          await applyImport(pendingImport);
-          return;
-        }
-        const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== 'object') throw new Error('Expected a workspace object or prompt array.');
+        const parsed = JSON.parse(readEvent.target.result);
         const retained = Array.isArray(parsed) ? parsed : {
-          ...parsed, trash: Array.isArray(parsed.trash) ? parsed.trash.filter((entry) => isTrashEntryRestorable(entry)) : parsed.trash,
+          ...parsed, trash: Array.isArray(parsed?.trash) ? parsed.trash.filter(entry => isTrashEntryRestorable(entry)) : parsed?.trash,
         };
-        const [runs, testCases] = await Promise.all([listEvalRuns({ limit: null }), listTestCases({ limit: null })]);
-        const plan = prepareWorkspaceImport(retained, {
-          library: libraryRef.current, trash: trashRef.current, runs, testCases, ...readLibraryDeletionState(),
-        });
-        const hasExtras = !Array.isArray(parsed) && ['trash', 'collections', 'packs', 'scratch', 'runs', 'testCases'].some((key) => parsed[key] != null);
-        if (!plan.importedCount && !plan.skippedCount && !hasExtras) throw new Error('No valid prompts found.');
-        const existingIds = new Set(libraryRef.current.map((entry) => entry.id));
-        await applyImport({ ...plan, raw, parsed: retained, newEntries: plan.library.filter((entry) => !existingIds.has(entry.id)) });
-      } catch (error) {
-        notify(`Import failed: ${error.message || 'invalid file'}`);
-      } finally {
-        event.target.value = '';
-      }
+        const source = normalizeWorkspaceImportSource(retained);
+        const context = await readImportContext();
+        if (readId !== importReadRef.current) return;
+        showImportPreview({ ...buildWorkspaceImportPreview(source, context), fileName: file.name || 'Selected JSON' });
+      } catch (error) { fail(error.message || 'Invalid file.'); }
+      finally { event.target.value = ''; }
     };
-    reader.onerror = () => {
-      notify('Import failed while reading the file.');
-      event.target.value = '';
-    };
+    reader.onerror = () => { fail('Unable to read the file.'); event.target.value = ''; };
     reader.readAsText(file);
   };
 
@@ -1131,7 +1215,8 @@ export default function usePromptLibrary(notify) {
     doSave, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
     bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
-    exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport: () => applyImport(pendingImport), getShareUrl,
+    exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport, getShareUrl,
+    importPreview, importApplying, chooseImportResolution, cancelImportPreview, confirmImport: () => applyImport(),
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject, recentPrompts, trackRecentAccess,

@@ -37,6 +37,8 @@ it('retains a partial import and retries stable associations once, including aft
   });
   const input = { files: [{ contents, size: contents.length }], value: 'fixture.json' };
   act(() => tab.result.current.importLib({ target: input }));
+  await waitFor(() => expect(tab.result.current.importPreview?.plan).toBeTruthy());
+  await act(async () => tab.result.current.confirmImport());
   await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining('Import incomplete:')));
   expect(tab.result.current.pendingImport).toBe(true);
   expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Imported/));
@@ -65,7 +67,90 @@ it('imports an explicit backup into the new generation after Clear Library', asy
   const contents = JSON.stringify([prompt('restored')]);
   const input = { files: [{ contents, size: contents.length }], value: 'backup.json' };
   act(() => tab.result.current.importLib({ target: input }));
+  await waitFor(() => expect(tab.result.current.importPreview?.plan).toBeTruthy());
+  await act(async () => tab.result.current.confirmImport());
   await waitFor(() => expect(input.value).toBe(''));
   expect(tab.result.current.library.map((entry) => entry.id)).toEqual(['restored']);
   expect(JSON.parse(localStorage.getItem('pl2-library'))[0].metadata.libraryGeneration).not.toBe('0');
+});
+
+async function openPreview(tab, payload) {
+  const contents = JSON.stringify(payload);
+  const input = { files: [{ contents, size: contents.length, name: 'fixture.json' }], value: 'fixture.json' };
+  act(() => tab.result.current.importLib({ target: input }));
+  await waitFor(() => expect(tab.result.current.importPreview).toBeTruthy());
+}
+
+it('preview and Cancel perform no import writes, including workspace extras', async () => {
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 180)));
+  const writes = vi.spyOn(Storage.prototype, 'setItem');
+  await openPreview(tab, { library: [{ ...prompt('new'), enhanced: 'Different body' }], scratch: { pads: [{ id: 'note', content: 'New note' }] }, runs: [{ promptId: 'new', output: 'Result' }] });
+  expect(writes).not.toHaveBeenCalled();
+  act(() => tab.result.current.cancelImportPreview());
+  expect(writes).not.toHaveBeenCalled();
+  expect(tab.result.current.importPreview).toBeNull();
+  expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
+  expect(await listEvalRuns()).toHaveLength(0);
+});
+
+it('refreshes stale preview choices without writing and preserves another tab addition on renewed Apply', async () => {
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, [{ ...prompt('new'), enhanced: 'Incoming body' }]);
+  const other = { ...prompt('other'), enhanced: 'Other tab body', createdAt: new Date().toISOString() };
+  localStorage.setItem('pl2-library', JSON.stringify([...tab.result.current.library, other]));
+  const writes = vi.spyOn(Storage.prototype, 'setItem');
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview.notice).toContain('workspace changed');
+  expect(writes).not.toHaveBeenCalled();
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview).toBeNull();
+  expect(tab.result.current.library.map(row => row.id)).toEqual(expect.arrayContaining(['survivor', 'other', 'new']));
+});
+
+it('requires refreshed confirmation when Clear Library changes the destination generation', async () => {
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, [prompt('new')]);
+  act(() => tab.result.current.clearLibrary());
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview.notice).toContain('workspace changed');
+  expect(tab.result.current.library).toHaveLength(0);
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.library.map(row => row.id)).toEqual(['new']);
+});
+
+it('retries only unfinished stages after a run write fails', async () => {
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, { library: [prompt('source')], runs: [{ id: 'pending-run', promptId: 'source', output: 'Result' }], testCases: [{ id: 'saved-case', promptId: 'source', input: 'Example' }] });
+  const original = Storage.prototype.setItem;
+  let fail = true;
+  const writes = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    if (fail && key === 'pl2-eval-run-fallback') throw new Error('quota');
+    return original.call(this, key, value);
+  });
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview.completedStages).toEqual(expect.arrayContaining(['Library', 'Trash', 'Collections', 'Test case saved-case']));
+  await act(async () => new Promise(resolve => setTimeout(resolve, 180)));
+  writes.mockClear();
+  fail = false;
+  await act(async () => tab.result.current.retryImport());
+  expect(writes.mock.calls.map(([key]) => key)).not.toContain('pl2-library');
+  expect(writes.mock.calls.map(([key]) => key)).not.toContain('pl2-test-case-fallback');
+  expect(await listEvalRuns()).toHaveLength(1);
+  expect(await listTestCases()).toHaveLength(1);
+});
+
+it('shows malformed JSON errors without writing', async () => {
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  const input = { files: [{ contents: '{broken', size: 7 }], value: 'bad.json' };
+  act(() => tab.result.current.importLib({ target: input }));
+  await waitFor(() => expect(tab.result.current.importPreview?.error).toBeTruthy());
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.pendingImport).toBe(false);
+  expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
 });

@@ -40,11 +40,12 @@ test('workspace import retries mapped history without duplicate records and surv
       testCases: [{ id: 'import-case', promptId: 'source', input: 'Fixture case' }],
     };
     await page.locator('input[type="file"]').setInputFiles({ name: 'workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(fixture)) });
-    await expect(page.getByRole('button', { name: 'Retry import', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Apply import', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Retry remaining stages', exact: true })).toBeVisible();
     await expect(page.getByText(/Import incomplete:/)).toBeVisible();
     await page.evaluate(() => { window.__failImport = false; });
-    await page.getByRole('button', { name: 'Retry import', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Retry import', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Retry remaining stages', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Retry remaining stages', exact: true })).toHaveCount(0);
     await page.reload();
     const stored = await page.evaluate(() => ({
       library: JSON.parse(localStorage.getItem('pl2-library')),
