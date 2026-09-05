@@ -254,6 +254,88 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testSwitchingPromptsRecordsOriginalAttemptWithoutClobberingNewEditor() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: SlowProviderClient())
+        let original = PromptEntry(title: "Original title", original: "Original input")
+        let next = PromptEntry(title: "Next title", original: "Next input")
+        store.loadPrompt(original)
+        store.selectedMode = .concise
+        store.startEnhance(modelContext: context)
+        try await waitUntil { !store.streamedText.isEmpty }
+
+        store.loadPrompt(next)
+        store.selectedMode = .code
+        store.startEnhance(modelContext: context)
+        try await waitUntil {
+            (try? context.fetchCount(FetchDescriptor<RunRecord>())) == 1 && store.state == .inFlight
+        }
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.first?.promptId, original.id)
+        XCTAssertEqual(runs.first?.promptTitle, "Original title")
+        XCTAssertEqual(runs.first?.input, "Original input")
+        XCTAssertEqual(runs.first?.enhanceMode, "concise")
+        XCTAssertEqual(runs.first?.status, "canceled")
+        XCTAssertEqual(store.currentPromptID, next.id)
+        XCTAssertEqual(store.draft, "Next input")
+        XCTAssertEqual(store.selectedMode, .code)
+        XCTAssertEqual(store.state, .inFlight)
+        // The old task's cleanup must not clear the new task's cancellation handle.
+        store.cancelEnhance()
+        try await waitUntil { store.state == .canceled }
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<RunRecord>()), 2)
+    }
+
+    @MainActor
+    func testNavigationDuringEnhancePreservesNewAndHistoricalEditorState() async throws {
+        for openHistory in [false, true] {
+            let container = try makeInMemoryContainer()
+            let context = ModelContext(container)
+            let store = WorkbenchStore(provider: SlowProviderClient())
+            let original = PromptEntry(title: "Original", original: "Original input")
+            store.loadPrompt(original)
+            store.startEnhance(modelContext: context)
+            try await waitUntil { !store.streamedText.isEmpty }
+            if openHistory {
+                let history = RunRecord(promptId: "history-parent", promptTitle: "Historical",
+                                        enhanceMode: "code", provider: "fixture", model: "fixture",
+                                        input: "Historical input", output: "Historical output", latencyMs: 1)
+                store.loadRun(history)
+            } else {
+                store.startNewPrompt()
+            }
+            try await waitUntil { (try? context.fetchCount(FetchDescriptor<RunRecord>())) == 1 }
+            XCTAssertEqual(store.state, .idle)
+            XCTAssertEqual(store.currentPromptID, openHistory ? "history-parent" : nil)
+            XCTAssertEqual(store.draft, openHistory ? "Historical input" : "")
+            XCTAssertTrue(store.streamedText.isEmpty)
+            let runs = try context.fetch(FetchDescriptor<RunRecord>())
+            XCTAssertEqual(runs.first?.promptId, original.id)
+            XCTAssertEqual(runs.first?.status, "canceled")
+        }
+    }
+
+    @MainActor
+    func testEditingDraftInvalidatesTheStreamAndKeepsOriginalHistory() async throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: SlowProviderClient())
+        store.draft = "Original input"
+        store.startEnhance(modelContext: context)
+        try await waitUntil { !store.streamedText.isEmpty }
+        store.draft = "Edited input"
+        try await waitUntil { (try? context.fetchCount(FetchDescriptor<RunRecord>())) == 1 }
+        XCTAssertEqual(store.state, .idle)
+        XCTAssertEqual(store.draft, "Edited input")
+        XCTAssertTrue(store.streamedText.isEmpty)
+        XCTAssertNil(store.result)
+        let runs = try context.fetch(FetchDescriptor<RunRecord>())
+        XCTAssertEqual(runs.first?.input, "Original input")
+        XCTAssertEqual(runs.first?.status, "canceled")
+    }
+
+    @MainActor
     func testAPIErrorRecordsFailedRunWithReason() async throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)

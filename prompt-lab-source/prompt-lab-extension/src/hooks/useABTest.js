@@ -4,14 +4,15 @@ import { extractTextFromAnthropic, isTransientError } from '../promptUtils.js';
 import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
+import useSensitivePreflight from './useSensitivePreflight.js';
 import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 const EXTRA_LABELS = ['C', 'D', 'E'];
 
 export default function useABTest({ notify }) {
-  const [abA, setAbA] = useState(EMPTY_VARIANT);
-  const [abB, setAbB] = useState(EMPTY_VARIANT);
+  const [abA, updateAbA] = useState(EMPTY_VARIANT);
+  const [abB, updateAbB] = useState(EMPTY_VARIANT);
   const [extraVariants, setExtraVariants] = useState([]);
   // Per-side provider/model selection; null = the settings-default provider.
   const [abProviders, setAbProviders] = useState({ a: null, b: null });
@@ -23,7 +24,8 @@ export default function useABTest({ notify }) {
   const [evalRuns, setEvalRuns] = useState([]);
   const [showRuns, setShowRuns] = useState(false);
   const [activeSide, setActiveSide] = useState('A');
-  const abReqRef = useRef({ a: 0, b: 0 });
+  const attempts = useRef({});
+  const preflight = useSensitivePreflight();
   const experimentIdRef = useRef(null);
 
   const variants = [
@@ -32,12 +34,19 @@ export default function useABTest({ notify }) {
     ...extraVariants,
   ];
 
-  const getVariant = (side) => variants.find((variant) => variant.id === String(side).toLowerCase());
+  const variantsRef = useRef(variants);
+  variantsRef.current = variants;
+  const getVariant = (side) => variantsRef.current.find((variant) => variant.id === String(side).toLowerCase());
 
-  const setVariant = (side, updater) => {
+  const updateVariant = (side, updater) => {
     const id = String(side).toLowerCase();
-    if (id === 'a') return setAbA(updater);
-    if (id === 'b') return setAbB(updater);
+    if (id === 'a' || id === 'b') {
+      const setter = id === 'a' ? updateAbA : updateAbB;
+      return setter(prev => {
+        const { id: ignoredId, label: ignoredLabel, ...next } = typeof updater === 'function' ? updater(prev) : updater;
+        return next;
+      });
+    }
     setExtraVariants((prev) => prev.map((variant) => {
       if (variant.id !== id) return variant;
       const next = typeof updater === 'function' ? updater(variant) : updater;
@@ -45,6 +54,32 @@ export default function useABTest({ notify }) {
     }));
     return undefined;
   };
+
+  const invalidate = (id) => {
+    attempts.current[id]?.controller.abort();
+    delete attempts.current[id];
+    preflight.invalidate(id);
+  };
+  const setVariant = (side, updater) => {
+    const id = String(side).toLowerCase();
+    const prior = getVariant(id);
+    if (!prior) return;
+    const next = { ...(typeof updater === 'function' ? updater(prior) : updater) };
+    if (next.prompt !== prior.prompt) {
+      invalidate(id);
+      Object.assign(next, { response: next.response === prior.response ? '' : next.response, loading: false, error: false });
+      setAbWinner(null);
+    }
+    variantsRef.current = variantsRef.current.map(variant => variant.id === id ? { ...next, id, label: prior.label } : variant);
+    updateVariant(id, next);
+  };
+  const setAbA = updater => setVariant('a', updater);
+  const setAbB = updater => setVariant('b', updater);
+
+  useEffect(() => () => {
+    Object.values(attempts.current).forEach(attempt => attempt.controller.abort());
+    attempts.current = {};
+  }, []);
 
   useEffect(() => {
     const refresh = () => {
@@ -67,13 +102,15 @@ export default function useABTest({ notify }) {
     }
   };
 
-  const callWithRetry = async (payload, retries = 1) => {
+  const callWithRetry = async (payload, signal, retries = 1) => {
     let attempt = 0;
     let lastError = null;
     while (attempt <= retries) {
       try {
-        return await callModel(payload);
+        signal.throwIfAborted();
+        return await callModel(payload, { signal });
       } catch (error) {
+        if (signal.aborted || error.name === 'AbortError' || error.partialText) throw error;
         lastError = error;
         if (attempt >= retries || !isTransientError(error)) break;
         await new Promise(resolve => setTimeout(resolve, 350 * (attempt + 1)));
@@ -86,52 +123,61 @@ export default function useABTest({ notify }) {
   const runAB = async (side) => {
     const id = String(side).toLowerCase();
     const state = getVariant(id);
-    const setter = (updater) => setVariant(id, updater);
-    if (!state) return;
-    if (abReqRef.current[id] == null) abReqRef.current[id] = 0;
-    const reqId = abReqRef.current[id] + 1;
-    abReqRef.current = { ...abReqRef.current, [id]: reqId };
-    if (!state.prompt.trim()) return;
-    const startedAt = nowMs();
-    setter(prev => ({ ...prev, loading: true, response: '', error: false }));
-    const selection = abProviders[id];
-    const source = abSource[id];
-    try {
-      const data = await callWithRetry({
-        model: selection?.model || 'claude-sonnet-4-6',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: state.prompt }],
-        ...(selection?.provider ? { provider: selection.provider } : {}),
-      });
-      if (abReqRef.current[id] !== reqId) return;
-      const responseText = extractTextFromAnthropic(data);
-      setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
-      await saveEvalRun({
-        promptId: source?.entryId || null,
-        promptTitle: source?.title || `A/B Variant ${id.toUpperCase()}`,
-        mode: 'ab',
-        provider: data?.provider || selection?.provider || 'unknown',
-        model: data?.model || selection?.model || 'unknown',
-        variantLabel: `Variant ${id.toUpperCase()}`,
-        input: state.prompt,
-        output: responseText,
-        latencyMs: nowMs() - startedAt,
-      }).catch((error) => {
-        logWarn('save arena run', error);
-        notify('Response complete, but run history was not saved. Retry saving records.');
-      });
-      refreshEvalRuns();
-    } catch (error) {
-      if (abReqRef.current[id] !== reqId) return;
-      setter(prev => ({ ...prev, response: error.message || 'Request failed.', loading: false, error: true }));
-    }
+    if (!state?.prompt.trim() || attempts.current[id]?.running) return;
+    invalidate(id);
+    const attempt = { controller: new AbortController(), running: false };
+    attempts.current[id] = attempt;
+    const selection = abProviders[id] ? { ...abProviders[id] } : null;
+    const source = abSource[id] ? { ...abSource[id] } : null;
+    const payload = {
+      model: selection?.model || 'claude-sonnet-4-6', max_tokens: 800,
+      messages: [{ role: 'user', content: state.prompt }],
+      ...(selection?.provider ? { provider: selection.provider } : {}),
+    };
+    const isCurrent = () => attempts.current[id] === attempt && !attempt.controller.signal.aborted;
+    const execute = async (approvedPayload) => {
+      if (!isCurrent() || attempt.running) return;
+      attempt.running = true;
+      const startedAt = nowMs();
+      const setter = updater => updateVariant(id, updater);
+      setter(prev => ({ ...prev, loading: true, response: '', error: false }));
+      try {
+        const data = await callWithRetry(approvedPayload, attempt.controller.signal);
+        if (!isCurrent()) return;
+        const responseText = extractTextFromAnthropic(data);
+        setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
+        await saveEvalRun({
+          promptId: source?.entryId || null,
+          promptTitle: source?.title || `A/B Variant ${id.toUpperCase()}`,
+          mode: 'ab',
+          provider: data?.provider || selection?.provider || 'unknown',
+          model: data?.model || selection?.model || 'unknown',
+          variantLabel: `Variant ${id.toUpperCase()}`,
+          input: approvedPayload.messages[0].content,
+          output: responseText,
+          latencyMs: nowMs() - startedAt,
+        }).catch((error) => {
+          logWarn('save arena run', error);
+          notify('Response complete, but run history was not saved. Retry saving records.');
+        });
+        refreshEvalRuns();
+      } catch (error) {
+        if (!isCurrent()) return;
+        setter(prev => ({ ...prev, response: error.message || 'Request failed.', loading: false, error: true }));
+      } finally {
+        if (attempts.current[id] === attempt) delete attempts.current[id];
+      }
+    };
+    const reviewed = preflight.review({ payload, scope: id, label: `Arena Variant ${id.toUpperCase()}`, isCurrent, resume: execute });
+    if (reviewed.payload) return execute(reviewed.payload);
   };
 
   const resetAB = () => {
     experimentIdRef.current = null;
-    abReqRef.current = Object.fromEntries(Object.entries(abReqRef.current).map(([id, value]) => [id, value + 1]));
-    setAbA(EMPTY_VARIANT);
-    setAbB(EMPTY_VARIANT);
+    Object.keys(attempts.current).forEach(invalidate);
+    preflight.invalidate();
+    updateAbA(EMPTY_VARIANT);
+    updateAbB(EMPTY_VARIANT);
     setExtraVariants([]);
     setAbProviders({ a: null, b: null });
     setAbSource({ a: null, b: null });
@@ -139,14 +185,17 @@ export default function useABTest({ notify }) {
   };
 
   const setSideProvider = (side, descriptor) => {
-    setAbProviders(prev => ({ ...prev, [side]: descriptor || null }));
+    const id = String(side).toLowerCase();
+    invalidate(id);
+    updateVariant(id, prev => ({ ...prev, response: '', loading: false, error: false }));
+    setAbProviders(prev => ({ ...prev, [id]: descriptor || null }));
   };
 
   const loadVariant = (side, prompt, source = null) => {
     const id = String(side).toLowerCase();
     const setter = (updater) => setVariant(id, updater);
     const nextPrompt = typeof prompt === 'string' ? prompt : '';
-    abReqRef.current = { ...abReqRef.current, [id]: (abReqRef.current[id] || 0) + 1 };
+    invalidate(id);
     setAbSource(prev => ({ ...prev, [id]: source }));
     setter((prev) => ({
       ...prev,
@@ -166,7 +215,7 @@ export default function useABTest({ notify }) {
     setExtraVariants((prev) => [...prev, { id, label, ...EMPTY_VARIANT }]);
     setAbProviders((prev) => ({ ...prev, [id]: null }));
     setAbSource((prev) => ({ ...prev, [id]: null }));
-    abReqRef.current = { ...abReqRef.current, [id]: 0 };
+    invalidate(id);
     setActiveSide(label);
     return true;
   };
@@ -174,7 +223,7 @@ export default function useABTest({ notify }) {
   const removeVariant = (side) => {
     const id = String(side).toLowerCase();
     if (id === 'a' || id === 'b') return false;
-    abReqRef.current = { ...abReqRef.current, [id]: (abReqRef.current[id] || 0) + 1 };
+    invalidate(id);
     setExtraVariants((prev) => prev.filter((variant) => variant.id !== id));
     setAbProviders((prev) => { const next = { ...prev }; delete next[id]; return next; });
     setAbSource((prev) => { const next = { ...prev }; delete next[id]; return next; });
@@ -228,6 +277,10 @@ export default function useABTest({ notify }) {
   };
 
   return {
+    piiWarning: preflight.piiWarning,
+    piiSendAnyway: preflight.piiSendAnyway,
+    piiRedactAndSend: preflight.piiRedactAndSend,
+    piiCancel: preflight.piiCancel,
     abA,
     setAbA,
     abB,

@@ -1,3 +1,4 @@
+import { PROVIDER_SETTINGS_CHANGED } from './providerSettingsEvents.js';
 /**
  * Desktop-mode API adapter — thin wrapper around the shared provider layer.
  *
@@ -41,6 +42,7 @@ export function loadSettings() {
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeHostedSettings(settings)));
+  window.dispatchEvent(new Event(PROVIDER_SETTINGS_CHANGED));
 }
 
 /**

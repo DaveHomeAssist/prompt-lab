@@ -237,3 +237,25 @@ Current automated coverage includes:
 - Hosted web/mobile build and browser coverage
 - Native XCTest unit/UI coverage on iPhone and iPad simulator families
 - Cross-surface enhance-contract parity tests
+
+## Sensitive preflight and request ownership
+
+Shared Enhance (including mode-specific and supplied payloads) and Arena use
+`useSensitivePreflight` with the existing `piiScanner` policy. Each warning owns
+an immutable payload, its editor/variant context, and a private one-use dispatch
+continuation. Run All queues warnings per variant. Send Anyway and Redact & Send
+consume only the displayed ticket; cancellation, source edits, provider selection
+changes, provider settings changes, and unmount revoke stale approval. Provider
+credentials never enter tickets or run metadata. Test cases retain their existing
+block-without-override policy. Native policy scope is unchanged.
+
+Arena uses object lifetime tokens and an AbortController per attempt. Editing,
+reloading, removing, or resetting a variant invalidates its attempt; recreating a
+label cannot revive an older token. History uses the captured source and actual
+sent input, including redaction. Enhance invalidates active work when its source
+input, prompt identity, or mode changes and releases its synchronous dispatch guard.
+
+The native `WorkbenchStore` captures input, prompt ID/title, and mode before task
+suspension. Each attempt accumulates its own partial stream. Navigation and edits
+cancel and invalidate ownership; late cancellation/error history retains the old
+source, while only the current owner can update the editor or clear its task handle.

@@ -91,12 +91,12 @@ describe('useABTest', () => {
       model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'Prompt A' }],
-    });
+    }, { signal: expect.any(AbortSignal) });
     expect(callModel).toHaveBeenNthCalledWith(2, {
       model: 'claude-sonnet-4-6',
       max_tokens: 800,
       messages: [{ role: 'user', content: 'Prompt B' }],
-    });
+    }, { signal: expect.any(AbortSignal) });
     expect(result.current.abA.response).toBe('Response for A');
     expect(result.current.abB.response).toBe('Response for B');
     expect(saveEvalRun).toHaveBeenCalledTimes(2);
@@ -296,4 +296,61 @@ describe('useABTest', () => {
     expect(result.current.abWinner).toBe(null);
     expect(result.current.activeSide).toBe('A');
   });
+  it('blocks every sensitive Run All variant and sends only its reviewed redaction', async () => {
+    callModel.mockResolvedValue(anthropicResponse('Safe response'));
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+    act(() => {
+      result.current.loadVariant('a', 'Contact person@example.com');
+      result.current.loadVariant('b', 'Contact second@example.com');
+    });
+    await act(async () => result.current.runAll());
+    expect(callModel).not.toHaveBeenCalled();
+    expect(result.current.piiWarning.scope).toBe('a');
+    await act(async () => result.current.piiRedactAndSend());
+    expect(callModel).toHaveBeenCalledTimes(1);
+    expect(callModel.mock.calls[0][0].messages[0].content).not.toContain('person@example.com');
+    expect(saveEvalRun.mock.calls[0][0].input).toBe(callModel.mock.calls[0][0].messages[0].content);
+    expect(result.current.piiWarning.scope).toBe('b');
+    act(() => result.current.piiCancel());
+    expect(callModel).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['edit', 'provider', 'remove', 'reset', 'unmount'])('aborts and rejects late results after %s', async (change) => {
+    const pending = deferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const { result, unmount } = renderHook(() => useABTest({ notify: vi.fn() }));
+    act(() => result.current.addVariant());
+    act(() => result.current.loadVariant('c', 'Old input', { entryId: 'old', title: 'Old title' }));
+    let oldRun;
+    act(() => { oldRun = result.current.runAB('c'); });
+    const signal = callModel.mock.calls[0][1].signal;
+    act(() => {
+      if (change === 'edit') result.current.setVariant('c', prev => ({ ...prev, prompt: 'New input' }));
+      if (change === 'provider') result.current.setSideProvider('c', { provider: 'openai', model: 'different' });
+      if (change === 'remove') result.current.removeVariant('c');
+      if (change === 'reset') result.current.resetAB();
+      if (change === 'unmount') unmount();
+    });
+    expect(signal.aborted).toBe(true);
+    if (change === 'remove') {
+      act(() => result.current.addVariant());
+      act(() => result.current.loadVariant('c', 'New input', { entryId: 'new' }));
+      callModel.mockResolvedValueOnce(anthropicResponse('New response'));
+      await act(async () => result.current.runAB('c'));
+    }
+    await act(async () => { pending.resolve(anthropicResponse('Old response')); await oldRun; });
+    expect(saveEvalRun.mock.calls.some(([run]) => run.input === 'Old input')).toBe(false);
+    if (change === 'remove') expect(result.current.variants.find(v => v.id === 'c').response).toBe('New response');
+  });
+
+  it('invalidates a reviewed Arena payload when its provider changes', async () => {
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+    act(() => result.current.loadVariant('a', 'Contact person@example.com'));
+    await act(async () => result.current.runAB('a'));
+    const send = result.current.piiSendAnyway;
+    act(() => result.current.setSideProvider('a', { provider: 'openai', model: 'other' }));
+    await act(async () => send());
+    expect(callModel).not.toHaveBeenCalled();
+  });
+
 });

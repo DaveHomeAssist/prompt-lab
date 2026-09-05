@@ -30,6 +30,7 @@ export default function PiiWarningModal({ m, piiWarning, piiRedactAndSend, piiSe
           <button type="button" onClick={closeDialog} aria-label="Close sensitive data warning" className={`${m.textSub} min-h-11 min-w-11 rounded-lg p-2 hover:text-white`}><Ic n="X" size={15} /></button>
         </div>
         <p id="modal-pii-description" className={`text-xs ${m.textAlt}`}>The following potentially sensitive items were found in your prompt. Choose whether to redact them, send unchanged, or cancel.</p>
+        {piiWarning.label && <p className={`text-xs font-semibold ${m.text}`}>{piiWarning.label}</p>}
         <ul className="flex flex-col gap-1 max-h-40 overflow-y-auto" aria-label="Detected sensitive items">
           {piiWarning.matches.map(match => (
             <li key={match.id} className={`text-xs ${m.textBody} flex items-center gap-2`}>
