@@ -155,6 +155,33 @@ it('shows malformed JSON errors without writing', async () => {
   expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
 });
 
+it('releases an interrupted import after Clear Library without retrying stale writes', async () => {
+  const notify = vi.fn();
+  const tab = renderHook(() => usePromptLibrary(notify));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, { library: [prompt('source')], runs: [{ id: 'interrupted-run', promptId: 'source', output: 'Result' }] });
+  const original = Storage.prototype.setItem;
+  const writes = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+    if (key === 'pl2-eval-run-fallback') throw new Error('quota');
+    return original.call(this, key, value);
+  });
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.pendingImport).toBe(true);
+  writes.mockRestore();
+  act(() => tab.result.current.clearLibrary());
+  await act(async () => tab.result.current.retryImport());
+  expect(tab.result.current.importPreview.invalidated).toBe(true);
+  expect(tab.result.current.pendingImport).toBe(false);
+  expect(await listEvalRuns()).toHaveLength(0);
+  expect(tab.result.current.library).toHaveLength(0);
+  act(() => tab.result.current.cancelImportPreview());
+  await openPreview(tab, [{ ...prompt('new-file'), enhanced: 'Freshly reviewed body' }]);
+  expect(tab.result.current.importPreview.fileName).toBe('fixture.json');
+  expect(tab.result.current.importPreview.error).toBe('');
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.library.map(entry => entry.id)).toEqual(['new-file']);
+});
+
 it('preserves authored destination packs when an older export omitted its registry as an empty array', async () => {
   const registry = { 'authored-empty': { id: 'authored-empty', title: 'Empty authored pack', version: '1.0.0', source: 'authored' } };
   localStorage.setItem('pl2-packs', JSON.stringify(registry));

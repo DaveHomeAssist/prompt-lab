@@ -1004,7 +1004,13 @@ export default function usePromptLibrary(notify) {
         plan = { ...preview.plan, parsed: preview.source, fileName: preview.fileName, revision: preview.revision, completed: new Set() };
       }
       if (context.generation !== plan.generation || [...plan.promptIdMap.values()].some(id => context.deletedIds.has(id))) {
-        throw new Error('The import destination was deleted or cleared. No remaining stages were applied.');
+        pendingImportRef.current = null;
+        setPendingImport(null);
+        const message = 'The import destination was deleted or cleared. No remaining stages were applied. Close this preview and choose a file to review a new import.';
+        showImportPreview({ ...(importPreviewRef.current || preview), error: message,
+          partial: true, invalidated: true, completedStages: [...plan.completed] });
+        notify(`Import stopped: ${message} Previously saved stages were not rolled back.`);
+        return;
       }
       pendingImportRef.current = plan;
       setPendingImport(plan);
