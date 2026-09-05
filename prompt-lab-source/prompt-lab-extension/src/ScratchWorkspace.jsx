@@ -210,6 +210,7 @@ export default function ScratchWorkspace({
   const timerRef = useRef(null);
   const savedStateTimerRef = useRef(null);
   const migrationCheckedRef = useRef(false);
+  const migrationReadFailedRef = useRef(false);
   const revisionRef = useRef(initialPayload.revision || 0);
   const padsStateRef = useRef(initialPayload);
   const textRef = useRef(text);
@@ -247,6 +248,7 @@ export default function ScratchWorkspace({
   };
 
   const persistPads = (nextState, options = {}) => {
+    if (migrationReadFailedRef.current) return { ok: false, state: nextState };
     const result = persistScratchState(nextState, { lastKnownRevision: revisionRef.current, ...options });
     if (result.ok) applyState(result.state);
     return result;
@@ -313,15 +315,28 @@ export default function ScratchWorkspace({
     if (focus) setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
-  useEffect(() => {
-    if (migrationCheckedRef.current) return;
-    migrationCheckedRef.current = true;
-    const { payload, error, migrated } = migrateScratchStorage();
+  const loadScratchState = () => {
+    const { payload, error, errorStage, migrated } = migrateScratchStorage();
+    migrationReadFailedRef.current = Boolean(error && errorStage === 'read');
+    if (migrationReadFailedRef.current) {
+      setSaveState('error');
+      setSaveError('Notes could not be read. Stored data has not been overwritten. Retry loading before editing.');
+      return;
+    }
     applyState(payload);
     const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
     loadPadView(active, { focus: false });
-    if (error) notify?.('Scratch migration failed; legacy data was kept and loaded as a fallback.');
+    if (error) {
+      reportSaveFailure();
+      notify?.('Scratch upgrade could not be saved. Your readable notes are still here for retry.');
+    }
     else if (migrated) notify?.('Scratch notes upgraded to schema v4.');
+  };
+
+  useEffect(() => {
+    if (migrationCheckedRef.current) return;
+    migrationCheckedRef.current = true;
+    loadScratchState();
   // Intentionally a mount-only migration.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -838,6 +853,7 @@ export default function ScratchWorkspace({
       aria-label="Scratchpad"
       placeholder={'Capture notes, prompt fragments, and reusable ideas…\n\nMarkdown is supported.'}
       value={text}
+      readOnly={migrationReadFailedRef.current}
       onChange={(event) => scheduleSave(event.target.value)}
       onKeyDown={handleEditorKeyDown}
       onSelect={(event) => setSelection(getSelection(event.currentTarget, textRef.current))}
@@ -942,6 +958,10 @@ export default function ScratchWorkspace({
           </div>
 
           <footer className="flex flex-wrap items-center justify-between gap-2">
+            {saveError && <button type="button" className={`ui-control rounded-lg px-3 py-2 text-xs ${m.btn || ''}`} onClick={() => {
+              if (migrationReadFailedRef.current) loadScratchState();
+              else commitActiveContent(textRef.current);
+            }}>{migrationReadFailedRef.current ? 'Retry loading' : 'Retry saving'}</button>}
             <div aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
               {saveError ? <span className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>

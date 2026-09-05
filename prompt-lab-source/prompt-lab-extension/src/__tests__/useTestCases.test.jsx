@@ -111,6 +111,7 @@ describe('useTestCases', () => {
     });
 
     expect(saveTestCase).toHaveBeenCalledWith({
+      id: expect.any(String),
       promptId: 'prompt-1',
       title: 'New case',
       input: 'Check this',
@@ -205,5 +206,25 @@ describe('useTestCases', () => {
     expect(deleteTestCase).not.toHaveBeenCalled();
     expect(listTestCases).toHaveBeenCalledTimes(1);
     expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('retains the form and record ID after a failed save', async () => {
+    saveTestCase.mockRejectedValueOnce(new Error('Storage full'))
+      .mockResolvedValueOnce({ title: 'Recoverable' });
+    const { result } = renderHook(() => useTestCases({ notify }));
+    act(() => {
+      result.current.openCaseForm('prompt-1');
+      result.current.setCaseTitle('Recoverable');
+      result.current.setCaseInput('Keep this input');
+    });
+    await act(async () => { await result.current.saveCaseForPrompt('prompt-1'); });
+    const id = saveTestCase.mock.calls[0][0].id;
+    expect(id).toBeTruthy();
+    expect(result.current.caseFormPromptId).toBe('prompt-1');
+    expect(result.current.caseInput).toBe('Keep this input');
+    expect(notify).toHaveBeenCalledWith('Storage full');
+    await act(async () => { await result.current.saveCaseForPrompt('prompt-1'); });
+    expect(saveTestCase.mock.calls[1][0].id).toBe(id);
+    expect(result.current.caseFormPromptId).toBeNull();
   });
 });

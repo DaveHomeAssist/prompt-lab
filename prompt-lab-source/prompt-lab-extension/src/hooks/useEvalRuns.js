@@ -5,6 +5,7 @@ import {
   patchEvalRun,
 } from '../experimentStore';
 import { logWarn } from '../lib/logger.js';
+import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 export default function useEvalRuns(optionsOrLegacy) {
   const opts = optionsOrLegacy || {};
@@ -107,7 +108,12 @@ export default function useEvalRuns(optionsOrLegacy) {
       }
     };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    const refresh = () => refreshEvalRuns();
+    window.addEventListener(RECORDS_CHANGED_EVENT, refresh);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener(RECORDS_CHANGED_EVENT, refresh);
+    };
   }, [refreshEvalRuns]);
 
   // Reset pagination when filters change

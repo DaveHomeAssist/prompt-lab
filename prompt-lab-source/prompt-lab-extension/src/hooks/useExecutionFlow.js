@@ -122,7 +122,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
         status: 'blocked',
         notes: 'Sensitive data detected before send.',
         testCaseId: testCase.id,
-      });
+      }).catch((error) => logWarn('save blocked test case run', error));
       throw normalizeError(new Error(message), 'execution');
     }
 
@@ -149,7 +149,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       testCaseId: testCase.id,
       traitResults,
       verdict: traitResults.verdict,
-    });
+    }).catch((error) => logWarn('save test case run', error));
 
     return { parsed, traitResults };
   };

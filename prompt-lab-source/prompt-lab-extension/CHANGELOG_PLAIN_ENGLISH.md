@@ -1,5 +1,17 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-09-05
+
+## Local write recovery (unreleased)
+
+- Scratch keeps readable notes on screen when a storage upgrade cannot be saved,
+  and offers a retry after browser storage becomes available.
+- Failed run, experiment, and test-case writes now show a retry notice. Keep the
+  tab open to recover unsaved records; retrying saves the same records without
+  making another provider request.
+- A successful Arena response stays visible if its history write fails. Repeated
+  save attempts retain their record IDs to prevent duplicate local history.
+
 Date: 2026-08-20
 
 ## Full workspace redesign (current source 1.7.1; target release 1.8.0)

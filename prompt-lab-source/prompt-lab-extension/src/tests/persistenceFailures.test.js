@@ -3,6 +3,7 @@ import {
   deleteTestCase,
   getEvalRunById,
   listExperiments,
+  listEvalRuns,
   listRunsByTrace,
   listTestCases,
   saveEvalRun,
@@ -10,9 +11,13 @@ import {
   saveRunRecord,
   saveTestCase,
 } from '../experimentStore.js';
+import { getPendingWriteCount, retryPendingWrites } from '../lib/writeRecovery.js';
 
 beforeEach(() => localStorage.clear());
-afterEach(() => vi.restoreAllMocks());
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await retryPendingWrites();
+});
 
 describe('fallback write acknowledgment', () => {
   it.each([
@@ -44,6 +49,35 @@ describe('fallback write acknowledgment', () => {
     expect(await getEvalRunById('eval')).toMatchObject({ id: 'eval', output: 'output' });
     expect(await listTestCases()).toHaveLength(1);
     await deleteTestCase('case');
+    expect(await listTestCases()).toEqual([]);
+  });
+
+  it('retains a generated run identity and retries only one local write', async () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage full', 'QuotaExceededError');
+    });
+    await expect(saveEvalRun({ input: 'source', output: 'completed response' })).rejects.toThrow();
+    expect(getPendingWriteCount()).toBe(1);
+    spy.mockRestore();
+    const writes = vi.spyOn(Storage.prototype, 'setItem');
+    await Promise.all([retryPendingWrites(), retryPendingWrites()]);
+    expect(getPendingWriteCount()).toBe(0);
+    const saved = await listEvalRuns();
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ output: 'completed response' });
+    expect(writes.mock.calls.filter(([key]) => key === 'pl2-eval-run-fallback')).toHaveLength(1);
+    await retryPendingWrites();
+    expect((await listEvalRuns())[0].id).toBe(saved[0].id);
+  });
+
+  it('does not replay a failed update after a newer successful write or deletion', async () => {
+    await saveTestCase({ id: 'case', promptId: 'prompt', input: 'original' });
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
+    await expect(saveTestCase({ id: 'case', promptId: 'prompt', input: 'stale update' })).rejects.toThrow();
+    spy.mockRestore();
+    await deleteTestCase('case');
+    await retryPendingWrites();
+    expect(getPendingWriteCount()).toBe(0);
     expect(await listTestCases()).toEqual([]);
   });
 });

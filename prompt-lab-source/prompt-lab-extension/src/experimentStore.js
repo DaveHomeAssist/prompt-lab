@@ -6,6 +6,7 @@ import {
 } from './lib/evalSchema.js';
 import { logWarn } from './lib/logger.js';
 import { hashText } from './lib/utils.js';
+import { writeWithRecovery } from './lib/writeRecovery.js';
 
 const DB_NAME = 'prompt_lab_local';
 const EXPERIMENT_STORE = 'experiments';
@@ -73,6 +74,7 @@ function writeFallback(key, records) {
     localStorage.setItem(key, JSON.stringify(records));
   } catch (e) {
     logWarn('localStorage write failed', e);
+    throw e;
   }
 }
 
@@ -102,6 +104,11 @@ function txDone(tx) {
 
 export async function saveRunRecord(record) {
   if (!record || !record.run_id) return null;
+  const snapshot = { ...record };
+  return writeWithRecovery(`run:${snapshot.run_id}`, () => persistRunRecord(snapshot));
+}
+
+async function persistRunRecord(record) {
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const next = [record, ...readFallback(RUNS_LS_KEY).filter((row) => row.run_id !== record.run_id)].slice(0, 1000);
@@ -142,6 +149,10 @@ export function normalizeExperimentRecord(record) {
 
 export async function saveExperiment(record) {
   const normalized = normalizeExperimentRecord(record);
+  return writeWithRecovery(`experiment:${normalized.id}`, () => persistExperiment(normalized));
+}
+
+async function persistExperiment(normalized) {
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(EXPERIMENT_LS_KEY).filter((entry) => entry.id !== normalized.id);
@@ -198,6 +209,10 @@ export async function getExperimentById(id) {
 
 export async function saveEvalRun(record) {
   const normalized = normalizeEvalRunRecord(record);
+  return writeWithRecovery(`eval:${normalized.id}`, () => persistEvalRun(normalized));
+}
+
+async function persistEvalRun(normalized) {
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY).filter((entry) => entry.id !== normalized.id)].slice(0, 1000);
@@ -256,6 +271,10 @@ export async function saveTestCase(record) {
   if (!normalized.promptId || !normalized.input.trim()) {
     throw new Error('Test cases require a promptId and input.');
   }
+  return writeWithRecovery(`case:${normalized.id}`, () => persistTestCase(normalized));
+}
+
+async function persistTestCase(normalized) {
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== normalized.id);
@@ -294,6 +313,10 @@ export async function listTestCases(filters = {}) {
 
 export async function deleteTestCase(id) {
   if (!id) return;
+  return writeWithRecovery(`case:${id}`, () => removeTestCase(id));
+}
+
+async function removeTestCase(id) {
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     writeFallback(TEST_CASE_LS_KEY, readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== id));

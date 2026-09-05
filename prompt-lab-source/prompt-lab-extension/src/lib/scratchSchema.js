@@ -142,27 +142,39 @@ function parseSavedTimestamp(raw, now = Date.now()) {
 }
 
 export function migrateScratchStorage(storage = localStorage, now = Date.now()) {
+  let payload = null;
+  let legacyContent = '';
+  let legacyMeta = '';
+  let errorStage = 'read';
   try {
+    const raw = storage.getItem(SCRATCH_KEY);
+    if (raw) {
+      payload = normalizeScratchPayload(JSON.parse(raw), now);
+      if (!payload) throw new Error('Stored Scratch notes have an invalid format.');
+    }
     const previousVersion = storage.getItem(SCRATCH_SCHEMA_VERSION_KEY);
-    const existing = readScratchPayload(storage);
-    if (existing) {
-      storage.setItem(SCRATCH_KEY, JSON.stringify(existing));
-      storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
+    if (payload) {
+      if (previousVersion !== SCRATCH_SCHEMA_VERSION) {
+        errorStage = 'write';
+        storage.setItem(SCRATCH_KEY, JSON.stringify(payload));
+        storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
+      }
       return {
         migrated: previousVersion !== SCRATCH_SCHEMA_VERSION,
-        payload: existing,
+        payload,
         error: null,
       };
     }
 
-    let legacyContent = storage.getItem(LEGACY_SCRATCH_KEY) || '';
-    let legacyMeta = storage.getItem(LEGACY_SCRATCH_META_KEY) || '';
+    legacyContent = storage.getItem(LEGACY_SCRATCH_KEY) || '';
+    legacyMeta = storage.getItem(LEGACY_SCRATCH_META_KEY) || '';
     if (!legacyContent) {
       legacyContent = storage.getItem('pl-pad') || '';
       legacyMeta = storage.getItem('pl-pad_meta') || '';
     }
 
-    const payload = buildDefaultScratchPayload(legacyContent, parseSavedTimestamp(legacyMeta, now));
+    payload = buildDefaultScratchPayload(legacyContent, parseSavedTimestamp(legacyMeta, now));
+    errorStage = 'write';
     storage.setItem(SCRATCH_KEY, JSON.stringify(payload));
     storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
 
@@ -175,11 +187,14 @@ export function migrateScratchStorage(storage = localStorage, now = Date.now()) 
     return { migrated: true, payload, error: null };
   } catch (error) {
     logWarn('scratch schema migration', error);
-    const fallbackPayload = buildDefaultScratchPayload(
-      storage.getItem(LEGACY_SCRATCH_KEY) || storage.getItem('pl-pad') || '',
-      parseSavedTimestamp(storage.getItem(LEGACY_SCRATCH_META_KEY) || storage.getItem('pl-pad_meta') || '', now)
-    );
-    return { migrated: false, payload: fallbackPayload, error };
+    // A write failure must not replace already-readable notes, and a read
+    // failure must not trigger another storage read from the recovery path.
+    return {
+      migrated: false,
+      payload: payload || buildDefaultScratchPayload(legacyContent, parseSavedTimestamp(legacyMeta, now)),
+      error,
+      errorStage,
+    };
   }
 }
 

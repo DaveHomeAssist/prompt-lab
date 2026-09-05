@@ -20,6 +20,7 @@ import useABTest from './hooks/useABTest.js';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
 import Toast from './Toast';
+import PendingWritesNotice from './PendingWritesNotice.jsx';
 import PadTab from './PadTab';
 import ComposerTab from './ComposerTab';
 import ABTestTab from './ABTestTab';
@@ -977,6 +978,8 @@ export default function App({
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
       />
+
+      <PendingWritesNotice m={m} />
 
       {telemetryConsentPending && (
         <div className={`${m.surface} ${m.border} border-b px-4 py-3`}>
