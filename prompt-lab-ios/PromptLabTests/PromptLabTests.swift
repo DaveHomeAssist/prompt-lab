@@ -300,7 +300,7 @@ final class PromptLabTests: XCTestCase {
             if openHistory {
                 let history = RunRecord(promptId: "history-parent", promptTitle: "Historical",
                                         enhanceMode: "code", provider: "fixture", model: "fixture",
-                                        input: "Historical input", output: "Historical output", latencyMs: 1)
+                                        input: "Historical input", output: "Historical output", latencyMs: 1, notes: "Fixture")
                 store.loadRun(history)
             } else {
                 store.startNewPrompt()
