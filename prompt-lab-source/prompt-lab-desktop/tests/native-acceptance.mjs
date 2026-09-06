@@ -171,6 +171,9 @@ async function windowsStartupDiagnostics() {
   `], { encoding: 'utf8', timeout: 20_000, env: { ...process.env, PL_NATIVE_DIAGNOSTIC_SCREEN: path.join(evidenceDir, `${phase}-windows-desktop.png`) } });
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
+async function openCreate() {
+  await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
+}
 async function openSession() {
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
@@ -202,8 +205,11 @@ async function openSession() {
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
-  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[role="tablist"][aria-label="Primary workspaces"]'));`), 'native application rendered');
-  await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Create")]', 'xpath');
+  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[aria-label="Primary workspaces"], [aria-label="Primary mobile navigation"]'));`), 'native application rendered');
+  // WebView2 can restore a compact native window despite the driver rect request.
+  // Readiness and navigation must follow the app's actual responsive surface.
+  (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
+  await openCreate();
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
 }
 async function closeSession() {
@@ -246,7 +252,7 @@ async function checkPersisted() {
   await fill('[data-testid="library-search"]', 'Fixture enhanced prompt');
   await waitFor(() => execute(`return [...document.querySelectorAll('.pl-library-card')].some(card => card.innerText.includes(${JSON.stringify(saved[0].title)}));`), 'persisted prompt visible in hydrated Library');
   await screenshot('persisted-library');
-  await click('[data-testid="nav-create"]');
+  await openCreate();
   return saved[0];
 }
 
@@ -268,7 +274,7 @@ async function checkFollowUpPersisted(expected) {
   await click(`//button[@aria-label="Inspect ${child.title}"]`, 'xpath');
   await waitFor(() => execute('return [...document.querySelectorAll("[aria-label=\\"Follow-up provenance\\"]")].some(node => node.innerText.includes("Saved run output"));'), 'saved run provenance visible in Library');
   await screenshot('follow-up-provenance');
-  await click('[data-testid="nav-create"]');
+  await openCreate();
 }
 
 async function exerciseFollowUp(parentId) {
@@ -373,7 +379,7 @@ try {
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
     evidence.savedPromptId = saved.id;
     await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');
-    await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Scratch")]', 'xpath');
+    await click('//*[@data-testid="nav-scratch"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Scratch"]', 'xpath');
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
     await waitFor(() => execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null")?.pads.some(pad => pad.content.includes("Survives native restart"));'), 'Scratch acknowledged save');
     await screenshot('saved');
