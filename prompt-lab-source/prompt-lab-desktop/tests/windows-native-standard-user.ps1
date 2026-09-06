@@ -1,9 +1,9 @@
-# CI-only launcher: remove administrator rights from the native test process.
+# CI-only launcher: remove administrator rights from the installed GUI app.
 # WebView2 150+ intentionally ignores environment overrides on elevated hosts.
 # Keep that protection intact and exercise the installed app at normal user IL.
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Use only on disposable GitHub runners' }
-if (!$env:PL_NATIVE_EVIDENCE -or !$env:PL_NATIVE_APP) { throw 'Native test environment missing' }
+if (!$env:PL_NATIVE_PROCESS_EVIDENCE -or !$env:PL_NATIVE_APP) { throw 'Native test environment missing' }
 
 Add-Type -TypeDefinition @'
 using System;
@@ -71,7 +71,7 @@ public static class NativeStandardUser {
         using (var identity = new WindowsIdentity(token))
             return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
     }
-    public static int Run(string node, string script, string directory, string evidence) {
+    public static int Run(string application, string directory, string evidence) {
         IntPtr original = IntPtr.Zero, limited = IntPtr.Zero, medium = IntPtr.Zero, childToken = IntPtr.Zero;
         ProcessInfo child = new ProcessInfo();
         bool exited = false;
@@ -84,24 +84,24 @@ public static class NativeStandardUser {
             var label = new SidAndAttributes { Sid = medium, Attributes = 0x20 };
             Check(SetTokenInformation(limited, 25, ref label, (uint)Marshal.SizeOf(label) + GetLengthSid(medium)), "Lower token integrity");
             if (Integrity(limited) != "S-1-16-8192" || IsAdmin(limited))
-                throw new InvalidOperationException("Test token must be medium integrity without administrator membership");
+                throw new InvalidOperationException("App token must be medium integrity without administrator membership");
             var startup = new StartupInfo { cb = (uint)Marshal.SizeOf(typeof(StartupInfo)) };
-            var command = new StringBuilder("\"" + node + "\" \"" + script + "\"");
+            var command = new StringBuilder("\"" + application + "\"");
             // Suspend until the actual child token is verified. Environment and
             // user profile remain those of this disposable runner account.
-            Check(CreateProcessAsUser(limited, node, command, IntPtr.Zero, IntPtr.Zero, false, 0x4,
-                IntPtr.Zero, directory, ref startup, out child), "Start standard user test");
+            Check(CreateProcessAsUser(limited, application, command, IntPtr.Zero, IntPtr.Zero, false, 0x4,
+                IntPtr.Zero, directory, ref startup, out child), "Start standard user app");
             Check(OpenProcessToken(child.process, 0xa, out childToken), "Inspect child token");
             string childIntegrity = Integrity(childToken);
             bool childAdmin = IsAdmin(childToken);
             if (childIntegrity != "S-1-16-8192" || childAdmin)
-                throw new InvalidOperationException("Native test child retained elevated privileges");
+                throw new InvalidOperationException("Native app retained elevated privileges");
             File.WriteAllText(evidence, "{\"parentIntegrity\":\"" + parentIntegrity + "\",\"childIntegrity\":\"" +
                 childIntegrity + "\",\"childAdministrator\":false,\"childPid\":" + child.processId + "}");
             Console.WriteLine(File.ReadAllText(evidence));
             using (var process = Process.GetProcessById((int)child.processId)) {
-                if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native test");
-                if (!process.WaitForExit(7 * 60 * 1000)) throw new TimeoutException("Native test exceeded 7 minutes; inspect progress and final evidence separately");
+                if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native app");
+                if (!process.WaitForExit(7 * 60 * 1000)) throw new TimeoutException("Native app session exceeded 7 minutes; inspect progress and final evidence separately");
                 exited = true;
                 return process.ExitCode;
             }
@@ -118,11 +118,5 @@ public static class NativeStandardUser {
 }
 '@
 
-$node = (Get-Command node.exe -ErrorAction Stop).Source
-$script = Join-Path $PSScriptRoot 'native-acceptance.mjs'
-$phase = if ($env:PL_NATIVE_PHASE) { $env:PL_NATIVE_PHASE } else { 'exercise' }
-if ($phase -notin @('exercise', 'retention')) { throw 'Unknown native phase' }
-$proof = Join-Path $env:PL_NATIVE_EVIDENCE "$phase-privileges.json"
-$code = [NativeStandardUser]::Run($node, $script, $PWD.Path, $proof)
-Get-Content -LiteralPath $proof
+$code = [NativeStandardUser]::Run($env:PL_NATIVE_APP, $PWD.Path, $env:PL_NATIVE_PROCESS_EVIDENCE)
 exit $code

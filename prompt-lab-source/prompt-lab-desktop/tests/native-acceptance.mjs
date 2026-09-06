@@ -4,6 +4,7 @@ import { once } from 'node:events';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
 
 // Runs only on disposable CI runners, against an installed application binary.
@@ -25,7 +26,7 @@ if (process.platform === 'win32') {
   evidence.userDataFolder = userDataFolder;
 }
 const driver = process.platform === 'win32'
-  ? spawn('msedgedriver.exe', ['--port=4444'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  ? spawn('msedgedriver.exe', ['--port=4444', '--verbose'], { stdio: ['ignore', 'pipe', 'pipe'] })
   : spawn('tauri-driver', ['--port', '4444'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
 let driverOutput = '';
 let driverError;
@@ -34,6 +35,8 @@ for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => 
 let session;
 let fixture;
 let nativeApp;
+let nativeAppPid;
+let launchNumber = 0;
 let nativeAppError;
 let nativeOutput = '';
 const events = [];
@@ -171,15 +174,26 @@ async function windowsStartupDiagnostics() {
 async function openSession() {
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
-    nativeApp = spawn(application, [], {
+    const privilegesFile = path.join(evidenceDir, `${phase}-launch-${++launchNumber}-privileges.json`);
+    nativeApp = spawn('powershell.exe', ['-NoProfile', '-File', fileURLToPath(new URL('./windows-native-standard-user.ps1', import.meta.url))], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, TAURI_WEBVIEW_AUTOMATION: 'true', WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
+      env: { ...process.env, PL_NATIVE_PROCESS_EVIDENCE: privilegesFile, TAURI_WEBVIEW_AUTOMATION: 'true', WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
     });
     nativeApp.on('error', error => { nativeAppError = error; });
     for (const stream of [nativeApp.stdout, nativeApp.stderr]) stream.on('data', chunk => { nativeOutput = (nativeOutput + chunk).slice(-32_000); });
+    const privileges = await waitFor(async () => JSON.parse(await readFile(privilegesFile, 'utf8')), 'standard user app launch');
+    assert.equal(privileges.childIntegrity, 'S-1-16-8192');
+    assert.equal(privileges.childAdministrator, false);
+    assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
+    nativeAppPid = privileges.childPid;
+    (evidence.nativeProcessPrivileges ||= []).push(privileges);
     await waitFor(async () => {
       if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
-      return (await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) })).ok;
+      const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
+      if (!response.ok) return false;
+      const version = await response.json();
+      evidence.debuggingVersion = version;
+      return Boolean(version.webSocketDebuggerUrl);
     }, 'installed WebView2 debugging endpoint');
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
@@ -196,9 +210,10 @@ async function closeSession() {
     if (session) await command('DELETE', `/session/${session}`);
   } finally {
     session = null;
-    if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null) {
+    if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null && !nativeAppPid) await stopOwnedProcess(nativeApp);
+    if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null && nativeAppPid) {
       const close = spawnSync('powershell.exe', ['-NoProfile', '-Command', '$app = Get-Process -Id $env:PL_NATIVE_OWNED_PID -ErrorAction SilentlyContinue; if ($app) { $null = $app.CloseMainWindow() }'], {
-        encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeApp.pid) },
+        encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) },
       });
       assert.equal(close.status, 0, close.stderr || 'Native window close failed');
       await new Promise((resolve, reject) => {
@@ -210,6 +225,7 @@ async function closeSession() {
     nativeApp?.stderr?.destroy();
     nativeApp?.unref();
     nativeApp = null;
+    nativeAppPid = null;
   }
 }
 async function startFixture(mode) {

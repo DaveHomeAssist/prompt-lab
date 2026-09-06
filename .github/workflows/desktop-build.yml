@@ -143,14 +143,14 @@ jobs:
           if ($install.ExitCode -ne 0) { throw "MSI install failed: $($install.ExitCode)" }
           $env:PL_NATIVE_APP = (Get-ChildItem "$env:ProgramFiles/Prompt Lab" -Filter 'prompt-lab-desktop.exe' -Recurse | Select-Object -First 1).FullName
           if (!$env:PL_NATIVE_APP) { throw 'Installed application binary missing' }
-          & prompt-lab-source/prompt-lab-desktop/tests/windows-native-standard-user.ps1
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows acceptance failed' }
           $uninstall = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0 -or (Test-Path $env:PL_NATIVE_APP)) { throw 'MSI uninstall did not remove the application' }
           $reinstall = Start-Process msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru
           if ($reinstall.ExitCode -ne 0) { throw 'MSI reinstall failed' }
           $env:PL_NATIVE_PHASE = 'retention'
-          & prompt-lab-source/prompt-lab-desktop/tests/windows-native-standard-user.ps1
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows retention check failed' }
 
       - name: Install and exercise Linux DEB
