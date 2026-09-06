@@ -57,7 +57,7 @@ async function waitFor(probe, label, timeout = 20_000) {
   }
   throw new Error(`Timed out: ${label}${last ? ` (${last.message})` : ''}`);
 }
-const execute = script => command('POST', `/session/${session}/execute/sync`, { script, args: [] });
+const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
 async function element(value, using = 'css selector') {
   const result = await waitFor(() => command('POST', `/session/${session}/element`, { using, value }), value);
@@ -65,6 +65,15 @@ async function element(value, using = 'css selector') {
 }
 async function click(selector, using) {
   const id = await element(selector, using);
+  await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
+  await execute('arguments[0].scrollIntoView({block:"center",behavior:"instant"}); return true;', [{ 'element-6066-11e4-a52e-4f735466cecf': id }]);
+  let previousRect;
+  await waitFor(async () => {
+    const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
+    const stable = rect === previousRect;
+    previousRect = rect;
+    return stable;
+  }, `${selector} position stable`);
   await command('POST', `/session/${session}/element/${id}/click`, {});
 }
 async function fill(selector, text) {
@@ -191,6 +200,10 @@ try {
   evidence.error = error.message;
   evidence.failedCommand = evidence.lastCommand;
   await windowsStartupDiagnostics().catch(error => { evidence.diagnosticError = error.message; });
+  if (session) evidence.failureState = await execute(`return {
+    input: document.querySelector('[data-testid="prompt-input"]')?.value,
+    library: JSON.parse(localStorage.getItem('pl2-library') || '[]').map(({id,title,original}) => ({id,title,original}))
+  };`).catch(() => null);
   if (session) await screenshot('failure').catch(() => {});
   process.exitCode = 1;
 } finally {
