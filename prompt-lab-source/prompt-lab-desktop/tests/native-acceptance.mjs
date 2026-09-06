@@ -120,7 +120,8 @@ async function fill(selector, text) {
   // WebKit's element clear does not update React's controlled input state.
   // Ctrl+A / Backspace produces the same input events as operator replacement.
   await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
-  await command('POST', `/session/${session}/element/${id}/value`, { text });
+  // Backspace already completes an empty replacement; WebKit rejects empty send-keys.
+  if (text.length > 0) await command('POST', `/session/${session}/element/${id}/value`, { text });
   assert.equal(await command('GET', `/session/${session}/element/${id}/property/value`), text, 'Native input contains exactly the requested fixture text');
 }
 async function screenshot(name) {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T21:59:18Z",
+  "snapshotAt": "2026-09-06T22:18:59Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b2d162148cd586e35bee1e8fa61f46bd15087adc",
+  "mainSha": "5b76a96d9ee98518288bd09bf32c38e02dcff0c1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify native CI for PRs #92 and #94, then complete raw import/export and remaining platform acceptance.",
+  "nextAction": "Verify corrected Linux Library acceptance in PR #94, then complete raw import/export and remaining platform/runtime gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -27,9 +27,9 @@
     },
     {
       "label": "Native follow-up acceptance",
-      "state": "Running",
-      "detail": "PR #92 corrects desktop-only readiness after compact-window restoration. Earlier Linux lifecycle passed; Windows rerun remains pending. Tooling passes 14/14 after correcting the dashboard workflow runtime path.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/92"
+      "state": "Verified",
+      "detail": "PR #92 merged as 5b76a96. Windows MSI and Linux DEB follow-up exercise/restart/reinstall retention passed; macOS packaging passed. Broader runtime acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34062230477"
     },
     {
       "label": "Release and runtime proof",
@@ -40,7 +40,7 @@
     {
       "label": "Native Library acceptance",
       "state": "Running",
-      "detail": "PR #94 adds native search/order/collection/restart checks and fixes compact smart-view label overlap. Browser development checks pass at 400/1180px; installed-app CI remains pending.",
+      "detail": "PR #94 Windows exercise/retention passed. Linux rejected a redundant empty send-keys command; corrected rerun pending. Compact label fix passes browser geometry and compatibility tests.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/94"
     }
   ],
@@ -102,7 +102,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Inspect corrected Windows/Linux native follow-up exercise and retention before merging PR #92.",
+      "nextAction": "Verify remaining canonical signed-in web follow-up acceptance; installed MSI/DEB lifecycle proof is recorded.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -114,7 +114,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Inspect PR #94 installed-app results, then complete raw import/export and remaining Library matrix.",
+      "nextAction": "Verify corrected Linux PR #94 acceptance, then complete raw import/export and remaining Library matrix.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
