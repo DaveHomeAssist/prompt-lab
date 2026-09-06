@@ -221,6 +221,18 @@ async function openSession() {
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
 }
 async function closeSession() {
+  let browserPids = [];
+  if (nativeAppPid) {
+    const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+      $owned = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+        Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
+        Select-Object -ExpandProperty ProcessId)
+      ConvertTo-Json -InputObject $owned -Compress
+    `], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
+    assert.equal(probe.status, 0, probe.stderr || 'Owned WebView2 process discovery failed');
+    browserPids = JSON.parse(probe.stdout.trim());
+    assert.ok(browserPids.length, 'Owned WebView2 browser process must be identified before restart');
+  }
   try {
     if (session) await command('DELETE', `/session/${session}`);
   } finally {
@@ -241,6 +253,20 @@ async function closeSession() {
     nativeApp?.unref();
     nativeApp = null;
     nativeAppPid = null;
+    if (browserPids.length) {
+      const exited = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+        $owned = @($env:PL_NATIVE_BROWSER_PIDS.Split(',') | ForEach-Object { [int]$_ })
+        $deadline = (Get-Date).AddSeconds(20)
+        do {
+          $remaining = @(Get-Process -Id $owned -ErrorAction SilentlyContinue)
+          if (!$remaining.Count) { break }
+          Start-Sleep -Milliseconds 100
+        } while ((Get-Date) -lt $deadline)
+        if ($remaining.Count) { throw 'Owned WebView2 processes did not finish shutdown' }
+      `], { encoding: 'utf8', timeout: 25_000, env: { ...process.env, PL_NATIVE_BROWSER_PIDS: browserPids.join(',') } });
+      assert.equal(exited.status, 0, exited.stderr || 'Owned WebView2 shutdown failed');
+      (evidence.nativeShutdowns ||= []).push({ browserPids, exited: true });
+    }
   }
 }
 async function startFixture(mode, responseKind = 'enhancement') {
@@ -349,6 +375,7 @@ async function exerciseFollowUp(parentId) {
   await click('//*[@data-testid="follow-up-panel"]//button[normalize-space(.)="Use in editor"]', 'xpath');
   assert.equal(await execute('return document.querySelector("[data-testid=prompt-input]").value;'), prompt);
   const expected = { child, parent: baseline.find(row => row.id === parent.id) };
+  await writeFile(path.join(evidenceDir, `${phase}-follow-up-before-restart.json`), JSON.stringify(expected, null, 2));
   await closeSession();
   await openSession();
   await checkFollowUpPersisted(expected);
