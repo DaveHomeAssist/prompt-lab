@@ -233,20 +233,21 @@ async function closeSession() {
     browserPids = JSON.parse(probe.stdout.trim());
     assert.ok(browserPids.length, 'Owned WebView2 browser process must be identified before restart');
   }
+  const closingSession = session;
+  const closeNativeWindowFirst = Boolean(nativeAppPid);
   try {
-    if (session) await command('DELETE', `/session/${session}`);
+    // Attached EdgeDriver may close WebView2 when its session ends. Exercise
+    // the user's native window close before releasing that driver session.
+    if (session && !closeNativeWindowFirst) await command('DELETE', `/session/${session}`);
   } finally {
     session = null;
     if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null && !nativeAppPid) await stopOwnedProcess(nativeApp);
     if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null && nativeAppPid) {
-      const close = spawnSync('powershell.exe', ['-NoProfile', '-Command', '$app = Get-Process -Id $env:PL_NATIVE_OWNED_PID -ErrorAction SilentlyContinue; if ($app) { $null = $app.CloseMainWindow() }'], {
-        encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) },
+      const close = spawnSync('powershell.exe', ['-NoProfile', '-Command', '$app = Get-Process -Id $env:PL_NATIVE_OWNED_PID -ErrorAction Stop; if (!$app.CloseMainWindow()) { throw "Native window refused close" }; if (!$app.WaitForExit(10000)) { throw "Native window did not exit" }'], {
+        encoding: 'utf8', timeout: 15_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) },
       });
       assert.equal(close.status, 0, close.stderr || 'Native window close failed');
-      await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => reject(new Error('Native app did not exit after window close')), 10_000);
-        nativeApp.once('exit', () => { clearTimeout(timer); resolve(); });
-      });
+      await waitFor(() => nativeApp.exitCode !== null || nativeApp.signalCode !== null, 'native launcher exit after window close');
     }
     nativeApp?.stdout?.destroy();
     nativeApp?.stderr?.destroy();
@@ -265,8 +266,9 @@ async function closeSession() {
         if ($remaining.Count) { throw 'Owned WebView2 processes did not finish shutdown' }
       `], { encoding: 'utf8', timeout: 25_000, env: { ...process.env, PL_NATIVE_BROWSER_PIDS: browserPids.join(',') } });
       assert.equal(exited.status, 0, exited.stderr || 'Owned WebView2 shutdown failed');
-      (evidence.nativeShutdowns ||= []).push({ browserPids, exited: true });
+      (evidence.nativeShutdowns ||= []).push({ browserPids, exited: true, method: 'native-window-before-driver-session' });
     }
+    if (closingSession && closeNativeWindowFirst) await command('DELETE', `/session/${closingSession}`);
   }
 }
 async function startFixture(mode, responseKind = 'enhancement') {

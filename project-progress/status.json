@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T23:08:37Z",
+  "snapshotAt": "2026-09-06T23:16:54.264207Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "e1e4c9d1e864a4f4d91a2d982281feffbc44232f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Inspect NSIS/AppImage lifecycle results, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Verify ordinary native-window shutdown in PR #97, then complete alternate packages and remaining acceptance gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -39,9 +39,9 @@
     },
     {
       "label": "Native Library acceptance",
-      "state": "Verified",
-      "detail": "PR #94 merged as d81460b. Windows MSI and Linux DEB search, sort, reorder, collection cleanup and restart/reinstall retention passed. Native control readability remains tracked in PR #96.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34063663554"
+      "state": "Open",
+      "detail": "Historical PR #94 pass is superseded for restart reliability by Windows run 34065694897: three seeded Library records were absent after restart. Sorting itself is not established as the cause. Native-window-before-driver shutdown candidate requires native verification.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
     },
     {
       "label": "Native workspace import/export",
@@ -58,8 +58,14 @@
     {
       "label": "Alternate package lifecycle",
       "state": "Running",
-      "detail": "PR #97 targets main and includes verified primary acceptance. NSIS/AppImage jobs still require actual execution and retained-record proof.",
+      "detail": "PR #97 adds NSIS/AppImage install/exercise/reinstall checks. Run 34065694897 skipped these after Windows MSI failed; revised ordinary-window shutdown is pending native verification.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/97"
+    },
+    {
+      "label": "Native custom-button appearance",
+      "state": "Running",
+      "detail": "Scoped appearance:none candidate preserves app-defined button backgrounds. Build and browser compatibility pass at 400/480/1180px; actual GTK light/dark screenshot proof pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/native-button-appearance"
     }
   ],
   "issues": [
