@@ -23,7 +23,7 @@ if (process.platform === 'win32') {
   // selects a temporary profile, which breaks attachment and restart proof.
   const userDataFolder = path.join(process.env.LOCALAPPDATA, config.identifier);
   await mkdir(userDataFolder, { recursive: true });
-  tauriOptions.webviewOptions = { userDataFolder };
+  tauriOptions.webviewOptions = { userDataFolder, additionalBrowserArguments: ['--remote-debugging-port=9222'] };
   evidence.userDataFolder = userDataFolder;
 }
 const driver = spawn('tauri-driver', ['--port', '4444'], { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
