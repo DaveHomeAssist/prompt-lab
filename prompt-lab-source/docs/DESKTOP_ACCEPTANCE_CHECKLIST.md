@@ -8,6 +8,12 @@ The product candidate is main merge `a12b7e6fe85ff23219606e5167a5eed35b548ea5` (
 
 As of preparation, disposable macOS/Windows/Linux hosts and operators are unassigned; actual clean install, visible native launch, restart, upgrade, rollback and uninstall remain Unknown. Local signing discovery found two valid identities, but candidate signatures and notarization remain unverified. The Computer Use service failed with error -10005, “codex app-server exited before returning a response.” Signed-in canonical web acceptance remains Unknown independently of local web tests.
 
+## Alternate package automation candidate — 2026-09-06
+
+The additional `alternate-package-acceptance` job consumes this same workflow run's Windows/Linux artifacts on separate fresh runners. NSIS uses the documented silent install path, launches the installed binary, invokes its generated uninstaller, verifies binary removal, reinstalls and checks retained records. AppImage requires FUSE, launches the executable image directly, removes only the owned image file, restores it and checks the unchanged profile. Portable image replacement is not an OS package-manager uninstall or a previous-version upgrade. Both jobs run the maintained native scenarios and upload separate `native-acceptance-nsis` / `native-acceptance-appimage` evidence. Candidate CI must pass before either package is marked verified.
+
+Sources: [Tauri Windows installers](https://v2.tauri.app/distribute/windows-installer/), [NSIS command-line parameters](https://nsis.sourceforge.io/Which_command_line_parameters_can_be_used_to_configure_installers), and [running AppImages](https://docs.appimage.org/user-guide/run-appimages.html). No signing, security bypass, public release, prior-version upgrade or snapshot restore is introduced. The historical preparation notes below retain their original scope; current verification belongs in the implementation RUN.
+
 ## Candidate and artifact evidence
 
 Use GitHub's `Desktop Build` workflow in `.github/workflows/desktop-build.yml`. Its matrix is macOS universal (arm64 and x86_64), Windows runner default architecture, and Ubuntu 22.04 runner default architecture. Record the actual runner and binary architecture; a runner label alone is not architecture proof. macOS minimum 10.15 is declared configuration, not proof on that OS version.

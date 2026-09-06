@@ -189,3 +189,103 @@ jobs:
           name: native-acceptance-${{ matrix.platform }}
           path: ${{ runner.temp }}/promptlab-native-evidence
           if-no-files-found: warn
+
+  alternate-package-acceptance:
+    needs: desktop-build
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            package: nsis
+          - platform: ubuntu-22.04
+            package: appimage
+    runs-on: ${{ matrix.platform }}
+    env:
+      PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-alternate-evidence
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Download this run's package
+        uses: actions/download-artifact@v4
+        with:
+          name: prompt-lab-${{ matrix.platform }}
+          path: ${{ runner.temp }}/promptlab-candidate
+      - name: Install matching Windows driver
+        if: matrix.package == 'nsis'
+        shell: pwsh
+        run: |
+          cargo install --git https://github.com/chippers/msedgedriver-tool --rev 8c4b34f51b45f5cf08013366d703de464ab871d1 --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Driver installer build failed' }
+          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Matching Edge driver download failed' }
+          $PWD.Path >> $env:GITHUB_PATH
+      - name: Exercise NSIS install and uninstall retention
+        if: matrix.package == 'nsis'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installers = @(Get-ChildItem "$env:RUNNER_TEMP/promptlab-candidate" -Filter '*-setup.exe' -Recurse)
+          if ($installers.Count -ne 1) { throw 'Expected exactly one NSIS installer' }
+          $installer = $installers[0].FullName
+          $destination = Join-Path $env:LOCALAPPDATA 'PromptLabAcceptanceNSIS'
+          if (Test-Path $destination) { throw 'Disposable install destination already exists' }
+          New-Item -ItemType Directory -Force $env:PL_NATIVE_EVIDENCE | Out-Null
+          Get-FileHash -Algorithm SHA256 $installer | ConvertTo-Json | Set-Content "$env:PL_NATIVE_EVIDENCE/installer-hash.json"
+          Get-AuthenticodeSignature $installer | Select-Object Status,StatusMessage | ConvertTo-Json | Set-Content "$env:PL_NATIVE_EVIDENCE/signature.json"
+          # NSIS requires /D last, with its path unquoted even when it has spaces.
+          $install = Start-Process $installer -ArgumentList "/S /D=$destination" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "NSIS installation failed: $($install.ExitCode)" }
+          $env:PL_NATIVE_APP = Join-Path $destination 'prompt-lab-desktop.exe'
+          if (!(Test-Path $env:PL_NATIVE_APP)) { throw 'Installed NSIS application missing' }
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native NSIS acceptance failed' }
+          $uninstallers = @(Get-ChildItem $destination -Filter 'uninstall*.exe')
+          if ($uninstallers.Count -ne 1) { throw 'Expected exactly one installed NSIS uninstaller' }
+          $uninstall = Start-Process $uninstallers[0].FullName -ArgumentList '/S' -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw 'NSIS uninstall failed' }
+          $deadline = (Get-Date).AddSeconds(30)
+          while ((Test-Path $env:PL_NATIVE_APP) -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 200 }
+          if (Test-Path $env:PL_NATIVE_APP) { throw 'NSIS uninstall retained the binary' }
+          $reinstall = Start-Process $installer -ArgumentList "/S /D=$destination" -Wait -PassThru
+          if ($reinstall.ExitCode -ne 0) { throw 'NSIS reinstall failed' }
+          $env:PL_NATIVE_PHASE = 'retention'
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native NSIS retention failed' }
+      - name: Install AppImage native test dependencies
+        if: matrix.package == 'appimage'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1
+          cargo install tauri-driver --version 2.0.6 --locked
+      - name: Exercise AppImage launch and replacement retention
+        if: matrix.package == 'appimage'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' candidates < <(find "$RUNNER_TEMP/promptlab-candidate" -type f -name '*.AppImage' -print0)
+          test "${#candidates[@]}" -eq 1
+          test -c /dev/fuse
+          mkdir -p "$PL_NATIVE_EVIDENCE"
+          sha256sum "${candidates[0]}" > "$PL_NATIVE_EVIDENCE/installer-sha256.txt"
+          file "${candidates[0]}" > "$PL_NATIVE_EVIDENCE/package-info.txt"
+          mkdir "$RUNNER_TEMP/promptlab-portable"
+          export PL_NATIVE_APP="$RUNNER_TEMP/promptlab-portable/PromptLab.AppImage"
+          install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
+          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          # Portable removal/replacement: preserve the entire application profile.
+          rm -- "$PL_NATIVE_APP"
+          test ! -e "$PL_NATIVE_APP"
+          install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
+          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+      - name: Upload alternate package evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-acceptance-${{ matrix.package }}
+          path: ${{ runner.temp }}/promptlab-alternate-evidence
+          if-no-files-found: warn

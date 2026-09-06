@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T22:40:15Z",
+  "snapshotAt": "2026-09-06T22:43:50Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -54,6 +54,12 @@
       "state": "Running",
       "detail": "PR #96 follows a visible Linux contrast defect. Theme-aware controls pass local browser compatibility and tooling 14/14; actual native light/dark screenshot verification is pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/96"
+    },
+    {
+      "label": "Alternate package lifecycle",
+      "state": "Open",
+      "detail": "Separate fresh-runner NSIS and FUSE AppImage jobs are prepared on codex/alternate-package-acceptance. Syntax checked; actual lifecycle results pending. Prior-version upgrade and snapshot restore remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/alternate-package-acceptance"
     }
   ],
   "issues": [
@@ -222,7 +228,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Verify supported installers, previous-version upgrade/restore, and macOS native acceptance.",
+      "nextAction": "Inspect NSIS and AppImage native acceptance, then complete prior-version upgrade/restore and macOS interaction.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
