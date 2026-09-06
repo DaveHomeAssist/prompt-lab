@@ -6,8 +6,9 @@ const origins = new Set(['tauri://localhost', 'http://tauri.localhost', 'https:/
 const model = 'promptlab-fixture';
 
 // Operator-only loopback transport. It never forwards traffic or reads credentials.
-export function createDesktopFixtureServer({ mode = 'success', delayMs = 30_000, onEvent = () => {} } = {}) {
+export function createDesktopFixtureServer({ mode = 'success', responseKind = 'enhancement', delayMs = 30_000, onEvent = () => {} } = {}) {
   if (!['success', 'slow', 'error'].includes(mode)) throw new Error('Mode must be success, slow, or error.');
+  if (!['enhancement', 'follow-up'].includes(responseKind)) throw new Error('Unknown fixture response kind.');
   return http.createServer(async (request, response) => {
     const origin = request.headers.origin;
     const reply = (status, body) => {
@@ -44,7 +45,10 @@ export function createDesktopFixtureServer({ mode = 'success', delayMs = 30_000,
         });
         if (!completed) return;
       }
-      reply(200, { model, done: true, message: { role: 'assistant', content: JSON.stringify(fixtureEnhancementContract(payload)) } });
+      const result = responseKind === 'follow-up'
+        ? { suggestions: [{ title: 'Fixture next analysis', prompt: `Continue from this saved answer:\n${payload.messages.find(message => message.role === 'user')?.content || ''}` }] }
+        : fixtureEnhancementContract(payload);
+      reply(200, { model, done: true, message: { role: 'assistant', content: JSON.stringify(result) } });
       onEvent('completed');
     } catch {
       if (!response.destroyed && !response.headersSent) reply(400, { error: 'Invalid fixture request' });
