@@ -762,7 +762,7 @@ textarea:disabled {
   .pl-library-workspace { display: block; overflow-y: auto; }
   .pl-library-rail { overflow: visible; border-right: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
   .pl-library-rail nav { display: flex; overflow-x: auto; }
-  .pl-library-rail nav button { min-width: max-content; }
+  .pl-library-rail nav button { flex: 0 0 auto; width: auto; min-width: max-content; grid-template-columns: auto auto auto; white-space: nowrap; }
   .pl-library-rail section,
   .pl-trash-link { display: none; }
   .pl-library-index { overflow: visible; }
