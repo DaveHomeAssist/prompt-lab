@@ -116,7 +116,7 @@ jobs:
 
       - name: Install native test tools
         if: matrix.platform == 'ubuntu-22.04'
-        run: cargo install tauri-driver --locked
+        run: cargo install tauri-driver --version 2.0.6 --locked
 
       - name: Install matching Windows driver
         if: matrix.platform == 'windows-latest'
