@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
 import { exerciseLibrary, checkLibraryPersisted } from './native-library-acceptance.mjs';
+import { exerciseWorkspace, checkWorkspacePersisted } from './native-workspace-acceptance.mjs';
 
 // Runs only on disposable CI runners, against an installed application binary.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Use the operator checklist outside disposable CI.');
@@ -350,7 +351,14 @@ async function exerciseFollowUp(parentId) {
   await checkpoint('saved-output follow-up survives native restart; rejected save retry preserves parent and makes no provider call');
 }
 
-const libraryApi = { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
+const executeAsync = script => command('POST', `/session/${session}/execute/async`, { script, args: [] });
+async function uploadJson(selector, data) {
+  const file = path.join(evidenceDir, 'workspace-import.json');
+  await writeFile(file, JSON.stringify(data, null, 2));
+  const id = await element(selector);
+  await command('POST', `/session/${session}/element/${id}/value`, { text: file });
+}
+const libraryApi = { execute, executeAsync, uploadJson, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
 
 try {
   await checkpoint('native harness started');
@@ -372,6 +380,10 @@ try {
     await checkLibraryPersisted(libraryApi, previous.libraryMatrix);
     evidence.libraryMatrix = previous.libraryMatrix;
     await checkpoint('Library matrix identities, order and collection cleanup survived OS uninstall and reinstall');
+    assert.ok(previous.workspaceImport, 'Exercise must include native workspace import');
+    await checkWorkspacePersisted(libraryApi, previous.workspaceImport);
+    evidence.workspaceImport = previous.workspaceImport;
+    await checkpoint('imported versions, mapped runs/test cases and provenance survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
@@ -413,6 +425,12 @@ try {
     await checkpoint('native UI displayed terminal provider failure');
     await screenshot('failure');
     evidence.libraryMatrix = await exerciseLibrary(libraryApi);
+    evidence.workspaceImport = await exerciseWorkspace(libraryApi, saved.id);
+    // Import deliberately replaces Alpha and adds two records. Retention must
+    // verify this acknowledged post-import state, not the pre-import fixture.
+    const afterImport = await readLibrary();
+    evidence.libraryMatrix.order = afterImport.map(row => row.id);
+    evidence.libraryMatrix.entries = afterImport.filter(row => evidence.libraryMatrix.entries.some(entry => entry.id === row.id));
   }
   evidence.status = 'passed';
 } catch (error) {
