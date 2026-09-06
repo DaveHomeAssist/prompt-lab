@@ -253,7 +253,15 @@ async function checkPersisted() {
 async function checkFollowUpPersisted(expected) {
   const library = await readLibrary();
   const child = library.find(row => row.id === expected.child.id);
-  assert.deepEqual(child, expected.child, 'Follow-up identity, body and provenance persist');
+  // Inspecting an entry records access and recomputes completeness timestamps.
+  // Compare every other field, including semantic completeness and provenance.
+  const persistentContent = row => {
+    assert.ok(row, 'Follow-up record exists');
+    const { updatedAt, updated_at, lastAccessedAt, completeness, ...content } = row;
+    const { updatedAt: completenessCheckedAt, ...assessment } = completeness || {};
+    return { ...content, completeness: assessment };
+  };
+  assert.deepEqual(persistentContent(child), persistentContent(expected.child), 'Follow-up identity, body and provenance persist');
   assert.deepEqual(library.find(row => row.id === expected.parent.id), expected.parent, 'Source prompt remains unchanged');
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', child.title);
@@ -284,6 +292,7 @@ async function exerciseFollowUp(parentId) {
     };`, args: [source] });
   assert.equal(seeded.ok, true, JSON.stringify(seeded));
   await command('POST', `/session/${session}/refresh`, {});
+  await click('[aria-label="Follow-up source"]');
   const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
   await command('POST', `/session/${session}/element/${sourceOption}/click`, {});
   await startFixture('error', 'follow-up');
