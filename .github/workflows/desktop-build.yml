@@ -7,11 +7,13 @@ on:
     paths:
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
+      - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
+      - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - .github/workflows/desktop-build.yml
 
 permissions:
@@ -42,6 +44,7 @@ jobs:
 
   desktop-build:
     needs: extension-tests
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -90,6 +93,7 @@ jobs:
           args: ${{ matrix.args }}
 
       - name: Upload build artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: prompt-lab-${{ matrix.platform }}
@@ -108,4 +112,71 @@ jobs:
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.AppImage
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.exe
             prompt-lab-source/prompt-lab-desktop/src-tauri/target/*/release/bundle/**/*.msi
+          if-no-files-found: warn
+
+      - name: Install native test tools
+        if: matrix.platform == 'ubuntu-22.04'
+        run: cargo install tauri-driver --version 2.0.6 --locked
+
+      - name: Install matching Windows driver
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          cargo install --git https://github.com/chippers/msedgedriver-tool --rev 8c4b34f51b45f5cf08013366d703de464ab871d1 --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Driver installer build failed' }
+          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Matching Edge driver download failed' }
+          $PWD.Path >> $env:GITHUB_PATH
+
+      - name: Install and exercise Windows MSI
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        env:
+          PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-native-evidence
+        run: |
+          $msi = (Get-ChildItem 'prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/msi/*.msi' | Select-Object -First 1).FullName
+          if (!$msi) { throw 'Candidate MSI missing' }
+          New-Item -ItemType Directory -Force $env:PL_NATIVE_EVIDENCE | Out-Null
+          Get-FileHash -Algorithm SHA256 $msi | ConvertTo-Json | Set-Content "$env:PL_NATIVE_EVIDENCE/installer-hash.json"
+          Get-AuthenticodeSignature $msi | Select-Object Status,StatusMessage | ConvertTo-Json | Set-Content "$env:PL_NATIVE_EVIDENCE/signature.json"
+          $install = Start-Process msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart', '/L*v', "`"$env:PL_NATIVE_EVIDENCE/install.log`"") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "MSI install failed: $($install.ExitCode)" }
+          $env:PL_NATIVE_APP = (Get-ChildItem "$env:ProgramFiles/Prompt Lab" -Filter 'prompt-lab-desktop.exe' -Recurse | Select-Object -First 1).FullName
+          if (!$env:PL_NATIVE_APP) { throw 'Installed application binary missing' }
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows acceptance failed' }
+          $uninstall = Start-Process msiexec.exe -ArgumentList @('/x', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0 -or (Test-Path $env:PL_NATIVE_APP)) { throw 'MSI uninstall did not remove the application' }
+          $reinstall = Start-Process msiexec.exe -ArgumentList @('/i', "`"$msi`"", '/qn', '/norestart') -Wait -PassThru
+          if ($reinstall.ExitCode -ne 0) { throw 'MSI reinstall failed' }
+          $env:PL_NATIVE_PHASE = 'retention'
+          node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows retention check failed' }
+
+      - name: Install and exercise Linux DEB
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-native-evidence
+        run: |
+          sudo apt-get install -y webkit2gtk-driver xvfb
+          deb=$(realpath prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/deb/*.deb)
+          package=$(dpkg-deb -f "$deb" Package)
+          mkdir -p "$PL_NATIVE_EVIDENCE"
+          sha256sum "$deb" > "$PL_NATIVE_EVIDENCE/installer-sha256.txt"
+          dpkg-deb --info "$deb" > "$PL_NATIVE_EVIDENCE/package-info.txt"
+          sudo apt-get install -y "$deb"
+          export PL_NATIVE_APP=$(dpkg -L "$package" | grep '^/usr/bin/[^/]*$' | head -1)
+          test -x "$PL_NATIVE_APP"
+          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          sudo apt-get remove -y "$package"
+          test ! -e "$PL_NATIVE_APP"
+          sudo apt-get install -y "$deb"
+          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+
+      - name: Upload native acceptance evidence
+        if: always() && matrix.platform != 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-acceptance-${{ matrix.platform }}
+          path: ${{ runner.temp }}/promptlab-native-evidence
           if-no-files-found: warn
