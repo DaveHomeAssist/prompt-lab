@@ -20,6 +20,12 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'native filtered manual order visible after restart');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
+  await click('[aria-label="Switch to light mode"]');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
+  await screenshot('library-light-controls');
+  await click('[aria-label="Switch to dark mode"]');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   await screenshot('library-restored');
 }
 

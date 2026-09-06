@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T22:40:15Z",
+  "snapshotAt": "2026-09-06T22:53:32Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "d81460be50d8f7d94a82a76c3bc3bf26dc1745af",
+  "mainSha": "74ca0fe25abf6319e5c6266d0c744e35e1c92306",
   "overall": "Acceptance incomplete",
-  "nextAction": "Inspect PR #95 native import/export results and PR #96 light/dark control screenshots before completing remaining platform/runtime gates.",
+  "nextAction": "Verify Windows follow-up persistence after confirmed WebView2 shutdown, then finish import/export and alternate-package acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -45,15 +45,21 @@
     },
     {
       "label": "Native workspace import/export",
-      "state": "Running",
-      "detail": "PR #95 corrects two reproduced harness assumptions: close the compact inspector before navigation and preserve the complete duplicate snapshot. Browser scenarios pass 6/6 at 400/480/1180px; corrected Windows/Linux execution is pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/95"
+      "state": "Open",
+      "detail": "Run 34064707220 passed Linux import/export serialization, restart and reinstall associations. Windows lost the follow-up after restart; root cause unconfirmed. Owned WebView2 exit verification and pre-restart capture added for the next run.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34064707220"
     },
     {
       "label": "Native control readability",
-      "state": "Running",
-      "detail": "PR #96 follows a visible Linux contrast defect. Theme-aware controls pass local browser compatibility and tooling 14/14; actual native light/dark screenshot verification is pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/96"
+      "state": "Verified",
+      "detail": "PR #96 merged as 74ca0fe. Windows/Linux exercise and retention passed; actual light/dark screenshots show readable select text. macOS packaging passed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34064507091"
+    },
+    {
+      "label": "Alternate package lifecycle",
+      "state": "Open",
+      "detail": "PR #97 adds fresh-runner NSIS and FUSE AppImage jobs. Initial runner-context scope error corrected; lifecycle execution pending. Prior-version upgrade and restore remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/97"
     }
   ],
   "issues": [
@@ -114,7 +120,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Verify remaining canonical signed-in web follow-up acceptance; installed MSI/DEB lifecycle proof is recorded.",
+      "nextAction": "Investigate the latest Windows missing-follow-up restart failure; preserve prior scoped evidence and verify signed-in web separately.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -126,7 +132,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Inspect native workspace import/export and control screenshots, then complete remaining Library runtime acceptance.",
+      "nextAction": "Inspect native workspace import/export results, then complete remaining Library runtime acceptance.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -222,7 +228,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Verify supported installers, previous-version upgrade/restore, and macOS native acceptance.",
+      "nextAction": "Inspect NSIS and AppImage native acceptance, then complete prior-version upgrade/restore and macOS interaction.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
