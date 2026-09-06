@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T21:49:49Z",
+  "snapshotAt": "2026-09-06T21:59:18Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "b2d162148cd586e35bee1e8fa61f46bd15087adc",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the corrected native PR #92 on Windows and Linux, then complete the remaining Library and platform matrix.",
+  "nextAction": "Verify native CI for PRs #92 and #94, then complete raw import/export and remaining platform acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -36,6 +36,12 @@
       "state": "Open",
       "detail": "Full Library matrix, upgrade/restore, alternate packages, macOS native/applicable signing, and authenticated canonical web remain open.",
       "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
+    },
+    {
+      "label": "Native Library acceptance",
+      "state": "Running",
+      "detail": "PR #94 adds native search/order/collection/restart checks and fixes compact smart-view label overlap. Browser development checks pass at 400/1180px; installed-app CI remains pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/94"
     }
   ],
   "issues": [
@@ -108,7 +114,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Run the complete native Library navigation, import/export, and persistence matrix.",
+      "nextAction": "Inspect PR #94 installed-app results, then complete raw import/export and remaining Library matrix.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
