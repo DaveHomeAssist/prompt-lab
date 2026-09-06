@@ -79,6 +79,8 @@ Record PASS, FAIL or Unknown for every step, with a screenshot or exported synth
 
 ## Upgrade, rollback and uninstall
 
+Native workspace acceptance selects a synthetic JSON file through the actual file input. It verifies preview cancellation without Library/history writes; explicit Skip, Replace and Keep both; replacement version history; duplicate and replacement run remapping; test-case/provenance associations; and preservation of authored packs when older schema-2 files contain `packs: []`. The normal Settings exporter is observed at its JSON blob boundary without replacing its implementation or suppressing its download. This proves export serialization, not successful completion of an OS download/save dialog. Mapped records are rechecked after full restart and installer retention.
+
 The maintained native Library scenario adds three synthetic records to the disposable profile and enables a local test Pro entitlement without a purchase. It exercises Library/Composer metadata search, newly loaded starter timestamp ordering, filtered manual reordering, active-collection deletion and filter reset. It checks prompt identities, content, metadata, tags and order after full app restart and installer retention. Existing lifecycle and follow-up records remain present. This scenario is not proof of raw file import/export, prior-version upgrade, or a real billing entitlement; those remain separate gates.
 
 The currently discovered prior public artifact set is the `v1.5.0-desktop-preview` prerelease, with Windows MSI/NSIS and Linux DEB/AppImage. It is a historical upgrade input, not proof for the candidate. No macOS asset was present in that release; macOS upgrade acceptance remains Unknown until a real supported baseline is identified.

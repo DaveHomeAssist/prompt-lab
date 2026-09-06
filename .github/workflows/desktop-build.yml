@@ -42,6 +42,15 @@ jobs:
       - name: Run extension tests
         run: npm test
 
+      - name: Build shared UI for native scenario development checks
+        run: npm run build
+
+      - name: Install Chromium for scenario development checks
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify native scenario logic and compact Library layout
+        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js
+
   desktop-build:
     needs: extension-tests
     timeout-minutes: 45

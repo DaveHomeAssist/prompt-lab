@@ -14,7 +14,7 @@ async function openView(page, name, width) {
   else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name, exact: true }).click();
 }
 
-for (const surface of surfaces) for (const width of [400, 1180]) {
+for (const surface of surfaces) for (const width of [400, 480, 1180]) {
   test(`${surface.name} Library compatibility at ${width}px`, async () => {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'promptlab-compatibility-'));
     const context = await chromium.launchPersistentContext(profile, {

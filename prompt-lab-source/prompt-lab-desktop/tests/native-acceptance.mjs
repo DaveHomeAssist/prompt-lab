@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
 import { exerciseLibrary, checkLibraryPersisted } from './native-library-acceptance.mjs';
+import { exerciseWorkspace, checkWorkspacePersisted } from './native-workspace-acceptance.mjs';
 
 // Runs only on disposable CI runners, against an installed application binary.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Use the operator checklist outside disposable CI.');
@@ -174,6 +175,11 @@ async function windowsStartupDiagnostics() {
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
 async function openCreate() {
+  // The compact inspector deliberately overlays workspace navigation.
+  // Dismiss it through the same visible control a user must use first.
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Close prompt inspector"]`));')) {
+    await click('[aria-label="Close prompt inspector"]');
+  }
   await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
 }
 async function openSession() {
@@ -215,6 +221,18 @@ async function openSession() {
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
 }
 async function closeSession() {
+  let browserPids = [];
+  if (nativeAppPid) {
+    const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+      $owned = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+        Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
+        Select-Object -ExpandProperty ProcessId)
+      ConvertTo-Json -InputObject $owned -Compress
+    `], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
+    assert.equal(probe.status, 0, probe.stderr || 'Owned WebView2 process discovery failed');
+    browserPids = JSON.parse(probe.stdout.trim());
+    assert.ok(browserPids.length, 'Owned WebView2 browser process must be identified before restart');
+  }
   try {
     if (session) await command('DELETE', `/session/${session}`);
   } finally {
@@ -235,6 +253,20 @@ async function closeSession() {
     nativeApp?.unref();
     nativeApp = null;
     nativeAppPid = null;
+    if (browserPids.length) {
+      const exited = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+        $owned = @($env:PL_NATIVE_BROWSER_PIDS.Split(',') | ForEach-Object { [int]$_ })
+        $deadline = (Get-Date).AddSeconds(20)
+        do {
+          $remaining = @(Get-Process -Id $owned -ErrorAction SilentlyContinue)
+          if (!$remaining.Count) { break }
+          Start-Sleep -Milliseconds 100
+        } while ((Get-Date) -lt $deadline)
+        if ($remaining.Count) { throw 'Owned WebView2 processes did not finish shutdown' }
+      `], { encoding: 'utf8', timeout: 25_000, env: { ...process.env, PL_NATIVE_BROWSER_PIDS: browserPids.join(',') } });
+      assert.equal(exited.status, 0, exited.stderr || 'Owned WebView2 shutdown failed');
+      (evidence.nativeShutdowns ||= []).push({ browserPids, exited: true });
+    }
   }
 }
 async function startFixture(mode, responseKind = 'enhancement') {
@@ -343,6 +375,7 @@ async function exerciseFollowUp(parentId) {
   await click('//*[@data-testid="follow-up-panel"]//button[normalize-space(.)="Use in editor"]', 'xpath');
   assert.equal(await execute('return document.querySelector("[data-testid=prompt-input]").value;'), prompt);
   const expected = { child, parent: baseline.find(row => row.id === parent.id) };
+  await writeFile(path.join(evidenceDir, `${phase}-follow-up-before-restart.json`), JSON.stringify(expected, null, 2));
   await closeSession();
   await openSession();
   await checkFollowUpPersisted(expected);
@@ -350,7 +383,14 @@ async function exerciseFollowUp(parentId) {
   await checkpoint('saved-output follow-up survives native restart; rejected save retry preserves parent and makes no provider call');
 }
 
-const libraryApi = { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
+const executeAsync = script => command('POST', `/session/${session}/execute/async`, { script, args: [] });
+async function uploadJson(selector, data) {
+  const file = path.join(evidenceDir, 'workspace-import.json');
+  await writeFile(file, JSON.stringify(data, null, 2));
+  const id = await element(selector);
+  await command('POST', `/session/${session}/element/${id}/value`, { text: file });
+}
+const libraryApi = { execute, executeAsync, uploadJson, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
 
 try {
   await checkpoint('native harness started');
@@ -372,6 +412,10 @@ try {
     await checkLibraryPersisted(libraryApi, previous.libraryMatrix);
     evidence.libraryMatrix = previous.libraryMatrix;
     await checkpoint('Library matrix identities, order and collection cleanup survived OS uninstall and reinstall');
+    assert.ok(previous.workspaceImport, 'Exercise must include native workspace import');
+    await checkWorkspacePersisted(libraryApi, previous.workspaceImport);
+    evidence.workspaceImport = previous.workspaceImport;
+    await checkpoint('imported versions, mapped runs/test cases and provenance survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
@@ -413,6 +457,12 @@ try {
     await checkpoint('native UI displayed terminal provider failure');
     await screenshot('failure');
     evidence.libraryMatrix = await exerciseLibrary(libraryApi);
+    evidence.workspaceImport = await exerciseWorkspace(libraryApi, saved.id);
+    // Import deliberately replaces Alpha and adds two records. Retention must
+    // verify this acknowledged post-import state, not the pre-import fixture.
+    const afterImport = await readLibrary();
+    evidence.libraryMatrix.order = afterImport.map(row => row.id);
+    evidence.libraryMatrix.entries = afterImport.filter(row => evidence.libraryMatrix.entries.some(entry => entry.id === row.id));
   }
   evidence.status = 'passed';
 } catch (error) {
