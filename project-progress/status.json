@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T22:18:59Z",
+  "snapshotAt": "2026-09-06T22:27:30Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "5b76a96d9ee98518288bd09bf32c38e02dcff0c1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify corrected Linux Library acceptance in PR #94, then complete raw import/export and remaining platform/runtime gates.",
+  "nextAction": "Verify native CI for PRs #94 and #95, then prove filesystem download and remaining platform/runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -42,6 +42,12 @@
       "state": "Running",
       "detail": "PR #94 Windows exercise/retention passed. Linux rejected a redundant empty send-keys command; corrected rerun pending. Compact label fix passes browser geometry and compatibility tests.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/94"
+    },
+    {
+      "label": "Native workspace files",
+      "state": "Running",
+      "detail": "PR #95 adds preview/conflict/association/export-serialization and retention checks. Browser development 400/1180px passes; installed file handling and OS download completion remain unverified.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/95"
     }
   ],
   "issues": [
@@ -114,7 +120,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Verify corrected Linux PR #94 acceptance, then complete raw import/export and remaining Library matrix.",
+      "nextAction": "Verify PR #94/#95 native results, then complete filesystem download and the remaining Library matrix.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
