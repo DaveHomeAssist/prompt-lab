@@ -94,7 +94,14 @@ async function windowsStartupDiagnostics() {
   const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
     Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('prompt-lab-desktop.exe', 'msedgewebview2.exe', 'msedgedriver.exe') } |
       Select-Object Name,ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Depth 3
+    $probe = $null
     try {
+      if (!(Get-Process -Name 'prompt-lab-desktop' -ErrorAction SilentlyContinue)) {
+        $probe = Start-Process -FilePath $env:PL_NATIVE_APP -PassThru -RedirectStandardError "$env:PL_NATIVE_DIAGNOSTIC_SCREEN.stderr.txt" -RedirectStandardOutput "$env:PL_NATIVE_DIAGNOSTIC_SCREEN.stdout.txt"
+        Start-Sleep -Seconds 5
+        $probe.Refresh()
+        $probe | Select-Object Id,HasExited,ExitCode,MainWindowTitle,Responding | ConvertTo-Json
+      }
       Add-Type -AssemblyName System.Windows.Forms
       Add-Type -AssemblyName System.Drawing
       $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
@@ -105,6 +112,12 @@ async function windowsStartupDiagnostics() {
         $bitmap.Save($env:PL_NATIVE_DIAGNOSTIC_SCREEN, [System.Drawing.Imaging.ImageFormat]::Png)
       } finally { $graphics.Dispose(); $bitmap.Dispose() }
     } catch { Write-Warning $_.Exception.Message }
+    finally {
+      if ($probe -and !$probe.HasExited) {
+        $null = $probe.CloseMainWindow()
+        if (!$probe.WaitForExit(5000)) { $probe.Kill() }
+      }
+    }
   `], { encoding: 'utf8', timeout: 20_000, env: { ...process.env, PL_NATIVE_DIAGNOSTIC_SCREEN: path.join(evidenceDir, `${phase}-windows-desktop.png`) } });
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
