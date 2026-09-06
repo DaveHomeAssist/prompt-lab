@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T21:34:18Z",
+  "snapshotAt": "2026-09-06T21:41:55Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "4ed696860a8bdf479fe8756ce3b7630de067346a",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify PR #92 native exercise and retention, then complete the Library and platform acceptance matrix.",
+  "nextAction": "Diagnose the Windows native-render timeout in PR #92, then rerun acceptance and complete the Library/platform matrix.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -27,8 +27,8 @@
     },
     {
       "label": "Native follow-up acceptance",
-      "state": "Running",
-      "detail": "PR #92 at 4f9d1c2 corrects native selector visibility and access-timestamp assertions. Windows/Linux results pending.",
+      "state": "Failed",
+      "detail": "PR #92 at 4f9d1c2: Linux exercise and retention passed; Windows failed with native application rendered timeout. macOS packaging passed. PR remains unmerged.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34061242178"
     },
     {
@@ -96,7 +96,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Inspect PR #92 native follow-up exercise and retention evidence before merging.",
+      "nextAction": "Diagnose the Windows native-render timeout and rerun PR #92 acceptance before merging.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
