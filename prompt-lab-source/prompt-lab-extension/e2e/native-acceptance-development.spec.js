@@ -10,7 +10,7 @@ const extensionPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 
 // Fast development coverage for shared scenario logic. Native CI still owns
 // WebDriver behavior, installed-process restart and installer retention proof.
-for (const width of [400, 1180]) test(`native scenario browser development at ${width}px`, async ({}, testInfo) => {
+for (const width of [400, 480, 1180]) test(`native scenario browser development at ${width}px`, async ({}, testInfo) => {
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'promptlab-native-development-'));
   const context = await chromium.launchPersistentContext(profile, {
     channel: 'chromium', headless: true,
@@ -54,7 +54,7 @@ for (const width of [400, 1180]) test(`native scenario browser development at ${
     await execute(`
       localStorage.setItem('pl_telemetry_consent', 'denied');
       const rows = JSON.parse(localStorage.getItem('pl2-library'));
-      rows.push({id:'native-dev-parent',title:'Native lifecycle parent',original:'Native parent original',enhanced:'Native parent enhanced',currentVersionId:'parent-version',createdAt:'2026-01-01T00:00:00Z',updatedAt:'2026-01-01T00:00:00Z'});
+      rows.push({id:'native-dev-parent',title:'Native lifecycle parent',original:'Native parent original',enhanced:'Native parent enhanced',variants:[{label:'Concise',content:'Native concise variant'}],notes:'Native saved notes',currentVersionId:'parent-version',createdAt:'2026-01-01T00:00:00Z',updatedAt:'2026-01-01T00:00:00Z'});
       localStorage.setItem('pl2-library', JSON.stringify(rows)); return true;`);
     await page.close();
     await openSession();

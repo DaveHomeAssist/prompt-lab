@@ -63,7 +63,7 @@ export async function exerciseWorkspace(api, parentId) {
     schemaVersion: 2,
     packs: [],
     library: [
-      { id: 'native-import-duplicate', title: 'Native duplicate alias', original: parent.original, enhanced: parent.enhanced, currentVersionId: 'duplicate-version' },
+      { ...parent, id: 'native-import-duplicate', title: 'Native duplicate alias', original: parent.original, enhanced: parent.enhanced, currentVersionId: 'duplicate-version' },
       { id: 'native-import-replacement', title: target.title, original: 'Native imported replacement body', enhanced: 'Native imported replacement body', currentVersionId: 'incoming-version' },
       { id: 'native-import-keep', title: parent.title, original: 'Native Keep both body', enhanced: 'Native Keep both body' },
       { id: childId, title: 'Native imported child', original: 'Native child body', enhanced: 'Native child body', metadata: { followUpOrigin: { sourceKind: 'run-output', sourcePromptId: 'native-import-replacement', sourcePromptVersionId: 'incoming-version', sourceRunId: runId, generationProvider: 'ollama', generationModel: 'promptlab-fixture' } } },

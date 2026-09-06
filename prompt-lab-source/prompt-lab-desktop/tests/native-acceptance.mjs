@@ -175,6 +175,11 @@ async function windowsStartupDiagnostics() {
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
 async function openCreate() {
+  // The compact inspector deliberately overlays workspace navigation.
+  // Dismiss it through the same visible control a user must use first.
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Close prompt inspector"]`));')) {
+    await click('[aria-label="Close prompt inspector"]');
+  }
   await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
 }
 async function openSession() {
