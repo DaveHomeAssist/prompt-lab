@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T22:18:59Z",
+  "snapshotAt": "2026-09-06T22:36:04Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "5b76a96d9ee98518288bd09bf32c38e02dcff0c1",
+  "mainSha": "d81460be50d8f7d94a82a76c3bc3bf26dc1745af",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify corrected Linux Library acceptance in PR #94, then complete raw import/export and remaining platform/runtime gates.",
+  "nextAction": "Inspect PR #95 native import/export results and PR #96 light/dark control screenshots before completing remaining platform/runtime gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,14 +34,26 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "Full Library matrix, upgrade/restore, alternate packages, macOS native/applicable signing, and authenticated canonical web remain open.",
+      "detail": "Native import/export, control readability, upgrade/restore, alternate packages, macOS interaction/applicable signing and authenticated canonical web remain open.",
       "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
     },
     {
       "label": "Native Library acceptance",
+      "state": "Verified",
+      "detail": "PR #94 merged as d81460b. Windows MSI and Linux DEB search, sort, reorder, collection cleanup and restart/reinstall retention passed. Native control readability remains tracked in PR #96.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34063663554"
+    },
+    {
+      "label": "Native workspace import/export",
       "state": "Running",
-      "detail": "PR #94 Windows exercise/retention passed. Linux rejected a redundant empty send-keys command; corrected rerun pending. Compact label fix passes browser geometry and compatibility tests.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/94"
+      "detail": "PR #95 targets main. Browser development checks passed; Windows/Linux native file input, mapping, export serialization and retention results remain pending. OS download completion is a separate gate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/95"
+    },
+    {
+      "label": "Native control readability",
+      "state": "Running",
+      "detail": "PR #96 follows a visible Linux contrast defect. Theme-aware controls pass local browser compatibility and tooling 14/14; actual native light/dark screenshot verification is pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/96"
     }
   ],
   "issues": [
@@ -114,7 +126,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Verify corrected Linux PR #94 acceptance, then complete raw import/export and remaining Library matrix.",
+      "nextAction": "Inspect native workspace import/export and control screenshots, then complete remaining Library runtime acceptance.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
