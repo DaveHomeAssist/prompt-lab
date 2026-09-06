@@ -107,6 +107,11 @@ async function checkPersisted() {
   assert.match(saved[0].enhanced, /Fixture enhanced prompt/);
   const notes = await execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null");');
   assert.ok(notes?.pads.some(pad => pad.content.includes('Survives native restart')));
+  await click('[data-testid="nav-library"]');
+  await fill('[data-testid="library-search"]', 'Fixture enhanced prompt');
+  await waitFor(() => execute(`return [...document.querySelectorAll('.pl-library-card')].some(card => card.innerText.includes(${JSON.stringify(saved[0].title)}));`), 'persisted prompt visible in hydrated Library');
+  await screenshot('persisted-library');
+  await click('[data-testid="nav-create"]');
   return saved[0];
 }
 
@@ -116,7 +121,10 @@ try {
   evidence.checks.push('installed native binary rendered a Tauri window');
   await screenshot('launch');
   if (phase === 'retention') {
-    await checkPersisted();
+    const restored = await checkPersisted();
+    const previous = JSON.parse(await readFile(path.join(evidenceDir, 'exercise.json'), 'utf8'));
+    assert.equal(restored.id, previous.savedPromptId, 'Reinstall preserves the exact saved identity');
+    evidence.savedPromptId = restored.id;
     evidence.checks.push('Library and Scratch survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
