@@ -38,6 +38,36 @@ let nativeAppError;
 let nativeOutput = '';
 const events = [];
 
+async function checkpoint(label) {
+  evidence.checks.push(label);
+  // Progress is deliberately separate from the final acceptance result.
+  await writeFile(path.join(evidenceDir, `${phase}-progress.json`), JSON.stringify({ ...evidence, status: 'running' }, null, 2));
+}
+async function stopOwnedProcess(child, group = false) {
+  if (!child?.pid) return;
+  try {
+    if (child.exitCode === null && child.signalCode === null) {
+      if (process.platform === 'win32') {
+        const result = spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { encoding: 'utf8', timeout: 10_000 });
+        if (result.error) throw result.error;
+        assert.equal(result.status, 0, result.stderr || result.stdout || 'Owned process cleanup failed');
+      } else {
+        try { process.kill(group ? -child.pid : child.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
+      const deadline = Date.now() + 5000;
+      while (child.exitCode === null && child.signalCode === null && Date.now() < deadline) await delay(100);
+      assert.ok(child.exitCode !== null || child.signalCode !== null, 'Owned process did not exit');
+    }
+  } finally {
+    // A descendant can retain inherited pipe handles after its parent exits.
+    // Detach test-owned pipes after the bounded exit check; any failed cleanup
+    // is recorded as failure, never converted into a passing lifecycle check.
+    child.stdout?.destroy();
+    child.stderr?.destroy();
+    child.unref();
+  }
+}
+
 async function command(method, route, body) {
   evidence.lastCommand = `${method} ${route}`;
   const response = await fetch(`http://127.0.0.1:4444${route}`, {
@@ -166,7 +196,7 @@ async function closeSession() {
     if (session) await command('DELETE', `/session/${session}`);
   } finally {
     session = null;
-    if (nativeApp && nativeApp.exitCode === null) {
+    if (nativeApp && nativeApp.exitCode === null && nativeApp.signalCode === null) {
       const close = spawnSync('powershell.exe', ['-NoProfile', '-Command', '$app = Get-Process -Id $env:PL_NATIVE_OWNED_PID -ErrorAction SilentlyContinue; if ($app) { $null = $app.CloseMainWindow() }'], {
         encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeApp.pid) },
       });
@@ -176,6 +206,9 @@ async function closeSession() {
         nativeApp.once('exit', () => { clearTimeout(timer); resolve(); });
       });
     }
+    nativeApp?.stdout?.destroy();
+    nativeApp?.stderr?.destroy();
+    nativeApp?.unref();
     nativeApp = null;
   }
 }
@@ -201,16 +234,17 @@ async function checkPersisted() {
 }
 
 try {
+  await checkpoint('native harness started');
   await waitFor(() => command('GET', '/status'), 'native WebDriver ready');
   await openSession();
-  evidence.checks.push('installed native binary rendered a Tauri window');
+  await checkpoint('installed native binary rendered a Tauri window');
   await screenshot('launch');
   if (phase === 'retention') {
     const restored = await checkPersisted();
     const previous = JSON.parse(await readFile(path.join(evidenceDir, 'exercise.json'), 'utf8'));
     assert.equal(restored.id, previous.savedPromptId, 'Reinstall preserves the exact saved identity');
     evidence.savedPromptId = restored.id;
-    evidence.checks.push('Library and Scratch survived OS uninstall and reinstall');
+    await checkpoint('Library and Scratch survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
@@ -225,7 +259,7 @@ try {
     const saved = await waitFor(async () => { const rows = await readLibrary(); return rows.length === baseline.length + 1 && rows.find(row => row.original === 'Summarize this synthetic native acceptance note.'); }, 'acknowledged Library save');
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
     evidence.savedPromptId = saved.id;
-    evidence.checks.push('Enhance reached only the loopback fixture and saved through the native UI');
+    await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');
     await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Scratch")]', 'xpath');
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
     await waitFor(() => execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null")?.pads.some(pad => pad.content.includes("Survives native restart"));'), 'Scratch acknowledged save');
@@ -234,7 +268,7 @@ try {
     await openSession();
     const restored = await checkPersisted();
     assert.equal(restored.id, saved.id);
-    evidence.checks.push('full native app close and relaunch preserved Library identity/body and Scratch content');
+    await checkpoint('full native app close and relaunch preserved Library identity/body and Scratch content');
     await screenshot('restarted');
     await startFixture('slow');
     const priorRequests = events.filter(event => event === 'request').length;
@@ -243,12 +277,12 @@ try {
     await waitFor(() => events.filter(event => event === 'request').length > priorRequests, 'slow provider request');
     await click('//button[normalize-space(.)="Cancel"]', 'xpath');
     await waitFor(() => events.includes('connection-closed'), 'native cancellation closed upstream connection');
-    evidence.checks.push('native Cancel closed the loopback provider connection');
+    await checkpoint('native Cancel closed the loopback provider connection');
     await startFixture('error');
     await fill('[data-testid="prompt-input"]', 'Fail this synthetic native request.');
     await click('[data-testid="refine-action"]');
     await waitFor(() => execute('return document.body.innerText.includes("ollama request failed (400)");'), 'visible provider failure');
-    evidence.checks.push('native UI displayed terminal provider failure');
+    await checkpoint('native UI displayed terminal provider failure');
     await screenshot('failure');
   }
   evidence.status = 'passed';
@@ -266,12 +300,15 @@ try {
 } finally {
   await closeSession().catch(error => { evidence.cleanupError = error.message; evidence.status = 'failed'; process.exitCode = 1; });
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
-  if (driver.pid && driver.exitCode === null) {
-    if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(driver.pid), '/T', '/F']);
-    else { try { process.kill(-driver.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
+  for (const child of [driver, nativeApp]) {
+    await stopOwnedProcess(child, child === driver).catch(error => {
+      evidence.cleanupError = [evidence.cleanupError, error.message].filter(Boolean).join('; ');
+      evidence.status = 'failed';
+      process.exitCode = 1;
+    });
   }
-  if (nativeApp?.pid && nativeApp.exitCode === null) spawnSync('taskkill', ['/PID', String(nativeApp.pid), '/T', '/F']);
   evidence.fixtureEvents = events;
+  evidence.remainingResources = process.getActiveResourcesInfo();
   await writeFile(path.join(evidenceDir, `${phase}.json`), JSON.stringify(evidence, null, 2));
   await writeFile(path.join(evidenceDir, `${phase}-driver.log`), driverOutput);
   if (process.platform === 'win32') await writeFile(path.join(evidenceDir, `${phase}-native.log`), nativeOutput);

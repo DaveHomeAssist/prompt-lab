@@ -98,9 +98,10 @@ public static class NativeStandardUser {
                 throw new InvalidOperationException("Native test child retained elevated privileges");
             File.WriteAllText(evidence, "{\"parentIntegrity\":\"" + parentIntegrity + "\",\"childIntegrity\":\"" +
                 childIntegrity + "\",\"childAdministrator\":false,\"childPid\":" + child.processId + "}");
+            Console.WriteLine(File.ReadAllText(evidence));
             using (var process = Process.GetProcessById((int)child.processId)) {
                 if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native test");
-                if (!process.WaitForExit(20 * 60 * 1000)) throw new TimeoutException("Native test exceeded 20 minutes");
+                if (!process.WaitForExit(7 * 60 * 1000)) throw new TimeoutException("Native test exceeded 7 minutes; inspect progress and final evidence separately");
                 exited = true;
                 return process.ExitCode;
             }
