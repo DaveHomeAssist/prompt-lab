@@ -96,6 +96,11 @@ async function screenshot(name) {
 async function windowsStartupDiagnostics() {
   if (process.platform !== 'win32') return;
   const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+    foreach ($root in @('HKLM:', 'HKCU:')) {
+      $policy = Get-ItemProperty -LiteralPath "$root\\SOFTWARE\\Policies\\Microsoft\\Edge" -Name RemoteDebuggingAllowed -ErrorAction SilentlyContinue
+      $arguments = Get-Item -LiteralPath "$root\\SOFTWARE\\Policies\\Microsoft\\Edge\\WebView2\\AdditionalBrowserArguments" -ErrorAction SilentlyContinue
+      [pscustomobject]@{Root=$root; RemoteDebuggingAllowed=$policy.RemoteDebuggingAllowed; AdditionalBrowserArgumentsPolicyPresent=($null -ne $arguments)} | ConvertTo-Json
+    }
     Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('prompt-lab-desktop.exe', 'msedgewebview2.exe', 'msedgedriver.exe') } |
       Select-Object Name,ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Depth 3
     $probe = $null
@@ -108,6 +113,14 @@ async function windowsStartupDiagnostics() {
       }
       Add-Type -AssemblyName System.Windows.Forms
       Add-Type -AssemblyName System.Drawing
+      Add-Type -AssemblyName UIAutomationClient
+      Add-Type -AssemblyName UIAutomationTypes
+      $window = Get-Process -Name 'prompt-lab-desktop' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+      if ($window) {
+        $root = [System.Windows.Automation.AutomationElement]::FromHandle($window.MainWindowHandle)
+        $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, [System.Windows.Automation.Condition]::TrueCondition) |
+          Select-Object -First 120 | ForEach-Object { [pscustomobject]@{Name=$_.Current.Name; AutomationId=$_.Current.AutomationId; ControlType=$_.Current.ControlType.ProgrammaticName; Enabled=$_.Current.IsEnabled} } | ConvertTo-Json -Depth 3
+      }
       $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
       $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
       $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
