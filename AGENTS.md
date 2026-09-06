@@ -50,6 +50,14 @@ Choose the single Work Type that best describes the primary deliverable:
 
 Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | packLoadedAt Sort`, `PromptLab | Ops | Session Naming`, `PromptLab | Release | Five Feature Hardening`
 
+## Required Notion and visual progress updates
+
+After meaningful implementation, verification, merge, release, blocker, or scope updates, reconcile the affected rows in the canonical Notion Issue Backlog and refresh `project-progress/index.html` before closeout. Explicit read-only or no-write requests take precedence; unchanged polling needs no new status note.
+
+Follow `project-progress/README.md`. Fetch the live schema and rows, patch existing records without duplicates, attach evidence and one next action, and read back writes. A row becomes Done only after its full acceptance contract passes. Refresh `project-progress/status.json` from the complete issue-table snapshot and current Git/CI/runtime evidence, then run `node prompt-lab-source/scripts/render-project-progress.mjs` and the same command with `--check` under Node 22. Verify the HTML at mobile and desktop widths after presentation changes. Keep unavailable sources visibly Unknown and do not claim synchronization when a write/readback failed.
+
+This is an operator-maintained snapshot, not a background sync service. Never put credentials or private provider payloads in the snapshot or HTML. Keep it outside public deployment output unless Dave explicitly requests publication. Do not replace historical notes, change database schemas, or archive issues as part of routine progress updates.
+
 ## Issue Tracker
 
 | ID | Severity | Status | Title | Notes |
