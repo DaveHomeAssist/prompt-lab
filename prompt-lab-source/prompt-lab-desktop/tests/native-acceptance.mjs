@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
@@ -15,6 +15,17 @@ assert.ok(['exercise', 'retention'].includes(phase));
 const evidenceDir = path.resolve(process.env.PL_NATIVE_EVIDENCE || 'native-evidence');
 await mkdir(evidenceDir, { recursive: true });
 const evidence = { application, phase, platform: process.platform, sha: process.env.GITHUB_SHA, checks: [] };
+const tauriOptions = { application };
+if (process.platform === 'win32') {
+  assert.ok(process.env.LOCALAPPDATA, 'Windows local app data directory is required');
+  const config = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
+  // Match Tauri's default LocalData/identifier directory. EdgeDriver otherwise
+  // selects a temporary profile, which breaks attachment and restart proof.
+  const userDataFolder = path.join(process.env.LOCALAPPDATA, config.identifier);
+  await mkdir(userDataFolder, { recursive: true });
+  tauriOptions.webviewOptions = { userDataFolder };
+  evidence.userDataFolder = userDataFolder;
+}
 const driver = spawn('tauri-driver', ['--port', '4444'], { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
 let driverOutput = '';
 let driverError;
@@ -70,7 +81,7 @@ async function screenshot(name) {
   await writeFile(path.join(evidenceDir, `${phase}-${name}.png`), Buffer.from(data, 'base64'));
 }
 async function openSession() {
-  const result = await command('POST', '/session', { capabilities: { alwaysMatch: { 'tauri:options': { application } } } });
+  const result = await command('POST', '/session', { capabilities: { alwaysMatch: { 'tauri:options': tauriOptions } } });
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });

@@ -56,6 +56,8 @@ The `Desktop Build` workflow also runs an installed-binary smoke on disposable W
 
 The test-only driver is installed from the official Cargo registry with its lockfile; the documented Windows matching-driver installer is pinned to commit `8c4b34f51b45f5cf08013366d703de464ab871d1`. No runtime dependency or application security policy changes are needed. Platform support follows [Tauri's native WebDriver setup](https://v2.tauri.app/develop/tests/webdriver/manual-setup/) and [CI guide](https://v2.tauri.app/develop/tests/webdriver/ci/). The standard driver does not cover macOS; no paid driver service is introduced.
 
+Windows automation explicitly uses the installed app's default `%LOCALAPPDATA%/<Tauri identifier>` profile through the documented [WebView2 userDataFolder capability](https://learn.microsoft.com/en-us/microsoft-edge/webdriver/capabilities-edge-options#webviewoptions-object). This keeps restart and reinstall checks on the same disposable app data; EdgeDriver's temporary profile is unsuitable for persistence acceptance. Record the actual profile path in the evidence artifact.
+
 Record PASS, FAIL or Unknown for every step, with a screenshot or exported synthetic fixture and observed result. Never substitute a browser preview for the native window.
 
 1. Restore a clean VM snapshot or sign into the designated disposable account. Record OS, architecture, candidate SHA, installer name/hash, operator, and date. Confirm there is no personal Prompt Lab data or configured paid-provider key in this profile.
