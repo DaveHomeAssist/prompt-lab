@@ -202,8 +202,6 @@ jobs:
           - platform: ubuntu-22.04
             package: appimage
     runs-on: ${{ matrix.platform }}
-    env:
-      PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-alternate-evidence
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -225,6 +223,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Matching Edge driver download failed' }
           $PWD.Path >> $env:GITHUB_PATH
       - name: Exercise NSIS install and uninstall retention
+        env:
+          PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-alternate-evidence
         if: matrix.package == 'nsis'
         shell: pwsh
         run: |
@@ -263,6 +263,8 @@ jobs:
           sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1
           cargo install tauri-driver --version 2.0.6 --locked
       - name: Exercise AppImage launch and replacement retention
+        env:
+          PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-alternate-evidence
         if: matrix.package == 'appimage'
         shell: bash
         run: |
