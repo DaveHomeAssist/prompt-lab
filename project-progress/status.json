@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T22:43:50Z",
+  "snapshotAt": "2026-09-06T22:48:39Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "d81460be50d8f7d94a82a76c3bc3bf26dc1745af",
+  "mainSha": "74ca0fe25abf6319e5c6266d0c744e35e1c92306",
   "overall": "Acceptance incomplete",
-  "nextAction": "Inspect PR #95 native import/export results and PR #96 light/dark control screenshots before completing remaining platform/runtime gates.",
+  "nextAction": "Inspect corrected native import/export and alternate-package lifecycle results, then complete upgrade/restore and remaining runtime gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -51,15 +51,15 @@
     },
     {
       "label": "Native control readability",
-      "state": "Running",
-      "detail": "PR #96 follows a visible Linux contrast defect. Theme-aware controls pass local browser compatibility and tooling 14/14; actual native light/dark screenshot verification is pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/96"
+      "state": "Verified",
+      "detail": "PR #96 merged as 74ca0fe. Windows/Linux exercise and retention passed; actual light/dark screenshots show readable select text. macOS packaging passed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34064507091"
     },
     {
       "label": "Alternate package lifecycle",
       "state": "Open",
-      "detail": "Separate fresh-runner NSIS and FUSE AppImage jobs are prepared on codex/alternate-package-acceptance. Syntax checked; actual lifecycle results pending. Prior-version upgrade and snapshot restore remain open.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/alternate-package-acceptance"
+      "detail": "PR #97 adds fresh-runner NSIS and FUSE AppImage jobs. Initial runner-context scope error corrected; lifecycle execution pending. Prior-version upgrade and restore remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/97"
     }
   ],
   "issues": [
@@ -132,7 +132,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Inspect native workspace import/export and control screenshots, then complete remaining Library runtime acceptance.",
+      "nextAction": "Inspect native workspace import/export results, then complete remaining Library runtime acceptance.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
