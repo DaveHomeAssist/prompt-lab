@@ -1,0 +1,29 @@
+name: Project Progress
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - project-progress/**
+      - prompt-lab-source/scripts/render-project-progress.mjs
+      - .github/workflows/project-progress.yml
+  pull_request:
+    paths:
+      - project-progress/**
+      - prompt-lab-source/scripts/render-project-progress.mjs
+      - .github/workflows/project-progress.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  progress-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Validate snapshot and generated dashboard
+        run: node prompt-lab-source/scripts/render-project-progress.mjs --check
