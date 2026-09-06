@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T23:01:39Z",
+  "snapshotAt": "2026-09-06T23:08:37Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "74ca0fe25abf6319e5c6266d0c744e35e1c92306",
+  "mainSha": "e1e4c9d1e864a4f4d91a2d982281feffbc44232f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify Windows follow-up persistence after confirmed WebView2 shutdown, then finish import/export and alternate-package acceptance.",
+  "nextAction": "Inspect NSIS/AppImage lifecycle results, then complete export-download, upgrade/restore and remaining runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -45,9 +45,9 @@
     },
     {
       "label": "Native workspace import/export",
-      "state": "Open",
-      "detail": "Run 34064707220 passed Linux import/export serialization, restart and reinstall associations. Windows lost the follow-up after restart; root cause unconfirmed. Owned WebView2 exit verification and pre-restart capture added for the next run.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34064707220"
+      "state": "Verified",
+      "detail": "PR #95 merged as e1e4c9d. Windows/Linux file import, associations, export serialization, restart and reinstall passed. Windows verifies owned WebView2 exit before relaunch. OS download and arbitrary crash recovery are not proved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065324150"
     },
     {
       "label": "Native control readability",
@@ -57,8 +57,8 @@
     },
     {
       "label": "Alternate package lifecycle",
-      "state": "Open",
-      "detail": "Run 34065128887 failed Windows workspace retention after restart; NSIS/AppImage jobs were correctly skipped. PR #95 owned-WebView2 exit diagnostics integrated before retry. Root cause remains unconfirmed.",
+      "state": "Running",
+      "detail": "PR #97 targets main and includes verified primary acceptance. NSIS/AppImage jobs still require actual execution and retained-record proof.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/97"
     }
   ],
@@ -120,7 +120,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Investigate the latest Windows missing-follow-up restart failure; preserve prior scoped evidence and verify signed-in web separately.",
+      "nextAction": "Verify remaining signed-in web follow-up acceptance; current MSI/DEB shutdown and reinstall retention passed.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -132,7 +132,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Inspect native workspace import/export results, then complete remaining Library runtime acceptance.",
+      "nextAction": "Verify native OS export download, Linux header-button readability and remaining canonical runtime acceptance.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
