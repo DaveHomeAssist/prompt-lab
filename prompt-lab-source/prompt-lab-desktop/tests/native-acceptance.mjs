@@ -184,6 +184,7 @@ async function openSession() {
     const privileges = await waitFor(async () => JSON.parse(await readFile(privilegesFile, 'utf8')), 'standard user app launch');
     assert.equal(privileges.childIntegrity, 'S-1-16-8192');
     assert.equal(privileges.childAdministrator, false);
+    assert.equal(privileges.ownedObjectAccess, true);
     assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
     nativeAppPid = privileges.childPid;
     (evidence.nativeProcessPrivileges ||= []).push(privileges);

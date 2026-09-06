@@ -11,6 +11,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
 
@@ -39,6 +40,8 @@ public static class NativeStandardUser {
     static extern uint GetLengthSid(IntPtr sid);
     [DllImport("advapi32.dll", SetLastError = true)]
     static extern bool SetTokenInformation(IntPtr token, int kind, ref SidAndAttributes value, uint length);
+    [DllImport("advapi32.dll", SetLastError = true)]
+    static extern bool SetTokenInformation(IntPtr token, int kind, ref IntPtr value, uint length);
     [DllImport("advapi32.dll", SetLastError = true)]
     static extern bool GetTokenInformation(IntPtr token, int kind, IntPtr value, uint length, out uint needed);
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
@@ -71,6 +74,48 @@ public static class NativeStandardUser {
         using (var identity = new WindowsIdentity(token))
             return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
     }
+    static RawAcl DefaultDacl(IntPtr token) {
+        uint length;
+        GetTokenInformation(token, 6, IntPtr.Zero, 0, out length); // TokenDefaultDacl
+        if (length == 0) throw new InvalidOperationException("Default object access unavailable");
+        IntPtr buffer = Marshal.AllocHGlobal((int)length);
+        try {
+            Check(GetTokenInformation(token, 6, buffer, length, out length), "Read default object access");
+            IntPtr acl = Marshal.ReadIntPtr(buffer);
+            if (acl == IntPtr.Zero) throw new InvalidOperationException("Unexpected unrestricted default DACL");
+            var bytes = new byte[(ushort)Marshal.ReadInt16(acl, 2)]; // ACL.AclSize
+            Marshal.Copy(acl, bytes, 0, bytes.Length);
+            return new RawAcl(bytes, 0);
+        } finally { Marshal.FreeHGlobal(buffer); }
+    }
+    static bool HasUserObjectAccess(IntPtr token) {
+        using (var identity = new WindowsIdentity(token)) {
+            foreach (GenericAce entry in DefaultDacl(token)) {
+                var ace = entry as CommonAce;
+                if (ace != null && ace.AceQualifier == AceQualifier.AccessAllowed &&
+                    ace.SecurityIdentifier.Equals(identity.User) && (ace.AccessMask & 0x10000000) != 0) return true;
+            }
+        }
+        return false;
+    }
+    static bool PreserveUserObjectAccess(IntPtr token) {
+        if (HasUserObjectAccess(token)) return false;
+        var acl = DefaultDacl(token);
+        using (var identity = new WindowsIdentity(token))
+            acl.InsertAce(acl.Count, new CommonAce(AceFlags.None, AceQualifier.AccessAllowed, 0x10000000, identity.User, false, null));
+        var bytes = new byte[acl.BinaryLength];
+        acl.GetBinaryForm(bytes, 0);
+        IntPtr buffer = Marshal.AllocHGlobal(bytes.Length);
+        try {
+            Marshal.Copy(bytes, 0, buffer, bytes.Length);
+            // Only the new private token's creation defaults change. Preserve
+            // its existing ACEs and allow the same user to open its own future
+            // kernel objects; no existing file, desktop, or policy ACL changes.
+            Check(SetTokenInformation(token, 6, ref buffer, (uint)IntPtr.Size), "Preserve owned object access");
+        } finally { Marshal.FreeHGlobal(buffer); }
+        if (!HasUserObjectAccess(token)) throw new InvalidOperationException("Owned object access readback failed");
+        return true;
+    }
     public static int Run(string application, string directory, string evidence) {
         IntPtr original = IntPtr.Zero, limited = IntPtr.Zero, medium = IntPtr.Zero, childToken = IntPtr.Zero;
         ProcessInfo child = new ProcessInfo();
@@ -80,6 +125,7 @@ public static class NativeStandardUser {
             string parentIntegrity = Integrity(original);
             // LUA_TOKEN + DISABLE_MAX_PRIVILEGE only. Never use SANDBOX_INERT.
             Check(CreateRestrictedToken(original, 0x5, 0, IntPtr.Zero, 0, IntPtr.Zero, 0, IntPtr.Zero, out limited), "Remove administrator privileges");
+            bool userAccessAdded = PreserveUserObjectAccess(limited);
             Check(ConvertStringSidToSid("S-1-16-8192", out medium), "Create medium integrity SID");
             var label = new SidAndAttributes { Sid = medium, Attributes = 0x20 };
             Check(SetTokenInformation(limited, 25, ref label, (uint)Marshal.SizeOf(label) + GetLengthSid(medium)), "Lower token integrity");
@@ -94,10 +140,12 @@ public static class NativeStandardUser {
             Check(OpenProcessToken(child.process, 0xa, out childToken), "Inspect child token");
             string childIntegrity = Integrity(childToken);
             bool childAdmin = IsAdmin(childToken);
-            if (childIntegrity != "S-1-16-8192" || childAdmin)
-                throw new InvalidOperationException("Native app retained elevated privileges");
+            bool ownedObjectAccess = HasUserObjectAccess(childToken);
+            if (childIntegrity != "S-1-16-8192" || childAdmin || !ownedObjectAccess)
+                throw new InvalidOperationException("Native app token failed integrity, membership, or owned-object access checks");
             File.WriteAllText(evidence, "{\"parentIntegrity\":\"" + parentIntegrity + "\",\"childIntegrity\":\"" +
-                childIntegrity + "\",\"childAdministrator\":false,\"childPid\":" + child.processId + "}");
+                childIntegrity + "\",\"childAdministrator\":false,\"ownedObjectAccess\":true,\"userAccessAdded\":" +
+                userAccessAdded.ToString().ToLowerInvariant() + ",\"childPid\":" + child.processId + "}");
             Console.WriteLine(File.ReadAllText(evidence));
             using (var process = Process.GetProcessById((int)child.processId)) {
                 if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native app");
