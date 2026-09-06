@@ -171,6 +171,9 @@ async function windowsStartupDiagnostics() {
   `], { encoding: 'utf8', timeout: 20_000, env: { ...process.env, PL_NATIVE_DIAGNOSTIC_SCREEN: path.join(evidenceDir, `${phase}-windows-desktop.png`) } });
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
+async function openCreate() {
+  await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
+}
 async function openSession() {
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
@@ -202,8 +205,11 @@ async function openSession() {
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
-  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[role="tablist"][aria-label="Primary workspaces"]'));`), 'native application rendered');
-  await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Create")]', 'xpath');
+  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[aria-label="Primary workspaces"], [aria-label="Primary mobile navigation"]'));`), 'native application rendered');
+  // WebView2 can restore a compact native window despite the driver rect request.
+  // Readiness and navigation must follow the app's actual responsive surface.
+  (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
+  await openCreate();
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
 }
 async function closeSession() {
@@ -229,9 +235,9 @@ async function closeSession() {
     nativeAppPid = null;
   }
 }
-async function startFixture(mode) {
+async function startFixture(mode, responseKind = 'enhancement') {
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
-  fixture = createDesktopFixtureServer({ mode, onEvent: event => events.push(event) });
+  fixture = createDesktopFixtureServer({ mode, responseKind, onEvent: event => events.push(event) });
   fixture.listen(11434, '127.0.0.1');
   await once(fixture, 'listening');
 }
@@ -246,8 +252,100 @@ async function checkPersisted() {
   await fill('[data-testid="library-search"]', 'Fixture enhanced prompt');
   await waitFor(() => execute(`return [...document.querySelectorAll('.pl-library-card')].some(card => card.innerText.includes(${JSON.stringify(saved[0].title)}));`), 'persisted prompt visible in hydrated Library');
   await screenshot('persisted-library');
-  await click('[data-testid="nav-create"]');
+  await openCreate();
   return saved[0];
+}
+
+async function checkFollowUpPersisted(expected) {
+  const library = await readLibrary();
+  const child = library.find(row => row.id === expected.child.id);
+  // Inspecting an entry records access and recomputes completeness timestamps.
+  // Compare every other field, including semantic completeness and provenance.
+  const persistentContent = row => {
+    assert.ok(row, 'Follow-up record exists');
+    const { updatedAt, updated_at, lastAccessedAt, completeness, ...content } = row;
+    const { updatedAt: completenessCheckedAt, ...assessment } = completeness || {};
+    return { ...content, completeness: assessment };
+  };
+  assert.deepEqual(persistentContent(child), persistentContent(expected.child), 'Follow-up identity, body and provenance persist');
+  assert.deepEqual(library.find(row => row.id === expected.parent.id), expected.parent, 'Source prompt remains unchanged');
+  await click('[data-testid="nav-library"]');
+  await fill('[data-testid="library-search"]', child.title);
+  await click(`//button[@aria-label="Inspect ${child.title}"]`, 'xpath');
+  await waitFor(() => execute('return [...document.querySelectorAll("[aria-label=\\"Follow-up provenance\\"]")].some(node => node.innerText.includes("Saved run output"));'), 'saved run provenance visible in Library');
+  await screenshot('follow-up-provenance');
+  await openCreate();
+}
+
+async function exerciseFollowUp(parentId) {
+  const parent = (await readLibrary()).find(row => row.id === parentId);
+  assert.ok(parent?.currentVersionId, 'Saved source has a version');
+  // Seed only synthetic upstream run data. Generation and saving below use the
+  // installed app's UI, transport and persistence without adapter substitution.
+  const source = { id: 'native-follow-up-source', promptId: parent.id, promptVersionId: parent.currentVersionId,
+    promptTitle: parent.title, mode: 'ab', status: 'success', input: parent.original,
+    output: 'Native saved answer: prioritize the measured acceptance gaps.', provider: 'ollama', model: 'promptlab-fixture', createdAt: new Date().toISOString() };
+  const seeded = await command('POST', `/session/${session}/execute/async`, { script: `
+    const record = arguments[0], done = arguments[arguments.length - 1];
+    const request = indexedDB.open('prompt_lab_local', 4);
+    request.onerror = () => done({error: String(request.error)});
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction('eval_runs', 'readwrite');
+      transaction.objectStore('eval_runs').put(record);
+      transaction.oncomplete = () => { db.close(); done({ok: true}); };
+      transaction.onabort = () => { db.close(); done({error: String(transaction.error)}); };
+    };`, args: [source] });
+  assert.equal(seeded.ok, true, JSON.stringify(seeded));
+  await command('POST', `/session/${session}/refresh`, {});
+  await click('[aria-label="Follow-up source"]');
+  const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
+  await command('POST', `/session/${session}/element/${sourceOption}/click`, {});
+  await startFixture('error', 'follow-up');
+  await click('[data-testid="suggest-follow-ups"]');
+  await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=follow-up-panel] .text-red-400")?.textContent.trim());'), 'follow-up provider failure visible');
+  await startFixture('success', 'follow-up');
+  await click('[data-testid="suggest-follow-ups"]');
+  const prompt = `Continue from this saved answer:\n${source.output}`;
+  await waitFor(() => execute('return document.querySelector("[data-testid=follow-up-panel]")?.innerText.includes(arguments[0]);', [prompt]), 'suggestion derived from selected saved output');
+  const baseline = await readLibrary();
+  const beforeRequests = events.filter(event => event === 'request').length;
+  await execute(`
+    const original = Storage.prototype.setItem;
+    window.__nativeFailFollowUpSave = true;
+    window.__nativeRejectedSaves = 0;
+    Storage.prototype.setItem = function(key, value) {
+      if (window.__nativeFailFollowUpSave && key === 'pl2-library') {
+        window.__nativeRejectedSaves++;
+        throw new DOMException('Synthetic native quota failure', 'QuotaExceededError');
+      }
+      return original.call(this, key, value);
+    }; return true;`);
+  const saveButton = '//*[@data-testid="follow-up-panel"]//button[normalize-space(.)="Save to Library"]';
+  await click(saveButton, 'xpath');
+  await waitFor(() => execute('return window.__nativeRejectedSaves > 0;'), 'follow-up write rejected');
+  assert.deepEqual(await readLibrary(), baseline, 'Rejected save does not acknowledge or change Library');
+  await execute('window.__nativeFailFollowUpSave = false; return true;');
+  await click(saveButton, 'xpath');
+  const child = await waitFor(async () => (await readLibrary()).find(row => row.original === prompt), 'follow-up saved after retry');
+  assert.notEqual(child.id, parent.id);
+  const origin = child.metadata?.followUpOrigin;
+  assert.equal(origin?.sourceKind, 'run-output');
+  assert.equal(origin.sourcePromptId, parent.id);
+  assert.equal(origin.sourcePromptVersionId, parent.currentVersionId);
+  assert.equal(origin.sourceRunId, source.id);
+  assert.equal(origin.generationProvider, 'ollama');
+  assert.equal(origin.generationModel, 'promptlab-fixture');
+  assert.equal((await readLibrary()).length, baseline.length + 1);
+  assert.equal(events.filter(event => event === 'request').length, beforeRequests, 'Storage retry does not repeat provider generation');
+  await click('//*[@data-testid="follow-up-panel"]//button[normalize-space(.)="Use in editor"]', 'xpath');
+  assert.equal(await execute('return document.querySelector("[data-testid=prompt-input]").value;'), prompt);
+  const expected = { child, parent: baseline.find(row => row.id === parent.id) };
+  await closeSession();
+  await openSession();
+  await checkFollowUpPersisted(expected);
+  evidence.followUp = expected;
+  await checkpoint('saved-output follow-up survives native restart; rejected save retry preserves parent and makes no provider call');
 }
 
 try {
@@ -262,6 +360,10 @@ try {
     assert.equal(restored.id, previous.savedPromptId, 'Reinstall preserves the exact saved identity');
     evidence.savedPromptId = restored.id;
     await checkpoint('Library and Scratch survived OS uninstall and reinstall');
+    assert.ok(previous.followUp, 'Exercise must include follow-up acceptance');
+    await checkFollowUpPersisted(previous.followUp);
+    evidence.followUp = previous.followUp;
+    await checkpoint('follow-up identity and provenance survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
@@ -277,7 +379,7 @@ try {
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
     evidence.savedPromptId = saved.id;
     await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');
-    await click('//*[@role="tablist" and @aria-label="Primary workspaces"]//*[@role="tab" and contains(.,"Scratch")]', 'xpath');
+    await click('//*[@data-testid="nav-scratch"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Scratch"]', 'xpath');
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
     await waitFor(() => execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null")?.pads.some(pad => pad.content.includes("Survives native restart"));'), 'Scratch acknowledged save');
     await screenshot('saved');
@@ -287,6 +389,7 @@ try {
     assert.equal(restored.id, saved.id);
     await checkpoint('full native app close and relaunch preserved Library identity/body and Scratch content');
     await screenshot('restarted');
+    await exerciseFollowUp(saved.id);
     await startFixture('slow');
     const priorRequests = events.filter(event => event === 'request').length;
     await fill('[data-testid="prompt-input"]', 'Cancel this synthetic native request.');

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T21:41:55Z",
+  "snapshotAt": "2026-09-06T21:49:49Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "4ed696860a8bdf479fe8756ce3b7630de067346a",
+  "mainSha": "b2d162148cd586e35bee1e8fa61f46bd15087adc",
   "overall": "Acceptance incomplete",
-  "nextAction": "Diagnose the Windows native-render timeout in PR #92, then rerun acceptance and complete the Library/platform matrix.",
+  "nextAction": "Verify the corrected native PR #92 on Windows and Linux, then complete the remaining Library and platform matrix.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -27,9 +27,9 @@
     },
     {
       "label": "Native follow-up acceptance",
-      "state": "Failed",
-      "detail": "PR #92 at 4f9d1c2: Linux exercise and retention passed; Windows failed with native application rendered timeout. macOS packaging passed. PR remains unmerged.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34061242178"
+      "state": "Running",
+      "detail": "PR #92 corrects desktop-only readiness after compact-window restoration. Earlier Linux lifecycle passed; Windows rerun remains pending. Tooling passes 14/14 after correcting the dashboard workflow runtime path.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/92"
     },
     {
       "label": "Release and runtime proof",
@@ -96,7 +96,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Diagnose the Windows native-render timeout and rerun PR #92 acceptance before merging.",
+      "nextAction": "Inspect corrected Windows/Linux native follow-up exercise and retention before merging PR #92.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {

@@ -32,6 +32,16 @@ test('error mode returns a terminal provider failure', async t => {
   assert.equal(response.status, 400);
   assert.equal((await response.json()).error, 'Intentional fixture failure');
 });
+test('follow-up responses preserve the selected source and still honor provider failures', async t => {
+  const url = await start(t, { responseKind: 'follow-up' });
+  const response = await fetch(`${url}/api/chat`, request);
+  assert.deepEqual(JSON.parse((await response.json()).message.content), {
+    suggestions: [{ title: 'Fixture next analysis', prompt: 'Continue from this saved answer:\nFixture prompt' }],
+  });
+  const failed = await start(t, { responseKind: 'follow-up', mode: 'error' });
+  assert.equal((await fetch(`${failed}/api/chat`, request)).status, 400);
+  assert.throws(() => createDesktopFixtureServer({ responseKind: 'unknown' }), /Unknown fixture response kind/);
+});
 test('aborting a slow request closes its connection without completing', { timeout: 5000 }, async t => {
   let received;
   let closed;

@@ -24,6 +24,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version-file: prompt-lab-source/.nvmrc
       - name: Validate snapshot and generated dashboard
         run: node prompt-lab-source/scripts/render-project-progress.mjs --check
