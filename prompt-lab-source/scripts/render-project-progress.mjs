@@ -9,6 +9,7 @@ assert.match(data.mainSha, /^[a-f0-9]{40}$/);
 assert.equal(typeof data.source.complete, 'boolean');
 const validUrl = value => {
   const url = new URL(value);
+  assert.ok(!url.username && !url.password, 'Evidence URLs must not contain credentials');
   assert.ok(url.protocol === 'https:' && ['app.notion.com', 'github.com'].includes(url.hostname), `Unexpected evidence URL: ${url.hostname}`);
 };
 validUrl(data.source.databaseUrl);
@@ -23,6 +24,7 @@ for (const row of data.issues) {
   assert.equal(typeof row.inPlan, 'boolean');
   validUrl(row.url);
 }
+assert.equal(data.issues.filter(row => row.inPlan).length, 14, 'Selected implementation plan must contain exactly 14 issues');
 for (const item of data.evidence) {
   assert.ok(['Verified', 'Running', 'Open', 'Unknown', 'Failed'].includes(item.state));
   assert.ok(item.label && item.detail);
