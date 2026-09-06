@@ -60,6 +60,11 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
           }));
         expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);
       }
+      await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
+      await page.getByRole('button', { name: 'Switch to light mode' }).click();
+      await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
+      await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+      await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
       await page.getByTestId('library-search').fill('avery navigation');

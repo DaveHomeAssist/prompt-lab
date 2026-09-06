@@ -21,7 +21,9 @@ body {
   --pl-brand-ink: #06060a;
   --pl-muted-text: #a8a29e;
 }
+[data-theme='dark'] { color-scheme: dark; }
 [data-theme='light'] {
+  color-scheme: light;
   --pl-focus-ring: rgba(154, 52, 18, 0.78);
   --pl-focus-ring-offset: rgba(255, 255, 255, 0.96);
   --pl-brand-ember: #9a3412;
