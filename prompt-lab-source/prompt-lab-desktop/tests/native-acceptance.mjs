@@ -58,8 +58,12 @@ async function click(selector, using) {
 }
 async function fill(selector, text) {
   const id = await element(selector);
-  await command('POST', `/session/${session}/element/${id}/clear`, {});
+  await command('POST', `/session/${session}/element/${id}/click`, {});
+  // WebKit's element clear does not update React's controlled input state.
+  // Ctrl+A / Backspace produces the same input events as operator replacement.
+  await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
   await command('POST', `/session/${session}/element/${id}/value`, { text });
+  assert.equal(await command('GET', `/session/${session}/element/${id}/property/value`), text, 'Native input contains exactly the requested fixture text');
 }
 async function screenshot(name) {
   const data = await command('GET', `/session/${session}/screenshot`);
@@ -139,7 +143,7 @@ try {
     await startFixture('error');
     await fill('[data-testid="prompt-input"]', 'Fail this synthetic native request.');
     await click('[data-testid="refine-action"]');
-    await waitFor(() => execute('return document.body.innerText.includes("Intentional fixture failure");'), 'visible provider failure');
+    await waitFor(() => execute('return document.body.innerText.includes("ollama request failed (400)");'), 'visible provider failure');
     evidence.checks.push('native UI displayed terminal provider failure');
     await screenshot('failure');
   }
