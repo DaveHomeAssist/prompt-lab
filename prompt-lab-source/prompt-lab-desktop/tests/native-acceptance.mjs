@@ -80,6 +80,25 @@ async function screenshot(name) {
   const data = await command('GET', `/session/${session}/screenshot`);
   await writeFile(path.join(evidenceDir, `${phase}-${name}.png`), Buffer.from(data, 'base64'));
 }
+async function windowsStartupDiagnostics() {
+  if (process.platform !== 'win32') return;
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+    Get-CimInstance Win32_Process | Where-Object { $_.Name -in @('prompt-lab-desktop.exe', 'msedgewebview2.exe', 'msedgedriver.exe') } |
+      Select-Object Name,ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Depth 3
+    try {
+      Add-Type -AssemblyName System.Windows.Forms
+      Add-Type -AssemblyName System.Drawing
+      $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+      $bitmap = New-Object System.Drawing.Bitmap $bounds.Width,$bounds.Height
+      $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+      try {
+        $graphics.CopyFromScreen($bounds.Left,$bounds.Top,0,0,$bitmap.Size)
+        $bitmap.Save($env:PL_NATIVE_DIAGNOSTIC_SCREEN, [System.Drawing.Imaging.ImageFormat]::Png)
+      } finally { $graphics.Dispose(); $bitmap.Dispose() }
+    } catch { Write-Warning $_.Exception.Message }
+  `], { encoding: 'utf8', timeout: 20_000, env: { ...process.env, PL_NATIVE_DIAGNOSTIC_SCREEN: path.join(evidenceDir, `${phase}-windows-desktop.png`) } });
+  await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
+}
 async function openSession() {
   const result = await command('POST', '/session', { capabilities: { alwaysMatch: { 'tauri:options': tauriOptions } } });
   session = result.sessionId;
@@ -171,6 +190,7 @@ try {
   evidence.status = 'failed';
   evidence.error = error.message;
   evidence.failedCommand = evidence.lastCommand;
+  await windowsStartupDiagnostics().catch(error => { evidence.diagnosticError = error.message; });
   if (session) await screenshot('failure').catch(() => {});
   process.exitCode = 1;
 } finally {
