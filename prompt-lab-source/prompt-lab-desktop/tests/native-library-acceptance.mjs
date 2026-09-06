@@ -23,9 +23,11 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   await click('[aria-label="Switch to light mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   await screenshot('library-light-controls');
   await click('[aria-label="Switch to dark mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   await screenshot('library-restored');
 }
 
