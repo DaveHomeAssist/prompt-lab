@@ -115,7 +115,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Install native test tools
-        if: matrix.platform != 'macos-latest'
+        if: matrix.platform == 'ubuntu-22.04'
         run: cargo install tauri-driver --locked
 
       - name: Install matching Windows driver

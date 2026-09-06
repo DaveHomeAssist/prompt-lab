@@ -19,20 +19,23 @@ const tauriOptions = { application };
 if (process.platform === 'win32') {
   assert.ok(process.env.LOCALAPPDATA, 'Windows local app data directory is required');
   const config = JSON.parse(await readFile(new URL('../src-tauri/tauri.conf.json', import.meta.url), 'utf8'));
-  // Match Tauri's default LocalData/identifier directory. EdgeDriver otherwise
-  // selects a temporary profile, which breaks attachment and restart proof.
+  // The directly launched app retains Tauri's default LocalData/identifier.
   const userDataFolder = path.join(process.env.LOCALAPPDATA, config.identifier);
   await mkdir(userDataFolder, { recursive: true });
-  tauriOptions.webviewOptions = { userDataFolder, additionalBrowserArguments: ['--remote-debugging-port=9222'] };
   evidence.userDataFolder = userDataFolder;
 }
-const driver = spawn('tauri-driver', ['--port', '4444'], { stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' });
+const driver = process.platform === 'win32'
+  ? spawn('msedgedriver.exe', ['--port=4444'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  : spawn('tauri-driver', ['--port', '4444'], { stdio: ['ignore', 'pipe', 'pipe'], detached: true });
 let driverOutput = '';
 let driverError;
 driver.on('error', error => { driverError = error; });
 for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => { driverOutput = (driverOutput + chunk).slice(-32_000); });
 let session;
 let fixture;
+let nativeApp;
+let nativeAppError;
+let nativeOutput = '';
 const events = [];
 
 async function command(method, route, body) {
@@ -52,6 +55,7 @@ async function waitFor(probe, label, timeout = 20_000) {
   let last;
   while (Date.now() < end) {
     if (driverError) throw driverError;
+    if (nativeAppError) throw nativeAppError;
     try { const result = await probe(); if (result) return result; } catch (error) { last = error; }
     await delay(200);
   }
@@ -122,7 +126,21 @@ async function windowsStartupDiagnostics() {
   await writeFile(path.join(evidenceDir, `${phase}-windows-processes.log`), `${result.stdout || ''}\n${result.stderr || ''}\n${result.error?.message || ''}`);
 }
 async function openSession() {
-  const result = await command('POST', '/session', { capabilities: { alwaysMatch: { 'tauri:options': tauriOptions } } });
+  let capabilities = { 'tauri:options': tauriOptions };
+  if (process.platform === 'win32') {
+    nativeApp = spawn(application, [], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, TAURI_WEBVIEW_AUTOMATION: 'true', WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
+    });
+    nativeApp.on('error', error => { nativeAppError = error; });
+    for (const stream of [nativeApp.stdout, nativeApp.stderr]) stream.on('data', chunk => { nativeOutput = (nativeOutput + chunk).slice(-32_000); });
+    await waitFor(async () => {
+      if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
+      return (await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) })).ok;
+    }, 'installed WebView2 debugging endpoint');
+    capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
+  }
+  const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
@@ -131,9 +149,22 @@ async function openSession() {
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
 }
 async function closeSession() {
-  if (!session) return;
-  await command('DELETE', `/session/${session}`);
-  session = null;
+  try {
+    if (session) await command('DELETE', `/session/${session}`);
+  } finally {
+    session = null;
+    if (nativeApp && nativeApp.exitCode === null) {
+      const close = spawnSync('powershell.exe', ['-NoProfile', '-Command', '$app = Get-Process -Id $env:PL_NATIVE_OWNED_PID -ErrorAction SilentlyContinue; if ($app) { $null = $app.CloseMainWindow() }'], {
+        encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeApp.pid) },
+      });
+      assert.equal(close.status, 0, close.stderr || 'Native window close failed');
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('Native app did not exit after window close')), 10_000);
+        nativeApp.once('exit', () => { clearTimeout(timer); resolve(); });
+      });
+    }
+    nativeApp = null;
+  }
 }
 async function startFixture(mode) {
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
@@ -220,14 +251,16 @@ try {
   if (session) await screenshot('failure').catch(() => {});
   process.exitCode = 1;
 } finally {
-  await closeSession().catch(() => {});
+  await closeSession().catch(error => { evidence.cleanupError = error.message; evidence.status = 'failed'; process.exitCode = 1; });
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
   if (driver.pid && driver.exitCode === null) {
     if (process.platform === 'win32') spawnSync('taskkill', ['/PID', String(driver.pid), '/T', '/F']);
     else { try { process.kill(-driver.pid, 'SIGTERM'); } catch (error) { if (error.code !== 'ESRCH') throw error; } }
   }
+  if (nativeApp?.pid && nativeApp.exitCode === null) spawnSync('taskkill', ['/PID', String(nativeApp.pid), '/T', '/F']);
   evidence.fixtureEvents = events;
   await writeFile(path.join(evidenceDir, `${phase}.json`), JSON.stringify(evidence, null, 2));
   await writeFile(path.join(evidenceDir, `${phase}-driver.log`), driverOutput);
+  if (process.platform === 'win32') await writeFile(path.join(evidenceDir, `${phase}-native.log`), nativeOutput);
   console.log(JSON.stringify(evidence, null, 2));
 }
