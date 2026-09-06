@@ -6,6 +6,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
+import { exerciseLibrary, checkLibraryPersisted } from './native-library-acceptance.mjs';
 
 // Runs only on disposable CI runners, against an installed application binary.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Use the operator checklist outside disposable CI.');
@@ -119,7 +120,8 @@ async function fill(selector, text) {
   // WebKit's element clear does not update React's controlled input state.
   // Ctrl+A / Backspace produces the same input events as operator replacement.
   await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
-  await command('POST', `/session/${session}/element/${id}/value`, { text });
+  // Backspace already completes an empty replacement; WebKit rejects empty send-keys.
+  if (text.length > 0) await command('POST', `/session/${session}/element/${id}/value`, { text });
   assert.equal(await command('GET', `/session/${session}/element/${id}/property/value`), text, 'Native input contains exactly the requested fixture text');
 }
 async function screenshot(name) {
@@ -348,6 +350,8 @@ async function exerciseFollowUp(parentId) {
   await checkpoint('saved-output follow-up survives native restart; rejected save retry preserves parent and makes no provider call');
 }
 
+const libraryApi = { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
+
 try {
   await checkpoint('native harness started');
   await waitFor(() => command('GET', '/status'), 'native WebDriver ready');
@@ -364,6 +368,10 @@ try {
     await checkFollowUpPersisted(previous.followUp);
     evidence.followUp = previous.followUp;
     await checkpoint('follow-up identity and provenance survived OS uninstall and reinstall');
+    assert.ok(previous.libraryMatrix, 'Exercise must include Library acceptance');
+    await checkLibraryPersisted(libraryApi, previous.libraryMatrix);
+    evidence.libraryMatrix = previous.libraryMatrix;
+    await checkpoint('Library matrix identities, order and collection cleanup survived OS uninstall and reinstall');
   } else {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
@@ -404,6 +412,7 @@ try {
     await waitFor(() => execute('return document.body.innerText.includes("ollama request failed (400)");'), 'visible provider failure');
     await checkpoint('native UI displayed terminal provider failure');
     await screenshot('failure');
+    evidence.libraryMatrix = await exerciseLibrary(libraryApi);
   }
   evidence.status = 'passed';
 } catch (error) {

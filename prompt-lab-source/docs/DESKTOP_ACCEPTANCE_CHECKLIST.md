@@ -79,6 +79,8 @@ Record PASS, FAIL or Unknown for every step, with a screenshot or exported synth
 
 ## Upgrade, rollback and uninstall
 
+The maintained native Library scenario adds three synthetic records to the disposable profile and enables a local test Pro entitlement without a purchase. It exercises Library/Composer metadata search, newly loaded starter timestamp ordering, filtered manual reordering, active-collection deletion and filter reset. It checks prompt identities, content, metadata, tags and order after full app restart and installer retention. Existing lifecycle and follow-up records remain present. This scenario is not proof of raw file import/export, prior-version upgrade, or a real billing entitlement; those remain separate gates.
+
 The currently discovered prior public artifact set is the `v1.5.0-desktop-preview` prerelease, with Windows MSI/NSIS and Linux DEB/AppImage. It is a historical upgrade input, not proof for the candidate. No macOS asset was present in that release; macOS upgrade acceptance remains Unknown until a real supported baseline is identified.
 
 On a fresh disposable snapshot, install the chosen prior artifact, create synthetic Library/Scratch/history/settings state, and export every available portable record. Keep a whole-VM snapshot in addition to exports because old versions may omit newer fields. Record the prior artifact hash and install the candidate through its normal upgrade path. Verify retained data and run the procedure above. Any supported previous version beyond this discovered release is Unknown until canonical release evidence identifies it.

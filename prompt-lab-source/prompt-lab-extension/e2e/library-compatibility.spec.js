@@ -48,6 +48,18 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       });
       await page.goto(url);
       await openView(page, 'Library', width);
+      if (width < 720) {
+        const labelsFit = await page.getByRole('navigation', { name: 'Smart views' }).evaluate(nav =>
+          [...nav.querySelectorAll('button')].every(button => {
+            const text = document.createRange();
+            text.selectNodeContents(button.querySelector('span'));
+            const label = text.getBoundingClientRect();
+            const count = button.querySelector('small').getBoundingClientRect();
+            const bounds = button.getBoundingClientRect();
+            return label.left >= bounds.left && label.right <= count.left && count.right <= bounds.right;
+          }));
+        expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);
+      }
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
       await page.getByTestId('library-search').fill('avery navigation');
