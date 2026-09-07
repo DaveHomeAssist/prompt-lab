@@ -23,9 +23,13 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   await click('[aria-label="Switch to light mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
   await screenshot('library-light-controls');
   await click('[aria-label="Switch to dark mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
+  assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
   await screenshot('library-restored');
 }
 
@@ -44,9 +48,20 @@ export async function exerciseLibrary(api) {
     const collections = JSON.parse(localStorage.getItem('pl2-collections') || '[]');
     localStorage.setItem('pl2-collections', JSON.stringify([...new Set([...collections, arguments[1]])]));
     localStorage.setItem('pl2-billing', JSON.stringify({plan:'pro',status:'active',productName:'Prompt Lab Pro'}));
+    window.dispatchEvent(new StorageEvent('storage', {key:'pl2-library', storageArea:localStorage}));
     return true;`, [[...fixtures, ...baseline], collection]);
+  // Adopt the synthetic external write before a pending persistence effect
+  // can overwrite the fixture with the mounted store's previous state.
+  await click('[data-testid="nav-library"]');
+  await fill('[data-testid="library-search"]', 'Native matrix');
+  await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.innerText.includes("Native matrix Beta");'), 'native Library fixture adopted before restart');
   const seeded = await readLibrary();
-  assert.deepEqual(seeded.slice(0, fixtures.length), fixtures, 'Native Library fixtures acknowledged before restart');
+  for (const fixture of fixtures) {
+    const actual = seeded.find(row => row.id === fixture.id);
+    assert.ok(actual, 'Native Library fixture acknowledged before restart');
+    for (const key of ['title', 'original', 'enhanced', 'collection']) assert.equal(actual[key], fixture[key]);
+    assert.deepEqual(actual.metadata, fixture.metadata);
+  }
   await checkpoint('synthetic Library matrix acknowledged before native restart');
   // Restart, rather than mutating React state, to hydrate the real native store.
   await closeSession();

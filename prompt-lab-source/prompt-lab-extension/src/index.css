@@ -131,6 +131,12 @@ body {
   accent-color: var(--pl-brand-ember);
 }
 
+/* Custom button backgrounds must not be painted over native GTK chrome. */
+.pl-app-shell button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 button,
 input,
 select,

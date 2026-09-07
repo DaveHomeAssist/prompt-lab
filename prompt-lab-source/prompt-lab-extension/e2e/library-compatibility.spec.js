@@ -61,8 +61,12 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
         expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);
       }
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
       await page.getByRole('button', { name: 'Switch to light mode' }).click();
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
       await page.getByRole('button', { name: 'Switch to dark mode' }).click();
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
       const list = page.getByRole('list', { name: 'Saved prompts' });
