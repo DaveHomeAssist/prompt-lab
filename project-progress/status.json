@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-07T01:27:09.051889Z",
+  "snapshotAt": "2026-09-07T01:35:28.333410Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "aa8912f14e9f7c26b434da20f91f0140de5d51c1",
+  "mainSha": "63d098ee2da5cc546b8e7f3b0cc59c25e84cefe9",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify PR #98 native appearance and fixture adoption, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Verify PR #99 fixture corrections, native appearance and completed downloads against main; retain remaining upgrade/runtime gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -40,8 +40,8 @@
     {
       "label": "Native Library acceptance",
       "state": "Open",
-      "detail": "Browser reproduced synthetic fixture loss from direct storage injection racing mounted state. Fixture adoption now uses existing storage-event reconciliation; browser checks pass. Revised native retention remains pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
+      "detail": "PR #98 merged at 74d461f despite failed pre-native fixture assertions. Correction fe79eec is included in PR #99, now targeting main; native verification remains pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
       "label": "Native workspace import/export",
@@ -64,8 +64,14 @@
     {
       "label": "Native custom-button appearance",
       "state": "Running",
-      "detail": "First unprefixed override did not fix the actual Linux screenshot. Revised candidate also overrides -webkit-appearance and asserts both properties. Browser checks pass; new native screenshots pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
+      "detail": "PR #98 prefixed appearance change is merged as 63d098e, but its native jobs were skipped after fixture assertions failed. PR #99 carries the corrected fixture checks and must supply actual native screenshots.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+    },
+    {
+      "label": "Completed workspace export file",
+      "state": "Running",
+      "detail": "Browser scenarios at 400/480/1180px compare actual downloaded JSON to the full export (3/3). Stacked native candidate observes configured Downloads without redirecting the download and records bytes/hash. Native disk completion remains pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     }
   ],
   "issues": [

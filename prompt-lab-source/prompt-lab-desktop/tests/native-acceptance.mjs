@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -392,7 +393,35 @@ async function uploadJson(selector, data) {
   const id = await element(selector);
   await command('POST', `/session/${session}/element/${id}/value`, { text: file });
 }
-const libraryApi = { execute, executeAsync, uploadJson, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
+async function prepareDownload() {
+  const location = process.platform === 'win32'
+    ? spawnSync('powershell.exe', ['-NoProfile', '-Command', '(New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path'], { encoding: 'utf8', timeout: 10_000 })
+    : spawnSync('xdg-user-dir', ['DOWNLOAD'], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(location.status, 0, location.stderr || 'Could not resolve the native Downloads directory');
+  const directory = location.stdout.trim();
+  assert.ok(path.isAbsolute(directory), 'Native Downloads directory must be absolute');
+  const list = async () => {
+    try { return await readdir(directory); } catch (error) { if (error.code === 'ENOENT') return []; throw error; }
+  };
+  const before = new Set(await list());
+  evidence.exportDownload = { directory, status: 'waiting' };
+  return async expected => {
+    const downloaded = await waitFor(async () => {
+      for (const name of await list()) {
+        if (before.has(name) || !/^prompt-lab-workspace-\d{4}-\d{2}-\d{2}(?: \(\d+\))?\.json$/.test(name)) continue;
+        const file = path.join(directory, name);
+        const bytes = await readFile(file);
+        assert.deepEqual(JSON.parse(bytes.toString('utf8')), expected, 'Downloaded workspace matches the complete export');
+        return { file, bytes };
+      }
+      return false;
+    }, `workspace export file completed in ${directory}`);
+    await writeFile(path.join(evidenceDir, 'downloaded-workspace.json'), downloaded.bytes);
+    evidence.exportDownload = { status: 'passed', path: downloaded.file, bytes: downloaded.bytes.length, sha256: createHash('sha256').update(downloaded.bytes).digest('hex') };
+    await checkpoint('native workspace export completed on disk and matches serialized workspace');
+  };
+}
+const libraryApi = { execute, executeAsync, uploadJson, prepareDownload, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
 
 try {
   await checkpoint('native harness started');
