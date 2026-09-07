@@ -55,7 +55,10 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
       localStorage.setItem('pl_telemetry_consent', 'denied');
       const rows = JSON.parse(localStorage.getItem('pl2-library'));
       rows.push({id:'native-dev-parent',title:'Native lifecycle parent',original:'Native parent original',enhanced:'Native parent enhanced',variants:[{label:'Concise',content:'Native concise variant'}],notes:'Native saved notes',currentVersionId:'parent-version',createdAt:'2026-01-01T00:00:00Z',updatedAt:'2026-01-01T00:00:00Z'});
-      localStorage.setItem('pl2-library', JSON.stringify(rows)); return true;`);
+      localStorage.setItem('pl2-library', JSON.stringify(rows));
+      window.dispatchEvent(new StorageEvent('storage', {key:'pl2-library', storageArea:localStorage}));
+      return true;`);
+    await waitFor(async () => (await api.readLibrary()).find(row => row.id === 'native-dev-parent')?.completeness, 'synthetic parent adopted by Library store');
     await page.close();
     await openSession();
     await exerciseLibrary(api);

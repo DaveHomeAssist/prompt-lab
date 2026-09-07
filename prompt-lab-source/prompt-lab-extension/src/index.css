@@ -133,6 +133,7 @@ body {
 
 /* Custom button backgrounds must not be painted over native GTK chrome. */
 .pl-app-shell button {
+  -webkit-appearance: none;
   appearance: none;
 }
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-06T23:11:10Z",
+  "snapshotAt": "2026-09-07T01:27:09.051889Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "e1e4c9d1e864a4f4d91a2d982281feffbc44232f",
+  "mainSha": "aa8912f14e9f7c26b434da20f91f0140de5d51c1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Inspect NSIS/AppImage lifecycle results, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Verify PR #98 native appearance and fixture adoption, then complete export-download, upgrade/restore and remaining runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -28,8 +28,8 @@
     {
       "label": "Native follow-up acceptance",
       "state": "Verified",
-      "detail": "PR #92 merged as 5b76a96. Windows MSI and Linux DEB follow-up exercise/restart/reinstall retention passed; macOS packaging passed. Broader runtime acceptance remains open.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34062230477"
+      "detail": "PR #97 run 34066453024 retained saved follow-up identity/provenance on MSI, DEB, NSIS and AppImage using the defined shutdown sequence. Arbitrary crash durability and remaining selected runtime contracts are not proved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34066453024"
     },
     {
       "label": "Release and runtime proof",
@@ -39,9 +39,9 @@
     },
     {
       "label": "Native Library acceptance",
-      "state": "Verified",
-      "detail": "PR #94 merged as d81460b. Windows MSI and Linux DEB search, sort, reorder, collection cleanup and restart/reinstall retention passed. Native control readability remains tracked in PR #96.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34063663554"
+      "state": "Open",
+      "detail": "Browser reproduced synthetic fixture loss from direct storage injection racing mounted state. Fixture adoption now uses existing storage-event reconciliation; browser checks pass. Revised native retention remains pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
     },
     {
       "label": "Native workspace import/export",
@@ -57,15 +57,15 @@
     },
     {
       "label": "Alternate package lifecycle",
-      "state": "Running",
-      "detail": "PR #97 targets main and includes verified primary acceptance. NSIS/AppImage jobs still require actual execution and retained-record proof.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/97"
+      "state": "Verified",
+      "detail": "PR #97 merged as aa8912f. Run 34066453024 passed MSI, DEB, NSIS and AppImage exercise plus reinstall/replacement retention. Native-window-before-driver exits recorded; artifact results and alternate screenshots inspected.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34066453024"
     },
     {
       "label": "Native custom-button appearance",
       "state": "Running",
-      "detail": "Scoped appearance:none candidate preserves app-defined button backgrounds. Build and browser compatibility pass at 400/480/1180px; actual GTK light/dark screenshot proof pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/native-button-appearance"
+      "detail": "First unprefixed override did not fix the actual Linux screenshot. Revised candidate also overrides -webkit-appearance and asserts both properties. Browser checks pass; new native screenshots pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
     }
   ],
   "issues": [
