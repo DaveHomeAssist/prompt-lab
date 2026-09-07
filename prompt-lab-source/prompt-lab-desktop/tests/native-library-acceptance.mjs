@@ -55,12 +55,16 @@ export async function exerciseLibrary(api) {
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.innerText.includes("Native matrix Beta");'), 'native Library fixture adopted before restart');
+  await waitFor(async () => {
+    const rows = await readLibrary();
+    return ids.every(id => rows.find(row => row.id === id)?.metadata?.libraryGeneration !== undefined);
+  }, 'native Library normalized fixture persistence');
   const seeded = await readLibrary();
   for (const fixture of fixtures) {
     const actual = seeded.find(row => row.id === fixture.id);
     assert.ok(actual, 'Native Library fixture acknowledged before restart');
     for (const key of ['title', 'original', 'enhanced', 'collection']) assert.equal(actual[key], fixture[key]);
-    assert.deepEqual(actual.metadata, fixture.metadata);
+    for (const [key, value] of Object.entries(fixture.metadata)) assert.deepEqual(actual.metadata[key], value);
   }
   await checkpoint('synthetic Library matrix acknowledged before native restart');
   // Restart, rather than mutating React state, to hydrate the real native store.
@@ -82,8 +86,11 @@ export async function exerciseLibrary(api) {
   await click('//button[starts-with(normalize-space(.),"Native acceptance collection")]', 'xpath');
   await click('[aria-label="Sort prompts"]');
   await click('[aria-label="Sort prompts"] option[value="manual"]');
+  const beforeMove = await readLibrary();
+  const alphaIndex = beforeMove.findIndex(row => row.id === ids[0]);
+  assert.ok(alphaIndex >= 0 && beforeMove.findIndex(row => row.id === ids[2]) > alphaIndex, 'Beta starts after Alpha in the filtered collection');
   await click('[aria-label="Move Native matrix Beta up"]');
-  await waitFor(async () => (await readLibrary())[0]?.id === ids[2], 'filtered manual move persisted');
+  await waitFor(async () => (await readLibrary())[alphaIndex]?.id === ids[2], 'filtered manual move persisted');
   assert.deepEqual((await readLibrary()).filter(row => !ids.includes(row.id)).map(row => row.id), baseline.map(row => row.id), 'Hidden existing records retain relative order');
   await click('[aria-label="Manage collections"]');
   await click('[aria-label="Delete collection Native acceptance collection"]');
