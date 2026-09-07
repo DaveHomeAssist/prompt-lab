@@ -45,6 +45,9 @@ export async function exerciseLibrary(api) {
     localStorage.setItem('pl2-collections', JSON.stringify([...new Set([...collections, arguments[1]])]));
     localStorage.setItem('pl2-billing', JSON.stringify({plan:'pro',status:'active',productName:'Prompt Lab Pro'}));
     return true;`, [[...fixtures, ...baseline], collection]);
+  const seeded = await readLibrary();
+  assert.deepEqual(seeded.slice(0, fixtures.length), fixtures, 'Native Library fixtures acknowledged before restart');
+  await checkpoint('synthetic Library matrix acknowledged before native restart');
   // Restart, rather than mutating React state, to hydrate the real native store.
   await closeSession();
   await openSession();
