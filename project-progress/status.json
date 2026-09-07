@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-07T01:27:09.051889Z",
+  "snapshotAt": "2026-09-07T01:32:28.687502Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "aa8912f14e9f7c26b434da20f91f0140de5d51c1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify PR #98 native appearance and fixture adoption, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Verify PR #98 fixture/appearance rerun and native completed export-file candidate; retain remaining runtime and upgrade gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -40,7 +40,7 @@
     {
       "label": "Native Library acceptance",
       "state": "Open",
-      "detail": "Browser reproduced synthetic fixture loss from direct storage injection racing mounted state. Fixture adoption now uses existing storage-event reconciliation; browser checks pass. Revised native retention remains pending.",
+      "detail": "PR #98 failed pre-native fixture assertions. Correction fe79eec accepts normalized metadata and checks filtered moves at the actual prior slot; browser download/scenario checks pass at all three widths. Native rerun pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
     },
     {
@@ -66,6 +66,12 @@
       "state": "Running",
       "detail": "First unprefixed override did not fix the actual Linux screenshot. Revised candidate also overrides -webkit-appearance and asserts both properties. Browser checks pass; new native screenshots pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
+    },
+    {
+      "label": "Completed workspace export file",
+      "state": "Running",
+      "detail": "Browser scenarios at 400/480/1180px compare actual downloaded JSON to the full export (3/3). Stacked native candidate observes configured Downloads without redirecting the download and records bytes/hash. Native disk completion remains pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/native-export-download"
     }
   ],
   "issues": [
