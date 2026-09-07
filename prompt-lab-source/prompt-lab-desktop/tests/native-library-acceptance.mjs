@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const ids = ['native-library-alpha', 'native-library-hidden', 'native-library-beta'];
 const collection = 'Native acceptance collection';
 
-export async function checkLibraryPersisted({ readLibrary, execute, click, fill, waitFor, screenshot }, expected) {
+export async function checkLibraryPersisted({ readLibrary, execute, click, fill, waitFor, screenshot, recordDiagnostic }, expected) {
   const library = await readLibrary();
   assert.deepEqual(library.map(row => row.id), expected.order, 'Native Library manual order survives restart');
   for (const entry of expected.entries) {
@@ -20,17 +20,32 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'native filtered manual order visible after restart');
+  const settingsAppearance = theme => execute(`
+    const button = document.querySelector('button[aria-label="Settings"]');
+    const style = getComputedStyle(button);
+    return {
+      theme: arguments[0],
+      appearance: style.appearance,
+      prefixedAppearance: style.getPropertyValue('-webkit-appearance'),
+      backgroundColor: style.backgroundColor,
+      backgroundImage: style.backgroundImage,
+      colorScheme: style.colorScheme,
+      classes: [...button.classList],
+    };`, [theme]);
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   await click('[aria-label="Switch to light mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
+  const lightSettingsAppearance = await settingsAppearance('light');
   await screenshot('library-light-controls');
   await click('[aria-label="Switch to dark mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
+  const darkSettingsAppearance = await settingsAppearance('dark');
   await screenshot('library-restored');
+  recordDiagnostic?.('settingsButtonAppearance', { light: lightSettingsAppearance, dark: darkSettingsAppearance });
 }
 
 export async function exerciseLibrary(api) {
