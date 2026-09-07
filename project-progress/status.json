@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-07T01:27:09.051889Z",
+  "snapshotAt": "2026-09-07T08:38:45Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "aa8912f14e9f7c26b434da20f91f0140de5d51c1",
+  "mainSha": "63d098ee2da5cc546b8e7f3b0cc59c25e84cefe9",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify PR #98 native appearance and fixture adoption, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Authorize a fixture-only Linux XDG Downloads repair and rerun a changed PR #99 candidate; retain remaining upgrade/runtime gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,14 +34,14 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "Native import/export, control readability, upgrade/restore, alternate packages, macOS interaction/applicable signing and authenticated canonical web remain open.",
+      "detail": "PR #99 run 34099816603 passed Windows native exercise/retention and macOS packaging, but Linux failed completed export-file verification. Prior-version upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
       "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
     },
     {
       "label": "Native Library acceptance",
-      "state": "Open",
-      "detail": "Browser reproduced synthetic fixture loss from direct storage injection racing mounted state. Fixture adoption now uses existing storage-event reconciliation; browser checks pass. Revised native retention remains pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
+      "state": "Verified",
+      "detail": "PR #99 run 34099816603 passed the corrected Library fixture scenario on Windows and reached that completed checkpoint on Linux before the later workspace-export timeout. Broader issue J acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
       "label": "Native workspace import/export",
@@ -63,9 +63,15 @@
     },
     {
       "label": "Native custom-button appearance",
-      "state": "Running",
-      "detail": "First unprefixed override did not fix the actual Linux screenshot. Revised candidate also overrides -webkit-appearance and asserts both properties. Browser checks pass; new native screenshots pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
+      "state": "Open",
+      "detail": "PR #99 light/dark screenshots show readable Linux and Windows Settings controls without a native bevel. Linux dark computed background differs from the declared class and Windows control, so exact platform style parity remains unresolved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+    },
+    {
+      "label": "Completed workspace export file",
+      "state": "Failed",
+      "detail": "PR #99 run 34099816603 passed Windows completed-file bytes/hash and full JSON equality. Linux supplied the expected blob filename and success toast but left no workspace JSON in resolved /home/runner; runner Downloads was absent. Absence from those locations is not proof that no download occurred elsewhere.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     }
   ],
   "issues": [
@@ -126,7 +132,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Verify remaining signed-in web follow-up acceptance; current MSI/DEB shutdown and reinstall retention passed.",
+      "nextAction": "Verify remaining signed-in web follow-up acceptance; PR #99 preserved the passing Windows native control and reached the Linux follow-up checkpoint before the later export failure.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -138,7 +144,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Verify native OS export download, Linux header-button readability and remaining canonical runtime acceptance.",
+      "nextAction": "Complete remaining canonical runtime acceptance; retain the readable native screenshots and investigate Linux dark computed-background parity separately.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -234,7 +240,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Inspect NSIS and AppImage native acceptance, then complete prior-version upgrade/restore and macOS interaction.",
+      "nextAction": "Authorize a disposable Linux XDG Downloads fixture repair, then complete prior-version upgrade/restore and macOS interaction/applicable signing.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {

@@ -38,6 +38,18 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
     };
     const api = {
       execute, executeAsync, readLibrary, waitFor, openSession,
+      prepareDownload: async () => {
+        const downloadEvent = page.waitForEvent('download').then(download => ({ download }), error => ({ error }));
+        return async expected => {
+          const result = await downloadEvent;
+          if (result.error) throw result.error;
+          const { download } = result;
+          expect(await download.failure()).toBeNull();
+          expect(download.suggestedFilename()).toMatch(/^prompt-lab-workspace-\d{4}-\d{2}-\d{2}\.json$/);
+          const file = await download.path();
+          expect(JSON.parse(await fs.readFile(file, 'utf8'))).toEqual(expected);
+        };
+      },
       closeSession: () => page.close(),
       fill: (selector, text) => page.locator(selector).fill(text),
       click: async (selector, using) => {

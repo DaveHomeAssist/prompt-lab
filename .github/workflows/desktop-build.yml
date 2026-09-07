@@ -167,7 +167,7 @@ jobs:
         env:
           PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-native-evidence
         run: |
-          sudo apt-get install -y webkit2gtk-driver xvfb
+          sudo apt-get install -y webkit2gtk-driver xvfb xdg-user-dirs
           deb=$(realpath prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/deb/*.deb)
           package=$(dpkg-deb -f "$deb" Package)
           mkdir -p "$PL_NATIVE_EVIDENCE"
@@ -260,7 +260,7 @@ jobs:
         if: matrix.package == 'appimage'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1
+          sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1 xdg-user-dirs
           cargo install tauri-driver --version 2.0.6 --locked
       - name: Exercise AppImage launch and replacement retention
         env:

@@ -97,17 +97,46 @@ export async function exerciseWorkspace(api, parentId) {
   await screenshot('workspace-import');
 
   // Observe the actual export blob without replacing the exporter or stopping
-  // its normal download. This proves serialization, not the OS download dialog.
+  // its normal download. The adapter also verifies the completed file below.
   await execute(`
     const original = URL.createObjectURL;
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
     window.__nativeExport = null;
+    window.__nativeExportDiagnostic = { objectUrls: [], anchor: null };
     URL.createObjectURL = function(blob) {
       if (blob.type === 'application/json') blob.text().then(text => { window.__nativeExport = JSON.parse(text); });
-      return original.call(this, blob);
-    }; return true;`);
+      const url = original.call(this, blob);
+      window.__nativeExportDiagnostic.objectUrls.push({
+        type: blob.type,
+        size: blob.size,
+        scheme: new URL(url, location.href).protocol,
+      });
+      return url;
+    };
+    HTMLAnchorElement.prototype.click = function() {
+      window.__nativeExportDiagnostic.anchor = {
+        filename: this.download,
+        hrefScheme: new URL(this.href, location.href).protocol,
+      };
+      return originalAnchorClick.call(this);
+    };
+    return true;`);
+  const verifyDownload = await api.prepareDownload();
   await click('button[aria-label="Settings"]');
+  const dialogsBeforeExport = await execute(`return [...document.querySelectorAll('dialog,[role="dialog"],[role="alertdialog"],[role="alert"]')]
+    .filter(node => { const style = getComputedStyle(node); return style.display !== 'none' && style.visibility !== 'hidden' && node.getClientRects().length; })
+    .map(node => ({role: node.getAttribute('role') || node.tagName.toLowerCase(), ariaLabel: node.getAttribute('aria-label'), text: node.innerText.slice(0, 1000)}));`);
   await click('//button[normalize-space(.)="Export Library"]', 'xpath');
   const exported = await waitFor(() => execute('return window.__nativeExport;'), 'native workspace export serialized');
+  const exportUi = await execute(`return {
+    ...window.__nativeExportDiagnostic,
+    dialogsBeforeExport: arguments[0],
+    dialogsAfterExport: [...document.querySelectorAll('dialog,[role="dialog"],[role="alertdialog"],[role="alert"]')]
+      .filter(node => { const style = getComputedStyle(node); return style.display !== 'none' && style.visibility !== 'hidden' && node.getClientRects().length; })
+      .map(node => ({role: node.getAttribute('role') || node.tagName.toLowerCase(), ariaLabel: node.getAttribute('aria-label'), text: node.innerText.slice(0, 1000)})),
+  };`, [dialogsBeforeExport]);
+  api.recordDiagnostic?.('workspaceExportUi', exportUi);
+  await screenshot('workspace-export-result');
   assert.equal(exported.schemaVersion, 2);
   assert.deepEqual(exported.packs, packs);
   assert.equal(exported.library.length, expected.count);
@@ -115,10 +144,11 @@ export async function exerciseWorkspace(api, parentId) {
   assert.equal(exported.runs.find(row => row.id === 'native-import-duplicate-run')?.promptId, parent.id);
   assert.equal(exported.testCases.find(row => row.id === caseId)?.promptId, target.id);
   assert.equal(exported.library.find(row => row.id === childId)?.metadata?.followUpOrigin?.sourcePromptId, target.id);
+  await verifyDownload(exported);
   await click('[aria-label="Close settings"]');
   await closeSession();
   await openSession();
   await checkWorkspacePersisted(api, expected);
-  await checkpoint('native file preview cancel, Skip/Replace/Keep both, associated history/provenance, export serialization and restart passed');
+  await checkpoint('native file preview cancel, Skip/Replace/Keep both, associated history/provenance, completed export download and restart passed');
   return expected;
 }

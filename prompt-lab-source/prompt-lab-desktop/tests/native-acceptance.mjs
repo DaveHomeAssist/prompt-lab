@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +49,10 @@ async function checkpoint(label) {
   evidence.checks.push(label);
   // Progress is deliberately separate from the final acceptance result.
   await writeFile(path.join(evidenceDir, `${phase}-progress.json`), JSON.stringify({ ...evidence, status: 'running' }, null, 2));
+}
+function recordDiagnostic(label, value) {
+  (evidence.diagnostics ||= {})[label] = value;
+  return value;
 }
 async function stopOwnedProcess(child, group = false) {
   if (!child?.pid) return;
@@ -392,7 +398,74 @@ async function uploadJson(selector, data) {
   const id = await element(selector);
   await command('POST', `/session/${session}/element/${id}/value`, { text: file });
 }
-const libraryApi = { execute, executeAsync, uploadJson, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint };
+async function prepareDownload() {
+  const location = process.platform === 'win32'
+    ? spawnSync('powershell.exe', ['-NoProfile', '-Command', '(New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path'], { encoding: 'utf8', timeout: 10_000 })
+    : spawnSync('xdg-user-dir', ['DOWNLOAD'], { encoding: 'utf8', timeout: 10_000 });
+  assert.equal(location.status, 0, location.stderr || 'Could not resolve the native Downloads directory');
+  const directory = location.stdout.trim();
+  assert.ok(path.isAbsolute(directory), 'Native Downloads directory must be absolute');
+  const runnerDownloads = path.join(os.homedir(), 'Downloads');
+  const xdgConfigFile = path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), 'user-dirs.dirs');
+  const list = async target => {
+    try { return { exists: true, entries: (await readdir(target)).sort() }; }
+    catch (error) {
+      if (error.code === 'ENOENT') return { exists: false, entries: [], error: error.code };
+      return { exists: null, entries: [], error: `${error.code || error.name}: ${error.message}` };
+    }
+  };
+  const snapshot = async () => ({
+    resolved: { directory, ...await list(directory) },
+    runnerDownloads: { directory: runnerDownloads, ...await list(runnerDownloads) },
+  });
+  let xdgUserDirs;
+  if (process.platform !== 'win32') {
+    try { xdgUserDirs = { file: xdgConfigFile, exists: true, content: await readFile(xdgConfigFile, 'utf8') }; }
+    catch (error) { xdgUserDirs = { file: xdgConfigFile, exists: false, error: `${error.code || error.name}: ${error.message}` }; }
+  }
+  const beforeListings = await snapshot();
+  const before = new Set(beforeListings.resolved.entries);
+  evidence.exportDownload = {
+    status: 'waiting',
+    resolution: {
+      command: process.platform === 'win32' ? 'Shell.Application shell:Downloads' : 'xdg-user-dir DOWNLOAD',
+      status: location.status,
+      stdout: location.stdout,
+      stderr: location.stderr,
+      error: location.error?.message,
+      resolvedDirectory: directory,
+      runnerHome: os.homedir(),
+      runnerDownloads,
+      xdgConfigHome: process.env.XDG_CONFIG_HOME || null,
+      xdgUserDirs,
+    },
+    listings: { before: beforeListings, after: beforeListings },
+  };
+  return async expected => {
+    const downloaded = await waitFor(async () => {
+      const afterListings = await snapshot();
+      evidence.exportDownload.listings.after = afterListings;
+      for (const name of afterListings.resolved.entries) {
+        if (before.has(name) || !/^prompt-lab-workspace-\d{4}-\d{2}-\d{2}(?: \(\d+\))?\.json$/.test(name)) continue;
+        const file = path.join(directory, name);
+        const bytes = await readFile(file);
+        assert.deepEqual(JSON.parse(bytes.toString('utf8')), expected, 'Downloaded workspace matches the complete export');
+        return { file, bytes };
+      }
+      return false;
+    }, `workspace export file completed in ${directory}`);
+    await writeFile(path.join(evidenceDir, 'downloaded-workspace.json'), downloaded.bytes);
+    evidence.exportDownload = {
+      ...evidence.exportDownload,
+      status: 'passed',
+      path: downloaded.file,
+      bytes: downloaded.bytes.length,
+      sha256: createHash('sha256').update(downloaded.bytes).digest('hex'),
+    };
+    await checkpoint('native workspace export completed on disk and matches serialized workspace');
+  };
+}
+const libraryApi = { execute, executeAsync, uploadJson, prepareDownload, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint, recordDiagnostic };
 
 try {
   await checkpoint('native harness started');
