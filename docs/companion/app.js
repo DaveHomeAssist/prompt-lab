@@ -286,7 +286,7 @@
     const timing = getPilotTiming();
     elements.phaseBadge.textContent = timing.label;
     elements.pilotDayLabel.textContent = timing.status;
-    elements.runwayProgress.style.width = `${timing.progress * 0.84}%`;
+    elements.runwayProgress.value = timing.progress;
     elements.runwaySteps.forEach((step, index) => {
       step.classList.toggle("is-complete", index < timing.phaseIndex);
       step.classList.toggle("is-current", index === timing.phaseIndex);
@@ -466,7 +466,7 @@
     const readiness = Math.round(((preflightComplete + counts.confirmed + gateChecks) / 40) * 100);
     const bounded = Math.min(100, readiness);
     const ring = document.querySelector("#sidebar-progress");
-    ring.style.setProperty("--progress", String(bounded));
+    ring.querySelector(".mini-ring-value").setAttribute("stroke-dashoffset", String(100 - bounded));
     document.querySelector("#sidebar-progress-value").textContent = `${bounded}%`;
     document.querySelector("#sidebar-progress-copy").textContent =
       bounded === 100 ? "Readout is fully documented." :

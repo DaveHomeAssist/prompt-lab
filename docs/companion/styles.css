@@ -301,14 +301,36 @@ svg {
 }
 
 .mini-ring {
+  position: relative;
   display: grid;
   width: 50px;
   height: 50px;
   place-items: center;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at center, var(--surface-2) 57%, transparent 59%),
-    conic-gradient(var(--accent) calc(var(--progress) * 1%), var(--line) 0);
+}
+
+.mini-ring svg,
+.mini-ring span {
+  grid-area: 1 / 1;
+}
+
+.mini-ring svg {
+  width: 50px;
+  height: 50px;
+  transform: rotate(-90deg);
+}
+
+.mini-ring circle {
+  fill: none;
+  stroke-width: 3;
+}
+
+.mini-ring-track {
+  stroke: var(--line);
+}
+
+.mini-ring-value {
+  stroke: var(--accent);
+  transition: stroke-dashoffset 240ms ease;
 }
 
 .mini-ring span {
@@ -687,8 +709,23 @@ svg {
 .runway-progress {
   right: auto;
   z-index: 1;
-  width: 0;
-  max-width: 84%;
+  width: 84%;
+  appearance: none;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+}
+
+.runway-progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+.runway-progress::-webkit-progress-value {
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+
+.runway-progress::-moz-progress-bar {
   background: var(--accent);
   transition: width 240ms ease;
 }
