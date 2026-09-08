@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-07T01:27:09.051889Z",
+  "snapshotAt": "2026-09-08T03:43:40Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "aa8912f14e9f7c26b434da20f91f0140de5d51c1",
+  "mainSha": "63d098ee2da5cc546b8e7f3b0cc59c25e84cefe9",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify PR #98 native appearance and fixture adoption, then complete export-download, upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Repair PR #99 Linux export-download acceptance, verify PR #100 companion deployment, then complete upgrade/restore and remaining runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,7 +34,7 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "Native import/export, control readability, upgrade/restore, alternate packages, macOS interaction/applicable signing and authenticated canonical web remain open.",
+      "detail": "Main Desktop Build 34073150557 failed before native packaging. PR #99 passes Windows and macOS but fails the Linux completed-export-file assertion; upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
       "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
     },
     {
@@ -63,9 +63,15 @@
     },
     {
       "label": "Native custom-button appearance",
-      "state": "Running",
-      "detail": "First unprefixed override did not fix the actual Linux screenshot. Revised candidate also overrides -webkit-appearance and asserts both properties. Browser checks pass; new native screenshots pending.",
+      "state": "Verified",
+      "detail": "PR #98 merged as 63d098e. PR #99 Windows light/dark screenshots show readable Settings controls; Linux export-download acceptance remains a separate failing gate.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
+    },
+    {
+      "label": "Pilot companion",
+      "state": "Running",
+      "detail": "Owner-only Sites version 3 is deployed with the Billing workspace. PR #100 contains the durable noindex mirror and is awaiting Landing CI, merge, Pages deployment and live route verification.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/100"
     }
   ],
   "issues": [
@@ -356,6 +362,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3d5255fc8f4481afbf7ed26ad3432781",
+      "title": "Publish durable billing pilot companion",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/3d5255fc8f4481afbf7ed26ad3432781",
+      "inPlan": false,
+      "nextAction": "Merge PR #100 and verify the non-indexed production route.",
+      "verification": "Owner-only Sites version 3 is verified; the durable PromptLab route remains pending merge and Pages readback."
     },
     {
       "id": "3d2255fc8f448162849ad8dbe5c12595",
