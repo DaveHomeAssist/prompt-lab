@@ -10,8 +10,7 @@
   <meta name="color-scheme" content="dark light">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>PromptLab Pilot Companion</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="/google-analytics.js" defer></script>
+  <link rel="stylesheet" href="/companion/styles.css">
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to pilot workspace</a>
@@ -83,7 +82,11 @@
       </nav>
 
       <div class="sidebar-card">
-        <div class="mini-ring" id="sidebar-progress" style="--progress:0">
+        <div class="mini-ring" id="sidebar-progress">
+          <svg viewBox="0 0 36 36" aria-hidden="true">
+            <circle class="mini-ring-track" cx="18" cy="18" r="15.9155"></circle>
+            <circle class="mini-ring-value" cx="18" cy="18" r="15.9155" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+          </svg>
           <span id="sidebar-progress-value">0%</span>
         </div>
         <div>
@@ -174,7 +177,7 @@
             <span class="phase-badge" id="current-phase-badge">Preflight</span>
           </div>
           <div class="runway-track" aria-labelledby="runway-heading">
-            <div class="runway-progress" id="runway-progress"></div>
+            <progress class="runway-progress" id="runway-progress" max="100" value="0" aria-label="Pilot runway progress"></progress>
             <div class="runway-step" data-phase="preflight"><span>0</span><strong>Preflight</strong><small>Before day 1</small></div>
             <div class="runway-step" data-phase="activate"><span>1</span><strong>Activate</strong><small>Days 1–2</small></div>
             <div class="runway-step" data-phase="habit"><span>2</span><strong>Habit</strong><small>Days 3–14</small></div>
@@ -529,10 +532,10 @@ Interested? DM me TESTER + your field + one workflow you’d test.</div>
             <h2>Pilot plan and decision boundaries</h2>
             <p>The original visualization is preserved here as a read-only, sandboxed reference.</p>
           </div>
-          <a class="button button-secondary" href="pilot-overview.html" target="_blank" rel="noopener noreferrer">Open full reference <svg aria-hidden="true"><use href="#icon-arrow"></use></svg></a>
+          <a class="button button-secondary" href="/companion/pilot-overview.html" target="_blank" rel="noopener noreferrer">Open full reference <svg aria-hidden="true"><use href="#icon-arrow"></use></svg></a>
         </div>
         <div class="reference-frame">
-          <iframe src="pilot-overview.html" sandbox="allow-scripts" referrerpolicy="no-referrer" title="PromptLab heavy-user pilot strategy visualization"></iframe>
+          <iframe src="/companion/pilot-overview.html" sandbox="allow-scripts" referrerpolicy="no-referrer" title="PromptLab heavy-user pilot strategy visualization"></iframe>
         </div>
       </section>
 
@@ -556,6 +559,6 @@ Interested? DM me TESTER + your field + one workflow you’d test.</div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
-  <script src="app.js" defer></script>
+  <script src="/companion/app.js" defer></script>
 </body>
 </html>
