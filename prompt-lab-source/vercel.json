@@ -29,6 +29,8 @@
     { "source": "/privacy/", "destination": "/privacy/index.html" },
     { "source": "/guide", "destination": "/guide.html" },
     { "source": "/setup", "destination": "/setup.html" },
+    { "source": "/companion", "destination": "/companion/index.html" },
+    { "source": "/companion/", "destination": "/companion/index.html" },
     { "source": "/mobile", "destination": "/mobile/index.html" },
     { "source": "/mobile/", "destination": "/mobile/index.html" },
     { "source": "/app", "destination": "/app/index.html" },

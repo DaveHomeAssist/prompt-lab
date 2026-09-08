@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="An owner-facing companion for running PromptLab's five-user, 30-day heavy-user pilot.">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+  <meta name="googlebot" content="noindex,nofollow,noarchive,nosnippet,noimageindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="dark light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>PromptLab Pilot Companion</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="/google-analytics.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to pilot workspace</a>
+
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+    <symbol id="icon-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+    <symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+    <symbol id="icon-card" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></symbol>
+    <symbol id="icon-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3Z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></symbol>
+    <symbol id="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></symbol>
+    <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v5M14 11v5"/></symbol>
+    <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="icon-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z"/><path d="M4 5.5v14"/></symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Pilot navigation">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div>
+          <p class="eyebrow">PromptLab</p>
+          <p class="brand-title">Pilot Companion</p>
+        </div>
+      </div>
+
+      <nav class="nav-list" role="tablist" aria-orientation="vertical" aria-label="Companion sections">
+        <button class="nav-item is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-board" id="tab-board" data-view="board">
+          <svg aria-hidden="true"><use href="#icon-grid"></use></svg>
+          <span>Launch board</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-people" id="tab-people" data-view="people" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-users"></use></svg>
+          <span>People</span>
+          <span class="nav-count" id="nav-people-count">0/5</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-outreach" id="tab-outreach" data-view="outreach" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-send"></use></svg>
+          <span>Outreach</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-evidence" id="tab-evidence" data-view="evidence" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-file"></use></svg>
+          <span>Evidence</span>
+          <span class="nav-count" id="nav-evidence-count">0</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-decision" id="tab-decision" data-view="decision" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-target"></use></svg>
+          <span>Decision</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-billing" id="tab-billing" data-view="billing" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-card"></use></svg>
+          <span>Billing</span>
+          <span class="nav-alert">Hold</span>
+        </button>
+        <button class="nav-item" type="button" role="tab" aria-selected="false" aria-controls="panel-reference" id="tab-reference" data-view="reference" tabindex="-1">
+          <svg aria-hidden="true"><use href="#icon-map"></use></svg>
+          <span>Pilot reference</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-card">
+        <div class="mini-ring" id="sidebar-progress" style="--progress:0">
+          <span id="sidebar-progress-value">0%</span>
+        </div>
+        <div>
+          <p class="sidebar-card-label">Cohort readiness</p>
+          <p class="sidebar-card-copy" id="sidebar-progress-copy">Start with preflight.</p>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <svg aria-hidden="true"><use href="#icon-lock"></use></svg>
+        <span>Owner-only · saved on this device</span>
+      </div>
+    </aside>
+
+    <main id="main-content" class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="view-kicker">Pilot command view</p>
+          <h1 id="view-title">Launch board</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="date-control">
+            <svg aria-hidden="true"><use href="#icon-calendar"></use></svg>
+            <label for="pilot-start-date">Pilot starts</label>
+            <input id="pilot-start-date" type="date">
+          </div>
+          <button class="icon-button" id="theme-toggle" type="button" aria-label="Switch to light theme">
+            <svg class="theme-icon-moon" aria-hidden="true"><use href="#icon-moon"></use></svg>
+            <svg class="theme-icon-sun" aria-hidden="true"><use href="#icon-sun"></use></svg>
+          </button>
+          <button class="button button-secondary" id="export-data" type="button">
+            <svg aria-hidden="true"><use href="#icon-download"></use></svg>
+            Export data
+          </button>
+        </div>
+      </header>
+
+      <div class="status-strip" role="status">
+        <span class="status-dot status-dot-amber"></span>
+        <strong>Prelaunch access</strong>
+        <span>All features free while checkout is unavailable.</span>
+        <span class="status-divider" aria-hidden="true"></span>
+        <span id="pilot-day-label">Set a start date to begin the runway.</span>
+      </div>
+
+      <section class="view-panel is-active" id="panel-board" role="tabpanel" aria-labelledby="tab-board" data-panel="board">
+        <div class="metric-grid" aria-label="Pilot snapshot">
+          <article class="metric-card metric-card-featured">
+            <div class="metric-topline">
+              <span>Cohort</span>
+              <svg aria-hidden="true"><use href="#icon-users"></use></svg>
+            </div>
+            <div class="metric-value"><span id="metric-confirmed">0</span><small>/ 5</small></div>
+            <p>confirmed heavy users</p>
+          </article>
+          <article class="metric-card">
+            <div class="metric-topline">
+              <span>Activation</span>
+              <span class="metric-threshold">Goal 4</span>
+            </div>
+            <div class="metric-value"><span id="metric-activation">0</span><small>/ 5</small></div>
+            <p>saved and reused</p>
+          </article>
+          <article class="metric-card">
+            <div class="metric-topline">
+              <span>Retention</span>
+              <span class="metric-threshold">Goal 3</span>
+            </div>
+            <div class="metric-value"><span id="metric-retention">0</span><small>/ 5</small></div>
+            <p>active in weeks 2 and 4</p>
+          </article>
+          <article class="metric-card">
+            <div class="metric-topline">
+              <span>Value proof</span>
+              <span class="metric-threshold">Goal 3</span>
+            </div>
+            <div class="metric-value"><span id="metric-value">0</span><small>/ 5</small></div>
+            <p>measurable improvement</p>
+          </article>
+        </div>
+
+        <div class="runway-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">30-day runway</p>
+              <h2 id="runway-heading">Pilot phase</h2>
+            </div>
+            <span class="phase-badge" id="current-phase-badge">Preflight</span>
+          </div>
+          <div class="runway-track" aria-labelledby="runway-heading">
+            <div class="runway-progress" id="runway-progress"></div>
+            <div class="runway-step" data-phase="preflight"><span>0</span><strong>Preflight</strong><small>Before day 1</small></div>
+            <div class="runway-step" data-phase="activate"><span>1</span><strong>Activate</strong><small>Days 1–2</small></div>
+            <div class="runway-step" data-phase="habit"><span>2</span><strong>Habit</strong><small>Days 3–14</small></div>
+            <div class="runway-step" data-phase="value"><span>3</span><strong>Value</strong><small>Days 15–23</small></div>
+            <div class="runway-step" data-phase="commercial"><span>4</span><strong>Commercial</strong><small>Days 24–30</small></div>
+          </div>
+        </div>
+
+        <div class="board-grid">
+          <article class="action-card">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">Today’s move</p>
+                <h2 id="today-action-title">Prepare the pilot</h2>
+              </div>
+              <span class="number-chip" id="today-action-number">01</span>
+            </div>
+            <p class="action-copy" id="today-action-copy">Finish the truth and privacy checks before inviting participants.</p>
+            <button class="button button-primary" type="button" id="today-action-button" data-target-view="board">
+              <span id="today-action-button-label">Review preflight</span>
+              <svg aria-hidden="true"><use href="#icon-arrow"></use></svg>
+            </button>
+          </article>
+
+          <article class="checklist-card">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">Preflight</p>
+                <h2>Truth before traffic</h2>
+              </div>
+              <span class="count-badge" id="preflight-count">0/5</span>
+            </div>
+            <div class="checklist" id="preflight-checklist">
+              <label class="check-row"><input type="checkbox" data-preflight="monetization"><span class="custom-check"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span><span><strong>Monetization is truthful</strong><small>Pricing CTAs are hidden or clearly labeled prelaunch.</small></span></label>
+              <label class="check-row"><input type="checkbox" data-preflight="privacy"><span class="custom-check"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span><span><strong>Privacy boundary is stated</strong><small>Collect counts and approved examples, never confidential prompts.</small></span></label>
+              <label class="check-row"><input type="checkbox" data-preflight="cohort"><span class="custom-check"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span><span><strong>Cohort criteria are fixed</strong><small>AI use four or more days a week and one recurring workflow.</small></span></label>
+              <label class="check-row"><input type="checkbox" data-preflight="onboarding"><span class="custom-check"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span><span><strong>Onboarding script is ready</strong><small>One real prompt, one save, one reuse within 48 hours.</small></span></label>
+              <label class="check-row"><input type="checkbox" data-preflight="calendar"><span class="custom-check"><svg aria-hidden="true"><use href="#icon-check"></use></svg></span><span><strong>Check-ins are scheduled</strong><small>Plan week-two, week-four, and day-30 conversations.</small></span></label>
+            </div>
+          </article>
+        </div>
+
+        <article class="cohort-strip">
+          <div class="section-heading compact">
+            <div>
+              <p class="eyebrow">Five-person cohort</p>
+              <h2>Recruitment pipeline</h2>
+            </div>
+            <button class="text-button" type="button" data-target-view="people">Open people tracker <svg aria-hidden="true"><use href="#icon-arrow"></use></svg></button>
+          </div>
+          <div class="cohort-slots" id="cohort-slots" aria-label="Participant slots"></div>
+        </article>
+      </section>
+
+      <section class="view-panel" id="panel-people" role="tabpanel" aria-labelledby="tab-people" data-panel="people" hidden>
+        <div class="page-intro">
+          <div>
+            <p class="eyebrow">Cohort operations</p>
+            <h2>Five people, one real workflow each</h2>
+            <p>Track behavior, not enthusiasm. Leave a gate unchecked until the participant demonstrates it independently.</p>
+          </div>
+          <div class="legend" aria-label="Participant status legend">
+            <span><i class="legend-dot dot-slate"></i>Recruiting</span>
+            <span><i class="legend-dot dot-blue"></i>Confirmed</span>
+            <span><i class="legend-dot dot-orange"></i>Active</span>
+            <span><i class="legend-dot dot-green"></i>Complete</span>
+          </div>
+        </div>
+        <div class="people-grid" id="people-grid"></div>
+      </section>
+
+      <section class="view-panel" id="panel-outreach" role="tabpanel" aria-labelledby="tab-outreach" data-panel="outreach" hidden>
+        <div class="page-intro">
+          <div>
+            <p class="eyebrow">Recruitment kit</p>
+            <h2>Find people with a recurring AI problem</h2>
+            <p>Use the narrow PromptLab message first. The developer and AV variants are here for adjacent tool pilots.</p>
+          </div>
+          <div class="callout-inline"><strong>Target:</strong> five testers, including two outside your close network.</div>
+        </div>
+        <div class="template-grid" id="template-grid">
+          <article class="template-card">
+            <div class="template-meta"><span class="channel-tag">LinkedIn · Personal</span><span>Long form</span></div>
+            <h3>Honest test pilots</h3>
+            <div class="template-copy" data-template="main">I’m looking for a few honest test pilots for some tools I’ve been building.
+
+They fall into three areas:
+
+• PromptLab: a workspace for improving, saving, testing, and reusing prompts.
+• Developer tools: utilities intended to make recurring development work clearer and faster.
+• AV tools: planning and live-production tools, including CueForge and Throwline.
+
+I’m not looking for people to click around for five minutes and tell me everything looks cool. I need people willing to use something during real work, notice where it becomes confusing or frustrating, and tell me the truth.
+
+The initial test will run for about 30 days. I’ll ask you to use the relevant tool at least twice a week and participate in a short onboarding and a couple of check-ins.
+
+Interested? DM me TESTER, tell me which area interests you, and describe one real task you would try with it.</div>
+            <button class="button button-secondary copy-button" type="button" data-copy-template="main" aria-label="Copy Honest test pilots LinkedIn post"><svg aria-hidden="true"><use href="#icon-copy"></use></svg>Copy LinkedIn post</button>
+          </article>
+
+          <article class="template-card template-card-accent">
+            <div class="template-meta"><span class="channel-tag">PromptLab</span><span>Primary post</span></div>
+            <h3>Five heavy AI users</h3>
+            <div class="template-copy" data-template="promptlab">Do you use ChatGPT, Claude, Copilot, Gemini, or another AI tool several days a week?
+
+Do you constantly rewrite prompts, search old conversations, or lose instructions that worked well the first time?
+
+I’m looking for five people to test PromptLab for 30 days.
+
+PromptLab helps you shape prompts, save useful versions, reuse them, and compare results instead of starting over every time.
+
+This is prelaunch testing, so expect some rough edges. I’ll ask you to use it during real work, save and reuse at least one prompt, try it on multiple days, and tell me what is confusing, unnecessary, or genuinely useful.
+
+PromptLab prelaunch access is currently free.
+
+DM me PROMPTLAB with what kind of work you do, which AI tools you use, and one recurring task you would test.
+
+https://promptlab.tools/</div>
+            <button class="button button-primary copy-button" type="button" data-copy-template="promptlab" aria-label="Copy five heavy AI users PromptLab post"><svg aria-hidden="true"><use href="#icon-copy"></use></svg>Copy PromptLab post</button>
+          </article>
+
+          <article class="template-card">
+            <div class="template-meta"><span class="channel-tag">X · Threads</span><span>Short form</span></div>
+            <h3>Quick call for testers</h3>
+            <div class="template-copy template-copy-short" data-template="short">Looking for a few willing test pilots for tools I’m building:
+
+PromptLab for reusable AI prompts
+Developer workflow utilities
+AV and live-production tools
+
+I need real use, rough-edge reports, and honest feedback—not just “looks cool.”
+
+Interested? DM me TESTER + your field + one workflow you’d test.</div>
+            <button class="button button-secondary copy-button" type="button" data-copy-template="short" aria-label="Copy quick call for testers X or Threads post"><svg aria-hidden="true"><use href="#icon-copy"></use></svg>Copy short post</button>
+          </article>
+
+          <article class="template-card">
+            <div class="template-meta"><span class="channel-tag">Direct message</span><span>Screening reply</span></div>
+            <h3>Qualify the workflow</h3>
+            <div class="template-copy template-copy-short" data-template="screener">Thanks for volunteering. Send me:
+
+1. Which lane: PromptLab, developer tools, or AV tools
+2. Your role
+3. One recurring workflow you want to improve
+4. Your platform or relevant AV hardware
+5. Whether you can test twice a week for 30 days</div>
+            <button class="button button-secondary copy-button" type="button" data-copy-template="screener" aria-label="Copy tester screening reply"><svg aria-hidden="true"><use href="#icon-copy"></use></svg>Copy screening reply</button>
+          </article>
+        </div>
+      </section>
+
+      <section class="view-panel" id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" data-panel="evidence" hidden>
+        <div class="page-intro">
+          <div>
+            <p class="eyebrow">Learning ledger</p>
+            <h2>Record proof without collecting prompt bodies</h2>
+            <p>Capture the behavior, measurable change, and an approved example if one exists.</p>
+          </div>
+          <span class="privacy-chip"><svg aria-hidden="true"><use href="#icon-lock"></use></svg>No confidential prompts</span>
+        </div>
+
+        <div class="evidence-layout">
+          <form class="evidence-form" id="evidence-form">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">New evidence</p>
+                <h2>Add an observation</h2>
+              </div>
+            </div>
+            <label>Participant<select id="evidence-participant" required></select></label>
+            <div class="form-row">
+              <label>Evidence type
+                <select id="evidence-type" required>
+                  <option value="Activation">Activation</option>
+                  <option value="Retention">Retention</option>
+                  <option value="Value">Value</option>
+                  <option value="Commercial intent">Commercial intent</option>
+                  <option value="Friction">Friction</option>
+                </select>
+              </label>
+              <label>Date<input id="evidence-date" type="date" required></label>
+            </div>
+            <label>What happened<textarea id="evidence-note" rows="4" maxlength="500" required placeholder="Example: Reused the saved client-summary prompt without coaching."></textarea></label>
+            <label>Measured signal<input id="evidence-metric" type="text" maxlength="100" placeholder="Example: 18 minutes saved; 2 fewer rewrites"></label>
+            <button class="button button-primary" type="submit"><svg aria-hidden="true"><use href="#icon-plus"></use></svg>Add evidence</button>
+          </form>
+
+          <div class="evidence-feed">
+            <div class="section-heading compact">
+              <div>
+                <p class="eyebrow">Recorded observations</p>
+                <h2>Evidence feed</h2>
+              </div>
+              <select id="evidence-filter" aria-label="Filter evidence by type">
+                <option value="All">All evidence</option>
+                <option value="Activation">Activation</option>
+                <option value="Retention">Retention</option>
+                <option value="Value">Value</option>
+                <option value="Commercial intent">Commercial intent</option>
+                <option value="Friction">Friction</option>
+              </select>
+            </div>
+            <div id="evidence-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view-panel" id="panel-decision" role="tabpanel" aria-labelledby="tab-decision" data-panel="decision" hidden>
+        <div class="decision-hero" id="decision-hero">
+          <div>
+            <p class="eyebrow">Day-30 readout</p>
+            <h2 id="decision-title">Prepare the experiment</h2>
+            <p id="decision-copy">Confirm the cohort and finish preflight before interpreting the pilot.</p>
+          </div>
+          <div class="decision-score"><span id="decision-score">0</span><small>/ 4 outcome gates</small></div>
+        </div>
+
+        <div class="decision-grid">
+          <article class="gate-card" data-gate-card="activation">
+            <div class="gate-icon"><svg aria-hidden="true"><use href="#icon-check"></use></svg></div>
+            <div><span>Activation</span><strong>4 of 5 within 48 hours</strong><p><span id="gate-activation-count">0</span> participants have saved and reused a real prompt.</p></div>
+            <span class="gate-state" id="gate-activation-state">Open</span>
+          </article>
+          <article class="gate-card" data-gate-card="retention">
+            <div class="gate-icon"><svg aria-hidden="true"><use href="#icon-check"></use></svg></div>
+            <div><span>Retention</span><strong>3 of 5 in weeks 2 and 4</strong><p><span id="gate-retention-count">0</span> participants returned independently in both windows.</p></div>
+            <span class="gate-state" id="gate-retention-state">Open</span>
+          </article>
+          <article class="gate-card" data-gate-card="value">
+            <div class="gate-icon"><svg aria-hidden="true"><use href="#icon-check"></use></svg></div>
+            <div><span>Value</span><strong>3 improve; 2 case studies</strong><p><span id="gate-value-count">0</span> improved · <span id="gate-case-count">0</span> approved cases.</p></div>
+            <span class="gate-state" id="gate-value-state">Open</span>
+          </article>
+          <article class="gate-card" data-gate-card="commercial">
+            <div class="gate-icon"><svg aria-hidden="true"><use href="#icon-check"></use></svg></div>
+            <div><span>Commercial intent</span><strong>2 users or 1 credible sponsor</strong><p><span id="gate-commercial-count">0</span> paid continuations recorded.</p></div>
+            <span class="gate-state" id="gate-commercial-state">Open</span>
+          </article>
+        </div>
+
+        <div class="decision-lower-grid">
+          <article class="sponsor-card">
+            <div>
+              <p class="eyebrow">Company path</p>
+              <h2>Credible sponsor</h2>
+              <p>A workplace champion has introduced a real budget owner for a small company pilot.</p>
+            </div>
+            <label class="switch-control">
+              <input id="credible-sponsor" type="checkbox">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span id="sponsor-label">Not yet</span>
+            </label>
+          </article>
+
+          <article class="truth-card">
+            <div class="truth-status"><span id="truth-status-icon">!</span></div>
+            <div>
+              <p class="eyebrow">Required release gate</p>
+              <h2 id="truth-title">Checkout truth is still open</h2>
+              <p id="truth-copy">Do not buy traffic or present paid continuation until the offer matches the working checkout.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="view-panel" id="panel-billing" role="tabpanel" aria-labelledby="tab-billing" data-panel="billing" hidden>
+        <div class="billing-hero">
+          <div>
+            <p class="eyebrow">Paid launch readiness</p>
+            <h2>Reopen billing only when all five gates pass</h2>
+            <p>Keep the public offer in prelaunch mode until checkout, entitlement updates, account management, CI, and the deployed interface work together.</p>
+          </div>
+          <div class="billing-hold" aria-label="Billing release status: hold">
+            <span>Hold</span>
+            <small>paid traffic</small>
+          </div>
+        </div>
+
+        <div class="billing-snapshot" role="note">
+          <span class="status-dot status-dot-amber"></span>
+          <div>
+            <strong>Last verified September 7, 2026</strong>
+            <p>Production reported billing disabled while the landing page still advertised Pro. Treat this as a dated snapshot and recheck the live system before changing the offer.</p>
+          </div>
+        </div>
+
+        <ol class="billing-sequence" aria-label="Billing restoration sequence">
+          <li class="billing-stage">
+            <span class="billing-step">01</span>
+            <div><p class="eyebrow">Offer truth</p><h3>Make the promise match reality</h3><p>Hide paid calls to action or label the offer “Prelaunch access — all features free” while checkout is unavailable.</p></div>
+          </li>
+          <li class="billing-stage">
+            <span class="billing-step">02</span>
+            <div><p class="eyebrow">Stripe production</p><h3>Configure products and secrets</h3><p>Activate payouts, create the exact monthly and annual prices, store production identifiers securely, and keep test and live credentials separate.</p></div>
+          </li>
+          <li class="billing-stage">
+            <span class="billing-step">03</span>
+            <div><p class="eyebrow">Identity and checkout</p><h3>Preserve one customer journey</h3><p>Require sign-in, bind Stripe customers to stable Clerk user IDs, retain the selected plan through authentication, and prevent duplicate checkouts.</p></div>
+          </li>
+          <li class="billing-stage">
+            <span class="billing-step">04</span>
+            <div><p class="eyebrow">Lifecycle</p><h3>Handle every subscription state</h3><p>Verify signed, idempotent webhooks for purchase, renewal, cancellation, payment failure, refund, and deletion. Entitlements must update without a sign-out.</p></div>
+          </li>
+          <li class="billing-stage">
+            <span class="billing-step">05</span>
+            <div><p class="eyebrow">Release proof</p><h3>Test the complete production path</h3><p>Pass monthly and annual test purchases, restore green CI, verify the customer portal, then run one explicitly approved live transaction and refund.</p></div>
+          </li>
+        </ol>
+
+        <div class="billing-grid">
+          <article class="billing-decisions">
+            <div class="section-heading compact">
+              <div><p class="eyebrow">Owner decisions</p><h2>Decide before configuration</h2></div>
+              <span class="number-chip">3</span>
+            </div>
+            <ul class="billing-list">
+              <li><strong>Launch prices</strong><span>Confirm whether $9 monthly and $100 annual are final.</span></li>
+              <li><strong>Pilot terms</strong><span>Choose free, discounted, or paid access for the five-user cohort.</span></li>
+              <li><strong>Customer policy</strong><span>Define trial, cancellation, refund, tax, and support handling.</span></li>
+            </ul>
+          </article>
+
+          <article class="billing-acceptance">
+            <div class="section-heading compact">
+              <div><p class="eyebrow">Acceptance contract</p><h2>Proof required to go live</h2></div>
+              <span class="number-chip">5</span>
+            </div>
+            <ul class="billing-list billing-list-checks">
+              <li><strong>Checkout</strong><span>Monthly and annual flows finish successfully.</span></li>
+              <li><strong>Entitlements</strong><span>Email, Google, and GitHub identities receive the same Pro state.</span></li>
+              <li><strong>Lifecycle</strong><span>Renewal, failure, cancellation, refund, and deletion reconcile correctly.</span></li>
+              <li><strong>Interface</strong><span>Landing, Settings, and billing modal show one truthful state.</span></li>
+              <li><strong>Release</strong><span>Required checks, deployment, and the user-facing flow are verified.</span></li>
+            </ul>
+          </article>
+        </div>
+
+        <article class="billing-launch">
+          <div class="billing-launch-mark" aria-hidden="true"><svg><use href="#icon-check"></use></svg></div>
+          <div>
+            <p class="eyebrow">Go / no-go rule</p>
+            <h2>Restore paid calls to action last</h2>
+            <p>Do not send paid traffic until checkout, account linking, subscription lifecycle, CI, deployment, and the final user-facing purchase flow are all currently verified.</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="view-panel" id="panel-reference" role="tabpanel" aria-labelledby="tab-reference" data-panel="reference" hidden>
+        <div class="page-intro">
+          <div>
+            <p class="eyebrow">Original strategy canvas</p>
+            <h2>Pilot plan and decision boundaries</h2>
+            <p>The original visualization is preserved here as a read-only, sandboxed reference.</p>
+          </div>
+          <a class="button button-secondary" href="pilot-overview.html" target="_blank" rel="noopener noreferrer">Open full reference <svg aria-hidden="true"><use href="#icon-arrow"></use></svg></a>
+        </div>
+        <div class="reference-frame">
+          <iframe src="pilot-overview.html" sandbox="allow-scripts" referrerpolicy="no-referrer" title="PromptLab heavy-user pilot strategy visualization"></iframe>
+        </div>
+      </section>
+
+      <footer class="workspace-footer">
+        <span>PromptLab pilot companion</span>
+        <button class="text-button danger-text" type="button" id="reset-data"><svg aria-hidden="true"><use href="#icon-rotate"></use></svg>Reset local data</button>
+      </footer>
+    </main>
+  </div>
+
+  <dialog id="reset-dialog" aria-labelledby="reset-dialog-title">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-icon"><svg aria-hidden="true"><use href="#icon-trash"></use></svg></div>
+      <h2 id="reset-dialog-title">Reset the pilot companion?</h2>
+      <p>This clears participant details, checklists, evidence, and dates saved in this browser. Export first if you need a backup.</p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" value="cancel">Keep data</button>
+        <button class="button button-danger" value="confirm">Reset everything</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="app.js" defer></script>
+</body>
+</html>
