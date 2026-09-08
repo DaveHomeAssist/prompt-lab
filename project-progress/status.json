@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-08T03:43:40Z",
+  "snapshotAt": "2026-09-08T04:14:58Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "63d098ee2da5cc546b8e7f3b0cc59c25e84cefe9",
+  "mainSha": "0451f07fafe1b76f5ed7eee43b7397da4b917f1b",
   "overall": "Acceptance incomplete",
-  "nextAction": "Repair PR #99 Linux export-download acceptance, verify PR #100 companion deployment, then complete upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Repair PR #99 Linux export-download acceptance, then complete upgrade/restore and remaining runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -69,9 +69,9 @@
     },
     {
       "label": "Pilot companion",
-      "state": "Running",
-      "detail": "Owner-only Sites version 3 is deployed with the Billing workspace. PR #100 contains the durable noindex mirror and is awaiting Landing CI, merge, Pages deployment and live route verification.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/100"
+      "state": "Verified",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     }
   ],
   "issues": [
@@ -366,14 +366,14 @@
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
       "title": "Publish durable billing pilot companion",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Low",
       "area": "Background",
       "type": "Feature",
       "url": "https://app.notion.com/3d5255fc8f4481afbf7ed26ad3432781",
       "inPlan": false,
-      "nextAction": "Merge PR #100 and verify the non-indexed production route.",
-      "verification": "Owner-only Sites version 3 is verified; the durable PromptLab route remains pending merge and Pages readback."
+      "nextAction": null,
+      "verification": "Notion is Done. Production /companion and /companion/ passed asset, noindex, CSP, sandbox, desktop/mobile layout, interaction and console verification at main 0451f07."
     },
     {
       "id": "3d2255fc8f448162849ad8dbe5c12595",
