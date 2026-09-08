@@ -12,6 +12,7 @@ const webIndexHtml = join(webDir, 'index.html');
 const webPublicDir = join(sourceDir, 'prompt-lab-web', 'public');
 const webTemplatesDir = join(webPublicDir, 'templates');
 const webMobileDir = join(webPublicDir, 'mobile');
+const webCompanionDir = join(webPublicDir, 'companion');
 const docsDir = join(repoDir, 'docs');
 const mobileRedirectMeta = `  <meta name="description" content="Redirect to the Prompt Lab mobile prototype for testing the touch-first prompt workspace, canvas flow, and compact editing surfaces.">
   <meta name="robots" content="index,follow">
@@ -65,6 +66,7 @@ async function resetDocsDir() {
     ...webPageTargets.map(([, toName]) => join(docsDir, toName)),
     join(docsDir, 'templates'),
     join(docsDir, 'mobile'),
+    join(docsDir, 'companion'),
     join(docsDir, 'privatepolicy.html'),
     join(docsDir, 'privacy'),
     join(docsDir, 'fonts'),
@@ -137,6 +139,14 @@ ${mobileRedirectMeta}
   } catch {
     // Mobile remains optional; skip when the static fallback directory does not exist.
   }
+}
+
+async function copyCompanionDir() {
+  const companionStats = await stat(webCompanionDir);
+  if (!companionStats.isDirectory()) {
+    throw new Error(`Expected companion directory at ${webCompanionDir}`);
+  }
+  await cp(webCompanionDir, join(docsDir, 'companion'), { recursive: true });
 }
 
 async function writeNoJekyll() {
@@ -242,6 +252,7 @@ async function main() {
   await copyFontsDir();
   await copyTemplatesDir();
   await copyMobileDir();
+  await copyCompanionDir();
 
   // Copy web pages (guide, setup)
   for (const [fromName, toName] of webPageTargets) {
