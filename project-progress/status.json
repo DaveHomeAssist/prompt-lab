@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-08T04:14:58Z",
+  "snapshotAt": "2026-09-18T06:11:35Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "0451f07fafe1b76f5ed7eee43b7397da4b917f1b",
+  "mainSha": "154a57e1c8a8a0fc9ed4888987971d5740b33dfb",
   "overall": "Acceptance incomplete",
-  "nextAction": "Repair PR #99 Linux export-download acceptance, then complete upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Unblock billing acceptance with an authenticated PromptLab session and bounded Stripe test mode (annual price and webhook); separately resolve PR #99's conflicts and Linux export-download failure before upgrade/restore and remaining runtime acceptance.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,7 +34,7 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "Main Desktop Build 34073150557 failed before native packaging. PR #99 passes Windows and macOS but fails the Linux completed-export-file assertion; upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
+      "detail": "Main Desktop Build 34073150557 failed before native packaging. PR #99 passes Windows and macOS but fails the Linux completed-export-file assertion (latest run 34101896031) and, as of 2026-09-18, conflicts with main 154a57e; upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
       "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
     },
     {
@@ -72,6 +72,12 @@
       "state": "Verified",
       "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
+    },
+    {
+      "label": "Billing acceptance",
+      "state": "Open",
+      "detail": "RUN-20260917-2350. Re-probed 2026-09-18T06:07Z: production checkout and license return terminal billingDisabled (BILLING_ENABLED off); yearly-price and STRIPE_WEBHOOK_SECRET variables are absent. The annual intent reached Clerk sign-in and GitHub OAuth on 2026-09-17, but authenticated return-state, Stripe test checkout, webhook, entitlement, portal and gated-feature proof remain Unknown. No checkout session or charge was created.",
+      "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     }
   ],
   "issues": [
@@ -240,7 +246,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Inspect NSIS and AppImage native acceptance, then complete prior-version upgrade/restore and macOS interaction.",
+      "nextAction": "Resolve PR #99's conflicts with main, run the authorized Linux XDG Downloads fixture candidate, then complete prior-version upgrade/restore and macOS interaction.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
