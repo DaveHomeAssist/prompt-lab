@@ -1,5 +1,29 @@
 # PR #99 Native Acceptance Diagnosis
 
+## Merged baseline outcome
+
+PR [#99](https://github.com/DaveHomeAssist/prompt-lab/pull/99) merged as
+`2444340f439a40268851582d29f2117b162fffe4` on 2026-09-20 after every PR check
+passed. The merged file tree matches tested merge
+`d8d5984277aa9101f3d6fcd0964da8afc5ee3f63` exactly.
+
+[Desktop Build 35502863776](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776)
+passed MSI, DEB, NSIS and AppImage exercise and retention, plus macOS universal
+packaging. Each native package completed its real export with full JSON equality;
+all four downloaded artifacts passed hash, byte-count and source-revision readback.
+Windows folder lookup succeeded in 294ms in the MSI job. No product download code
+or completed-file deadline was changed.
+
+Production deployment `dpl_7WRkpyb77YVmDmtSgL2U8AbocdwL` is READY for the
+merge SHA. Cache-busted browser checks rendered the landing page, Clerk sign-in
+at `/app/`, and the mobile companion without page errors. Sign-in presence does
+not prove authenticated features. No paid-provider request, checkout, charge,
+Notion write or public desktop release was performed.
+
+Post-merge Desktop Build 35503652915 is running. Cross-version upgrades, arbitrary
+crash recovery, macOS installed interaction/signing, authenticated web workflows
+and human accessibility acceptance remain separate gates.
+
 ## 2026-09-20 stabilization candidate
 
 Phase 2 of the authorized phased program resumes implementation. PR #99 was

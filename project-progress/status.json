@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T09:20:58Z",
+  "snapshotAt": "2026-09-20T09:57:08Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "823915156f82c88d4b6fd8e213012235909c3938",
+  "mainSha": "2444340f439a40268851582d29f2117b162fffe4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the repaired PR #99 candidate and merge only after its native download and other applicable checks pass. Later billing and installed release acceptance remain separate gates.",
+  "nextAction": "Finish the post-merge main regression run and deliver Phase 2 closeout, then begin the shared Library and provenance contract. Billing, signed release and authenticated runtime acceptance remain separate gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -33,21 +33,21 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Failed",
-      "detail": "2026-09-20 run 35502213608: Linux DEB export and reinstall retention pass, including a 76,927-byte completed JSON file and artifact hash readback; macOS universal packaging passes. Windows fails before export because its OS Downloads resolver returned null process status; exact process error was not captured. The next candidate adds diagnostics and bounded shell startup tolerance. NSIS/AppImage were skipped. Broader release acceptance remains open.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502213608"
+      "state": "Open",
+      "detail": "PR #99 merged as 2444340 after all PR checks passed. The merged file tree exactly matches the tested candidate. Vercel production deployment dpl_7WRkpyb77YVmDmtSgL2U8AbocdwL is READY for that SHA; live landing, Clerk sign-in and companion render without page errors. Authenticated web, cross-version upgrade, macOS interaction and signing remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
       "label": "Native Library acceptance",
-      "state": "Open",
-      "detail": "2026-09-20: 957 Vitest + 212 Node tests, six browser scenarios, both frontend builds and documentation checks pass. Current Linux native exercise and reinstall retention pass; Windows passed Library checks but stopped at Downloads resolution before workspace export/retention.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+      "state": "Verified",
+      "detail": "PR #99 run 35502863776 passed native Library identities, metadata, manual order, search and collection cleanup through app restart and MSI/DEB/NSIS/AppImage reinstall or replacement. Local Node 22 validation passed 957 Vitest tests, 212 Node tests and six browser scenarios. This is bounded desktop fixture proof; the cross-shell contract remains the next phase.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
     },
     {
       "label": "Native workspace import/export",
       "state": "Verified",
-      "detail": "PR #95 merged as e1e4c9d. Windows/Linux file import, associations, export serialization, restart and reinstall passed. Windows verifies owned WebView2 exit before relaunch. OS download and arbitrary crash recovery are not proved.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065324150"
+      "detail": "Run 35502863776 passed actual OS file import, mapped versions/runs/test cases/provenance and completed export on MSI, DEB, NSIS and AppImage. All four downloaded artifacts match their reported SHA-256, byte size and tested merge revision; each contains 21 prompts, six runs and one test case. Restart and reinstall/replacement retention passed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
     },
     {
       "label": "Native control readability",
@@ -58,14 +58,14 @@
     {
       "label": "Alternate package lifecycle",
       "state": "Verified",
-      "detail": "PR #97 merged as aa8912f. Run 34066453024 passed MSI, DEB, NSIS and AppImage exercise plus reinstall/replacement retention. Native-window-before-driver exits recorded; artifact results and alternate screenshots inspected.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34066453024"
+      "detail": "Run 35502863776 passed NSIS install/uninstall/reinstall and AppImage launch/removal/replacement with Library, Scratch and provenance retention plus completed export. These checks do not establish cross-version upgrade, arbitrary crash recovery or signing acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
     },
     {
       "label": "Native custom-button appearance",
       "state": "Verified",
-      "detail": "PR #98 merged as 63d098e. PR #99 Windows light/dark screenshots show readable Settings controls; Linux export-download acceptance remains a separate failing gate.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
+      "detail": "Current candidate native assertions pass on Windows and Linux. Captured light/dark Library screenshots were inspected; controls and labels are readable. Broader keyboard and VoiceOver acceptance remains a later gate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
     },
     {
       "label": "Pilot companion",
@@ -82,8 +82,14 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and the selected 14-item scope are preserved. No Notion writes were authorized for this program, so the implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and the selected 14-item scope are preserved. No Notion writes were authorized, so these implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
+    },
+    {
+      "label": "Merged main regression",
+      "state": "Running",
+      "detail": "Main run 35503652915 is repeating the package matrix after merge. Pre-merge run 35502863776 passed the identical file tree; current main-run completion is pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
     }
   ],
   "issues": [
@@ -156,7 +162,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Verify native OS export download, Linux header-button readability and remaining canonical runtime acceptance.",
+      "nextAction": "Implement and verify the shared Library contract across supported shells; current desktop export and reinstall retention passed.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -252,7 +258,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Resolve PR #99's conflicts with main, run the authorized Linux XDG Downloads fixture candidate, then complete prior-version upgrade/restore and macOS interaction.",
+      "nextAction": "Verify remaining cross-version upgrade, macOS interaction and signing gates against exact release artifacts.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
