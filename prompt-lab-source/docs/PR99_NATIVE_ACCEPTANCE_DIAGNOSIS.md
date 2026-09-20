@@ -1,5 +1,72 @@
 # PR #99 Native Acceptance Diagnosis
 
+## Merged baseline outcome
+
+PR [#99](https://github.com/DaveHomeAssist/prompt-lab/pull/99) merged as
+`2444340f439a40268851582d29f2117b162fffe4` on 2026-09-20 after every PR check
+passed. The merged file tree matches tested merge
+`d8d5984277aa9101f3d6fcd0964da8afc5ee3f63` exactly.
+
+[Desktop Build 35502863776](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776)
+passed MSI, DEB, NSIS and AppImage exercise and retention, plus macOS universal
+packaging. Each native package completed its real export with full JSON equality;
+all four downloaded artifacts passed hash, byte-count and source-revision readback.
+Windows folder lookup succeeded in 294ms in the MSI job. No product download code
+or completed-file deadline was changed.
+
+Production deployment `dpl_7WRkpyb77YVmDmtSgL2U8AbocdwL` is READY for the
+merge SHA. Cache-busted browser checks rendered the landing page, Clerk sign-in
+at `/app/`, and the mobile companion without page errors. Sign-in presence does
+not prove authenticated features. No paid-provider request, checkout, charge,
+Notion write or public desktop release was performed.
+
+Post-merge Desktop Build 35503652915 failed NSIS; see the current diagnosis
+below. Cross-version upgrades, arbitrary crash recovery, macOS installed
+interaction/signing, authenticated web workflows and human accessibility
+acceptance remain separate gates.
+
+## Main NSIS restart failure
+
+[Run 35503652915](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915)
+passed MSI, DEB and AppImage exercise/retention and macOS packaging. NSIS
+failed at `newly loaded old starter sorts first` before download preparation.
+Its failure snapshot contains the 16 baseline prompts but none of the three
+synthetic Library fixtures. The pre-restart normalization checkpoint passed.
+This is missing persisted data, not evidence of a sort defect. The cause is
+unknown; a passing earlier run does not resolve it.
+
+The Windows launcher also logged a confirmed exception on every close:
+`Process was not started by this object, so requested information cannot be determined.`
+It used `Process.GetProcessById(...).ExitCode` after waiting for a child created
+through `CreateProcessAsUser`. The follow-up uses `GetExitCodeProcess` with
+the retained creation handle, and requires a successful launcher exit. This
+fix is not yet established as the cause of the missing Library records.
+
+The old shutdown probe selected only WebView2 processes whose direct parent
+was the application. The captured process inventory also contains renderer and
+storage-service descendants that were omitted from the wait. The follow-up
+identifies the owned descendant tree before closing the native window and
+requires every identified process to exit within the existing deadline. It
+records whether children outlive the browser parent. This closes a confirmed
+harness coverage gap; whether it explains this failed run remains unknown.
+Microsoft documents the separate browser, renderer and helper processes in
+the [WebView2 process model](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/process-model).
+
+The diagnostic candidate records normalized fixture contents before and after
+restart, checks exact retained identity/content/metadata/timestamps before the
+ordering assertion, and captures every pre-close Library plus the disposable
+WebView2 Local Storage engine logs after shutdown. It does not change product
+storage, inject delays, substitute downloads, or bypass a failed assertion.
+Native verification of this changed candidate is pending.
+
+The browser development adapter now closes and reopens the entire disposable
+Chromium process using the same profile at each restart checkpoint, instead
+of retaining the browser's storage process while closing only its page.
+This strengthens local fixture verification but is not Windows native proof.
+All three full-browser restart scenarios passed at 400/480/1180px. The overall
+browser-test budget accommodates repeated cold launches; individual UI waits
+and the native shutdown and completed-download deadlines remain unchanged.
+
 ## 2026-09-20 stabilization candidate
 
 Phase 2 of the authorized phased program resumes implementation. PR #99 was

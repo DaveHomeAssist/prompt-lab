@@ -228,16 +228,29 @@ async function openSession() {
 }
 async function closeSession() {
   let browserPids = [];
+  const shutdown = { launch: launchNumber };
+  if (session) shutdown.libraryBeforeClose = await readLibrary().catch(error => ({ error: error.message }));
+  (evidence.nativeShutdowns ||= []).push(shutdown);
   if (nativeAppPid) {
     const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
-      $owned = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
-        Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
+      $processes = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
+      $roots = @($processes | Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
         Select-Object -ExpandProperty ProcessId)
-      ConvertTo-Json -InputObject $owned -Compress
+      $owned = [System.Collections.Generic.HashSet[int]]::new()
+      $parents = @([int]$env:PL_NATIVE_OWNED_PID)
+      do {
+        $children = @($processes | Where-Object { $parents -contains $_.ParentProcessId -and !$owned.Contains([int]$_.ProcessId) } |
+          Select-Object -ExpandProperty ProcessId)
+        foreach ($child in $children) { $null = $owned.Add([int]$child) }
+        $parents = $children
+      } while ($parents.Count)
+      @{ roots = $roots; all = @($owned | Sort-Object) } | ConvertTo-Json -Compress
     `], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
     assert.equal(probe.status, 0, probe.stderr || 'Owned WebView2 process discovery failed');
-    browserPids = JSON.parse(probe.stdout.trim());
-    assert.ok(browserPids.length, 'Owned WebView2 browser process must be identified before restart');
+    const owned = JSON.parse(probe.stdout.trim());
+    browserPids = owned.all;
+    shutdown.browserRootPids = owned.roots;
+    assert.ok(owned.roots.length && browserPids.length, 'Owned WebView2 process tree must be identified before restart');
   }
   const closingSession = session;
   const closeNativeWindowFirst = Boolean(nativeAppPid);
@@ -254,6 +267,9 @@ async function closeSession() {
       });
       assert.equal(close.status, 0, close.stderr || 'Native window close failed');
       await waitFor(() => nativeApp.exitCode !== null || nativeApp.signalCode !== null, 'native launcher exit after window close');
+      shutdown.launcherExitCode = nativeApp.exitCode;
+      shutdown.launcherSignal = nativeApp.signalCode;
+      assert.equal(nativeApp.exitCode, 0, `Native launcher did not report a clean app exit: ${nativeOutput.slice(-2000)}`);
     }
     nativeApp?.stdout?.destroy();
     nativeApp?.stderr?.destroy();
@@ -263,16 +279,29 @@ async function closeSession() {
     if (browserPids.length) {
       const exited = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
         $owned = @($env:PL_NATIVE_BROWSER_PIDS.Split(',') | ForEach-Object { [int]$_ })
+        $roots = @($env:PL_NATIVE_BROWSER_ROOT_PIDS.Split(',') | ForEach-Object { [int]$_ })
+        $started = Get-Date
         $deadline = (Get-Date).AddSeconds(20)
+        $childOutlivedBrowser = $false
         do {
           $remaining = @(Get-Process -Id $owned -ErrorAction SilentlyContinue)
           if (!$remaining.Count) { break }
+          if (!@($remaining | Where-Object { $roots -contains $_.Id }).Count) { $childOutlivedBrowser = $true }
           Start-Sleep -Milliseconds 100
         } while ((Get-Date) -lt $deadline)
         if ($remaining.Count) { throw 'Owned WebView2 processes did not finish shutdown' }
-      `], { encoding: 'utf8', timeout: 25_000, env: { ...process.env, PL_NATIVE_BROWSER_PIDS: browserPids.join(',') } });
+        @{ elapsedMs = [int]((Get-Date) - $started).TotalMilliseconds; childOutlivedBrowser = $childOutlivedBrowser } | ConvertTo-Json -Compress
+      `], { encoding: 'utf8', timeout: 25_000, env: { ...process.env, PL_NATIVE_BROWSER_PIDS: browserPids.join(','), PL_NATIVE_BROWSER_ROOT_PIDS: shutdown.browserRootPids.join(',') } });
       assert.equal(exited.status, 0, exited.stderr || 'Owned WebView2 shutdown failed');
-      (evidence.nativeShutdowns ||= []).push({ browserPids, exited: true, method: 'native-window-before-driver-session' });
+      Object.assign(shutdown, JSON.parse(exited.stdout.trim()), { browserPids, exited: true, method: 'native-window-and-owned-webview-tree-before-driver-session' });
+      // Read only the disposable profile's storage-engine log, never its raw
+      // databases. This distinguishes recovery errors from frontend writes.
+      const storageDir = path.join(evidence.userDataFolder, 'EBWebView', 'Default', 'Local Storage', 'leveldb');
+      shutdown.storageEngineLogs = {};
+      for (const name of ['LOG', 'LOG.old']) {
+        shutdown.storageEngineLogs[name] = await readFile(path.join(storageDir, name), 'utf8')
+          .then(text => text.slice(-8000)).catch(error => ({ error: error.code }));
+      }
     }
     if (closingSession && closeNativeWindowFirst) await command('DELETE', `/session/${closingSession}`);
   }

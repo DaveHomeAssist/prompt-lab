@@ -11,15 +11,11 @@ const extensionPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 // Fast development coverage for shared scenario logic. Native CI still owns
 // WebDriver behavior, installed-process restart and installer retention proof.
 for (const width of [400, 480, 1180]) test(`native scenario browser development at ${width}px`, async ({}, testInfo) => {
+  test.setTimeout(120_000); // Includes repeated cold browser launches; individual UI waits stay bounded.
   const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'promptlab-native-development-'));
-  const context = await chromium.launchPersistentContext(profile, {
-    channel: 'chromium', headless: true,
-    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
-  });
+  let context;
   let page;
   try {
-    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
-    const url = `chrome-extension://${new URL(worker.url()).host}/panel.html`;
     const execute = (script, args = []) => page.evaluate(({ script, args }) => new Function(script)(...args), { script, args });
     const executeAsync = script => page.evaluate(script => new Promise(resolve => new Function(script)(resolve)), script);
     const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
@@ -29,6 +25,12 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
       return value;
     };
     const openSession = async () => {
+      context = await chromium.launchPersistentContext(profile, {
+        channel: 'chromium', headless: true,
+        args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+      });
+      const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+      const url = `chrome-extension://${new URL(worker.url()).host}/panel.html`;
       page = await context.newPage();
       page.setDefaultTimeout(8000);
       await page.setViewportSize({ width, height: 1000 });
@@ -50,7 +52,9 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
           expect(JSON.parse(await fs.readFile(file, 'utf8'))).toEqual(expected);
         };
       },
-      closeSession: () => page.close(),
+      // Close the whole disposable browser, so a restart reads disk-backed
+      // extension state instead of keeping its storage process alive.
+      closeSession: () => context.close(),
       fill: (selector, text) => page.locator(selector).fill(text),
       click: async (selector, using) => {
         const locator = page.locator(using === 'xpath' ? `xpath=${selector}` : selector);
@@ -71,12 +75,12 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
       window.dispatchEvent(new StorageEvent('storage', {key:'pl2-library', storageArea:localStorage}));
       return true;`);
     await waitFor(async () => (await api.readLibrary()).find(row => row.id === 'native-dev-parent')?.completeness, 'synthetic parent adopted by Library store');
-    await page.close();
+    await api.closeSession();
     await openSession();
     await exerciseLibrary(api);
     await exerciseWorkspace(api, 'native-dev-parent');
   } finally {
-    await context.close();
+    await context?.close();
     await fs.rm(profile, { recursive: true, force: true });
   }
 });

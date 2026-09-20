@@ -49,7 +49,7 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
 }
 
 export async function exerciseLibrary(api) {
-  const { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint } = api;
+  const { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint, recordDiagnostic } = api;
   const baseline = await readLibrary();
   assert.ok(!baseline.some(row => ids.includes(row.id)), 'Library acceptance fixtures must be new');
   const prompt = (id, title, assigned, metadata = {}) => ({ id, title, original: `${title} instructions`, enhanced: `${title} improved`, collection: assigned, tags: ['native-matrix'], createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z', metadata });
@@ -75,6 +75,7 @@ export async function exerciseLibrary(api) {
     return ids.every(id => rows.find(row => row.id === id)?.metadata?.libraryGeneration !== undefined);
   }, 'native Library normalized fixture persistence');
   const seeded = await readLibrary();
+  recordDiagnostic?.('libraryBeforeRestart', seeded);
   for (const fixture of fixtures) {
     const actual = seeded.find(row => row.id === fixture.id);
     assert.ok(actual, 'Native Library fixture acknowledged before restart');
@@ -85,6 +86,16 @@ export async function exerciseLibrary(api) {
   // Restart, rather than mutating React state, to hydrate the real native store.
   await closeSession();
   await openSession();
+  const restored = await readLibrary();
+  recordDiagnostic?.('libraryAfterRestart', restored);
+  for (const fixture of fixtures) {
+    const actual = restored.find(row => row.id === fixture.id);
+    assert.ok(actual, `Native Library fixture ${fixture.id} survives restart`);
+    const expected = seeded.find(row => row.id === fixture.id);
+    for (const key of ['title', 'original', 'enhanced', 'collection', 'tags', 'metadata', 'createdAt', 'updatedAt']) {
+      assert.deepEqual(actual[key], expected[key], `Restart preserves native Library ${key}`);
+    }
+  }
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'newly loaded old starter sorts first');
