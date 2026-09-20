@@ -39,6 +39,7 @@ enum LibraryInterchangeError: LocalizedError, Equatable {
     case invalidRoot
     case missingLibrary
     case invalidEntry(Int)
+    case invalidID(Int)
     case duplicateID(String)
     case emptyPrompt(Int)
 
@@ -52,6 +53,8 @@ enum LibraryInterchangeError: LocalizedError, Equatable {
             "The selected file does not contain a prompt library."
         case let .invalidEntry(index):
             "Library entry \(index + 1) is not a JSON object."
+        case let .invalidID(index):
+            "Library entry \(index + 1) has an invalid prompt ID."
         case let .duplicateID(id):
             "The library contains the duplicate prompt ID \(id)."
         case let .emptyPrompt(index):
@@ -128,12 +131,16 @@ enum LibraryInterchange {
             guard let object = rawEntry as? [String: Any], JSONSerialization.isValidJSONObject(object) else {
                 throw LibraryInterchangeError.invalidEntry(index)
             }
-            let original = string(object["original"])
+            let original = ["original", "prompt", "content", "enhanced"]
+                .map { string(object[$0]) }.first { !$0.isEmpty } ?? ""
             let enhanced = string(object["enhanced"]).isEmpty
                 ? (string(object["prompt"]).isEmpty ? original : string(object["prompt"]))
                 : string(object["enhanced"])
             guard !enhanced.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw LibraryInterchangeError.emptyPrompt(index)
+            }
+            if let rawID = object["id"], !(rawID is NSNull), !(rawID is String) {
+                throw LibraryInterchangeError.invalidID(index)
             }
             let id = string(object["id"]).isEmpty ? UUID().uuidString : string(object["id"])
             guard seenIDs.insert(id).inserted else {
@@ -151,7 +158,8 @@ enum LibraryInterchange {
                 variants: variants(object["variants"]),
                 tags: strings(object["tags"]),
                 createdAt: createdAt,
-                updatedAt: parseDate(string(object["updatedAt"])) ?? createdAt,
+                updatedAt: parseDate(string(object["updatedAt"]))
+                    ?? parseDate(string(object["updated_at"])) ?? createdAt,
                 rawJSON: rawJSON,
                 sourceIndex: index,
                 isDirty: false
@@ -210,11 +218,39 @@ enum LibraryInterchange {
         return envelope
     }
 
+    static func recordContentRevision(of entry: PromptEntry) throws {
+        let previous = decodedEnvelope(entry.rawJSON) ?? [:]
+        var current = try exportObject(entry)
+        let contentFields = ["original", "enhanced", "variants", "notes"]
+        let changed = contentFields.contains { key in
+            !NSDictionary(dictionary: [key: previous[key] ?? NSNull()])
+                .isEqual(to: [key: current[key] ?? NSNull()])
+        }
+        let versionID = string(previous["currentVersionId"])
+        if changed, !versionID.isEmpty {
+            var versions = previous["versions"] as? [[String: Any]] ?? []
+            var snapshot = previous.filter { contentFields.contains($0.key) || $0.key == "resultMeta" }
+            snapshot["id"] = versionID
+            snapshot["savedAt"] = previous["updatedAt"] ?? previous["updated_at"] ?? previous["createdAt"]
+            snapshot["source"] = "manual_save"
+            snapshot["changeNote"] = "Edited in the native app"
+            if !versions.contains(where: { $0["id"] as? String == versionID }) {
+                versions.append(snapshot)
+            }
+            current["versions"] = Array(versions.suffix(25))
+        }
+        if versionID.isEmpty || changed { current["currentVersionId"] = UUID().uuidString }
+        entry.rawJSON = try JSONSerialization.data(withJSONObject: current, options: [.sortedKeys])
+    }
+
     private static func exportObject(_ entry: PromptEntry) throws -> [String: Any] {
         var object: [String: Any] = [:]
         if !entry.rawJSON.isEmpty,
            let raw = try? JSONSerialization.jsonObject(with: entry.rawJSON) as? [String: Any] {
             object = raw
+        }
+        if !entry.isDirty, object["id"] as? String == entry.id {
+            return object
         }
         object["id"] = entry.id
         object["title"] = entry.title
@@ -223,8 +259,12 @@ enum LibraryInterchange {
         object["notes"] = entry.notes
         object["variants"] = entry.variants.map { ["label": $0.label, "content": $0.content] }
         object["tags"] = entry.tags
-        object["createdAt"] = ISO8601DateFormatter().string(from: entry.createdAt)
-        object["updatedAt"] = ISO8601DateFormatter().string(from: entry.updatedAt)
+        // Earlier imports fell back to now for fractional timestamps. The raw
+        // source retains the immutable creation date even after a native edit.
+        let createdAt = parseDate(string(object["createdAt"])) ?? entry.createdAt
+        object["createdAt"] = formatDate(createdAt)
+        object["updatedAt"] = formatDate(entry.updatedAt)
+        if object["updated_at"] != nil { object["updated_at"] = object["updatedAt"] }
         return object
     }
 
@@ -248,6 +288,15 @@ enum LibraryInterchange {
 
     private static func parseDate(_ value: String) -> Date? {
         guard !value.isEmpty else { return nil }
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: value) { return date }
         return ISO8601DateFormatter().date(from: value)
+    }
+
+    private static func formatDate(_ value: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: value)
     }
 }

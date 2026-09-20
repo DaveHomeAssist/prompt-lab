@@ -12,6 +12,9 @@ on:
       - prompt-lab-source/prompt-lab-extension/src/constants.js
       - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
       - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/workspaceImport*.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/libraryMatching.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/followUpProvenance.js
       - .github/workflows/ipad-prototype.yml
   pull_request:
     paths:
@@ -22,6 +25,9 @@ on:
       - prompt-lab-source/prompt-lab-extension/src/constants.js
       - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
       - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/workspaceImport*.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/libraryMatching.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/followUpProvenance.js
       - .github/workflows/ipad-prototype.yml
   workflow_dispatch:
 
@@ -86,9 +92,11 @@ jobs:
           container=$(xcrun simctl get_app_container "$SIMULATOR_ID" com.davehomeassist.promptlab.prototype data)
           mkdir -p library-contract-evidence
           cp "$container/Documents/native-library-contract.json" library-contract-evidence/native-library-contract.json
+          cp "$container/Documents/native-parent-edit-contract.json" library-contract-evidence/native-parent-edit-contract.json
           node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-library-contract.json --native-edit
+          node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-parent-edit-contract.json --native-parent-edit
           git rev-parse HEAD > library-contract-evidence/source-sha.txt
-          shasum -a 256 library-contract-evidence/native-library-contract.json > library-contract-evidence/SHA256SUMS
+          shasum -a 256 library-contract-evidence/*.json > library-contract-evidence/SHA256SUMS
 
       - name: Upload native compatibility evidence
         if: always()

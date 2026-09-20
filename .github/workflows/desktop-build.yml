@@ -8,12 +8,16 @@ on:
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
       - .github/workflows/desktop-build.yml
 
 permissions:
@@ -49,7 +53,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify native scenario logic and compact Library layout
-        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js
+        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js
 
   desktop-build:
     needs: extension-tests

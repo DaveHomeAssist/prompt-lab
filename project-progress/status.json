@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T11:03:59Z",
+  "snapshotAt": "2026-09-20T11:11:59Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -100,8 +100,8 @@
     {
       "label": "Shared Library contract",
       "state": "Open",
-      "detail": "Phase 3 fixture and cross-adapter tests are in progress. Local Foundation proof shows the native default parser rejects fractional-second web dates; actual iOS regression proof is pending Xcode CI. Native edit/reopen, duplicate/corrupt input, deletion/backup restoration and production-JS consumption are now explicit gates.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/blob/main/prompt-lab-source/docs/LIBRARY_COMPATIBILITY_CONTRACT.md"
+      "detail": "Draft PR #107: iPad run 35506815263 reproduced native date/legacy-alias and malformed-ID defects. The candidate repairs those adapters, retains untouched records, and snapshots native parent edits for follow-up lineage. Local checks passed 53 contract tests, six artifact import/reload/process-restart/download scenarios across three browser shells, and three strengthened desktop-scenario development checks. Corrected iPhone/iPad and installed package CI remain pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     }
   ],
   "issues": [

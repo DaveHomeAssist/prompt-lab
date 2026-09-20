@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { libraryFixture } from '../../scripts/verify-library-interchange.mjs';
 
 const runId = 'native-import-run';
 const caseId = 'native-import-case';
@@ -42,6 +43,16 @@ export async function checkWorkspacePersisted(api, expected) {
   assert.equal(library.filter(row => row.id === expected.keepId).length, 1);
   assert.deepEqual(library.find(row => row.id === expected.parent.id), expected.parent, 'Duplicate reuse and Keep both do not overwrite the lifecycle parent');
   assert.equal(library.length, expected.count);
+  assert.deepEqual(library.filter(row => libraryFixture.library.some(source => source.id === row.id)).map(row => row.id), libraryFixture.library.map(row => row.id), 'Shared artifact manual order');
+  for (const source of libraryFixture.library) {
+    const actual = library.find(row => row.id === source.id);
+    for (const field of ['title', 'original', 'enhanced', 'notes', 'variants', 'tags', 'collection', 'createdAt', 'updatedAt', 'currentVersionId', 'versions']) {
+      assert.deepEqual(actual?.[field], source[field], `Shared artifact ${source.id}: ${field}`);
+    }
+    for (const [field, value] of Object.entries(source.metadata)) {
+      assert.deepEqual(actual.metadata[field], value, `Shared artifact metadata: ${field}`);
+    }
+  }
   assert.deepEqual(await api.execute('return JSON.parse(localStorage.getItem("pl2-packs"));'), expected.packs, 'Legacy empty packs do not erase authored destination packs');
   return { library, history };
 }
@@ -63,6 +74,7 @@ export async function exerciseWorkspace(api, parentId) {
     schemaVersion: 2,
     packs: [],
     library: [
+      ...libraryFixture.library,
       { ...parent, id: 'native-import-duplicate', title: 'Native duplicate alias', original: parent.original, enhanced: parent.enhanced, currentVersionId: 'duplicate-version' },
       { id: 'native-import-replacement', title: target.title, original: 'Native imported replacement body', enhanced: 'Native imported replacement body', currentVersionId: 'incoming-version' },
       { id: 'native-import-keep', title: parent.title, original: 'Native Keep both body', enhanced: 'Native Keep both body' },
@@ -92,7 +104,7 @@ export async function exerciseWorkspace(api, parentId) {
   const imported = await readLibrary();
   const kept = imported.find(row => row.enhanced === 'Native Keep both body');
   assert.ok(kept && kept.id !== parent.id);
-  const expected = { targetId: target.id, previousBody: target.enhanced, keepId: kept.id, parent, packs, count: baseline.length + 2 };
+  const expected = { targetId: target.id, previousBody: target.enhanced, keepId: kept.id, parent, packs, count: baseline.length + 2 + libraryFixture.library.length };
   await checkWorkspacePersisted(api, expected);
   await screenshot('workspace-import');
 

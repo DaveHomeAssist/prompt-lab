@@ -100,6 +100,56 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testOlderImportedCreationDateIsRecoveredFromRawSourceOnExport() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let raw = Data(#"{"id":"old-import","original":"Original","enhanced":"Original","createdAt":"2025-01-01T00:00:00.123Z"}"#.utf8)
+        context.insert(PromptEntry(
+            id: "old-import", title: "Old import", original: "Original", enhanced: "Native revision",
+            createdAt: .now, rawJSON: raw, isDirty: true
+        ))
+        try context.save()
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: LibraryInterchange.exportData(from: context)) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        XCTAssertEqual(library[0]["createdAt"] as? String, "2025-01-01T00:00:00.123Z")
+        XCTAssertEqual(library[0]["enhanced"] as? String, "Native revision")
+    }
+
+    @MainActor
+    func testNativeParentEditKeepsTheFollowUpSourceVersion() throws {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(
+            forResource: "promptlab-library-v2", withExtension: "json"
+        )))
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        _ = try LibraryInterchange.importData(data, into: context)
+        let parent = try XCTUnwrap(context.fetch(FetchDescriptor<PromptEntry>()).first { $0.id == "contract-parent" })
+        let store = WorkbenchStore(provider: RecordedAnthropicProviderClient())
+        store.loadPrompt(parent)
+        store.draft = "Native revision of the parent prompt."
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let exported = try LibraryInterchange.exportData(from: context)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        let edited = try XCTUnwrap(library.first { $0["id"] as? String == "contract-parent" })
+        XCTAssertNotEqual(edited["currentVersionId"] as? String, "parent-v2")
+        let versions = try XCTUnwrap(edited["versions"] as? [[String: Any]])
+        XCTAssertEqual(versions.last?["id"] as? String, "parent-v2")
+        XCTAssertEqual(versions.last?["enhanced"] as? String, "Summarize {{incident}} with impact and actions.")
+        let childMetadata = try XCTUnwrap(library[0]["metadata"] as? [String: Any])
+        let origin = try XCTUnwrap(childMetadata["followUpOrigin"] as? [String: Any])
+        XCTAssertEqual(origin["sourcePromptVersionId"] as? String, "parent-v2")
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let repeated = try XCTUnwrap(JSONSerialization.jsonObject(with: LibraryInterchange.exportData(from: context)) as? [String: Any])
+        let repeatedLibrary = try XCTUnwrap(repeated["library"] as? [[String: Any]])
+        XCTAssertEqual(repeatedLibrary[1]["currentVersionId"] as? String, edited["currentVersionId"] as? String)
+        XCTAssertEqual(repeatedLibrary[1]["versions"] as? NSArray, versions as NSArray)
+        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+        try exported.write(to: documents.appendingPathComponent("native-parent-edit-contract.json"))
+    }
+
+    @MainActor
     func testWebLibraryExportRoundTripsByteForByte() throws {
         let fixtureURL = try XCTUnwrap(
             Bundle(for: Self.self).url(forResource: "web-library-export-1.7.0", withExtension: "json")
