@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T09:57:08Z",
+  "snapshotAt": "2026-09-20T10:17:03Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "2444340f439a40268851582d29f2117b162fffe4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish the post-merge main regression run and deliver Phase 2 closeout, then begin the shared Library and provenance contract. Billing, signed release and authenticated runtime acceptance remain separate gates.",
+  "nextAction": "Diagnose main NSIS Library loss across restart, validate the corrected Windows launcher and storage diagnostics, then finish Phase 2 before starting the shared contract.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -39,9 +39,9 @@
     },
     {
       "label": "Native Library acceptance",
-      "state": "Verified",
-      "detail": "PR #99 run 35502863776 passed native Library identities, metadata, manual order, search and collection cleanup through app restart and MSI/DEB/NSIS/AppImage reinstall or replacement. Local Node 22 validation passed 957 Vitest tests, 212 Node tests and six browser scenarios. This is bounded desktop fixture proof; the cross-shell contract remains the next phase.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
+      "state": "Failed",
+      "detail": "PR #99 run 35502863776 passed all four packages, but main run 35503652915 lost the three synthetic Library entries after an NSIS app restart. MSI, DEB and AppImage passed on main. Follow-up keeps the ordering assertion and adds exact record persistence checks and storage-engine diagnostics.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
     },
     {
       "label": "Native workspace import/export",
@@ -57,9 +57,9 @@
     },
     {
       "label": "Alternate package lifecycle",
-      "state": "Verified",
-      "detail": "Run 35502863776 passed NSIS install/uninstall/reinstall and AppImage launch/removal/replacement with Library, Scratch and provenance retention plus completed export. These checks do not establish cross-version upgrade, arbitrary crash recovery or signing acceptance.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
+      "state": "Failed",
+      "detail": "Main 35503652915 passed AppImage replacement and retention; NSIS failed in the pre-export Library restart fixture. Cross-version upgrade, arbitrary crash recovery and signing remain separate open gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
     },
     {
       "label": "Native custom-button appearance",
@@ -87,8 +87,8 @@
     },
     {
       "label": "Merged main regression",
-      "state": "Running",
-      "detail": "Main run 35503652915 is repeating the package matrix after merge. Pre-merge run 35502863776 passed the identical file tree; current main-run completion is pending.",
+      "state": "Failed",
+      "detail": "Main run 35503652915 passed MSI, DEB, AppImage and macOS packaging. NSIS failed before export: all three synthetic Library records were absent after restart. The earlier passing PR run does not override this failure. A confirmed Windows launcher exit-code exception is repaired in the follow-up candidate; the cause of Library loss remains unknown pending diagnostic CI.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
     }
   ],

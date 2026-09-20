@@ -52,6 +52,8 @@ public static class NativeStandardUser {
     static extern uint ResumeThread(IntPtr thread);
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool TerminateProcess(IntPtr process, uint code);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool GetExitCodeProcess(IntPtr process, out uint code);
     [DllImport("kernel32.dll")]
     static extern bool CloseHandle(IntPtr handle);
     [DllImport("kernel32.dll")]
@@ -151,7 +153,12 @@ public static class NativeStandardUser {
                 if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native app");
                 if (!process.WaitForExit(7 * 60 * 1000)) throw new TimeoutException("Native app session exceeded 7 minutes; inspect progress and final evidence separately");
                 exited = true;
-                return process.ExitCode;
+                // GetProcessById did not start this child and can no longer
+                // acquire its exit-code handle after it exits. Use the handle
+                // retained from CreateProcessAsUser until finally closes it.
+                uint exitCode;
+                Check(GetExitCodeProcess(child.process, out exitCode), "Read native app exit code");
+                return unchecked((int)exitCode);
             }
         } finally {
             if (child.process != IntPtr.Zero && !exited) TerminateProcess(child.process, 1);
