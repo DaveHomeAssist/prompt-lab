@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T11:43:04Z",
+  "snapshotAt": "2026-09-20T12:15:30Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "e34fbfb304132d5b41acc25156ec6578e59612d2",
+  "mainSha": "3d5fa172211150fd756581f0d00504a611069dc5",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the native scroll-actionability correction on AppImage, then finish Phase 3 merge and deployed readback. Phase 4 awaits an approved Stripe test environment.",
+  "nextAction": "Verify and merge the mixed legacy alias precedence correction, then close Phase 3. Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -33,9 +33,9 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Open",
-      "detail": "PR #105 merged as 0cda069 after all checks passed; its tree matches tested merge 893d6e1. Vercel production dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY is READY for that SHA. Cache-busted landing (including scroll reveal), Clerk sign-in and mobile companion rendered without script errors. This does not establish authenticated behavior or complete UX acceptance.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
+      "state": "Verified",
+      "detail": "PR #107 merged as 3d5fa17 after all 16 checks passed; merged and tested trees match. Vercel production dpl_DmzQDQUNmmH6EJzzDA47Qj6pfMAD is READY for that SHA. Fresh landing, Clerk sign-in and companion rendered without script errors. Dedicated Free-account production smoke 35509518921 passed billing-disabled and gated-control assertions and revoked its temporary session. Full authenticated Library acceptance and broader UX remain separate gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     },
     {
       "label": "Native Library acceptance",
@@ -100,7 +100,7 @@
     {
       "label": "Shared Library contract",
       "state": "Open",
-      "detail": "Draft PR #107 at 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The test now restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction fails on the old helper and passes on the correction. Corrected native CI, merge and production readback remain pending.",
+      "detail": "PR #107 is merged. Final candidate b7009f1 passed all 16 checks: iPhone/iPad each 27 unit and five UI tests; four installed desktop formats exercised export and restart/reinstall retention; macOS packaging passed. Downloaded native exports match hashes/source and shared importers; 18 browser transfer cases passed. Main iPhone/iPad run 35509473102 passed. A subsequent mixed original/content alias reproduction exposed native precedence divergence; the focused correction now matches shared JS locally and adds unchanged-save/version-history coverage. Follow-up native CI and merge remain pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     }
   ],

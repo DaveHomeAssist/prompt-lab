@@ -133,9 +133,8 @@ enum LibraryInterchange {
             }
             let original = ["original", "prompt", "content", "enhanced"]
                 .map { string(object[$0]) }.first { !$0.isEmpty } ?? ""
-            let enhanced = string(object["enhanced"]).isEmpty
-                ? (string(object["prompt"]).isEmpty ? original : string(object["prompt"]))
-                : string(object["enhanced"])
+            let enhanced = ["enhanced", "prompt", "content", "original"]
+                .map { string(object[$0]) }.first { !$0.isEmpty } ?? ""
             guard !enhanced.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw LibraryInterchangeError.emptyPrompt(index)
             }
