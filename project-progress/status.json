@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T11:43:04Z",
+  "snapshotAt": "2026-09-20T20:04:04.366Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "e34fbfb304132d5b41acc25156ec6578e59612d2",
+  "mainSha": "3d5fa172211150fd756581f0d00504a611069dc5",
   "overall": "Acceptance incomplete",
   "nextAction": "Verify the native scroll-actionability correction on AppImage, then finish Phase 3 merge and deployed readback. Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
+    {
+      "label": "Owner hosted access",
+      "state": "Open",
+      "detail": "2026-09-20: Production applies 3 hosted requests per IP per 24 hours and 10 per minute. Verified owner exemption implemented locally, preserving the 100/day shared budget. Proxy tests 22/22 pass. Production deployment and actual signed-in owner proof remain pending. Browser access is blocked because the admin policy check is unavailable.",
+      "url": "https://app.notion.com/p/3e1255fc8f4481e58754eaf713aa11e9"
+    },
     {
       "label": "Product fixes",
       "state": "Verified",
@@ -82,7 +88,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and selected 14-item scope are preserved. Notion is read-only, so these implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "detail": "Complete 34-row Notion table read on 2026-09-20T20:04:04.366Z. Owner rate-limit issue created and read back as In progress. Existing issue dispositions and 14-item sprint membership preserved; unrelated evidence was not re-audited.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -214,18 +220,6 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "20087f568bbe47248442cddfee89a92c",
-      "title": "Define Skill Lab feature scope and first usable experiment",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Composer",
-      "type": "Feature",
-      "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
       "id": "cecbf7cfcd9d489a8e92770131436505",
       "title": "Define iOS Swift release scope after universal prototype",
       "status": "In progress",
@@ -233,6 +227,18 @@
       "area": "Background",
       "type": "Feature",
       "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "20087f568bbe47248442cddfee89a92c",
+      "title": "Define Skill Lab feature scope and first usable experiment",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Composer",
+      "type": "Feature",
+      "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
@@ -368,6 +374,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "inPlan": false,
+      "nextAction": "Verify both signed-in owner accounts after deployment.",
+      "verification": "Owner proxy exemption passed deterministic local tests; production and signed-in acceptance pending.",
+      "id": "3e1255fc8f4481e58754eaf713aa11e9",
+      "title": "Owner accounts are blocked by hosted demo rate limits",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e1255fc8f4481e58754eaf713aa11e9"
     },
     {
       "id": "3d2255fc8f448128a3c7d878a2b5d799",
