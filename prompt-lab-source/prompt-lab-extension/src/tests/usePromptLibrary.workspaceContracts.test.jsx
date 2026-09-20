@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { storageKeys } from '../lib/storage.js';
 
 const experimentMocks = vi.hoisted(() => ({
@@ -181,6 +181,8 @@ class ImmediateFileReader {
 
 describe('workspace export and import contract', () => {
   beforeEach(() => {
+    // Keep the dated trash fixture inside its 30-day recovery window.
+    vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
     localStorage.clear();
     vi.clearAllMocks();
     experimentMocks.listEvalRuns.mockResolvedValue([evalRun]);
@@ -198,6 +200,8 @@ describe('workspace export and import contract', () => {
     });
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   });
+
+  afterEach(() => vi.useRealTimers());
 
   it('round-trips prompt detail, trash, collections, packs, Scratch, and runs', async () => {
     localStorage.setItem(storageKeys.library, JSON.stringify([richPrompt]));

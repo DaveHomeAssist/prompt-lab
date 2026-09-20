@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-18T06:11:35Z",
+  "snapshotAt": "2026-09-20T09:20:58Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "154a57e1c8a8a0fc9ed4888987971d5740b33dfb",
+  "mainSha": "823915156f82c88d4b6fd8e213012235909c3938",
   "overall": "Acceptance incomplete",
-  "nextAction": "Unblock billing acceptance with an authenticated PromptLab session and bounded Stripe test mode (annual price and webhook); separately resolve PR #99's conflicts and Linux export-download failure before upgrade/restore and remaining runtime acceptance.",
+  "nextAction": "Verify the repaired PR #99 candidate and merge only after its native download and other applicable checks pass. Later billing and installed release acceptance remain separate gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -33,15 +33,15 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Open",
-      "detail": "Main Desktop Build 34073150557 failed before native packaging. PR #99 passes Windows and macOS but fails the Linux completed-export-file assertion (latest run 34101896031) and, as of 2026-09-18, conflicts with main 154a57e; upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
-      "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
+      "state": "Failed",
+      "detail": "2026-09-20 run 35502213608: Linux DEB export and reinstall retention pass, including a 76,927-byte completed JSON file and artifact hash readback; macOS universal packaging passes. Windows fails before export because its OS Downloads resolver returned null process status; exact process error was not captured. The next candidate adds diagnostics and bounded shell startup tolerance. NSIS/AppImage were skipped. Broader release acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502213608"
     },
     {
       "label": "Native Library acceptance",
       "state": "Open",
-      "detail": "Browser reproduced synthetic fixture loss from direct storage injection racing mounted state. Fixture adoption now uses existing storage-event reconciliation; browser checks pass. Revised native retention remains pending.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34065694897"
+      "detail": "2026-09-20: 957 Vitest + 212 Node tests, six browser scenarios, both frontend builds and documentation checks pass. Current Linux native exercise and reinstall retention pass; Windows passed Library checks but stopped at Downloads resolution before workspace export/retention.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
       "label": "Native workspace import/export",
@@ -78,6 +78,12 @@
       "state": "Open",
       "detail": "RUN-20260917-2350. Re-probed 2026-09-18T06:07Z: production checkout and license return terminal billingDisabled (BILLING_ENABLED off); yearly-price and STRIPE_WEBHOOK_SECRET variables are absent. The annual intent reached Clerk sign-in and GitHub OAuth on 2026-09-17, but authenticated return-state, Stripe test checkout, webhook, entitlement, portal and gated-feature proof remain Unknown. No checkout session or charge was created.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
+    },
+    {
+      "label": "Record synchronization",
+      "state": "Open",
+      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and the selected 14-item scope are preserved. No Notion writes were authorized for this program, so the implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     }
   ],
   "issues": [
@@ -190,18 +196,6 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "cecbf7cfcd9d489a8e92770131436505",
-      "title": "Define iOS Swift release scope after universal prototype",
-      "status": "In progress",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
       "id": "20087f568bbe47248442cddfee89a92c",
       "title": "Define Skill Lab feature scope and first usable experiment",
       "status": "Not started",
@@ -209,6 +203,18 @@
       "area": "Composer",
       "type": "Feature",
       "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "cecbf7cfcd9d489a8e92770131436505",
+      "title": "Define iOS Swift release scope after universal prototype",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."

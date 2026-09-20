@@ -167,7 +167,12 @@ jobs:
         env:
           PL_NATIVE_EVIDENCE: ${{ runner.temp }}/promptlab-native-evidence
         run: |
-          sudo apt-get install -y webkit2gtk-driver xvfb
+          sudo apt-get install -y webkit2gtk-driver xvfb xdg-user-dirs
+          # WebKit needs a configured destination before the native app starts.
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/promptlab-xdg-config"
+          mkdir -p "$XDG_CONFIG_HOME" "$RUNNER_TEMP/promptlab-downloads"
+          xdg-user-dirs-update --set DOWNLOAD "$RUNNER_TEMP/promptlab-downloads"
+          test "$(xdg-user-dir DOWNLOAD)" = "$RUNNER_TEMP/promptlab-downloads"
           deb=$(realpath prompt-lab-source/prompt-lab-desktop/src-tauri/target/release/bundle/deb/*.deb)
           package=$(dpkg-deb -f "$deb" Package)
           mkdir -p "$PL_NATIVE_EVIDENCE"
@@ -260,7 +265,7 @@ jobs:
         if: matrix.package == 'appimage'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1
+          sudo apt-get install -y libfuse2 webkit2gtk-driver xvfb libayatana-appindicator3-1 xdg-user-dirs
           cargo install tauri-driver --version 2.0.6 --locked
       - name: Exercise AppImage launch and replacement retention
         env:
@@ -269,6 +274,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export XDG_CONFIG_HOME="$RUNNER_TEMP/promptlab-xdg-config"
+          mkdir -p "$XDG_CONFIG_HOME" "$RUNNER_TEMP/promptlab-downloads"
+          xdg-user-dirs-update --set DOWNLOAD "$RUNNER_TEMP/promptlab-downloads"
+          test "$(xdg-user-dir DOWNLOAD)" = "$RUNNER_TEMP/promptlab-downloads"
           mapfile -d '' candidates < <(find "$RUNNER_TEMP/promptlab-candidate" -type f -name '*.AppImage' -print0)
           test "${#candidates[@]}" -eq 1
           test -c /dev/fuse
