@@ -1,5 +1,47 @@
 # PR #99 Native Acceptance Diagnosis
 
+## Follow-up baseline on main
+
+PR [#105](https://github.com/DaveHomeAssist/prompt-lab/pull/105) merged as
+`0cda069057bd912b3358a76c1047bbc5cec9533b` on 2026-09-20 after all checks
+passed. Its file tree matches tested merge
+`893d6e12e1061f776af1cd4738b2169144cc66c8` exactly.
+
+[Desktop Build 35504834640](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35504834640)
+passed all four native exercise/retention jobs and macOS universal packaging.
+CI also passed 957 Vitest tests, 212 Node tests and six browser scenarios,
+including full browser-process restarts at 400/480/1180px. Each downloaded
+native export matches its full expected JSON, SHA-256, byte count and source
+revision; each contains 21 prompts, six runs and one test case.
+
+Both Windows packages recorded seven clean launcher exits, with all six owned
+WebView2 processes exited each time. Fixture identity, content, metadata and
+timestamps survived restart. No storage-engine corruption was reported, and
+the inspected MSI light/dark screenshots are readable. No child was observed
+outliving its browser parent in these runs. The launcher exception is fixed;
+the cause of the prior NSIS fixture loss is still unconfirmed and that failure
+remains documented below.
+
+Vercel production deployment `dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY` is READY
+for this merge. Cache-busted checks rendered the landing page (including its
+scroll reveals), Clerk sign-in and the mobile companion without script errors.
+Existing UX gaps remain: sign-in social labels have low contrast, and the
+companion's document is 412px wide at a 400px viewport (also present in the
+pre-PR screenshot). Retain these for the planned UX/accessibility phase; this
+follow-up changed no application UI. Authenticated features were not exercised.
+Main regression
+[35505648301](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301)
+passed the same complete matrix. All four main-run exports passed downloaded
+artifact hash, byte-count, full JSON and source-revision verification. Both
+Windows packages again recorded clean exits, retained fixture identities and
+no storage corruption. Required main CI and Pages also passed.
+
+Phase 2's implementation baseline is verified on authoritative main. The next
+phase is the shared Library and provenance compatibility contract. Notion was
+read again at 2026-09-20T10:56:13Z; the complete 33-row table and selected
+14-issue scope are preserved. No Notion writes were authorized, so records
+are not synchronized. Broader acceptance gates remain open.
+
 ## Merged baseline outcome
 
 PR [#99](https://github.com/DaveHomeAssist/prompt-lab/pull/99) merged as
