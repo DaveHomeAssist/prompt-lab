@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T11:11:59Z",
+  "snapshotAt": "2026-09-20T11:43:04Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,7 +11,7 @@
   },
   "mainSha": "e34fbfb304132d5b41acc25156ec6578e59612d2",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the shared Library artifact in iPhone/iPad CI, correct demonstrated adapter mismatches, then complete cross-shell reload/restart compatibility.",
+  "nextAction": "Verify the native scroll-actionability correction on AppImage, then finish Phase 3 merge and deployed readback. Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -76,13 +76,13 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "RUN-20260917-2350. Re-probed 2026-09-18T06:07Z: production checkout and license return terminal billingDisabled (BILLING_ENABLED off); yearly-price and STRIPE_WEBHOOK_SECRET variables are absent. The annual intent reached Clerk sign-in and GitHub OAuth on 2026-09-17, but authenticated return-state, Stripe test checkout, webhook, entitlement, portal and gated-feature proof remain Unknown. No checkout session or charge was created.",
+      "detail": "Phase 4 prerequisite inspection on 2026-09-20: Vercel Preview lacks Stripe secret/webhook and durable-store variables; an approved test Clerk identity is not established. Production secret mode is Unknown and was not read. Existing mocks pass, but webhook duplicate-event and ordering guards are absent in inspected source. Test checkout, entitlement, portal and gated-feature acceptance remain open. No Stripe requests or charges were made.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and the selected 14-item scope are preserved. No Notion writes were authorized, so these implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and selected 14-item scope are preserved. Notion is read-only, so these implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -100,7 +100,7 @@
     {
       "label": "Shared Library contract",
       "state": "Open",
-      "detail": "Draft PR #107: iPad run 35506815263 reproduced native date/legacy-alias and malformed-ID defects. The candidate repairs those adapters, retains untouched records, and snapshots native parent edits for follow-up lineage. Local checks passed 53 contract tests, six artifact import/reload/process-restart/download scenarios across three browser shells, and three strengthened desktop-scenario development checks. Corrected iPhone/iPad and installed package CI remain pending.",
+      "detail": "Draft PR #107 at 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The test now restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction fails on the old helper and passes on the correction. Corrected native CI, merge and production readback remain pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     }
   ],
