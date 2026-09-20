@@ -61,7 +61,7 @@ final class PromptLabTests: XCTestCase {
     func testLibraryLegacyAliasesDuplicateAndCorruptImports() throws {
         let container = try makeInMemoryContainer()
         let context = ModelContext(container)
-        let legacy = Data(#"[{"id":"legacy","prompt":"Legacy content","category":"Old folder","createdAt":"2025-01-01T00:00:00Z","updated_at":"2025-01-02T00:00:00.123Z"}]"#.utf8)
+        let legacy = Data(#"[{"id":"legacy","currentVersionId":"legacy-v1","prompt":"Legacy content","category":"Old folder","createdAt":"2025-01-01T00:00:00Z","updated_at":"2025-01-02T00:00:00.123Z"}]"#.utf8)
         _ = try LibraryInterchange.importData(legacy, into: context)
         _ = try LibraryInterchange.importData(legacy, into: context)
         let entries = try context.fetch(FetchDescriptor<PromptEntry>())
@@ -79,6 +79,17 @@ final class PromptLabTests: XCTestCase {
             XCTAssertThrowsError(try LibraryInterchange.importData(Data(invalid.utf8), into: context))
             XCTAssertEqual(try LibraryInterchange.exportData(from: context), legacy)
         }
+        let retained = try XCTUnwrap(context.fetch(FetchDescriptor<PromptEntry>()).first)
+        let store = WorkbenchStore(provider: RecordedAnthropicProviderClient())
+        store.loadPrompt(retained)
+        store.draft = "Revised legacy content"
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: LibraryInterchange.exportData(from: context)) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        let history = try XCTUnwrap(library[0]["versions"] as? [[String: Any]])
+        XCTAssertEqual(history.last?["id"] as? String, "legacy-v1")
+        XCTAssertEqual(history.last?["enhanced"] as? String, "Legacy content")
+        XCTAssertEqual(history.last?["original"] as? String, "Legacy content")
     }
 
     @MainActor

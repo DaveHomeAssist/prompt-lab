@@ -222,14 +222,23 @@ enum LibraryInterchange {
         let previous = decodedEnvelope(entry.rawJSON) ?? [:]
         var current = try exportObject(entry)
         let contentFields = ["original", "enhanced", "variants", "notes"]
+        let previousContent: [String: Any] = [
+            "original": ["original", "prompt", "content", "enhanced"]
+                .map { string(previous[$0]) }.first { !$0.isEmpty } ?? "",
+            "enhanced": ["enhanced", "prompt", "content", "original"]
+                .map { string(previous[$0]) }.first { !$0.isEmpty } ?? "",
+            "notes": string(previous["notes"]).isEmpty ? string(previous["description"]) : string(previous["notes"]),
+            "variants": variants(previous["variants"]).map { ["label": $0.label, "content": $0.content] },
+        ]
         let changed = contentFields.contains { key in
-            !NSDictionary(dictionary: [key: previous[key] ?? NSNull()])
+            !NSDictionary(dictionary: [key: previousContent[key] ?? NSNull()])
                 .isEqual(to: [key: current[key] ?? NSNull()])
         }
         let versionID = string(previous["currentVersionId"])
         if changed, !versionID.isEmpty {
             var versions = previous["versions"] as? [[String: Any]] ?? []
-            var snapshot = previous.filter { contentFields.contains($0.key) || $0.key == "resultMeta" }
+            var snapshot = previousContent
+            snapshot["resultMeta"] = previous["resultMeta"]
             snapshot["id"] = versionID
             snapshot["savedAt"] = previous["updatedAt"] ?? previous["updated_at"] ?? previous["createdAt"]
             snapshot["source"] = "manual_save"
