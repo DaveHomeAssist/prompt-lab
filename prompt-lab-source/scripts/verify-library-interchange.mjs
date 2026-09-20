@@ -7,6 +7,24 @@ import { prepareWorkspaceImport } from '../prompt-lab-extension/src/lib/workspac
 
 export { libraryFixture };
 
+export function verifyNativeCreatedLibrary(document) {
+  const source = document.library[0];
+  assert.equal(document.library.length, 1);
+  assert.ok(source.id && source.currentVersionId);
+  assert.equal(source.original, 'Native created compatibility record.');
+  assert.equal(source.enhanced, 'Native revised compatibility record.');
+  assert.equal(source.versions.length, 1);
+  assert.equal(source.versions[0].enhanced, source.original);
+  assert.notEqual(source.versions[0].id, source.currentVersionId);
+  assert.match(source.createdAt, /\.\d{3}Z$/);
+  const plan = prepareWorkspaceImport(normalizeWorkspaceImportSource(document));
+  for (const key of ['id', 'title', 'original', 'enhanced', 'createdAt', 'updatedAt', 'currentVersionId']) assert.deepEqual(plan.library[0][key], source[key]);
+  assert.equal(plan.library[0].versions[0].id, source.versions[0].id);
+  assert.equal(plan.library[0].versions[0].enhanced, source.versions[0].enhanced);
+  assert.deepEqual(prepareWorkspaceImport(normalizeWorkspaceImportSource(document), plan).library.map(row => row.id), [source.id]);
+  return { prompts: 1, historicalVersions: 1 };
+}
+
 // Both adapters consume the same artifact. Expected values come from the shared
 // fixture, not another implementation of native serialization.
 export function verifyLibraryInterchange(document, { nativeEdit = false, nativeParentEdit = false } = {}) {
@@ -56,7 +74,7 @@ export function verifyLibraryInterchange(document, { nativeEdit = false, nativeP
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const document = JSON.parse(readFileSync(process.argv[2], 'utf8'));
-  console.log(JSON.stringify(verifyLibraryInterchange(document, {
+  console.log(JSON.stringify(process.argv.includes('--native-created') ? verifyNativeCreatedLibrary(document) : verifyLibraryInterchange(document, {
     nativeEdit: process.argv.includes('--native-edit'),
     nativeParentEdit: process.argv.includes('--native-parent-edit'),
   })));

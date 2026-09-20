@@ -4,6 +4,30 @@ import XCTest
 
 final class PromptLabTests: XCTestCase {
     @MainActor
+    func testNativeCreatedArtifactHasStableIdentityAndVersions() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let store = WorkbenchStore(provider: RecordedAnthropicProviderClient())
+        store.draft = "Native created compatibility record."
+        let entry = try store.saveCurrentPrompt(modelContext: context)
+        let initial = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.rawJSON) as? [String: Any])
+        let originalVersionID = try XCTUnwrap(initial["currentVersionId"] as? String)
+        store.draft = "Native revised compatibility record."
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let exported = try LibraryInterchange.exportData(from: context)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        XCTAssertEqual(library[0]["id"] as? String, entry.id)
+        XCTAssertNotEqual(library[0]["currentVersionId"] as? String, originalVersionID)
+        let versions = try XCTUnwrap(library[0]["versions"] as? [[String: Any]])
+        XCTAssertEqual(versions.last?["id"] as? String, originalVersionID)
+        XCTAssertEqual(versions.last?["enhanced"] as? String, "Native created compatibility record.")
+        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+        try exported.write(to: documents.appendingPathComponent("native-created-library.json"))
+    }
+
+    @MainActor
     func testSharedLibrarySurvivesNativeEditAndStoreReopen() throws {
         let data = try Data(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(
             forResource: "promptlab-library-v2", withExtension: "json"

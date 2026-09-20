@@ -18,9 +18,10 @@ function checkRecords(library) {
   for (const [index, row] of selected.entries()) {
     const source = artifact.library[index];
     for (const field of ['id', 'title', 'original', 'enhanced', 'notes', 'variants', 'tags', 'collection', 'createdAt', 'updatedAt', 'updated_at', 'versions', 'currentVersionId']) {
-      expect(row[field], `${source.id}: ${field}`).toEqual(source[field]);
+      if (field === 'versions' && source.versions) expect(row.versions).toMatchObject(source.versions);
+      else if (source[field] !== undefined) expect(row[field], `${source.id}: ${field}`).toEqual(source[field]);
     }
-    expect(row.metadata).toMatchObject(source.metadata);
+    if (source.metadata) expect(row.metadata).toMatchObject(source.metadata);
   }
 }
 
@@ -60,14 +61,14 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       await expect(dialog).toHaveCount(0);
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
       await page.reload();
-      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).filter(row => row.id.startsWith('contract-')).length)).toBe(2);
+      await expect.poll(() => page.evaluate(ids => JSON.parse(localStorage.getItem('pl2-library')).filter(row => ids.includes(row.id)).length, artifact.library.map(row => row.id))).toBe(artifact.library.length);
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
       await context.close();
       page = await launch();
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
-      await page.getByTestId('library-search').fill('Contract');
-      await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first()).toContainText('Contract follow-up');
+      await page.getByTestId('library-search').fill('');
+      await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first()).toContainText(artifact.library[0].title);
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
       const downloadPromise = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Export Library', exact: true }).click();
@@ -75,17 +76,19 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
       checkRecords(exported.library);
       expect(exported.schemaVersion).toBe(2);
-      expect(exported.runs.find(row => row.id === 'contract-run')).toMatchObject({ promptId: 'contract-parent', promptVersionId: 'parent-v2' });
-      expect(exported.testCases.find(row => row.id === 'contract-case')?.promptId).toBe('contract-parent');
-      expect(exported.trash.some(row => row.id === 'contract-deleted')).toBe(true);
-      expect(exported.collections).toContain('Empty Collection');
+      for (const run of artifact.runs || []) expect(exported.runs.find(row => row.id === run.id)).toMatchObject({ promptId: run.promptId, promptVersionId: run.promptVersionId });
+      for (const record of artifact.testCases || []) expect(exported.testCases.find(row => row.id === record.id)?.promptId).toBe(record.promptId);
+      for (const record of artifact.trash || []) expect(exported.trash.some(row => row.id === record.id)).toBe(true);
+      for (const collection of artifact.collections || []) expect(exported.collections).toContain(collection);
       await test.info().attach('cross-shell-export', { body: JSON.stringify(exported, null, 2), contentType: 'application/json' });
       await page.getByRole('button', { name: 'Close settings', exact: true }).click();
-      await page.getByRole('button', { name: 'Inspect Contract follow-up' }).click();
-      const provenance = page.getByRole('region', { name: 'Follow-up provenance' });
-      await provenance.getByRole('button', { name: 'View source output' }).click();
-      await expect(provenance).toContainText('Summarize {{incident}} with impact and actions.');
-      await page.getByRole('button', { name: 'Close prompt inspector' }).click();
+      if (artifact.library.some(row => row.id === 'contract-child')) {
+        await page.getByRole('button', { name: 'Inspect Contract follow-up' }).click();
+        const provenance = page.getByRole('region', { name: 'Follow-up provenance' });
+        await provenance.getByRole('button', { name: 'View source output' }).click();
+        await expect(provenance).toContainText('Summarize {{incident}} with impact and actions.');
+        await page.getByRole('button', { name: 'Close prompt inspector' }).click();
+      }
     } finally {
       await context?.close();
       fs.rmSync(profile, { recursive: true, force: true });

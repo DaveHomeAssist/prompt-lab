@@ -18,7 +18,7 @@ This contract covers implementation-plan J and the L/N regression controls. It d
 
 Browser-origin stores normalize older records and known field aliases on load/import. Native upgrades use the existing versioned SwiftData V1 → V2 migration; this compatibility change does not alter that store schema. Unknown native record/envelope fields survive export, and an untouched imported record stays unchanged even when another record is edited. Invalid input is validated before native transactional replacement or shared staged writes. Native replacement and shared merge/conflict review remain explicit, different operations.
 
-XCTest writes two synthetic exports after actual native persistence: a field edit/reopen and a parent content edit with historical provenance. CI passes both through the production JavaScript importer and retains the files, source SHA, checksums and XCTest results. Local browser tests can consume either actual output with `PL_LIBRARY_CONTRACT_FILE`; they check import, reload, full process restart, completed download and source inspection. These tests never require provider requests or account-backed sync.
+XCTest writes three synthetic exports after actual native persistence: a field edit/reopen, a parent content edit with historical provenance, and a Library created and revised entirely in the native client. CI passes all three through the production JavaScript importer and retains the files, source SHA, checksums and XCTest results. Local browser tests can consume either actual output with `PL_LIBRARY_CONTRACT_FILE`; they check import, reload, full process restart, completed download and source inspection. These tests never require provider requests or account-backed sync.
 
 ## Navigation and matching
 

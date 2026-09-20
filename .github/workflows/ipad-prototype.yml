@@ -93,8 +93,10 @@ jobs:
           mkdir -p library-contract-evidence
           cp "$container/Documents/native-library-contract.json" library-contract-evidence/native-library-contract.json
           cp "$container/Documents/native-parent-edit-contract.json" library-contract-evidence/native-parent-edit-contract.json
+          cp "$container/Documents/native-created-library.json" library-contract-evidence/native-created-library.json
           node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-library-contract.json --native-edit
           node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-parent-edit-contract.json --native-parent-edit
+          node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-created-library.json --native-created
           git rev-parse HEAD > library-contract-evidence/source-sha.txt
           shasum -a 256 library-contract-evidence/*.json > library-contract-evidence/SHA256SUMS
 
