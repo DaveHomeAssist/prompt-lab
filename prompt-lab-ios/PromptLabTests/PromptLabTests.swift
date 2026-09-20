@@ -4,6 +4,102 @@ import XCTest
 
 final class PromptLabTests: XCTestCase {
     @MainActor
+    func testSharedLibrarySurvivesNativeEditAndStoreReopen() throws {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(
+            forResource: "promptlab-library-v2", withExtension: "json"
+        )))
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("LibraryContract-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let configuration = ModelConfiguration(
+            "LibraryContract", schema: appSchema,
+            url: directory.appendingPathComponent("Library.store"), cloudKitDatabase: .none
+        )
+        let descriptor = FetchDescriptor<PromptEntry>(sortBy: [SortDescriptor(\.sourceIndex)])
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        do {
+            let container = try ModelContainer(for: appSchema, configurations: [configuration])
+            let context = ModelContext(container)
+            _ = try LibraryInterchange.importData(data, into: context)
+            XCTAssertEqual(try LibraryInterchange.exportData(from: context), data)
+            let entries = try context.fetch(descriptor)
+            XCTAssertEqual(entries.map(\.id), ["contract-child", "contract-parent"])
+            XCTAssertEqual(entries[0].createdAt, formatter.date(from: "2026-07-27T10:00:00.456Z"))
+            XCTAssertEqual(entries[0].updatedAt, formatter.date(from: "2026-07-27T10:01:00.999Z"))
+            XCTAssertEqual(entries[1].createdAt, formatter.date(from: "2026-07-26T14:30:00.123Z"))
+            entries[0].notes = "Edited on native; preserve lineage."
+            entries[0].updatedAt = try XCTUnwrap(formatter.date(from: "2026-09-20T10:30:00.321Z"))
+            entries[0].isDirty = true
+            try context.save()
+        }
+        let reopened = try ModelContainer(for: appSchema, configurations: [configuration])
+        let context = ModelContext(reopened)
+        XCTAssertEqual(try context.fetch(descriptor).map(\.id), ["contract-child", "contract-parent"])
+        let exported = try LibraryInterchange.exportData(from: context)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: exported) as? [String: Any])
+        let source = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        let originalLibrary = try XCTUnwrap(source["library"] as? [[String: Any]])
+        XCTAssertEqual(library[0]["createdAt"] as? String, "2026-07-27T10:00:00.456Z")
+        XCTAssertEqual(library[0]["updatedAt"] as? String, "2026-09-20T10:30:00.321Z")
+        XCTAssertEqual(library[0]["updated_at"] as? String, "2026-09-20T10:30:00.321Z")
+        XCTAssertEqual(library[0]["metadata"] as? NSDictionary, originalLibrary[0]["metadata"] as? NSDictionary)
+        XCTAssertEqual(library[1] as NSDictionary, originalLibrary[1] as NSDictionary)
+        for key in ["collections", "trash", "packs", "scratch", "runs", "testCases"] {
+            XCTAssertEqual(root[key] as? NSObject, source[key] as? NSObject, key)
+        }
+        // CI consumes this actual Swift export with the production JS importer.
+        // It contains only the checked-in synthetic fixture, never user data.
+        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
+        try exported.write(to: documents.appendingPathComponent("native-library-contract.json"))
+    }
+
+    @MainActor
+    func testLibraryLegacyAliasesDuplicateAndCorruptImports() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let legacy = Data(#"[{"id":"legacy","prompt":"Legacy content","category":"Old folder","createdAt":"2025-01-01T00:00:00Z","updated_at":"2025-01-02T00:00:00.123Z"}]"#.utf8)
+        _ = try LibraryInterchange.importData(legacy, into: context)
+        _ = try LibraryInterchange.importData(legacy, into: context)
+        let entries = try context.fetch(FetchDescriptor<PromptEntry>())
+        XCTAssertEqual(entries.map(\.id), ["legacy"])
+        XCTAssertEqual(entries[0].original, "Legacy content")
+        XCTAssertEqual(entries[0].enhanced, "Legacy content")
+        XCTAssertEqual(entries[0].updatedAt.timeIntervalSince1970, 1_735_776_000.123, accuracy: 0.001)
+        for invalid in [
+            #"{"library":[{"id":"same","original":"One"},{"id":"same","original":"Two"}]}"#,
+            #"{"library":[{"id":123,"original":"Invalid identity"}]}"#,
+            #"{"library":[{"id":"empty","enhanced":" "}]}"#,
+            #"{"library":[null]}"#,
+            "not json",
+        ] {
+            XCTAssertThrowsError(try LibraryInterchange.importData(Data(invalid.utf8), into: context))
+            XCTAssertEqual(try LibraryInterchange.exportData(from: context), legacy)
+        }
+    }
+
+    @MainActor
+    func testNativeDeletionAndExplicitBackupRestorePreserveIdentity() throws {
+        let data = try Data(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(
+            forResource: "promptlab-library-v2", withExtension: "json"
+        )))
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        _ = try LibraryInterchange.importData(data, into: context)
+        let child = try XCTUnwrap(context.fetch(FetchDescriptor<PromptEntry>()).first { $0.id == "contract-child" })
+        context.delete(child)
+        try context.save()
+        let exportRoot = try XCTUnwrap(JSONSerialization.jsonObject(with: LibraryInterchange.exportData(from: context)) as? [String: Any])
+        XCTAssertEqual((exportRoot["library"] as? [[String: Any]])?.compactMap { $0["id"] as? String }, ["contract-parent"])
+        _ = try LibraryInterchange.importData(data, into: context)
+        XCTAssertEqual(try LibraryInterchange.exportData(from: context), data)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<PromptEntry>()), 2)
+    }
+
+    @MainActor
     func testWebLibraryExportRoundTripsByteForByte() throws {
         let fixtureURL = try XCTUnwrap(
             Bundle(for: Self.self).url(forResource: "web-library-export-1.7.0", withExtension: "json")

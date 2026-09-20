@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T10:56:13Z",
+  "snapshotAt": "2026-09-20T11:03:59Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "0cda069057bd912b3358a76c1047bbc5cec9533b",
+  "mainSha": "e34fbfb304132d5b41acc25156ec6578e59612d2",
   "overall": "Acceptance incomplete",
-  "nextAction": "Begin Phase 3 shared Library and provenance compatibility from verified main 0cda069. Keep billing, signed release, authenticated runtime and human accessibility acceptance as separate later gates.",
+  "nextAction": "Verify the shared Library artifact in iPhone/iPad CI, correct demonstrated adapter mismatches, then complete cross-shell reload/restart compatibility.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -96,6 +96,12 @@
       "state": "Open",
       "detail": "Production sign-in social-button text has low contrast. The companion measures 412px document width at a 400px viewport; both pre- and post-PR #105 screenshots have the same width. Retain these existing issues for the planned UX/accessibility phase; this test-only PR did not change application UI.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
+    },
+    {
+      "label": "Shared Library contract",
+      "state": "Open",
+      "detail": "Phase 3 fixture and cross-adapter tests are in progress. Local Foundation proof shows the native default parser rejects fractional-second web dates; actual iOS regression proof is pending Xcode CI. Native edit/reopen, duplicate/corrupt input, deletion/backup restoration and production-JS consumption are now explicit gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/blob/main/prompt-lab-source/docs/LIBRARY_COMPATIBILITY_CONTRACT.md"
     }
   ],
   "issues": [

@@ -1,0 +1,309 @@
+{
+  "product": "Prompt Lab",
+  "version": "1.7.1",
+  "schemaVersion": 2,
+  "exportedAt": "2026-09-20T10:00:00.123Z",
+  "count": 2,
+  "library": [
+    {
+      "id": "contract-child",
+      "title": "Contract follow-up",
+      "original": "Identify owners.",
+      "enhanced": "Identify owners and dates for each action.",
+      "variants": [],
+      "notes": "Native may edit this note.",
+      "resultMeta": {
+        "candidates": [
+          {
+            "id": "improved",
+            "label": "Improved",
+            "role": "improved",
+            "content": "Identify owners and dates for each action."
+          }
+        ],
+        "selectedCandidateId": "improved",
+        "changeSummary": "",
+        "changes": [],
+        "assumptions": [],
+        "reversibleEdits": [],
+        "reasoning": "",
+        "tags": [],
+        "provider": "",
+        "model": "",
+        "latencyMs": null,
+        "usage": null,
+        "runId": ""
+      },
+      "tags": [
+        "Analysis"
+      ],
+      "collection": "Operations",
+      "createdAt": "2026-07-27T10:00:00.456Z",
+      "updatedAt": "2026-07-27T10:01:00.999Z",
+      "updated_at": "2026-07-27T10:01:00.999Z",
+      "useCount": 0,
+      "lastAccessedAt": null,
+      "favorite": false,
+      "kind": "prompt",
+      "sourceNoteId": "",
+      "deletedAt": null,
+      "tombstoneVersion": 0,
+      "currentVersionId": "child-v1",
+      "version": null,
+      "schema_version": 1,
+      "versions": [],
+      "testCases": [],
+      "goldenResponse": null,
+      "goldenThreshold": 0.7,
+      "inputs": [],
+      "metadata": {
+        "customField": "retain-child",
+        "followUpOrigin": {
+          "version": 1,
+          "generationId": null,
+          "generatedAt": "2026-07-27T10:00:00.456Z",
+          "generationProvider": null,
+          "generationModel": "recorded-fixture",
+          "sourceKind": "enhanced-prompt",
+          "sourcePromptId": "contract-parent",
+          "sourcePromptVersionId": "parent-v2",
+          "sourceRunId": null,
+          "sourceCandidateId": null,
+          "sourceTitle": null,
+          "sourceProvider": null,
+          "sourceModel": null,
+          "redacted": false
+        },
+        "owner": "",
+        "purpose": "",
+        "status": "",
+        "compatibility": [],
+        "riskLevel": ""
+      },
+      "completeness": {
+        "complete": false,
+        "missing": [
+          "purpose",
+          "status"
+        ],
+        "updatedAt": "2026-07-27T10:01:00.999Z"
+      }
+    },
+    {
+      "id": "contract-parent",
+      "title": "Contract parent",
+      "original": "Summarize {{incident}}.",
+      "enhanced": "Summarize {{incident}} with impact and actions.",
+      "variants": [
+        {
+          "label": "Brief",
+          "content": "Summarize the incident in three bullets."
+        }
+      ],
+      "notes": "Preserve evidence.",
+      "resultMeta": {
+        "candidates": [
+          {
+            "id": "improved",
+            "label": "Improved",
+            "role": "improved",
+            "content": "Summarize {{incident}} with impact and actions."
+          },
+          {
+            "id": "tighter",
+            "label": "Tighter",
+            "role": "tighter",
+            "content": "Summarize the incident in three bullets."
+          }
+        ],
+        "selectedCandidateId": "improved",
+        "changeSummary": "",
+        "changes": [],
+        "assumptions": [],
+        "reversibleEdits": [],
+        "reasoning": "",
+        "tags": [],
+        "provider": "",
+        "model": "",
+        "latencyMs": null,
+        "usage": null,
+        "runId": ""
+      },
+      "tags": [
+        "Writing",
+        "Analysis"
+      ],
+      "collection": "Operations",
+      "createdAt": "2026-07-26T14:30:00.123Z",
+      "updatedAt": "2026-07-27T09:15:00.789Z",
+      "updated_at": "2026-07-27T09:15:00.789Z",
+      "useCount": 0,
+      "lastAccessedAt": null,
+      "favorite": false,
+      "kind": "prompt",
+      "sourceNoteId": "",
+      "deletedAt": null,
+      "tombstoneVersion": 0,
+      "currentVersionId": "parent-v2",
+      "version": 2,
+      "schema_version": 1,
+      "versions": [
+        {
+          "id": "parent-v1",
+          "original": "Summarize the incident.",
+          "enhanced": "Summarize the incident.",
+          "variants": [],
+          "notes": "",
+          "resultMeta": {
+            "candidates": [
+              {
+                "id": "improved",
+                "label": "Improved",
+                "role": "improved",
+                "content": "Summarize the incident."
+              }
+            ],
+            "selectedCandidateId": "improved",
+            "changeSummary": "",
+            "changes": [],
+            "assumptions": [],
+            "reversibleEdits": [],
+            "reasoning": "",
+            "tags": [],
+            "provider": "",
+            "model": "",
+            "latencyMs": null,
+            "usage": null,
+            "runId": ""
+          },
+          "savedAt": "2026-07-26T14:30:00.123Z",
+          "changeNote": "",
+          "source": "manual_save"
+        }
+      ],
+      "testCases": [],
+      "goldenResponse": null,
+      "goldenThreshold": 0.7,
+      "inputs": [],
+      "metadata": {
+        "owner": "Operations",
+        "purpose": "Incident review",
+        "status": "active",
+        "customField": "retain-parent",
+        "compatibility": [],
+        "riskLevel": ""
+      },
+      "completeness": {
+        "complete": true,
+        "missing": [],
+        "updatedAt": "2026-07-27T09:15:00.789Z"
+      }
+    }
+  ],
+  "trash": [
+    {
+      "id": "contract-deleted",
+      "title": "Recoverable record",
+      "original": "Recover this prompt.",
+      "enhanced": "Recover this prompt.",
+      "variants": [],
+      "notes": "",
+      "resultMeta": {
+        "candidates": [
+          {
+            "id": "improved",
+            "label": "Improved",
+            "role": "improved",
+            "content": "Recover this prompt."
+          }
+        ],
+        "selectedCandidateId": "improved",
+        "changeSummary": "",
+        "changes": [],
+        "assumptions": [],
+        "reversibleEdits": [],
+        "reasoning": "",
+        "tags": [],
+        "provider": "",
+        "model": "",
+        "latencyMs": null,
+        "usage": null,
+        "runId": ""
+      },
+      "tags": [],
+      "collection": "",
+      "createdAt": "2026-07-27T12:00:00.123Z",
+      "updated_at": "2026-07-27T12:00:00.123Z",
+      "useCount": 0,
+      "lastAccessedAt": null,
+      "favorite": false,
+      "kind": "prompt",
+      "sourceNoteId": "",
+      "deletedAt": "2026-09-20T10:00:00.123Z",
+      "tombstoneVersion": 1,
+      "currentVersionId": "deleted-v1",
+      "version": null,
+      "schema_version": null,
+      "versions": [],
+      "testCases": [],
+      "goldenResponse": null,
+      "goldenThreshold": 0.7,
+      "inputs": [],
+      "metadata": {
+        "owner": "",
+        "purpose": "",
+        "status": "",
+        "compatibility": [],
+        "riskLevel": ""
+      },
+      "completeness": {
+        "complete": false,
+        "missing": [
+          "tags",
+          "purpose",
+          "status"
+        ],
+        "updatedAt": "2026-07-27T12:00:00.123Z"
+      }
+    }
+  ],
+  "collections": [
+    "Operations",
+    "Empty Collection"
+  ],
+  "packs": {},
+  "scratch": {
+    "activeId": "contract-pad",
+    "pads": [
+      {
+        "id": "contract-pad",
+        "title": "Review notes",
+        "content": "Synthetic cross-shell evidence.",
+        "linkedPromptId": "contract-parent"
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "contract-run",
+      "promptId": "contract-parent",
+      "promptVersionId": "parent-v2",
+      "input": "Synthetic incident",
+      "output": "Synthetic answer",
+      "provider": "fixture",
+      "model": "fixture",
+      "status": "success",
+      "createdAt": "2026-07-27T09:20:00.123Z"
+    }
+  ],
+  "testCases": [
+    {
+      "id": "contract-case",
+      "promptId": "contract-parent",
+      "input": "Synthetic incident",
+      "name": "Incident",
+      "createdAt": "2026-07-27T09:19:00.123Z",
+      "updatedAt": "2026-07-27T09:19:00.123Z"
+    }
+  ]
+}
