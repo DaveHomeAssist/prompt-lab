@@ -8,7 +8,8 @@ const manifest = JSON.parse(await readFile(path.join(attachmentsDirectory, 'mani
 const attachments = manifest.flatMap(test => test.attachments || []);
 for (const name of ['native-library-contract.json', 'native-parent-edit-contract.json', 'native-created-library.json']) {
   const matches = attachments.filter(item => item.suggestedHumanReadableName === name
-    || item.suggestedHumanReadableName?.startsWith(`${name}_`));
+    || (item.suggestedHumanReadableName?.startsWith(`${path.parse(name).name}_`)
+      && item.suggestedHumanReadableName.endsWith('.json')));
   assert.equal(matches.length, 1, `Exactly one XCTest attachment required for ${name}`);
   const source = path.resolve(attachmentsDirectory, matches[0].exportedFileName);
   assert.ok(source.startsWith(`${attachmentsDirectory}${path.sep}`));
