@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T10:17:03Z",
+  "snapshotAt": "2026-09-20T10:56:13Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "2444340f439a40268851582d29f2117b162fffe4",
+  "mainSha": "0cda069057bd912b3358a76c1047bbc5cec9533b",
   "overall": "Acceptance incomplete",
-  "nextAction": "Diagnose main NSIS Library loss across restart, validate the corrected Windows launcher and storage diagnostics, then finish Phase 2 before starting the shared contract.",
+  "nextAction": "Begin Phase 3 shared Library and provenance compatibility from verified main 0cda069. Keep billing, signed release, authenticated runtime and human accessibility acceptance as separate later gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,20 +34,20 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "PR #99 merged as 2444340 after all PR checks passed. The merged file tree exactly matches the tested candidate. Vercel production deployment dpl_7WRkpyb77YVmDmtSgL2U8AbocdwL is READY for that SHA; live landing, Clerk sign-in and companion render without page errors. Authenticated web, cross-version upgrade, macOS interaction and signing remain open.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+      "detail": "PR #105 merged as 0cda069 after all checks passed; its tree matches tested merge 893d6e1. Vercel production dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY is READY for that SHA. Cache-busted landing (including scroll reveal), Clerk sign-in and mobile companion rendered without script errors. This does not establish authenticated behavior or complete UX acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
     },
     {
       "label": "Native Library acceptance",
-      "state": "Failed",
-      "detail": "PR #99 run 35502863776 passed all four packages, but main run 35503652915 lost the three synthetic Library entries after an NSIS app restart. MSI, DEB and AppImage passed on main. Follow-up keeps the ordering assertion and adds exact record persistence checks and storage-engine diagnostics.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
+      "state": "Verified",
+      "detail": "PR #105 and main run 35505648301 passed exact fixture identity/content/metadata/timestamps after restart, Library/Composer search, manual order, collection cleanup and retention on MSI, DEB, NSIS and AppImage. Both Windows packages verified clean launcher exits and all owned WebView2 processes gone. This is bounded desktop fixture proof, not the full cross-shell contract.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
     },
     {
       "label": "Native workspace import/export",
       "state": "Verified",
-      "detail": "Run 35502863776 passed actual OS file import, mapped versions/runs/test cases/provenance and completed export on MSI, DEB, NSIS and AppImage. All four downloaded artifacts match their reported SHA-256, byte size and tested merge revision; each contains 21 prompts, six runs and one test case. Restart and reinstall/replacement retention passed.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
+      "detail": "Main run 35505648301 passed OS file import, mapped versions/runs/test cases/provenance and completed export on all four native packages. Downloaded artifacts match full JSON, hash, byte count and source revision; each contains 21 prompts, six runs and one case. Restart and reinstall/replacement retention passed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
     },
     {
       "label": "Native control readability",
@@ -57,15 +57,15 @@
     },
     {
       "label": "Alternate package lifecycle",
-      "state": "Failed",
-      "detail": "Main 35503652915 passed AppImage replacement and retention; NSIS failed in the pre-export Library restart fixture. Cross-version upgrade, arbitrary crash recovery and signing remain separate open gates.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
+      "state": "Verified",
+      "detail": "PR #105 and main run 35505648301 passed NSIS install/uninstall/reinstall and AppImage launch/removal/replacement. The earlier main NSIS fixture loss did not recur; its cause is unconfirmed. Cross-version upgrades, crash recovery and signing remain later gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
     },
     {
       "label": "Native custom-button appearance",
       "state": "Verified",
-      "detail": "Current candidate native assertions pass on Windows and Linux. Captured light/dark Library screenshots were inspected; controls and labels are readable. Broader keyboard and VoiceOver acceptance remains a later gate.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502863776"
+      "detail": "Current PR #105 assertions pass on Windows and Linux. MSI light/dark screenshots were inspected and controls are readable. Broader keyboard, VoiceOver and authenticated-web acceptance remain later gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35504834640"
     },
     {
       "label": "Pilot companion",
@@ -87,9 +87,15 @@
     },
     {
       "label": "Merged main regression",
-      "state": "Failed",
-      "detail": "Main run 35503652915 passed MSI, DEB, AppImage and macOS packaging. NSIS failed before export: all three synthetic Library records were absent after restart. The earlier passing PR run does not override this failure. A confirmed Windows launcher exit-code exception is repaired in the follow-up candidate; the cause of Library loss remains unknown pending diagnostic CI.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35503652915"
+      "state": "Verified",
+      "detail": "Main 0cda069 run 35505648301 passed MSI, DEB, NSIS and AppImage exercise/retention plus macOS packaging. All four downloaded exports match their recorded hashes, sizes, JSON contents and source revision. Windows closes returned 0 with the full owned process tree gone and no storage corruption. The original 2444340 NSIS loss did not recur; its cause remains unconfirmed in the diagnosis.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
+    },
+    {
+      "label": "Live UX follow-up",
+      "state": "Open",
+      "detail": "Production sign-in social-button text has low contrast. The companion measures 412px document width at a 400px viewport; both pre- and post-PR #105 screenshots have the same width. Retain these existing issues for the planned UX/accessibility phase; this test-only PR did not change application UI.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
     }
   ],
   "issues": [
