@@ -22,6 +22,7 @@
 		AB000000000000000000000E /* promptlab-enhance-contract-v1.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */; };
 		AB000000000000000000000F /* PromptLabUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000011 /* PromptLabUITests.swift */; };
 		AB0000000000000000000010 /* PromptLabSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000013 /* PromptLabSchema.swift */; };
+		AB0000000000000000000011 /* promptlab-library-v2.json in Resources */ = {isa = PBXBuildFile; fileRef = AC0000000000000000000014 /* promptlab-library-v2.json */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +55,7 @@
 		AC0000000000000000000011 /* PromptLabUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabUITests.swift; sourceTree = "<group>"; };
 		AC0000000000000000000012 /* PromptLabUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PromptLabUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC0000000000000000000013 /* PromptLabSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLabSchema.swift; sourceTree = "<group>"; };
+		AC0000000000000000000014 /* promptlab-library-v2.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = "promptlab-library-v2.json"; path = "../contracts/promptlab-library-v2.json"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -91,7 +93,7 @@
 		};
 		AF0000000000000000000002 /* PromptLabTests */ = {
 			isa = PBXGroup;
-			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */, AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */,);
+			children = (AC0000000000000000000007 /* PromptLabTests.swift */, AC000000000000000000000F /* web-library-export-1.7.0.json */, AC0000000000000000000010 /* promptlab-enhance-contract-v1.json */, AC0000000000000000000014 /* promptlab-library-v2.json */,);
 			path = PromptLabTests;
 			sourceTree = "<group>";
 		};
@@ -185,7 +187,7 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		BD0000000000000000000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
-		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D, AB000000000000000000000E,); runOnlyForDeploymentPostprocessing = 0; };
+		BD0000000000000000000002 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (AB000000000000000000000D, AB000000000000000000000E, AB0000000000000000000011,); runOnlyForDeploymentPostprocessing = 0; };
 		BD0000000000000000000003 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 

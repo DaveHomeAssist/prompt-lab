@@ -7,11 +7,15 @@ on:
     paths:
       - prompt-lab-source/prompt-lab-extension/**
       - contracts/promptlab-enhance-contract-v1.json
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
       - .github/workflows/extension-ci.yml
   pull_request:
     paths:
       - prompt-lab-source/prompt-lab-extension/**
       - contracts/promptlab-enhance-contract-v1.json
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
       - .github/workflows/extension-ci.yml
 
 permissions:

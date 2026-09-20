@@ -126,6 +126,7 @@ final class WorkbenchStore {
             }
             existing.updatedAt = .now
             existing.isDirty = true
+            try LibraryInterchange.recordContentRevision(of: existing)
             try modelContext.save()
             currentPromptTitle = existing.title
             return existing
@@ -142,6 +143,7 @@ final class WorkbenchStore {
             sourceIndex: sourceIndex,
             isDirty: true
         )
+        try LibraryInterchange.recordContentRevision(of: entry)
         modelContext.insert(entry)
         try modelContext.save()
         currentPromptID = entry.id
@@ -164,6 +166,7 @@ final class WorkbenchStore {
             sourceIndex: sourceIndex,
             isDirty: true
         )
+        try LibraryInterchange.recordContentRevision(of: entry)
         modelContext.insert(entry)
         try modelContext.save()
         return entry

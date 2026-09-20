@@ -2,6 +2,24 @@
 
 This contract covers implementation-plan J and the L/N regression controls. It does not claim installer acceptance or production readiness. The canonical implementation lives in the shared extension source; shell behavior still requires separate runtime proof.
 
+## Canonical artifact and migrations
+
+`contracts/promptlab-library-v2.json` is the shared, synthetic schema-2 workspace fixture. Extension, web and Tauri use the same `normalizeWorkspaceImportSource`, `prepareWorkspaceImport` and `normalizeEntry` adapters. SwiftData has a separate native adapter and consumes the identical fixture as an Xcode test resource.
+
+| Concern | Serialization contract |
+| --- | --- |
+| Document version | Current shared exports have `product`, application `version`, `schemaVersion: 2`, `exportedAt`, `count`, `library`, `trash`, `collections`, `packs`, `scratch`, `runs` and `testCases`. Existing schema-1 envelopes and bare Library arrays remain readable. Native retains imported envelope extras; its standalone schema-1 Library export remains readable by the shared importer. |
+| Identity | Nonempty string prompt IDs survive transfer. Missing legacy IDs are assigned when normalized/imported and emitted by the next export. Ambiguous duplicate IDs and non-string IDs are rejected before destination writes. Explicit conflict resolution may remap identity and all owned associations. |
+| Content | Original/enhanced text, variants, notes, tags and metadata are normalized in the shared store. Native imports legacy `prompt`/`content` aliases and retains raw record fields that have no native editor. |
+| Membership and order | `collection` identifies membership; the envelope retains empty collections. Library array order is manual order. Native stores that position as `sourceIndex`. Newest/search views do not redefine serialized order. |
+| Dates | `createdAt` is the original creation instant; `updatedAt` and its `updated_at` alias agree after edits. Canonical UTC exports retain milliseconds; whole-second legacy ISO dates remain accepted. Earlier native imports can recover a creation date from retained raw JSON when exporting after an edit. |
+| Provenance | Prompt ID, current/historical version IDs and follow-up source references remain linked. Native content saves snapshot the previous version before assigning a new version ID; repeated unchanged saves retain that ID. Imported runs continue to reference the historical version they actually used. |
+| Deletion | Shared clients retain recoverable trash and local permanent-deletion markers. Native prompt deletion removes the active record; explicit backup import restores its original identity. Native retains imported trash in the envelope without claiming a native trash editor. Neither transfer is a remote deletion command. |
+
+Browser-origin stores normalize older records and known field aliases on load/import. Native upgrades use the existing versioned SwiftData V1 → V2 migration; this compatibility change does not alter that store schema. Unknown native record/envelope fields survive export, and an untouched imported record stays unchanged even when another record is edited. Invalid input is validated before native transactional replacement or shared staged writes. Native replacement and shared merge/conflict review remain explicit, different operations.
+
+XCTest writes three synthetic exports after actual native persistence: a field edit/reopen, a parent content edit with historical provenance, and a Library created and revised entirely in the native client. CI passes all three through the production JavaScript importer and retains the files, source SHA, checksums and XCTest results. Local browser tests can consume either actual output with `PL_LIBRARY_CONTRACT_FILE`; they check import, reload, full process restart, completed download and source inspection. These tests never require provider requests or account-backed sync.
+
 ## Navigation and matching
 
 Create → Library is the canonical prompt index. Smart views, collection/tag filters, status filters, selection, and the inspector operate on the same local Library. Composer uses that Library to add editable blocks. Dual Pane remains an authoring layout, not another database.

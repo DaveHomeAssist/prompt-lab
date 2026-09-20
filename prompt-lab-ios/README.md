@@ -2,7 +2,7 @@
 
 Native SwiftUI Prompt Lab workbench for iOS and iPadOS 17 and later.
 
-This remains a focused native v1 rather than a replacement for every React feature. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with `contracts/promptlab-enhance-contract-v1.json`—not shared UI code—as the compatibility boundary.
+This remains a focused native v1 rather than a replacement for every React feature. It implements the universal native direction recorded in `prompt-lab-source/docs/DECISIONS.md` [D-011], with shared JSON contracts for enhancement and Library transfer as the compatibility boundary.
 
 ## Build and test
 
@@ -54,12 +54,13 @@ The key is stored as a generic-password item using `kSecAttrAccessibleAfterFirst
 - Run history that survives app and model-container relaunch and can restore either input or output for another pass
 - Keychain save, update, retrieve, and delete
 - Web-library JSON choose → validate/preview → confirm → transactional replace flow, plus export from Workspace
-- Byte-identical re-export of an untouched web library; edited exports retain first-class variants, notes, tags, unknown metadata, and empty collections
+- Byte-identical re-export of an untouched web library; edited exports retain first-class variants, notes, tags, millisecond timestamps, unknown metadata, and empty collections
+- Stable native content versions preserve the original source of imported follow-up prompts after a parent edit
 - Command-S save, Command-Return enhance, and Escape cancellation/close behavior where applicable
 - Dynamic Type-native typography, wrapping result actions/tags, accessibility focus on completed Results, and 44-point primary controls
 - Empty, in-flight, completed, API-error, cancelled, and no-key states
 
-The checked-in QA suite contains 24 tests: 18 credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
+The checked-in QA suite contains credential-free unit tests, one optional live Anthropic smoke test, and five credential-free UI tests. The UI suite runs on both iPhone and iPad in CI and covers compact launch/navigation (including a forced compact-width route on iPad), recorded completion, Results actions, Library reopen, run detail/reuse, and an XCTest accessibility audit. The recorded Anthropic provider is available only in Debug builds for credential-free network-boundary proof:
 
 ```sh
 xcrun simctl launch booted com.davehomeassist.promptlab.prototype \
@@ -80,6 +81,7 @@ xcrun simctl launch booted com.davehomeassist.promptlab.prototype \
 
 - A physical M1 iPad install completed a real BYO-key Anthropic enhance on August 16, 2026. That user-observed result proves the shipping key/provider path on hardware; the API key was not shared with or exercised by automated tests.
 - Historical prototype captures remain available as [three-column scaffold](QA/phase2-three-column.png), [recorded streamed enhance](QA/phase3-recorded-enhance.png), and [run visible after relaunch](QA/phase3-run-after-relaunch.png). They predate the current workbench UI and are retained as baseline evidence only.
+- `contracts/promptlab-library-v2.json` exercises ordered identities, timestamps, provenance, duplicate/corrupt input and backup restoration. CI exports actual native edits, reopens the SwiftData store, and passes native-created and edited artifacts through the production JavaScript importer. Cross-version SwiftData migration remains a separate unit gate.
 - `contracts/promptlab-enhance-contract-v1.json` is enforced by both Vitest and XCTest so provider defaults, modes, tags, response fields, statuses, and title generation cannot silently drift.
 
 Automated verification never transmits a paid provider request unless `ANTHROPIC_API_KEY` is explicitly supplied to the optional live smoke test. CI uses the recorded provider for deterministic end-to-end UI proof.

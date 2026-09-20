@@ -111,9 +111,11 @@ async function element(value, using = 'css selector') {
 async function click(selector, using) {
   const id = await element(selector, using);
   await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
-  await execute('arguments[0].scrollIntoView({block:"center",behavior:"instant"}); return true;', [{ 'element-6066-11e4-a52e-4f735466cecf': id }]);
   let previousRect;
   await waitFor(async () => {
+    // Dialog focus can move the scroll position after the first reveal.
+    // Reestablish visibility while waiting for native actionability.
+    await execute('arguments[0].scrollIntoView({block:"center",behavior:"instant"}); return true;', [{ 'element-6066-11e4-a52e-4f735466cecf': id }]);
     const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
     const stable = rect === previousRect;
     previousRect = rect;

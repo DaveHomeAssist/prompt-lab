@@ -7,17 +7,29 @@ on:
     paths:
       - prompt-lab-ios/**
       - contracts/promptlab-enhance-contract-v1.json
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/collect-native-library-evidence.mjs
       - prompt-lab-source/prompt-lab-extension/src/constants.js
       - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
       - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/workspaceImport*.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/libraryMatching.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/followUpProvenance.js
       - .github/workflows/ipad-prototype.yml
   pull_request:
     paths:
       - prompt-lab-ios/**
       - contracts/promptlab-enhance-contract-v1.json
+      - contracts/promptlab-library-v2.json
+      - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/collect-native-library-evidence.mjs
       - prompt-lab-source/prompt-lab-extension/src/constants.js
       - prompt-lab-source/prompt-lab-extension/src/lib/evalSchema.js
       - prompt-lab-source/prompt-lab-extension/src/lib/promptSchema.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/workspaceImport*.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/libraryMatching.js
+      - prompt-lab-source/prompt-lab-extension/src/lib/followUpProvenance.js
       - .github/workflows/ipad-prototype.yml
   workflow_dispatch:
 
@@ -68,6 +80,34 @@ jobs:
           -destination "platform=iOS Simulator,id=${SIMULATOR_ID}"
           -parallel-testing-enabled NO
           -only-testing:PromptLabTests
+          -resultBundlePath native-unit-results.xcresult
+
+      - name: Setup Node for Library compatibility
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+
+      - name: Verify actual native export through shared importer
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcrun xcresulttool export attachments --path native-unit-results.xcresult --output-path library-contract-evidence/attachments
+          node prompt-lab-source/scripts/collect-native-library-evidence.mjs library-contract-evidence
+          node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-library-contract.json --native-edit
+          node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-parent-edit-contract.json --native-parent-edit
+          node prompt-lab-source/scripts/verify-library-interchange.mjs library-contract-evidence/native-created-library.json --native-created
+          git rev-parse HEAD > library-contract-evidence/source-sha.txt
+          shasum -a 256 library-contract-evidence/*.json > library-contract-evidence/SHA256SUMS
+
+      - name: Upload native compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: library-contract-${{ matrix.device_family }}
+          path: |
+            native-unit-results.xcresult
+            library-contract-evidence/
+          if-no-files-found: error
 
       - name: Test native UI smoke
         run: >-
