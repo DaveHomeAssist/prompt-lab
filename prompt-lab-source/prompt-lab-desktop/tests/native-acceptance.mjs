@@ -399,10 +399,19 @@ async function uploadJson(selector, data) {
   await command('POST', `/session/${session}/element/${id}/value`, { text: file });
 }
 async function prepareDownload() {
+  const startedAt = Date.now();
   const location = process.platform === 'win32'
-    ? spawnSync('powershell.exe', ['-NoProfile', '-Command', '(New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path'], { encoding: 'utf8', timeout: 10_000 })
+    ? spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-STA', '-Command', '(New-Object -ComObject Shell.Application).NameSpace("shell:Downloads").Self.Path'], { encoding: 'utf8', timeout: 30_000 })
     : spawnSync('xdg-user-dir', ['DOWNLOAD'], { encoding: 'utf8', timeout: 10_000 });
-  assert.equal(location.status, 0, location.stderr || 'Could not resolve the native Downloads directory');
+  recordDiagnostic('downloadDirectoryResolution', {
+    elapsedMs: Date.now() - startedAt,
+    status: location.status,
+    signal: location.signal,
+    error: location.error ? { code: location.error.code, message: location.error.message } : null,
+    stdout: location.stdout,
+    stderr: location.stderr,
+  });
+  assert.equal(location.status, 0, location.error?.message || location.stderr || 'Could not resolve the native Downloads directory');
   const directory = location.stdout.trim();
   assert.ok(path.isAbsolute(directory), 'Native Downloads directory must be absolute');
   const runnerDownloads = path.join(os.homedir(), 'Downloads');

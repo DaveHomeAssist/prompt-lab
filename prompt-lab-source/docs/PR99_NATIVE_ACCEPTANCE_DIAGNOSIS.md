@@ -43,6 +43,32 @@ native download lifecycle evidence before changing product behavior. Notion
 is read-only for this program; its dispositions are not synchronized with
 these implementation notes.
 
+## First repaired native candidate
+
+[Run 35502213608](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502213608)
+tested branch `eb6dfb08ed9a6060db152289f409b4a4fd46cbcb` through merge
+`e22cdf10d70226d3a5a574c5551b258db1744845`.
+
+- Linux DEB exercise and reinstall retention passed. The configured destination
+  contained a completed 76,927-byte workspace export: 21 prompts, 6 runs and
+  1 test case. Full JSON equality passed; downloaded artifact hash readback
+  matched `81bd217828945dfe6390daad19dbd417e4cd825c69d5d5ecc0ca87c1ae5050b8`.
+- macOS universal packaging passed.
+- Windows MSI completed the preceding Library checks but failed before the
+  export click: its PowerShell Downloads resolver returned null process status.
+  The old assertion omitted the process error and signal. Other PowerShell
+  probes succeeded; the runner image was `windows-2025-vs2026` version
+  `20260907.229.1`. A startup timeout is likely, but the exact process error
+  was not captured and remains unknown.
+- Alternate package jobs were skipped after the Windows failure.
+
+The next candidate records resolver elapsed time, error code, signal and
+output before asserting success. Windows folder lookup uses explicit
+noninteractive STA PowerShell and a 30-second process deadline to accommodate
+cold shell startup. The 20-second completed-file deadline and exact content
+assertion remain unchanged. This is a changed candidate, not an unchanged
+retry or a passing native result.
+
 ## Historical diagnostic scope and outcome
 
 This report closes the diagnostic-only pass for draft PR

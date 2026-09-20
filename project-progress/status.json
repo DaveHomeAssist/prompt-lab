@@ -33,14 +33,14 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Open",
-      "detail": "2026-09-20: PR #99 is being reconciled with main 8239151. Both Linux acceptance jobs now configure a disposable XDG Downloads destination before launch; strict completed-file and full JSON equality checks remain intact. Current native CI is pending; historical run 34101896031 failed Linux. Upgrade/restore, macOS interaction/signing and authenticated web acceptance remain open.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+      "state": "Failed",
+      "detail": "2026-09-20 run 35502213608: Linux DEB export and reinstall retention pass, including a 76,927-byte completed JSON file and artifact hash readback; macOS universal packaging passes. Windows fails before export because its OS Downloads resolver returned null process status; exact process error was not captured. The next candidate adds diagnostics and bounded shell startup tolerance. NSIS/AppImage were skipped. Broader release acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35502213608"
     },
     {
       "label": "Native Library acceptance",
       "state": "Open",
-      "detail": "2026-09-20 local candidate: normalized fixture and filtered order checks pass; 957 Vitest tests, 212 Node tests, six browser scenarios at 400/480/1180px, extension/desktop builds and documentation checks pass. Browser checks include completed downloads; installed native CI remains pending.",
+      "detail": "2026-09-20: 957 Vitest + 212 Node tests, six browser scenarios, both frontend builds and documentation checks pass. Current Linux native exercise and reinstall retention pass; Windows passed Library checks but stopped at Downloads resolution before workspace export/retention.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
