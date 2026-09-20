@@ -142,6 +142,15 @@ a real key; the proxy strips it and substitutes the server-side
 `ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
 provider key. User-supplied keys are never persisted server-side.
 
+Verified owner accounts skip the proxy's per-IP burst and daily demo limits.
+`api/_lib/hostedOwner.js` verifies the Clerk `__session` cookie (or outer Bearer
+header) against the configured Clerk issuer's signing keys and then checks the
+existing server-side owner user-ID allowlist. Email, client settings, and Pro
+billing state cannot grant this exemption. It works while billing is disabled.
+The service-wide shared-key daily budget, persistent usage store, input/output
+ceilings, provider limits, and feature flags still apply to owners. Missing,
+expired, forged, or unverifiable sessions retain the ordinary limits.
+
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.
 
 Transport verification contracts:
