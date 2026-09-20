@@ -22,9 +22,10 @@ final class PromptLabTests: XCTestCase {
         let versions = try XCTUnwrap(library[0]["versions"] as? [[String: Any]])
         XCTAssertEqual(versions.last?["id"] as? String, originalVersionID)
         XCTAssertEqual(versions.last?["enhanced"] as? String, "Native created compatibility record.")
-        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
-        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-        try exported.write(to: documents.appendingPathComponent("native-created-library.json"))
+        let attachment = XCTAttachment(data: exported, uniformTypeIdentifier: "public.json")
+        attachment.name = "native-created-library.json"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
@@ -76,9 +77,10 @@ final class PromptLabTests: XCTestCase {
         }
         // CI consumes this actual Swift export with the production JS importer.
         // It contains only the checked-in synthetic fixture, never user data.
-        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
-        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-        try exported.write(to: documents.appendingPathComponent("native-library-contract.json"))
+        let attachment = XCTAttachment(data: exported, uniformTypeIdentifier: "public.json")
+        attachment.name = "native-library-contract.json"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
@@ -179,9 +181,10 @@ final class PromptLabTests: XCTestCase {
         let repeatedLibrary = try XCTUnwrap(repeated["library"] as? [[String: Any]])
         XCTAssertEqual(repeatedLibrary[1]["currentVersionId"] as? String, edited["currentVersionId"] as? String)
         XCTAssertEqual(repeatedLibrary[1]["versions"] as? NSArray, versions as NSArray)
-        let documents = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
-        try FileManager.default.createDirectory(at: documents, withIntermediateDirectories: true)
-        try exported.write(to: documents.appendingPathComponent("native-parent-edit-contract.json"))
+        let attachment = XCTAttachment(data: exported, uniformTypeIdentifier: "public.json")
+        attachment.name = "native-parent-edit-contract.json"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor
