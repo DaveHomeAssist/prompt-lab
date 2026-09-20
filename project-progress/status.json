@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-07T08:38:45Z",
+  "snapshotAt": "2026-09-20T09:20:58Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "63d098ee2da5cc546b8e7f3b0cc59c25e84cefe9",
+  "mainSha": "823915156f82c88d4b6fd8e213012235909c3938",
   "overall": "Acceptance incomplete",
-  "nextAction": "Authorize a fixture-only Linux XDG Downloads repair and rerun a changed PR #99 candidate; retain remaining upgrade/runtime gates.",
+  "nextAction": "Verify the repaired PR #99 candidate and merge only after its native download and other applicable checks pass. Later billing and installed release acceptance remain separate gates.",
   "evidence": [
     {
       "label": "Product fixes",
@@ -34,13 +34,13 @@
     {
       "label": "Release and runtime proof",
       "state": "Open",
-      "detail": "PR #99 run 34099816603 passed Windows native exercise/retention and macOS packaging, but Linux failed completed export-file verification. Prior-version upgrade/restore, macOS interaction/applicable signing and authenticated canonical web remain open.",
-      "url": "https://app.notion.com/p/d39b7b5b076041de8718e4c2f1134422"
+      "detail": "2026-09-20: PR #99 is being reconciled with main 8239151. Both Linux acceptance jobs now configure a disposable XDG Downloads destination before launch; strict completed-file and full JSON equality checks remain intact. Current native CI is pending; historical run 34101896031 failed Linux. Upgrade/restore, macOS interaction/signing and authenticated web acceptance remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
       "label": "Native Library acceptance",
-      "state": "Verified",
-      "detail": "PR #99 run 34099816603 passed the corrected Library fixture scenario on Windows and reached that completed checkpoint on Linux before the later workspace-export timeout. Broader issue J acceptance remains open.",
+      "state": "Open",
+      "detail": "2026-09-20 local candidate: normalized fixture and filtered order checks pass; 957 Vitest tests, 212 Node tests, six browser scenarios at 400/480/1180px, extension/desktop builds and documentation checks pass. Browser checks include completed downloads; installed native CI remains pending.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
     },
     {
@@ -63,15 +63,27 @@
     },
     {
       "label": "Native custom-button appearance",
-      "state": "Open",
-      "detail": "PR #99 light/dark screenshots show readable Linux and Windows Settings controls without a native bevel. Linux dark computed background differs from the declared class and Windows control, so exact platform style parity remains unresolved.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+      "state": "Verified",
+      "detail": "PR #98 merged as 63d098e. PR #99 Windows light/dark screenshots show readable Settings controls; Linux export-download acceptance remains a separate failing gate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/98"
     },
     {
-      "label": "Completed workspace export file",
-      "state": "Failed",
-      "detail": "PR #99 run 34099816603 passed Windows completed-file bytes/hash and full JSON equality. Linux supplied the expected blob filename and success toast but left no workspace JSON in resolved /home/runner; runner Downloads was absent. Absence from those locations is not proof that no download occurred elsewhere.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/99"
+      "label": "Pilot companion",
+      "state": "Verified",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
+    },
+    {
+      "label": "Billing acceptance",
+      "state": "Open",
+      "detail": "RUN-20260917-2350. Re-probed 2026-09-18T06:07Z: production checkout and license return terminal billingDisabled (BILLING_ENABLED off); yearly-price and STRIPE_WEBHOOK_SECRET variables are absent. The annual intent reached Clerk sign-in and GitHub OAuth on 2026-09-17, but authenticated return-state, Stripe test checkout, webhook, entitlement, portal and gated-feature proof remain Unknown. No checkout session or charge was created.",
+      "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
+    },
+    {
+      "label": "Record synchronization",
+      "state": "Open",
+      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and the selected 14-item scope are preserved. No Notion writes were authorized for this program, so the implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     }
   ],
   "issues": [
@@ -132,7 +144,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Verify remaining signed-in web follow-up acceptance; PR #99 preserved the passing Windows native control and reached the Linux follow-up checkpoint before the later export failure.",
+      "nextAction": "Verify remaining signed-in web follow-up acceptance; current MSI/DEB shutdown and reinstall retention passed.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -144,7 +156,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Complete remaining canonical runtime acceptance; retain the readable native screenshots and investigate Linux dark computed-background parity separately.",
+      "nextAction": "Verify native OS export download, Linux header-button readability and remaining canonical runtime acceptance.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -184,18 +196,6 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "cecbf7cfcd9d489a8e92770131436505",
-      "title": "Define iOS Swift release scope after universal prototype",
-      "status": "In progress",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
       "id": "20087f568bbe47248442cddfee89a92c",
       "title": "Define Skill Lab feature scope and first usable experiment",
       "status": "Not started",
@@ -203,6 +203,18 @@
       "area": "Composer",
       "type": "Feature",
       "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "cecbf7cfcd9d489a8e92770131436505",
+      "title": "Define iOS Swift release scope after universal prototype",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
@@ -240,7 +252,7 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Authorize a disposable Linux XDG Downloads fixture repair, then complete prior-version upgrade/restore and macOS interaction/applicable signing.",
+      "nextAction": "Resolve PR #99's conflicts with main, run the authorized Linux XDG Downloads fixture candidate, then complete prior-version upgrade/restore and macOS interaction.",
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
     },
     {
@@ -362,6 +374,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3d5255fc8f4481afbf7ed26ad3432781",
+      "title": "Publish durable billing pilot companion",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/3d5255fc8f4481afbf7ed26ad3432781",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion is Done. Production /companion and /companion/ passed asset, noindex, CSP, sandbox, desktop/mobile layout, interaction and console verification at main 0451f07."
     },
     {
       "id": "3d2255fc8f448162849ad8dbe5c12595",

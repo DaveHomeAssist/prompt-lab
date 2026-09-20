@@ -1,5 +1,5 @@
 import { readFile, readdir, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { relative, resolve, sep } from 'node:path';
 
 const GOOGLE_ANALYTICS_SCRIPT = '<script src="/google-analytics.js" defer></script>';
 const DEFAULT_CSP = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'";
@@ -26,8 +26,10 @@ async function findHtmlFiles(directory) {
 }
 
 export async function instrumentGoogleAnalytics(directory) {
-  const files = await findHtmlFiles(resolve(directory));
+  const root = resolve(directory);
+  const files = await findHtmlFiles(root);
   await Promise.all(files.map(async (file) => {
+    if (relative(root, file).split(sep).includes('companion')) return;
     const html = await readFile(file, 'utf8');
     const instrumented = instrumentHtml(html);
     if (instrumented !== html) await writeFile(file, instrumented, 'utf8');

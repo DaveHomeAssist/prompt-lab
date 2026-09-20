@@ -1,6 +1,49 @@
 # PR #99 Native Acceptance Diagnosis
 
-## Scope and outcome
+## 2026-09-20 stabilization candidate
+
+Phase 2 of the authorized phased program resumes implementation. PR #99 was
+still draft, conflicted with main `823915156f82c88d4b6fd8e213012235909c3938`,
+and its latest Desktop Build run
+[34101896031](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/34101896031)
+failed the Linux completed-file assertion. That historical run is not proof
+for the current candidate.
+
+The branch is reconciled without rewriting history. Change classification:
+
+- Still needed: the completed-download verifier, shared workspace scenario,
+  browser download adapter, normalized Library fixture/order assertions,
+  native appearance diagnostics, and Linux `xdg-user-dirs` dependency.
+- Superseded: the branch's old progress JSON and generated HTML. Preserve the
+  newer main snapshot and refresh it from the complete live issue table.
+- Retained as history: the diagnostic evidence below.
+- Already merged elsewhere or unsafe/obsolete implementation: none among the
+  retained test changes; newer main work is preserved by the merge.
+
+Both disposable Linux acceptance jobs now create a Downloads directory and
+an isolated XDG configuration under `RUNNER_TEMP` before launching the app.
+They verify `xdg-user-dir DOWNLOAD` resolves to that exact directory. The same
+configuration remains active for reinstall/replacement retention. This does
+not change product export behavior, substitute a download, weaken JSON
+equality, or lengthen the completed-file timeout.
+
+Local validation also exposed a pre-existing calendar-dependent unit failure:
+the workspace round-trip test's `2026-08-20` deleted prompt had aged beyond
+the real 30-day retention window. Its test and all runtime source were
+identical to current main. Pin the test clock to the fixture date and restore
+it after each case; leave production retention and the cutoff test intact.
+
+Node 22 local validation passes: 957 Vitest tests, 212 Node tests, six
+browser scenarios at 400/480/1180px, extension and desktop builds, documentation
+checks, workflow YAML parsing, and shell syntax.
+
+Current native results remain pending until the changed candidate runs in
+CI. If the configured destination does not resolve the failure, inspect
+native download lifecycle evidence before changing product behavior. Notion
+is read-only for this program; its dispositions are not synchronized with
+these implementation notes.
+
+## Historical diagnostic scope and outcome
 
 This report closes the diagnostic-only pass for draft PR
 [#99](https://github.com/DaveHomeAssist/prompt-lab/pull/99). It does not
