@@ -1,12 +1,10 @@
-import { decodeJwt, verifyJwt } from '@clerk/backend/jwt';
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { lookupOwnerEntitlement } from './ownerEntitlements.js';
 import { DEFAULT_WEB_ORIGIN, MOBILE_WEB_ORIGIN } from './allowedOrigins.js';
-import { fetchWithTimeout, readListEnv } from './runtimeSafety.js';
+import { readListEnv } from './runtimeSafety.js';
 
 const DEFAULT_ISSUER = 'https://clerk.promptlab.tools';
-const KEY_CACHE_MS = 10 * 60 * 1000;
-const KEY_REFRESH_MS = 30_000;
-let cachedKeys = null;
+let signingKeys = null;
 
 function sessionToken(request) {
   const authorization = request.headers.get('authorization');
@@ -19,50 +17,43 @@ function sessionToken(request) {
   return value ? decodeURIComponent(value) : '';
 }
 
-async function signingKey(kid, issuer, signal) {
-  const url = `${issuer}/.well-known/jwks.json`;
-  const now = Date.now();
-  if (!cachedKeys || cachedKeys.url !== url || now >= cachedKeys.expiresAt
-    || (!cachedKeys.keys.some((key) => key.kid === kid) && now >= cachedKeys.refreshAfter)) {
-    const response = await fetchWithTimeout(url, { signal }, {
-      service: 'Clerk signing keys',
-      timeoutMs: 3000,
-    });
-    if (!response.ok) throw new Error('Clerk signing keys unavailable.');
-    const payload = await response.json();
-    cachedKeys = {
-      url,
-      keys: Array.isArray(payload?.keys) ? payload.keys : [],
-      expiresAt: Date.now() + KEY_CACHE_MS,
-      refreshAfter: Date.now() + KEY_REFRESH_MS,
+function getSigningKeys(issuer) {
+  if (!signingKeys || signingKeys.issuer !== issuer) {
+    signingKeys = {
+      issuer,
+      resolve: createRemoteJWKSet(new URL(`${issuer}/.well-known/jwks.json`), {
+        timeoutDuration: 3000,
+        cooldownDuration: 30_000,
+        cacheMaxAge: 10 * 60 * 1000,
+      }),
     };
   }
-  return cachedKeys.keys.find((key) => key.kid === kid && key.kty === 'RSA');
+  return signingKeys.resolve;
 }
 
 export async function isHostedOwner(request) {
   try {
     const token = sessionToken(request);
     if (!token || token.length > 16_384) return false;
-    const { header, payload } = decodeJwt(token);
+    const candidate = decodeJwt(token);
     const issuer = (process.env.CLERK_JWT_ISSUER || DEFAULT_ISSUER).trim().replace(/\/$/, '');
     // Unverified claims only reject candidates; privilege requires verification below.
-    if (header.alg !== 'RS256' || payload.iss !== issuer || !payload.sid
-      || !lookupOwnerEntitlement({ clerkUserId: payload.sub })) return false;
+    if (candidate.iss !== issuer || !candidate.sid
+      || !lookupOwnerEntitlement({ clerkUserId: candidate.sub })) return false;
 
-    const key = await signingKey(header.kid, issuer, request.signal);
-    if (!key) return false;
-    const claims = await verifyJwt(token, {
-      key,
-      authorizedParties: [
-        DEFAULT_WEB_ORIGIN,
-        MOBILE_WEB_ORIGIN,
-        ...readListEnv('CLERK_AUTHORIZED_PARTIES', []),
-      ],
+    const { payload } = await jwtVerify(token, getSigningKeys(issuer), {
+      algorithms: ['RS256'],
+      issuer,
+      requiredClaims: ['sub', 'sid', 'exp', 'iat', 'nbf', 'azp'],
       ...(process.env.CLERK_JWT_AUDIENCE ? { audience: process.env.CLERK_JWT_AUDIENCE } : {}),
-      clockSkewInMs: 0,
     });
-    return Boolean(lookupOwnerEntitlement({ clerkUserId: claims.sub }));
+    const authorizedParties = [
+      DEFAULT_WEB_ORIGIN,
+      MOBILE_WEB_ORIGIN,
+      ...readListEnv('CLERK_AUTHORIZED_PARTIES', []),
+    ];
+    return authorizedParties.includes(payload.azp)
+      && Boolean(lookupOwnerEntitlement({ clerkUserId: payload.sub }));
   } catch {
     // Missing, expired or unverifiable sessions retain ordinary usage protection.
     return false;
