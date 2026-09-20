@@ -11,7 +11,7 @@
   },
   "mainSha": "4a07867a3e81e2b39e48ff41bbd90525623354a5",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the native scroll-actionability correction on AppImage, then finish Phase 3 merge and deployed readback. Phase 4 awaits an approved Stripe test environment.",
+  "nextAction": "Verify hosted generation from each owner account, then confirm remaining AppImage and deployed Library acceptance. Phase 3 is merged; Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
     {
       "label": "Owner hosted access",
@@ -106,7 +106,7 @@
     {
       "label": "Shared Library contract",
       "state": "Open",
-      "detail": "Draft PR #107 at 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The test now restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction fails on the old helper and passes on the correction. Corrected native CI, merge and production readback remain pending.",
+      "detail": "PR #107 merged as 3d5fa17 on 2026-09-20, including the b7009f1 scroll-actionability correction. Historical candidate 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The merged test correction restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction failed on the old helper and passed on the correction. Post-correction AppImage and deployed Library acceptance were not re-verified in this snapshot and remain open here.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     }
   ],
