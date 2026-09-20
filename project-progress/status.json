@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T20:04:04.366Z",
+  "snapshotAt": "2026-09-20T20:13:21.963Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "3d5fa172211150fd756581f0d00504a611069dc5",
+  "mainSha": "4a07867a3e81e2b39e48ff41bbd90525623354a5",
   "overall": "Acceptance incomplete",
   "nextAction": "Verify the native scroll-actionability correction on AppImage, then finish Phase 3 merge and deployed readback. Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
     {
       "label": "Owner hosted access",
       "state": "Open",
-      "detail": "2026-09-20: Production applies 3 hosted requests per IP per 24 hours and 10 per minute. Verified owner exemption implemented locally, preserving the 100/day shared budget. Proxy tests 22/22 pass. Production deployment and actual signed-in owner proof remain pending. Browser access is blocked because the admin policy check is unavailable.",
-      "url": "https://app.notion.com/p/3e1255fc8f4481e58754eaf713aa11e9"
+      "detail": "2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
     },
     {
       "label": "Product fixes",
@@ -88,7 +88,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 34-row Notion table read on 2026-09-20T20:04:04.366Z. Owner rate-limit issue created and read back as In progress. Existing issue dispositions and 14-item sprint membership preserved; unrelated evidence was not re-audited.",
+      "detail": "Complete 34-row Notion snapshot at 2026-09-20T20:13:21.963Z. Owner issue, implementation RUN and Canonical Hub release notes updated and read back. Owner issue remains In progress for actual account acceptance. Prior dispositions and 14-item plan membership preserved; unrelated evidence was not re-audited.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -377,8 +377,8 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Verify both signed-in owner accounts after deployment.",
-      "verification": "Owner proxy exemption passed deterministic local tests; production and signed-in acceptance pending.",
+      "nextAction": "Refresh PromptLab and verify generation from each intended owner account.",
+      "verification": "PR #109 merged and deployed as 4a07867. API tests, PR checks and live non-billable rejection paths pass. Actual signed-in owner membership and generation remain unverified.",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
