@@ -2,8 +2,9 @@
 
 ## Status
 
-- Status: `proposed`
+- Status: `Phase 0 complete; Phase A not started`
 - Created: `2026-09-20`
+- Updated: `2026-09-21`
 - Baseline commit: `fffcbb3` (`origin/main`)
 - Goal: remove whole-page vertical scrolling from the Prompt Lab app shell, then
   rebuild the navigation model on top of the stabilised shell
@@ -20,21 +21,31 @@ impossible; Phase A and Phase B only start once it is in place.
 
 ## Measured diagnosis
 
-All measurements taken at 1440x768 against the shared React workbench, in the
-**contained** (non-`pageScroll`) code path — that is, the better of the two
-existing layouts.
+Two measurement passes were taken. The first, at 1440x768 against the desktop
+code path with an empty library, established the shape. The second is the one
+that matters and is now enforced in CI: the hosted web build, seeded with 24
+library prompts and a scratch note, across the full route x viewport matrix.
 
-| View | Document height | Viewport | Overflow |
-| --- | --- | --- | --- |
-| Dual Pane | 2209px | 768px | **1441px** |
-| Compose | 1881px | 768px | **1113px** |
-| Library | 1867px | 768px | **1099px** |
-| Write | 849px | 768px | 81px |
-| Scratch | 828px | 768px | 60px |
-| Evaluate | 768px | 768px | 0px |
+Overflow past the viewport, in pixels, at baseline commit `fffcbb3`:
 
-Evaluate measured clean, but with an **empty run history**. Re-measure it with
-seeded runs before treating it as a correct reference implementation.
+| Route | 400 | 768 | 1180 | 1440 | 3840 |
+| --- | --- | --- | --- | --- | --- |
+| Write | 0 | **265** | 0 | 0 | 0 |
+| Library | 0 | **2169** | **2121** | **2121** | **1563** |
+| Compose | 0 | **2228** | **2161** | **2161** | **1981** |
+| Dual Pane | 0 | **1997** | **1917** | **1544** | **1364** |
+| Evaluate | 0 | 0 | 0 | 0 | 0 |
+| Compare | 0 | 0 | 0 | 0 | 0 |
+| Scratch | 0 | **341** | **28** | **28** | **28** |
+
+17 of 35 combinations fail. Two results decide the shape of Phase A:
+
+- **Every mobile-400 combination already passes**, because
+  `.pl-app-shell.is-compact` is the correct pattern. The fix is not novel work.
+- **Evaluate and Compare pass at every width even when seeded with data**, so
+  `RunTimelinePanel` is a working reference implementation of a contained
+  panel, not merely an empty one. This resolves the open question left by the
+  first pass.
 
 ### Root cause 1 — the shell has a height floor, not a height ceiling
 
@@ -116,31 +127,66 @@ A functional regression in the core loop would therefore pass every gate in the
 repository and stay invisible until a human happened to try it. That matches the
 reported incident exactly.
 
-## Phase 0 — guardrails first, zero UI change
+## Phase 0 — guardrails first, zero UI change (delivered)
 
-No UI file is touched in this phase.
+No UI file was touched. Every item below was run locally before commit.
 
 | # | Change | File |
 | --- | --- | --- |
-| 0.1 | Add `schedule:` (every 6h) alongside `workflow_dispatch`; keep the existing concurrency group | `.github/workflows/production-free-account-smoke.yml` |
-| 0.2 | Extend the production smoke to the **core loop**: load `/app/`, type a prompt, save it, assert it appears in Library, reload, assert it persisted | `prompt-lab-extension/e2e/production-free-account.spec.js` |
-| 0.3 | New **layout invariant** spec: for every route x viewport, assert `documentElement.scrollHeight <= innerHeight + 1` | new `prompt-lab-extension/e2e/layout-invariant.spec.js` |
-| 0.4 | Unit test asserting the web shell renders a bounded-height class | `prompt-lab-extension/src/tests/App.webShell.test.jsx` |
+| 0.1 | `schedule: '0 */6 * * *'` added alongside `workflow_dispatch`; workflow renamed to Production Smoke | `.github/workflows/production-free-account-smoke.yml` |
+| 0.2 | New production **core loop** smoke: write → save → find in Library → reload → still there | `prompt-lab-extension/e2e/production-core-loop.spec.js` |
+| 0.2b | PR-time twin of the core loop, run against the local build | `prompt-lab-web/tests/app/core-loop-persistence.spec.js` |
+| 0.3 | **Layout invariant** spec over the route x viewport matrix | `prompt-lab-web/tests/app/layout-invariant.spec.js` |
+| 0.4 | Per-surface shell height contract for extension, desktop and web | `prompt-lab-extension/src/tests/App.shellLayout.test.jsx` |
+| 0.5 | Production config now matches both production specs | `prompt-lab-extension/playwright.production.config.js` |
+| 0.6 | Landing CI path filter widened to the shared source tree | `.github/workflows/landing-ci.yml` |
 
-0.2 needs no provider calls — save and library are local-first — so it costs
-nothing per run and cannot flake on model latency.
+0.2 performs no enhance, so it needs no provider call: it costs nothing per run
+and cannot flake on model latency. Because the library is localStorage-backed,
+each Playwright run gets a fresh context, so the QA account never accumulates
+fixtures.
 
-0.3 runs on every PR over the matrix `400 / 768 / 1180 / 1440 / 3840x1080`
-(the last satisfies WEB-3's 32:9 requirement) across
-`/ /library /composer /split /evaluate /compare /scratch`.
+0.6 matters more than it looks. The layout invariant only guards Phase A if it
+actually runs for Phase A's pull requests, and the filter previously named a
+handful of individual `src/` files — a PR editing `LibraryWorkspace.jsx` would
+not have triggered it. The filter now covers
+`prompt-lab-extension/src/**`.
 
-### Phase 0 exit criteria
+### Why the allowlist asserts failure rather than skipping
 
-The layout invariant spec must be **committed in a failing state**, with a
-known-failure allowlist naming exactly the routes in the measured table above.
-A test that passes before the bug is fixed proves nothing. The allowlist
-shrinks by one route per Phase A pull request and must reach zero entries at
-the end of Phase A.
+`KNOWN_PAGE_SCROLL` holds the 17 failing combinations. Entries in it assert the
+route **still overflows**, so repairing a route fails the suite with an explicit
+instruction to delete its entry. A skip-list would silently rot into a permanent
+exemption; this one cannot. It must reach zero entries at the end of Phase A.
+
+### Phase 0 verification
+
+| Check | Result |
+| --- | --- |
+| `vitest run` (extension) | 96 files, 964 tests passed |
+| `playwright --config=playwright.app.config.js` (web) | 24 passed, 1 skipped (pre-existing: needs `PROMPTLAB_SMOKE_EMAIL`) |
+| Layout invariant against baseline | 5 passed — the recorded matrix is reproducible |
+| Allowlist self-cleaning | Verified: with a candidate fix applied, the suite failed demanding removal of each repaired entry |
+| Production specs | Load and register (`--list`); **not executed** — they need `CLERK_SECRET_KEY` and `PROMPTLAB_QA_FREE_USER_ID`, which are GitHub secrets. First real proof is the first scheduled run. |
+| Workflow YAML | Both files parse; triggers confirmed as `workflow_dispatch` + `schedule` |
+
+### Phase A is smaller than it looked
+
+While verifying the allowlist's self-cleaning behaviour, this candidate patch
+was applied temporarily and then reverted:
+
+```css
+.pl-app-shell:not(.is-compact) { height: 100dvh; min-height: 0; overflow: hidden; }
+.pl-app-shell:not(.is-compact) > main { min-height: 0; overflow-y: auto; }
+```
+
+Every one of the 17 failing combinations fitted the viewport. That confirms root
+cause 1 and means Phase A's shell step is genuinely a two-line change.
+
+It is **not** the finished job: it makes `main` the single scroll owner, whereas
+WEB-2 wants the header pinned and each panel scrolling its own content region.
+Phase A still needs per-panel scroll owners. But the risky part — whether the
+containment model works at all — is now answered, and it does.
 
 ## Phase A — evict vertical scrolling (hosted web only)
 
@@ -225,5 +271,6 @@ shell is switched. Node 22 is available at `/opt/homebrew/opt/node@22/bin`.
 
 1. Sign-off on the Phase B four-destination navigation model.
 2. Confirm who can promote and roll back Vercel production deployments.
-3. Re-measure Evaluate with seeded run history before using it as the reference
+3. ~~Re-measure Evaluate with seeded run history.~~ Done — Evaluate and Compare
+   hold at every width with a seeded library, so they are the reference
    contained-layout implementation.
