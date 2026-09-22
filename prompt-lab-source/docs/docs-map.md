@@ -93,6 +93,7 @@ Dated audit reports are point-in-time snapshots, not status. See below.
 ### Internal audits and technical notes
 
 - `guardrails-guide.md`
+- `tokens-and-secrets.md`
 - `VIEWPORT_SHELL_OVERHAUL_PLAN.md`
 - `BEHAVIORAL_AUDIT_2026-08-11.md`
 - `CODEBASE_AUDIT_2026-03-30.md`
@@ -144,6 +145,12 @@ verified health evidence, and highest-priority executable prompt.
 
 Use the specification for the accepted Council product behavior, orchestration
 boundaries, data contracts, cost controls, failure model, and rollout gates.
+
+### I need to set, rotate, or audit a token
+
+- `tokens-and-secrets.md`
+- `../api/_lib/assertProductionConfig.js`
+- `../prompt-lab-web/scripts/check-production-env.mjs`
 
 ### I need to know why a layout or production check failed
 
