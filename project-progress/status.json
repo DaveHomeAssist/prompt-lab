@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T20:13:21.963Z",
+  "snapshotAt": "2026-09-22T19:58:13.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "4a07867a3e81e2b39e48ff41bbd90525623354a5",
+  "mainSha": "80596b6dcb8fa18ac373422a85ecb81ea2541ce8",
   "overall": "Acceptance incomplete",
   "nextAction": "Verify hosted generation from each owner account, then confirm remaining AppImage and deployed Library acceptance. Phase 3 is merged; Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
+    {
+      "label": "Hosted rate-limit messaging",
+      "state": "Open",
+      "detail": "2026-09-22: Every hosted 429 (proxy burst window, per-IP demo cap, shared daily budget) displayed \"anthropic rate limit hit — wait a moment and retry\", and the daily caps auto-retried. Draft PR #115 (ff17e5e on main 80596b6) adds code/limit/reset_at to proxy 429s and Prompt Lab-attributed recovery that offers Provider Settings for the daily caps and never auto-retries hosted limits. Node 22 local: API 77/77; extension 968/968 Vitest and 219/219 node:test; docs check and web build pass. CI, merge, deployment and live verification are pending. No paid-provider request was made.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/115"
+    },
     {
       "label": "Owner hosted access",
       "state": "Open",
@@ -518,6 +524,18 @@
       "inPlan": true,
       "nextAction": null,
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3e3255fc8f44810da971e75115180562",
+      "title": "Hosted proxy limits are reported as Anthropic rate limits",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e3255fc8f44810da971e75115180562",
+      "inPlan": false,
+      "nextAction": "Merge PR #115 after CI passes, then confirm the deployed burst 429 body carries code hosted_burst_limit using malformed requests, which make no provider call.",
+      "verification": "PR #115 (draft) at ff17e5e on main 80596b6. Node 22 local: API 77/77, extension 968 Vitest + 219 node:test, docs check and web build pass. CI, merge, deployment and live verification pending; no paid-provider request made."
     }
   ]
 }
