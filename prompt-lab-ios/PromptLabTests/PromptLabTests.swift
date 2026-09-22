@@ -119,6 +119,37 @@ final class PromptLabTests: XCTestCase {
     }
 
     @MainActor
+    func testMixedLegacyAliasesKeepEnhancedContentAndVersionHistory() throws {
+        let container = try makeInMemoryContainer()
+        let context = ModelContext(container)
+        let legacy = Data(#"[{"id":"mixed","currentVersionId":"mixed-v1","original":"Original draft","content":"Enhanced legacy content","createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-02T00:00:00Z"}]"#.utf8)
+        _ = try LibraryInterchange.importData(legacy, into: context)
+        let entry = try XCTUnwrap(context.fetch(FetchDescriptor<PromptEntry>()).first)
+        XCTAssertEqual(entry.original, "Original draft")
+        XCTAssertEqual(entry.enhanced, "Enhanced legacy content")
+        let store = WorkbenchStore(provider: RecordedAnthropicProviderClient())
+        store.loadPrompt(entry)
+        XCTAssertEqual(store.draft, "Enhanced legacy content")
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let unchanged = try XCTUnwrap(JSONSerialization.jsonObject(with: entry.rawJSON) as? [String: Any])
+        XCTAssertEqual(unchanged["currentVersionId"] as? String, "mixed-v1")
+        XCTAssertTrue((unchanged["versions"] as? [[String: Any]] ?? []).isEmpty)
+
+        store.draft = "Native revision of legacy content"
+        _ = try store.saveCurrentPrompt(modelContext: context)
+        let root = try XCTUnwrap(JSONSerialization.jsonObject(with: LibraryInterchange.exportData(from: context)) as? [String: Any])
+        let library = try XCTUnwrap(root["library"] as? [[String: Any]])
+        XCTAssertEqual(library[0]["original"] as? String, "Original draft")
+        XCTAssertEqual(library[0]["enhanced"] as? String, "Native revision of legacy content")
+        XCTAssertNotEqual(library[0]["currentVersionId"] as? String, "mixed-v1")
+        let history = try XCTUnwrap(library[0]["versions"] as? [[String: Any]])
+        XCTAssertEqual(history.count, 1)
+        XCTAssertEqual(history[0]["id"] as? String, "mixed-v1")
+        XCTAssertEqual(history[0]["original"] as? String, "Original draft")
+        XCTAssertEqual(history[0]["enhanced"] as? String, "Enhanced legacy content")
+    }
+
+    @MainActor
     func testNativeDeletionAndExplicitBackupRestorePreserveIdentity() throws {
         let data = try Data(contentsOf: XCTUnwrap(Bundle(for: Self.self).url(
             forResource: "promptlab-library-v2", withExtension: "json"

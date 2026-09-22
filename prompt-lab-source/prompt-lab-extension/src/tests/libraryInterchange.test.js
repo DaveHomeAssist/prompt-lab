@@ -12,6 +12,15 @@ describe('shared Library artifact', () => {
     }
   });
 
+  it('keeps distinct original and enhanced content when legacy aliases coexist', () => {
+    const source = normalizeWorkspaceImportSource([{
+      id: 'mixed', currentVersionId: 'mixed-v1', original: 'Original draft', content: 'Enhanced legacy content',
+    }]);
+    expect(source.library[0]).toMatchObject({
+      id: 'mixed', currentVersionId: 'mixed-v1', original: 'Original draft', enhanced: 'Enhanced legacy content',
+    });
+  });
+
   it('rejects ambiguous and corrupt input before preparing writes', () => {
     expect(() => normalizeWorkspaceImportSource({ library: [...libraryFixture.library, libraryFixture.library[0]] })).toThrow('unique');
     for (const entry of [null, 12, { id: 'empty', enhanced: ' ' }, { id: 123, enhanced: 'Invalid identity' }]) {
