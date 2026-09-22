@@ -4,6 +4,12 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generateKeyPairSync, sign } from 'node:crypto';
 
+import {
+  ErrorCategory,
+  HostedLimitCode,
+  normalizeError,
+} from '../prompt-lab-extension/src/lib/errorTaxonomy.js';
+
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const sourceDir = path.resolve(testDir, '..');
 const proxyModuleUrl = pathToFileURL(
@@ -450,6 +456,79 @@ test('proxy enforces a shared global daily limit across client IPs', async () =>
   assert.match(await second.text(), /service daily budget reached/i);
   assert.equal(second.headers.get('X-Global-Remaining'), '0');
   assert.equal(providerCalls, 1);
+});
+
+// Mirrors providers.js: the client rebuilds the proxy 429 into an Error that
+// carries the body's code, limit, and reset time before classification.
+async function classifyProxy429(response) {
+  const data = await response.clone().json();
+  const error = new Error(data.error);
+  error.status = response.status;
+  error.code = data.code;
+  error.limit = data.limit;
+  error.resetAt = data.reset_at;
+  return normalizeError(error, 'anthropic');
+}
+
+test('proxy 429s carry a code, limit, and reset time the client attributes to Prompt Lab', async () => {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  globalThis.fetch = async () => new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  const cases = [
+    {
+      code: HostedLimitCode.BURST,
+      env: { HOSTED_BURST_LIMIT: '1' },
+      limit: 1,
+      request: (clientIp) => makeRequest({ clientIp, headers: { 'x-api-key': 'user-key' } }),
+      secondIp: '203.0.113.10',
+      action: 'retry',
+    },
+    {
+      code: HostedLimitCode.DEMO,
+      env: { HOSTED_DEMO_DAILY_LIMIT: '1' },
+      limit: 1,
+      request: (clientIp) => makeRequest({ clientIp, headers: { 'x-api-key': '__plb_hosted_shared_key__' } }),
+      secondIp: '203.0.113.10',
+      action: 'open_provider_settings',
+    },
+    {
+      code: HostedLimitCode.GLOBAL,
+      env: { HOSTED_DEMO_DAILY_LIMIT: '10', HOSTED_GLOBAL_DAILY_LIMIT: '1' },
+      limit: 1,
+      request: (clientIp) => makeRequest({ clientIp, headers: { 'x-api-key': '__plb_hosted_shared_key__' } }),
+      secondIp: '203.0.113.11',
+      action: 'open_provider_settings',
+    },
+  ];
+
+  for (const entry of cases) {
+    resetEnv();
+    process.env.ANTHROPIC_API_KEY = 'server-key';
+    Object.assign(process.env, entry.env);
+    const handler = await loadHandler();
+
+    assert.equal((await handler(entry.request('203.0.113.10'))).status, 200, entry.code);
+    const limited = await handler(entry.request(entry.secondIp));
+    assert.equal(limited.status, 429, entry.code);
+
+    const body = await limited.clone().json();
+    assert.equal(body.code, entry.code);
+    assert.equal(body.limit, entry.limit);
+    assert.ok(Date.parse(body.reset_at) > Date.now(), `${entry.code} reset_at is a future ISO time`);
+    assert.equal(typeof body.error, 'string');
+
+    const appError = await classifyProxy429(limited);
+    assert.equal(appError.category, ErrorCategory.RATE_LIMIT, entry.code);
+    assert.equal(appError.code, entry.code);
+    assert.equal(appError.source, 'prompt-lab');
+    assert.equal(appError.retryable, false, `${entry.code} must not auto-retry`);
+    assert.match(appError.userMessage, /Prompt Lab limit, not an Anthropic one/);
+    assert.doesNotMatch(appError.userMessage, /anthropic rate limit hit/i);
+    assert.deepEqual(appError.actions, [entry.action]);
+  }
 });
 
 test('production shared-key requests fail closed when durable rate limiting is unavailable', async () => {

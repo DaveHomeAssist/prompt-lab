@@ -142,6 +142,18 @@ a real key; the proxy strips it and substitutes the server-side
 `ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
 provider key. User-supplied keys are never persisted server-side.
 
+The proxy enforces three of its own limits before any request reaches
+Anthropic: a per-IP burst window (`HOSTED_BURST_LIMIT` per minute, all
+requests), a per-IP daily shared-key cap (`HOSTED_DEMO_DAILY_LIMIT`), and a
+service-wide daily shared-key budget (`HOSTED_GLOBAL_DAILY_LIMIT`). Each 429
+body carries a machine-readable `code` (`hosted_burst_limit`,
+`hosted_demo_limit`, `hosted_global_limit`) with `limit` and an ISO `reset_at`.
+`src/lib/providers.js` keeps those fields on the thrown error, and
+`src/lib/errorTaxonomy.js` maps them to Prompt Lab-attributed recovery copy
+that is never auto-retried: the daily caps offer Provider Settings to add a
+key, and the burst window keeps Try Again. A 429 without a hosted `code` is a
+provider rate limit and keeps the generic retryable handling.
+
 Verified owner accounts skip the proxy's per-IP burst and daily demo limits.
 `api/_lib/hostedOwner.js` verifies the Clerk `__session` cookie (or outer Bearer
 header) against the configured Clerk issuer's signing keys and then checks the
