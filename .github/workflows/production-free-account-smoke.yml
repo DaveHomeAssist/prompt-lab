@@ -1,7 +1,16 @@
-name: Production Free Account Smoke
+name: Production Smoke
 
+# Phase 0 guardrail for docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
+#
+# This ran on workflow_dispatch only, so nothing ever checked production
+# automatically. A functional regression could therefore stay live and
+# invisible for as long as nobody happened to click Run workflow.
 on:
   workflow_dispatch:
+  schedule:
+    # Every 6 hours. GitHub runs scheduled workflows on the default branch,
+    # so this always exercises what production is actually built from.
+    - cron: '0 */6 * * *'
 
 permissions:
   contents: read
@@ -41,5 +50,5 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run signed-in production Free-account smoke
+      - name: Run signed-in production smoke (billing surface + core loop)
         run: npm run test:e2e:production-free

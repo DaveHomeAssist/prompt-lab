@@ -79,6 +79,7 @@ Updated: 2026-09-05
 | `docs/next-3-sprints-plan.md` | Near-term sprint execution plan | Active | Three-sprint execution plan focused on activation runway, Evaluate proof, and conversion. |
 | `docs/uxui-bold-restructure-spec.md` | UX/UI redesign spec | Active | Bold cross-surface UX/UI restructuring spec covering landing conversion, app-shell coherence, and phased execution. |
 | `docs/uxui-bold-restructure-plan.md` | UX/UI slice 1 plan | Active | Task-by-task implementation plan for the first cross-surface redesign slice. |
+| `docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md` | Viewport shell overhaul plan | Active | Phased plan to remove whole-page vertical scrolling from the app shell and rebuild navigation, with measured diagnosis and production-monitoring guardrails. |
 | `docs/CODEBASE_AUDIT_2026-03-30.md` | Codebase audit and execution plan | Active | Audit of architecture, infrastructure, stale artifacts, UX gaps, and the executed top-five remediation batch. |
 | `docs/SCRATCHPAD_SHORTCUTS.md` | Scratchpad shortcut policy | Active | Defines the supported scratchpad shortcuts and explicitly documents browser-reserved combos that are intentionally unsupported. |
 | `docs/RUN_OBJECT_SCHEMA_RESEARCH.md` | Run-object schema analysis | Active | Research/reference material for run data modeling. |
