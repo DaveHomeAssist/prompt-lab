@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T12:15:30Z",
+  "snapshotAt": "2026-09-20T20:13:21.963Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "3d5fa172211150fd756581f0d00504a611069dc5",
+  "mainSha": "4a07867a3e81e2b39e48ff41bbd90525623354a5",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify and merge the mixed legacy alias precedence correction, then close Phase 3. Phase 4 awaits an approved Stripe test environment.",
+  "nextAction": "Verify hosted generation from each owner account, then confirm remaining AppImage and deployed Library acceptance. Phase 3 is merged; Phase 4 awaits an approved Stripe test environment.",
   "evidence": [
+    {
+      "label": "Owner hosted access",
+      "state": "Open",
+      "detail": "2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
+    },
     {
       "label": "Product fixes",
       "state": "Verified",
@@ -33,9 +39,9 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Verified",
-      "detail": "PR #107 merged as 3d5fa17 after all 16 checks passed; merged and tested trees match. Vercel production dpl_DmzQDQUNmmH6EJzzDA47Qj6pfMAD is READY for that SHA. Fresh landing, Clerk sign-in and companion rendered without script errors. Dedicated Free-account production smoke 35509518921 passed billing-disabled and gated-control assertions and revoked its temporary session. Full authenticated Library acceptance and broader UX remain separate gates.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
+      "state": "Open",
+      "detail": "PR #105 merged as 0cda069 after all checks passed; its tree matches tested merge 893d6e1. Vercel production dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY is READY for that SHA. Cache-busted landing (including scroll reveal), Clerk sign-in and mobile companion rendered without script errors. This does not establish authenticated behavior or complete UX acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
     },
     {
       "label": "Native Library acceptance",
@@ -82,7 +88,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 33-row Notion table read on 2026-09-20; recorded dispositions and selected 14-item scope are preserved. Notion is read-only, so these implementation notes and Notion records are not synchronized. Unrelated historical evidence has not been re-audited in this phase.",
+      "detail": "Complete 34-row Notion snapshot at 2026-09-20T20:13:21.963Z. Owner issue, implementation RUN and Canonical Hub release notes updated and read back. Owner issue remains In progress for actual account acceptance. Prior dispositions and 14-item plan membership preserved; unrelated evidence was not re-audited.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -100,7 +106,7 @@
     {
       "label": "Shared Library contract",
       "state": "Open",
-      "detail": "PR #107 is merged. Final candidate b7009f1 passed all 16 checks: iPhone/iPad each 27 unit and five UI tests; four installed desktop formats exercised export and restart/reinstall retention; macOS packaging passed. Downloaded native exports match hashes/source and shared importers; 18 browser transfer cases passed. Main iPhone/iPad run 35509473102 passed. A subsequent mixed original/content alias reproduction exposed native precedence divergence; the focused correction now matches shared JS locally and adds unchanged-save/version-history coverage. Follow-up native CI and merge remain pending.",
+      "detail": "PR #107 merged as 3d5fa17 on 2026-09-20, including the b7009f1 scroll-actionability correction. Historical candidate 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The merged test correction restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction failed on the old helper and passed on the correction. Post-correction AppImage and deployed Library acceptance were not re-verified in this snapshot and remain open here.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
     }
   ],
@@ -214,18 +220,6 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "20087f568bbe47248442cddfee89a92c",
-      "title": "Define Skill Lab feature scope and first usable experiment",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Composer",
-      "type": "Feature",
-      "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
       "id": "cecbf7cfcd9d489a8e92770131436505",
       "title": "Define iOS Swift release scope after universal prototype",
       "status": "In progress",
@@ -233,6 +227,18 @@
       "area": "Background",
       "type": "Feature",
       "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "20087f568bbe47248442cddfee89a92c",
+      "title": "Define Skill Lab feature scope and first usable experiment",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Composer",
+      "type": "Feature",
+      "url": "https://app.notion.com/20087f568bbe47248442cddfee89a92c",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
@@ -368,6 +374,18 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "inPlan": false,
+      "nextAction": "Refresh PromptLab and verify generation from each intended owner account.",
+      "verification": "PR #109 merged and deployed as 4a07867. API tests, PR checks and live non-billable rejection paths pass. Actual signed-in owner membership and generation remain unverified.",
+      "id": "3e1255fc8f4481e58754eaf713aa11e9",
+      "title": "Owner accounts are blocked by hosted demo rate limits",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e1255fc8f4481e58754eaf713aa11e9"
     },
     {
       "id": "3d2255fc8f448128a3c7d878a2b5d799",

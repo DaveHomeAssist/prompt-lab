@@ -8,6 +8,7 @@ import {
   readListEnv,
 } from './_lib/runtimeSafety.js';
 import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
+import { isHostedOwner } from './_lib/hostedOwner.js';
 
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
@@ -360,7 +361,10 @@ export default async function handler(request) {
     || request.headers.get('x-real-ip')
     || 'unknown';
 
-  const burstState = await getBurstState(clientIp);
+  const owner = await isHostedOwner(request);
+  const burstState = owner
+    ? { limited: false, remaining: null, resetAt: null, store: 'owner' }
+    : await getBurstState(clientIp);
   if (burstState.limited) {
     return jsonResponse(
       { error: 'Rate limit exceeded. Try again shortly.' },
@@ -404,7 +408,7 @@ export default async function handler(request) {
 
   let demoState = null;
   let globalDemoState = null;
-  if (auth.usingSharedKey) {
+  if (auth.usingSharedKey && !owner) {
     try {
       demoState = await getDemoState(clientIp);
     } catch {
@@ -491,8 +495,9 @@ export default async function handler(request) {
       'X-Hosted-Provider': 'anthropic',
       'X-Hosted-Model': sanitizedBody.model,
       'X-Hosted-Max-Tokens': String(sanitizedBody.maxTokens),
+      'X-Hosted-Access': owner ? 'owner' : 'standard',
       'X-RateLimit-Store': auth.usingSharedKey
-        ? demoState?.store || burstState.store
+        ? globalDemoState?.store || demoState?.store || burstState.store
         : burstState.store,
     };
 
@@ -526,7 +531,7 @@ export default async function handler(request) {
     return jsonResponse(
       { error: error.message || 'Upstream fetch failed' },
       isExternalFetchTimeout(error) ? 504 : 502,
-      { 'X-RateLimit-Store': auth.usingSharedKey ? demoState?.store || burstState.store : burstState.store },
+      { 'X-RateLimit-Store': auth.usingSharedKey ? globalDemoState?.store || demoState?.store || burstState.store : burstState.store },
       request,
     );
   }

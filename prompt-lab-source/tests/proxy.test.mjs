@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { generateKeyPairSync, sign } from 'node:crypto';
 
 const testDir = path.dirname(fileURLToPath(import.meta.url));
 const sourceDir = path.resolve(testDir, '..');
@@ -30,6 +31,13 @@ const ENV_KEYS = [
   'KV_REST_API_TOKEN',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
+  'CLERK_JWT_ISSUER',
+  'CLERK_JWT_AUDIENCE',
+  'CLERK_AUTHORIZED_PARTIES',
+  'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
+  'PROMPTLAB_OWNER_CLERK_USER_IDS',
+  'PROMPTLAB_PRO_OWNER_USER_IDS',
+  'PROMPTLAB_OWNER_USER_IDS',
 ];
 const ORIGINAL_ENV = Object.fromEntries(
   ENV_KEYS.map((key) => [key, process.env[key]]),
@@ -55,6 +63,7 @@ function makeRequest({
   headers = {},
   requestOrigin = 'https://promptlab.tools',
   clientIp = '203.0.113.10',
+  outerHeaders = {},
   body = {
     model: 'claude-sonnet-4-6',
     max_tokens: 800,
@@ -67,6 +76,7 @@ function makeRequest({
       'Content-Type': 'application/json',
       ...(requestOrigin ? { Origin: requestOrigin } : {}),
       ...(clientIp ? { 'x-forwarded-for': clientIp } : {}),
+      ...outerHeaders,
     },
     body: JSON.stringify({
       targetUrl,
@@ -608,4 +618,140 @@ test('proxy keeps the Anthropic timeout active after streaming headers arrive', 
     },
   );
   assert.equal(upstreamAborted, true);
+});
+
+const ownerKeys = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const ownerJwk = { ...ownerKeys.publicKey.export({ format: 'jwk' }), kid: 'owner-test-key', alg: 'RS256' };
+const ownerIssuer = 'https://clerk.owner.example.test';
+
+function ownerToken(claims = {}, privateKey = ownerKeys.privateKey) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: ownerJwk.kid })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    sub: 'user_owner', sid: 'sess_owner', iss: process.env.CLERK_JWT_ISSUER,
+    azp: 'https://promptlab.tools', iat: now, nbf: now - 1, exp: now + 300, ...claims,
+  })).toString('base64url');
+  const input = `${header}.${payload}`;
+  return `${input}.${sign('RSA-SHA256', Buffer.from(input), privateKey).toString('base64url')}`;
+}
+
+function setupOwnerProxy() {
+  process.env.NODE_ENV = 'test';
+  process.env.CLERK_JWT_ISSUER = ownerIssuer;
+  delete process.env.CLERK_JWT_AUDIENCE;
+  delete process.env.CLERK_AUTHORIZED_PARTIES;
+  process.env.PROMPTLAB_PRO_OWNER_CLERK_USER_IDS = 'user_owner, user_second_owner';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.HOSTED_BURST_LIMIT = '1';
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '1';
+  process.env.HOSTED_GLOBAL_DAILY_LIMIT = '20';
+  process.env.ANTHROPIC_API_KEY = 'fixture-shared-key';
+  for (const key of ['KV_REST_API_URL', 'KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN']) {
+    delete process.env[key];
+  }
+  let upstreamCalls = 0;
+  globalThis.fetch = async (url, init) => {
+    if (String(url) === `${process.env.CLERK_JWT_ISSUER}/.well-known/jwks.json`) {
+      return new Response(JSON.stringify({ keys: [ownerJwk] }), { status: 200 });
+    }
+    assert.equal(String(url), 'https://api.anthropic.com/v1/messages');
+    assert.equal(init.headers.cookie, undefined);
+    assert.equal(init.headers.authorization, undefined);
+    assert.equal(init.headers['x-api-key'], 'fixture-shared-key');
+    upstreamCalls += 1;
+    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  return () => upstreamCalls;
+}
+
+test('both verified owners bypass exhausted shared-IP limits without consuming the visitor quota', async () => {
+  const calls = setupOwnerProxy();
+  const handler = await loadHandler();
+  assert.equal((await handler(makeRequest())).status, 200);
+  assert.equal((await handler(makeRequest())).status, 429);
+  for (const sub of ['user_owner', 'user_second_owner', 'user_owner', 'user_second_owner']) {
+    const response = await handler(makeRequest({ outerHeaders: { cookie: `other=value; __session=${ownerToken({ sub })}` } }));
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('X-Hosted-Access'), 'owner');
+    assert.equal(response.headers.get('X-Demo-Remaining'), null);
+  }
+  assert.equal(calls(), 5);
+  assert.equal((await handler(makeRequest())).status, 429);
+});
+
+test('verified owners remain subject to the shared service budget', async () => {
+  const calls = setupOwnerProxy();
+  process.env.HOSTED_GLOBAL_DAILY_LIMIT = '1';
+  const handler = await loadHandler();
+  const outerHeaders = { authorization: `Bearer ${ownerToken()}` };
+  assert.equal((await handler(makeRequest({ outerHeaders }))).status, 200);
+  const blocked = await handler(makeRequest({ outerHeaders }));
+  assert.equal(blocked.status, 429);
+  assert.match(await blocked.text(), /service daily budget reached/i);
+  assert.equal(calls(), 1);
+});
+
+test('owner access fails closed when the production global budget store is unavailable', async () => {
+  const calls = setupOwnerProxy();
+  process.env.NODE_ENV = 'production';
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({ outerHeaders: { cookie: `__session=${ownerToken()}` } }));
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /global usage protection is unavailable/i);
+  assert.equal(calls(), 0);
+});
+
+test('owner access preserves shared-key disablement and body validation', async () => {
+  const calls = setupOwnerProxy();
+  const handler = await loadHandler();
+  const outerHeaders = { cookie: `__session=${ownerToken()}` };
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'false';
+  assert.equal((await handler(makeRequest({ outerHeaders }))).status, 403);
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  assert.equal((await handler(makeRequest({ outerHeaders, body: null }))).status, 400);
+  assert.equal((await handler(makeRequest({ outerHeaders, targetUrl: 'https://attacker.example/v1/messages' }))).status, 403);
+  assert.equal(calls(), 0);
+});
+
+test('invalid, non-owner and spoofed identities cannot escape the daily demo limit', async () => {
+  setupOwnerProxy();
+  process.env.HOSTED_BURST_LIMIT = '0';
+  const forgedKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
+  const attempts = [
+    { cookie: `__session=${ownerToken({ sub: 'user_visitor', email: 'owner@example.test', owner: true })}` },
+    { cookie: `__session=${ownerToken({ exp: 1 })}` },
+    { cookie: `__session=${ownerToken({ nbf: Math.floor(Date.now() / 1000) + 600 })}` },
+    { cookie: `__session=${ownerToken({ iss: 'https://attacker.example' })}` },
+    { cookie: `__session=${ownerToken({ azp: 'https://attacker.example' })}` },
+    { cookie: `__session=${ownerToken({ sid: '' })}` },
+    { cookie: `__session=${ownerToken({}, forgedKey)}` },
+    { cookie: '__session=malformed' },
+    { cookie: '__session=%invalid' },
+    { 'x-clerk-user-id': 'user_owner', 'x-owner': 'true' },
+    { authorization: 'Bearer invalid', cookie: `__session=${ownerToken()}` },
+  ];
+  for (const outerHeaders of attempts) {
+    const handler = await loadHandler();
+    const first = await handler(makeRequest({ outerHeaders }));
+    assert.equal(first.status, 200);
+    assert.equal(first.headers.get('X-Hosted-Access'), 'standard');
+    const blocked = await handler(makeRequest({ outerHeaders }));
+    assert.equal(blocked.status, 429);
+    assert.match(await blocked.text(), /daily hosted demo limit/i);
+  }
+});
+
+test('Clerk key lookup failure preserves visitor limits without an upstream call', async () => {
+  setupOwnerProxy();
+  process.env.CLERK_JWT_ISSUER = 'https://clerk.unavailable.example.test';
+  process.env.HOSTED_BURST_LIMIT = '0';
+  const handler = await loadHandler();
+  assert.equal((await handler(makeRequest())).status, 200);
+  globalThis.fetch = async (url) => {
+    assert.equal(String(url), `${process.env.CLERK_JWT_ISSUER}/.well-known/jwks.json`);
+    throw new Error('fixture key endpoint unavailable');
+  };
+  const response = await handler(makeRequest({ outerHeaders: { cookie: `__session=${ownerToken()}` } }));
+  assert.equal(response.status, 429);
 });

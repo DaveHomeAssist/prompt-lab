@@ -27,6 +27,11 @@ on:
       - "prompt-lab-source/prompt-lab-extension/src/__tests__/useTelemetryState.test.jsx"
       - "prompt-lab-source/prompt-lab-extension/src/__tests__/useBillingState.test.jsx"
       - "prompt-lab-source/prompt-lab-extension/src/tests/App.test.jsx"
+      # Phase A of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md edits the workbench
+      # panels. tests/app/layout-invariant.spec.js only guards those edits if
+      # this job actually runs for them, so the whole shared source tree is
+      # in scope rather than a hand-maintained list of individual files.
+      - "prompt-lab-source/prompt-lab-extension/src/**"
       - "prompt-lab-source/prompt-lab-extension/package.json"
       - "prompt-lab-source/prompt-lab-extension/package-lock.json"
       - "prompt-lab-source/prompt-lab-desktop/package.json"
@@ -68,6 +73,11 @@ on:
       - "prompt-lab-source/prompt-lab-extension/src/__tests__/useTelemetryState.test.jsx"
       - "prompt-lab-source/prompt-lab-extension/src/__tests__/useBillingState.test.jsx"
       - "prompt-lab-source/prompt-lab-extension/src/tests/App.test.jsx"
+      # Phase A of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md edits the workbench
+      # panels. tests/app/layout-invariant.spec.js only guards those edits if
+      # this job actually runs for them, so the whole shared source tree is
+      # in scope rather than a hand-maintained list of individual files.
+      - "prompt-lab-source/prompt-lab-extension/src/**"
       - "prompt-lab-source/prompt-lab-extension/package.json"
       - "prompt-lab-source/prompt-lab-extension/package-lock.json"
       - "prompt-lab-source/prompt-lab-desktop/package.json"

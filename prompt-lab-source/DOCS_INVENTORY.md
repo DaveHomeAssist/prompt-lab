@@ -79,10 +79,14 @@ Updated: 2026-09-05
 | `docs/next-3-sprints-plan.md` | Near-term sprint execution plan | Active | Three-sprint execution plan focused on activation runway, Evaluate proof, and conversion. |
 | `docs/uxui-bold-restructure-spec.md` | UX/UI redesign spec | Active | Bold cross-surface UX/UI restructuring spec covering landing conversion, app-shell coherence, and phased execution. |
 | `docs/uxui-bold-restructure-plan.md` | UX/UI slice 1 plan | Active | Task-by-task implementation plan for the first cross-surface redesign slice. |
+| `docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md` | Viewport shell overhaul plan | Active | Phased plan to remove whole-page vertical scrolling from the app shell and rebuild navigation, with measured diagnosis and production-monitoring guardrails. |
+| `docs/guardrails-guide.md` | Guardrails operating guide | Active | How the production smoke, layout invariant, and shell height contract work; how to run them, and exactly what to do when each one fails. |
+| `docs/tokens-and-secrets.md` | Token and secret reference | Active | Every token PromptLab reads, where each lives (GitHub secrets, Vercel env, end-user device), what breaks without it, and rotation order. Names only, never values. |
 | `docs/CODEBASE_AUDIT_2026-03-30.md` | Codebase audit and execution plan | Active | Audit of architecture, infrastructure, stale artifacts, UX gaps, and the executed top-five remediation batch. |
 | `docs/SCRATCHPAD_SHORTCUTS.md` | Scratchpad shortcut policy | Active | Defines the supported scratchpad shortcuts and explicitly documents browser-reserved combos that are intentionally unsupported. |
 | `docs/RUN_OBJECT_SCHEMA_RESEARCH.md` | Run-object schema analysis | Active | Research/reference material for run data modeling. |
 | `docs/UX_AUDIT_2026-03-17.md` | Product UX audit | Active | Time-bounded audit; verify against current code before treating any finding as live truth. |
+| `docs/ISSUE_TRIAGE_UPDATE_2026-03-24.md` | Import/library/search triage snapshot | Historical | Dated triage decisions for the import, library, and search issue set. Point-in-time record from 2026-03-24; verify each row against current code before acting on it. |
 | `docs/DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md` | Documentation-system audit | Active | Current audit of documentation structure, duplication, drift, and maintenance recommendations. |
 
 ## Public Docs Authoring and Published Copies
