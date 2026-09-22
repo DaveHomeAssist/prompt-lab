@@ -1,5 +1,19 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-09-22
+
+## Clearer hosted limit messages (unreleased)
+
+- When the hosted web app hits one of Prompt Lab's own usage limits, the error
+  now says it is a Prompt Lab limit instead of reporting an Anthropic rate
+  limit.
+- The daily demo cap and the shared daily budget say when they reset and offer
+  Provider Settings so you can add your own Anthropic key. They no longer show
+  Try Again or retry automatically, because a retry cannot succeed before the
+  reset.
+- The per-minute limit says how long to wait and keeps Try Again.
+- Rate limits that really come from Anthropic keep the existing message.
+
 Date: 2026-09-05
 
 ## Local write recovery (unreleased)

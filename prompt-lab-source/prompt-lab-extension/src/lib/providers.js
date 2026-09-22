@@ -25,21 +25,33 @@ export { AppError, normalizeError, isRetryable, getUserMessage } from './errorTa
 
 // ── Shared fetch helpers ────────────────────────────────────────────
 
-async function readErrorMessage(response, fallback) {
+async function readErrorDetails(response, fallback) {
   try {
     const data = await response.json();
-    if (data?.error?.message) return data.error.message;
-    if (typeof data?.error === 'string') return data.error;
-    if (data?.message) return data.message;
-    return fallback;
+    let message = fallback;
+    if (data?.error?.message) message = data.error.message;
+    else if (typeof data?.error === 'string') message = data.error;
+    else if (data?.message) message = data.message;
+    // The hosted proxy tags its own 429s with a top-level code, limit, and
+    // reset time. Keep them so the error taxonomy can tell a Prompt Lab limit
+    // apart from a provider rate limit.
+    return {
+      message,
+      code: typeof data?.code === 'string' ? data.code : undefined,
+      limit: Number.isFinite(data?.limit) ? data.limit : undefined,
+      resetAt: typeof data?.reset_at === 'string' ? data.reset_at : undefined,
+    };
   } catch {
-    return fallback;
+    return { message: fallback };
   }
 }
 
-function responseError(response, message) {
+function responseError(response, { message, code, limit, resetAt }) {
   const error = new Error(message);
   error.status = response?.status;
+  if (code) error.code = code;
+  if (limit != null) error.limit = limit;
+  if (resetAt) error.resetAt = resetAt;
   return error;
 }
 
@@ -139,7 +151,7 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
   }, options.signal));
 
   if (!response.ok) {
-    throw responseError(response, await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
+    throw responseError(response, await readErrorDetails(response, `${descriptor.label} request failed (${response.status})`));
   }
   if (!response.body) {
     throw new Error(`${descriptor.label} returned no stream body.`);
@@ -191,7 +203,7 @@ async function executeProvider(descriptor, payload, settings, fetchImpl, options
   }, options.signal));
 
   if (!response.ok) {
-    throw responseError(response, await readErrorMessage(response, `${descriptor.label} request failed (${response.status})`));
+    throw responseError(response, await readErrorDetails(response, `${descriptor.label} request failed (${response.status})`));
   }
 
   const data = await response.json();

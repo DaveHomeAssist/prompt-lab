@@ -33,6 +33,14 @@ const DEFAULT_MAX_INPUT_CHARS = 50_000;
 const ANTHROPIC_TIMEOUT_MS = 55_000;
 const REDIS_TIMEOUT_MS = 2000;
 
+// Machine-readable 429 codes. The client keys recovery copy on these so a
+// hosted-service limit is never reported as an Anthropic rate limit.
+const LIMIT_CODES = Object.freeze({
+  burst: 'hosted_burst_limit',
+  demo: 'hosted_demo_limit',
+  global: 'hosted_global_limit',
+});
+
 const burstHits = new Map();
 const demoHits = new Map();
 const globalDemoHits = new Map();
@@ -194,6 +202,7 @@ async function getBurstState(ip) {
 
   const state = await incrementWindow('burst', ip, BURST_WINDOW_MS, burstHits);
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
@@ -211,6 +220,7 @@ async function getDemoState(ip) {
     requirePersistent: process.env.NODE_ENV === 'production',
   });
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
@@ -228,11 +238,16 @@ async function getGlobalDemoState() {
     requirePersistent: process.env.NODE_ENV === 'production',
   });
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
     store: state.store,
   };
+}
+
+function toIsoOrNull(resetAt) {
+  return resetAt ? new Date(resetAt).toISOString() : null;
 }
 
 function getServerKey(host) {
@@ -367,7 +382,12 @@ export default async function handler(request) {
     : await getBurstState(clientIp);
   if (burstState.limited) {
     return jsonResponse(
-      { error: 'Rate limit exceeded. Try again shortly.' },
+      {
+        error: 'Rate limit exceeded. Try again shortly.',
+        code: LIMIT_CODES.burst,
+        limit: burstState.limit,
+        reset_at: toIsoOrNull(burstState.resetAt),
+      },
       429,
       {
         'X-RateLimit-Store': burstState.store,
@@ -420,6 +440,9 @@ export default async function handler(request) {
       return jsonResponse(
         {
           error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
+          code: LIMIT_CODES.demo,
+          limit: demoState.limit,
+          reset_at: toIsoOrNull(demoState.resetAt),
           demo_remaining: 0,
           demo_reset_at: demoState.resetAt ? new Date(demoState.resetAt).toISOString() : null,
         },
@@ -460,6 +483,9 @@ export default async function handler(request) {
       return jsonResponse(
         {
           error: 'Hosted service daily budget reached. Try again after the reset window.',
+          code: LIMIT_CODES.global,
+          limit: globalDemoState.limit,
+          reset_at: toIsoOrNull(globalDemoState.resetAt),
           global_remaining: 0,
           global_reset_at: globalDemoState.resetAt
             ? new Date(globalDemoState.resetAt).toISOString()
