@@ -100,6 +100,7 @@ Dated audit reports are point-in-time snapshots, not status. See below.
 - `create-evaluate-restructure-plan.md`
 - `next-3-sprints-plan.md`
 - `UX_AUDIT_2026-03-17.md`
+- `ISSUE_TRIAGE_UPDATE_2026-03-24.md`
 - `DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md`
 - `SCRATCHPAD_SHORTCUTS.md`
 - `CURRENT_MENU_SYSTEM.md`

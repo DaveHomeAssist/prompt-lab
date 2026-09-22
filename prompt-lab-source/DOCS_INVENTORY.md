@@ -86,6 +86,7 @@ Updated: 2026-09-05
 | `docs/SCRATCHPAD_SHORTCUTS.md` | Scratchpad shortcut policy | Active | Defines the supported scratchpad shortcuts and explicitly documents browser-reserved combos that are intentionally unsupported. |
 | `docs/RUN_OBJECT_SCHEMA_RESEARCH.md` | Run-object schema analysis | Active | Research/reference material for run data modeling. |
 | `docs/UX_AUDIT_2026-03-17.md` | Product UX audit | Active | Time-bounded audit; verify against current code before treating any finding as live truth. |
+| `docs/ISSUE_TRIAGE_UPDATE_2026-03-24.md` | Import/library/search triage snapshot | Historical | Dated triage decisions for the import, library, and search issue set. Point-in-time record from 2026-03-24; verify each row against current code before acting on it. |
 | `docs/DOCUMENTATION_SYSTEM_AUDIT_2026-03-20.md` | Documentation-system audit | Active | Current audit of documentation structure, duplication, drift, and maintenance recommendations. |
 
 ## Public Docs Authoring and Published Copies
