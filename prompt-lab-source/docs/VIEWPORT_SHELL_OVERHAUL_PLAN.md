@@ -2,9 +2,10 @@
 
 ## Status
 
-- Status: `Phase 0 complete; Phase A not started`
+- Status: `Phase 0 merged and verified in production; Phase A not started`
 - Created: `2026-09-20`
-- Updated: `2026-09-21`
+- Updated: `2026-09-22`
+- Operating guide: `docs/guardrails-guide.md`
 - Baseline commit: `fffcbb3` (`origin/main`)
 - Goal: remove whole-page vertical scrolling from the Prompt Lab app shell, then
   rebuild the navigation model on top of the stabilised shell
@@ -127,7 +128,10 @@ A functional regression in the core loop would therefore pass every gate in the
 repository and stay invisible until a human happened to try it. That matches the
 reported incident exactly.
 
-## Phase 0 — guardrails first, zero UI change (delivered)
+## Phase 0 — guardrails first, zero UI change (merged)
+
+Merged to `main` as `615ff2b` via PR #111, 14 of 14 checks green. Day-to-day
+operation of these guards is documented in `docs/guardrails-guide.md`.
 
 No UI file was touched. Every item below was run locally before commit.
 
@@ -167,7 +171,7 @@ exemption; this one cannot. It must reach zero entries at the end of Phase A.
 | `playwright --config=playwright.app.config.js` (web) | 24 passed, 1 skipped (pre-existing: needs `PROMPTLAB_SMOKE_EMAIL`) |
 | Layout invariant against baseline | 5 passed — the recorded matrix is reproducible |
 | Allowlist self-cleaning | Verified: with a candidate fix applied, the suite failed demanding removal of each repaired entry |
-| Production specs | Load and register (`--list`); **not executed** — they need `CLERK_SECRET_KEY` and `PROMPTLAB_QA_FREE_USER_ID`, which are GitHub secrets. First real proof is the first scheduled run. |
+| Production specs | **Executed against live production** after merge — run 35698760219, 2 passed in 7.2s. The core loop completed write, save, Library, reload and persistence on `https://promptlab.tools/app/`, with no provider, billing or telemetry request needed. |
 | Workflow YAML | Both files parse; triggers confirmed as `workflow_dispatch` + `schedule` |
 
 ### Phase A is smaller than it looked
