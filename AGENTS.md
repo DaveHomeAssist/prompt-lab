@@ -50,6 +50,22 @@ Choose the single Work Type that best describes the primary deliverable:
 
 Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | packLoadedAt Sort`, `PromptLab | Ops | Session Naming`, `PromptLab | Release | Five Feature Hardening`
 
+## Merge policy
+
+For PromptLab pull requests, once all required checks pass, mark the PR ready and merge it into main using a merge commit. If required checks are still running, enable auto-merge. Never merge when a required check fails. Do not delete source branches unless requested.
+
+## Status reports
+
+When asked to report status, create one verified operational session title for the current work.
+
+First inspect live authoritative sources: current Git state, relevant files, test and build output, CI and deployment status, and the actual user-facing behavior when it applies. Never infer status from prior conversation, a cached report, a task name, or an HTTP 200 alone.
+
+Use exactly this format:
+
+```text
+<STATUS> | <PROJECT> | <ACTION> | <TITLE> | <TIMESTAMP>
+```
+
 ## Required Notion and visual progress updates
 
 After meaningful implementation, verification, merge, release, blocker, or scope updates, reconcile the affected rows in the canonical Notion Issue Backlog and refresh `project-progress/index.html` before closeout. Explicit read-only or no-write requests take precedence; unchanged polling needs no new status note.
