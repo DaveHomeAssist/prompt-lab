@@ -561,6 +561,14 @@ textarea:disabled {
 .pl-mobile-nav button[aria-current='page'] { background: color-mix(in srgb, var(--pl-brand-ember) 14%, transparent); color: var(--pl-brand-ember-bright); opacity: 1; }
 [data-theme='light'] .pl-mobile-nav button[aria-current='page'] { color: var(--pl-brand-ember); }
 .pl-app-shell.is-compact { height: 100dvh; min-height: 0; overflow: hidden; padding-bottom: 0; }
+
+/* Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md. Mirrors the proven
+   .is-compact rule above for the hosted web shell at every width. The shell
+   needs a height ceiling, not a floor: min-height leaves every min-h-0 and
+   overflow-hidden below it inert, because a flex child cannot clamp against
+   an unbounded parent. */
+.pl-app-shell.pl-shell-contained { height: 100dvh; min-height: 0; overflow: hidden; }
+.pl-app-shell.pl-shell-contained > main { min-height: 0; overscroll-behavior: contain; }
 .pl-app-shell.is-compact > main { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 
 @media (max-width: 700px) {

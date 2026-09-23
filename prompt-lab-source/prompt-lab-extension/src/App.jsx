@@ -130,7 +130,19 @@ export default function App({
     initialFocusRef: resetCancelRef,
   });
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
-  const pageScroll = isWeb || isExtension;
+  // Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
+  //
+  // 'contained' locks the shell to the viewport and scrolls inside it.
+  // 'page' is the legacy document flow.
+  //
+  // Hosted web is promoted first. Extension and desktop stay on 'page' until
+  // each is separately promoted, because a bad extension build waits on a
+  // Chrome Web Store re-review to undo. That keeps this change off the two
+  // surfaces that are slowest to roll back.
+  const layoutMode = isWeb ? 'contained' : 'page';
+  const contained = layoutMode === 'contained';
+  // Unchanged for extension (true) and desktop (false); only web flips.
+  const pageScroll = !contained && isExtension;
   const {
     viewportWidth,
     viewportHeight,
@@ -983,7 +995,7 @@ export default function App({
       <div
         ref={appShellRef}
         data-theme={colorMode}
-        className={`pl-app-shell ${compact ? 'is-compact' : ''} ${isExtension ? 'h-screen overflow-y-auto' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
+        className={`pl-app-shell ${compact ? 'is-compact' : ''} ${isExtension ? 'h-screen overflow-y-auto' : contained ? 'pl-shell-contained' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
         style={{ fontFamily: 'system-ui,sans-serif' }}
       >
       <h1 className="sr-only">Prompt Lab</h1>
@@ -1039,7 +1051,7 @@ export default function App({
         </div>
       )}
 
-      <main id="prompt-lab-main" tabIndex={-1} className={`pl-tab-panel flex-1 flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
+      <main id="prompt-lab-main" tabIndex={-1} className={`pl-tab-panel flex-1 flex flex-col ${contained ? 'min-h-0 overflow-y-auto' : pageScroll ? '' : 'overflow-hidden'}`}>
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
         <MainWorkspace
@@ -1249,6 +1261,7 @@ export default function App({
             colorMode={colorMode}
             notify={notify}
             pageScroll={pageScroll}
+            contained={contained}
             library={lib.library}
             collections={lib.collections}
             openNoteId={scratchOpenNoteId}

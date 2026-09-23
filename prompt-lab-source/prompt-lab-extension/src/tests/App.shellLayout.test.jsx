@@ -261,16 +261,16 @@ describe('app shell height contract per surface', () => {
     expect(shell).toHaveClass('min-h-screen');
   });
 
-  it('records the hosted web shell as still unbounded at Phase 0', () => {
+  it('binds the hosted web shell to the viewport', () => {
     const shell = renderShell({ isExtension: false, webMode: true });
 
-    // `min-h-screen` is a height floor, not a ceiling, so every min-h-0 and
-    // overflow-hidden beneath it is inert. This is the defect Phase A fixes,
-    // measured route by route in prompt-lab-web/tests/app/layout-invariant.spec.js.
-    //
-    // Phase A flips this expectation to a bounded height, and the two
-    // assertions above must keep passing unchanged when it does.
-    expect(shell).toHaveClass('min-h-screen');
+    // Phase A1. `min-h-screen` was a height floor, not a ceiling, so every
+    // min-h-0 and overflow-hidden beneath it was inert — a flex child cannot
+    // clamp against an unbounded parent. `.pl-shell-contained` supplies the
+    // ceiling, mirroring the `.is-compact` rule that already worked on mobile.
+    // The behavioural proof is prompt-lab-web/tests/app/layout-invariant.spec.js.
+    expect(shell).toHaveClass('pl-shell-contained');
+    expect(shell).not.toHaveClass('min-h-screen');
     // Token matching, not substring: "min-h-screen" contains "h-screen".
     expect(shell).not.toHaveClass('h-screen');
   });

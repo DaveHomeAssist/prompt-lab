@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Phase 0 merged and verified in production; Phase A not started`
+- Status: `Phase 0 merged and verified; Phase A1 landed, allowlist empty; A3 Compose scroll region outstanding`
 - Created: `2026-09-20`
 - Updated: `2026-09-22`
 - Operating guide: `docs/guardrails-guide.md`
@@ -215,7 +215,7 @@ roll back.
 
 | PR | Change | Removes |
 | --- | --- | --- |
-| A1 | Shell: `height: 100dvh; overflow: hidden` when `layoutMode === 'contained'`, mirroring the proven `.is-compact` rule. Make `main` the single scroll owner as a fallback. | root unbounded height |
+| A1 | **Done.** Shell bound to `100dvh` via `.pl-shell-contained` when `layoutMode === 'contained'`, mirroring `.is-compact`; `ScratchWorkspace`'s `calc(100vh - Nrem)` guesses replaced with `min-h-0`. Released all 17 allowlist entries. | root unbounded height |
 | A2 | `DualPaneWorkspace` — one `overflow-y: auto` on the prompt list and one on the preview | 1441px |
 | A3 | `ComposerTab` — one scroll region on the block list | 1113px |
 | A4 | `LibraryWorkspace` / `LibraryPanel` — scroll the prompt list, pin the sidebar and toolbar | 1099px |
