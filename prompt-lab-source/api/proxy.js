@@ -426,6 +426,24 @@ export default async function handler(request) {
     }, 403, {}, request);
   }
 
+  let sanitizedBody;
+  try {
+    sanitizedBody = sanitizeAnthropicBody(body);
+  } catch (error) {
+    return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400, {}, request);
+  }
+
+  let injected;
+  try {
+    injected = injectServerKey(parsedUrl.toString(), auth.headers, auth.usingSharedKey);
+  } catch (error) {
+    return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
+  }
+
+  // The daily counters only move for a request that will actually be sent
+  // upstream: an oversized or malformed body, or a missing server key, must
+  // not spend one of the caller's few daily demo requests. (The burst counter
+  // above still counts every attempt; it is the flood guard.)
   let demoState = null;
   let globalDemoState = null;
   if (auth.usingSharedKey && !owner) {
@@ -448,6 +466,7 @@ export default async function handler(request) {
         },
         429,
         {
+          'X-Demo-Limit': String(demoState.limit),
           'X-Demo-Remaining': '0',
           'X-RateLimit-Store': demoState.store,
           ...(demoState.resetAt ? { 'X-Demo-Reset': new Date(demoState.resetAt).toISOString() } : {}),
@@ -455,20 +474,6 @@ export default async function handler(request) {
         request,
       );
     }
-  }
-
-  let sanitizedBody;
-  try {
-    sanitizedBody = sanitizeAnthropicBody(body);
-  } catch (error) {
-    return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400, {}, request);
-  }
-
-  let injected;
-  try {
-    injected = injectServerKey(parsedUrl.toString(), auth.headers, auth.usingSharedKey);
-  } catch (error) {
-    return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
   }
 
   if (auth.usingSharedKey) {
@@ -493,6 +498,7 @@ export default async function handler(request) {
         },
         429,
         {
+          'X-Global-Limit': String(globalDemoState.limit),
           'X-Global-Remaining': '0',
           'X-RateLimit-Store': globalDemoState.store,
           ...(globalDemoState.resetAt
@@ -528,6 +534,7 @@ export default async function handler(request) {
     };
 
     if (auth.usingSharedKey && demoState?.remaining != null) {
+      responseHeaders['X-Demo-Limit'] = String(demoState.limit);
       responseHeaders['X-Demo-Remaining'] = String(demoState.remaining);
       if (demoState.resetAt) {
         responseHeaders['X-Demo-Reset'] = new Date(demoState.resetAt).toISOString();
@@ -535,6 +542,7 @@ export default async function handler(request) {
     }
 
     if (auth.usingSharedKey && globalDemoState?.remaining != null) {
+      responseHeaders['X-Global-Limit'] = String(globalDemoState.limit);
       responseHeaders['X-Global-Remaining'] = String(globalDemoState.remaining);
       if (globalDemoState.resetAt) {
         responseHeaders['X-Global-Reset'] = new Date(globalDemoState.resetAt).toISOString();

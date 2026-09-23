@@ -132,12 +132,17 @@ export function authError(source, detail) {
   });
 }
 
+/**
+ * A provider 429. Not auto-retried: an immediate retry lands inside the same
+ * window, and on hosted Prompt Lab each attempt also spends the caller's
+ * hosted quota. The recovery panel still offers a manual Try Again.
+ */
 export function rateLimitError(source, detail) {
   return new AppError({
     category: ErrorCategory.RATE_LIMIT,
     userMessage: `${source} rate limit hit — wait a moment and retry.`,
     debugMessage: detail || `429 from ${source}`,
-    retryable: true,
+    retryable: false,
     source,
   });
 }
@@ -334,11 +339,10 @@ export function normalizeError(err, source = 'unknown') {
 /** Drop-in replacement for isTransientError that works with AppError or raw Error. */
 export function isRetryable(err) {
   if (err instanceof AppError) return err.retryable;
-  // Fallback heuristic for raw errors (backward compat)
+  // Fallback heuristic for raw errors (backward compat). Rate limits are
+  // deliberately absent: see rateLimitError.
   const msg = (err?.message || String(err)).toLowerCase();
-  return msg.includes('429')
-    || msg.includes('rate')
-    || msg.includes('timeout')
+  return msg.includes('timeout')
     || msg.includes('network')
     || msg.includes('failed to fetch')
     || msg.includes('temporar');

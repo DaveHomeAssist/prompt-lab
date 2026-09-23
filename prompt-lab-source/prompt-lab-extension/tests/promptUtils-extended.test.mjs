@@ -397,12 +397,18 @@ test('looksSensitive: handles non-string', () => {
 
 // ── isTransientError (extended) ──────────────────────────────────────────────
 
-test('isTransientError: 429 is transient', () => {
-  assert.equal(isTransientError(new Error('429 Too Many Requests')), true);
+// Rate limits are never auto-retried: a retry lands inside the same window
+// and, on hosted Prompt Lab, spends more of the caller's quota.
+test('isTransientError: 429 is NOT transient', () => {
+  assert.equal(isTransientError(new Error('429 Too Many Requests')), false);
 });
 
-test('isTransientError: rate limit is transient', () => {
-  assert.equal(isTransientError(new Error('Rate limit exceeded')), true);
+test('isTransientError: rate limit is NOT transient', () => {
+  assert.equal(isTransientError(new Error('Rate limit exceeded')), false);
+});
+
+test('isTransientError: words containing "rate" are NOT transient', () => {
+  assert.equal(isTransientError(new Error('Failed to generate a response')), false);
 });
 
 test('isTransientError: timeout is transient', () => {

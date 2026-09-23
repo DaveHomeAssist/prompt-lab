@@ -152,7 +152,21 @@ body carries a machine-readable `code` (`hosted_burst_limit`,
 `src/lib/errorTaxonomy.js` maps them to Prompt Lab-attributed recovery copy
 that is never auto-retried: the daily caps offer Provider Settings to add a
 key, and the burst window keeps Try Again. A 429 without a hosted `code` is a
-provider rate limit and keeps the generic retryable handling.
+provider rate limit; it keeps a manual Try Again but is not auto-retried either,
+because an immediate retry lands in the same window and, on hosted Prompt Lab,
+spends more of the caller's hosted quota.
+
+Only the burst window counts every attempt. The daily demo cap and the global
+budget move only after the request has passed body validation and the server
+key is available, so a rejected request never spends a daily request. Every
+response the proxy serves upstream carries `X-Hosted-Access` and, for
+shared-key calls, `X-Demo-Limit`/`-Remaining`/`-Reset` and
+`X-Global-Limit`/`-Remaining`/`-Reset`; the demo and global 429s carry the
+window that tripped. `src/lib/proxyFetch.js` records these headers in
+`src/lib/hostedQuota.js` (`pl2-hosted-quota` in localStorage), and
+`HostedQuotaBadge.jsx` shows the remaining daily requests under the Create
+actions and in Provider Settings. The badge is hidden for personal keys and
+outside hosted web mode.
 
 Verified owner accounts skip the proxy's per-IP burst and daily demo limits.
 `api/_lib/hostedOwner.js` verifies the Clerk `__session` cookie (or outer Bearer
