@@ -100,7 +100,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 35-row Notion read at 2026-09-23T04:09:35Z; all dispositions, IDs and the selected 14-item plan are preserved. This phased task keeps Notion read-only, so its new Phase 3 evidence is recorded locally and is not synchronized to Notion. Earlier owner-access writes/readbacks by another session remain historical evidence; no umbrella status was promoted from this snapshot.",
+      "detail": "Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
