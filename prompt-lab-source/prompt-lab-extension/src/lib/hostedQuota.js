@@ -48,6 +48,14 @@ function load() {
   return current;
 }
 
+function notifyChanged() {
+  try {
+    globalThis.window?.dispatchEvent(new Event(HOSTED_QUOTA_CHANGED));
+  } catch {
+    // No window (tests, workers).
+  }
+}
+
 function store(next) {
   current = next;
   try {
@@ -55,11 +63,7 @@ function store(next) {
   } catch {
     // Persistence is a convenience; the in-memory snapshot still drives the UI.
   }
-  try {
-    globalThis.window?.dispatchEvent(new Event(HOSTED_QUOTA_CHANGED));
-  } catch {
-    // No window (tests, workers).
-  }
+  notifyChanged();
 }
 
 /** Record the quota headers from a hosted proxy response. */
@@ -115,6 +119,21 @@ export function nextHostedQuotaReset(now = Date.now()) {
     .map((value) => Date.parse(value || ''))
     .filter((value) => Number.isFinite(value) && value > now);
   return resets.length ? Math.min(...resets) : null;
+}
+
+/**
+ * Forget the snapshot. Saving provider settings can switch between the shared
+ * hosted key and a personal key, so the last shared-key windows may no longer
+ * apply; the next hosted response records the current state.
+ */
+export function clearHostedQuota() {
+  current = null;
+  try {
+    globalThis.localStorage?.removeItem(HOSTED_QUOTA_STORAGE_KEY);
+  } catch {
+    // Nothing persisted to remove.
+  }
+  notifyChanged();
 }
 
 /** Reload from storage (another tab wrote) or clear. Test hook as well. */

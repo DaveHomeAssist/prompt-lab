@@ -8,6 +8,7 @@ import {
   resetHostedQuotaCache,
 } from '../lib/hostedQuota.js';
 import { createProxyFetch } from '../lib/proxyFetch.js';
+import { saveSettings } from '../lib/desktopApi.js';
 import HostedQuotaBadge, { describeHostedQuota } from '../HostedQuotaBadge.jsx';
 
 const NOW = Date.parse('2026-09-23T12:00:00.000Z');
@@ -175,5 +176,21 @@ describe('HostedQuotaBadge', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/Hosted demo used up for today/);
     fireEvent.click(screen.getByRole('button', { name: 'Use your own key' }));
     expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the shared-key snapshot as soon as a personal key is saved', () => {
+    render(<HostedQuotaBadge m={theme} />);
+    act(() => recordHostedQuota(proxyResponse(429, {
+      'X-Demo-Limit': '3',
+      'X-Demo-Remaining': '0',
+      'X-Demo-Reset': DEMO_RESET,
+    })));
+    expect(screen.getByTestId('hosted-quota')).toHaveTextContent(/used up/);
+
+    act(() => saveSettings({ provider: 'anthropic', apiKey: 'sk-ant-personal' }));
+
+    expect(screen.queryByTestId('hosted-quota')).toBeNull();
+    expect(localStorage.getItem(HOSTED_QUOTA_STORAGE_KEY)).toBeNull();
+    expect(getHostedQuota()).toBeNull();
   });
 });

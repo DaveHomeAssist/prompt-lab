@@ -163,7 +163,8 @@ response the proxy serves upstream carries `X-Hosted-Access` and, for
 shared-key calls, `X-Demo-Limit`/`-Remaining`/`-Reset` and
 `X-Global-Limit`/`-Remaining`/`-Reset`; the demo and global 429s carry the
 window that tripped. `src/lib/proxyFetch.js` records these headers in
-`src/lib/hostedQuota.js` (`pl2-hosted-quota` in localStorage), and
+`src/lib/hostedQuota.js` (`pl2-hosted-quota` in localStorage; saving provider
+settings clears it, since a personal key changes which windows apply), and
 `HostedQuotaBadge.jsx` shows the remaining daily requests under the Create
 actions and in Provider Settings. The badge is hidden for personal keys and
 outside hosted web mode.
