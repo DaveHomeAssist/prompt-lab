@@ -28,11 +28,12 @@ test('auth classification handles API-key text and explicit status', () => {
   assert.equal(normalizeError({ message: 'Forbidden', status: 403 }).category, ErrorCategory.AUTH);
 });
 
-test('rate-limit errors are retryable', () => {
+test('rate-limit errors are not auto-retried but keep a manual Try Again', () => {
   const result = normalizeError(new Error('429 Too Many Requests'), 'openai');
 
   assert.equal(result.category, ErrorCategory.RATE_LIMIT);
-  assert.equal(result.retryable, true);
+  assert.equal(result.retryable, false);
+  assert.equal(isRetryable(result), false);
   assert.ok(result.actions.includes('retry'));
 });
 
@@ -187,11 +188,12 @@ test('uncoded 429s keep the provider rate-limit behavior', () => {
   const upstream = normalizeError(proxy429(undefined, { message: 'Number of request tokens has exceeded your rate limit.' }), 'anthropic');
   assert.equal(upstream.userMessage, 'anthropic rate limit hit — wait a moment and retry.');
   assert.equal(upstream.source, 'anthropic');
-  assert.equal(upstream.retryable, true);
+  assert.equal(upstream.retryable, false);
+  assert.deepEqual(upstream.actions, ['retry']);
   assert.equal(upstream.code, undefined);
 
   // Unknown codes (e.g. a Node system error code) are ignored.
   const unknownCode = normalizeError(proxy429('ECONNRESET', { message: 'failed (429)' }), 'openai');
   assert.equal(unknownCode.source, 'openai');
-  assert.equal(unknownCode.retryable, true);
+  assert.equal(unknownCode.retryable, false);
 });

@@ -1,5 +1,19 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-09-23
+
+## Hosted quota you can see (unreleased)
+
+- The hosted web app now shows how many free hosted requests you have left
+  today and when they reset, just under the Refine button and in Provider
+  Settings. On your last request, or once they are used up, it offers a link
+  to add your own key.
+- A request the hosted service rejects before sending it on, such as a prompt
+  that is too long, no longer uses up one of your daily requests.
+- Rate limits are no longer retried automatically. An instant retry almost
+  always hit the same limit and, on the hosted app, used up another daily
+  request. Try Again is still there when you want it.
+
 Date: 2026-09-22
 
 ## Clearer hosted limit messages (unreleased)

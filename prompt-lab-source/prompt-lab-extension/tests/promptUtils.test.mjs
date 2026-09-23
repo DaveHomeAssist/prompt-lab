@@ -120,7 +120,7 @@ test('parseEnhancedPayload unwraps JSON string in enhanced field', () => {
 });
 
 test('isTransientError detects retryable conditions', () => {
-  assert.equal(isTransientError(new Error('429 rate limit')), true);
+  assert.equal(isTransientError(new Error('429 rate limit')), false);
   assert.equal(isTransientError(new Error('Network timeout')), true);
   assert.equal(isTransientError(new Error('Bad request')), false);
 });

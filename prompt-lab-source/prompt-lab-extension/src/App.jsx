@@ -1466,6 +1466,7 @@ export default function App({
           show={showDesktopSettings}
           onClose={() => setShowDesktopSettings(false)}
           m={m}
+          colorMode={colorMode}
           notify={notify}
         />
       )}

@@ -8,7 +8,7 @@ import {
   installProviderFixture,
   resolveFixtureScenario,
 } from '../lib/providerFixture.js';
-import { extractTextFromAnthropic, parseEnhancedPayload } from '../promptUtils.js';
+import { extractTextFromAnthropic, isTransientError, parseEnhancedPayload } from '../promptUtils.js';
 
 // Comfortably longer than any normal fixture body, without pinning the exact
 // padding length the fixture uses.
@@ -153,7 +153,9 @@ describe('boundary responses', () => {
 describe('failure responses', () => {
   it('rejects transient errors so retry logic still engages', async () => {
     const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.TRANSIENT_ERROR });
-    await expect(provider(payload('anything'))).rejects.toThrow(/429|rate limit/i);
+    const error = await provider(payload('anything')).catch((caught) => caught);
+    expect(error.message).toMatch(/temporary/i);
+    expect(isTransientError(error)).toBe(true);
   });
 
   it('rejects fatal errors without a retry hint', async () => {
@@ -263,7 +265,7 @@ describe('review gaps', () => {
     delete globalThis.__PROMPTLAB_PROVIDER_FIXTURE__;
   });
 
-  it('rejects the rate-limited scenario with a retryable 429', async () => {
+  it('rejects the rate-limited scenario with a 429', async () => {
     const provider = createFixtureProvider({ scenario: FIXTURE_SCENARIOS.RATE_LIMITED });
     await expect(provider({ prompt: 'anything' })).rejects.toThrow(/429/i);
     await expect(provider({ prompt: 'anything' })).rejects.toThrow(/rate limit/i);

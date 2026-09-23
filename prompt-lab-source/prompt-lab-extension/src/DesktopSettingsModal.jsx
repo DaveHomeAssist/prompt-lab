@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { DEFAULTS, getOllamaEndpoint, OLLAMA_ENDPOINTS } from './lib/providerRegistry.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
+import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import {
   isExtension,
   listOllamaModels,
@@ -27,7 +28,7 @@ const DEFAULT_SETTINGS = {
   ollamaModel: DEFAULTS.ollamaModel,
 };
 
-export default function DesktopSettingsModal({ show, onClose, m, notify }) {
+export default function DesktopSettingsModal({ show, onClose, m, colorMode, notify }) {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [ollamaModels, setOllamaModels] = useState([]);
   const [ollamaStatus, setOllamaStatus] = useState('');
@@ -260,6 +261,7 @@ export default function DesktopSettingsModal({ show, onClose, m, notify }) {
                   Hosted Prompt Lab is currently locked to Anthropic. The shared hosted key is used
                   automatically when you leave the personal key field blank.
                 </p>
+                <HostedQuotaBadge m={m} colorMode={colorMode} />
               </div>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Provider</span>

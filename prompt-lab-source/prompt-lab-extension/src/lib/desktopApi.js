@@ -8,6 +8,7 @@ import { PROVIDER_SETTINGS_CHANGED } from './providerSettingsEvents.js';
 import { callProvider, listOllamaModels as listModels } from './providers.js';
 import { DEFAULTS, normalizeProvider } from './providerRegistry.js';
 import { createProxyFetch } from './proxyFetch.js';
+import { clearHostedQuota } from './hostedQuota.js';
 
 const SETTINGS_KEY = 'pl2-provider-settings';
 const HOSTED_PROVIDER = 'anthropic';
@@ -42,6 +43,8 @@ export function loadSettings() {
 
 export function saveSettings(settings) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(normalizeHostedSettings(settings)));
+  // A personal key added or removed changes which hosted windows apply.
+  clearHostedQuota();
   window.dispatchEvent(new Event(PROVIDER_SETTINGS_CHANGED));
 }
 

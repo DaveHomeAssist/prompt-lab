@@ -59,7 +59,7 @@ describe('hosted proxy limit errors', () => {
 
     expect(error.code).toBeUndefined();
     expect(error.source).toBe('anthropic');
-    expect(error.retryable).toBe(true);
+    expect(error.retryable).toBe(false);
     expect(error.userMessage).toBe('anthropic rate limit hit — wait a moment and retry.');
   });
 });
