@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-23T04:09:35Z",
+  "snapshotAt": "2026-09-23T11:08:00Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "68f0da2cfcf4d92e3b9edb0b2cba4ce38e1b3910",
+  "mainSha": "08f5b7fd50d3fbb2fe8777a1e3f82c7b9390a53f",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
@@ -18,6 +18,12 @@
       "state": "Verified",
       "detail": "2026-09-22: PR #115 merged as 64df11e after all 14 checks passed; production dpl_3SiyYfBqRVYxixuDQVm4FKhyFvcy is READY and serves promptlab.tools. Proxy 429s now carry code/limit/reset_at, and the client shows Prompt Lab-attributed recovery that offers Provider Settings for the daily caps and never auto-retries hosted limits. Live: the /app bundle contains the new copy and all three codes; the proxy returned a hosted_demo_limit 429 (limit 3) without any provider call. The rendered panel was not observed live because /app requires sign-in. A one-off Windows native Library failure on the first commit did not reproduce.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/115"
+    },
+    {
+      "label": "Hosted quota follow-ups",
+      "state": "Verified",
+      "detail": "2026-09-23: PR #119 merged as 08f5b7f after all 13 checks passed (including desktop builds on all three OSes and alternate package acceptance); production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f is READY on promptlab.tools. Provider 429s are no longer auto-retried, the demo cap counts only after body validation, and HostedQuotaBadge shows remaining daily hosted requests. Live: from an IP already over the cap, a malformed shared-key body returned 400 instead of 429, and the demo 429 carries x-demo-limit 3 without a provider call. The rendered badge was not observed live because /app requires sign-in.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/119"
     },
     {
       "label": "Owner hosted access",
@@ -94,7 +100,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 35-row Notion read at 2026-09-23T04:09:35Z; all dispositions, IDs and the selected 14-item plan are preserved. This phased task keeps Notion read-only, so its new Phase 3 evidence is recorded locally and is not synchronized to Notion. Earlier owner-access writes/readbacks by another session remain historical evidence; no umbrella status was promoted from this snapshot.",
+      "detail": "Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -383,8 +389,8 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Run one signed-in Refine and read X-Hosted-Access on /api/proxy; if standard, check the __session cookie and the owner allowlist ID.",
-      "verification": "PR #109 deployed. 2026-09-22 production logs: six paired 429s at 19:36–19:38 UTC on a build with the exemption; shared budget and burst ruled out, so the owner's signed-in session hit the per-IP demo cap (confirmed live at 3). Cause unverified.",
+      "nextAction": "Enter every Production Clerk user ID Dave signs in with into PROMPTLAB_PRO_OWNER_CLERK_USER_IDS, redeploy, and confirm the badge reads Owner access.",
+      "verification": "PR #109 deployed. 2026-09-23: Dave's signed-in request returned X-Hosted-Access standard with X-Demo-Remaining 1. Cookie name (clerk-js 5.127.2 writes plain and suffixed __session), issuer, audience, authorized parties and JWKS ruled out; remaining cause is the owner Clerk user-ID allowlist (set 2026-06-16, never edited). Allowlist value not read (sensitive).",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
@@ -536,6 +542,30 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "PR #115 merged as 64df11e after all 14 checks; production dpl_3SiyYfBqRVYxixuDQVm4FKhyFvcy READY. Live /app bundle carries the new copy and codes; live proxy returned a hosted_demo_limit 429 (limit 3) without a provider call. Rendered panel not observed live (sign-in required)."
+    },
+    {
+      "id": "3e4255fc8f448140afc3d3c261af7b29",
+      "title": "Failed enhance runs become the draft title and golden comparison text",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e4255fc8f448140afc3d3c261af7b29",
+      "inPlan": false,
+      "nextAction": "Fall back only to the latest successful run in App.jsx comparisonText and add a vitest regression.",
+      "verification": "Reproduced 2026-09-23 in local Playwright at 1280px: after a failed Enhance the Create breadcrumb shows 'DRAFT <error message>'. Cause traced to App.jsx:462-467 (evalRuns[0].output fallback includes failed runs). Not fixed."
+    },
+    {
+      "id": "3e4255fc8f4481b9a8f6e68577009108",
+      "title": "Hosted quota is invisible and spent by auto-retries and rejected requests",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e4255fc8f4481b9a8f6e68577009108",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     }
   ]
 }
