@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-22T20:25:02.000Z",
+  "snapshotAt": "2026-09-23T04:09:35Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "64df11efdd626519f95f7be7ecc395b02fe4b5e5",
+  "mainSha": "68f0da2cfcf4d92e3b9edb0b2cba4ce38e1b3910",
   "overall": "Acceptance incomplete",
-  "nextAction": "Read X-Hosted-Access on a signed-in /api/proxy request to find why the owner exemption did not apply, then confirm remaining AppImage and deployed Library acceptance. Phase 3 is merged; Phase 4 awaits an approved Stripe test environment.",
+  "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
     {
       "label": "Hosted rate-limit messaging",
@@ -45,9 +45,9 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Open",
-      "detail": "PR #105 merged as 0cda069 after all checks passed; its tree matches tested merge 893d6e1. Vercel production dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY is READY for that SHA. Cache-busted landing (including scroll reveal), Clerk sign-in and mobile companion rendered without script errors. This does not establish authenticated behavior or complete UX acceptance.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
+      "state": "Verified",
+      "detail": "2026-09-23: production dpl_BUSM4xkNVycVZh51mGDoRa1tYJkF is READY at main 68f0da2 and serves promptlab.tools. Fresh landing, Clerk sign-in and companion renders have no script errors. Production Smoke 35800086480 passed both signed-in save/Library lookup/reload and Free/billing-disabled checks; disposable sessions were revoked and no forbidden provider/billing/telemetry calls occurred. This does not prove the full signed-in Library matrix or Stripe lifecycle.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35800086480"
     },
     {
       "label": "Native Library acceptance",
@@ -88,20 +88,20 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "Phase 4 prerequisite inspection on 2026-09-20: Vercel Preview lacks Stripe secret/webhook and durable-store variables; an approved test Clerk identity is not established. Production secret mode is Unknown and was not read. Existing mocks pass, but webhook duplicate-event and ordering guards are absent in inspected source. Test checkout, entitlement, portal and gated-feature acceptance remain open. No Stripe requests or charges were made.",
+      "detail": "2026-09-23 metadata recheck: Vercel Preview still lacks STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, BILLING_ENABLED and durable-store URL/token variables. Development lacks the same prerequisites and backend Clerk configuration. No approved non-owner billing QA identity or test-price mode has been established. Production secret values were not read. Webhook duplicate-event and ordering guards remain absent in inspected source. Phase 4 stops at its explicit test-environment prerequisites; no Stripe call or charge was made.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 34-row Notion snapshot at 2026-09-20T20:13:21.963Z. Owner issue, implementation RUN and Canonical Hub release notes updated and read back. Owner issue remains In progress for actual account acceptance. Prior dispositions and 14-item plan membership preserved; unrelated evidence was not re-audited.",
+      "detail": "Complete 35-row Notion read at 2026-09-23T04:09:35Z; all dispositions, IDs and the selected 14-item plan are preserved. This phased task keeps Notion read-only, so its new Phase 3 evidence is recorded locally and is not synchronized to Notion. Earlier owner-access writes/readbacks by another session remain historical evidence; no umbrella status was promoted from this snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
       "label": "Merged main regression",
       "state": "Verified",
-      "detail": "Main 0cda069 run 35505648301 passed MSI, DEB, NSIS and AppImage exercise/retention plus macOS packaging. All four downloaded exports match their recorded hashes, sizes, JSON contents and source revision. Windows closes returned 0 with the full owned process tree gone and no storage corruption. The original 2444340 NSIS loss did not recur; its cause remains unconfirmed in the diagnosis.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
+      "detail": "PR #108 main 80596b6 run 35712219143 passed all four installed Windows/Linux formats and macOS universal packaging. Downloaded exports each contain 23 prompts and match source SHA, bytes, checksums, shared content, order and provenance. Each package passed 11 exercise and six retention checks. Windows launchers exited 0 with all owned processes gone; first-launch missing LOG.old diagnostics are retained. Current main has unchanged native Library and shared import adapters.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35712219143"
     },
     {
       "label": "Live UX follow-up",
@@ -111,9 +111,9 @@
     },
     {
       "label": "Shared Library contract",
-      "state": "Open",
-      "detail": "PR #107 merged as 3d5fa17 on 2026-09-20, including the b7009f1 scroll-actionability correction. Historical candidate 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The merged test correction restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction failed on the old helper and passed on the correction. Post-correction AppImage and deployed Library acceptance were not re-verified in this snapshot and remain open here.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
+      "state": "Verified",
+      "detail": "2026-09-23 readback: PR #107 and mixed-alias follow-up #108 are merged; #108 merge is 80596b6. Its main iPhone/iPad run 35712219056 passed 28 unit and five UI tests per device, including unchanged-save identity and revision-history regression. Six downloaded native exports passed production JS importers, checksums and exact source checks. Main desktop run 35712219143 passed MSI, DEB, NSIS and AppImage import/export and restart/reinstall retention; all four completed exports preserve shared IDs/order/content/provenance. The earlier 18 actual-native-file browser transfer cases remain valid for unchanged adapters. Phase 3 artifact compatibility is complete; umbrella Library and release acceptance remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/108"
     }
   ],
   "issues": [
