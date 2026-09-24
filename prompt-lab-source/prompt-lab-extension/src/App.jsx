@@ -1207,7 +1207,11 @@ export default function App({
 
       {/* ══ COMPOSER TAB ══ */}
       {tab === 'composer' && (
-        <div className="pl-tab-panel">
+        // Phase A3. In a contained shell the panel needs a bounded flex parent,
+        // or ComposerTab's flex-1 grows to its content and <main> scrolls as one
+        // block. This mirrors the Evaluate wrapper, which already scrolls
+        // panel-locally. Extension and desktop keep the bare wrapper unchanged.
+        <div className={contained ? 'pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden' : 'pl-tab-panel'}>
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
           addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
         </div>
