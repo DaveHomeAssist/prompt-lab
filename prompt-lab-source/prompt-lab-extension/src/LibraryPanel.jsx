@@ -64,7 +64,7 @@ function FilterChip({ label, icon, onRemove, m }) {
  * Memoized: only re-renders when lib state, editor layout, or theme change.
  */
 const LibraryPanel = memo(function LibraryPanel({
-  m, lib, compact, isWeb, showEditorPane,
+  m, lib, compact, pageScroll = false, showLegacyRecover = false, showEditorPane,
   effectiveEditorLayout, setEditorLayout,
   editingId, setSaveTitle,
   testCasesByPrompt, evalRuns, editingCaseId,
@@ -128,7 +128,7 @@ const LibraryPanel = memo(function LibraryPanel({
   };
 
   return (
-    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${isWeb ? '' : 'overflow-hidden'}`}>
+    <div className={`${showEditorPane && !compact ? 'w-1/2' : 'w-full'} flex flex-col ${pageScroll ? '' : 'overflow-hidden'}`}>
       <div className={`p-3 border-b ${m.border} flex flex-col gap-2 shrink-0`}>
         <div className={`flex gap-2 ${compact ? 'flex-col' : ''}`}>
           <div className="relative flex-1">
@@ -148,7 +148,7 @@ const LibraryPanel = memo(function LibraryPanel({
             >
               {canExportLibrary ? 'Export' : 'Export Pro'}
             </button>
-            {isWeb && typeof lib.recoverLegacyWebLibrary === 'function' && (
+            {showLegacyRecover && typeof lib.recoverLegacyWebLibrary === 'function' && (
               <button
                 type="button"
                 onClick={() => lib.recoverLegacyWebLibrary({ force: true })}
@@ -280,7 +280,7 @@ const LibraryPanel = memo(function LibraryPanel({
           onClose={() => setShowPackStudio(false)}
         />
       )}
-      <div className={`${isWeb ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-3`}>
+      <div className={`${pageScroll ? '' : 'flex-1 overflow-y-auto'} p-3 flex flex-col gap-3`}>
         <section className={`${m.surface} ${accentPanelClass} rounded-xl p-4`}>
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">

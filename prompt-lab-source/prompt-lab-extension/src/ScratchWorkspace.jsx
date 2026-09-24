@@ -176,6 +176,7 @@ export default function ScratchWorkspace({
   colorMode = 'dark',
   notify,
   pageScroll = false,
+  contained = false,
   onPromoteToLibrary,
   library = [],
   collections = [],
@@ -221,8 +222,17 @@ export default function ScratchWorkspace({
   const readingMinutes = words === 0 ? 0 : Math.max(1, Math.ceil(words / 225));
   const hasSelection = selection.end > selection.start && Boolean(selection.text.trim());
   const isDark = colorMode === 'dark';
-  const shellMinHeightClass = pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
-  const editorMinHeightClass = pageScroll ? 'min-h-[calc(100vh-18rem)]' : 'min-h-[calc(100vh-16rem)]';
+  // Phase A1. These calc(100vh - Nrem) constants guess the chrome height and are
+  // wrong whenever the header wraps, the telemetry banner shows, or density
+  // changes. Inside a viewport-locked shell they also force the panel taller
+  // than the space it was given, so the document scrolls again. A contained
+  // shell needs no guess: min-h-0 lets the flex chain do the work.
+  const shellMinHeightClass = contained
+    ? 'min-h-0'
+    : pageScroll ? 'min-h-[calc(100vh-9rem)]' : 'min-h-[calc(100vh-7rem)]';
+  const editorMinHeightClass = contained
+    ? 'min-h-0'
+    : pageScroll ? 'min-h-[calc(100vh-18rem)]' : 'min-h-[calc(100vh-16rem)]';
 
   const outline = useMemo(() => {
     let offset = 0;

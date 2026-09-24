@@ -34,11 +34,19 @@ const standardSuccess = () => proxyResponse(200, {
 });
 
 beforeEach(() => {
+  // The fixtures carry absolute reset instants (DEMO_RESET, GLOBAL_RESET), and
+  // recordHostedQuota/getHostedQuota default to Date.now(). Without a pinned
+  // clock these tests pass only until the wall clock crosses DEMO_RESET, then
+  // the snapshot reads as expired and the badge renders nothing. Pin Date alone
+  // so real timers, React scheduling and fetch keep working.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(NOW);
   localStorage.clear();
   resetHostedQuotaCache();
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   localStorage.clear();
   resetHostedQuotaCache();

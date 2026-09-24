@@ -36,40 +36,17 @@ const VIEWPORTS = [
   { id: 'ultrawide-3840', width: 3840, height: 1080 },
 ];
 
-// Routes that scroll the document today, as `<routeId>@<viewportId>`, measured
-// at baseline commit fffcbb3 — 17 of 35 combinations. Phase A empties this set.
-// See docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md for the work order.
+// Routes that scroll the document, as `<routeId>@<viewportId>`.
 //
-// Two facts worth keeping in view:
-//   - every mobile-400 combination already passes, because
-//     `.pl-app-shell.is-compact` in index.css is the correct pattern
-//   - evaluate and compare pass at every width even when seeded with data,
-//     so RunTimelinePanel is the reference contained-layout implementation
-const KNOWN_PAGE_SCROLL = new Set([
-  // Write overflows at tablet width only (265px) — the header wraps there.
-  'write@tablet-768',
-  // Library: 2169 / 2121 / 2121 / 1563 px over.
-  'library@tablet-768',
-  'library@desktop-1180',
-  'library@desktop-1440',
-  'library@ultrawide-3840',
-  // Compose: 2228 / 2161 / 2161 / 1981 px over.
-  'composer@tablet-768',
-  'composer@desktop-1180',
-  'composer@desktop-1440',
-  'composer@ultrawide-3840',
-  // Dual Pane: 1997 / 1917 / 1544 / 1364 px over.
-  'split@tablet-768',
-  'split@desktop-1180',
-  'split@desktop-1440',
-  'split@ultrawide-3840',
-  // Scratch: 341 px at tablet, 28 px elsewhere — the calc(100vh - Nrem)
-  // constants in PadTab/ScratchWorkspace guess the chrome height wrongly.
-  'scratch@tablet-768',
-  'scratch@desktop-1180',
-  'scratch@desktop-1440',
-  'scratch@ultrawide-3840',
-]);
+// EMPTY, and it must stay empty. At baseline fffcbb3 this held 17 of 35
+// combinations; Phase A1 (bounded hosted-web shell, plus removing the
+// calc(100vh - Nrem) guesses in ScratchWorkspace) released every one.
+//
+// Entries here assert a route STILL overflows, so this set can only shrink:
+// repairing a route fails the suite until its key is deleted. Do not add a key
+// to silence a new failure — a new overflow means a panel regressed, and the
+// panel is what needs fixing. See docs/guardrails-guide.md.
+const KNOWN_PAGE_SCROLL = new Set([]);
 
 // A one-pixel tolerance absorbs sub-pixel rounding in Chromium's layout.
 const TOLERANCE_PX = 1;
