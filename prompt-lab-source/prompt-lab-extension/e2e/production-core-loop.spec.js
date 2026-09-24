@@ -38,6 +38,19 @@ function reportPhase(phase) {
   console.info(`[production-core-loop] ${phase}`);
 }
 
+// Mirrors prompt-lab-web/tests/app/layout-invariant.spec.js, but against the
+// real signed-in production app. That local spec proves the shell in a dev
+// build; only this proves what users actually get on promptlab.tools.
+const LAYOUT_ROUTES = ['#/', '#/library', '#/composer', '#/split', '#/evaluate', '#/compare', '#/scratch'];
+const LAYOUT_VIEWPORTS = [
+  { width: 768, height: 900 },
+  { width: 1440, height: 900 },
+];
+
+async function documentOverflow(page) {
+  return page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
+}
+
 function readSavedEntry(page, marker) {
   return page.evaluate((needle) => {
     const entries = JSON.parse(localStorage.getItem('pl2-library') || '[]');
@@ -47,7 +60,8 @@ function readSavedEntry(page, marker) {
 }
 
 test('@production signed-in Free account can write, save, and reload a prompt', async ({ page }) => {
-  test.setTimeout(120_000);
+  // Headroom for the 14-page layout sweep that runs after the core loop.
+  test.setTimeout(180_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
   const clerkClient = createClerkClient({ secretKey: clerkSecretKey });
 
@@ -148,6 +162,26 @@ test('@production signed-in Free account can write, save, and reload a prompt', 
     ).toMatchObject({ id: saved.id, title: saved.title });
     await page.getByTestId('library-search').fill(saved.title);
     await expect(page.getByText(saved.title, { exact: true }).first()).toBeVisible();
+
+    // Runs last so a layout failure can never mask a core-loop failure above.
+    // The saved prompt plus the bundled starter library give the panels enough
+    // content to overflow if the shell were unbounded.
+    reportPhase('checking the document never scrolls in production');
+    const overflowing = [];
+    for (const viewport of LAYOUT_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      for (const route of LAYOUT_ROUTES) {
+        await page.goto(`${appUrl.href}${route}`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByRole('banner')).toBeVisible();
+        await page.waitForTimeout(350);
+        const overflow = await documentOverflow(page);
+        if (overflow > 1) overflowing.push(`${route} @ ${viewport.width}x${viewport.height}: ${overflow}px`);
+      }
+    }
+    expect(
+      overflowing,
+      'The production app shell must not scroll the document. Scrolling belongs to a panel-local region.',
+    ).toEqual([]);
 
     expect(
       blockedRequests,
