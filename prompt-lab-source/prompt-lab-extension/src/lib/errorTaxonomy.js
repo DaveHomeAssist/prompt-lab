@@ -44,6 +44,17 @@ export const ErrorCategory = Object.freeze({
   UNKNOWN:    'unknown',
 });
 
+// Codes the hosted proxy (api/proxy.js LIMIT_CODES) attaches to its own 429s.
+// These are Prompt Lab service limits, not provider rate limits.
+export const HostedLimitCode = Object.freeze({
+  BURST:  'hosted_burst_limit',   // per-IP requests per minute
+  DEMO:   'hosted_demo_limit',    // per-IP shared-key requests per day
+  GLOBAL: 'hosted_global_limit',  // service-wide shared-key requests per day
+});
+
+const HOSTED_LIMIT_CODES = new Set(Object.values(HostedLimitCode));
+const HOSTED_SOURCE = 'prompt-lab';
+
 // ── AppError ────────────────────────────────────────────────────────
 export class AppError extends Error {
   /**
@@ -54,8 +65,11 @@ export class AppError extends Error {
    * @param {boolean} opts.retryable   — whether the caller should retry
    * @param {string} opts.source       — originating provider or subsystem
    * @param {number} [opts.status]     — HTTP status code if applicable
+   * @param {string} [opts.code]       — machine-readable cause, e.g. a HostedLimitCode
+   * @param {{ suggestions?: string[], actions?: string[] }} [opts.recovery]
+   *   — cause-specific recovery that overrides the category defaults
    */
-  constructor({ category, userMessage, debugMessage, retryable = false, source = '', status }) {
+  constructor({ category, userMessage, debugMessage, retryable = false, source = '', status, code, recovery }) {
     super(userMessage);
     this.name = 'AppError';
     this.category = category;
@@ -64,10 +78,13 @@ export class AppError extends Error {
     this.retryable = retryable;
     this.source = source;
     if (status != null) this.status = status;
+    if (code) this.code = code;
+    if (recovery) this.recovery = recovery;
   }
 
   /** UI-facing recovery suggestions derived from category. */
   get suggestions() {
+    if (this.recovery?.suggestions) return this.recovery.suggestions;
     switch (this.category) {
       case ErrorCategory.AUTH:
         return ['Check that the provider API key is present and valid.', 'Open provider settings and paste a fresh key.'];
@@ -88,6 +105,7 @@ export class AppError extends Error {
 
   /** UI-facing action tokens consumed by error panel buttons. */
   get actions() {
+    if (this.recovery?.actions) return this.recovery.actions;
     switch (this.category) {
       case ErrorCategory.AUTH:
         return ['open_provider_settings'];
@@ -114,13 +132,82 @@ export function authError(source, detail) {
   });
 }
 
+/**
+ * A provider 429. Not auto-retried: an immediate retry lands inside the same
+ * window, and on hosted Prompt Lab each attempt also spends the caller's
+ * hosted quota. The recovery panel still offers a manual Try Again.
+ */
 export function rateLimitError(source, detail) {
   return new AppError({
     category: ErrorCategory.RATE_LIMIT,
     userMessage: `${source} rate limit hit — wait a moment and retry.`,
     debugMessage: detail || `429 from ${source}`,
-    retryable: true,
+    retryable: false,
     source,
+  });
+}
+
+/**
+ * Describe when a limit resets, relative to now: "in 40 seconds",
+ * "in about 5 minutes", "in about 23 hours". Empty when the time is unknown.
+ */
+export function formatResetHint(resetAt, now = Date.now()) {
+  const target = Date.parse(resetAt);
+  if (!Number.isFinite(target)) return '';
+  const diffMs = target - now;
+  if (diffMs <= 0) return 'in a moment';
+  const seconds = Math.ceil(diffMs / 1000);
+  if (seconds < 60) return `in ${seconds} second${seconds === 1 ? '' : 's'}`;
+  const minutes = Math.ceil(diffMs / 60_000);
+  if (minutes < 60) return `in about ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.round(minutes / 60);
+  return `in about ${hours} hour${hours === 1 ? '' : 's'}`;
+}
+
+const NOT_PROVIDER = 'This is a Prompt Lab limit, not an Anthropic one.';
+const ADD_OWN_KEY = 'Add your own Anthropic API key in Provider Settings to keep going now.';
+
+/**
+ * A hosted-service limit enforced by Prompt Lab's own proxy. Retrying within
+ * the window cannot succeed, so these are never auto-retried.
+ */
+export function hostedLimitError(code, { detail, limit, resetAt, now = Date.now() } = {}) {
+  const hint = formatResetHint(resetAt, now);
+  const hasLimit = Number.isFinite(limit) && limit > 0;
+  let userMessage;
+  let recovery;
+
+  if (code === HostedLimitCode.DEMO) {
+    const cap = hasLimit ? ` (${limit} request${limit === 1 ? '' : 's'} per day)` : ' for today';
+    userMessage = `Prompt Lab's free hosted demo limit is used up${cap}. ${NOT_PROVIDER}${hint ? ` It resets ${hint}.` : ''}`;
+    recovery = {
+      suggestions: [ADD_OWN_KEY, hint ? `Or wait until it resets ${hint}.` : 'Or wait for the daily reset.'],
+      actions: ['open_provider_settings'],
+    };
+  } else if (code === HostedLimitCode.GLOBAL) {
+    userMessage = `Prompt Lab's shared hosted budget for today is used up. ${NOT_PROVIDER}${hint ? ` It resets ${hint}.` : ''}`;
+    recovery = {
+      suggestions: [ADD_OWN_KEY, hint ? `Or wait until it resets ${hint}.` : 'Or wait for the daily reset.'],
+      actions: ['open_provider_settings'],
+    };
+  } else {
+    const cap = hasLimit ? ` (limit ${limit})` : '';
+    userMessage = `Too many requests to Prompt Lab's hosted service in the last minute${cap}. ${NOT_PROVIDER}${hint ? ` You can try again ${hint}.` : ''}`;
+    recovery = {
+      suggestions: [hint ? `Try again ${hint}.` : 'Wait about a minute, then try again.', 'Close other Prompt Lab tabs that are sending requests.'],
+      actions: ['retry'],
+    };
+  }
+
+  return new AppError({
+    category: ErrorCategory.RATE_LIMIT,
+    userMessage,
+    debugMessage: detail || `429 ${code} from Prompt Lab hosted proxy`,
+    retryable: false,
+    source: HOSTED_SOURCE,
+    status: 429,
+    code,
+    recovery,
   });
 }
 
@@ -198,6 +285,12 @@ export function normalizeError(err, source = 'unknown') {
   const msg = rawMessage.toLowerCase();
   const status = err?.status;
 
+  // Hosted proxy limits carry an explicit code. Classify them before the
+  // message heuristics so they are never reported as a provider rate limit.
+  if (HOSTED_LIMIT_CODES.has(err?.code)) {
+    return hostedLimitError(err.code, { detail: rawMessage, limit: err.limit, resetAt: err.resetAt });
+  }
+
   // Auth
   if (msg.includes('api key') || msg.includes('unauthorized') || status === 401 || status === 403) {
     return authError(source, err?.message);
@@ -246,11 +339,10 @@ export function normalizeError(err, source = 'unknown') {
 /** Drop-in replacement for isTransientError that works with AppError or raw Error. */
 export function isRetryable(err) {
   if (err instanceof AppError) return err.retryable;
-  // Fallback heuristic for raw errors (backward compat)
+  // Fallback heuristic for raw errors (backward compat). Rate limits are
+  // deliberately absent: see rateLimitError.
   const msg = (err?.message || String(err)).toLowerCase();
-  return msg.includes('429')
-    || msg.includes('rate')
-    || msg.includes('timeout')
+  return msg.includes('timeout')
     || msg.includes('network')
     || msg.includes('failed to fetch')
     || msg.includes('temporar');

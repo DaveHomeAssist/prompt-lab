@@ -142,6 +142,33 @@ a real key; the proxy strips it and substitutes the server-side
 `ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
 provider key. User-supplied keys are never persisted server-side.
 
+The proxy enforces three of its own limits before any request reaches
+Anthropic: a per-IP burst window (`HOSTED_BURST_LIMIT` per minute, all
+requests), a per-IP daily shared-key cap (`HOSTED_DEMO_DAILY_LIMIT`), and a
+service-wide daily shared-key budget (`HOSTED_GLOBAL_DAILY_LIMIT`). Each 429
+body carries a machine-readable `code` (`hosted_burst_limit`,
+`hosted_demo_limit`, `hosted_global_limit`) with `limit` and an ISO `reset_at`.
+`src/lib/providers.js` keeps those fields on the thrown error, and
+`src/lib/errorTaxonomy.js` maps them to Prompt Lab-attributed recovery copy
+that is never auto-retried: the daily caps offer Provider Settings to add a
+key, and the burst window keeps Try Again. A 429 without a hosted `code` is a
+provider rate limit; it keeps a manual Try Again but is not auto-retried either,
+because an immediate retry lands in the same window and, on hosted Prompt Lab,
+spends more of the caller's hosted quota.
+
+Only the burst window counts every attempt. The daily demo cap and the global
+budget move only after the request has passed body validation and the server
+key is available, so a rejected request never spends a daily request. Every
+response the proxy serves upstream carries `X-Hosted-Access` and, for
+shared-key calls, `X-Demo-Limit`/`-Remaining`/`-Reset` and
+`X-Global-Limit`/`-Remaining`/`-Reset`; the demo and global 429s carry the
+window that tripped. `src/lib/proxyFetch.js` records these headers in
+`src/lib/hostedQuota.js` (`pl2-hosted-quota` in localStorage; saving provider
+settings clears it, since a personal key changes which windows apply), and
+`HostedQuotaBadge.jsx` shows the remaining daily requests under the Create
+actions and in Provider Settings. The badge is hidden for personal keys and
+outside hosted web mode.
+
 Verified owner accounts skip the proxy's per-IP burst and daily demo limits.
 `api/_lib/hostedOwner.js` verifies the Clerk `__session` cookie (or outer Bearer
 header) against the configured Clerk issuer's signing keys and then checks the

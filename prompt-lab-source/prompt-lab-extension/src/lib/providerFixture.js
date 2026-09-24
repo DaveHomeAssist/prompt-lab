@@ -177,7 +177,8 @@ function errorForScenario(scenario) {
   switch (scenario) {
     case FIXTURE_SCENARIOS.TRANSIENT_ERROR:
       // Message shaped so isTransientError() classifies it as retryable.
-      return new Error('429 rate limit exceeded (fixture transient error)');
+      // (429s are deliberately not auto-retried, so this is not a rate limit.)
+      return new Error('Temporary upstream failure (fixture transient error)');
     case FIXTURE_SCENARIOS.RATE_LIMITED:
       return new Error('429 Too Many Requests (fixture rate limit)');
     case FIXTURE_SCENARIOS.TIMEOUT: {

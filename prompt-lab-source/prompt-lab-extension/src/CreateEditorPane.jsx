@@ -7,6 +7,7 @@ import { getLintQuickFixMeta } from './promptLint';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { describeFollowUpSource } from './lib/followUpProvenance.js';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
+import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
 /**
@@ -441,6 +442,8 @@ export default function CreateEditorPane({
             enhanceShortcutLabel={`${primaryModKey}+Enter`}
             runCasesLocked={runCasesLocked}
           />
+
+          <HostedQuotaBadge m={m} colorMode={colorMode} onOpenSettings={openOptions} />
 
           {/* Status + test cases merged indicator strip */}
           {(loading || batchProgress.active || optimisticSaveVisible || (editingId && currentTestCases.length > 0)) && (

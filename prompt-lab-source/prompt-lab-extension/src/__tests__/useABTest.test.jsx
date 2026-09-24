@@ -138,7 +138,7 @@ describe('useABTest', () => {
   it('retries one transient failure before succeeding', async () => {
     vi.useFakeTimers();
     callModel
-      .mockRejectedValueOnce(new Error('429 rate limited'))
+      .mockRejectedValueOnce(new Error('Network timeout'))
       .mockResolvedValueOnce(anthropicResponse('Recovered response'));
 
     const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
@@ -157,6 +157,26 @@ describe('useABTest', () => {
     expect(result.current.abA.error).toBe(false);
     expect(result.current.abA.response).toBe('Recovered response');
     expect(saveEvalRun).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not auto-retry a rate limit', async () => {
+    vi.useFakeTimers();
+    callModel.mockRejectedValueOnce(new Error('429 rate limited'));
+
+    const { result } = renderHook(() => useABTest({ notify: vi.fn() }));
+
+    await act(async () => {
+      result.current.setAbA((prev) => ({ ...prev, prompt: 'Rate limited' }));
+    });
+
+    await act(async () => {
+      const runPromise = result.current.runAB('a');
+      await vi.advanceTimersByTimeAsync(400);
+      await runPromise;
+    });
+
+    expect(callModel).toHaveBeenCalledTimes(1);
+    expect(result.current.abA.error).toBe(true);
   });
 
   it('ignores stale responses when a newer request for the same side wins', async () => {

@@ -1,3 +1,5 @@
+import { recordHostedQuota } from './hostedQuota.js';
+
 /**
  * Proxy-aware fetch wrapper for hosted web mode.
  * Routes provider API requests through a Vercel Edge Function to bypass CORS.
@@ -21,6 +23,8 @@ export function createProxyFetch(proxyUrl = '/api/proxy') {
       signal: init.signal,
     });
 
+    // Headers only; the body stays unread for the provider layer.
+    recordHostedQuota(res);
     return res;
   };
 }

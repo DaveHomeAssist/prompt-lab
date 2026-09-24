@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-20T20:13:21.963Z",
+  "snapshotAt": "2026-09-23T11:08:00Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,26 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "4a07867a3e81e2b39e48ff41bbd90525623354a5",
+  "mainSha": "08f5b7fd50d3fbb2fe8777a1e3f82c7b9390a53f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify hosted generation from each owner account, then confirm remaining AppImage and deployed Library acceptance. Phase 3 is merged; Phase 4 awaits an approved Stripe test environment.",
+  "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
+    {
+      "label": "Hosted rate-limit messaging",
+      "state": "Verified",
+      "detail": "2026-09-22: PR #115 merged as 64df11e after all 14 checks passed; production dpl_3SiyYfBqRVYxixuDQVm4FKhyFvcy is READY and serves promptlab.tools. Proxy 429s now carry code/limit/reset_at, and the client shows Prompt Lab-attributed recovery that offers Provider Settings for the daily caps and never auto-retries hosted limits. Live: the /app bundle contains the new copy and all three codes; the proxy returned a hosted_demo_limit 429 (limit 3) without any provider call. The rendered panel was not observed live because /app requires sign-in. A one-off Windows native Library failure on the first commit did not reproduce.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/115"
+    },
+    {
+      "label": "Hosted quota follow-ups",
+      "state": "Verified",
+      "detail": "2026-09-23: PR #119 merged as 08f5b7f after all 13 checks passed (including desktop builds on all three OSes and alternate package acceptance); production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f is READY on promptlab.tools. Provider 429s are no longer auto-retried, the demo cap counts only after body validation, and HostedQuotaBadge shows remaining daily hosted requests. Live: from an IP already over the cap, a malformed shared-key body returned 400 instead of 429, and the demo 429 carries x-demo-limit 3 without a provider call. The rendered badge was not observed live because /app requires sign-in.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/119"
+    },
     {
       "label": "Owner hosted access",
       "state": "Open",
-      "detail": "2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36–19:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
     },
     {
@@ -39,9 +51,9 @@
     },
     {
       "label": "Release and runtime proof",
-      "state": "Open",
-      "detail": "PR #105 merged as 0cda069 after all checks passed; its tree matches tested merge 893d6e1. Vercel production dpl_HnCpZNWQy5wvt3tRxaGujtwkNrHY is READY for that SHA. Cache-busted landing (including scroll reveal), Clerk sign-in and mobile companion rendered without script errors. This does not establish authenticated behavior or complete UX acceptance.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
+      "state": "Verified",
+      "detail": "2026-09-23: production dpl_BUSM4xkNVycVZh51mGDoRa1tYJkF is READY at main 68f0da2 and serves promptlab.tools. Fresh landing, Clerk sign-in and companion renders have no script errors. Production Smoke 35800086480 passed both signed-in save/Library lookup/reload and Free/billing-disabled checks; disposable sessions were revoked and no forbidden provider/billing/telemetry calls occurred. This does not prove the full signed-in Library matrix or Stripe lifecycle.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35800086480"
     },
     {
       "label": "Native Library acceptance",
@@ -82,20 +94,20 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "Phase 4 prerequisite inspection on 2026-09-20: Vercel Preview lacks Stripe secret/webhook and durable-store variables; an approved test Clerk identity is not established. Production secret mode is Unknown and was not read. Existing mocks pass, but webhook duplicate-event and ordering guards are absent in inspected source. Test checkout, entitlement, portal and gated-feature acceptance remain open. No Stripe requests or charges were made.",
+      "detail": "2026-09-23 metadata recheck: Vercel Preview still lacks STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, BILLING_ENABLED and durable-store URL/token variables. Development lacks the same prerequisites and backend Clerk configuration. No approved non-owner billing QA identity or test-price mode has been established. Production secret values were not read. Webhook duplicate-event and ordering guards remain absent in inspected source. Phase 4 stops at its explicit test-environment prerequisites; no Stripe call or charge was made.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 34-row Notion snapshot at 2026-09-20T20:13:21.963Z. Owner issue, implementation RUN and Canonical Hub release notes updated and read back. Owner issue remains In progress for actual account acceptance. Prior dispositions and 14-item plan membership preserved; unrelated evidence was not re-audited.",
+      "detail": "Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
       "label": "Merged main regression",
       "state": "Verified",
-      "detail": "Main 0cda069 run 35505648301 passed MSI, DEB, NSIS and AppImage exercise/retention plus macOS packaging. All four downloaded exports match their recorded hashes, sizes, JSON contents and source revision. Windows closes returned 0 with the full owned process tree gone and no storage corruption. The original 2444340 NSIS loss did not recur; its cause remains unconfirmed in the diagnosis.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35505648301"
+      "detail": "PR #108 main 80596b6 run 35712219143 passed all four installed Windows/Linux formats and macOS universal packaging. Downloaded exports each contain 23 prompts and match source SHA, bytes, checksums, shared content, order and provenance. Each package passed 11 exercise and six retention checks. Windows launchers exited 0 with all owned processes gone; first-launch missing LOG.old diagnostics are retained. Current main has unchanged native Library and shared import adapters.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/35712219143"
     },
     {
       "label": "Live UX follow-up",
@@ -105,9 +117,9 @@
     },
     {
       "label": "Shared Library contract",
-      "state": "Open",
-      "detail": "PR #107 merged as 3d5fa17 on 2026-09-20, including the b7009f1 scroll-actionability correction. Historical candidate 1e76d2d: iPhone and iPad each passed 27 unit and five UI tests; optional paid test skipped. Three actual native exports passed shared importers, hashes/source checks and 18 browser import/reload/process-restart/download cases. MSI, DEB and NSIS passed installed exercise/retention; macOS packaging passed. AppImage stopped before import on an offscreen conflict selector. The merged test correction restores target visibility while waiting for its position to settle; a controlled focus/scroll reproduction failed on the old helper and passed on the correction. Post-correction AppImage and deployed Library acceptance were not re-verified in this snapshot and remain open here.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/107"
+      "state": "Verified",
+      "detail": "2026-09-23 readback: PR #107 and mixed-alias follow-up #108 are merged; #108 merge is 80596b6. Its main iPhone/iPad run 35712219056 passed 28 unit and five UI tests per device, including unchanged-save identity and revision-history regression. Six downloaded native exports passed production JS importers, checksums and exact source checks. Main desktop run 35712219143 passed MSI, DEB, NSIS and AppImage import/export and restart/reinstall retention; all four completed exports preserve shared IDs/order/content/provenance. The earlier 18 actual-native-file browser transfer cases remain valid for unchanged adapters. Phase 3 artifact compatibility is complete; umbrella Library and release acceptance remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/108"
     }
   ],
   "issues": [
@@ -377,8 +389,8 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Refresh PromptLab and verify generation from each intended owner account.",
-      "verification": "PR #109 merged and deployed as 4a07867. API tests, PR checks and live non-billable rejection paths pass. Actual signed-in owner membership and generation remain unverified.",
+      "nextAction": "Enter every Production Clerk user ID Dave signs in with into PROMPTLAB_PRO_OWNER_CLERK_USER_IDS, redeploy, and confirm the badge reads Owner access.",
+      "verification": "PR #109 deployed. 2026-09-23: Dave's signed-in request returned X-Hosted-Access standard with X-Demo-Remaining 1. Cookie name (clerk-js 5.127.2 writes plain and suffixed __session), issuer, audience, authorized parties and JWKS ruled out; remaining cause is the owner Clerk user-ID allowlist (set 2026-06-16, never edited). Allowlist value not read (sensitive).",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
@@ -518,6 +530,42 @@
       "inPlan": true,
       "nextAction": null,
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3e3255fc8f44810da971e75115180562",
+      "title": "Hosted proxy limits are reported as Anthropic rate limits",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e3255fc8f44810da971e75115180562",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR #115 merged as 64df11e after all 14 checks; production dpl_3SiyYfBqRVYxixuDQVm4FKhyFvcy READY. Live /app bundle carries the new copy and codes; live proxy returned a hosted_demo_limit 429 (limit 3) without a provider call. Rendered panel not observed live (sign-in required)."
+    },
+    {
+      "id": "3e4255fc8f448140afc3d3c261af7b29",
+      "title": "Failed enhance runs become the draft title and golden comparison text",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e4255fc8f448140afc3d3c261af7b29",
+      "inPlan": false,
+      "nextAction": "Fall back only to the latest successful run in App.jsx comparisonText and add a vitest regression.",
+      "verification": "Reproduced 2026-09-23 in local Playwright at 1280px: after a failed Enhance the Create breadcrumb shows 'DRAFT <error message>'. Cause traced to App.jsx:462-467 (evalRuns[0].output fallback includes failed runs). Not fixed."
+    },
+    {
+      "id": "3e4255fc8f4481b9a8f6e68577009108",
+      "title": "Hosted quota is invisible and spent by auto-retries and rejected requests",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e4255fc8f4481b9a8f6e68577009108",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     }
   ]
 }

@@ -33,6 +33,14 @@ const DEFAULT_MAX_INPUT_CHARS = 50_000;
 const ANTHROPIC_TIMEOUT_MS = 55_000;
 const REDIS_TIMEOUT_MS = 2000;
 
+// Machine-readable 429 codes. The client keys recovery copy on these so a
+// hosted-service limit is never reported as an Anthropic rate limit.
+const LIMIT_CODES = Object.freeze({
+  burst: 'hosted_burst_limit',
+  demo: 'hosted_demo_limit',
+  global: 'hosted_global_limit',
+});
+
 const burstHits = new Map();
 const demoHits = new Map();
 const globalDemoHits = new Map();
@@ -194,6 +202,7 @@ async function getBurstState(ip) {
 
   const state = await incrementWindow('burst', ip, BURST_WINDOW_MS, burstHits);
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
@@ -211,6 +220,7 @@ async function getDemoState(ip) {
     requirePersistent: process.env.NODE_ENV === 'production',
   });
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
@@ -228,11 +238,16 @@ async function getGlobalDemoState() {
     requirePersistent: process.env.NODE_ENV === 'production',
   });
   return {
+    limit,
     limited: state.count > limit,
     remaining: Math.max(0, limit - state.count),
     resetAt: state.resetAt,
     store: state.store,
   };
+}
+
+function toIsoOrNull(resetAt) {
+  return resetAt ? new Date(resetAt).toISOString() : null;
 }
 
 function getServerKey(host) {
@@ -367,7 +382,12 @@ export default async function handler(request) {
     : await getBurstState(clientIp);
   if (burstState.limited) {
     return jsonResponse(
-      { error: 'Rate limit exceeded. Try again shortly.' },
+      {
+        error: 'Rate limit exceeded. Try again shortly.',
+        code: LIMIT_CODES.burst,
+        limit: burstState.limit,
+        reset_at: toIsoOrNull(burstState.resetAt),
+      },
       429,
       {
         'X-RateLimit-Store': burstState.store,
@@ -406,34 +426,6 @@ export default async function handler(request) {
     }, 403, {}, request);
   }
 
-  let demoState = null;
-  let globalDemoState = null;
-  if (auth.usingSharedKey && !owner) {
-    try {
-      demoState = await getDemoState(clientIp);
-    } catch {
-      return jsonResponse({
-        error: 'Hosted usage protection is unavailable. Try again shortly.',
-      }, 503, {}, request);
-    }
-    if (demoState.limited) {
-      return jsonResponse(
-        {
-          error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
-          demo_remaining: 0,
-          demo_reset_at: demoState.resetAt ? new Date(demoState.resetAt).toISOString() : null,
-        },
-        429,
-        {
-          'X-Demo-Remaining': '0',
-          'X-RateLimit-Store': demoState.store,
-          ...(demoState.resetAt ? { 'X-Demo-Reset': new Date(demoState.resetAt).toISOString() } : {}),
-        },
-        request,
-      );
-    }
-  }
-
   let sanitizedBody;
   try {
     sanitizedBody = sanitizeAnthropicBody(body);
@@ -448,6 +440,42 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
   }
 
+  // The daily counters only move for a request that will actually be sent
+  // upstream: an oversized or malformed body, or a missing server key, must
+  // not spend one of the caller's few daily demo requests. (The burst counter
+  // above still counts every attempt; it is the flood guard.)
+  let demoState = null;
+  let globalDemoState = null;
+  if (auth.usingSharedKey && !owner) {
+    try {
+      demoState = await getDemoState(clientIp);
+    } catch {
+      return jsonResponse({
+        error: 'Hosted usage protection is unavailable. Try again shortly.',
+      }, 503, {}, request);
+    }
+    if (demoState.limited) {
+      return jsonResponse(
+        {
+          error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
+          code: LIMIT_CODES.demo,
+          limit: demoState.limit,
+          reset_at: toIsoOrNull(demoState.resetAt),
+          demo_remaining: 0,
+          demo_reset_at: demoState.resetAt ? new Date(demoState.resetAt).toISOString() : null,
+        },
+        429,
+        {
+          'X-Demo-Limit': String(demoState.limit),
+          'X-Demo-Remaining': '0',
+          'X-RateLimit-Store': demoState.store,
+          ...(demoState.resetAt ? { 'X-Demo-Reset': new Date(demoState.resetAt).toISOString() } : {}),
+        },
+        request,
+      );
+    }
+  }
+
   if (auth.usingSharedKey) {
     try {
       globalDemoState = await getGlobalDemoState();
@@ -460,6 +488,9 @@ export default async function handler(request) {
       return jsonResponse(
         {
           error: 'Hosted service daily budget reached. Try again after the reset window.',
+          code: LIMIT_CODES.global,
+          limit: globalDemoState.limit,
+          reset_at: toIsoOrNull(globalDemoState.resetAt),
           global_remaining: 0,
           global_reset_at: globalDemoState.resetAt
             ? new Date(globalDemoState.resetAt).toISOString()
@@ -467,6 +498,7 @@ export default async function handler(request) {
         },
         429,
         {
+          'X-Global-Limit': String(globalDemoState.limit),
           'X-Global-Remaining': '0',
           'X-RateLimit-Store': globalDemoState.store,
           ...(globalDemoState.resetAt
@@ -502,6 +534,7 @@ export default async function handler(request) {
     };
 
     if (auth.usingSharedKey && demoState?.remaining != null) {
+      responseHeaders['X-Demo-Limit'] = String(demoState.limit);
       responseHeaders['X-Demo-Remaining'] = String(demoState.remaining);
       if (demoState.resetAt) {
         responseHeaders['X-Demo-Reset'] = new Date(demoState.resetAt).toISOString();
@@ -509,6 +542,7 @@ export default async function handler(request) {
     }
 
     if (auth.usingSharedKey && globalDemoState?.remaining != null) {
+      responseHeaders['X-Global-Limit'] = String(globalDemoState.limit);
       responseHeaders['X-Global-Remaining'] = String(globalDemoState.remaining);
       if (globalDemoState.resetAt) {
         responseHeaders['X-Global-Reset'] = new Date(globalDemoState.resetAt).toISOString();
