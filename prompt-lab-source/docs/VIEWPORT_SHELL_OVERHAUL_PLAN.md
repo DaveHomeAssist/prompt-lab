@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Phase 0 merged and verified; Phase A1 landed, allowlist empty; A3 Compose scroll region outstanding`
+- Status: `Phase A complete on hosted web — shell contained, every panel scrolls its own region, verified on production`
 - Created: `2026-09-20`
 - Updated: `2026-09-22`
 - Operating guide: `docs/guardrails-guide.md`
@@ -217,7 +217,7 @@ roll back.
 | --- | --- | --- |
 | A1 | **Done.** Shell bound to `100dvh` via `.pl-shell-contained` when `layoutMode === 'contained'`, mirroring `.is-compact`; `ScratchWorkspace`'s `calc(100vh - Nrem)` guesses replaced with `min-h-0`. Released all 17 allowlist entries. | root unbounded height |
 | A2 | `DualPaneWorkspace` — one `overflow-y: auto` on the prompt list and one on the preview | 1441px |
-| A3 | `ComposerTab` — one scroll region on the block list | 1113px |
+| A3 | **Done.** The Compose wrapper was a bare `pl-tab-panel` block, so `ComposerTab`'s `flex-1` had no bounded parent and `<main>` scrolled as one block. It now mirrors the Evaluate wrapper in contained mode; the library column, drop zone and preview each scroll on their own, with nothing clipped at 400, 768 or 1440. | 1113px |
 | A4 | `LibraryWorkspace` / `LibraryPanel` — scroll the prompt list, pin the sidebar and toolbar | 1099px |
 | A5 | `CreateEditorPane` — scroll the below-editor content region | 81px |
 | A6 | `ScratchWorkspace` / `PadTab` — delete the five `calc(100vh - Nrem)` constants, replace with `min-h-0` flex chains | 60px |
