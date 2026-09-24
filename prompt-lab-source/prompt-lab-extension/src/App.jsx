@@ -142,7 +142,16 @@ export default function App({
   const layoutMode = isWeb ? 'contained' : 'page';
   const contained = layoutMode === 'contained';
   // Unchanged for extension (true) and desktop (false); only web flips.
+  // pageScroll is a LAYOUT decision only. Never pass it where a component needs
+  // to know which surface it is on — see showLegacyRecover below.
   const pageScroll = !contained && isExtension;
+  // Surface identity for LibraryPanel's legacy-library Recover control. This was
+  // previously smuggled through pageScroll (isWeb={pageScroll}), which silently
+  // hid Recover on hosted web the moment web stopped page-scrolling. Keep it an
+  // explicit surface decision: its value is exactly the old pageScroll, so every
+  // surface shows Recover exactly as before. recoverLegacyWebLibrary self-guards
+  // on origin, so it is inert wherever migration is unsupported.
+  const showLegacyRecover = isWeb || isExtension;
   const {
     viewportWidth,
     viewportHeight,
@@ -1171,7 +1180,7 @@ export default function App({
               openBilling={openBilling}
               compact={compact}
             /> : <LibraryPanel
-              m={m} lib={lib} compact={compact} isWeb={pageScroll}
+              m={m} lib={lib} compact={compact} pageScroll={pageScroll} showLegacyRecover={showLegacyRecover}
               showEditorPane={showEditorPane}
               effectiveEditorLayout={effectiveEditorLayout} setEditorLayout={setEditorLayout}
               editingId={editingId} setSaveTitle={setSaveTitle}

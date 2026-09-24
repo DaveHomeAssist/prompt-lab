@@ -100,7 +100,8 @@ function makeProps(overrides = {}) {
       starterLibraries: [],
     },
     compact: false,
-    isWeb: false,
+    pageScroll: false,
+    showLegacyRecover: false,
     showEditorPane: true,
     effectiveEditorLayout: 'editor',
     setEditorLayout: vi.fn(),
@@ -315,5 +316,39 @@ describe('LibraryPanel actions', () => {
     expect(setActiveCollection).toHaveBeenCalledWith(null);
     expect(setActiveTag).toHaveBeenCalledWith(null);
     expect(setSearch).toHaveBeenCalledWith('');
+  });
+});
+
+// Regression for PR #117 review. The Recover control used to be gated on
+// `isWeb`, but App passed `isWeb={pageScroll}` — a layout flag. When hosted web
+// stopped page-scrolling, Recover silently vanished from the hosted app. Surface
+// identity and scroll layout are now separate props so one cannot move the other.
+describe('LibraryPanel legacy Recover control', () => {
+  const recoverProps = (overrides) => {
+    const props = makeProps(overrides);
+    return { ...props, lib: { ...props.lib, recoverLegacyWebLibrary: vi.fn(), recoveringLegacyLibrary: false } };
+  };
+
+  it('renders Recover when the surface supports legacy recovery', () => {
+    render(<LibraryPanel {...recoverProps({ showLegacyRecover: true })} />);
+    expect(screen.getByRole('button', { name: 'Recover' })).toBeInTheDocument();
+  });
+
+  it('keeps Recover visible on a contained, non-page-scrolling layout', () => {
+    // The exact hosted-web shape after Phase A1: contained layout, web surface.
+    render(<LibraryPanel {...recoverProps({ pageScroll: false, showLegacyRecover: true })} />);
+    expect(screen.getByRole('button', { name: 'Recover' })).toBeInTheDocument();
+  });
+
+  it('hides Recover when the surface does not support it, whatever the layout', () => {
+    render(<LibraryPanel {...recoverProps({ pageScroll: true, showLegacyRecover: false })} />);
+    expect(screen.queryByRole('button', { name: 'Recover' })).not.toBeInTheDocument();
+  });
+
+  it('forces a legacy recovery when clicked', () => {
+    const props = recoverProps({ showLegacyRecover: true });
+    render(<LibraryPanel {...props} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Recover' }));
+    expect(props.lib.recoverLegacyWebLibrary).toHaveBeenCalledWith({ force: true });
   });
 });
