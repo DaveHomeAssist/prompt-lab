@@ -155,3 +155,16 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
 [2026-09-22] [PLB] [fix] Attribute hosted proxy 429s to Prompt Lab with cause-specific reset time and recovery (020)
 [2026-09-23] [PLB] [fix] Stop auto-retrying 429s, count hosted daily quota only after validation, and show remaining hosted quota in the UI (021)
+
+## Status naming
+
+Name work with one string everywhere (chat status title, session title, Notion
+Status Check Runs "Human Name"):
+
+`Project | 🚦 | Phase | Title → state, reason | MM-DD`
+
+- 🚦: 🟢 complete and verified · 🟡 partial · 🔴 not started, blocked or failed · ⚪ unverifiable.
+  Add ⏳ scheduled, 🙋 awaiting Dave or 🚧 blocked to 🟡/🔴/⚪, never to 🟢.
+- Phase: Research, Design, Build, Audit or Scheduled. MM-DD: date of the latest light change.
+- Every light change gets a new name: a `RENAME:` line in chat and the Notion row updated.
+- Canonical source: https://github.com/DaveHomeAssist/skills/blob/master/status-naming.md
