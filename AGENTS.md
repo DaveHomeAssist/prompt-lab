@@ -103,6 +103,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 | 019 | P1 | resolved | Billing-disabled production still showed live purchase controls (PLB-006) | billingDisabled propagated into billing state; checkout/portal surface server message; billing modal shows maintenance notice |
 | 020 | P2 | resolved | Hosted proxy limits were reported as Anthropic rate limits with wrong recovery advice | Proxy 429s carry `code`/`limit`/`reset_at`; client shows Prompt Lab-attributed copy with reset time, offers Provider Settings for daily caps, and never auto-retries hosted limits |
 | 021 | P2 | resolved | Hosted quota was invisible and spent by retries and rejected requests | Provider 429s no longer auto-retry (manual Try Again kept); demo/global counters move only after body validation and key check; proxy sends `X-Demo-Limit`/`X-Global-Limit`; `HostedQuotaBadge` shows remaining daily requests under Create actions and in Provider Settings |
+| 025 | P2 | in-progress | Dependency audit gate failed every PR on an advisory with no fixed release | `braces` 3.0.3 is the latest release and is affected (GHSA-vfj7-8cjw-p6xm); it reaches only dev tooling (`markdownlint-cli2` in root, Tailwind 3 in extension/web/desktop). `audit-workspaces.mjs` now accepts that one advisory while it stays out of the `--omit=dev` audit, until 2026-11-05; any other high/critical still fails. `undici` bumped in range to 7.30.0. Open: a real fix needs Tailwind 4 in three shells and a `markdownlint-cli2` replacement, or a fixed `braces` |
 
 ## Session Log
 
@@ -159,6 +160,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
 [2026-09-22] [PLB] [fix] Attribute hosted proxy 429s to Prompt Lab with cause-specific reset time and recovery (020)
 [2026-09-23] [PLB] [fix] Stop auto-retrying 429s, count hosted daily quota only after validation, and show remaining hosted quota in the UI (021)
+[2026-10-05] [PLB] [build] Unblock the dependency audit gate: bump undici to 7.30.0 and accept the unfixable braces advisory only while dev-only, until 2026-11-05 (025)
 
 ## Status naming
 
