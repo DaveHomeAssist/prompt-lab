@@ -2,6 +2,10 @@
 
 Inherits root rules from `/Users/daverobertson/Desktop/Code/AGENTS.md`.
 
+## Workspace contract
+
+Read `~/Code/ops-hub/90-governance/WORKSPACE_OPERATING_RULES.md` before project rules, including COMMS (one entry on the shared Agent Communications Page per session).
+
 ## Project Overview
 
 Prompt Lab is a multi surface prompt engineering tool with extension, desktop, and web oriented shells. It focuses on authoring, saving, testing, comparing, and reusing prompts across multiple providers.
