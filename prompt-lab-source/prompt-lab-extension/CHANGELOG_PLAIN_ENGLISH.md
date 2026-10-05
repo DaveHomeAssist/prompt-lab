@@ -1,5 +1,16 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-05
+
+## OpenRouter default model (unreleased)
+
+- The default OpenRouter model is now `anthropic/claude-sonnet-4.6`. The old
+  default, a dated Sonnet 4 name, is not in OpenRouter's model list, so a first
+  run with the Model field left alone could fail.
+- If your saved OpenRouter model is exactly that old default, Prompt Lab now
+  uses the new default instead. A model you typed yourself is never changed,
+  and nothing is rewritten in storage until you next press Save.
+
 Date: 2026-09-23
 
 ## Hosted quota you can see (unreleased)

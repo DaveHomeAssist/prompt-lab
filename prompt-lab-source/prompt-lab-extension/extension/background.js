@@ -2,7 +2,7 @@
 // This is the ONLY place API credentials are used.
 // panel.html sends messages here; this worker calls configured providers.
 
-import { DEFAULTS, PROVIDER_SETTINGS_KEYS } from './lib/providerRegistry.js';
+import { DEFAULTS, PROVIDER_SETTINGS_KEYS, migrateLegacyDefaults } from './lib/providerRegistry.js';
 import { callProvider, listOllamaModels, normalizeProvider } from './lib/providers.js';
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
@@ -55,7 +55,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === 'GET_PROVIDER_SETTINGS') {
     (async () => {
       try {
-        const store = await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS);
+        const store = migrateLegacyDefaults(await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS));
         const providers = [];
         if (store.apiKey) providers.push({ provider: 'anthropic', model: store.anthropicModel || DEFAULTS.anthropicModel });
         if (store.openaiApiKey) providers.push({ provider: 'openai', model: store.openaiModel || DEFAULTS.openaiModel });
@@ -88,7 +88,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
   (async () => {
     try {
-      const store = await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS);
+      const store = migrateLegacyDefaults(await chrome.storage.local.get(PROVIDER_SETTINGS_KEYS));
       sendResponse({
         data: await callProvider({
           // A payload-level provider (e.g. an arena column) overrides the settings default.

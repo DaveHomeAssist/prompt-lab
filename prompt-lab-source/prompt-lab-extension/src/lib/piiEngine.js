@@ -1,5 +1,13 @@
 import { luhnPasses } from './utils.js';
 
+// Body of a credential value, shared by the secret-assignment and Bearer detectors:
+// base64/base64url characters, optionally dot-joined (JWT segments) and "="-padded.
+// The quantifiers are greedy and unbounded on purpose. A lazy or capped quantifier
+// stops early (or misses entirely) and the rest of the secret reaches the provider.
+const TOKEN_BODY = String.raw`[A-Za-z0-9+/_\-]+(?:\.[A-Za-z0-9+/_\-]+)*=*`;
+const SECRET_MIN_LENGTH = 10;
+const BEARER_MIN_LENGTH = 16;
+
 export const patterns = Object.freeze({
   ssn: Object.freeze({
     label: 'SSN',
@@ -24,7 +32,9 @@ export const patterns = Object.freeze({
     label: 'Phone number',
     description: 'Looks like a phone number.',
     placeholder: 'PHONE',
-    regex: /\b(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}\b/g,
+    // \b cannot sit before "(" or "+" (both non-word), so a leading paren or country-code
+    // plus must be allowed to start the match or it is left behind when redacting.
+    regex: /(?:\b(?=\d)|(?=[+(]))(?:\+?1[-.\s]?)?(?:\(?\d{3}\)?[-.\s]?)\d{3}[-.\s]?\d{4}\b/g,
   }),
   ip: Object.freeze({
     label: 'IP address',
@@ -36,14 +46,28 @@ export const patterns = Object.freeze({
     label: 'API key / token',
     description: 'Looks like an API credential or token.',
     placeholder: 'API_KEY',
-    regex: /\b(sk-[A-Za-z0-9]{16,128}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,80}|AIza[0-9A-Za-z\-_]{20,60}|xox[baprs]-[A-Za-z0-9-]{10,80}|(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{12,128}?)\b/gi,
+    regex: /\b(sk-[A-Za-z0-9]{16,128}|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{20,80}|AIza[0-9A-Za-z\-_]{20,60}|xox[baprs]-[A-Za-z0-9-]{10,80}|(?:api|secret|access|private)[_\-\s]?(?:key|token)\s*[:=]\s*["']?[A-Za-z0-9_\-]{12,})\b/gi,
+  }),
+  // Registered after api_key so an exact tie (a Bearer token that is also a provider key)
+  // keeps the more specific api_key label; see resolveOverlaps.
+  bearer_token: Object.freeze({
+    label: 'Bearer token',
+    description: 'Looks like an HTTP Authorization bearer token.',
+    placeholder: 'BEARER_TOKEN',
+    regex: new RegExp(String.raw`\bbearer[ \t]+(${TOKEN_BODY})`, 'gi'),
+    extract: (match) => match[1] || match[0],
+    validate: (value) => value.length >= BEARER_MIN_LENGTH,
   }),
   secret_value: Object.freeze({
     label: 'Secret-looking value',
     description: 'Looks like a password or secret assignment.',
     placeholder: 'SECRET',
-    regex: /\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?([A-Za-z0-9+/_\-]{10,128}?)["']?/gi,
+    regex: new RegExp(
+      String.raw`\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?(${TOKEN_BODY})`,
+      'gi',
+    ),
     extract: (match) => match[1] || match[0],
+    validate: (value) => value.length >= SECRET_MIN_LENGTH,
   }),
 });
 
@@ -92,6 +116,10 @@ function buildDetectors(options = {}) {
     : builtIn;
 }
 
+function snippetOf(value) {
+  return value.length > 80 ? `${value.slice(0, 77)}...` : value;
+}
+
 function makeFinding(detector, match, index) {
   const value = detector.extract ? detector.extract(match) : match[0];
   if (!value) return null;
@@ -105,11 +133,33 @@ function makeFinding(detector, match, index) {
     label: detector.label || 'Sensitive value',
     description: detector.description || 'Potentially sensitive data.',
     placeholder: detector.placeholder || 'REDACTED',
-    snippet: value.length > 80 ? `${value.slice(0, 77)}...` : value,
+    snippet: snippetOf(value),
     value,
     start,
     end,
   };
+}
+
+// Findings of different types can cover the same text: a Bearer token that is also an API
+// key, digits that are both a phone number and an email local part, an assignment that is
+// both an api_key and a secret_value. Applying overlapping spans one after another
+// corrupts the output (the second replacement lands on already-shifted text), so keep one
+// finding per region. The earliest, longest span wins and an exact tie goes to the
+// finding listed first (registry order). A partial overlap widens the kept finding to the
+// union so no tail of either match survives.
+function resolveOverlaps(findings, source) {
+  const ordered = [...findings].sort((a, b) => a.start - b.start || b.end - a.end);
+  const resolved = [];
+  for (const finding of ordered) {
+    const last = resolved[resolved.length - 1];
+    if (!last || finding.start >= last.end) {
+      resolved.push(finding);
+    } else if (finding.end > last.end) {
+      const value = source.slice(last.start, finding.end);
+      resolved[resolved.length - 1] = { ...last, snippet: snippetOf(value), value, end: finding.end };
+    }
+  }
+  return resolved;
 }
 
 export function scanForPII(text, options = {}) {
@@ -137,8 +187,8 @@ export function scanForPII(text, options = {}) {
     }
   }
 
-  findings.sort((a, b) => a.start - b.start || b.end - a.end);
-  return { hasPII: findings.length > 0, findings };
+  const resolved = resolveOverlaps(findings, source);
+  return { hasPII: resolved.length > 0, findings: resolved };
 }
 
 function formatPlaceholder(placeholder, index, style) {
@@ -157,9 +207,11 @@ export function redactText(text, options = {}) {
   const style = options.placeholderStyle === 'brackets' ? 'brackets' : 'plain';
   const redactionMap = options.redactionMap ? { ...options.redactionMap } : {};
   const typeCounters = {};
-  const sorted = [...findings]
-    .filter((finding) => Number.isFinite(finding.start) && Number.isFinite(finding.end) && finding.end > finding.start)
-    .sort((a, b) => b.start - a.start);
+  // Callers may pass their own (e.g. user-filtered) findings, so resolve overlaps here too.
+  const sorted = resolveOverlaps(
+    findings.filter((finding) => Number.isFinite(finding.start) && Number.isFinite(finding.end) && finding.end > finding.start),
+    source,
+  ).reverse();
 
   let redacted = source;
   for (const finding of sorted) {

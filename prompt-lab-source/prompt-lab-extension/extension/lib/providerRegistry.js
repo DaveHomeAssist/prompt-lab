@@ -7,8 +7,20 @@ export const DEFAULTS = Object.freeze({
   anthropicModel: 'claude-sonnet-4-6',
   openaiModel: 'gpt-4o',
   geminiModel: 'gemini-2.5-flash',
-  openrouterModel: 'anthropic/claude-sonnet-4-20250514',
+  openrouterModel: 'anthropic/claude-sonnet-4.6',
 });
+
+// Before 2026-10 the OpenRouter default was a slug OpenRouter does not list.
+// The settings forms pre-fill the default and save whatever the field holds, so
+// it can sit in storage as though the user had chosen it. Only a stored value
+// that exactly equals it is migrated; every other value is left alone. Keep the
+// string exactly as older builds saved it.
+export const LEGACY_OPENROUTER_MODEL = 'anthropic/claude-sonnet-4-20250514';
+
+export function migrateLegacyDefaults(settings) {
+  if (settings?.openrouterModel !== LEGACY_OPENROUTER_MODEL) return settings;
+  return { ...settings, openrouterModel: DEFAULTS.openrouterModel };
+}
 
 export const VALID_PROVIDERS = Object.freeze([
   'anthropic',

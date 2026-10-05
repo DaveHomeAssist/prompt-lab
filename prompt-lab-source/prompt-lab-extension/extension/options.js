@@ -1,4 +1,4 @@
-import { DEFAULTS, PROVIDER_SETTINGS_KEYS, VALID_PROVIDERS } from './lib/providerRegistry.js';
+import { DEFAULTS, PROVIDER_SETTINGS_KEYS, VALID_PROVIDERS, migrateLegacyDefaults } from './lib/providerRegistry.js';
 
 const els = {
   // Provider chips
@@ -155,7 +155,8 @@ function renderSections() {
 function loadSettings() {
   chrome.storage.local.get(
     PROVIDER_SETTINGS_KEYS,
-    (store) => {
+    (stored) => {
+      const store = migrateLegacyDefaults(stored);
       currentProvider = normalizeProvider(store.provider);
 
       // Stash stored keys so we don't clear them accidentally

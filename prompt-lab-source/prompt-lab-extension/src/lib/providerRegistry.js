@@ -432,7 +432,7 @@ const PROVIDERS = Object.freeze({
   openrouter: {
     id: 'openrouter',
     label: 'OpenRouter',
-    defaultModel: 'anthropic/claude-sonnet-4-20250514',
+    defaultModel: 'anthropic/claude-sonnet-4.6',
     apiKeyField: 'openrouterApiKey',
     modelField: 'openrouterModel',
     settingsKeys: ['openrouterApiKey', 'openrouterModel'],
@@ -509,6 +509,19 @@ export const DEFAULTS = Object.freeze(
     }).flat(),
   ]),
 );
+
+// Before 2026-10 the OpenRouter default was a slug OpenRouter does not list.
+// The settings forms pre-fill the default and save whatever the field holds, so
+// it can sit in storage as though the user had chosen it. Only a stored value
+// that exactly equals it is migrated; every other value is left alone. Keep the
+// string exactly as older builds saved it.
+export const LEGACY_OPENROUTER_MODEL = 'anthropic/claude-sonnet-4-20250514';
+
+/** Replace the retired OpenRouter default in stored settings. Pure; never mutates. */
+export function migrateLegacyDefaults(settings) {
+  if (settings?.openrouterModel !== LEGACY_OPENROUTER_MODEL) return settings;
+  return { ...settings, openrouterModel: DEFAULTS.openrouterModel };
+}
 
 /** Look up a provider descriptor by ID. Returns the default if unknown. */
 export function getProvider(id) {
