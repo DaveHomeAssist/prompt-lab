@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-05T18:08:37.274Z",
+  "snapshotAt": "2026-10-05T18:33:37.365Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "3a3d723da224d7ac653fa3f266262ff5d5470a71",
+  "mainSha": "09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
@@ -22,7 +22,7 @@
     {
       "label": "Library Tests tab test cases",
       "state": "Open",
-      "detail": "2026-10-05: conflicts reconciled with main 3a3d723, preserving issues 022–025 and refreshing all 40 Notion rows. Application code merged cleanly. Dominic Node 22.22.1: 21 tooling tests and all four dependency audits pass under the existing dev-only braces exception through 2026-11-05. Dominic regressions pass: 102 Vitest files / 1103 tests, 222 legacy Node tests, extension build and two Library Tests browser cases at 400/1180 px. Docs consistency and dashboard parity pass. Updated hosted CI remains pending; no merge, deployment or human acceptance claimed. Remaining boundaries: Tauri webview deletion, provider-backed verdict and human acceptance. The runner still tests Enhance rewrites; TC-A/TC-B/TC-C remain unanswered.",
+      "detail": "2026-10-05 merge closeout: PR #127 merged as 09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99 after all 15 current PR check/status entries passed on abceb881f5a9c71f84b2f97fe2e38e7fcf1e5073. Required approvals: zero; review threads: none; mergeable/CLEAN rechecked immediately before SHA-pinned normal merge. Production dpl_CZVB48KnTJ3VgTCGUp3AEGb5MCko is READY at the merge SHA and assigned promptlab.tools. The first NSIS native cancellation run timed out waiting for a slow provider request; one isolated retry passed against unchanged source and installer. Original failure artifact and unconfirmed cause remain tracked on the desktop acceptance issue. Dominic validation: 1103 Vitest, 222 legacy Node, 21 tooling, four audits, build and two browser cases passed. Existing dev-only braces exception through 2026-11-05 was inherited unchanged from #129. Main post-merge CI is still running as of this update. Remaining: Tauri webview deletion, provider-backed verdict, signed-in live/human acceptance and TC-A/B/C decision. Keep In progress. Next: complete the Library Tests acceptance in supported shells and resolve the existing semantics decision; retire the dependency exception before expiry. Public /app/ and app-DSpBAESb.js returned HTTP 200; the production bundle contains Add Case. This is asset verification, not signed-in UI acceptance.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/127"
     },
     {
@@ -112,7 +112,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
+      "detail": "2026-10-05: complete 40-row Notion query (has_more false), unique IDs and selected 14-item plan preserved. Library case, dependency and desktop evidence and implementation RUN were updated and read back. Dashboard snapshot records PR #127 merge 09a52b0, READY production and the first NSIS timeout plus successful isolated rerun. Existing issue statuses and broader acceptance gaps remain unchanged. Cross-project Next Steps Board sync unavailable: canonical registry has no PromptLab mapping. Prior synchronization history: Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -307,7 +307,7 @@
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
       "nextAction": "Verify remaining cross-version upgrade, macOS interaction and signing gates against exact release artifacts.",
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition. 2026-10-05: PR #127 Desktop Build passed all packages; NSIS cancellation timed out on attempt 1 and passed one isolated rerun on unchanged source/installer. Cause remains unconfirmed, original artifact retained in Notion. No broader acceptance promotion."
     },
     {
       "id": "32d255fc8f44817faa12dc09d3ede05d",
@@ -606,8 +606,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
       "inPlan": false,
-      "nextAction": "Verify PR #127 integration checks, merge when all checks pass, then confirm the Library Tests flow on the deployed app.",
-      "verification": "2026-10-05: conflicts reconciled with main 3a3d723, preserving issues 022–025 and refreshing all 40 Notion rows. Application code merged cleanly. Dominic Node 22.22.1: 21 tooling tests and all four dependency audits pass under the existing dev-only braces exception through 2026-11-05. Dominic regressions pass: 102 Vitest files / 1103 tests, 222 legacy Node tests, extension build and two Library Tests browser cases at 400/1180 px. Docs consistency and dashboard parity pass. Updated hosted CI remains pending; no merge, deployment or human acceptance claimed."
+      "nextAction": "Complete Tauri deletion, provider-backed verdict and signed-in human acceptance; resolve the existing TC-A/B/C runner-semantics decision.",
+      "verification": "2026-10-05 merge closeout: PR #127 merged as 09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99 after all 15 current PR check/status entries passed on abceb881f5a9c71f84b2f97fe2e38e7fcf1e5073. Required approvals: zero; review threads: none; mergeable/CLEAN rechecked immediately before SHA-pinned normal merge. Production dpl_CZVB48KnTJ3VgTCGUp3AEGb5MCko is READY at the merge SHA and assigned promptlab.tools. The first NSIS native cancellation run timed out waiting for a slow provider request; one isolated retry passed against unchanged source and installer. Original failure artifact and unconfirmed cause remain tracked on the desktop acceptance issue. Dominic validation: 1103 Vitest, 222 legacy Node, 21 tooling, four audits, build and two browser cases passed. Existing dev-only braces exception through 2026-11-05 was inherited unchanged from #129. Main post-merge CI is still running as of this update. Remaining: Tauri webview deletion, provider-backed verdict, signed-in live/human acceptance and TC-A/B/C decision. Keep In progress. Next: complete the Library Tests acceptance in supported shells and resolve the existing semantics decision; retire the dependency exception before expiry. Public /app/ and app-DSpBAESb.js returned HTTP 200; the production bundle contains Add Case. This is asset verification, not signed-in UI acceptance."
     },
     {
       "id": "3f0255fc8f4481629234d824e518447d",
