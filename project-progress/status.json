@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-23T11:08:00Z",
+  "snapshotAt": "2026-10-05T08:33:42Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "08f5b7fd50d3fbb2fe8777a1e3f82c7b9390a53f",
+  "mainSha": "be2ecb9a92c6b69c87dc0be01ed41eda971815b7",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
@@ -120,6 +120,12 @@
       "state": "Verified",
       "detail": "2026-09-23 readback: PR #107 and mixed-alias follow-up #108 are merged; #108 merge is 80596b6. Its main iPhone/iPad run 35712219056 passed 28 unit and five UI tests per device, including unchanged-save identity and revision-history regression. Six downloaded native exports passed production JS importers, checksums and exact source checks. Main desktop run 35712219143 passed MSI, DEB, NSIS and AppImage import/export and restart/reinstall retention; all four completed exports preserve shared IDs/order/content/provenance. The earlier 18 actual-native-file browser transfer cases remain valid for unchanged adapters. Phase 3 artifact compatibility is complete; umbrella Library and release acceptance remain separate.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/108"
+    },
+    {
+      "label": "Audit gate exception",
+      "state": "Running",
+      "detail": "2026-10-05: draft PR #128 (code at 7d72e0b) updates undici to 7.30.0 in the extension lockfile and adds a time-boxed exception for GHSA-vfj7-8cjw-p6xm (braces 3.0.3 and earlier, no patched release) so audit:all can exit 0 while every other advisory still gates. audit:all exits 0 on the Mac and on Dominic (Docker, Node 22.23.3); the audit tests go from 5 to 18 and six deliberate matcher mutations are all caught; test:tooling 27/27, test:api 78/78 and the extension npm test pass on Dominic. Not verified: CI on this PR, including the Landing CI steps after the audit that have not run on any recent PR. Not merged; the exception is a decision for the owner.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/128"
     }
   ],
   "issues": [
@@ -566,6 +572,42 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
+    },
+    {
+      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
+      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Security",
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
+      "inPlan": false
+    },
+    {
+      "id": "3f0255fc8f44811d8794c092ba1bb88f",
+      "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
+      "inPlan": false
+    },
+    {
+      "id": "3f0255fc8f4481629234d824e518447d",
+      "title": "Dependency audit gate fails on every branch because braces has no patched release",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Tech Debt",
+      "nextAction": "Decide whether to merge the DG-B exception in draft PR #128 once CI settles, then set the row Done.",
+      "verification": "Draft PR #128 open; code at 7d72e0b. audit:all exits 0 on the Mac (Node 22.22.1) and on Dominic (Docker, Node 22.23.3); 18 audit tests pass and 6 of 6 matcher mutations are caught; test:tooling 27/27, test:api 78/78 and the extension npm test pass on Dominic. CI not yet read at snapshot, and the Landing CI steps after the audit have not run on any recent PR. Not merged. Status is the Notion disposition.",
+      "url": "https://app.notion.com/3f0255fc8f4481629234d824e518447d",
+      "inPlan": false
     }
   ]
 }

@@ -103,6 +103,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 | 019 | P1 | resolved | Billing-disabled production still showed live purchase controls (PLB-006) | billingDisabled propagated into billing state; checkout/portal surface server message; billing modal shows maintenance notice |
 | 020 | P2 | resolved | Hosted proxy limits were reported as Anthropic rate limits with wrong recovery advice | Proxy 429s carry `code`/`limit`/`reset_at`; client shows Prompt Lab-attributed copy with reset time, offers Provider Settings for daily caps, and never auto-retries hosted limits |
 | 021 | P2 | resolved | Hosted quota was invisible and spent by retries and rejected requests | Provider 429s no longer auto-retry (manual Try Again kept); demo/global counters move only after body validation and key check; proxy sends `X-Demo-Limit`/`X-Global-Limit`; `HostedQuotaBadge` shows remaining daily requests under Create actions and in Provider Settings |
+| 023 | P2 | in-progress | Dependency audit gate (`audit:all`) fails on every branch because `braces` has no patched release | All 21 high advisories trace to `braces` GHSA-vfj7-8cjw-p6xm (`<=3.0.3`, no patched version) through `micromatch`, `fast-glob`, `chokidar`, `globby`, `tailwindcss` 3.x and `markdownlint-cli2`; these are dev tooling only and production audits are clean. `undici` 7.29.0 to 7.30.0 clears 10 extension advisories. The gate now skips only that advisory, for that package, until 2026-12-01 via `scripts/audit-allowlist.json` (entries expire on their own and are capped at 90 days); any other advisory still fails it. Removing the chain needs Tailwind 4 in three shells and a lint tool without `micromatch` |
 
 ## Session Log
 
@@ -159,6 +160,8 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
 [2026-09-22] [PLB] [fix] Attribute hosted proxy 429s to Prompt Lab with cause-specific reset time and recovery (020)
 [2026-09-23] [PLB] [fix] Stop auto-retrying 429s, count hosted daily quota only after validation, and show remaining hosted quota in the UI (021)
+[2026-10-05] [PLB] [fix] Update undici in the extension lockfile and add a time-boxed single-advisory exception so audit:all passes while braces has no patched release (023)
+[2026-10-05] [PLB] [test] Cover the audit exception: exact advisory and package, chain propagation, expiry and fail-closed counts (023)
 
 ## Status naming
 
