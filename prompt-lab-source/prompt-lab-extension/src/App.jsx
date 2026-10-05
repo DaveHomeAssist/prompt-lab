@@ -671,6 +671,14 @@ export default function App({
     }
     await loadEntry(entry);
   };
+  // "Use" swaps the editor draft for the case input. From the Library the editor
+  // can still hold another prompt (editingId), so start a clean draft and keep
+  // the previous one recoverable, as handleUseFollowUp does.
+  const handleUseTestCase = (testCase) => {
+    if (raw.trim() || enhanced.trim() || editingId) preserveDraftForUndo('navigation');
+    clearEditor();
+    loadCaseIntoEditor(testCase);
+  };
   const handleAddToComposer = (entry) => {
     trackTelemetry('composer.block_added', {
       source: 'library',
@@ -1179,6 +1187,16 @@ export default function App({
               canUsePacks={canUsePacks}
               openBilling={openBilling}
               compact={compact}
+              testCasesByPrompt={testCasesByPrompt}
+              testCaseControls={{
+                evalRuns, runningCases,
+                caseFormPromptId, editingCaseId,
+                caseTitle, setCaseTitle, caseInput, setCaseInput,
+                caseTraits, setCaseTraits, caseExclusions, setCaseExclusions,
+                caseNotes, setCaseNotes,
+                openCaseForm, resetCaseForm, saveCaseForPrompt,
+                loadCaseIntoEditor: handleUseTestCase, runSingleCase, removeCase,
+              }}
             /> : <LibraryPanel
               m={m} lib={lib} compact={compact} pageScroll={pageScroll} showLegacyRecover={showLegacyRecover}
               showEditorPane={showEditorPane}

@@ -911,6 +911,7 @@ textarea:disabled {
 .pl-inspector-content-view h3,
 .pl-variant-list h3,
 .pl-saved-tests h3 { font-size: 0.7rem; font-weight: 800; }
+.pl-saved-tests > small { font-size: 0.66rem; line-height: 1.5; opacity: 0.65; }
 .pl-inspector-content-view pre,
 .pl-variant-list pre,
 .pl-saved-notes pre,

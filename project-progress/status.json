@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-05T07:04:49Z",
+  "snapshotAt": "2026-10-05T18:08:37.274Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "be2ecb9a92c6b69c87dc0be01ed41eda971815b7",
+  "mainSha": "3a3d723da224d7ac653fa3f266262ff5d5470a71",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
+    {
+      "label": "Dependency gate integration",
+      "state": "Verified",
+      "detail": "PR #129 is merged; PR #127 inherits its policy unchanged. Dominic Node 22.22.1: tooling 21/21, audits 4/4 pass. Report retains 20 high package occurrences covered only by GHSA-vfj7-8cjw-p6xm on dev-only braces, plus 2 moderate. The exception expires after 2026-11-05 UTC; no extension or broader allowance added. Notion update read back.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/129"
+    },
+    {
+      "label": "Library Tests tab test cases",
+      "state": "Open",
+      "detail": "2026-10-05: conflicts reconciled with main 3a3d723, preserving issues 022–025 and refreshing all 40 Notion rows. Application code merged cleanly. Dominic Node 22.22.1: 21 tooling tests and all four dependency audits pass under the existing dev-only braces exception through 2026-11-05. Dominic regressions pass: 102 Vitest files / 1103 tests, 222 legacy Node tests, extension build and two Library Tests browser cases at 400/1180 px. Docs consistency and dashboard parity pass. Updated hosted CI remains pending; no merge, deployment or human acceptance claimed. Remaining boundaries: Tauri webview deletion, provider-backed verdict and human acceptance. The runner still tests Enhance rewrites; TC-A/TC-B/TC-C remain unanswered.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/127"
+    },
     {
       "label": "Hosted rate-limit messaging",
       "state": "Verified",
@@ -582,8 +594,32 @@
       "type": "Security",
       "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
       "inPlan": false,
-      "nextAction": "Merge PR #126 after the desktop builds pass (the audit-gate failure is ambient and tracked separately), then set the row Done.",
-      "verification": "PR #126 open; code verified at 0df32aa. Local Node 22.22.1: 29 of 60 touched-suite tests fail on the base engine and pass with the fix; 132 related Vitest tests and 56 legacy node:test cases pass. CI at snapshot: Extension, Docs, API Safety and Merge Gate pass; Landing CI fails only at the dependency audit gate (ambient, also failing on PR #125); desktop builds pending. Not merged, deployed or checked on a live surface. Status is the Notion disposition."
+      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
+      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
+    },
+    {
+      "id": "3f0255fc8f44811d8794c092ba1bb88f",
+      "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
+      "inPlan": false,
+      "nextAction": "Verify PR #127 integration checks, merge when all checks pass, then confirm the Library Tests flow on the deployed app.",
+      "verification": "2026-10-05: conflicts reconciled with main 3a3d723, preserving issues 022–025 and refreshing all 40 Notion rows. Application code merged cleanly. Dominic Node 22.22.1: 21 tooling tests and all four dependency audits pass under the existing dev-only braces exception through 2026-11-05. Dominic regressions pass: 102 Vitest files / 1103 tests, 222 legacy Node tests, extension build and two Library Tests browser cases at 400/1180 px. Docs consistency and dashboard parity pass. Updated hosted CI remains pending; no merge, deployment or human acceptance claimed."
+    },
+    {
+      "id": "3f0255fc8f4481629234d824e518447d",
+      "inPlan": false,
+      "nextAction": "Replace or remove the affected dev tooling chain before the existing exception expires on 2026-11-05.",
+      "verification": "PR #129 is merged; PR #127 inherits its policy unchanged. Dominic Node 22.22.1: tooling 21/21, audits 4/4 pass. Report retains 20 high package occurrences covered only by GHSA-vfj7-8cjw-p6xm on dev-only braces, plus 2 moderate. The exception expires after 2026-11-05 UTC; no extension or broader allowance added. Notion update read back.",
+      "title": "Dependency audit gate fails on every branch because braces has no patched release",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/3f0255fc8f4481629234d824e518447d"
     }
   ]
 }

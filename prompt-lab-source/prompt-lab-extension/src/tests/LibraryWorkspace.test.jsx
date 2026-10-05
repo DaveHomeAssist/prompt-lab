@@ -331,3 +331,144 @@ describe('LibraryWorkspace layout preference', () => {
   });
 
 });
+
+// Regression: "Batch test-case runs" shipped with no reachable way to create a
+// case. The only Add Case control lived in LibraryPanel, which App never mounts
+// once the Library became a workspace, and the Tests tab here was read-only and
+// told users to "open the prompt in Evaluate", which has no case form either.
+describe('LibraryWorkspace test cases', () => {
+  // App always passes the theme tokens; TestCasesPanel reads them.
+  const m = { textSub: '', codeBlock: '', border: '', input: '', text: '', textBody: '', textMuted: '' };
+  const renderCases = (props = {}) => renderLibrary({ props: { m, ...props } });
+
+  const boardCase = {
+    id: 'case-board', promptId: 'favorite', title: 'Board summary', input: 'Summarize the outage for the board',
+    expectedTraits: ['brief'], expectedExclusions: ['jargon'], notes: '',
+  };
+  const otherCase = {
+    id: 'case-other', promptId: 'incomplete', title: 'Unrelated case', input: 'Something else',
+    expectedTraits: [], expectedExclusions: [], notes: '',
+  };
+
+  function makeControls(overrides = {}) {
+    return {
+      evalRuns: [], runningCases: false,
+      caseFormPromptId: null, editingCaseId: null,
+      caseTitle: '', setCaseTitle: vi.fn(), caseInput: '', setCaseInput: vi.fn(),
+      caseTraits: '', setCaseTraits: vi.fn(), caseExclusions: '', setCaseExclusions: vi.fn(),
+      caseNotes: '', setCaseNotes: vi.fn(),
+      openCaseForm: vi.fn(), resetCaseForm: vi.fn(), saveCaseForPrompt: vi.fn(),
+      loadCaseIntoEditor: vi.fn(), runSingleCase: vi.fn(), removeCase: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  function openTestsTab(title) {
+    fireEvent.click(screen.getByRole('button', { name: `Inspect ${title}` }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Tests' }));
+  }
+
+  it('offers an Add Case control for a saved prompt that has no tests yet', () => {
+    const testCaseControls = makeControls();
+    renderCases({ testCasesByPrompt: {}, testCaseControls });
+    openTestsTab('Incomplete prompt');
+
+    const region = screen.getByRole('region', { name: 'Test cases' });
+    expect(within(region).getByText(/Test Cases \(0\)/)).toBeInTheDocument();
+    fireEvent.click(within(region).getByRole('button', { name: 'Add Case' }));
+    expect(testCaseControls.openCaseForm).toHaveBeenCalledWith('incomplete');
+  });
+
+  it('shows the case form inside the inspector for the open prompt and saves it', () => {
+    const testCaseControls = makeControls({ caseFormPromptId: 'incomplete', caseTitle: 'Tone', caseInput: 'Reply politely' });
+    renderCases({ testCasesByPrompt: {}, testCaseControls });
+    openTestsTab('Incomplete prompt');
+
+    const inspector = screen.getByRole('complementary', { name: 'Incomplete prompt' });
+    expect(within(inspector).getByLabelText('Test case title')).toHaveValue('Tone');
+    expect(within(inspector).getByLabelText('Test case prompt input')).toHaveValue('Reply politely');
+    fireEvent.change(within(inspector).getByLabelText('Test case prompt input'), { target: { value: 'Reply politely to a refund request' } });
+    expect(testCaseControls.setCaseInput).toHaveBeenCalledWith('Reply politely to a refund request');
+    fireEvent.click(within(inspector).getByRole('button', { name: 'Save Case' }));
+    expect(testCaseControls.saveCaseForPrompt).toHaveBeenCalledWith('incomplete');
+  });
+
+  it('lists only the selected prompt’s cases and routes Edit, Use, Run and Delete', () => {
+    const testCaseControls = makeControls();
+    renderCases({ testCasesByPrompt: { favorite: [boardCase], incomplete: [otherCase] }, testCaseControls });
+    openTestsTab('Favorite prompt');
+
+    const region = screen.getByRole('region', { name: 'Test cases' });
+    expect(within(region).getByText(/Test Cases \(1\)/)).toBeInTheDocument();
+    expect(region).toHaveTextContent('Board summary');
+    expect(region).toHaveTextContent('Expect: brief');
+    expect(region).toHaveTextContent('Avoid: jargon');
+    expect(region).not.toHaveTextContent('Unrelated case');
+
+    fireEvent.click(within(region).getByRole('button', { name: 'Edit' }));
+    expect(testCaseControls.openCaseForm).toHaveBeenCalledWith('favorite', boardCase);
+    fireEvent.click(within(region).getByRole('button', { name: 'Use' }));
+    expect(testCaseControls.loadCaseIntoEditor).toHaveBeenCalledWith(boardCase);
+    fireEvent.click(within(region).getByRole('button', { name: 'Run' }));
+    expect(testCaseControls.runSingleCase).toHaveBeenCalledWith(boardCase, 'Favorite prompt');
+    fireEvent.click(within(region).getByRole('button', { name: 'Delete' }));
+    expect(testCaseControls.removeCase).toHaveBeenCalledWith(boardCase);
+  });
+
+  it('points to Create for running every case only once cases exist', () => {
+    const first = renderCases({ testCasesByPrompt: {}, testCaseControls: makeControls() });
+    openTestsTab('Incomplete prompt');
+    expect(screen.queryByText(/Run all cases from Create/)).not.toBeInTheDocument();
+    first.unmount();
+
+    renderCases({ testCasesByPrompt: { favorite: [boardCase] }, testCaseControls: makeControls() });
+    openTestsTab('Favorite prompt');
+    expect(screen.getByText('Run all cases from Create: choose Open in Editor, then Run Cases.')).toBeInTheDocument();
+    // The control it names exists in the same inspector.
+    expect(screen.getByRole('button', { name: 'Open in Editor' })).toBeInTheDocument();
+  });
+
+  it('labels cases embedded in the prompt as read-only, apart from runnable cases', () => {
+    renderCases({ testCasesByPrompt: { favorite: [boardCase] }, testCaseControls: makeControls() });
+    openTestsTab('Favorite prompt');
+
+    expect(screen.getByText('Included with this prompt (read-only)')).toBeInTheDocument();
+    expect(screen.getByText('JSON contract')).toBeInTheDocument();
+    const region = screen.getByRole('region', { name: 'Test cases' });
+    expect(region).not.toHaveTextContent('JSON contract');
+  });
+
+  it('keeps the golden-response pointer accurate: shown only when none is pinned', () => {
+    const view = renderCases({ testCasesByPrompt: {}, testCaseControls: makeControls() });
+    openTestsTab('Incomplete prompt');
+    expect(screen.getByText(/No golden response pinned\. Pin a golden response from a Create run, or promote one from Evaluate → Compare\./)).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('Evaluate to add cases');
+    view.unmount();
+
+    renderCases({ testCasesByPrompt: {}, testCaseControls: makeControls() });
+    openTestsTab('Favorite prompt');
+    expect(screen.getByText('Golden response')).toBeInTheDocument();
+    expect(screen.queryByText(/No golden response pinned/)).not.toBeInTheDocument();
+  });
+
+  it('stays read-only, without a misleading instruction, when no case controls are connected', () => {
+    renderLibrary();
+    openTestsTab('Incomplete prompt');
+
+    expect(screen.queryByRole('region', { name: 'Test cases' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Case' })).not.toBeInTheDocument();
+    expect(screen.getByText('No tests saved.')).toBeInTheDocument();
+    expect(screen.getByText('Pin a golden response from a Create run, or promote one from Evaluate → Compare.')).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('Evaluate to add cases');
+  });
+
+  it('does not offer case management for a prompt in Recently Deleted', () => {
+    renderCases({ testCasesByPrompt: {}, testCaseControls: makeControls() });
+    fireEvent.click(screen.getByRole('button', { name: /Recently Deleted/ }));
+    openTestsTab('Deleted prompt');
+
+    expect(screen.queryByRole('region', { name: 'Test cases' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Case' })).not.toBeInTheDocument();
+    expect(screen.getByText('Restore this prompt to add test cases.')).toBeInTheDocument();
+  });
+});
