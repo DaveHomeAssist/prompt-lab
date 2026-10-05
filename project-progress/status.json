@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-09-23T11:08:00Z",
+  "snapshotAt": "2026-10-05T07:32:00Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "08f5b7fd50d3fbb2fe8777a1e3f82c7b9390a53f",
+  "mainSha": "be2ecb9a92c6b69c87dc0be01ed41eda971815b7",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
+    {
+      "label": "Library Tests tab test cases",
+      "state": "Open",
+      "detail": "2026-10-05: PR #127 (open; implementation commit a9a6a07 on main be2ecb9, later commits touch only AGENTS.md and this snapshot) lets a saved prompt's Library Tests tab create, edit, run and delete test cases, so Run Cases has cases to run. The case form had been unreachable because only the unmounted LibraryPanel rendered it. Confirmed in a browser before the fix. Local macOS, Node 22: extension suite 101 files / 1013 tests and 220/220 node:test pass; the new tests fail with the fix reverted (19 of 44) and with the App wiring removed (5); the new Playwright spec fails on the base source (web surface) and passes on the web surface and the built extension; the three existing Library e2e specs and the docs check pass. Gap: hosted CI (2 passing, 7 pending at write time), merge, production verification, the Tauri webview (Delete uses window.confirm) and human acceptance. Open decision: Run Cases checks the Enhance rewrite of the case input, not the saved prompt's answer (TC-A relabel, TC-B run the saved prompt, TC-C both; recommended). Next action: review PR #127 and merge after hosted checks pass, then confirm Add Case in the live app.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/127"
+    },
     {
       "label": "Hosted rate-limit messaging",
       "state": "Verified",
@@ -100,7 +106,7 @@
     {
       "label": "Record synchronization",
       "state": "Open",
-      "detail": "Complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
+      "detail": "Complete 39-row Notion read at 2026-10-05T07:32:00Z (single page, no more rows; read twice to rule out a concurrent edit). All 37 rows in the 2026-09-23 snapshot still match the live table, all IDs and the selected 14-item plan are preserved, and two rows were added: the send-time PII redaction row (created by another session at 2026-10-05T07:03:18Z; display fields only, not independently audited here) and the Library Tests tab test-case row, which this refresh wrote and read back together with a RUN-20260905-0940 entry (the rest of that page is unchanged). Previous refresh, 2026-09-23T11:08:00Z: complete 37-row Notion read at 2026-09-23T11:08:00Z (single page, no more rows); every snapshot status matches the live table and all IDs and the selected 14-item plan are preserved. This refresh wrote and read back two new rows (hosted quota follow-ups Done; failed-run draft title Not started), the owner-access row evidence and RUN-20260922-1800. Earlier 04:09:35Z read: that phased task kept Notion read-only, so its Phase 3 evidence is recorded locally and is still not synchronized to Notion; no umbrella status was promoted from either snapshot.",
       "url": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f"
     },
     {
@@ -566,6 +572,30 @@
       "inPlan": false,
       "nextAction": null,
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
+    },
+    {
+      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
+      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Security",
+      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3f0255fc8f44811d8794c092ba1bb88f",
+      "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
+      "inPlan": false,
+      "nextAction": "Review PR #127 and merge once hosted checks pass, then confirm Add Case in the live app.",
+      "verification": "PR #127 open (implementation commit a9a6a07 on main be2ecb9). Local checks and a live browser reproduction are recorded in the row and in RUN-20260905-0940; hosted CI, merge and production verification are not yet observed."
     }
   ]
 }
