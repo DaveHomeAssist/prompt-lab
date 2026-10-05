@@ -32,4 +32,22 @@ describe('piiScanner', () => {
     expect(redacted.messages[0].content).toContain('[EMAIL]');
     expect(redacted.messages[0].content).not.toContain('test@example.com');
   });
+
+  it('fully redacts a whole secret, a bearer token and a parenthesized phone in the send payload', () => {
+    const payload = {
+      messages: [
+        { role: 'user', content: 'password: correcthorsebatterystaple' },
+        { role: 'user', content: 'Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123456789' },
+        { role: 'user', content: 'Contact jane.doe@example.com or (555) 123-4567.' },
+      ],
+    };
+    const { matches } = scanSensitiveData({ payload });
+    const redacted = redactPayload(payload, matches);
+
+    expect(redacted.messages.map((message) => message.content)).toEqual([
+      'password: [SECRET]',
+      'Authorization: Bearer [BEARER_TOKEN]',
+      'Contact [EMAIL] or [PHONE].',
+    ]);
+  });
 });
