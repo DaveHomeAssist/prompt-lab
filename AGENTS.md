@@ -103,6 +103,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 | 019 | P1 | resolved | Billing-disabled production still showed live purchase controls (PLB-006) | billingDisabled propagated into billing state; checkout/portal surface server message; billing modal shows maintenance notice |
 | 020 | P2 | resolved | Hosted proxy limits were reported as Anthropic rate limits with wrong recovery advice | Proxy 429s carry `code`/`limit`/`reset_at`; client shows Prompt Lab-attributed copy with reset time, offers Provider Settings for daily caps, and never auto-retries hosted limits |
 | 021 | P2 | resolved | Hosted quota was invisible and spent by retries and rejected requests | Provider 429s no longer auto-retry (manual Try Again kept); demo/global counters move only after body validation and key check; proxy sends `X-Demo-Limit`/`X-Global-Limit`; `HostedQuotaBadge` shows remaining daily requests under Create actions and in Provider Settings |
+| 022 | P2 | in-progress | OpenRouter default model was a dated Sonnet 4 slug that OpenRouter does not list | Default is now `anthropic/claude-sonnet-4.6` in both registries (desktop shares `src/` via symlink), the Options placeholder, and the setup/guide pages; a stored value that exactly equals the old default is read as the new default (nothing rewritten until Save), custom models untouched. Open: no live OpenRouter call was made (no key), so the runtime gate is unverified |
 
 ## Session Log
 
@@ -159,6 +160,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
 [2026-09-22] [PLB] [fix] Attribute hosted proxy 429s to Prompt Lab with cause-specific reset time and recovery (020)
 [2026-09-23] [PLB] [fix] Stop auto-retrying 429s, count hosted daily quota only after validation, and show remaining hosted quota in the UI (021)
+[2026-10-05] [PLB] [fix] Replace the unlisted OpenRouter default model slug with anthropic/claude-sonnet-4.6 and read a stored copy of the old default as the new one (022)
 
 ## Status naming
 
