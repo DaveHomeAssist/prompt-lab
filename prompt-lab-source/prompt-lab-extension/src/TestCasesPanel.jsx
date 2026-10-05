@@ -27,11 +27,12 @@ export default function TestCasesPanel({
   caseNotes, setCaseNotes,
   openCaseForm, resetCaseForm, saveCaseForPrompt,
   loadCaseIntoEditor, runSingleCase, removeCase,
+  runningCases = false,
 }) {
   const isFormOpen = caseFormPromptId === entry.id;
 
   return (
-    <div>
+    <div role="region" aria-label="Test cases">
       <div className="flex items-center justify-between mb-1.5">
         <p className={`text-xs ${m.textSub} font-semibold uppercase tracking-wider flex items-center gap-1`}>
           <Ic n="FlaskConical" size={11} />Test Cases ({cases.length})
@@ -102,7 +103,7 @@ export default function TestCasesPanel({
                 <div className="flex gap-2 shrink-0">
                   <button onClick={() => openCaseForm(entry.id, testCase)} className={`text-xs ${m.textSub} hover:text-orange-400 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Edit</button>
                   <button onClick={() => loadCaseIntoEditor(testCase)} className={`text-xs ${m.textSub} hover:text-white hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors`}>Use</button>
-                  <button onClick={() => runSingleCase(testCase, entry.title)} className="text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Run</button>
+                  <button onClick={() => runSingleCase(testCase, entry.title)} disabled={runningCases} className="text-xs text-blue-400 hover:text-blue-300 hover:bg-white/5 disabled:opacity-40 rounded-lg px-1.5 py-0.5 transition-colors">Run</button>
                   <button onClick={() => removeCase(testCase)} className="text-xs text-red-400 hover:text-red-300 hover:bg-white/5 rounded-lg px-1.5 py-0.5 transition-colors">Delete</button>
                 </div>
               </div>

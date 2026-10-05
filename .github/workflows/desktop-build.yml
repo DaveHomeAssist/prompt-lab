@@ -52,8 +52,8 @@ jobs:
       - name: Install Chromium for scenario development checks
         run: npx playwright install --with-deps chromium
 
-      - name: Verify native scenario logic and compact Library layout
-        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js
+      - name: Verify native scenario logic, compact Library layout, and Library test cases
+        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js
 
   desktop-build:
     needs: extension-tests

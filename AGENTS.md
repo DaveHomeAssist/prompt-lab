@@ -103,6 +103,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 | 019 | P1 | resolved | Billing-disabled production still showed live purchase controls (PLB-006) | billingDisabled propagated into billing state; checkout/portal surface server message; billing modal shows maintenance notice |
 | 020 | P2 | resolved | Hosted proxy limits were reported as Anthropic rate limits with wrong recovery advice | Proxy 429s carry `code`/`limit`/`reset_at`; client shows Prompt Lab-attributed copy with reset time, offers Provider Settings for daily caps, and never auto-retries hosted limits |
 | 021 | P2 | resolved | Hosted quota was invisible and spent by retries and rejected requests | Provider 429s no longer auto-retry (manual Try Again kept); demo/global counters move only after body validation and key check; proxy sends `X-Demo-Limit`/`X-Global-Limit`; `HostedQuotaBadge` shows remaining daily requests under Create actions and in Provider Settings |
+| 022 | P1 | resolved | Batch test-case runs had no reachable way to create a case | The only Add Case form lived in `LibraryPanel`, which App never mounts, and the Library Tests tab was read-only and pointed users at Evaluate (no case form there either), so Run Cases stayed disabled. Tests tab now hosts `TestCasesPanel` (add/edit/run/delete; Use starts a clean draft with undo); corrected empty-state copy; Run disabled while a run is in flight. Runner semantics and the `batchRuns` gate unchanged. Confirmed in a browser before the fix; regression guarded by component, App-wiring and Playwright (`e2e/library-test-cases.spec.js`, wired into CI) tests |
 
 ## Session Log
 
@@ -159,6 +160,8 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-08-12] [PLB] [ops] Standardize and operationalize user-facing Codex session naming across local, worktree, and cloud tasks
 [2026-09-22] [PLB] [fix] Attribute hosted proxy 429s to Prompt Lab with cause-specific reset time and recovery (020)
 [2026-09-23] [PLB] [fix] Stop auto-retrying 429s, count hosted daily quota only after validation, and show remaining hosted quota in the UI (021)
+[2026-10-05] [PLB] [fix] Make the Library Tests tab create, edit, run and delete test cases so Run Cases has cases to run; guard Use with an undo draft and disable Run while a run is in flight (022)
+[2026-10-05] [PLB] [test] Add TestCasesPanel, Library case-workflow and App-wiring Vitest suites plus a Playwright spec wired into desktop-build CI so an unreachable Add Case control fails the build (022)
 
 ## Status naming
 

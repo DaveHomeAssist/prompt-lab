@@ -4,6 +4,7 @@ import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { sortLibraryEntries } from './hooks/usePromptLibrary.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
+import TestCasesPanel from './TestCasesPanel.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { extractVars, wordDiff } from './promptUtils.js';
@@ -152,7 +153,9 @@ function VersionComparison({ entry, onRestore }) {
   </div>;
 }
 
-function InspectorContent({ selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, lib, canUseCollections, openBilling, copy }) {
+const GOLDEN_RESPONSE_HINT = 'Pin a golden response from a Create run, or promote one from Evaluate → Compare.';
+
+function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
   const content = entryText(selected);
   const variableNames = uniqueStrings([
     ...extractVars(selected.original || ''), ...extractVars(selected.enhanced || ''),
@@ -212,11 +215,22 @@ function InspectorContent({ selected, smartView, inspectorTab, detailsDraft, set
   }
 
   if (inspectorTab === 'tests') {
+    // Runnable cases live in the experiment store (keyed by prompt id), separate
+    // from the read-only `testCases` that packs and imports embed in the entry.
+    // Run Cases in Create only runs the former.
+    const embeddedCases = selected.testCases || [];
+    const hasGolden = Boolean(selected.goldenResponse?.text);
+    const savedCases = testCasesByPrompt?.[selected.id] || [];
+    const canManageCases = Boolean(testCaseControls) && smartView !== 'trash';
     return <div className="pl-saved-tests">
       {selected.metadata?.suite && <div className={`pl-suite-summary is-${selected.metadata.suite.verdict || 'unknown'}`}><strong>Latest suite: {selected.metadata.suite.verdict || 'Unknown'}</strong><span>{selected.metadata.suite.passed || 0}/{selected.metadata.suite.total || 0} passed</span></div>}
-      {selected.goldenResponse?.text && <section><h3>Golden response</h3><pre>{selected.goldenResponse.text}</pre><small>Similarity threshold: {Math.round((selected.goldenThreshold ?? DEFAULT_GOLDEN_THRESHOLD) * 100)}%</small></section>}
-      {(selected.testCases || []).map((testCase, index) => <section key={testCase.id || index}><h3>{testCase.name || `Test ${index + 1}`}</h3><pre>{testCase.input}</pre>{testCase.expectedTraits?.length > 0 && <p><strong>Expected:</strong> {testCase.expectedTraits.join(', ')}</p>}{testCase.exclusions?.length > 0 && <p><strong>Exclude:</strong> {testCase.exclusions.join(', ')}</p>}{testCase.notes && <small>{testCase.notes}</small>}</section>)}
-      {!selected.goldenResponse?.text && !(selected.testCases || []).length && <div className="pl-inspector-empty-state"><p>No tests saved.</p><small>Open the prompt in Evaluate to add cases and a golden response.</small></div>}
+      {canManageCases && <TestCasesPanel m={m} entry={selected} cases={savedCases} {...testCaseControls} />}
+      {canManageCases && savedCases.length > 0 && <small>Run all cases from Create: choose Open in Editor, then Run Cases.</small>}
+      {hasGolden && <section><h3>Golden response</h3><pre>{selected.goldenResponse.text}</pre><small>Similarity threshold: {Math.round((selected.goldenThreshold ?? DEFAULT_GOLDEN_THRESHOLD) * 100)}%</small></section>}
+      {canManageCases && embeddedCases.length > 0 && <h3>Included with this prompt (read-only)</h3>}
+      {embeddedCases.map((testCase, index) => <section key={testCase.id || index}><h3>{testCase.name || `Test ${index + 1}`}</h3><pre>{testCase.input}</pre>{testCase.expectedTraits?.length > 0 && <p><strong>Expected:</strong> {testCase.expectedTraits.join(', ')}</p>}{testCase.exclusions?.length > 0 && <p><strong>Exclude:</strong> {testCase.exclusions.join(', ')}</p>}{testCase.notes && <small>{testCase.notes}</small>}</section>)}
+      {canManageCases && !hasGolden && <small>No golden response pinned. {GOLDEN_RESPONSE_HINT}</small>}
+      {!canManageCases && !hasGolden && embeddedCases.length === 0 && <div className="pl-inspector-empty-state"><p>No tests saved.</p><small>{smartView === 'trash' ? 'Restore this prompt to add test cases.' : GOLDEN_RESPONSE_HINT}</small></div>}
     </div>;
   }
 
@@ -229,6 +243,10 @@ export default function LibraryWorkspace({
   canUseCollections = true, canExportLibrary = true,
   canImportLibrary = canExportLibrary, canUsePacks = true, openBilling,
   compact = false,
+  // Optional. Runnable test cases by prompt id, plus the form state and handlers
+  // TestCasesPanel needs (everything except `m`, `entry` and `cases`). Without
+  // them the Tests tab stays read-only.
+  testCasesByPrompt, testCaseControls,
 }) {
   const [smartView, setSmartView] = useState('all');
   // Persisted like the other UI preferences (pl2-mode, pl2-density) so the
@@ -485,7 +503,7 @@ export default function LibraryWorkspace({
             <h3>Follow-up prompts</h3>
             {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
           </section>}
-          <InspectorContent selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={setDetailsDraft} detailsDirty={detailsDirty} saveDetails={saveDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} />
+          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={setDetailsDraft} detailsDirty={detailsDirty} saveDetails={saveDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
         </div>
         <footer>
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>
