@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LEGACY_OPENROUTER_MODEL } from '../lib/providerRegistry.js';
+
 const {
   loadProviderSettings,
   saveProviderSettings,
@@ -65,6 +67,14 @@ async function renderModal(props = {}) {
     />
   );
   return { ...view, onClose, notify };
+}
+
+// The modal first renders the default provider and only switches once the
+// stored settings load, so wait for OpenRouter before reading its Model field.
+async function openRouterModelField() {
+  const provider = await screen.findByRole('combobox', { name: 'Provider' });
+  await waitFor(() => expect(provider).toHaveValue('openrouter'));
+  return screen.getByRole('textbox', { name: 'Model' });
 }
 
 describe('DesktopSettingsModal', () => {
@@ -244,6 +254,58 @@ describe('DesktopSettingsModal', () => {
     });
   });
 
+  it('openrouter_model_field_starts_at_a_slug_openrouter_lists', async () => {
+    loadProviderSettings.mockResolvedValueOnce({ provider: 'openrouter', openrouterApiKey: 'sk-or-test' });
+
+    await renderModal();
+
+    expect(await openRouterModelField()).toHaveValue('anthropic/claude-sonnet-4.6');
+  });
+
+  it('openrouter_retired_default_is_replaced_when_the_stored_settings_load', async () => {
+    // Real loader over real storage: the replacement lives in desktopApi.loadSettings.
+    localStorage.setItem('pl2-provider-settings', JSON.stringify({
+      provider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: LEGACY_OPENROUTER_MODEL,
+    }));
+    loadProviderSettings.mockImplementationOnce(async () => (await import('../lib/desktopApi.js')).loadSettings());
+
+    await renderModal();
+
+    expect(await openRouterModelField()).toHaveValue('anthropic/claude-sonnet-4.6');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
+        provider: 'openrouter',
+        openrouterModel: 'anthropic/claude-sonnet-4.6',
+      }));
+    });
+  });
+
+  it('openrouter_custom_model_survives_load_and_save', async () => {
+    localStorage.setItem('pl2-provider-settings', JSON.stringify({
+      provider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: 'openai/gpt-4o',
+    }));
+    loadProviderSettings.mockImplementationOnce(async () => (await import('../lib/desktopApi.js')).loadSettings());
+
+    await renderModal();
+
+    expect(await openRouterModelField()).toHaveValue('openai/gpt-4o');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => {
+      expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
+        openrouterModel: 'openai/gpt-4o',
+      }));
+    });
+  });
+
   it('platform_branch_behavior_matches_contract', async () => {
     const payload = {
       model: 'test-model',
@@ -298,6 +360,7 @@ describe('DesktopSettingsModal', () => {
     }));
     vi.doMock('../lib/providerRegistry.js', () => ({
       DEFAULTS: { anthropicModel: 'claude-sonnet-4-6' },
+      migrateLegacyDefaults: (settings) => settings,
       normalizeProvider,
     }));
     localStorage.setItem('pl2-provider-settings', JSON.stringify({

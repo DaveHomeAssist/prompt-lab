@@ -6,7 +6,7 @@ import { PROVIDER_SETTINGS_CHANGED } from './providerSettingsEvents.js';
  * All provider logic lives in ./providers.js (shared with the extension).
  */
 import { callProvider, listOllamaModels as listModels } from './providers.js';
-import { DEFAULTS, normalizeProvider } from './providerRegistry.js';
+import { DEFAULTS, migrateLegacyDefaults, normalizeProvider } from './providerRegistry.js';
 import { createProxyFetch } from './proxyFetch.js';
 import { clearHostedQuota } from './hostedQuota.js';
 
@@ -35,7 +35,7 @@ export function loadSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
-    return normalizeHostedSettings(parsed);
+    return normalizeHostedSettings(migrateLegacyDefaults(parsed));
   } catch {
     return normalizeHostedSettings({});
   }

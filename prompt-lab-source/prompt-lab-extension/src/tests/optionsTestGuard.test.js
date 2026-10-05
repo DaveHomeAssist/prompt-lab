@@ -10,8 +10,10 @@ import {
 } from '../../scripts/assemble.js';
 import {
   DEFAULTS,
+  LEGACY_OPENROUTER_MODEL,
   PROVIDER_SETTINGS_KEYS,
   VALID_PROVIDERS,
+  migrateLegacyDefaults,
 } from '../../extension/lib/providerRegistry.js';
 
 // DHA-10 / PLB-014: the Options "Test" button sends a real MODEL_REQUEST through
@@ -59,10 +61,10 @@ function loadOptionsScript() {
 
   // eslint-disable-next-line no-new-func
   const run = new Function(
-    'DEFAULTS', 'PROVIDER_SETTINGS_KEYS', 'VALID_PROVIDERS', 'document', 'chrome',
+    'DEFAULTS', 'PROVIDER_SETTINGS_KEYS', 'VALID_PROVIDERS', 'migrateLegacyDefaults', 'document', 'chrome',
     OPTIONS_SOURCE,
   );
-  run(DEFAULTS, PROVIDER_SETTINGS_KEYS, VALID_PROVIDERS, document, globalThis.chrome);
+  run(DEFAULTS, PROVIDER_SETTINGS_KEYS, VALID_PROVIDERS, migrateLegacyDefaults, document, globalThis.chrome);
 }
 
 beforeEach(() => {
@@ -113,6 +115,58 @@ describe('options source under test is the packaged source', () => {
 
   it('packages options.js as part of the extension', () => {
     expect(PACKAGED_FILES).toContain('options.js');
+  });
+});
+
+// The Options page pre-fills the model field with the default and saves whatever
+// the field holds, so the retired OpenRouter default can sit in storage as though
+// the user had chosen it. Re-run the script against a given storage state.
+describe('options OpenRouter model field', () => {
+  const CURRENT_DEFAULT = 'anthropic/claude-sonnet-4.6';
+
+  function openWithStorage(stored) {
+    globalThis.chrome.storage.local.get = vi.fn((_keys, callback) => callback(stored));
+    loadOptionsScript();
+    return document.getElementById('openrouterModel');
+  }
+
+  it('starts at the current default when no model is saved', () => {
+    expect(openWithStorage({}).value).toBe(CURRENT_DEFAULT);
+  });
+
+  it('shows the current default in place of the retired one earlier versions saved', () => {
+    const field = openWithStorage({
+      provider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: LEGACY_OPENROUTER_MODEL,
+    });
+
+    expect(field.value).toBe(CURRENT_DEFAULT);
+  });
+
+  it('keeps a model the user chose', () => {
+    const field = openWithStorage({
+      provider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: 'openai/gpt-4o',
+    });
+
+    expect(field.value).toBe('openai/gpt-4o');
+  });
+
+  it('saves the current default, not the retired one, once the user saves', () => {
+    openWithStorage({
+      provider: 'openrouter',
+      openrouterApiKey: 'sk-or-test',
+      openrouterModel: LEGACY_OPENROUTER_MODEL,
+    });
+
+    document.getElementById('saveBtn').click();
+
+    expect(globalThis.chrome.storage.local.set).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'openrouter', openrouterModel: CURRENT_DEFAULT }),
+      expect.any(Function),
+    );
   });
 });
 
