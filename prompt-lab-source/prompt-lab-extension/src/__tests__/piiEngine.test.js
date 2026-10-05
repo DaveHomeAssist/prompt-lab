@@ -102,6 +102,10 @@ describe('piiEngine send-time redaction regressions', () => {
     it('does not stop at a hyphen inside the value', () => {
       expect(redactText('api_key: abcdefghijkl-mnopqrstuvwxyz')).toBe('API_KEY');
     });
+
+    it('redacts a hyphenated provider key sent in an x-api-key header', () => {
+      expect(redactText('x-api-key: sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789ABCD')).toBe('x-API_KEY');
+    });
   });
 
   describe('bearer_token', () => {
