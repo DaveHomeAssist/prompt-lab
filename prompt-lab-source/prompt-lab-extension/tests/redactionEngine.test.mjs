@@ -18,6 +18,7 @@ test('defaults: all pattern types enabled', () => {
   assert.equal(s.patterns.email, true);
   assert.equal(s.patterns.credit_card, true);
   assert.equal(s.patterns.secret_value, true);
+  assert.equal(s.patterns.bearer_token, true);
   assert.equal(s.patterns.custom, true);
   assert.deepEqual(s.customPatterns, []);
 });
@@ -89,6 +90,11 @@ test('detect: finds secret assignment', () => {
   assert.ok(m.some(x => x.type === 'secret_value'));
 });
 
+test('detect: finds a bare Bearer token', () => {
+  const m = detectSensitiveData('Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123456789');
+  assert.ok(m.some(x => x.type === 'bearer_token'));
+});
+
 test('detect: custom patterns work', () => {
   const s = { ...defaultRedactionSettings(), customPatterns: ['SSN-\\d{3}-\\d{2}-\\d{4}'] };
   const m = detectSensitiveData('record SSN-123-45-6789 found', s);
@@ -140,6 +146,12 @@ test('redact: replaces matched ranges', () => {
   const matches = detectSensitiveData(text);
   const { redactedText } = redactSensitiveData(text, matches);
   assert.ok(!redactedText.includes('test@example.com'));
+});
+
+test('redact: replaces the whole password value, not just a prefix', () => {
+  const text = 'password: correcthorsebatterystaple';
+  const { redactedText } = redactSensitiveData(text, detectSensitiveData(text));
+  assert.equal(redactedText, 'password: SECRET');
 });
 
 test('redact: returns redaction map', () => {

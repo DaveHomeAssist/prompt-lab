@@ -25,6 +25,33 @@ describe('sensitive preflight approval', () => {
     expect(resumeB.mock.calls[0][0].messages[0].content).not.toContain('person@example.com');
   });
 
+  it('Redact & Send replaces whole secrets, bearer tokens and parenthesized phones', async () => {
+    const resume = vi.fn();
+    const content = [
+      'password: correcthorsebatterystaple',
+      'Authorization: Bearer abcdefghijklmnopqrstuvwxyz0123456789',
+      'Contact jane.doe@example.com or (555) 123-4567.',
+    ].join('\n');
+    const { result } = renderHook(useSensitivePreflight);
+    act(() => result.current.review({
+      scope: 'a',
+      payload: { messages: [{ role: 'user', content }] },
+      isCurrent: () => true,
+      resume,
+    }));
+
+    expect(result.current.piiWarning.matches.map((match) => match.type).sort())
+      .toEqual(['bearer_token', 'email', 'phone', 'secret_value']);
+    await act(async () => result.current.piiRedactAndSend());
+
+    expect(resume).toHaveBeenCalledOnce();
+    expect(resume.mock.calls[0][0].messages[0].content).toBe([
+      'password: [SECRET]',
+      'Authorization: Bearer [BEARER_TOKEN]',
+      'Contact [EMAIL] or [PHONE].',
+    ].join('\n'));
+  });
+
   it.each(['stale owner', 'cancel', 'settings', 'storage', 'unmount'])('revokes approval on %s', async (reason) => {
     const resume = vi.fn();
     let current = true;
