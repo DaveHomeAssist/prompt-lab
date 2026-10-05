@@ -17,6 +17,7 @@ on:
       - prompt-lab-source/prompt-lab-desktop/package.json
       - prompt-lab-source/prompt-lab-desktop/package-lock.json
       - prompt-lab-source/scripts/audit-workspaces.mjs
+      - prompt-lab-source/scripts/audit-allowlist.json
       - prompt-lab-source/scripts/require-node.mjs
       - prompt-lab-source/tests/audit-workspaces.test.mjs
       - prompt-lab-source/tests/runtime-contract.test.mjs
@@ -35,6 +36,7 @@ on:
       - prompt-lab-source/prompt-lab-desktop/package.json
       - prompt-lab-source/prompt-lab-desktop/package-lock.json
       - prompt-lab-source/scripts/audit-workspaces.mjs
+      - prompt-lab-source/scripts/audit-allowlist.json
       - prompt-lab-source/scripts/require-node.mjs
       - prompt-lab-source/tests/audit-workspaces.test.mjs
       - prompt-lab-source/tests/runtime-contract.test.mjs

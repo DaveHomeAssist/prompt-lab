@@ -1,0 +1,13 @@
+{
+  "description": "Time-boxed exceptions to the dependency audit gate in scripts/audit-workspaces.mjs. Each entry silences exactly one GitHub advisory for one package until its expiry date (90 days at most). Every other advisory still fails the gate, and an expired entry stops applying on its own.",
+  "advisories": [
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "Stack-exhaustion denial of service in braces 3.0.3 and earlier (CVE-2026-93687). GitHub lists no patched release and 3.0.3 is the newest on npm. It is reachable only through dev tooling (tailwindcss 3 and markdownlint-cli2, via micromatch, fast-glob and chokidar); the production dependency audit is clean in all four package roots. Exploiting it needs an attacker-controlled, deeply nested brace pattern, and these tools only expand patterns from repo-owned config.",
+      "removeWhen": "braces publishes a patched release (raise the lockfiles to it), or the dependency chain is removed (Tailwind 4 in the extension, web and desktop roots, and a markdownlint tool without micromatch).",
+      "added": "2026-10-05",
+      "expires": "2026-12-01"
+    }
+  ]
+}
