@@ -169,6 +169,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-05] [PLB] [build] Unblock the dependency audit gate: bump undici to 7.30.0 and accept the unfixable braces advisory only while dev-only, until 2026-11-05 (025)
 [2026-10-05] [PLB] [fix] Make the Library Tests tab create, edit, run and delete test cases so Run Cases has cases to run; guard Use with an undo draft and disable Run while a run is in flight (024)
 [2026-10-05] [PLB] [test] Add TestCasesPanel, Library case-workflow and App-wiring Vitest suites plus a Playwright spec wired into desktop-build CI so an unreachable Add Case control fails the build (024)
+[2026-10-06] [PLB] [build] Add scripts/eval-davellm.mjs: Library Test cases through DaveLLM's stateless /eval/chat, scored with the app's Enhance payload, PII gate, parser and checkTraits; node --test suite wired into Extension CI (DaveLLM DL-EVAL-01 milestone 2)
 
 ## Status naming
 
