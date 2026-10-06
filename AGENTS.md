@@ -170,6 +170,8 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-05] [PLB] [fix] Make the Library Tests tab create, edit, run and delete test cases so Run Cases has cases to run; guard Use with an undo draft and disable Run while a run is in flight (024)
 [2026-10-05] [PLB] [test] Add TestCasesPanel, Library case-workflow and App-wiring Vitest suites plus a Playwright spec wired into desktop-build CI so an unreachable Add Case control fails the build (024)
 [2026-10-06] [PLB] [build] Add scripts/eval-davellm.mjs: Library Test cases through DaveLLM's stateless /eval/chat, scored with the app's Enhance payload, PII gate, parser and checkTraits; node --test suite wired into Extension CI (DaveLLM DL-EVAL-01 milestone 2)
+[2026-10-06] [PLB] [build] Clear the audit gate again: bump source-map-js to 1.2.2 in extension, web and desktop lockfiles (GHSA-68fv-2mgg-jv7q, high)
+[2026-10-06] [PLB] [docs] Mark DECISIONS.md D-003 and the EXECUTION_PRD DaveLLM integration (DLM-1 to DLM-4) superseded: Tailscale-resolved nodes, no Ollama dialect, eval through /eval/chat
 
 ## Status naming
 
