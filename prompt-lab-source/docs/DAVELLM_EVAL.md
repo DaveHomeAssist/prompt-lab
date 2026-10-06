@@ -24,7 +24,7 @@ npm run eval:davellm -- --input ~/Downloads/prompt-lab-workspace.json \
   --node walter --models llama3:latest,gpt-oss:20b --dry-run
 ```
 
-`--dry-run` checks the inventory and the PII gate and calls no model. Drop it for the real run. Defaults follow D-EVAL-04 A and D-EVAL-05 A: the first 10 cases, one pass, `max_tokens` 4,096, and `format: "json"`. `--no-format` sends no format, `--cases`/`--case-ids` change the selection, and `--router` points at a router other than `http://127.0.0.1:8000`. `--help` lists every option.
+`--dry-run` checks the inventory and the PII gate and calls no model. Drop it for the real run. Defaults follow D-EVAL-04 A and D-EVAL-05 A: the first 10 cases, one pass, `max_tokens` 4,096, and `format: "json"`. `--no-format` sends no format, `--cases`/`--case-ids` change the selection, `--mode` picks an Enhance mode the app defines (an unknown one is refused, because the app's prompt builder would silently fall back to `balanced`), and `--router` points at a router other than `http://127.0.0.1:8000`. `--help` lists every option.
 
 A live run calls real models. On DaveLLM it stays Dave-gated (milestone 3).
 

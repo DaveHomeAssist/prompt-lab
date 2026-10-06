@@ -4,7 +4,7 @@ import http from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { ALL_TAGS, buildSystemPrompt } from '../prompt-lab-extension/src/constants.js';
+import { ALL_TAGS, buildSystemPrompt, MODES } from '../prompt-lab-extension/src/constants.js';
 import { checkTraits } from '../prompt-lab-extension/src/promptUtils.js';
 import {
   buildAppPayload,
@@ -102,6 +102,13 @@ describe('eval-davellm', () => {
     assert.equal(parseCliArgs(['--input', 'w.json', '--node', 'n', '--models', 'a', '--no-format'], { DAVE_API_KEY: KEY }).format, null);
     assert.throws(() => parseCliArgs(['--input', 'w.json', '--node', 'n', '--models', 'a'], {}), /DAVE_API_KEY/);
     assert.throws(() => parseCliArgs(['--input', 'w.json', '--node', 'n', '--models', 'a', '--cases', '0'], { DAVE_API_KEY: KEY }), /positive integer/);
+  });
+
+  it('accepts only enhance modes the app defines, since an unknown one silently runs balanced', () => {
+    const args = (mode) => ['--input', 'w.json', '--node', 'n', '--models', 'a', '--mode', mode];
+    for (const { id } of MODES) assert.equal(parseCliArgs(args(id), { DAVE_API_KEY: KEY }).mode, id);
+    assert.throws(() => parseCliArgs(args('balance'), { DAVE_API_KEY: KEY }), (error) => error instanceof EvalSetupError
+      && /Unknown --mode "balance"/.test(error.message) && error.message.includes(MODES.map(({ id }) => id).join(', ')));
   });
 
   it('builds the payload the app builds for a Library Test', () => {

@@ -14,6 +14,7 @@ import {
   DEFAULT_ENHANCE_MAX_TOKENS,
   DEFAULT_ENHANCE_MODEL,
   DEFAULT_ENHANCE_TEMPERATURE,
+  MODES,
 } from '../prompt-lab-extension/src/constants.js';
 import { checkTraits, parseEnhancedPayload } from '../prompt-lab-extension/src/promptUtils.js';
 import { scanSensitiveData } from '../prompt-lab-extension/src/piiScanner.js';
@@ -88,6 +89,12 @@ export function parseCliArgs(argv, env = process.env) {
   };
   const models = list(values.models);
   if (!models.length) throw new EvalSetupError('--models must name at least one model.');
+  // buildSystemPrompt falls back to the first mode for an unknown id, so a typo would run
+  // one mode while the report names another.
+  const mode = values.mode || DEFAULT_MODE;
+  if (!MODES.some((item) => item.id === mode)) {
+    throw new EvalSetupError(`Unknown --mode "${mode}". Use one of: ${MODES.map((item) => item.id).join(', ')}.`);
+  }
   const apiKey = env.DAVE_API_KEY || '';
   if (!apiKey) throw new EvalSetupError('Set DAVE_API_KEY to the DaveLLM API key before running.');
   return {
@@ -97,7 +104,7 @@ export function parseCliArgs(argv, env = process.env) {
     router: String(values.router || env.DAVE_ROUTER_URL || DEFAULT_ROUTER).replace(/\/+$/, ''),
     caseLimit: positive(values.cases, '--cases', DEFAULT_CASE_LIMIT),
     caseIds: list(values['case-ids']),
-    mode: values.mode || DEFAULT_MODE,
+    mode,
     maxTokens: positive(values['max-tokens'], '--max-tokens', DEFAULT_ENHANCE_MAX_TOKENS),
     format: values['no-format'] ? null : 'json',
     out: values.out ? resolve(values.out) : null,
