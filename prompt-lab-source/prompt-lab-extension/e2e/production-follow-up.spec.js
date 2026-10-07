@@ -3,10 +3,13 @@ import { expect, test } from '@playwright/test';
 import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
 
 // Accepted plan K: exercise the deployed, authenticated shell and real storage.
-// Only the synthetic upstream run and provider response are fixtures. Never
+test.use({ serviceWorkers: 'block' });
+
+// The upstream editor result, saved run and provider response are fixtures. Never
 // forward a generation request to the hosted proxy or a paid provider.
 test('@production signed-in follow-up preserves its source and saves independently', async ({ page }) => {
   test.setTimeout(120_000);
+  page.setDefaultTimeout(15_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
   const clerk = createClerkClient({ secretKey: clerkSecretKey });
   const activeSessions = await clerk.sessions.getSessionList({ userId: clerkUserId, status: 'active', limit: 100 });
@@ -59,6 +62,7 @@ test('@production signed-in follow-up preserves its source and saves independent
     await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
     sessionId = await page.evaluate(() => window.Clerk?.session?.id || '');
     expect(sessionId).toMatch(/^sess_/);
+    console.info('[production-follow-up] authenticated; creating synthetic parent');
     await page.getByTestId('prompt-input').fill(`${marker} original instructions`);
     await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
     await expect.poll(async () => (await library()).find(row => row.original === `${marker} original instructions`)?.currentVersionId).toBeTruthy();
@@ -81,8 +85,17 @@ test('@production signed-in follow-up preserves its source and saves independent
     }), source);
     // Wait for the real session store before reloading the actual app.
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}').editingId)).toBe(parent.id);
+    // Follow-ups are exposed after an enhanced result. Seed that upstream
+    // editor state without generating it or changing the saved parent record.
+    await page.evaluate(() => {
+      const key = 'pl2-session-pl2-session';
+      const session = JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify({ ...session, enhanced: 'Synthetic upstream enhanced instructions', tab: 'editor' }));
+    });
     await page.reload({ waitUntil: 'domcontentloaded' });
     const panel = page.getByTestId('follow-up-panel');
+    await expect(panel).toBeVisible();
+    console.info('[production-follow-up] selecting synthetic saved output');
     await panel.getByRole('combobox', { name: 'Follow-up source' }).selectOption(source.id);
     await panel.getByTestId('suggest-follow-ups').click();
     await expect(panel.getByText(suggestion.title, { exact: true })).toBeVisible();
@@ -90,6 +103,7 @@ test('@production signed-in follow-up preserves its source and saves independent
     await panel.getByRole('button', { name: 'View source output', exact: true }).click();
     await expect(panel.getByText(sourceOutput, { exact: true })).toBeVisible();
     const baseline = await library();
+    console.info('[production-follow-up] verifying rejected save and retry');
 
     await page.evaluate(() => {
       const original = Storage.prototype.setItem;
@@ -133,5 +147,6 @@ test('@production signed-in follow-up preserves its source and saves independent
   } finally {
     if (sessionId) await clerk.sessions.revokeSession(sessionId);
     else if (agentTask) await clerk.agentTasks.revoke(agentTask.agentTaskId);
+    console.info('[production-follow-up] disposable session revoked');
   }
 });
