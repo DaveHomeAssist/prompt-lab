@@ -204,10 +204,27 @@ Transport verification contracts:
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
+- The desktop shell journals Library state to IndexedDB (`prompt_lab_durable`,
+  see below); localStorage stays the copy every reader uses
 - The React mobile prototype stores its local workspace in browser storage
 - The native app uses SwiftData and stores its provider key in Keychain
 
 Persistence contracts (post 2026-08 behavioral-audit remediation):
+
+- Desktop Library durability (`src/lib/libraryJournal.js`, Tauri only).
+  WebView2 batches localStorage commits and can drop the pending batch at a
+  clean window close. After every Library write (`saveJson`/`removeKey` and
+  the deletion markers, coalesced per turn) the desktop shell snapshots
+  `pl2-library`, `pl2-library-trash`, `pl2-collections`, `pl2-packs`,
+  `pl2-loaded-packs` and every deletion/clear marker into one IndexedDB record
+  committed with `durability: "strict"`, and bumps
+  `pl2-library-journal-revision` after the data it covers. Before the first
+  render the newer copy wins: a higher journal revision restores localStorage
+  (deletion markers are only ever added); a higher local revision, or equal
+  revisions with different contents, rewrites the journal. A journal that
+  fails or does not answer within 3 s never blocks startup. A write still in
+  flight when the process ends can be lost; the window is one IndexedDB
+  commit instead of localStorage's batching delay.
 
 - Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
   with value `1`; the marker contains no title or body. Clear Library appends a
