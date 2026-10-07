@@ -14,6 +14,25 @@ vi.mock('../lib/platform.js', () => ({
   sessionSet,
 }));
 
+it.each([true, false])('waits for durable acknowledgement before closing the save panel (success=%s)', async (success) => {
+  let settle;
+  const durable = new Promise(resolve => { settle = resolve; });
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => durable });
+  act(() => result.current.openSavePanel());
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  expect(result.current.showSave).toBe(true);
+  expect(result.current.lastSaveReceipt).toBeNull();
+  expect(result.current.raw).toBe('Raw draft');
+  await act(async () => {
+    settle(success ? { id: 'durable-id', title: 'Committed', versionNumber: 1 } : null);
+    await pending;
+  });
+  expect(result.current.showSave).toBe(!success);
+  expect(Boolean(result.current.lastSaveReceipt)).toBe(success);
+  expect(result.current.raw).toBe('Raw draft');
+});
+
 function makeEntry(overrides = {}) {
   return normalizeEntry({
     id: 'entry-1',

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-07T13:06:51.822Z",
+  "snapshotAt": "2026-10-07T14:35:35.191Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -14,9 +14,9 @@
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
     {
-      "label": "Windows Library package checks passed; merge held",
+      "label": "PL-DUR-1A implemented; final package verification pending",
       "state": "Open",
-      "detail": "2026-10-07 final PR132 evidence: head 34b1f5ad16f1608b8fc859ffb1bf1db54b220f09, base e984b6b, tested merge 4da4abbfdb90b0d65eb2dc0f100ad5122e2f9249 (both parents verified). Desktop Build 37621547467 passed every job, including corrected-harness Windows MSI and NSIS installed save/close/relaunch, completed export, and uninstall/reinstall retention. Both exercise.json and retention.json passed; no pre-close IndexedDB diagnostic wait remains. MSI SHA256 20107e585d63df5a36fe1b28847f728b57e628f37638cf72478340e809002427; NSIS SHA256 3909418c1d676321ccf091db2e8ccee49c7697095ca5b9040bcfb59e0c308ec5. Version 1.7.1 x64, unsigned packages; signing and older native/human goals remain open. Landing CI 37621547171 and Dependency Health 37621547178 passed with source-map-js 1.2.2; existing dev-only braces exception unchanged. MERGE HOLD: Saved still precedes durable commit and journal failures do not reach save feedback. PL-DUR-1A (recommended) extends scope into save acknowledgement and visible failure; PL-DUR-1B accepts the documented remaining in-flight loss risk. Neither has been selected. No merge/deploy. Next: resolve PL-DUR-1A/B before releasing PR132. Evidence: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37621547467",
+      "detail": "2026-10-07 PL-DUR-1A selected by Dave's finish instruction and expanded BUS-PL-1007-FINISH-DURABILITY-002 scope. The previous PL-DUR-1A/B decision hold is superseded; PL-DUR-1B is rejected. Implemented desktop save acknowledgement that awaits strict journal completion, persistent visible failure, preserved draft/save panel, duplicate-click coalescing and identical retry without another ID/version. Updated Library save hooks/callers, including follow-up, Scratch and Composer. Added focused pending/aborted-write, retry, version and recovery tests plus real IndexedDB transaction abort/retry assertions in disposable installed-app acceptance. Walter Node22.22.1: initial focused69 passed; final journal/flow33 passed including the added edited-version recovery test; extension build passed. Current source based on b13afa3 / main e984b6b; final candidate SHA and current packaged Windows MSI/NSIS proof pending. No merge/deploy claim yet. Preserve formats, legacy recovery, privacy, existing braces exception and unrelated platform/human acceptance gaps. Next: require final-head CI and corrected installed Windows acceptance, then complete normal merge and applicable publication.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/132"
     },
     {
@@ -312,8 +312,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Resolve PL-DUR-1A/B: extend durable save acknowledgement (recommended), or explicitly accept the remaining in-flight loss risk. Keep PR132 draft meanwhile.",
-      "verification": "2026-10-07 final PR132 evidence: head 34b1f5ad16f1608b8fc859ffb1bf1db54b220f09, base e984b6b, tested merge 4da4abbfdb90b0d65eb2dc0f100ad5122e2f9249 (both parents verified). Desktop Build 37621547467 passed every job, including corrected-harness Windows MSI and NSIS installed save/close/relaunch, completed export, and uninstall/reinstall retention. Both exercise.json and retention.json passed; no pre-close IndexedDB diagnostic wait remains. MSI SHA256 20107e585d63df5a36fe1b28847f728b57e628f37638cf72478340e809002427; NSIS SHA256 3909418c1d676321ccf091db2e8ccee49c7697095ca5b9040bcfb59e0c308ec5. Version 1.7.1 x64, unsigned packages; signing and older native/human goals remain open. Landing CI 37621547171 and Dependency Health 37621547178 passed with source-map-js 1.2.2; existing dev-only braces exception unchanged. MERGE HOLD: Saved still precedes durable commit and journal failures do not reach save feedback. PL-DUR-1A (recommended) extends scope into save acknowledgement and visible failure; PL-DUR-1B accepts the documented remaining in-flight loss risk. Neither has been selected. No merge/deploy. Next: resolve PL-DUR-1A/B before releasing PR132. Evidence: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37621547467"
+      "nextAction": "Verify current PL-DUR-1A packaged Windows abort/retry and retention gates, then merge and publish.",
+      "verification": "2026-10-07 PL-DUR-1A selected by Dave's finish instruction and expanded BUS-PL-1007-FINISH-DURABILITY-002 scope. The previous PL-DUR-1A/B decision hold is superseded; PL-DUR-1B is rejected. Implemented desktop save acknowledgement that awaits strict journal completion, persistent visible failure, preserved draft/save panel, duplicate-click coalescing and identical retry without another ID/version. Updated Library save hooks/callers, including follow-up, Scratch and Composer. Added focused pending/aborted-write, retry, version and recovery tests plus real IndexedDB transaction abort/retry assertions in disposable installed-app acceptance. Walter Node22.22.1: initial focused69 passed; final journal/flow33 passed including the added edited-version recovery test; extension build passed. Current source based on b13afa3 / main e984b6b; final candidate SHA and current packaged Windows MSI/NSIS proof pending. No merge/deploy claim yet. Preserve formats, legacy recovery, privacy, existing braces exception and unrelated platform/human acceptance gaps. Next: require final-head CI and corrected installed Windows acceptance, then complete normal merge and applicable publication."
     },
     {
       "id": "32d255fc8f44817faa12dc09d3ede05d",

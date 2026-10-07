@@ -16,6 +16,16 @@ export const LIBRARY_JOURNAL_REVISION_KEY = 'pl2-library-journal-revision';
 export const LIBRARY_JOURNAL_BOOT_MARK = 'prompt-lab:library-journal-boot';
 const DB_VERSION = 1;
 const BOOT_TIMEOUT_MS = 3000;
+let activeJournal = null;
+
+// Save callers must wait for the strict transaction, not the localStorage
+// staging write. Missing/unavailable desktop storage must never mean Saved.
+export function commitLibrarySave() {
+  if (typeof window === 'undefined' || !window.__TAURI_INTERNALS__) return null;
+  if (!activeJournal) return Promise.reject(new Error('Durable Library storage is unavailable.'));
+  activeJournal.commit();
+  return activeJournal.flush();
+}
 // Everything Library rendering depends on, restored as one snapshot: rows are
 // filtered by the newest clear marker, and packs track which starters loaded.
 const RECORD_KEYS = [
@@ -134,6 +144,7 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
   let dbPromise = null;
   let queued = false;
   let chain = Promise.resolve();
+  let pending = chain;
   let revision = 0;
   const database = () => {
     // A failed open is retried by the next write instead of being cached.
@@ -165,6 +176,7 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
       if (committed > readLocalRevision(storage)) setLocalRevision(committed);
       return committed;
     });
+    pending = write;
     // Settles with null on failure; localStorage still holds the write.
     chain = write.catch((error) => {
       logWarn('library journal write', error);
@@ -177,7 +189,7 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
   const note = (key) => {
     if (!isLibraryJournalKey(key) || queued) return;
     queued = true;
-    queueMicrotask(commit);
+    queueMicrotask(() => { if (queued) commit(); });
   };
 
   const restore = async () => {
@@ -195,7 +207,10 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
     return { action, localRevision: local.revision, journalRevision: record?.revision ?? null };
   };
 
-  return { note, restore, commit, flush: () => chain };
+  return { note, restore, commit, flush: () => {
+    if (queued) commit();
+    return withTimeout(pending, timeoutMs);
+  } };
 }
 
 // Runs before the first render so every synchronous reader sees the restored
@@ -209,7 +224,12 @@ export async function startLibraryJournal({ storage = localStorage, idb = indexe
     logWarn('library journal restore', error);
     outcome = { action: 'unavailable', error: error?.message || String(error) };
   }
-  const stop = onLocalWrite(journal.note);
+  activeJournal = journal;
+  const unsubscribe = onLocalWrite(journal.note);
+  const stop = () => {
+    unsubscribe();
+    if (activeJournal === journal) activeJournal = null;
+  };
   markBoot(outcome);
   return { journal, outcome, stop };
 }

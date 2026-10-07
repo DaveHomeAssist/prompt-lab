@@ -17,7 +17,7 @@ vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
 function createFakeIndexedDb() {
   const databases = new Map();
   const transactions = [];
-  const state = { failCommits: false, hangOpen: false };
+  const state = { failCommits: false, holdCommits: false, hangOpen: false };
   const later = (callback) => Promise.resolve().then(callback);
   const request = () => ({ result: undefined, error: null });
 
@@ -25,9 +25,12 @@ function createFakeIndexedDb() {
     const table = data.stores.get(storeName);
     const staged = [];
     const tx = { mode, options, error: null };
+    let finished = false;
     let outstanding = 0;
     const settle = () => later(() => {
-      if (outstanding) return;
+      if (outstanding || finished) return;
+      if (mode === 'readwrite' && state.holdCommits) { tx.release = settle; return; }
+      finished = true;
       if (state.failCommits) {
         tx.error = new Error('Synthetic commit failure');
         tx.onabort?.();
@@ -128,6 +131,117 @@ describe('library journal boot decision', () => {
 });
 
 describe('desktop library journal', () => {
+  const saveArgs = { title: 'Durable fixture', raw: 'Keep this draft', enhanced: 'Keep this draft', tags: [] };
+  const desktopLibrary = async () => {
+    window.__TAURI_INTERNALS__ = {};
+    vi.stubGlobal('indexedDB', idb);
+    localStorage.setItem(storageKeys.library, '[]');
+    const started = await boot();
+    await settled(started.journal);
+    const notify = vi.fn();
+    const hook = renderHook(() => usePromptLibrary(notify));
+    return { ...started, hook, notify };
+  };
+
+  it('withholds success until strict commit and coalesces duplicate clicks', async () => {
+    const { hook, notify } = await desktopLibrary();
+    idb.state.holdCommits = true;
+    let pending;
+    await act(async () => {
+      pending = hook.result.current.doSave(saveArgs);
+      expect(hook.result.current.doSave(saveArgs)).toBe(pending);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    expect(hook.result.current.saving).toBe(true);
+    expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Saved/));
+    expect(JSON.parse(journalRecord().entries[storageKeys.library])).toEqual([]);
+    idb.state.holdCommits = false;
+    await act(async () => {
+      for (const tx of idb.transactions) tx.release?.();
+      expect((await pending).id).toBeTruthy();
+    });
+    expect(hook.result.current.saving).toBe(false);
+    expect(notify).toHaveBeenCalledWith('Saved Durable fixture as version 1.');
+    expect(JSON.parse(journalRecord().entries[storageKeys.library])).toHaveLength(1);
+  });
+
+  it('keeps failed saves recoverable and retries without duplicate identity or version', async () => {
+    const { hook, notify } = await desktopLibrary();
+    idb.state.failCommits = true;
+    await act(async () => { expect(await hook.result.current.doSave(saveArgs)).toBeNull(); });
+    const staged = hook.result.current.library[0];
+    expect(staged.original).toBe(saveArgs.raw);
+    expect(hook.result.current.saveError).toMatch(/Save failed.*Keep this window open/);
+    expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Saved/));
+    expect(JSON.parse(journalRecord().entries[storageKeys.library])).toEqual([]);
+    idb.state.failCommits = false;
+    await act(async () => { expect((await hook.result.current.doSave(saveArgs)).id).toBe(staged.id); });
+    expect(hook.result.current.library).toHaveLength(1);
+    expect(hook.result.current.library[0].currentVersionId).toBe(staged.currentVersionId);
+    expect(hook.result.current.saveError).toBe('');
+  });
+
+  it('preserves the last committed state when a pending write is interrupted before acknowledgement', async () => {
+    const { hook, notify, stop } = await desktopLibrary();
+    const baseline = localEntries();
+    idb.state.holdCommits = true;
+    let pending;
+    await act(async () => {
+      pending = hook.result.current.doSave(saveArgs);
+      for (let i = 0; i < 20; i++) await Promise.resolve();
+    });
+    idb.state.holdCommits = false;
+    idb.state.failCommits = true;
+    await act(async () => {
+      for (const tx of idb.transactions) tx.release?.();
+      expect(await pending).toBeNull();
+    });
+    expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Saved/));
+    hook.unmount();
+    stop();
+    replaceLocal(baseline);
+    idb.state.failCommits = false;
+    const restarted = await boot();
+    await settled(restarted.journal);
+    expect(ids(storageKeys.library)).toEqual([]);
+    expect(JSON.parse(journalRecord().entries[storageKeys.library])).toEqual([]);
+  });
+
+  it('retries a failed edited version once and restores acknowledged data after lost local batching', async () => {
+    const { hook, journal, stop } = await desktopLibrary();
+    let first;
+    await act(async () => { first = await hook.result.current.doSave(saveArgs); });
+    await settled(journal);
+    const beforeEdit = localEntries();
+    const edit = { ...saveArgs, editingId: first.id, enhanced: 'Durable edited body' };
+    idb.state.failCommits = true;
+    await act(async () => { expect(await hook.result.current.doSave(edit)).toBeNull(); });
+    const failedVersion = hook.result.current.library[0].currentVersionId;
+    idb.state.failCommits = false;
+    await act(async () => {
+      const retried = await hook.result.current.doSave(edit);
+      expect(retried.id).toBe(first.id);
+      expect(retried.versionId).toBe(failedVersion);
+      expect(retried.versionNumber).toBe(2);
+    });
+    hook.unmount();
+    stop();
+    replaceLocal(beforeEdit);
+    const restarted = await boot();
+    expect(restarted.outcome.action).toBe('restore');
+    const restored = JSON.parse(localStorage.getItem(storageKeys.library));
+    expect(restored).toHaveLength(1);
+    expect(restored[0]).toMatchObject({ id: first.id, currentVersionId: failedVersion, enhanced: edit.enhanced });
+  });
+
+  it('does not acknowledge a save when desktop journaling never started', async () => {
+    window.__TAURI_INTERNALS__ = {};
+    const hook = renderHook(() => usePromptLibrary(vi.fn()));
+    await act(async () => { expect(await hook.result.current.doSave(saveArgs)).toBeNull(); });
+    expect(hook.result.current.saveError).toMatch(/Save failed/);
+    expect(hook.result.current.library[0].original).toBe(saveArgs.raw);
+  });
+
   it('is enabled only inside the Tauri shell', () => {
     expect(libraryJournalSupported()).toBe(false);
     window.__TAURI_INTERNALS__ = {};
@@ -180,7 +294,7 @@ describe('desktop library journal', () => {
     await settled(first.journal);
     idb.state.failCommits = true;
     saveJson(storageKeys.library, [{ id: 'local-only' }]);
-    await settled(first.journal);
+    await expect(settled(first.journal)).rejects.toThrow('Synthetic commit failure');
     expect(journalRecord().entries[storageKeys.library]).toBeUndefined();
     first.stop();
 

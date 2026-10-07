@@ -11,8 +11,12 @@ Date: 2026-10-07
 - The desktop app now also keeps a copy of the Library (prompts, trash,
   collections, packs and deletions) in browser storage that is written to
   disk before the journal commit completes. When the app starts, it uses
-  whichever copy is newer. The UI save message still precedes that commit;
-  closing during an in-flight commit can still lose the latest change.
+  whichever copy is newer. “Saved” now appears only after the durable copy
+  commits. While saving, keep the window open; an interrupted pending save
+  has not yet been acknowledged.
+- Failed commits leave a visible error and keep the editor and save panel
+  available. Retrying the same save reuses its entry and version rather than
+  creating duplicates. Follow-up, Scratch and Composer saves use this path too.
 - The browser extension and the web app work as before.
 
 Date: 2026-10-05

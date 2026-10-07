@@ -691,8 +691,45 @@ try {
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
     await enhance('fixture enhancement', () => execute('return document.body.innerText.includes("Fixture enhanced prompt");'));
+    // Fault injection belongs only to this disposable fixture profile. Abort
+    // real strict transactions, then retry through the same visible save flow.
+    await execute(`
+      window.__nativeLibraryDurability = { fail: true, aborted: 0, completed: 0, prematureReceipt: false };
+      const original = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function(store, mode, options) {
+        const tx = original.call(this, store, mode, options);
+        if (this.name === 'prompt_lab_durable' && mode === 'readwrite') {
+          tx.addEventListener('complete', () => { window.__nativeLibraryDurability.completed++; });
+          if (window.__nativeLibraryDurability.fail) {
+            window.__nativeLibraryDurability.aborted++;
+            queueMicrotask(() => tx.abort());
+          }
+        }
+        return tx;
+      };
+      new MutationObserver(() => {
+        const receipt = document.querySelector('#save-receipt-title');
+        if (receipt && !window.__nativeLibraryDurability.completed) window.__nativeLibraryDurability.prematureReceipt = true;
+      }).observe(document.body, { childList: true, subtree: true });
+      return true;
+    `);
     await click('[data-testid="save-to-library"]');
+    await waitFor(() => execute('return document.querySelector("[data-testid=library-save-error]")?.textContent.includes("Save failed");'), 'durable save failure visible');
+    const staged = (await readLibrary()).find(row => row.original === 'Summarize this synthetic native acceptance note.');
+    assert.ok(staged?.id, 'Failed durable write keeps recoverable staged content');
+    assert.equal(await execute('return Boolean(document.querySelector("#save-receipt-title"));'), false, 'Aborted commit must not produce a Saved receipt');
+    assert.equal(await execute('return document.querySelector("[data-testid=prompt-input]").value;'), 'Summarize this synthetic native acceptance note.', 'Failed save keeps editor draft');
+    await screenshot('durable-save-failed');
+    await execute('window.__nativeLibraryDurability.fail = false; return true;');
+    await click('[data-testid="save-to-library"]');
+    await waitFor(() => execute('return Boolean(document.querySelector("#save-receipt-title"));'), 'durable Saved receipt');
+    evidence.libraryDurability = await execute('return window.__nativeLibraryDurability;');
+    assert.ok(evidence.libraryDurability.aborted > 0, 'Failure scenario aborted a real journal transaction');
+    assert.ok(evidence.libraryDurability.completed > 0, 'Saved follows a completed strict journal transaction');
+    assert.equal(evidence.libraryDurability.prematureReceipt, false, 'No Saved receipt before strict commit');
     const saved = await waitFor(async () => { const rows = await readLibrary(); return rows.length === baseline.length + 1 && rows.find(row => row.original === 'Summarize this synthetic native acceptance note.'); }, 'acknowledged Library save');
+    assert.equal(saved.id, staged.id, 'Retry preserves the staged identity without a duplicate');
+    assert.equal(saved.currentVersionId, staged.currentVersionId, 'Retry does not create another version');
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
     evidence.savedPromptId = saved.id;
     await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');

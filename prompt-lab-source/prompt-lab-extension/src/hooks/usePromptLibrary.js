@@ -10,6 +10,7 @@ import {
   updatePromptEntry,
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
+import { commitLibrarySave } from '../lib/libraryJournal.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
 import {
@@ -170,6 +171,9 @@ export default function usePromptLibrary(notify) {
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
   const libraryPersistFailedRef = useRef(false);
+  const saveAttemptRef = useRef(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const setLibrary = useCallback((update) => {
     const proposed = typeof update === 'function' ? update(libraryRef.current) : update;
@@ -408,19 +412,19 @@ export default function usePromptLibrary(notify) {
     }
     libraryRef.current = nextLibrary;
     setLibrary(nextLibrary);
-    notify(savedFromDeletedTarget
+    const message = savedFromDeletedTarget
       ? 'The original prompt was deleted. Saved this draft as a new prompt.'
-      : `Saved ${entry.title} as version 1.`);
+      : `Saved ${entry.title} as version 1.`;
     const result = {
       id: entry.id,
       title: entry.title,
       versionId: entry.currentVersionId,
       versionNumber: 1,
     };
-    return savedFromDeletedTarget || copyAsNew ? { ...result, savedAsNew: true } : result;
+    return { result: savedFromDeletedTarget || copyAsNew ? { ...result, savedAsNew: true } : result, message };
   };
 
-  const doSave = ({
+  const saveToLocalLibrary = ({
     raw,
     enhanced,
     variants,
@@ -479,12 +483,14 @@ export default function usePromptLibrary(notify) {
       setLibrary(nextLibrary);
       const savedEntry = nextLibrary.find((entry) => entry.id === editingId);
       const versionNumber = (savedEntry?.versions?.length || 0) + 1;
-      notify(`Saved ${savedTitle} as version ${versionNumber}.`);
       return {
-        id: editingId,
-        title: savedTitle,
-        versionId: savedEntry?.currentVersionId || null,
-        versionNumber,
+        result: {
+          id: editingId,
+          title: savedTitle,
+          versionId: savedEntry?.currentVersionId || null,
+          versionNumber,
+        },
+        message: `Saved ${savedTitle} as version ${versionNumber}.`,
       };
     }
 
@@ -493,6 +499,43 @@ export default function usePromptLibrary(notify) {
       savedFromDeletedTarget,
       copyAsNew,
     });
+  };
+
+  const doSave = (args) => {
+    const signature = JSON.stringify(args);
+    const previous = saveAttemptRef.current;
+    // Double-clicks share the same save; another draft must not be reported as
+    // saved while this one is pending. A failed identical retry reuses its ID
+    // and version rather than creating a second Library record.
+    if (previous?.pending) return previous.signature === signature ? previous.pending : null;
+    const prepared = previous?.signature === signature ? previous.prepared : saveToLocalLibrary(args);
+    if (!prepared) return null;
+    const attempt = { signature, prepared, pending: null };
+    saveAttemptRef.current = attempt;
+    const succeed = () => {
+      if (!libraryRef.current.some(entry => entry.id === prepared.result.id)) {
+        setSaveError('Save interrupted — this prompt was deleted. Your draft is still available.');
+        saveAttemptRef.current = null;
+        return null;
+      }
+      saveAttemptRef.current = null;
+      setSaveError('');
+      notify(prepared.message);
+      return prepared.result;
+    };
+    const durable = commitLibrarySave();
+    if (!durable) return succeed();
+    setSaving(true);
+    attempt.pending = durable.then(succeed, () => {
+      const message = 'Save failed — durable storage could not confirm the write. Keep this window open and retry. Your draft is still available.';
+      setSaveError(message);
+      notify(message);
+      return null;
+    }).finally(() => {
+      attempt.pending = null;
+      setSaving(false);
+    });
+    return attempt.pending;
   };
 
   const del = (id, options = {}) => {
@@ -1227,7 +1270,7 @@ export default function usePromptLibrary(notify) {
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
+    doSave, saving, saveError, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
     bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
     exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport, getShareUrl,

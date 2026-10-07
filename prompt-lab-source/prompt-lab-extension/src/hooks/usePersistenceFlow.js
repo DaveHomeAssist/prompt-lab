@@ -51,6 +51,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const activeEntryRef = useRef(null);
   const varValsRef = useRef({});
   const sharedHashHandledRef = useRef(false);
+  const pendingSaveRef = useRef(null);
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -347,6 +348,8 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const doSave = (onSaved, overrides = {}) => {
+    if (pendingSaveRef.current) return pendingSaveRef.current;
+    setLastSaveReceipt(null);
     const contentSource = saveSourceEntry ? normalizeEntry(saveSourceEntry) : null;
     const originalValue = Object.prototype.hasOwnProperty.call(overrides, 'rawOverride')
       ? overrides.rawOverride
@@ -396,48 +399,53 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       savedFromDeletedTarget: Boolean(!contentSource && activeEntryRef.current && !activeEntryRef.current.id),
       copyAsNew: overrides.copyAsNew === true,
     });
-    // A rejected write returns null; keep the save panel and buffers so the
-    // user can retry or copy instead of losing the draft to a false success.
-    if (!saved?.id) return saved;
-    if (saved?.id) {
-      activeEntryRef.current = {
-        ...(contentSource || activeEntryRef.current || {}),
-        id: saved.id,
-        title: saved.title || titleValue,
-        original: originalValue,
-        enhanced: enhancedValue,
-        variants: variantsValue,
-        notes: notesValue,
-        resultMeta: resultMetaValue,
-        tags: tagsValue,
-        collection: collectionValue,
-        sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
-        metadata,
-      };
-      if (!contentSource) {
-        setEditingId(saved.id);
+    const completeSave = (saved) => {
+      // A rejected write returns null; keep the save panel and buffers so the
+      // user can retry or copy instead of losing the draft to a false success.
+      if (!saved?.id) return saved;
+      if (saved?.id) {
+        activeEntryRef.current = {
+          ...(contentSource || activeEntryRef.current || {}),
+          id: saved.id,
+          title: saved.title || titleValue,
+          original: originalValue,
+          enhanced: enhancedValue,
+          variants: variantsValue,
+          notes: notesValue,
+          resultMeta: resultMetaValue,
+          tags: tagsValue,
+          collection: collectionValue,
+          sourceNoteId: contentSource?.sourceNoteId ?? sourceNoteId,
+          metadata,
+        };
+        if (!contentSource) {
+          setEditingId(saved.id);
+        }
+        setSaveTitle(saved.title || titleValue);
+        const savedSourceNoteId = contentSource?.sourceNoteId ?? sourceNoteId;
+        const receipt = createSaveReceipt(saved, {
+          action: targetId && saved.savedAsNew !== true ? 'version' : 'new',
+          sourceNoteId: savedSourceNoteId,
+        });
+        setLastSaveReceipt(receipt);
+        if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
+        if (resultMetaValue?.runId) {
+          void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
+            .then(() => typeof onSaved === 'function' && onSaved(saved.id));
+        } else if (typeof onSaved === 'function') {
+          onSaved(saved.id);
+        }
       }
-      setSaveTitle(saved.title || titleValue);
-      const savedSourceNoteId = contentSource?.sourceNoteId ?? sourceNoteId;
-      const receipt = createSaveReceipt(saved, {
-        action: targetId && saved.savedAsNew !== true ? 'version' : 'new',
-        sourceNoteId: savedSourceNoteId,
-      });
-      setLastSaveReceipt(receipt);
-      if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
-      if (resultMetaValue?.runId) {
-        void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
-          .then(() => typeof onSaved === 'function' && onSaved(saved.id));
-      } else if (typeof onSaved === 'function') {
-        onSaved(saved.id);
-      }
-    }
-    setSaveTargetId(null);
-    setSaveSourceEntry(null);
-    setChangeNote('');
-    setSourceNoteId('');
-    setShowSave(false);
-    return saved;
+      setSaveTargetId(null);
+      setSaveSourceEntry(null);
+      setChangeNote('');
+      setSourceNoteId('');
+      setShowSave(false);
+      return saved;
+    };
+    if (!saved?.then) return completeSave(saved);
+    pendingSaveRef.current = saved.then(completeSave).finally(() => { pendingSaveRef.current = null; });
+    return pendingSaveRef.current;
   };
 
   const addToComposer = (entry) => {
