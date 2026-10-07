@@ -114,12 +114,12 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await move.focus();
       await move.press('Enter');
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
-      expect((await storedState(page)).library.map(row => row.id)).toEqual(['qa-beta', 'qa-alpha', 'qa-hidden', 'qa-child']);
+      await expect.poll(async () => (await storedState(page)).library.map(row => row.id)).toEqual(['qa-beta', 'qa-alpha', 'qa-hidden', 'qa-child']);
       await page.getByRole('button', { name: 'Manage collections', exact: true }).click();
       await page.getByRole('button', { name: 'Delete collection Ops', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await expect(page.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
-      expect((await storedState(page)).library.some(row => row.collection === 'Ops')).toBe(false);
+      await expect.poll(async () => (await storedState(page)).library.some(row => row.collection === 'Ops')).toBe(false);
       console.info(`[production-library ${viewport.width}] shared search, keyboard reorder and collection cleanup passed`);
 
       const baseline = await storedState(page);
@@ -159,7 +159,9 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
         expect(replaced.enhanced).toBe('QA replacement body');
         expect(replaced.versions.some(row => row.enhanced === alpha.enhanced)).toBe(true);
         expect(state.library.find(row => row.id === beta.id)).toEqual(beta);
-        expect(state.library.find(row => row.enhanced === 'QA keep both body')?.id).not.toBe(beta.id);
+        const kept = state.library.find(row => row.enhanced === 'QA keep both body');
+        expect(kept).toBeDefined();
+        expect(kept.id).not.toBe(beta.id);
         expect(state.runs.find(row => row.id === 'qa-imported-run')).toMatchObject({ promptId: alpha.id, promptVersionId: replaced.currentVersionId, testCaseId: 'qa-imported-case' });
         expect(state.runs.find(row => row.id === 'qa-duplicate-run')).toMatchObject({ promptId: beta.id, promptVersionId: beta.currentVersionId });
         expect(state.testCases.find(row => row.id === 'qa-imported-case')?.promptId).toBe(alpha.id);
