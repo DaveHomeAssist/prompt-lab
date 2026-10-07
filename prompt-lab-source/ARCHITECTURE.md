@@ -223,8 +223,11 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   (deletion markers are only ever added); a higher local revision, or equal
   revisions with different contents, rewrites the journal. A journal that
   fails or does not answer within 3 s never blocks startup. A write still in
-  flight when the process ends can be lost; the window is one IndexedDB
-  commit instead of localStorage's batching delay.
+  flight when the process ends can be lost and is not acknowledged. Desktop
+  Library save callers wait for the strict transaction before showing Saved
+  or a save receipt. A rejected or timed-out commit leaves a persistent error
+  and the draft available; an identical retry keeps its staged ID and version.
+  Completion from an older editing context cannot relink a newer draft.
 
 - Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
   with value `1`; the marker contains no title or body. Clear Library appends a
