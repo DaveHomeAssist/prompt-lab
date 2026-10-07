@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-07T15:39:40.351Z",
+  "snapshotAt": "2026-10-07T16:14:26.907Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "ea874b885d012d62027a0700a8306db1947096a7",
+  "mainSha": "25a3b87d0f70e0e83d97ed92a91550d5e42b2bcc",
   "overall": "Acceptance incomplete",
-  "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
+  "nextAction": "Complete PR134 delivery for verified signed-in follow-up saving, then continue accepted plan J signed-in Library navigation/import acceptance. Keep desktop upgrade/restore, macOS interaction, signing and billing-environment prerequisites separate.",
   "evidence": [
+    {
+      "label": "Signed-in follow-up acceptance",
+      "state": "Verified",
+      "detail": "2026-10-07: Accepted plan K signed-in production follow-up slice verified by Production Smoke 37650271051 at test head35b68f23b33b3c4b5cbd02c9d3d38fb4baa8fe22 against production deployment dpl_4918XfC1n8npLEYwd7zvaaobqQfx (main25a3b87). All three smoke scenarios passed on GitHub Ubuntu/Chromium. The new case creates a parent through the actual signed-in UI, seeds only synthetic upstream editor/run data, intercepts one provider response without inference, verifies selected source output, visible source, rejected Library write with no mutation, successful retry without regeneration, independent child identity, unchanged parent and provenance after reload. The disposable Clerk session was revoked; no inference, purchase, or telemetry requests occurred. The first run37649255988 timed out because the fixture omitted the enhanced editor result needed to expose the panel; corrected fixture passed without changing product code. PR134 is pending required CI/merge. Keep this umbrella In progress: this bounded path does not prove all supported shells, human acceptance, or the complete Library matrix. Next: verify the separately accepted signed-in Library navigation/import matrix (plan J) using existing fixture and QA controls. https://github.com/DaveHomeAssist/prompt-lab/pull/134 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37650271051",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37650271051"
+    },
     {
       "label": "Durable Library saves merged and verified",
       "state": "Verified",
@@ -46,13 +52,13 @@
     {
       "label": "Owner hosted access",
       "state": "Open",
-      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36\u201319:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36–19:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
     },
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -106,7 +112,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -204,8 +210,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
       "inPlan": true,
-      "nextAction": "Verify remaining signed-in web follow-up acceptance; current MSI/DEB shutdown and reinstall retention passed.",
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "nextAction": "Continue remaining cross-shell and human acceptance; the bounded signed-in source/save/reload scenario now passes. Next independent accepted work is plan J signed-in Library navigation/import acceptance.",
+      "verification": "2026-10-07: Accepted plan K signed-in production follow-up slice verified by Production Smoke 37650271051 at test head35b68f23b33b3c4b5cbd02c9d3d38fb4baa8fe22 against production deployment dpl_4918XfC1n8npLEYwd7zvaaobqQfx (main25a3b87). All three smoke scenarios passed on GitHub Ubuntu/Chromium. The new case creates a parent through the actual signed-in UI, seeds only synthetic upstream editor/run data, intercepts one provider response without inference, verifies selected source output, visible source, rejected Library write with no mutation, successful retry without regeneration, independent child identity, unchanged parent and provenance after reload. The disposable Clerk session was revoked; no inference, purchase, or telemetry requests occurred. The first run37649255988 timed out because the fixture omitted the enhanced editor result needed to expose the panel; corrected fixture passed without changing product code. PR134 is pending required CI/merge. Keep this umbrella In progress: this bounded path does not prove all supported shells, human acceptance, or the complete Library matrix. Next: verify the separately accepted signed-in Library navigation/import matrix (plan J) using existing fixture and QA controls. https://github.com/DaveHomeAssist/prompt-lab/pull/134 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37650271051"
     },
     {
       "id": "48d82c475b0448649ff2372a00bb6e33",
@@ -533,7 +539,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
