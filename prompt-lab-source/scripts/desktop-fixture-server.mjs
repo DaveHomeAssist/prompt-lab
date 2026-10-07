@@ -6,11 +6,14 @@ const origins = new Set(['tauri://localhost', 'http://tauri.localhost', 'https:/
 const model = 'promptlab-fixture';
 
 // Operator-only loopback transport. It never forwards traffic or reads credentials.
-export function createDesktopFixtureServer({ mode = 'success', responseKind = 'enhancement', delayMs = 30_000, onEvent = () => {} } = {}) {
+export function createDesktopFixtureServer({ mode = 'success', responseKind = 'enhancement', delayMs = 30_000, onEvent = () => {}, onRequest = () => {} } = {}) {
   if (!['success', 'slow', 'error'].includes(mode)) throw new Error('Mode must be success, slow, or error.');
   if (!['enhancement', 'follow-up'].includes(responseKind)) throw new Error('Unknown fixture response kind.');
   return http.createServer(async (request, response) => {
     const origin = request.headers.origin;
+    // Every arrival, including CORS preflights and rejected requests, so a
+    // missing 'request' event can be told apart from a request never sent.
+    onRequest({ method: request.method, url: request.url, origin: origin || null });
     const reply = (status, body) => {
       response.writeHead(status, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify(body));

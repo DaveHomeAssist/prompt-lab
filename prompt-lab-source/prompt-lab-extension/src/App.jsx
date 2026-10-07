@@ -57,7 +57,6 @@ import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
-import { createPromptEntry } from './lib/promptSchema.js';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
@@ -507,7 +506,7 @@ export default function App({
     ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
   ];
   const activeResultTab = resultTabs.some((tabItem) => tabItem.id === resultTab) ? resultTab : 'improved';
-  const canSavePanel = hasSavablePrompt || hasPanelSaveSource;
+  const canSavePanel = (hasSavablePrompt || hasPanelSaveSource) && !lib.saving;
   const showCreateContext = activeSection === 'create' && Boolean((raw || '').trim() || (enhanced || '').trim() || currentEntry);
   const showInlineSaveBar = activeSection === 'create' && canSavePanel && Boolean((enhanced || '').trim() || currentEntry);
   const pendingTemplateInputs = Array.isArray(pendingTemplate?.inputs) ? pendingTemplate.inputs : [];
@@ -696,10 +695,10 @@ export default function App({
     openCreateView('editor');
     notify('Follow-up opened as a new draft. The source prompt is unchanged.');
   };
-  const handleSaveFollowUp = (suggestion) => {
+  const handleSaveFollowUp = async (suggestion) => {
     if (!suggestion?.id || !suggestion.prompt?.trim()) return null;
     if (savedFollowUpsRef.current.has(suggestion.id)) return savedFollowUpsRef.current.get(suggestion.id);
-    const saved = lib.doSave({
+    const saved = await lib.doSave({
       raw: suggestion.prompt, enhanced: '', variants: [], notes: '', tags: [],
       title: suggestion.title, collection: '', editingId: null, sourceEntry: null,
       metadata: { followUpOrigin: suggestion.origin },
@@ -749,16 +748,13 @@ export default function App({
       return null;
     }
     const title = `Chain: ${steps[0].label}${steps.length > 1 ? ` +${steps.length - 1}` : ''}`;
-    const entry = createPromptEntry({
+    return lib.doSave({
       title,
-      original: steps.map((step) => `# ${step.label}\n${step.template}`).join('\n\n---\n\n'),
+      raw: steps.map((step) => `# ${step.label}\n${step.template}`).join('\n\n---\n\n'),
       enhanced: '',
       tags: ['chain'],
       metadata: { chain: { version: 1, steps } },
     });
-    lib.setLibrary((prev) => [entry, ...prev]);
-    notify(`Saved ${steps.length}-step chain to the library.`);
-    return entry;
   };
   const handleChainFollowUp = (suggestion) => {
     trackTelemetry('composer.block_added', {
@@ -767,7 +763,7 @@ export default function App({
     });
     addToComposer({ title: suggestion.title, enhanced: suggestion.prompt, metadata: { followUpOrigin: suggestion.origin } });
   };
-  const quickSave = (candidate = null) => {
+  const quickSave = async (candidate = null) => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
     const candidateOverrides = candidate?.content
       ? {
@@ -778,7 +774,7 @@ export default function App({
           },
         }
       : {};
-    const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
+    const saved = await persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
       titleOverride: suggestedSaveTitle,
       ...candidateOverrides,
       ...saveFlowOverrides,
@@ -793,7 +789,7 @@ export default function App({
     }
     return saved;
   };
-  const quickSaveAsNew = (candidate = null) => {
+  const quickSaveAsNew = async (candidate = null) => {
     const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
     const candidateOverrides = candidate?.content
       ? {
@@ -804,7 +800,7 @@ export default function App({
           },
         }
       : {};
-    const saved = persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
+    const saved = await persistenceFlow.doSave(executionFlow.refreshEvalRuns, {
       titleOverride: suggestedSaveTitle,
       targetId: null,
       copyAsNew: true,
@@ -1068,6 +1064,10 @@ export default function App({
         </div>
       )}
 
+      {lib.saveError && <div role="alert" data-testid="library-save-error" className={`px-4 py-2 text-sm ${m.text}`}>
+        {lib.saveError}
+      </div>}
+      {lib.saving && <div role="status" className={`px-4 py-2 text-sm ${m.text}`}>Saving to durable storage…</div>}
       <main id="prompt-lab-main" tabIndex={-1} className={`pl-tab-panel flex-1 flex flex-col ${contained ? 'min-h-0 overflow-y-auto' : pageScroll ? '' : 'overflow-hidden'}`}>
       {/* ══ EDITOR TAB ══ */}
       {tab === 'editor' && (
@@ -1327,9 +1327,9 @@ export default function App({
           showNewColl={showNewColl} setShowNewColl={setShowNewColl}
           newCollName={newCollName} setNewCollName={setNewCollName}
           commitNewCollection={commitNewCollection}
-          doSave={() => {
+          doSave={async () => {
             const trackedCollection = (saveFlowOverrides.collectionOverride ?? saveCollection ?? '').trim();
-            const saved = doSave(saveFlowOverrides);
+            const saved = await doSave(saveFlowOverrides);
             if (saved?.id) {
               trackTelemetry('library.prompt_saved', {
                 plan: billing.plan,

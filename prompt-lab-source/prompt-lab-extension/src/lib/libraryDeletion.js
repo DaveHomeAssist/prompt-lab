@@ -1,3 +1,5 @@
+import { notifyLocalWrite } from './storage.js';
+
 // Append-only, content-free keys prevent concurrent tabs from replacing another
 // tab's deletion metadata. Keep them until a replica-expiry policy exists.
 export const LIBRARY_DELETED_PREFIX = 'pl2-library-deleted:';
@@ -33,7 +35,10 @@ export function filterDeletedLibraryRecords(records, state = readLibraryDeletion
 }
 
 export function markLibraryDeleted(ids, storage = localStorage) {
-  for (const id of ids) storage.setItem(`${LIBRARY_DELETED_PREFIX}${id}`, '1');
+  for (const id of ids) {
+    storage.setItem(`${LIBRARY_DELETED_PREFIX}${id}`, '1');
+    notifyLocalWrite(`${LIBRARY_DELETED_PREFIX}${id}`);
+  }
 }
 
 export function markLibraryCleared(storage = localStorage) {
@@ -42,5 +47,6 @@ export function markLibraryCleared(storage = localStorage) {
   if (!Number.isSafeInteger(counter)) throw new Error('Library generation limit reached.');
   const next = `${String(counter).padStart(16, '0')}:${crypto.randomUUID()}`;
   storage.setItem(`${LIBRARY_CLEAR_PREFIX}${next}`, '1');
+  notifyLocalWrite(`${LIBRARY_CLEAR_PREFIX}${next}`);
   return next;
 }

@@ -1,10 +1,10 @@
 import seedData from '../data/promptlab-seed-libraries.json';
 import { mergeLibraryEntries } from './libraryMatching.js';
 import { createPromptEntry } from './promptSchema.js';
-import { loadJson, saveJson } from './storage.js';
+import { loadJson, saveJson, storageKeys } from './storage.js';
 import { randomId } from './utils.js';
 
-const LOADED_PACKS_KEY = 'pl2-loaded-packs';
+const LOADED_PACKS_KEY = storageKeys.loadedPacks;
 
 /**
  * Transform a seed prompt into a Prompt Lab library entry.
