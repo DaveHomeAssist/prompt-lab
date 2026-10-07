@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-07T16:14:26.907Z",
+  "snapshotAt": "2026-10-07T16:44:30.739Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "25a3b87d0f70e0e83d97ed92a91550d5e42b2bcc",
+  "mainSha": "4ab722744293fa41b8790229dcd2eebb38fc52a6",
   "overall": "Acceptance incomplete",
-  "nextAction": "Continue accepted plan J signed-in Library navigation/import acceptance. Keep desktop upgrade/restore, macOS interaction, signing and billing-environment prerequisites separate.",
+  "nextAction": "Continue accepted plan J authenticated reconciliation and browser-process restart controls, including tag/status filters and actual starter-pack loading. Keep installed-app upgrade/restore, macOS interaction, signing, human and billing-environment gates separate.",
   "evidence": [
+    {
+      "label": "Signed-in Library navigation and import",
+      "state": "Verified",
+      "detail": "2026-10-07: Accepted plan J signed-in Library navigation/import slice passed at 375x812 and 1440x900 in Production Smoke 37654136908, test head 4abc0d1b5e82964338a3745c144cf4bac1f4e76a, against production dpl_J6ZLxwxtDqv5yWgAbCyBmM8trCNJ at main 4ab7227. Two serial Chromium scenarios used the existing Free QA account and fresh nonpersistent profiles, without fabricated entitlements. Actual file import/UI/storage verified Library/Composer metadata search, newer packLoadedAt ordering, filtered keyboard reorder, collection deletion/unassignment/filter reset, cancel with unchanged Library/history, Skip/Replace/Keep both, retained previous version, run/test-case/provenance remapping, completed JSON downloads and reload. Download SHA256: mobile 5c654d7ea1806444e7da2afdfcdaf827876ad6f3fc249ccf3397a458eda5c7df; desktop 77a36039a178844723a75bc21b40c75042d4acb57b068357733269a5d5421b24. Both disposable Clerk sessions were revoked; no inference, purchase or telemetry requests occurred. Initial run 37653893088 read the store before its documented 120ms background write; corrected test awaits persistence and keeps the same assertions. No product defect or product-source change was needed. Existing Production Smoke gained a Library-only dispatch option; PR134 tests were not rerun. This snapshot records runtime proof; PR135 owns delivery state. Keep J In progress: this slice does not prove full browser-process restart, cross-tab stale deletion, tag/status filters, actual starter-pack loading, all installed shells or human acceptance. Next accepted work: finish J's remaining authenticated reconciliation/restart controls using disposable data. https://github.com/DaveHomeAssist/prompt-lab/pull/135 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37654136908",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37654136908"
+    },
     {
       "label": "Signed-in follow-up acceptance",
       "state": "Verified",
@@ -199,7 +205,7 @@
       "url": "https://app.notion.com/32d255fc8f4481d49143d134ed1839fc",
       "inPlan": true,
       "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "verification": "2026-10-07 Production Smoke37654136908 passed authenticated active-collection deletion at375x812 and1440x900: all four prompts retained, assignments cleared, All prompts filter active, persisted storage verified."
     },
     {
       "id": "bb55eb8e71734aaf9b9f43c4dbec2bec",
@@ -222,8 +228,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Implement and verify the shared Library contract across supported shells; current desktop export and reinstall retention passed.",
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "nextAction": "Complete remaining accepted signed-in reconciliation and browser-process restart controls, including tag/status filters and actual starter-pack loading; retain platform/human gates.",
+      "verification": "2026-10-07: Accepted plan J signed-in Library navigation/import slice passed at 375x812 and 1440x900 in Production Smoke 37654136908, test head 4abc0d1b5e82964338a3745c144cf4bac1f4e76a, against production dpl_J6ZLxwxtDqv5yWgAbCyBmM8trCNJ at main 4ab7227. Two serial Chromium scenarios used the existing Free QA account and fresh nonpersistent profiles, without fabricated entitlements. Actual file import/UI/storage verified Library/Composer metadata search, newer packLoadedAt ordering, filtered keyboard reorder, collection deletion/unassignment/filter reset, cancel with unchanged Library/history, Skip/Replace/Keep both, retained previous version, run/test-case/provenance remapping, completed JSON downloads and reload. Download SHA256: mobile 5c654d7ea1806444e7da2afdfcdaf827876ad6f3fc249ccf3397a458eda5c7df; desktop 77a36039a178844723a75bc21b40c75042d4acb57b068357733269a5d5421b24. Both disposable Clerk sessions were revoked; no inference, purchase or telemetry requests occurred. Initial run 37653893088 read the store before its documented 120ms background write; corrected test awaits persistence and keeps the same assertions. No product defect or product-source change was needed. Existing Production Smoke gained a Library-only dispatch option; PR134 tests were not rerun. This snapshot records runtime proof; PR135 owns delivery state. Keep J In progress: this slice does not prove full browser-process restart, cross-tab stale deletion, tag/status filters, actual starter-pack loading, all installed shells or human acceptance. Next accepted work: finish J's remaining authenticated reconciliation/restart controls using disposable data. https://github.com/DaveHomeAssist/prompt-lab/pull/135 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37654136908"
     },
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
@@ -391,7 +397,7 @@
       "url": "https://app.notion.com/32d255fc8f448115a64cc88a7ec2f640",
       "inPlan": true,
       "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "verification": "2026-10-07 Production Smoke37654136908 passed the imported newer packLoadedAt sorting control on authenticated production at375x812 and1440x900. This is sorting evidence, not actual starter-pack loading."
     },
     {
       "id": "32d255fc8f44817bbf7fd261e0cad492",
