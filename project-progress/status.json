@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-07T12:30:31.091Z",
+  "snapshotAt": "2026-10-07T13:06:51.822Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -14,9 +14,9 @@
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
     {
-      "label": "Windows Library journal integration",
+      "label": "Windows Library package checks passed; merge held",
       "state": "Open",
-      "detail": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps.",
+      "detail": "2026-10-07 final PR132 evidence: head 34b1f5ad16f1608b8fc859ffb1bf1db54b220f09, base e984b6b, tested merge 4da4abbfdb90b0d65eb2dc0f100ad5122e2f9249 (both parents verified). Desktop Build 37621547467 passed every job, including corrected-harness Windows MSI and NSIS installed save/close/relaunch, completed export, and uninstall/reinstall retention. Both exercise.json and retention.json passed; no pre-close IndexedDB diagnostic wait remains. MSI SHA256 20107e585d63df5a36fe1b28847f728b57e628f37638cf72478340e809002427; NSIS SHA256 3909418c1d676321ccf091db2e8ccee49c7697095ca5b9040bcfb59e0c308ec5. Version 1.7.1 x64, unsigned packages; signing and older native/human goals remain open. Landing CI 37621547171 and Dependency Health 37621547178 passed with source-map-js 1.2.2; existing dev-only braces exception unchanged. MERGE HOLD: Saved still precedes durable commit and journal failures do not reach save feedback. PL-DUR-1A (recommended) extends scope into save acknowledgement and visible failure; PL-DUR-1B accepts the documented remaining in-flight loss risk. Neither has been selected. No merge/deploy. Next: resolve PL-DUR-1A/B before releasing PR132. Evidence: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37621547467",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/132"
     },
     {
@@ -46,13 +46,13 @@
     {
       "label": "Owner hosted access",
       "state": "Open",
-      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36–19:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36\u201319:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
     },
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -106,7 +106,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -312,8 +312,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Verify remaining cross-version upgrade, macOS interaction and signing gates against exact release artifacts.",
-      "verification": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps. Prior evidence: Implementation RUN contains scoped evidence; status is the current Notion disposition. 2026-10-05: PR #127 Desktop Build passed all packages; NSIS cancellation timed out on attempt 1 and passed one isolated rerun on unchanged source/installer. Cause remains unconfirmed, original artifact retained in Notion. No broader acceptance promotion."
+      "nextAction": "Resolve PL-DUR-1A/B: extend durable save acknowledgement (recommended), or explicitly accept the remaining in-flight loss risk. Keep PR132 draft meanwhile.",
+      "verification": "2026-10-07 final PR132 evidence: head 34b1f5ad16f1608b8fc859ffb1bf1db54b220f09, base e984b6b, tested merge 4da4abbfdb90b0d65eb2dc0f100ad5122e2f9249 (both parents verified). Desktop Build 37621547467 passed every job, including corrected-harness Windows MSI and NSIS installed save/close/relaunch, completed export, and uninstall/reinstall retention. Both exercise.json and retention.json passed; no pre-close IndexedDB diagnostic wait remains. MSI SHA256 20107e585d63df5a36fe1b28847f728b57e628f37638cf72478340e809002427; NSIS SHA256 3909418c1d676321ccf091db2e8ccee49c7697095ca5b9040bcfb59e0c308ec5. Version 1.7.1 x64, unsigned packages; signing and older native/human goals remain open. Landing CI 37621547171 and Dependency Health 37621547178 passed with source-map-js 1.2.2; existing dev-only braces exception unchanged. MERGE HOLD: Saved still precedes durable commit and journal failures do not reach save feedback. PL-DUR-1A (recommended) extends scope into save acknowledgement and visible failure; PL-DUR-1B accepts the documented remaining in-flight loss risk. Neither has been selected. No merge/deploy. Next: resolve PL-DUR-1A/B before releasing PR132. Evidence: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37621547467"
     },
     {
       "id": "32d255fc8f44817faa12dc09d3ede05d",
@@ -533,7 +533,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
