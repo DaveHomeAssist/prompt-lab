@@ -133,11 +133,12 @@ const installPageProbe = () => execute(`${describeNode}
       onEnhance: Boolean(event.target?.closest?.('[data-testid="refine-action"]')), x: Math.round(event.clientX), y: Math.round(event.clientY),
     }), true);
   }
+  // Origin and path only: a query string can carry a provider key.
   const originalFetch = window.fetch;
   window.fetch = function (input, init) {
-    const url = String(input?.url || input);
-    if (!url.includes(':11434')) return originalFetch.apply(this, arguments);
-    const entry = { at: Date.now(), method: init?.method || input?.method || 'GET', path: new URL(url).pathname, outcome: 'pending' };
+    let target;
+    try { const url = new URL(String(input?.url || input), location.href); target = url.origin + url.pathname; } catch { target = 'unparsed'; }
+    const entry = { at: Date.now(), method: init?.method || input?.method || 'GET', target, outcome: 'pending' };
     keep(probe.fetches, entry);
     return originalFetch.apply(this, arguments).then(
       response => { entry.outcome = response.status; entry.settledAt = Date.now(); return response; },
@@ -167,6 +168,10 @@ const enhanceState = () => execute(`${describeNode}
     cancelVisible: [...document.querySelectorAll('button')].some(node => node.innerText.trim() === 'Cancel' && visible(node)),
     inputs: [...document.querySelectorAll('[data-testid="prompt-input"]')].map(node => ({ visible: visible(node), length: node.value.length, start: node.value.slice(0, 60) })),
     activeElement: describeNode(document.activeElement),
+    providerSettings: (() => {
+      try { const { provider, ollamaBaseUrl, ollamaModel } = JSON.parse(localStorage.getItem('pl2-provider-settings') || 'null') || {}; return { provider, ollamaBaseUrl, ollamaModel }; }
+      catch (error) { return { error: String(error) }; }
+    })(),
     dialogs: [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter(visible).map(node => (node.getAttribute('aria-label') || node.innerText).slice(0, 120)),
     alerts: [...document.querySelectorAll('[role="alert"], [role="status"]')].map(node => node.innerText.trim()).filter(Boolean).slice(-5).map(value => value.slice(0, 160)),
     probeInstalled: Boolean(probe),
@@ -354,7 +359,11 @@ async function openSession() {
   await installPageProbe();
   (evidence.libraryJournalBoots ||= []).push({ launch: launchNumber, ...await execute(`
     const mark = performance.getEntriesByName('prompt-lab:library-journal-boot').at(-1);
-    return mark ? mark.detail : { action: 'not recorded' };`).catch(error => ({ error: error.message })) });
+    const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return 'unreadable'; } };
+    // Synthetic setup is not journaled; record whether each launch still has it.
+    return { ...(mark ? mark.detail : { action: 'not recorded' }), setup: {
+      provider: read('pl2-provider-settings')?.provider ?? null, billingPlan: read('pl2-billing')?.plan ?? null,
+    } };`).catch(error => ({ error: error.message })) });
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
@@ -673,7 +682,10 @@ try {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
     evidence.baselinePromptCount = baseline.length;
-    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); return true;');
+    // The Library matrix needs the synthetic Pro entitlement in later launches.
+    // Seed it with the other launch-1 settings, which every later launch already
+    // depends on, rather than only in the launch that also tests persistence.
+    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); return true;');
     await refreshPage();
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
