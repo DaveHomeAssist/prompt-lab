@@ -33,6 +33,23 @@ it.each([true, false])('waits for durable acknowledgement before closing the sav
   expect(result.current.raw).toBe('Raw draft');
 });
 
+it('does not relink a new draft when an earlier durable save completes', async () => {
+  let settle;
+  const durable = new Promise(resolve => { settle = resolve; });
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => durable });
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  act(() => result.current.clearPersistenceState());
+  act(() => result.current.openSavePanel());
+  await act(async () => {
+    settle({ id: 'earlier-draft', title: 'Earlier draft', versionNumber: 1 });
+    await pending;
+  });
+  expect(result.current.editingId).toBeNull();
+  expect(result.current.lastSaveReceipt).toBeNull();
+  expect(result.current.showSave).toBe(true);
+});
+
 function makeEntry(overrides = {}) {
   return normalizeEntry({
     id: 'entry-1',

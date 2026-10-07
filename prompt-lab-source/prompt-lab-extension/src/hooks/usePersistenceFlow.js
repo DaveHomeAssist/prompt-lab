@@ -52,6 +52,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const varValsRef = useRef({});
   const sharedHashHandledRef = useRef(false);
   const pendingSaveRef = useRef(null);
+  const saveContextRef = useRef(0);
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -153,6 +154,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const closeSavePanel = () => {
+    saveContextRef.current += 1;
     setShowSave(false);
     setSaveTargetId(null);
     setSaveSourceEntry(null);
@@ -162,6 +164,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const openSavePanel = (entry = null) => {
+    saveContextRef.current += 1;
     const explicitEntry = entry ? normalizeEntry(entry) : null;
     const loadedEntry = editingId ? lib.library.find((item) => item.id === editingId) || null : null;
     const activeEntry = explicitEntry || loadedEntry || activeEntryRef.current;
@@ -189,6 +192,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (!normalized) return;
 
     if (target === 'editor') {
+      saveContextRef.current += 1;
       activeEntryRef.current = normalized;
       setEditingId(normalized.id);
       setFollowUpOrigin(normalized.metadata?.followUpOrigin);
@@ -291,6 +295,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       : lib.library.find(entry => entry.id === entryId) || null;
     if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
     if (editingId !== entryId) return true;
+    saveContextRef.current += 1;
 
     // Preserve the visible draft so it can be saved as a new prompt, but never
     // leave a deleted record ID as the active save target. The ID-less source
@@ -308,6 +313,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     if (typeof lib.restoreVersion !== 'function') return null;
     const restoredEntry = normalizeEntry(lib.restoreVersion(entryId, version));
     if (!restoredEntry || editingId !== restoredEntry.id) return restoredEntry;
+    saveContextRef.current += 1;
 
     // Restoration already wrote the library record. Synchronize the loaded
     // editor without routing through the normal load path, which would bump
@@ -349,6 +355,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const doSave = (onSaved, overrides = {}) => {
     if (pendingSaveRef.current) return pendingSaveRef.current;
+    const saveContext = saveContextRef.current;
     setLastSaveReceipt(null);
     const contentSource = saveSourceEntry ? normalizeEntry(saveSourceEntry) : null;
     const originalValue = Object.prototype.hasOwnProperty.call(overrides, 'rawOverride')
@@ -400,6 +407,9 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       copyAsNew: overrides.copyAsNew === true,
     });
     const completeSave = (saved) => {
+      // The saved snapshot remains valid, but must not relink a newer draft or
+      // close another prompt's panel after the user changes editing context.
+      if (saveContext !== saveContextRef.current) return saved;
       // A rejected write returns null; keep the save panel and buffers so the
       // user can retry or copy instead of losing the draft to a false success.
       if (!saved?.id) return saved;
@@ -464,6 +474,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const clearPersistenceState = () => {
+    saveContextRef.current += 1;
     templateLoadReqRef.current += 1;
     activeEntryRef.current = null;
     setFollowUpOrigin(null);
