@@ -364,6 +364,9 @@ async function openSession() {
     return { ...(mark ? mark.detail : { action: 'not recorded' }), setup: {
       provider: read('pl2-provider-settings')?.provider ?? null, billingPlan: read('pl2-billing')?.plan ?? null,
     } };`).catch(error => ({ error: error.message })) });
+  // Inspect after startup only. A readonly IndexedDB transaction before close
+  // can wait behind a pending write and accidentally give it time to commit.
+  (evidence.libraryJournalsAtBoot ||= []).push({ launch: launchNumber, ...await readLibraryJournal().catch(error => ({ error: error.message })) });
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
@@ -374,8 +377,6 @@ async function closeSession() {
   let browserPids = [];
   const shutdown = { launch: launchNumber };
   if (session) shutdown.libraryBeforeClose = await readLibrary().catch(error => ({ error: error.message }));
-  // Whether the durable journal had committed the state about to be closed.
-  if (session) shutdown.libraryJournal = await readLibraryJournal().catch(error => ({ error: error.message }));
   (evidence.nativeShutdowns ||= []).push(shutdown);
   if (nativeAppPid) {
     const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `

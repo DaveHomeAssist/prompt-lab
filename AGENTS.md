@@ -168,7 +168,7 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-05] [PLB] [test] Add PII engine regression coverage across the engine, payload and Redact & Send paths
 [2026-10-05] [PLB] [fix] Replace the unlisted OpenRouter default model slug with anthropic/claude-sonnet-4.6 and read a stored copy of the old default as the new one (023)
 [2026-10-05] [PLB] [build] Unblock the dependency audit gate: bump undici to 7.30.0 and accept the unfixable braces advisory only while dev-only, until 2026-11-05 (025)
-[2026-10-07] [PLB] [fix] Journal desktop Library state to strict IndexedDB so a WebView2 close cannot drop acknowledged saves; add Enhance timeout diagnostics to native acceptance (026)
+[2026-10-07] [PLB] [fix] Journal desktop Library state to strict IndexedDB to recover dropped WebView2 localStorage batches; writes still in flight at close remain at risk. Add Enhance timeout diagnostics to native acceptance (026)
 [2026-10-05] [PLB] [fix] Make the Library Tests tab create, edit, run and delete test cases so Run Cases has cases to run; guard Use with an undo draft and disable Run while a run is in flight (024)
 [2026-10-05] [PLB] [test] Add TestCasesPanel, Library case-workflow and App-wiring Vitest suites plus a Playwright spec wired into desktop-build CI so an unreachable Add Case control fails the build (024)
 

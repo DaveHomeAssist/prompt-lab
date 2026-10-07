@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-05T18:33:37.365Z",
+  "snapshotAt": "2026-10-07T12:30:31.091Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99",
+  "mainSha": "e984b6b321ef2d46fe139e306ab69c5137678637",
   "overall": "Acceptance incomplete",
   "nextAction": "Provide an approved Stripe test deployment, webhook secret, isolated billing store, test prices and non-owner Clerk QA identity to begin Phase 4. Phase 3 compatibility acceptance is verified. The separate owner-access investigation remains open.",
   "evidence": [
+    {
+      "label": "Windows Library journal integration",
+      "state": "Open",
+      "detail": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/132"
+    },
     {
       "label": "Dependency gate integration",
       "state": "Verified",
@@ -307,7 +313,7 @@
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
       "nextAction": "Verify remaining cross-version upgrade, macOS interaction and signing gates against exact release artifacts.",
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition. 2026-10-05: PR #127 Desktop Build passed all packages; NSIS cancellation timed out on attempt 1 and passed one isolated rerun on unchanged source/installer. Cause remains unconfirmed, original artifact retained in Notion. No broader acceptance promotion."
+      "verification": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps. Prior evidence: Implementation RUN contains scoped evidence; status is the current Notion disposition. 2026-10-05: PR #127 Desktop Build passed all packages; NSIS cancellation timed out on attempt 1 and passed one isolated rerun on unchanged source/installer. Cause remains unconfirmed, original artifact retained in Notion. No broader acceptance promotion."
     },
     {
       "id": "32d255fc8f44817faa12dc09d3ede05d",
@@ -613,7 +619,7 @@
       "id": "3f0255fc8f4481629234d824e518447d",
       "inPlan": false,
       "nextAction": "Replace or remove the affected dev tooling chain before the existing exception expires on 2026-11-05.",
-      "verification": "PR #129 is merged; PR #127 inherits its policy unchanged. Dominic Node 22.22.1: tooling 21/21, audits 4/4 pass. Report retains 20 high package occurrences covered only by GHSA-vfj7-8cjw-p6xm on dev-only braces, plus 2 moderate. The exception expires after 2026-11-05 UTC; no extension or broader allowance added. Notion update read back.",
+      "verification": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps. Prior evidence: PR #129 is merged; PR #127 inherits its policy unchanged. Dominic Node 22.22.1: tooling 21/21, audits 4/4 pass. Report retains 20 high package occurrences covered only by GHSA-vfj7-8cjw-p6xm on dev-only braces, plus 2 moderate. The exception expires after 2026-11-05 UTC; no extension or broader allowance added. Notion update read back.",
       "title": "Dependency audit gate fails on every branch because braces has no patched release",
       "status": "In progress",
       "severity": "Medium",

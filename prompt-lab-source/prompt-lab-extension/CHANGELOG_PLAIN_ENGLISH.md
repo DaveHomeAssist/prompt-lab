@@ -10,8 +10,9 @@ Date: 2026-10-07
   the window closed, even though Prompt Lab had already shown the save.
 - The desktop app now also keeps a copy of the Library (prompts, trash,
   collections, packs and deletions) in browser storage that is written to
-  disk before it reports success. When the app starts, it uses whichever
-  copy is newer.
+  disk before the journal commit completes. When the app starts, it uses
+  whichever copy is newer. The UI save message still precedes that commit;
+  closing during an in-flight commit can still lose the latest change.
 - The browser extension and the web app work as before.
 
 Date: 2026-10-05
