@@ -7,6 +7,14 @@ name: Production Smoke
 # invisible for as long as nobody happened to click Run workflow.
 on:
   workflow_dispatch:
+    inputs:
+      scope:
+        description: Acceptance scenarios to run
+        type: choice
+        default: all
+        options:
+          - all
+          - library
   schedule:
     # Every 6 hours. GitHub runs scheduled workflows on the default branch,
     # so this always exercises what production is actually built from.
@@ -50,5 +58,12 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run signed-in production smoke (billing surface + core loop)
-        run: npm run test:e2e:production-free
+      - name: Run signed-in production acceptance
+        env:
+          SMOKE_SCOPE: ${{ inputs.scope || 'all' }}
+        run: |
+          if [ "$SMOKE_SCOPE" = "library" ]; then
+            npm run test:e2e:production-free -- production-library.spec.js
+          else
+            npm run test:e2e:production-free
+          fi
