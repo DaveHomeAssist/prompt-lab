@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-07T16:44:30.739Z",
+  "snapshotAt": "2026-10-08T18:42:00.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Continue accepted plan J authenticated reconciliation and browser-process restart controls, including tag/status filters and actual starter-pack loading. Keep installed-app upgrade/restore, macOS interaction, signing, human and billing-environment gates separate.",
   "evidence": [
+    {
+      "label": "Library PR 135 review",
+      "state": "Verified",
+      "detail": "Reviewed 2026-10-08: PR #135 at dac60bc2d07aae1c5f246af23ecb809a6d38439c has no blocking findings in the stated Library navigation/import slice. Compared with successful Production Smoke 37654136908 at 4abc0d1b5e82964338a3745c144cf4bac1f4e76a: only documentation and progress records differ; browser tests, authentication helper, workflow, configuration, dependencies and application source are identical. Inspected both desktop/mobile logs, completed export digests, forbidden-request assertion and awaited session revocation. The persistence repair polls the same exact expected values and strengthens Keep both existence; no assertion was removed. All five applicable PR workflows passed; no review threads; rules require zero approvals and merge-gate. Delivery remains governed by PR #135; this snapshot is review evidence, not a claim that merge already happened. Plan J remains In progress for actual starter loading, tag/status filters, stale-deletion reconciliation, full browser-process restart, other supported shells and human acceptance. Next: merge the reviewed Library slice after final gates, then continue those separate acceptance requirements.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/135"
+    },
     {
       "label": "Signed-in Library navigation and import",
       "state": "Verified",
