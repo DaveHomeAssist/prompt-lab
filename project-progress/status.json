@@ -11,13 +11,13 @@
   },
   "mainSha": "473d691236b7a70e7032a99b11719358a668dd15",
   "overall": "Acceptance incomplete",
-  "nextAction": "Continue the separate billing, native distribution/upgrade/restore/signing, real-model quality and human acceptance gates. Plan J Library controls and activation/Evaluate functional outcomes are verified; first live DaveLLM model run remains Dave-gated.",
+  "nextAction": "Complete the missing Phase 8 packaged-extension create/save/reload and actual shell starter-load controls before closing Plan J; retain separate release gates.",
   "evidence": [
     {
-      "label": "Plan J Library controls complete",
-      "state": "Verified",
-      "detail": "Plan J seven listed controls complete. PR140 merged 473d691 after all 11 checks passed. Production37911746704 passed 4/4; Desktop37911747820 passed all 6 jobs with inspected MSI/NSIS/DEB/AppImage exercise, restart, export and retention artifacts. iOS37911002859 passed V1-to-V2 migration and native JSON interchange on iPhone/iPad simulators. Schema-1 content/history/provenance survives schema-2 export. Billing, native distribution/signing, macOS interactive lifecycle, physical-device and human acceptance remain separate.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/140"
+      "label": "Plan J closure review",
+      "state": "Running",
+      "detail": "PR141 review reopened the premature closeout: schema import/restart evidence is valid, but direct packaged-extension create/save/reload was missing. Added actual editor save/update/reload/restart and starter-loading controls; runtime pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/141"
     },
     {
       "label": "Activation and Evaluate workflow",
@@ -270,14 +270,14 @@
     {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
-      "status": "Done",
+      "status": "In progress",
       "severity": "High",
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Keep the contract and regression controls current; continue separate native distribution and human gates in their existing records.",
-      "verification": "Plan J seven listed controls complete. PR140 merged 473d691 after all 11 checks passed. Production37911746704 passed 4/4; Desktop37911747820 passed all 6 jobs with inspected MSI/NSIS/DEB/AppImage exercise, restart, export and retention artifacts. iOS37911002859 passed V1-to-V2 migration and native JSON interchange on iPhone/iPad simulators. Schema-1 content/history/provenance survives schema-2 export. Billing, native distribution/signing, macOS interactive lifecycle, physical-device and human acceptance remain separate."
+      "nextAction": "Complete the missing Phase 8 packaged-extension create/save/reload and actual shell starter-load controls before closing Plan J; retain separate release gates.",
+      "verification": "PR141 review reopened the premature closeout: schema import/restart evidence is valid, but direct packaged-extension create/save/reload was missing. Added actual editor save/update/reload/restart and starter-loading controls; runtime pending."
     },
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",

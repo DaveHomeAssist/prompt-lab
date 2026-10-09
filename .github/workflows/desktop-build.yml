@@ -54,7 +54,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify native scenario logic, compact Library layout, and Library test cases
-        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js
+        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js
 
   desktop-build:
     needs: extension-tests

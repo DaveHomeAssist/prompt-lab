@@ -32,7 +32,12 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
     test.setTimeout(120_000);
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'promptlab-artifact-'));
     let context;
-    const launch = async () => {
+    const openLibrary = async page => {
+      if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
+      else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name: 'Library', exact: true }).click();
+    };
+    const readLibrary = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]'));
+    const launch = async (libraryView = true) => {
       context = await chromium.launchPersistentContext(profile, {
         channel: 'chromium', headless: true, acceptDownloads: true,
         viewport: { width, height: 1000 },
@@ -51,12 +56,35 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       const page = await context.newPage();
       page.setDefaultTimeout(10_000);
       await page.goto(url);
-      if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
-      else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name: 'Library', exact: true }).click();
+      if (libraryView) await openLibrary(page);
       return page;
     };
     try {
-      let page = await launch();
+      let page = await launch(false);
+      const original = `Packaged lifecycle schema ${artifact.schemaVersion} at ${width}px.`;
+      await page.getByTestId('prompt-input').fill(original);
+      await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+      await expect.poll(async () => (await readLibrary(page)).filter(row => row.original === original).length).toBe(1);
+      const created = (await readLibrary(page)).find(row => row.original === original);
+      expect(created.id).toBeTruthy();
+      await page.getByTestId('prompt-input').fill(`${original} Updated through the editor.`);
+      await page.getByRole('button', { name: 'Save new version', exact: true }).click();
+      await expect.poll(async () => (await readLibrary(page)).find(row => row.id === created.id)?.original).toBe(`${original} Updated through the editor.`);
+      const saved = (await readLibrary(page)).find(row => row.id === created.id);
+      expect(saved.versions.some(version => version.original === original)).toBe(true);
+      await page.reload();
+      await openLibrary(page);
+      expect((await readLibrary(page)).find(row => row.id === saved.id)).toEqual(saved);
+      await page.getByText('Starter Libraries', { exact: true }).click();
+      const pack = page.getByText("Project Prompt Instruments — Dave's Suite", { exact: true }).locator('xpath=ancestor::div[.//button][1]');
+      await pack.getByRole('button', { name: 'Load', exact: true }).click();
+      await expect.poll(async () => (await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments').length).toBe(14);
+      const loaded = (await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments');
+      expect(loaded.every(row => row.metadata.packLoadedAt && row.title && (row.original || row.enhanced))).toBe(true);
+      await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('newest');
+      const first = await page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first().innerText();
+      expect(loaded.some(row => first.includes(row.title))).toBe(true);
+      await page.getByText('Starter Libraries', { exact: true }).click();
       await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles({ name: 'library-artifact.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(artifact)) });
       const dialog = page.getByRole('dialog', { name: 'Review Library import' });
       await dialog.getByRole('button', { name: 'Apply import', exact: true }).click();
@@ -68,6 +96,8 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await context.close();
       page = await launch();
+      expect((await readLibrary(page)).find(row => row.id === saved.id)).toEqual(saved);
+      expect((await readLibrary(page)).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments')).toEqual(loaded);
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
       await page.getByTestId('library-search').fill('');
@@ -78,6 +108,7 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       const download = await downloadPromise;
       const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
       checkRecords(exported.library, artifact);
+      expect(exported.library.find(row => row.id === saved.id)).toEqual(saved);
       expect(exported.schemaVersion).toBe(2);
       for (const run of artifact.runs || []) expect(exported.runs.find(row => row.id === run.id)).toMatchObject({ promptId: run.promptId, promptVersionId: run.promptVersionId });
       for (const record of artifact.testCases || []) expect(exported.testCases.find(row => row.id === record.id)?.promptId).toBe(record.promptId);

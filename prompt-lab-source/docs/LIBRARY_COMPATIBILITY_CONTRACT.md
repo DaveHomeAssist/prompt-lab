@@ -88,7 +88,7 @@ The existing Production Smoke workflow accepts manual `scope: library` to run fo
 
 ## Plan J evidence closeout — 2026-10-09
 
-Plan J's seven listed controls are complete. This is Library contract acceptance, not overall installed-application or production readiness. [PR140](https://github.com/DaveHomeAssist/prompt-lab/pull/140) merged as `473d691236b7a70e7032a99b11719358a668dd15`; tested merge `ed3435b6f850af1dfb134f2efdf3488de8e1648d`, reviewed head `a7560c8` and delivered trees match.
+Plan J remains In progress: PR141 review found the cited imported/seeded extension scenarios did not directly exercise Phase 8 create/save/reload. The additional packaged-extension lifecycle and actual native starter-load controls are pending verification. The migration evidence below remains valid. This is Library contract acceptance, not overall installed-application or production readiness. [PR140](https://github.com/DaveHomeAssist/prompt-lab/pull/140) merged as `473d691236b7a70e7032a99b11719358a668dd15`; tested merge `ed3435b6f850af1dfb134f2efdf3488de8e1648d`, reviewed head `a7560c8` and delivered trees match.
 
 | Criterion | Owning evidence |
 | --- | --- |
