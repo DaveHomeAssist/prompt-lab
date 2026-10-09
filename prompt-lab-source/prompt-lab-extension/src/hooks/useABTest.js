@@ -6,17 +6,22 @@ import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
 import useSensitivePreflight from './useSensitivePreflight.js';
 import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
+import { OUTPUT_BUDGETS, COMPARE_BUDGET_KEY, DEFAULT_COMPARE_BUDGET } from '../lib/generationOptions.js';
 
 const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false };
 const EXTRA_LABELS = ['C', 'D', 'E'];
 
 export default function useABTest({ notify }) {
+  const [outputBudget, setOutputBudgetState] = useState(() => {
+    try {
+      const stored = Number(globalThis.localStorage?.getItem(COMPARE_BUDGET_KEY));
+      return OUTPUT_BUDGETS.includes(stored) ? stored : DEFAULT_COMPARE_BUDGET;
+    } catch { return DEFAULT_COMPARE_BUDGET; }
+  });
   const [abA, updateAbA] = useState(EMPTY_VARIANT);
   const [abB, updateAbB] = useState(EMPTY_VARIANT);
   const [extraVariants, setExtraVariants] = useState([]);
-  // Per-side provider/model selection; null = the settings-default provider.
   const [abProviders, setAbProviders] = useState({ a: null, b: null });
-  // Library entry each side was loaded from, so arena runs land in prompt-scoped history.
   const [abSource, setAbSource] = useState({ a: null, b: null });
   const [abWinner, setAbWinner] = useState(null);
   const [history, setHistory] = useState([]);
@@ -27,16 +32,10 @@ export default function useABTest({ notify }) {
   const attempts = useRef({});
   const preflight = useSensitivePreflight();
   const experimentIdRef = useRef(null);
-
-  const variants = [
-    { id: 'a', label: 'A', ...abA },
-    { id: 'b', label: 'B', ...abB },
-    ...extraVariants,
-  ];
-
+  const variants = [{ id: 'a', label: 'A', ...abA }, { id: 'b', label: 'B', ...abB }, ...extraVariants];
   const variantsRef = useRef(variants);
   variantsRef.current = variants;
-  const getVariant = (side) => variantsRef.current.find((variant) => variant.id === String(side).toLowerCase());
+  const getVariant = side => variantsRef.current.find(variant => variant.id === String(side).toLowerCase());
 
   const updateVariant = (side, updater) => {
     const id = String(side).toLowerCase();
@@ -47,15 +46,14 @@ export default function useABTest({ notify }) {
         return next;
       });
     }
-    setExtraVariants((prev) => prev.map((variant) => {
+    setExtraVariants(prev => prev.map(variant => {
       if (variant.id !== id) return variant;
       const next = typeof updater === 'function' ? updater(variant) : updater;
-      return { ...next, id: variant.id, label: variant.label };
+      return { ...next, id, label: variant.label };
     }));
     return undefined;
   };
-
-  const invalidate = (id) => {
+  const invalidate = id => {
     attempts.current[id]?.controller.abort();
     delete attempts.current[id];
     preflight.invalidate(id);
@@ -80,28 +78,21 @@ export default function useABTest({ notify }) {
     Object.values(attempts.current).forEach(attempt => attempt.controller.abort());
     attempts.current = {};
   }, []);
-
   useEffect(() => {
     const refresh = () => {
-      listExperiments().then(setHistory).catch((e) => logWarn('load experiments', e));
-      listEvalRuns({ mode: 'ab', limit: 12 }).then(setEvalRuns).catch((e) => logWarn('load eval runs', e));
+      listExperiments().then(setHistory).catch(e => logWarn('load experiments', e));
+      listEvalRuns({ mode: 'ab', limit: 12 }).then(setEvalRuns).catch(e => logWarn('load eval runs', e));
     };
     refresh();
     window.addEventListener(RECORDS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(RECORDS_CHANGED_EVENT, refresh);
   }, []);
 
-  const nowMs = () => (typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now());
-
+  const nowMs = () => typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
   const refreshEvalRuns = async () => {
-    try {
-      setEvalRuns(await listEvalRuns({ mode: 'ab', limit: 12 }));
-    } catch (e) {
-      logWarn('refresh eval runs', e);
-      setEvalRuns([]);
-    }
+    try { setEvalRuns(await listEvalRuns({ mode: 'ab', limit: 12 })); }
+    catch (e) { logWarn('refresh eval runs', e); setEvalRuns([]); }
   };
-
   const callWithRetry = async (payload, signal, retries = 1) => {
     let attempt = 0;
     let lastError = null;
@@ -120,7 +111,25 @@ export default function useABTest({ notify }) {
     throw lastError || new Error('Request failed.');
   };
 
-  const runAB = async (side) => {
+  const setOutputBudget = value => {
+    const next = Number(value);
+    if (!OUTPUT_BUDGETS.includes(next) || next === outputBudget) return;
+    if (Object.values(attempts.current).some(attempt => attempt.running)) {
+      notify('Wait for active runs before changing the answer budget.');
+      return;
+    }
+    // Results generated under different allowances must not be compared as equal conditions.
+    variantsRef.current.forEach(variant => {
+      invalidate(variant.id);
+      updateVariant(variant.id, previous => ({ ...previous, response: '', loading: false, error: false }));
+    });
+    setAbWinner(null);
+    setOutputBudgetState(next);
+    try { globalThis.localStorage.setItem(COMPARE_BUDGET_KEY, String(next)); }
+    catch { notify('Answer budget changed for this session, but the preference could not be saved.'); }
+  };
+
+  const runAB = async side => {
     const id = String(side).toLowerCase();
     const state = getVariant(id);
     if (!state?.prompt.trim() || attempts.current[id]?.running) return;
@@ -130,12 +139,12 @@ export default function useABTest({ notify }) {
     const selection = abProviders[id] ? { ...abProviders[id] } : null;
     const source = abSource[id] ? { ...abSource[id] } : null;
     const payload = {
-      model: selection?.model || 'claude-sonnet-4-6', max_tokens: 800,
+      model: selection?.model || 'claude-sonnet-4-6', max_tokens: outputBudget,
       messages: [{ role: 'user', content: state.prompt }],
       ...(selection?.provider ? { provider: selection.provider } : {}),
     };
     const isCurrent = () => attempts.current[id] === attempt && !attempt.controller.signal.aborted;
-    const execute = async (approvedPayload) => {
+    const execute = async approvedPayload => {
       if (!isCurrent() || attempt.running) return;
       attempt.running = true;
       const startedAt = nowMs();
@@ -147,16 +156,12 @@ export default function useABTest({ notify }) {
         const responseText = extractTextFromAnthropic(data);
         setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
         await saveEvalRun({
-          promptId: source?.entryId || null,
-          promptTitle: source?.title || `A/B Variant ${id.toUpperCase()}`,
-          mode: 'ab',
+          promptId: source?.entryId || null, promptTitle: source?.title || `A/B Variant ${id.toUpperCase()}`,
+          mode: 'ab', requestedOutputTokens: approvedPayload.max_tokens,
           provider: data?.provider || selection?.provider || 'unknown',
-          model: data?.model || selection?.model || 'unknown',
-          variantLabel: `Variant ${id.toUpperCase()}`,
-          input: approvedPayload.messages[0].content,
-          output: responseText,
-          latencyMs: nowMs() - startedAt,
-        }).catch((error) => {
+          model: data?.model || selection?.model || 'unknown', variantLabel: `Variant ${id.toUpperCase()}`,
+          input: approvedPayload.messages[0].content, output: responseText, latencyMs: nowMs() - startedAt,
+        }).catch(error => {
           logWarn('save arena run', error);
           notify('Response complete, but run history was not saved. Retry saving records.');
         });
@@ -183,77 +188,56 @@ export default function useABTest({ notify }) {
     setAbSource({ a: null, b: null });
     setAbWinner(null);
   };
-
   const setSideProvider = (side, descriptor) => {
     const id = String(side).toLowerCase();
     invalidate(id);
     updateVariant(id, prev => ({ ...prev, response: '', loading: false, error: false }));
     setAbProviders(prev => ({ ...prev, [id]: descriptor || null }));
   };
-
   const loadVariant = (side, prompt, source = null) => {
     const id = String(side).toLowerCase();
-    const setter = (updater) => setVariant(id, updater);
+    const setter = updater => setVariant(id, updater);
     const nextPrompt = typeof prompt === 'string' ? prompt : '';
     invalidate(id);
     setAbSource(prev => ({ ...prev, [id]: source }));
-    setter((prev) => ({
-      ...prev,
-      prompt: nextPrompt,
-      response: '',
-      loading: false,
-      error: false,
-    }));
+    setter(prev => ({ ...prev, prompt: nextPrompt, response: '', loading: false, error: false }));
     setAbWinner(null);
     setActiveSide(id.toUpperCase());
   };
-
   const addVariant = () => {
     if (variants.length >= 5) return false;
-    const label = EXTRA_LABELS.find((candidate) => !extraVariants.some((variant) => variant.label === candidate));
+    const label = EXTRA_LABELS.find(candidate => !extraVariants.some(variant => variant.label === candidate));
     const id = label.toLowerCase();
-    setExtraVariants((prev) => [...prev, { id, label, ...EMPTY_VARIANT }]);
-    setAbProviders((prev) => ({ ...prev, [id]: null }));
-    setAbSource((prev) => ({ ...prev, [id]: null }));
+    setExtraVariants(prev => [...prev, { id, label, ...EMPTY_VARIANT }]);
+    setAbProviders(prev => ({ ...prev, [id]: null }));
+    setAbSource(prev => ({ ...prev, [id]: null }));
     invalidate(id);
     setActiveSide(label);
     return true;
   };
-
-  const removeVariant = (side) => {
+  const removeVariant = side => {
     const id = String(side).toLowerCase();
     if (id === 'a' || id === 'b') return false;
     invalidate(id);
-    setExtraVariants((prev) => prev.filter((variant) => variant.id !== id));
-    setAbProviders((prev) => { const next = { ...prev }; delete next[id]; return next; });
-    setAbSource((prev) => { const next = { ...prev }; delete next[id]; return next; });
+    setExtraVariants(prev => prev.filter(variant => variant.id !== id));
+    setAbProviders(prev => { const next = { ...prev }; delete next[id]; return next; });
+    setAbSource(prev => { const next = { ...prev }; delete next[id]; return next; });
     setActiveSide('A');
     return true;
   };
-
-  const runAll = () => Promise.all(variants.filter((variant) => variant.prompt.trim()).map((variant) => runAB(variant.id)));
-
-  const pickWinner = async (side) => {
+  const runAll = () => Promise.all(variants.filter(variant => variant.prompt.trim()).map(variant => runAB(variant.id)));
+  const pickWinner = async side => {
     const winnerLabel = `Variant ${side}`;
     setAbWinner(winnerLabel);
     try {
       const snapshotKey = JSON.stringify(variants.map(({ id, prompt, response }) => ({ id, prompt, response })));
-      if (experimentIdRef.current?.snapshotKey !== snapshotKey) {
-        experimentIdRef.current = { id: crypto.randomUUID(), snapshotKey };
-      }
+      if (experimentIdRef.current?.snapshotKey !== snapshotKey) experimentIdRef.current = { id: crypto.randomUUID(), snapshotKey };
       const record = {
-        id: experimentIdRef.current.id,
-        createdAt: new Date().toISOString(),
+        id: experimentIdRef.current.id, createdAt: new Date().toISOString(),
         label: `${variants.length === 2 ? 'A/B' : 'Arena'}: ${variants[0]?.prompt.slice(0, 40) || 'Untitled'}`,
-        variants: variants.map((variant) => ({
-          id: variant.label,
-          promptHash: hashText(variant.prompt),
-          prompt: variant.prompt,
-          response: variant.response,
-        })),
-        keyInputSnapshot: JSON.stringify(Object.fromEntries(variants.map((variant) => [`${variant.id}Prompt`, variant.prompt.slice(0, 280)]))),
-        outcome: { winnerVariantId: side },
-        notes: '',
+        variants: variants.map(variant => ({ id: variant.label, promptHash: hashText(variant.prompt), prompt: variant.prompt, response: variant.response })),
+        keyInputSnapshot: JSON.stringify(Object.fromEntries(variants.map(variant => [`${variant.id}Prompt`, variant.prompt.slice(0, 280)]))),
+        outcome: { winnerVariantId: side }, notes: '',
       };
       await saveExperiment(record);
       setHistory(await listExperiments());
@@ -263,49 +247,20 @@ export default function useABTest({ notify }) {
       notify('Experiment was not saved. Retry saving records.');
     }
   };
-
   const promoteToGolden = (side, pinGoldenResponse) => {
     const id = String(side).toLowerCase();
     const variant = getVariant(id);
     const source = abSource[id];
     if (!variant?.response?.trim() || !source?.entryId || typeof pinGoldenResponse !== 'function') return false;
-    return pinGoldenResponse(source.entryId, {
-      text: variant.response,
-      provider: abProviders[id]?.provider,
-      model: abProviders[id]?.model,
-    });
+    return pinGoldenResponse(source.entryId, { text: variant.response, provider: abProviders[id]?.provider, model: abProviders[id]?.model });
   };
-
   return {
-    piiWarning: preflight.piiWarning,
-    piiSendAnyway: preflight.piiSendAnyway,
-    piiRedactAndSend: preflight.piiRedactAndSend,
-    piiCancel: preflight.piiCancel,
-    abA,
-    setAbA,
-    abB,
-    setAbB,
-    abWinner,
-    history,
-    showHistory,
-    setShowHistory,
-    evalRuns,
-    showRuns,
-    setShowRuns,
-    activeSide,
-    setActiveSide,
-    abProviders,
-    setSideProvider,
-    abSource,
-    variants,
-    setVariant,
-    addVariant,
-    removeVariant,
-    runAll,
-    promoteToGolden,
-    loadVariant,
-    runAB,
-    resetAB,
-    pickWinner,
+    outputBudget, setOutputBudget,
+    piiWarning: preflight.piiWarning, piiSendAnyway: preflight.piiSendAnyway,
+    piiRedactAndSend: preflight.piiRedactAndSend, piiCancel: preflight.piiCancel,
+    abA, setAbA, abB, setAbB, abWinner, history, showHistory, setShowHistory,
+    evalRuns, showRuns, setShowRuns, activeSide, setActiveSide, abProviders, setSideProvider,
+    abSource, variants, setVariant, addVariant, removeVariant, runAll, promoteToGolden,
+    loadVariant, runAB, resetAB, pickWinner,
   };
 }
