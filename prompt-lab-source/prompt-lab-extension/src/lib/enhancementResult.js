@@ -1,18 +1,18 @@
 import { ensureString } from './utils.js';
 import { normalizeTagList } from './tagSchema.js';
 
+// Historical records keep these exact positional meanings.
 export const CANDIDATE_ROLES = Object.freeze([
   { id: 'improved', label: 'Improved' },
   { id: 'tighter', label: 'Tighter' },
   { id: 'strict-json', label: 'Strict JSON' },
 ]);
+const MODERN_LABELS = Object.freeze({
+  expanded: 'Expanded', refined: 'Refined', rebuilt: 'Rebuilt', shorten: 'Shortened', json: 'JSON',
+});
 
 const safeIdPart = (value, fallback) => ensureString(value)
-  .trim()
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-|-$/g, '')
-  .slice(0, 40) || fallback;
+  .trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || fallback;
 
 export function normalizeTokenUsage(value) {
   if (!value || typeof value !== 'object') return null;
@@ -36,20 +36,18 @@ export function normalizeAssumptions(value) {
   return value.map((item, index) => {
     if (typeof item === 'string') {
       const text = item.trim();
-      return text ? {
-        id: `assumption-${index + 1}-${safeIdPart(text, 'item')}`,
-        text,
-        addedText: '',
-      } : null;
+      return text ? { id: `assumption-${index + 1}-${safeIdPart(text, 'item')}`, text, addedText: '' } : null;
     }
     if (!item || typeof item !== 'object') return null;
     const text = ensureString(item.text || item.label || item.assumption).trim();
     if (!text) return null;
     const addedText = ensureString(item.added_text || item.addedText || item.revert_text || item.revertText);
+    const candidateId = ensureString(item.candidateId || item.candidate_id).trim();
     return {
       id: ensureString(item.id).trim() || `assumption-${index + 1}-${safeIdPart(text, 'item')}`,
       text,
       addedText: addedText.trim() ? addedText : '',
+      ...(candidateId ? { candidateId } : {}),
     };
   }).filter(Boolean).slice(0, 12);
 }
@@ -66,10 +64,11 @@ export function normalizeSemanticChanges(value) {
     if (!label) return null;
     const rawType = ensureString(item.type).trim().toLowerCase();
     const type = ['added', 'removed', 'changed'].includes(rawType) ? rawType : 'changed';
+    const candidateId = ensureString(item.candidateId || item.candidate_id).trim();
     return {
       id: ensureString(item.id).trim() || `change-${index + 1}-${safeIdPart(label, 'item')}`,
-      type,
-      label,
+      type, label,
+      ...(candidateId ? { candidateId } : {}),
     };
   }).filter(Boolean).slice(0, 16);
 }
@@ -80,8 +79,7 @@ export function normalizeReversibleEdits(value, assumptions = []) {
     if (!item || typeof item !== 'object') return null;
     const before = ensureString(item.before ?? item.beforeText ?? item.original_text);
     const after = ensureString(item.after ?? item.afterText ?? item.added_text ?? item.addedText);
-    const label = ensureString(item.label || item.text || item.reason).trim()
-      || `Reversible edit ${index + 1}`;
+    const label = ensureString(item.label || item.text || item.reason).trim() || `Reversible edit ${index + 1}`;
     if (!before.trim() && !after.trim()) return null;
     return {
       id: ensureString(item.id).trim() || `edit-${index + 1}-${safeIdPart(label, 'change')}`,
@@ -89,78 +87,82 @@ export function normalizeReversibleEdits(value, assumptions = []) {
       operation: ['add', 'remove', 'replace'].includes(ensureString(item.operation).toLowerCase())
         ? ensureString(item.operation).toLowerCase()
         : before.trim() && after.trim() ? 'replace' : before.trim() ? 'remove' : 'add',
-      before,
-      after,
+      before, after,
       candidateId: ensureString(item.candidateId || item.candidate_id).trim() || 'improved',
       reverted: item.reverted === true,
     };
   }).filter(Boolean);
 
-  // Older providers exposed only assumption.addedText. Upgrade those records
-  // into the explicit reversible-edit contract without losing their IDs.
   assumptions.forEach((assumption) => {
     if (!assumption.addedText?.trim()) return;
-    if (normalized.some((edit) => edit.after === assumption.addedText)) return;
+    const candidateId = assumption.candidateId || 'improved';
+    if (normalized.some(edit => edit.after === assumption.addedText && edit.candidateId === candidateId)) return;
     normalized.push({
-      id: `edit-${assumption.id}`,
-      label: assumption.text,
-      operation: 'add',
-      before: '',
-      after: assumption.addedText,
-      candidateId: 'improved',
-      reverted: false,
+      id: `edit-${assumption.id}`, label: assumption.text, operation: 'add', before: '',
+      after: assumption.addedText, candidateId, reverted: false,
     });
   });
   return normalized.slice(0, 20);
 }
 
-export function buildResultCandidates(enhanced, variants = []) {
-  const primary = ensureString(enhanced).trim();
-  const rows = primary ? [{ id: 'improved', label: 'Improved', role: 'improved', content: enhanced }] : [];
+function candidateIdentity(candidate, index, modern = false) {
+  const explicit = ensureString(candidate?.id || candidate?.role).trim();
+  const fromLabel = modern
+    ? Object.entries(MODERN_LABELS).find(([, label]) => label.toLowerCase() === ensureString(candidate?.label).trim().toLowerCase())?.[0]
+    : '';
+  const legacy = CANDIDATE_ROLES[index];
+  const id = modern || MODERN_LABELS[explicit]
+    ? explicit || fromLabel || `candidate-${index + 1}`
+    : legacy?.id || explicit || `candidate-${index + 1}`;
+  const known = MODERN_LABELS[id] || CANDIDATE_ROLES.find(item => item.id === id)?.label;
+  return { id, label: known || ensureString(candidate?.label).trim() || `Candidate ${index + 1}`, role: id };
+}
+
+export function buildResultCandidates(enhanced, variants = [], primaryId = 'improved') {
+  const modern = Boolean(MODERN_LABELS[primaryId]);
+  const rows = ensureString(enhanced).trim()
+    ? [{ ...candidateIdentity({ id: primaryId }, 0, modern), content: enhanced }] : [];
   (Array.isArray(variants) ? variants : []).forEach((variant, index) => {
-    const content = ensureString(variant?.content).trim();
-    if (!content) return;
-    const canonical = CANDIDATE_ROLES[index + 1];
-    const label = canonical?.label || ensureString(variant?.label).trim() || `Variant ${index + 1}`;
-    rows.push({
-      id: canonical?.id || `variant-${index + 1}-${safeIdPart(label, 'result')}`,
-      label,
-      role: canonical?.id || 'variant',
-      content: variant.content,
-    });
+    if (!ensureString(variant?.content).trim()) return;
+    rows.push({ ...candidateIdentity(variant, index + 1, modern), content: variant.content });
   });
-  return rows.slice(0, 3);
+  return rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index).slice(0, modern ? 5 : 3);
 }
 
 export function normalizeResultMeta(value = {}, content = {}) {
   const source = value && typeof value === 'object' ? value : {};
   const fallbackContent = content && typeof content === 'object' ? content : {};
-  const assumptions = normalizeAssumptions(source.assumptions);
-  const candidates = Array.isArray(source.candidates) && source.candidates.length > 0
+  const primaryId = ensureString(source.primaryId || source.primary_id).trim()
+    || (source.schemaVersion === 2 ? ensureString(source.candidates?.[0]?.id).trim() : '') || 'improved';
+  const modern = source.schemaVersion === 2 || source.schema_version === 2 || Boolean(MODERN_LABELS[primaryId])
+    || (Array.isArray(source.candidates) && source.candidates.some(item => MODERN_LABELS[item?.id]));
+  const rows = Array.isArray(source.candidates) && source.candidates.length > 0
     ? source.candidates.map((candidate, index) => ({
-      id: CANDIDATE_ROLES[index]?.id || ensureString(candidate?.id).trim() || `candidate-${index + 1}`,
-      label: CANDIDATE_ROLES[index]?.label || ensureString(candidate?.label).trim() || `Candidate ${index + 1}`,
-      role: CANDIDATE_ROLES[index]?.id || ensureString(candidate?.role).trim() || 'variant',
-      content: ensureString(candidate?.content),
-    })).filter((candidate) => candidate.content.trim()).slice(0, 3)
-    : buildResultCandidates(fallbackContent.enhanced, fallbackContent.variants);
-  const selectedCandidateId = candidates.some((candidate) => candidate.id === source.selectedCandidateId)
-    ? source.selectedCandidateId
-    : candidates[0]?.id || '';
+      ...candidateIdentity(candidate, index, modern), content: ensureString(candidate?.content),
+    })).filter(candidate => candidate.content.trim()).slice(0, modern ? 5 : 3)
+    : buildResultCandidates(fallbackContent.enhanced, fallbackContent.variants, primaryId);
+  const candidates = rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index);
+  const resolvedPrimaryId = candidates.some(item => item.id === primaryId) ? primaryId : candidates[0]?.id || primaryId;
+  const selectedCandidateId = candidates.some(candidate => candidate.id === source.selectedCandidateId)
+    ? source.selectedCandidateId : candidates[0]?.id || '';
+  const scopeToPrimary = item => modern && !item.candidateId ? { ...item, candidateId: resolvedPrimaryId } : item;
+  const assumptions = normalizeAssumptions(source.assumptions).map(scopeToPrimary);
+  const rawEdits = source.reversibleEdits || source.reversible_edits;
+  const edits = modern && Array.isArray(rawEdits)
+    ? rawEdits.map(item => item && typeof item === 'object' && !item.candidateId && !item.candidate_id
+      ? { ...item, candidateId: resolvedPrimaryId } : item) : rawEdits;
   return {
-    candidates,
-    selectedCandidateId,
+    ...(modern ? { schemaVersion: 2, primaryId: resolvedPrimaryId } : {}),
+    candidates, selectedCandidateId,
+    ...(Number.isFinite(source.requestedOutputTokens) ? { requestedOutputTokens: source.requestedOutputTokens } : {}),
+    ...(source.metadataIncomplete === true ? { metadataIncomplete: true } : {}),
     changeSummary: ensureString(source.changeSummary || source.change_summary).trim(),
-    changes: normalizeSemanticChanges(source.changes),
-    assumptions,
-    reversibleEdits: normalizeReversibleEdits(source.reversibleEdits || source.reversible_edits, assumptions),
-    reasoning: ensureString(source.reasoning).trim(),
-    tags: normalizeTagList(source.tags),
-    provider: ensureString(source.provider).trim(),
-    model: ensureString(source.model).trim(),
+    changes: normalizeSemanticChanges(source.changes).map(scopeToPrimary), assumptions,
+    reversibleEdits: normalizeReversibleEdits(edits, assumptions),
+    reasoning: ensureString(source.reasoning).trim(), tags: normalizeTagList(source.tags),
+    provider: ensureString(source.provider).trim(), model: ensureString(source.model).trim(),
     latencyMs: Number.isFinite(source.latencyMs) ? Math.max(0, Math.round(source.latencyMs)) : null,
-    usage: normalizeTokenUsage(source.usage),
-    runId: ensureString(source.runId).trim(),
+    usage: normalizeTokenUsage(source.usage), runId: ensureString(source.runId).trim(),
   };
 }
 
@@ -185,7 +187,7 @@ export function replaceCandidateContent(resultMeta, candidateId, content) {
   return {
     ...normalized,
     selectedCandidateId: candidateId,
-    candidates: normalized.candidates.map((candidate) => (
+    candidates: normalized.candidates.map(candidate => (
       candidate.id === candidateId ? { ...candidate, content: ensureString(content) } : candidate
     )),
   };
@@ -195,10 +197,6 @@ export function revertAssumptionFromText(text, assumption) {
   const source = ensureString(text);
   const addedText = ensureString(assumption?.addedText);
   if (!addedText.trim() || !source.includes(addedText)) return { changed: false, text: source };
-  const next = source
-    .replace(addedText, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .replace(/[ \t]+\n/g, '\n')
-    .trim();
+  const next = source.replace(addedText, '').replace(/\n{3,}/g, '\n\n').replace(/[ \t]+\n/g, '\n').trim();
   return { changed: next !== source.trim(), text: next };
 }
