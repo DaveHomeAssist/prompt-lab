@@ -10,15 +10,14 @@ const test = base.extend({
     const owned = { clerk, config, task: null, sessionId: null };
     try { await use(owned); }
     finally {
-      try {
-        if (owned.sessionId) {
-          await clerk.sessions.revokeSession(owned.sessionId);
-          await expect.poll(async () => (await clerk.sessions.getSession(owned.sessionId)).status).toBe('revoked');
-        }
-      } finally {
-        if (owned.task) await clerk.agentTasks.revoke(owned.task.agentTaskId);
+      if (owned.sessionId) {
+        await clerk.sessions.revokeSession(owned.sessionId);
+        await expect.poll(async () => (await clerk.sessions.getSession(owned.sessionId)).status).toBe('revoked');
+        console.info('[activation cleanup] disposable session revocation verified');
+      } else if (owned.task) {
+        await clerk.agentTasks.revoke(owned.task.agentTaskId);
+        console.info('[activation cleanup] unused task revoked');
       }
-      if (owned.task) console.info('[activation cleanup] disposable task revoked');
     }
   }, { timeout: 30_000 }],
 });
@@ -99,7 +98,7 @@ for (const width of [375, 1440]) {
       await page.getByRole('button', { name: 'Load Starter Draft', exact: true }).click();
       await expect(page.getByTestId('prompt-input')).not.toHaveValue('');
       await page.getByRole('button', { name: 'Save First Prompt', exact: true }).click();
-      await page.getByRole('dialog', { name: 'Save as new prompt', exact: true }).getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Save as new prompt', exact: true }).getByRole('button', { name: /^Save as new prompt (?:Ctrl|⌘)\+S$/ }).click();
       await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(1);
       for (let i = 0; i < 2; i++) {
         phase(`refine ${i + 1}`);
