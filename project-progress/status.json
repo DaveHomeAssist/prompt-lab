@@ -14,6 +14,12 @@
   "nextAction": "Continue accepted Plan J reconciliation/restart controls and separately review PR131 integration and its failed Windows acceptance. Verify activation/Evaluate outcomes against the historical plan. Preserve billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
     {
+      "label": "Plan J and activation repair",
+      "state": "Running",
+      "detail": "2026-10-09: current acceptance work restores the existing starter-pack loader to the canonical Library index, corrects run-availability and compare-selection guidance, and adds authenticated tag/status filter controls. Local source inspection confirms the missing loader and misleading messages. Runtime and CI verification pending; no issue disposition changed. Designer review was bounded and read-only. Billing, native distribution and human acceptance stay separate.",
+      "url": "https://app.notion.com/p/48d82c475b0448649ff2372a00bb6e33"
+    },
+    {
       "label": "Historical storyline reconciliation",
       "state": "Verified",
       "detail": "2026-10-09 source reconciliation only: hub guide, reference map and archive register updated/read back; 40 issue dispositions and 14 selected items preserved. PR99 merged September20. PR131 remains open at 8f9e460 with failed Windows acceptance and skipped alternate-package job; fixture-router evidence is not live-model proof. Activation code exists on main; outcome acceptance remains unverified. April HTML dashboard is historically documented, physical location Unknown. Repository ROADMAP records ordered phases and open choices; no new dashboard, scheduler or readiness score. Cross-project Next Steps Board lacks a PromptLab mapping. Next: accepted Plan J controls, bounded PR131 review, then activation/Evaluate criteria.",

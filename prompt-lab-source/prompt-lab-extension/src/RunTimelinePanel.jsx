@@ -554,7 +554,7 @@ export default function RunTimelinePanel({
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {[
               [showingSummary, 'Runs available in the current timeline view'],
-              [`${compareSelectionIds.length}/2 compare ready`, compareSelectionIds.length > 0 ? 'Select one more run to open side-by-side compare' : 'Pick two runs to unlock compare mode'],
+              [`${compareSelectionIds.length}/2 compare ready`, compareSelectionIds.length === 2 ? 'Ready to compare the selected runs' : compareSelectionIds.length === 1 ? 'Select one more run to open side-by-side compare' : 'Pick two runs to unlock compare mode'],
               [`${filterBadges.length} filter${filterBadges.length === 1 ? '' : 's'} active`, hasActiveFilters ? 'Narrowed to a focused slice of history' : 'Showing the broader evaluation picture'],
             ].map(([label, helper]) => (
               <div key={label} className={`${m.codeBlock} ${m.border} rounded-lg border px-3 py-2.5`}>

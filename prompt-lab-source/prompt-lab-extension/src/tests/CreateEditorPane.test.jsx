@@ -210,6 +210,9 @@ describe('CreateEditorPane', () => {
     });
 
     expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
+    expect(screen.getByText('Run available')).toBeInTheDocument();
+    expect(screen.getByText('Open Evaluate to learn how to generate your first run.')).toBeInTheDocument();
+    expect(screen.queryByText('Run reviewed')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
 
