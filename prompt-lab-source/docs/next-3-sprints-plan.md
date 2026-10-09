@@ -3,6 +3,18 @@
 Status: active
 Updated: 2026-04-16
 
+## Verification checkpoint — 2026-10-09
+
+PR137 delivered the canonical Library starter loader, first-save callback repair, and clearer run/compare guidance at deployed commit `96ad7c216e78f915254116fed25966267db1b56d`. [Activation smoke 37910231474](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37910231474) passed at 375px and 1440px using test head `72235ff`: actual starter/save, two intercepted synthetic refinements, saved history, comparison, verdict/reload, winner copy and reuse as a new Library prompt. Both disposable QA sessions were verified revoked. [Library smoke 37908883551](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37908883551) passed all four Library scenarios at the deployed commit.
+
+These are bounded functional outcomes for Sprints 1 and 2. They do not prove subjective coherence, real-provider quality, activation/conversion rates, billing readiness or native distribution. The test harness fixes in PR139 retain the failed runs and every outcome assertion; only locator accuracy, explicit discard preconditions, diagnostics and teardown changed. The approved responsive UI review is complete; no new delegation is required.
+
+Remaining sequence:
+
+1. Reconcile Plan J's cross-shell/schema-upgrade persistence evidence against its existing contract; do not close it from web success alone.
+2. Keep real-model quality and human Create/Evaluate acceptance separate from fixture-backed workflow proof.
+3. Continue billing and native upgrade/restore/signing through their existing gates; do not turn these smoke results into overall production readiness.
+
 ## Purpose
 
 This document turns the current Prompt Lab priority stack into an execution order for the next three product sprints.

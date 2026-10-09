@@ -11,8 +11,14 @@
   },
   "mainSha": "96ad7c216e78f915254116fed25966267db1b56d",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish activation/Evaluate production verification, then reconcile remaining cross-shell/schema-upgrade persistence. Preserve separate billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
+  "nextAction": "Reconcile the remaining cross-shell/schema-upgrade persistence criterion. Preserve separate billing, native distribution, signing, model-quality and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
+    {
+      "label": "Activation and Evaluate workflow",
+      "state": "Verified",
+      "detail": "Production activation run 37910231474 passed both 375px and 1440px scenarios at test head 72235ff against unchanged deployed product 96ad7c2. Verified starter/save, two intercepted synthetic refinements, history/comparison, verdict persistence after reload, clipboard winner reuse and new Library save. Both disposable sessions verified revoked; provider/purchase/telemetry effects blocked. This verifies workflow, not model quality or conversion.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37910231474"
+    },
     {
       "label": "Library production controls",
       "state": "Verified",
@@ -27,8 +33,8 @@
     },
     {
       "label": "Plan J and activation repair",
-      "state": "Running",
-      "detail": "2026-10-09: current acceptance work restores the existing starter-pack loader to the canonical Library index, corrects run-availability and compare-selection guidance, and adds authenticated tag/status filter controls. Local source inspection confirms the missing loader and misleading messages. Runtime and CI verification pending; no issue disposition changed. Designer review was bounded and read-only. Billing, native distribution and human acceptance stay separate.",
+      "state": "Verified",
+      "detail": "PR137 merged as 96ad7c2 and deployed. Starter loader, first-save callback, run availability and compare-selection guidance repaired. Library 4/4 and activation 2/2 production scenarios passed; billing, native distribution, model quality and human acceptance remain separate.",
       "url": "https://app.notion.com/p/48d82c475b0448649ff2372a00bb6e33"
     },
     {
