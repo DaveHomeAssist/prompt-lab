@@ -71,6 +71,13 @@ function renderLibrary(options = {}) {
 }
 
 describe('LibraryWorkspace', () => {
+  it('makes starter packs reachable from the canonical Library index', () => {
+    const lib = makeLib({ starterLibraries: [{ id: 'starter', name: 'Starter fixture', promptCount: 2, loaded: false }], loadStarterPack: vi.fn() });
+    renderLibrary({ lib });
+    fireEvent.click(screen.getByText('Starter Libraries'));
+    fireEvent.click(screen.getByRole('button', { name: 'Load', exact: true }));
+    expect(lib.loadStarterPack).toHaveBeenCalledWith('starter');
+  });
   it('provides every smart view, tile/list density, and non-nested keyboard-selectable cards', () => {
     renderLibrary();
 

@@ -4,6 +4,7 @@ import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { sortLibraryEntries } from './hooks/usePromptLibrary.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
+import StarterPackCard from './StarterPackCard.jsx';
 import TestCasesPanel from './TestCasesPanel.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
@@ -427,6 +428,12 @@ export default function LibraryWorkspace({
       </header>
 
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
+      {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">
+        <summary className="cursor-pointer text-sm font-semibold">Starter Libraries</summary>
+        <div className="mt-3 flex flex-col gap-2">
+          {lib.starterLibraries.map(pack => <StarterPackCard key={pack.id} pack={pack} m={m} onLoad={lib.loadStarterPack} />)}
+        </div>
+      </details>}
       {hasFilters && <div className="pl-library-filter-bar" aria-label="Active filters">
         {smartView !== 'all' && smartView !== 'collection' && smartView !== 'tag' && <FilterChip label={SMART_VIEWS.find((view) => view.id === smartView)?.label || 'Recently Deleted'} onRemove={() => chooseView('all')} />}
         {searchDraft.trim() && <FilterChip label={`Search: ${searchDraft.trim()}`} onRemove={() => { setSearchDraft(''); lib.setSearch(''); }} />}

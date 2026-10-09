@@ -190,10 +190,10 @@ export default function CreateEditorPane({
       complete: libraryCount > 0,
     },
     {
-      label: 'Run reviewed',
+      label: 'Run available',
       description: evalRunCount > 0
         ? 'Evaluate already has proof to inspect.'
-        : 'Open Evaluate after the first saved run lands.',
+        : 'Open Evaluate for guidance on creating your first run.',
       complete: evalRunCount > 0,
     },
   ];
@@ -207,14 +207,14 @@ export default function CreateEditorPane({
     : libraryCount === 0
       ? {
           label: 'Save First Prompt',
-          onClick: openSavePanel,
+          onClick: () => openSavePanel(),
           helper: 'Turn this draft into a reusable library entry before you evaluate it.',
         }
       : evalRunCount === 0
         ? {
             label: 'Open Evaluate',
             onClick: onOpenEvaluate,
-            helper: 'Review your first run and keep the strongest version.',
+            helper: 'Open Evaluate to learn how to generate your first run.',
           }
         : null;
   const syncRawCursor = (target) => {

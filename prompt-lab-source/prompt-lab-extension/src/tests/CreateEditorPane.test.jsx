@@ -192,6 +192,13 @@ describe('CreateEditorPane', () => {
     expect(screen.getByText('Incomplete fixture output')).toBeInTheDocument();
   });
 
+  it('saves the first draft without passing the click event as a Library entry', () => {
+    const openSavePanel = vi.fn();
+    renderPane({ raw: 'A first draft', currentEntry: null, enhanced: '', error: null, libraryCount: 0, evalRunCount: 0, openSavePanel });
+    fireEvent.click(screen.getByRole('button', { name: 'Save First Prompt' }));
+    expect(openSavePanel).toHaveBeenCalledWith();
+  });
+
   it('guides saved-but-unreviewed users toward Evaluate', () => {
     const onOpenEvaluate = vi.fn();
 
@@ -210,6 +217,9 @@ describe('CreateEditorPane', () => {
     });
 
     expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
+    expect(screen.getByText('Run available')).toBeInTheDocument();
+    expect(screen.getByText('Open Evaluate to learn how to generate your first run.')).toBeInTheDocument();
+    expect(screen.queryByText('Run reviewed')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
 

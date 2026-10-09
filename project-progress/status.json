@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f03f414b761d047d9a3d12dd356a03f5329608f9",
+  "mainSha": "547be3ccbb8f380f33451511284a195f6f8bcc60",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue accepted Plan J reconciliation/restart controls and separately review PR131 integration and its failed Windows acceptance. Verify activation/Evaluate outcomes against the historical plan. Preserve billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
+    {
+      "label": "Plan J and activation repair",
+      "state": "Running",
+      "detail": "2026-10-09: current acceptance work restores the existing starter-pack loader to the canonical Library index, corrects run-availability and compare-selection guidance, and adds authenticated tag/status filter controls. Local source inspection confirms the missing loader and misleading messages. Runtime and CI verification pending; no issue disposition changed. Designer review was bounded and read-only. Billing, native distribution and human acceptance stay separate.",
+      "url": "https://app.notion.com/p/48d82c475b0448649ff2372a00bb6e33"
+    },
     {
       "label": "Historical storyline reconciliation",
       "state": "Verified",
@@ -21,8 +27,8 @@
     },
     {
       "label": "DaveLLM Library Test runner",
-      "state": "Running",
-      "detail": "Historical PR131 fixture evidence: PR #131 adds scripts/eval-davellm.mjs (DaveLLM DL-EVAL-01 milestone 2): the app's Enhance payload, PII gate, parseEnhancedPayload and checkTraits over DaveLLM's stateless POST /eval/chat, with format json, 10 cases and max_tokens 4096 by default. 12 node tests pass against a fixture router, and an end-to-end run through the real router with a fake model node left DaveLLM's data folder byte-identical. No live model was called; the first live run stays Dave-gated. Integration refresh 2026-10-09 merges current main without changing cancellation assertions. Original Windows timeout remains recorded; fresh exact-head acceptance pending.",
+      "state": "Verified",
+      "detail": "2026-10-09: PR131 merged as 547be3ccbb8f380f33451511284a195f6f8bcc60 from 8e004bb after all checks passed, CLEAN/MERGEABLE state and resolved review thread. Desktop Build37904980954 passed MSI, NSIS, DEB and AppImage exercise/retention and macOS packaging. Windows diagnostic proves trusted click, loopback request and cancellation closing the connection. Original8f9e460 slow-provider timeout did not reproduce; its precise cause remains unproven. No assertions weakened or automatic retry added. Fixture-router integration only; live-model milestone remains Dave-gated. Broader billing, distribution and human acceptance are separate.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/131"
     },
     {
