@@ -392,8 +392,13 @@ async function closeSession() {
         $parents = $children
       } while ($parents.Count)
       @{ roots = $roots; all = @($owned | Sort-Object) } | ConvertTo-Json -Compress
-    `], { encoding: 'utf8', timeout: 10_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
-    assert.equal(probe.status, 0, probe.stderr || 'Owned WebView2 process discovery failed');
+    `], { encoding: 'utf8', timeout: 30_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
+    shutdown.processDiscovery = {
+      status: probe.status, signal: probe.signal,
+      error: probe.error ? { code: probe.error.code, message: probe.error.message } : null,
+      stderr: probe.stderr,
+    };
+    assert.equal(probe.status, 0, `Owned WebView2 process discovery failed: ${JSON.stringify(shutdown.processDiscovery)}`);
     const owned = JSON.parse(probe.stdout.trim());
     browserPids = owned.all;
     shutdown.browserRootPids = owned.roots;

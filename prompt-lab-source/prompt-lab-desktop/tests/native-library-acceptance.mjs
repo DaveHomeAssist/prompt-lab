@@ -50,11 +50,23 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
 
 export async function exerciseLibrary(api) {
   const { execute, click, fill, waitFor, readLibrary, closeSession, openSession, screenshot, checkpoint, recordDiagnostic } = api;
+  await click('[data-testid="nav-library"]');
+  await fill('[data-testid="library-search"]', '');
+  await click('//summary[normalize-space(.)="Starter Libraries"]', 'xpath');
+  await click(`//p[normalize-space(.)="Project Prompt Instruments — Dave's Suite"]/ancestor::div[.//button][1]//button[normalize-space(.)="Load"]`, 'xpath');
+  await waitFor(async () => (await readLibrary()).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments').length === 14, 'actual native starter pack persisted');
+  const loaded = (await readLibrary()).filter(row => row.metadata?.packId === 'lib_project_prompt_instruments');
+  assert.ok(loaded.every(row => row.metadata.packLoadedAt && row.title && (row.original || row.enhanced)));
+  await click('[aria-label="Sort prompts"]');
+  await click('[aria-label="Sort prompts"] option[value="newest"]');
+  const first = await execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText || "";');
+  assert.ok(loaded.some(row => first.includes(row.title)), 'Actual old starter sorts newest after loading');
+  await click('//summary[normalize-space(.)="Starter Libraries"]', 'xpath');
   const baseline = await readLibrary();
   assert.ok(!baseline.some(row => ids.includes(row.id)), 'Library acceptance fixtures must be new');
   const prompt = (id, title, assigned, metadata = {}) => ({ id, title, original: `${title} instructions`, enhanced: `${title} improved`, collection: assigned, tags: ['native-matrix'], createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z', metadata });
   const fixtures = [
-    prompt(ids[0], 'Native matrix Alpha', collection, { owner: 'Avery', purpose: 'Navigation' }),
+    prompt(ids[0], 'Native matrix Alpha', collection, { owner: 'Avery', purpose: 'Navigation', status: 'active' }),
     prompt(ids[1], 'Native matrix Hidden', ''),
     prompt(ids[2], 'Native matrix Beta', collection, { packLoadedAt: new Date(Date.now() + 60_000).toISOString() }),
   ];
@@ -99,6 +111,11 @@ export async function exerciseLibrary(api) {
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'newly loaded old starter sorts first');
+  await click('//button[normalize-space(.)="#native-matrix"]', 'xpath');
+  await click('[aria-label="Filter by status"]');
+  await click('[aria-label="Filter by status"] option[value="active"]');
+  await waitFor(() => execute('return document.querySelectorAll(`[aria-label="Saved prompts"] [role="listitem"]`).length === 1 && document.querySelector(`[aria-label="Saved prompts"]`)?.innerText.includes("Native matrix Alpha");'), 'native tag/status intersection');
+  await click('//button[normalize-space(.)="Clear all"]', 'xpath');
   await fill('[data-testid="library-search"]', 'avery navigation');
   await waitFor(() => execute(`const list = document.querySelector('[aria-label="Saved prompts"]'); return list?.children.length === 1 && list.innerText.includes('Native matrix Alpha');`), 'native Library metadata search');
   await click('//*[@role="tablist" and @aria-label="Create views"]//button[normalize-space(.)="Compose"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Compose"]', 'xpath');

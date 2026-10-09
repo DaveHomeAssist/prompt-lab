@@ -1,0 +1,214 @@
+[
+  {
+    "skill": "installed-app-acceptance",
+    "scope": "Plan J Library import, restart, export and defined reinstall/replacement retention only",
+    "project": "PromptLab",
+    "target": {
+      "revision": "ed3435b6f850af1dfb134f2efdf3488de8e1648d",
+      "branch": "codex/library-schema-upgrade-20261009 (tested merge tree equals a7560c8 and merge473d691)",
+      "environment": "Disposable GitHub Actions runner, synthetic local data and loopback provider fixture",
+      "artifact": {
+        "name": "Prompt Lab_1.7.1_x64_en-US.msi",
+        "version": "1.7.1",
+        "sha256": "c5fc80c94efc9d0f6403b1ef8e6138e0782e0aa560e1ac99d2a2c4769bfed057"
+      },
+      "platform": "Windows Server 2025 10.0.26100 x64 (MSI)"
+    },
+    "requirements": [
+      {
+        "id": "library-persistence",
+        "acceptance_criterion": "Schema-1 identity/content/history/provenance survives UI import, application restart, schema-2 completed export and defined retention",
+        "required": true
+      },
+      {
+        "id": "full-platform-release",
+        "acceptance_criterion": "Prior-version upgrade/rollback, signing, user OS/device and human acceptance",
+        "required": false
+      }
+    ],
+    "evidence": [
+      {
+        "requirement_id": "library-persistence",
+        "kind": "runtime",
+        "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37911747820 ; artifact native-acceptance-windows-latest ; exercise.json, retention.json, downloaded-workspace.json",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "pass",
+        "limitations": "Synthetic acceptance fixture; graceful restart and defined retention only. Runtime tree parity verified. Export SHA256 983dcb48f2196d02afacb684f33e99ed6c8f7481f90b415e96e94e64301340a1"
+      },
+      {
+        "requirement_id": "full-platform-release",
+        "kind": "human_acceptance",
+        "reference": "LIBRARY_COMPATIBILITY_CONTRACT.md; independent Plan I and human gates",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "unknown",
+        "limitations": "Not closed by Library controls. Windows installers are unsigned. No claim for prior-version upgrade/rollback, other OS versions, macOS interactive lifecycle or physical devices."
+      }
+    ],
+    "changes_performed": [
+      "PR140 test-only commits3bfbb0a,e8299dd,7e38cfe,a7560c8; merged473d691236b7a70e7032a99b11719358a668dd15",
+      "CI installed and exercised only disposable runner packages and synthetic data"
+    ],
+    "unresolved_decisions": [],
+    "blockers": [],
+    "next_action": "Maintain these Library regressions; continue independent distribution and human gates without carrying this scoped pass into overall release status."
+  },
+  {
+    "skill": "installed-app-acceptance",
+    "scope": "Plan J Library import, restart, export and defined reinstall/replacement retention only",
+    "project": "PromptLab",
+    "target": {
+      "revision": "ed3435b6f850af1dfb134f2efdf3488de8e1648d",
+      "branch": "codex/library-schema-upgrade-20261009 (tested merge tree equals a7560c8 and merge473d691)",
+      "environment": "Disposable GitHub Actions runner, synthetic local data and loopback provider fixture",
+      "artifact": {
+        "name": "Prompt Lab_1.7.1_x64-setup.exe",
+        "version": "1.7.1",
+        "sha256": "11630101162c7eba5fbb47f22b0c3bd69d319f0691308228971c75cfe3b4ed3b"
+      },
+      "platform": "Windows Server 2025 10.0.26100 x64 (NSIS)"
+    },
+    "requirements": [
+      {
+        "id": "library-persistence",
+        "acceptance_criterion": "Schema-1 identity/content/history/provenance survives UI import, application restart, schema-2 completed export and defined retention",
+        "required": true
+      },
+      {
+        "id": "full-platform-release",
+        "acceptance_criterion": "Prior-version upgrade/rollback, signing, user OS/device and human acceptance",
+        "required": false
+      }
+    ],
+    "evidence": [
+      {
+        "requirement_id": "library-persistence",
+        "kind": "runtime",
+        "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37911747820 ; artifact native-acceptance-nsis ; exercise.json, retention.json, downloaded-workspace.json",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "pass",
+        "limitations": "Synthetic acceptance fixture; graceful restart and defined retention only. Runtime tree parity verified. Export SHA256 1a391cbb23e419346e90742b1058693c0036edbf683c01523b51a7da2ec753fd"
+      },
+      {
+        "requirement_id": "full-platform-release",
+        "kind": "human_acceptance",
+        "reference": "LIBRARY_COMPATIBILITY_CONTRACT.md; independent Plan I and human gates",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "unknown",
+        "limitations": "Not closed by Library controls. Windows installers are unsigned. No claim for prior-version upgrade/rollback, other OS versions, macOS interactive lifecycle or physical devices."
+      }
+    ],
+    "changes_performed": [
+      "PR140 test-only commits3bfbb0a,e8299dd,7e38cfe,a7560c8; merged473d691236b7a70e7032a99b11719358a668dd15",
+      "CI installed and exercised only disposable runner packages and synthetic data"
+    ],
+    "unresolved_decisions": [],
+    "blockers": [],
+    "next_action": "Maintain these Library regressions; continue independent distribution and human gates without carrying this scoped pass into overall release status."
+  },
+  {
+    "skill": "installed-app-acceptance",
+    "scope": "Plan J Library import, restart, export and defined reinstall/replacement retention only",
+    "project": "PromptLab",
+    "target": {
+      "revision": "ed3435b6f850af1dfb134f2efdf3488de8e1648d",
+      "branch": "codex/library-schema-upgrade-20261009 (tested merge tree equals a7560c8 and merge473d691)",
+      "environment": "Disposable GitHub Actions runner, synthetic local data and loopback provider fixture",
+      "artifact": {
+        "name": "Prompt Lab_1.7.1_amd64.deb",
+        "version": "1.7.1",
+        "sha256": "83e540b6e21e9587fe8368965202719332e5ea9ce38d0791d93b62a51a6c6864"
+      },
+      "platform": "Ubuntu 22.04.5 amd64 (DEB)"
+    },
+    "requirements": [
+      {
+        "id": "library-persistence",
+        "acceptance_criterion": "Schema-1 identity/content/history/provenance survives UI import, application restart, schema-2 completed export and defined retention",
+        "required": true
+      },
+      {
+        "id": "full-platform-release",
+        "acceptance_criterion": "Prior-version upgrade/rollback, signing, user OS/device and human acceptance",
+        "required": false
+      }
+    ],
+    "evidence": [
+      {
+        "requirement_id": "library-persistence",
+        "kind": "runtime",
+        "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37911747820 ; artifact native-acceptance-ubuntu-22.04 ; exercise.json, retention.json, downloaded-workspace.json",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "pass",
+        "limitations": "Synthetic acceptance fixture; graceful restart and defined retention only. Runtime tree parity verified. Export SHA256 f7d1f29a31840bfca389535d29a4813c2ffd678a918f812d7b400830dc6a5b0a"
+      },
+      {
+        "requirement_id": "full-platform-release",
+        "kind": "human_acceptance",
+        "reference": "LIBRARY_COMPATIBILITY_CONTRACT.md; independent Plan I and human gates",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "unknown",
+        "limitations": "Not closed by Library controls. Windows installers are unsigned. No claim for prior-version upgrade/rollback, other OS versions, macOS interactive lifecycle or physical devices."
+      }
+    ],
+    "changes_performed": [
+      "PR140 test-only commits3bfbb0a,e8299dd,7e38cfe,a7560c8; merged473d691236b7a70e7032a99b11719358a668dd15",
+      "CI installed and exercised only disposable runner packages and synthetic data"
+    ],
+    "unresolved_decisions": [],
+    "blockers": [],
+    "next_action": "Maintain these Library regressions; continue independent distribution and human gates without carrying this scoped pass into overall release status."
+  },
+  {
+    "skill": "installed-app-acceptance",
+    "scope": "Plan J Library import, restart, export and defined reinstall/replacement retention only",
+    "project": "PromptLab",
+    "target": {
+      "revision": "ed3435b6f850af1dfb134f2efdf3488de8e1648d",
+      "branch": "codex/library-schema-upgrade-20261009 (tested merge tree equals a7560c8 and merge473d691)",
+      "environment": "Disposable GitHub Actions runner, synthetic local data and loopback provider fixture",
+      "artifact": {
+        "name": "Prompt Lab_1.7.1_amd64.AppImage",
+        "version": "1.7.1",
+        "sha256": "653d23176d89bd1f5d5cf29d0045aac25a4b1310af769482fd1f7b3c137aed5a"
+      },
+      "platform": "Ubuntu 22.04.5 amd64 (AppImage)"
+    },
+    "requirements": [
+      {
+        "id": "library-persistence",
+        "acceptance_criterion": "Schema-1 identity/content/history/provenance survives UI import, application restart, schema-2 completed export and defined retention",
+        "required": true
+      },
+      {
+        "id": "full-platform-release",
+        "acceptance_criterion": "Prior-version upgrade/rollback, signing, user OS/device and human acceptance",
+        "required": false
+      }
+    ],
+    "evidence": [
+      {
+        "requirement_id": "library-persistence",
+        "kind": "runtime",
+        "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37911747820 ; artifact native-acceptance-appimage ; exercise.json, retention.json, downloaded-workspace.json",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "pass",
+        "limitations": "Synthetic acceptance fixture; graceful restart and defined retention only. Runtime tree parity verified. Export SHA256 774e8dfbad6d010a83a266ebcb33c3204dcb42dc4b591199ddd1358a84437101"
+      },
+      {
+        "requirement_id": "full-platform-release",
+        "kind": "human_acceptance",
+        "reference": "LIBRARY_COMPATIBILITY_CONTRACT.md; independent Plan I and human gates",
+        "observed_at": "2026-10-09T09:49:00Z",
+        "result": "unknown",
+        "limitations": "Not closed by Library controls. Windows installers are unsigned. No claim for prior-version upgrade/rollback, other OS versions, macOS interactive lifecycle or physical devices."
+      }
+    ],
+    "changes_performed": [
+      "PR140 test-only commits3bfbb0a,e8299dd,7e38cfe,a7560c8; merged473d691236b7a70e7032a99b11719358a668dd15",
+      "CI installed and exercised only disposable runner packages and synthetic data"
+    ],
+    "unresolved_decisions": [],
+    "blockers": [],
+    "next_action": "Maintain these Library regressions; continue independent distribution and human gates without carrying this scoped pass into overall release status."
+  }
+]
