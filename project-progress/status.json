@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-08T18:42:00.000Z",
+  "snapshotAt": "2026-10-09T08:03:05.662Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "4ab722744293fa41b8790229dcd2eebb38fc52a6",
+  "mainSha": "f03f414b761d047d9a3d12dd356a03f5329608f9",
   "overall": "Acceptance incomplete",
-  "nextAction": "Continue accepted plan J authenticated reconciliation and browser-process restart controls, including tag/status filters and actual starter-pack loading. Keep installed-app upgrade/restore, macOS interaction, signing, human and billing-environment gates separate.",
+  "nextAction": "Continue accepted Plan J reconciliation/restart controls and separately review PR131 integration and its failed Windows acceptance. Verify activation/Evaluate outcomes against the historical plan. Preserve billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
+    {
+      "label": "Historical storyline reconciliation",
+      "state": "Verified",
+      "detail": "2026-10-09 source reconciliation only: hub guide, reference map and archive register updated/read back; 40 issue dispositions and 14 selected items preserved. PR99 merged September20. PR131 remains open at 8f9e460 with failed Windows acceptance and skipped alternate-package job; fixture-router evidence is not live-model proof. Activation code exists on main; outcome acceptance remains unverified. April HTML dashboard is historically documented, physical location Unknown. Repository ROADMAP records ordered phases and open choices; no new dashboard, scheduler or readiness score. Cross-project Next Steps Board lacks a PromptLab mapping. Next: accepted Plan J controls, bounded PR131 review, then activation/Evaluate criteria.",
+      "url": "https://app.notion.com/p/064ddc1d2f494d67ba4facd6e0c5d981"
+    },
     {
       "label": "Library PR 135 review",
       "state": "Verified",
