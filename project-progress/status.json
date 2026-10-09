@@ -20,6 +20,12 @@
       "url": "https://app.notion.com/p/064ddc1d2f494d67ba4facd6e0c5d981"
     },
     {
+      "label": "DaveLLM Library Test runner",
+      "state": "Running",
+      "detail": "Historical PR131 fixture evidence: PR #131 adds scripts/eval-davellm.mjs (DaveLLM DL-EVAL-01 milestone 2): the app's Enhance payload, PII gate, parseEnhancedPayload and checkTraits over DaveLLM's stateless POST /eval/chat, with format json, 10 cases and max_tokens 4096 by default. 12 node tests pass against a fixture router, and an end-to-end run through the real router with a fake model node left DaveLLM's data folder byte-identical. No live model was called; the first live run stays Dave-gated. Integration refresh 2026-10-09 merges current main without changing cancellation assertions. Original Windows timeout remains recorded; fresh exact-head acceptance pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/131"
+    },
+    {
       "label": "Library PR 135 review",
       "state": "Verified",
       "detail": "Reviewed 2026-10-08: PR #135 at dac60bc2d07aae1c5f246af23ecb809a6d38439c has no blocking findings in the stated Library navigation/import slice. Compared with successful Production Smoke 37654136908 at 4abc0d1b5e82964338a3745c144cf4bac1f4e76a: only documentation and progress records differ; browser tests, authentication helper, workflow, configuration, dependencies and application source are identical. Inspected both desktop/mobile logs, completed export digests, forbidden-request assertion and awaited session revocation. The persistence repair polls the same exact expected values and strengthens Keep both existence; no assertion was removed. All five applicable PR workflows passed; no review threads; rules require zero approvals and merge-gate. Delivery remains governed by PR #135; this snapshot is review evidence, not a claim that merge already happened. Plan J remains In progress for actual starter loading, tag/status filters, stale-deletion reconciliation, full browser-process restart, other supported shells and human acceptance. Next: merge the reviewed Library slice after final gates, then continue those separate acceptance requirements.",
