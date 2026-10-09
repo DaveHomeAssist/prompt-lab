@@ -1,5 +1,24 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-07
+
+## Desktop Library saves survive closing the app (unreleased)
+
+- On Windows, closing the desktop app soon after a Library change could lose
+  that change, and sometimes everything saved since the app opened. The page
+  storage Windows uses saves in batches and could drop the last batch when
+  the window closed, even though Prompt Lab had already shown the save.
+- The desktop app now also keeps a copy of the Library (prompts, trash,
+  collections, packs and deletions) in browser storage that is written to
+  disk before the journal commit completes. When the app starts, it uses
+  whichever copy is newer. “Saved” now appears only after the durable copy
+  commits. While saving, keep the window open; an interrupted pending save
+  has not yet been acknowledged.
+- Failed commits leave a visible error and keep the editor and save panel
+  available. Retrying the same save reuses its entry and version rather than
+  creating duplicates. Follow-up, Scratch and Composer saves use this path too.
+- The browser extension and the web app work as before.
+
 Date: 2026-10-05
 
 ## OpenRouter default model (unreleased)

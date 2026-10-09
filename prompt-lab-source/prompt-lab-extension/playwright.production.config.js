@@ -2,9 +2,9 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  // Both production specs run in one pass: the billing surface and the core
-  // write/save/reload loop. See docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md Phase 0.
-  testMatch: ['production-free-account.spec.js', 'production-core-loop.spec.js'],
+  // The authenticated shell uses disposable QA sessions. Follow-up coverage
+  // intercepts provider responses and never performs real inference.
+  testMatch: ['production-free-account.spec.js', 'production-core-loop.spec.js', 'production-follow-up.spec.js', 'production-library.spec.js'],
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,

@@ -44,6 +44,7 @@ let launchNumber = 0;
 let nativeAppError;
 let nativeOutput = '';
 const events = [];
+const arrivals = [];
 
 async function checkpoint(label) {
   evidence.checks.push(label);
@@ -104,6 +105,139 @@ async function waitFor(probe, label, timeout = 20_000) {
 }
 const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
+const describeNode = `const describeNode = node => {
+  if (!(node instanceof Element)) return node ? String(node.nodeName || node) : null;
+  const testId = node.getAttribute('data-testid');
+  const label = node.getAttribute('aria-label');
+  return node.tagName.toLowerCase() + (testId ? '[data-testid=' + testId + ']' : '') + (label ? '[aria-label=' + label.slice(0, 60) + ']' : '');
+};`;
+// Diagnostics only: records console errors, pointer events reaching the page
+// and fetches to the loopback fixture. Reinstalled after every document load.
+const installPageProbe = () => execute(`${describeNode}
+  if (window.__plNativeProbe) return 'present';
+  const probe = window.__plNativeProbe = { installedAt: Date.now(), console: [], pointer: [], fetches: [] };
+  const keep = (list, entry) => { list.push(entry); if (list.length > 60) list.shift(); };
+  const text = value => {
+    try { return (value instanceof Error ? value.name + ': ' + value.message : typeof value === 'string' ? value : JSON.stringify(value)).slice(0, 500); }
+    catch { return String(value).slice(0, 500); }
+  };
+  for (const level of ['error', 'warn']) {
+    const original = console[level];
+    console[level] = function (...args) { keep(probe.console, { at: Date.now(), level, text: args.map(text).join(' ') }); return original.apply(this, args); };
+  }
+  addEventListener('error', event => keep(probe.console, { at: Date.now(), level: 'uncaught', text: text(event.error || event.message) }));
+  addEventListener('unhandledrejection', event => keep(probe.console, { at: Date.now(), level: 'unhandledrejection', text: text(event.reason) }));
+  for (const type of ['pointerdown', 'pointerup', 'click']) {
+    document.addEventListener(type, event => keep(probe.pointer, {
+      at: Date.now(), type, target: describeNode(event.target), trusted: event.isTrusted,
+      onEnhance: Boolean(event.target?.closest?.('[data-testid="refine-action"]')), x: Math.round(event.clientX), y: Math.round(event.clientY),
+    }), true);
+  }
+  // Origin and path only: a query string can carry a provider key.
+  const originalFetch = window.fetch;
+  window.fetch = function (input, init) {
+    let target;
+    try { const url = new URL(String(input?.url || input), location.href); target = url.origin + url.pathname; } catch { target = 'unparsed'; }
+    const entry = { at: Date.now(), method: init?.method || input?.method || 'GET', target, outcome: 'pending' };
+    keep(probe.fetches, entry);
+    return originalFetch.apply(this, arguments).then(
+      response => { entry.outcome = response.status; entry.settledAt = Date.now(); return response; },
+      error => { entry.outcome = String(error?.name + ': ' + error?.message).slice(0, 200); entry.settledAt = Date.now(); throw error; },
+    );
+  };
+  return 'installed';`).catch(error => {
+  (evidence.pageProbeErrors ||= []).push(error.message);
+  return 'failed';
+});
+const enhanceState = () => execute(`${describeNode}
+  const visible = node => Boolean(node.getClientRects().length);
+  const buttons = [...document.querySelectorAll('[data-testid="refine-action"]')];
+  const button = buttons.find(visible) || buttons[0];
+  const rect = button?.getBoundingClientRect();
+  const hit = rect ? document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) : null;
+  const probe = window.__plNativeProbe;
+  return {
+    at: Date.now(),
+    viewport: { width: innerWidth, height: innerHeight },
+    buttonCount: buttons.length,
+    button: button ? {
+      visible: visible(button), disabled: button.disabled, ariaBusy: button.getAttribute('aria-busy'), text: button.innerText.trim().slice(0, 60),
+      rect: { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) },
+      centerHit: describeNode(hit), centerHitInside: Boolean(hit && button.contains(hit)),
+    } : null,
+    cancelVisible: [...document.querySelectorAll('button')].some(node => node.innerText.trim() === 'Cancel' && visible(node)),
+    inputs: [...document.querySelectorAll('[data-testid="prompt-input"]')].map(node => ({ visible: visible(node), length: node.value.length, start: node.value.slice(0, 60) })),
+    activeElement: describeNode(document.activeElement),
+    providerSettings: (() => {
+      try { const { provider, ollamaBaseUrl, ollamaModel } = JSON.parse(localStorage.getItem('pl2-provider-settings') || 'null') || {}; return { provider, ollamaBaseUrl, ollamaModel }; }
+      catch (error) { return { error: String(error) }; }
+    })(),
+    dialogs: [...document.querySelectorAll('[role="dialog"], [role="alertdialog"]')].filter(visible).map(node => (node.getAttribute('aria-label') || node.innerText).slice(0, 120)),
+    alerts: [...document.querySelectorAll('[role="alert"], [role="status"]')].map(node => node.innerText.trim()).filter(Boolean).slice(-5).map(value => value.slice(0, 160)),
+    probeInstalled: Boolean(probe),
+    pointer: probe?.pointer.slice(-12) || [],
+    fetches: probe?.fetches.slice(-8) || [],
+    console: probe?.console.slice(-20) || [],
+  };`);
+// Records whether Refine was enabled and clicked, the in-flight state right
+// after the click, and the page and fixture state if the outcome never comes.
+async function enhance(description, outcome) {
+  const attempt = { description, launch: launchNumber, fixtureEventsBefore: events.length, arrivalsBefore: arrivals.length };
+  (evidence.enhanceAttempts ||= []).push(attempt);
+  const state = () => enhanceState().catch(error => ({ error: error.message }));
+  attempt.beforeClick = await state();
+  try {
+    const id = await element('[data-testid="refine-action"]');
+    attempt.webdriverEnabled = await command('GET', `/session/${session}/element/${id}/enabled`).catch(error => ({ error: error.message }));
+    await click('[data-testid="refine-action"]');
+    attempt.clicked = true;
+  } catch (error) {
+    attempt.clicked = false;
+    attempt.clickError = error.message;
+    throw error;
+  }
+  attempt.afterClick = await state();
+  try {
+    const result = await waitFor(outcome, description);
+    attempt.outcome = 'observed';
+    return result;
+  } catch (error) {
+    attempt.outcome = 'timed out';
+    attempt.atTimeout = await state();
+    attempt.fixtureEvents = events.slice(attempt.fixtureEventsBefore);
+    attempt.fixtureArrivals = arrivals.slice(attempt.arrivalsBefore);
+    throw error;
+  }
+}
+async function refreshPage() {
+  await command('POST', `/session/${session}/refresh`, {});
+  await installPageProbe();
+}
+// Reads the desktop Library journal without ever creating its database, so a
+// missing journal is reported rather than masked.
+const readLibraryJournal = () => command('POST', `/session/${session}/execute/async`, { args: [], script: `
+  const done = arguments[arguments.length - 1];
+  const library = localStorage.getItem('pl2-library');
+  const local = { revision: Number(localStorage.getItem('pl2-library-journal-revision')) || 0, libraryRows: JSON.parse(library || '[]').length };
+  const request = indexedDB.open('prompt_lab_durable');
+  request.onupgradeneeded = () => request.transaction.abort();
+  request.onerror = () => done({ local, journal: { error: String(request.error?.name || request.error) } });
+  request.onsuccess = () => {
+    const db = request.result;
+    if (!db.objectStoreNames.contains('journal')) { db.close(); return done({ local, journal: { error: 'journal store missing' } }); }
+    const transaction = db.transaction('journal', 'readonly');
+    const read = transaction.objectStore('journal').get('library');
+    transaction.oncomplete = () => {
+      db.close();
+      const record = read.result;
+      done({ local, journal: record ? {
+        revision: record.revision, savedAt: record.savedAt,
+        libraryRows: JSON.parse(record.entries['pl2-library'] || '[]').length,
+        matchesLocalLibrary: record.entries['pl2-library'] === library,
+      } : null });
+    };
+    transaction.onerror = () => { db.close(); done({ local, journal: { error: String(transaction.error) } }); };
+  };` });
 async function element(value, using = 'css selector') {
   const result = await waitFor(() => command('POST', `/session/${session}/element`, { using, value }), value);
   return result['element-6066-11e4-a52e-4f735466cecf'] || result.ELEMENT;
@@ -222,6 +356,17 @@ async function openSession() {
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
   await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[aria-label="Primary workspaces"], [aria-label="Primary mobile navigation"]'));`), 'native application rendered');
+  await installPageProbe();
+  (evidence.libraryJournalBoots ||= []).push({ launch: launchNumber, ...await execute(`
+    const mark = performance.getEntriesByName('prompt-lab:library-journal-boot').at(-1);
+    const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return 'unreadable'; } };
+    // Synthetic setup is not journaled; record whether each launch still has it.
+    return { ...(mark ? mark.detail : { action: 'not recorded' }), setup: {
+      provider: read('pl2-provider-settings')?.provider ?? null, billingPlan: read('pl2-billing')?.plan ?? null,
+    } };`).catch(error => ({ error: error.message })) });
+  // Inspect after startup only. A readonly IndexedDB transaction before close
+  // can wait behind a pending write and accidentally give it time to commit.
+  (evidence.libraryJournalsAtBoot ||= []).push({ launch: launchNumber, ...await readLibraryJournal().catch(error => ({ error: error.message })) });
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
@@ -310,7 +455,10 @@ async function closeSession() {
 }
 async function startFixture(mode, responseKind = 'enhancement') {
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
-  fixture = createDesktopFixtureServer({ mode, responseKind, onEvent: event => events.push(event) });
+  fixture = createDesktopFixtureServer({
+    mode, responseKind, onEvent: event => events.push(event),
+    onRequest: request => arrivals.push({ at: Date.now(), mode, ...request }),
+  });
   fixture.listen(11434, '127.0.0.1');
   await once(fixture, 'listening');
 }
@@ -370,7 +518,7 @@ async function exerciseFollowUp(parentId) {
       transaction.onabort = () => { db.close(); done({error: String(transaction.error)}); };
     };`, args: [source] });
   assert.equal(seeded.ok, true, JSON.stringify(seeded));
-  await command('POST', `/session/${session}/refresh`, {});
+  await refreshPage();
   await click('[aria-label="Follow-up source"]');
   const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
   await command('POST', `/session/${session}/element/${sourceOption}/click`, {});
@@ -535,14 +683,53 @@ try {
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
     evidence.baselinePromptCount = baseline.length;
-    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); return true;');
-    await command('POST', `/session/${session}/refresh`, {});
+    // The Library matrix needs the synthetic Pro entitlement in later launches.
+    // Seed it with the other launch-1 settings, which every later launch already
+    // depends on, rather than only in the launch that also tests persistence.
+    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); return true;');
+    await refreshPage();
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
-    await click('[data-testid="refine-action"]');
-    await waitFor(() => execute('return document.body.innerText.includes("Fixture enhanced prompt");'), 'fixture enhancement');
+    await enhance('fixture enhancement', () => execute('return document.body.innerText.includes("Fixture enhanced prompt");'));
+    // Fault injection belongs only to this disposable fixture profile. Abort
+    // real strict transactions, then retry through the same visible save flow.
+    await execute(`
+      window.__nativeLibraryDurability = { fail: true, aborted: 0, completed: 0, prematureReceipt: false };
+      const original = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function(store, mode, options) {
+        const tx = original.call(this, store, mode, options);
+        if (this.name === 'prompt_lab_durable' && mode === 'readwrite') {
+          tx.addEventListener('complete', () => { window.__nativeLibraryDurability.completed++; });
+          if (window.__nativeLibraryDurability.fail) {
+            window.__nativeLibraryDurability.aborted++;
+            queueMicrotask(() => tx.abort());
+          }
+        }
+        return tx;
+      };
+      new MutationObserver(() => {
+        const receipt = document.querySelector('#save-receipt-title');
+        if (receipt && !window.__nativeLibraryDurability.completed) window.__nativeLibraryDurability.prematureReceipt = true;
+      }).observe(document.body, { childList: true, subtree: true });
+      return true;
+    `);
     await click('[data-testid="save-to-library"]');
+    await waitFor(() => execute('return document.querySelector("[data-testid=library-save-error]")?.textContent.includes("Save failed");'), 'durable save failure visible');
+    const staged = (await readLibrary()).find(row => row.original === 'Summarize this synthetic native acceptance note.');
+    assert.ok(staged?.id, 'Failed durable write keeps recoverable staged content');
+    assert.equal(await execute('return Boolean(document.querySelector("#save-receipt-title"));'), false, 'Aborted commit must not produce a Saved receipt');
+    assert.equal(await execute('return document.querySelector("[data-testid=prompt-input]").value;'), 'Summarize this synthetic native acceptance note.', 'Failed save keeps editor draft');
+    await screenshot('durable-save-failed');
+    await execute('window.__nativeLibraryDurability.fail = false; return true;');
+    await click('[data-testid="save-to-library"]');
+    await waitFor(() => execute('return Boolean(document.querySelector("#save-receipt-title"));'), 'durable Saved receipt');
+    evidence.libraryDurability = await execute('return window.__nativeLibraryDurability;');
+    assert.ok(evidence.libraryDurability.aborted > 0, 'Failure scenario aborted a real journal transaction');
+    assert.ok(evidence.libraryDurability.completed > 0, 'Saved follows a completed strict journal transaction');
+    assert.equal(evidence.libraryDurability.prematureReceipt, false, 'No Saved receipt before strict commit');
     const saved = await waitFor(async () => { const rows = await readLibrary(); return rows.length === baseline.length + 1 && rows.find(row => row.original === 'Summarize this synthetic native acceptance note.'); }, 'acknowledged Library save');
+    assert.equal(saved.id, staged.id, 'Retry preserves the staged identity without a duplicate');
+    assert.equal(saved.currentVersionId, staged.currentVersionId, 'Retry does not create another version');
     assert.match(saved.enhanced, /Fixture enhanced prompt/);
     evidence.savedPromptId = saved.id;
     await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');
@@ -560,15 +747,13 @@ try {
     await startFixture('slow');
     const priorRequests = events.filter(event => event === 'request').length;
     await fill('[data-testid="prompt-input"]', 'Cancel this synthetic native request.');
-    await click('[data-testid="refine-action"]');
-    await waitFor(() => events.filter(event => event === 'request').length > priorRequests, 'slow provider request');
+    await enhance('slow provider request', () => events.filter(event => event === 'request').length > priorRequests);
     await click('//button[normalize-space(.)="Cancel"]', 'xpath');
     await waitFor(() => events.includes('connection-closed'), 'native cancellation closed upstream connection');
     await checkpoint('native Cancel closed the loopback provider connection');
     await startFixture('error');
     await fill('[data-testid="prompt-input"]', 'Fail this synthetic native request.');
-    await click('[data-testid="refine-action"]');
-    await waitFor(() => execute('return document.body.innerText.includes("ollama request failed (400)");'), 'visible provider failure');
+    await enhance('visible provider failure', () => execute('return document.body.innerText.includes("ollama request failed (400)");'));
     await checkpoint('native UI displayed terminal provider failure');
     await screenshot('failure');
     evidence.libraryMatrix = await exerciseLibrary(libraryApi);
@@ -587,6 +772,7 @@ try {
   await windowsStartupDiagnostics().catch(error => { evidence.diagnosticError = error.message; });
   if (session) evidence.failureState = await execute(`return {
     input: document.querySelector('[data-testid="prompt-input"]')?.value,
+    probe: window.__plNativeProbe ? { console: window.__plNativeProbe.console, fetches: window.__plNativeProbe.fetches, pointer: window.__plNativeProbe.pointer.slice(-12) } : null,
     library: JSON.parse(localStorage.getItem('pl2-library') || '[]').map(({id,title,original}) => ({id,title,original}))
   };`).catch(() => null);
   if (session) await screenshot('failure').catch(() => {});
@@ -602,6 +788,7 @@ try {
     });
   }
   evidence.fixtureEvents = events;
+  evidence.fixtureArrivals = arrivals;
   evidence.remainingResources = process.getActiveResourcesInfo();
   await writeFile(path.join(evidenceDir, `${phase}.json`), JSON.stringify(evidence, null, 2));
   await writeFile(path.join(evidenceDir, `${phase}-driver.log`), driverOutput);

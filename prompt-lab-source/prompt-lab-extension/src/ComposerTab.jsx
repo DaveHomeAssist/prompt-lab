@@ -251,7 +251,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
               <button onClick={() => copy(composedPrompt, 'Composed prompt copied!')} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy All</button>
               <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
               {typeof saveChain === 'function' && (
-                <button onClick={() => { const saved = saveChain(composerBlocks); if (saved) setShowChainLab(true); }} disabled={composerBlocks.length === 0}
+                <button onClick={async () => { const saved = await saveChain(composerBlocks); if (saved) setShowChainLab(true); }} disabled={composerBlocks.length === 0}
                   className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 px-2 py-1 rounded-lg transition-colors`}>
                   <Ic n="GitBranch" size={11} />Save as Chain
                 </button>
