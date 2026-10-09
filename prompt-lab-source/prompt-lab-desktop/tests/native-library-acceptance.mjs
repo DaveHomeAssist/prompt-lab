@@ -66,7 +66,7 @@ export async function exerciseLibrary(api) {
   assert.ok(!baseline.some(row => ids.includes(row.id)), 'Library acceptance fixtures must be new');
   const prompt = (id, title, assigned, metadata = {}) => ({ id, title, original: `${title} instructions`, enhanced: `${title} improved`, collection: assigned, tags: ['native-matrix'], createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z', metadata });
   const fixtures = [
-    prompt(ids[0], 'Native matrix Alpha', collection, { owner: 'Avery', purpose: 'Navigation' }),
+    prompt(ids[0], 'Native matrix Alpha', collection, { owner: 'Avery', purpose: 'Navigation', status: 'active' }),
     prompt(ids[1], 'Native matrix Hidden', ''),
     prompt(ids[2], 'Native matrix Beta', collection, { packLoadedAt: new Date(Date.now() + 60_000).toISOString() }),
   ];
@@ -111,6 +111,11 @@ export async function exerciseLibrary(api) {
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'newly loaded old starter sorts first');
+  await click('//button[normalize-space(.)="#native-matrix"]', 'xpath');
+  await click('[aria-label="Filter by status"]');
+  await click('[aria-label="Filter by status"] option[value="active"]');
+  await waitFor(() => execute('return document.querySelectorAll(`[aria-label="Saved prompts"] [role="listitem"]`).length === 1 && document.querySelector(`[aria-label="Saved prompts"]`)?.innerText.includes("Native matrix Alpha");'), 'native tag/status intersection');
+  await click('//button[normalize-space(.)="Clear all"]', 'xpath');
   await fill('[data-testid="library-search"]', 'avery navigation');
   await waitFor(() => execute(`const list = document.querySelector('[aria-label="Saved prompts"]'); return list?.children.length === 1 && list.innerText.includes('Native matrix Alpha');`), 'native Library metadata search');
   await click('//*[@role="tablist" and @aria-label="Create views"]//button[normalize-space(.)="Compose"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Compose"]', 'xpath');

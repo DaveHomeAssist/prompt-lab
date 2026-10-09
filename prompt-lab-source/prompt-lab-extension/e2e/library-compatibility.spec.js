@@ -37,7 +37,7 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
         if (!localStorage.getItem('compatibility-seeded')) {
           const prompt = (id, title, collection, metadata = {}) => ({ id, title, collection, original: `${title} instructions`, enhanced: `${title} improved`, tags: ['verification'], currentVersionId: `${id}-v1`, createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z', metadata });
           localStorage.setItem('pl2-library', JSON.stringify([
-            prompt('alpha', 'Alpha prompt', 'Ops', { owner: 'Avery', purpose: 'Navigation' }),
+            prompt('alpha', 'Alpha prompt', 'Ops', { owner: 'Avery', purpose: 'Navigation', status: 'active' }),
             prompt('hidden', 'Hidden prompt', 'Other'),
             prompt('beta', 'Beta starter', 'Ops', { packLoadedAt: '2026-09-05T00:00:00Z' }),
             prompt('child', 'Follow-up child', '', { followUpOrigin: { sourceKind: 'enhanced-prompt', sourcePromptId: 'alpha', sourcePromptVersionId: 'alpha-v1', generationModel: 'fixture-model' } }),
@@ -71,6 +71,13 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
+      await page.getByRole('button', { name: '#verification', exact: true }).click();
+      await expect(list.getByRole('listitem')).toHaveCount(4);
+      await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
+      await expect(list.getByRole('listitem')).toHaveCount(1);
+      await expect(list).toContainText('Alpha prompt');
+      await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+      await expect(list.getByRole('listitem')).toHaveCount(4);
       await page.getByTestId('library-search').fill('avery navigation');
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('Alpha prompt');
