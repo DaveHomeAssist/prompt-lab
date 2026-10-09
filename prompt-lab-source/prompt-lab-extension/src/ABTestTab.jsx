@@ -3,6 +3,7 @@ import Ic from './icons';
 import DiffPane from './DiffPane';
 import { getConfiguredProviders } from './lib/platform.js';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
+import { OUTPUT_BUDGETS, DEFAULT_COMPARE_BUDGET } from './lib/generationOptions.js';
 
 export default function ABTestTab({
   m,
@@ -32,6 +33,8 @@ export default function ABTestTab({
   runAll,
   promoteToGolden,
   pinGoldenResponse,
+  outputBudget = DEFAULT_COMPARE_BUDGET,
+  setOutputBudget,
 }) {
   const inp = `w-full ${m.input} border rounded-lg p-3 text-sm resize-none focus:outline-none focus:border-orange-500 transition-colors placeholder-gray-400 ${m.text}`;
   const [showDiff, setShowDiff] = useState(false);
@@ -85,6 +88,16 @@ export default function ABTestTab({
         <p className={`text-xs ${m.textMuted} mt-1 font-mono`}>
           Payload: <code>{`messages: [{ role: 'user', content: promptVariant }]`}</code>
         </p>
+        {typeof setOutputBudget === 'function' && (
+          <label className={`mt-2 flex flex-wrap items-center gap-2 text-xs ${m.textSub}`}>
+            Answer budget per variant
+            <select aria-label="Answer budget per variant" value={outputBudget} disabled={anyLoading}
+              onChange={event => setOutputBudget(event.target.value)} className={`ui-control rounded-lg border px-2 py-1 ${m.input}`}>
+              {OUTPUT_BUDGETS.map(limit => <option key={limit} value={limit}>{limit.toLocaleString()} tokens</option>)}
+            </select>
+            <span>Same requested allowance for each variant. Provider and hosted limits may be lower.</span>
+          </label>
+        )}
       </div>
       {compact && (
         <div className={`px-3 py-2 border-b ${m.border} flex gap-1 overflow-x-auto shrink-0`} role="tablist" aria-label="Prompt variants" onKeyDown={(event) => handleTabArrowKeys(event, activeSide, setActiveSide)}>
