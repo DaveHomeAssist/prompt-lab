@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-09T08:03:05.662Z",
+  "snapshotAt": "2026-10-09T09:15:00Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "547be3ccbb8f380f33451511284a195f6f8bcc60",
+  "mainSha": "96ad7c216e78f915254116fed25966267db1b56d",
   "overall": "Acceptance incomplete",
-  "nextAction": "Continue accepted Plan J reconciliation/restart controls and separately review PR131 integration and its failed Windows acceptance. Verify activation/Evaluate outcomes against the historical plan. Preserve billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
+  "nextAction": "Finish activation/Evaluate production verification, then reconcile remaining cross-shell/schema-upgrade persistence. Preserve separate billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
+    {
+      "label": "Library production controls",
+      "state": "Verified",
+      "detail": "Production Smoke 37908883551 passed all four Library cases at deployed 96ad7c2: navigation/import/export, tag/status intersection/reset, actual 14-record starter loading, stale-tab permanent deletion and full browser-process restart using the same disposable disk profile. Six Plan J definition criteria are evidenced; the full cross-shell/schema-upgrade criterion remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37908883551"
+    },
+    {
+      "label": "PR131 Windows acceptance",
+      "state": "Verified",
+      "detail": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37906879426"
+    },
     {
       "label": "Plan J and activation repair",
       "state": "Running",
@@ -252,8 +264,8 @@
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Complete remaining accepted signed-in reconciliation and browser-process restart controls, including tag/status filters and actual starter-pack loading; retain platform/human gates.",
-      "verification": "2026-10-07: Accepted plan J signed-in Library navigation/import slice passed at 375x812 and 1440x900 in Production Smoke 37654136908, test head 4abc0d1b5e82964338a3745c144cf4bac1f4e76a, against production dpl_J6ZLxwxtDqv5yWgAbCyBmM8trCNJ at main 4ab7227. Two serial Chromium scenarios used the existing Free QA account and fresh nonpersistent profiles, without fabricated entitlements. Actual file import/UI/storage verified Library/Composer metadata search, newer packLoadedAt ordering, filtered keyboard reorder, collection deletion/unassignment/filter reset, cancel with unchanged Library/history, Skip/Replace/Keep both, retained previous version, run/test-case/provenance remapping, completed JSON downloads and reload. Download SHA256: mobile 5c654d7ea1806444e7da2afdfcdaf827876ad6f3fc249ccf3397a458eda5c7df; desktop 77a36039a178844723a75bc21b40c75042d4acb57b068357733269a5d5421b24. Both disposable Clerk sessions were revoked; no inference, purchase or telemetry requests occurred. Initial run 37653893088 read the store before its documented 120ms background write; corrected test awaits persistence and keeps the same assertions. No product defect or product-source change was needed. Existing Production Smoke gained a Library-only dispatch option; PR134 tests were not rerun. This snapshot records runtime proof; PR135 owns delivery state. Keep J In progress: this slice does not prove full browser-process restart, cross-tab stale deletion, tag/status filters, actual starter-pack loading, all installed shells or human acceptance. Next accepted work: finish J's remaining authenticated reconciliation/restart controls using disposable data. https://github.com/DaveHomeAssist/prompt-lab/pull/135 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37654136908"
+      "nextAction": "Reconcile remaining cross-shell/schema-upgrade persistence; keep native distribution and human gates separate.",
+      "verification": "Production Smoke 37908883551 passed all four Library cases at deployed 96ad7c2: navigation/import/export, tag/status intersection/reset, actual 14-record starter loading, stale-tab permanent deletion and full browser-process restart using the same disposable disk profile. Six Plan J definition criteria are evidenced; the full cross-shell/schema-upgrade criterion remains open."
     },
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
@@ -348,8 +360,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Continue existing signing, independent Enhance timeout and broader platform/human acceptance gates; the bounded durability repair is complete.",
-      "verification": "PR132 merged ea874b8; candidate and exact-merge MSI/NSIS exercise/reinstall passed. All main workflows passed after GitHub infrastructure recovery. Full platform acceptance remains incomplete."
+      "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
+      "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
     },
     {
       "id": "32d255fc8f44817faa12dc09d3ede05d",

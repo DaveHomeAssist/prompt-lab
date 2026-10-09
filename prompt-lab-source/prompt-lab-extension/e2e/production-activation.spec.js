@@ -130,6 +130,8 @@ for (const width of [375, 1440]) {
       expect(reused).toBe(outputs[1]);
       phase('reuse winner');
       await page.goto(`${appUrl.href}#/`);
+      // Make the discard-confirmation precondition explicit on both viewports.
+      await page.getByTestId('prompt-input').fill('Synthetic draft to discard before reusing the selected run.');
       await page.getByRole('button', { name: 'New prompt', exact: true }).click();
       await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
       await page.getByTestId('prompt-input').fill(reused);
