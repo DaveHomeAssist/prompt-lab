@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f03f414b761d047d9a3d12dd356a03f5329608f9",
+  "mainSha": "547be3ccbb8f380f33451511284a195f6f8bcc60",
   "overall": "Acceptance incomplete",
   "nextAction": "Continue accepted Plan J reconciliation/restart controls and separately review PR131 integration and its failed Windows acceptance. Verify activation/Evaluate outcomes against the historical plan. Preserve billing, native distribution, signing and human gates; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
@@ -24,6 +24,12 @@
       "state": "Verified",
       "detail": "2026-10-09 source reconciliation only: hub guide, reference map and archive register updated/read back; 40 issue dispositions and 14 selected items preserved. PR99 merged September20. PR131 remains open at 8f9e460 with failed Windows acceptance and skipped alternate-package job; fixture-router evidence is not live-model proof. Activation code exists on main; outcome acceptance remains unverified. April HTML dashboard is historically documented, physical location Unknown. Repository ROADMAP records ordered phases and open choices; no new dashboard, scheduler or readiness score. Cross-project Next Steps Board lacks a PromptLab mapping. Next: accepted Plan J controls, bounded PR131 review, then activation/Evaluate criteria.",
       "url": "https://app.notion.com/p/064ddc1d2f494d67ba4facd6e0c5d981"
+    },
+    {
+      "label": "DaveLLM Library Test runner",
+      "state": "Verified",
+      "detail": "2026-10-09: PR131 merged as 547be3ccbb8f380f33451511284a195f6f8bcc60 from 8e004bb after all checks passed, CLEAN/MERGEABLE state and resolved review thread. Desktop Build37904980954 passed MSI, NSIS, DEB and AppImage exercise/retention and macOS packaging. Windows diagnostic proves trusted click, loopback request and cancellation closing the connection. Original8f9e460 slow-provider timeout did not reproduce; its precise cause remains unproven. No assertions weakened or automatic retry added. Fixture-router integration only; live-model milestone remains Dave-gated. Broader billing, distribution and human acceptance are separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/131"
     },
     {
       "label": "Library PR 135 review",

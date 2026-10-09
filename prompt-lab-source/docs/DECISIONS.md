@@ -106,6 +106,8 @@ Action remaining: Confirm Ollama on Walter and Home Assist. Assign static IPs vi
 
 Consequences: Partially unblocked — Duncan is ready for cluster work. Full deployment blocked on remaining nodes.
 
+Update (2026-10-06): superseded for DaveLLM routing. DaveLLM's macOS launcher resolves its nodes (Dominic and Walter, plus Duncan when it is online) from live Tailscale peer records at every start, so the router no longer depends on LAN IPs or DHCP reservations. The 2026-03-29 addresses above are historical. Prompt Lab reaches the cluster only through DaveLLM (`scripts/eval-davellm.mjs` and `POST /eval/chat`; see `DAVELLM_EVAL.md`).
+
 ---
 
 ### [D-004] Act Two Catering — Notion leads pipeline
