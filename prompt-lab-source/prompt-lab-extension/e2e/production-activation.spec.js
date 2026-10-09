@@ -84,6 +84,16 @@ for (const width of [375, 1440]) {
       await page.reload();
       await expect(page.getByText('Evaluate deck', { exact: true })).toBeVisible();
       expect(await runs()).toEqual(before);
+      const winner = page.getByRole('button', { name: outputs[1], exact: true }).locator('xpath=ancestor::div[.//button[normalize-space(.)="Compare"]][1]');
+      await winner.getByRole('button', { name: 'Copy', exact: true }).click();
+      const reused = await page.evaluate(() => navigator.clipboard.readText());
+      expect(reused).toBe(outputs[1]);
+      await page.goto(`${appUrl.href}#/`);
+      await page.getByRole('button', { name: 'New prompt', exact: true }).click();
+      await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
+      await page.getByTestId('prompt-input').fill(reused);
+      await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+      await expect.poll(() => page.evaluate(output => JSON.parse(localStorage.getItem('pl2-library') || '[]').some(row => row.original === output), outputs[1])).toBe(true);
       expect(calls).toBe(2);
       expect(blocked).toEqual([]);
       console.info(`[activation ${width}] real starter/save/refine/history/compare/copy/verdict/reload flow passed with two synthetic provider responses`);
