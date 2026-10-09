@@ -14,7 +14,7 @@ if (process.env.PL_COMPAT_WEB_URL) surfaces.push({ name: 'local-web', url: proce
 if (process.env.PL_COMPAT_DESKTOP_URL) surfaces.push({ name: 'desktop-frontend', url: process.env.PL_COMPAT_DESKTOP_URL });
 
 function checkRecords(library, artifact) {
-  if (artifact === legacyLibraryFixture) verifyLegacyLibrary(library);
+  if (artifact === legacyLibraryFixture) { verifyLegacyLibrary(library); return; }
   const selected = library.filter(row => artifact.library.some(source => source.id === row.id));
   expect(selected.map(row => row.id)).toEqual(artifact.library.map(row => row.id));
   for (const [index, row] of selected.entries()) {

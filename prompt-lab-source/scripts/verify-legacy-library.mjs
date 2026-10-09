@@ -22,7 +22,9 @@ export function verifyLegacyLibrary(library) {
     assert.equal(actual.goldenResponse.text, source.goldenResponse.text);
     assert.deepEqual(actual.testCases, source.testCases);
     for (const field of ['owner', 'purpose', 'status', 'compatibility', 'riskLevel', 'customField']) assert.deepEqual(actual.metadata[field], source.metadata[field]);
-    assert.equal(actual.metadata.followUpOrigin.sourcePromptId, 'external-parent');
-    assert.equal(actual.metadata.followUpOrigin.sourceRunId, 'external-run');
+    assert.equal(actual.metadata.followUpOrigin.sourcePromptId, null);
+    assert.equal(actual.metadata.followUpOrigin.sourceRunId, null);
+    assert.equal(actual.metadata.followUpOrigin.unresolvedReferences.promptId, 'external-parent');
+    assert.equal(actual.metadata.followUpOrigin.unresolvedReferences.runId, 'external-run');
   }
 }
