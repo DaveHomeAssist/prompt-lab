@@ -66,6 +66,7 @@ export async function exerciseWorkspace(api, parentId) {
   await waitFor(() => execute('return Boolean(document.querySelector("[role=dialog][aria-labelledby=workspace-import-title]"));'), 'legacy schema-1 preview');
   await click('//*[@role="dialog"]//button[normalize-space(.)="Apply import"]', 'xpath');
   await waitFor(() => execute('return !document.querySelector("[role=dialog][aria-labelledby=workspace-import-title]");'), 'legacy schema-1 import completed');
+  await waitFor(async () => (await readLibrary()).some(row => row.id === legacyLibraryFixture.library[0].id), 'legacy import persisted');
   verifyLegacyLibrary(await readLibrary());
   const baseline = await readLibrary();
   const parent = baseline.find(row => row.id === parentId);

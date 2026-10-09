@@ -90,6 +90,7 @@ for (const width of [375, 1440]) {
       const preview = page.getByRole('dialog', { name: 'Review Library import' });
       await preview.getByRole('button', { name: 'Apply import', exact: true }).click();
       await expect(preview).toHaveCount(0);
+      await expect.poll(async () => (await snapshot(page)).library.filter(row => row.id === legacyLibraryFixture.library[0].id).length).toBe(1);
       verifyLegacyLibrary((await snapshot(page)).library);
       const before = await snapshot(page);
       const cookies = await context.cookies();

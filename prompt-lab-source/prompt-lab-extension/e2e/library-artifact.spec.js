@@ -61,6 +61,7 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       const dialog = page.getByRole('dialog', { name: 'Review Library import' });
       await dialog.getByRole('button', { name: 'Apply import', exact: true }).click();
       await expect(dialog).toHaveCount(0);
+      await expect.poll(() => page.evaluate(ids => JSON.parse(localStorage.getItem('pl2-library')).filter(row => ids.includes(row.id)).length, artifact.library.map(row => row.id))).toBe(artifact.library.length);
       checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await page.reload();
       await expect.poll(() => page.evaluate(ids => JSON.parse(localStorage.getItem('pl2-library')).filter(row => ids.includes(row.id)).length, artifact.library.map(row => row.id))).toBe(artifact.library.length);
