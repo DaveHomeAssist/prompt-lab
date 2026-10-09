@@ -207,7 +207,7 @@ export default function CreateEditorPane({
     : libraryCount === 0
       ? {
           label: 'Save First Prompt',
-          onClick: openSavePanel,
+          onClick: () => openSavePanel(),
           helper: 'Turn this draft into a reusable library entry before you evaluate it.',
         }
       : evalRunCount === 0

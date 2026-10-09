@@ -15,6 +15,7 @@ on:
         options:
           - all
           - library
+          - activation
   schedule:
     # Every 6 hours. GitHub runs scheduled workflows on the default branch,
     # so this always exercises what production is actually built from.
@@ -64,6 +65,8 @@ jobs:
         run: |
           if [ "$SMOKE_SCOPE" = "library" ]; then
             npm run test:e2e:production-free -- production-library.spec.js production-library-restart.spec.js
+          elif [ "$SMOKE_SCOPE" = "activation" ]; then
+            npm run test:e2e:production-free -- production-activation.spec.js
           else
             npm run test:e2e:production-free
           fi
