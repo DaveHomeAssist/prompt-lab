@@ -5,16 +5,22 @@ export default function GenerationControls({ m, mode, onModeChange, onTransform,
   const { options, update, error } = useGenerationOptions();
   const effective = resolveGenerationOptions(mode, options);
   const selectClass = `ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} min-w-0 w-full`;
+  const updateIndependentChoice = patch => {
+    update({ task: effective.task, target: effective.target, ...patch });
+    onModeChange(options.strategy);
+  };
   return (
     <div className="w-full min-w-0 space-y-2" aria-label="Generation settings">
       <div className="flex flex-wrap items-end gap-2">
         <label className={`min-w-0 flex-1 text-xs ${m.textSub}`}>Task type
-          <select aria-label="Task type" className={selectClass} value={effective.task} disabled={disabled} onChange={event => update({ task: event.target.value })}>
+          <select aria-label="Task type" className={selectClass} value={effective.task} disabled={disabled}
+            onChange={event => updateIndependentChoice({ task: event.target.value })}>
             {TASKS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label>
         <label className={`min-w-0 flex-1 text-xs ${m.textSub}`}>Intended destination
-          <select aria-label="Intended destination" className={selectClass} value={effective.target} disabled={disabled} onChange={event => update({ target: event.target.value })}>
+          <select aria-label="Intended destination" className={selectClass} value={effective.target} disabled={disabled}
+            onChange={event => updateIndependentChoice({ target: event.target.value })}>
             {TARGETS.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
           </select>
         </label>
@@ -23,7 +29,8 @@ export default function GenerationControls({ m, mode, onModeChange, onTransform,
         <summary className="cursor-pointer py-1">Generation options · {STRATEGIES.find(item => item.id === effective.strategy)?.label || effective.strategy}</summary>
         <fieldset disabled={disabled} className="mt-2 flex min-w-0 flex-wrap gap-3 rounded-lg border p-2">
           <label className="min-w-0 flex-1">Preferred primary candidate
-            <select aria-label="Preferred primary candidate" className={selectClass} value={STRATEGIES.some(item => item.id === effective.strategy) ? effective.strategy : options.strategy}
+            <select aria-label="Preferred primary candidate" className={selectClass}
+              value={STRATEGIES.some(item => item.id === effective.strategy) ? effective.strategy : options.strategy}
               onChange={event => { update({ strategy: event.target.value }); onModeChange(event.target.value); }}>
               {STRATEGIES.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
             </select>
