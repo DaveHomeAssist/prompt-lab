@@ -11,7 +11,7 @@ These are bounded functional outcomes for Sprints 1 and 2. They do not prove sub
 
 Remaining sequence:
 
-1. Reconcile Plan J's cross-shell/schema-upgrade persistence evidence against its existing contract; do not close it from web success alone.
+1. Plan J Library controls closed by PR140 with web/extension, actual Tauri and SwiftData migration evidence; maintain the [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) and regression controls. Separate native distribution acceptance remains open.
 2. Keep real-model quality and human Create/Evaluate acceptance separate from fixture-backed workflow proof.
 3. Continue billing and native upgrade/restore/signing through their existing gates; do not turn these smoke results into overall production readiness.
 

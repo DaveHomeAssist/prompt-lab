@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-09T09:15:00Z",
+  "snapshotAt": "2026-10-09T09:50:13Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "96ad7c216e78f915254116fed25966267db1b56d",
+  "mainSha": "473d691236b7a70e7032a99b11719358a668dd15",
   "overall": "Acceptance incomplete",
-  "nextAction": "Reconcile the remaining cross-shell/schema-upgrade persistence criterion. Preserve separate billing, native distribution, signing, model-quality and human gates; first live DaveLLM model run remains Dave-gated.",
+  "nextAction": "Continue the separate billing, native distribution/upgrade/restore/signing, real-model quality and human acceptance gates. Plan J Library controls and activation/Evaluate functional outcomes are verified; first live DaveLLM model run remains Dave-gated.",
   "evidence": [
+    {
+      "label": "Plan J Library controls complete",
+      "state": "Verified",
+      "detail": "Plan J seven listed controls complete. PR140 merged 473d691 after all 11 checks passed. Production37911746704 passed 4/4; Desktop37911747820 passed all 6 jobs with inspected MSI/NSIS/DEB/AppImage exercise, restart, export and retention artifacts. iOS37911002859 passed V1-to-V2 migration and native JSON interchange on iPhone/iPad simulators. Schema-1 content/history/provenance survives schema-2 export. Billing, native distribution/signing, macOS interactive lifecycle, physical-device and human acceptance remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/140"
+    },
     {
       "label": "Activation and Evaluate workflow",
       "state": "Verified",
@@ -264,14 +270,14 @@
     {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Reconcile remaining cross-shell/schema-upgrade persistence; keep native distribution and human gates separate.",
-      "verification": "Production Smoke 37908883551 passed all four Library cases at deployed 96ad7c2: navigation/import/export, tag/status intersection/reset, actual 14-record starter loading, stale-tab permanent deletion and full browser-process restart using the same disposable disk profile. Six Plan J definition criteria are evidenced; the full cross-shell/schema-upgrade criterion remains open."
+      "nextAction": "Keep the contract and regression controls current; continue separate native distribution and human gates in their existing records.",
+      "verification": "Plan J seven listed controls complete. PR140 merged 473d691 after all 11 checks passed. Production37911746704 passed 4/4; Desktop37911747820 passed all 6 jobs with inspected MSI/NSIS/DEB/AppImage exercise, restart, export and retention artifacts. iOS37911002859 passed V1-to-V2 migration and native JSON interchange on iPhone/iPad simulators. Schema-1 content/history/provenance survives schema-2 export. Billing, native distribution/signing, macOS interactive lifecycle, physical-device and human acceptance remain separate."
     },
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
