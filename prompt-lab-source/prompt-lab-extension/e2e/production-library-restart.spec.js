@@ -85,6 +85,9 @@ for (const width of [375, 1440]) {
       for (const tab of [page, second]) await expect(tab.getByRole('button', { name: 'Permanently delete QA discarded prompt' })).toHaveCount(0);
       await expect.poll(async () => (await snapshot(page)).trash).toEqual([]);
       expect((await snapshot(page)).deleted).toBe('1');
+      // The stale-tab scenario is complete. Close its writer before the
+      // independent legacy import/restart scenario captures its baseline.
+      await second.close();
       await page.getByRole('button', { name: /^All prompts/ }).click();
       await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles({ name: 'legacy-schema-1.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacyLibraryFixture)) });
       const preview = page.getByRole('dialog', { name: 'Review Library import' });
