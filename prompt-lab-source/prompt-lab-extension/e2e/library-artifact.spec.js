@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { legacyLibraryFixture, verifyLegacyLibrary } from '../../scripts/verify-legacy-library.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,12 +8,13 @@ import { chromium, expect, test } from '@playwright/test';
 const directory = path.dirname(fileURLToPath(import.meta.url));
 const extensionPath = path.resolve(directory, '../dist');
 const artifactPath = process.env.PL_LIBRARY_CONTRACT_FILE || path.resolve(directory, '../../../contracts/promptlab-library-v2.json');
-const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+const artifacts = [JSON.parse(fs.readFileSync(artifactPath, 'utf8')), legacyLibraryFixture];
 const surfaces = [{ name: 'extension', url: null }];
 if (process.env.PL_COMPAT_WEB_URL) surfaces.push({ name: 'local-web', url: process.env.PL_COMPAT_WEB_URL });
 if (process.env.PL_COMPAT_DESKTOP_URL) surfaces.push({ name: 'desktop-frontend', url: process.env.PL_COMPAT_DESKTOP_URL });
 
-function checkRecords(library) {
+function checkRecords(library, artifact) {
+  if (artifact === legacyLibraryFixture) verifyLegacyLibrary(library);
   const selected = library.filter(row => artifact.library.some(source => source.id === row.id));
   expect(selected.map(row => row.id)).toEqual(artifact.library.map(row => row.id));
   for (const [index, row] of selected.entries()) {
@@ -25,8 +27,8 @@ function checkRecords(library) {
   }
 }
 
-for (const surface of surfaces) for (const width of [400, 1180]) {
-  test(`${surface.name} imports the shared artifact and retains it through process restart at ${width}px`, async () => {
+for (const artifact of artifacts) for (const surface of surfaces) for (const width of [400, 1180]) {
+  test(`${surface.name} imports schema ${artifact.schemaVersion} artifact and retains it through process restart at ${width}px`, async () => {
     test.setTimeout(120_000);
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'promptlab-artifact-'));
     let context;
@@ -55,17 +57,17 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
     };
     try {
       let page = await launch();
-      await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles(artifactPath);
+      await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles({ name: 'library-artifact.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(artifact)) });
       const dialog = page.getByRole('dialog', { name: 'Review Library import' });
       await dialog.getByRole('button', { name: 'Apply import', exact: true }).click();
       await expect(dialog).toHaveCount(0);
-      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
+      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await page.reload();
       await expect.poll(() => page.evaluate(ids => JSON.parse(localStorage.getItem('pl2-library')).filter(row => ids.includes(row.id)).length, artifact.library.map(row => row.id))).toBe(artifact.library.length);
-      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
+      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await context.close();
       page = await launch();
-      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))));
+      checkRecords(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))), artifact);
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
       await page.getByTestId('library-search').fill('');
       await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem').first()).toContainText(artifact.library[0].title);
@@ -74,7 +76,7 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       await page.getByRole('button', { name: 'Export Library', exact: true }).click();
       const download = await downloadPromise;
       const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-      checkRecords(exported.library);
+      checkRecords(exported.library, artifact);
       expect(exported.schemaVersion).toBe(2);
       for (const run of artifact.runs || []) expect(exported.runs.find(row => row.id === run.id)).toMatchObject({ promptId: run.promptId, promptVersionId: run.promptVersionId });
       for (const record of artifact.testCases || []) expect(exported.testCases.find(row => row.id === record.id)?.promptId).toBe(record.promptId);
