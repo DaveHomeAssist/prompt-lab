@@ -63,7 +63,7 @@ jobs:
           SMOKE_SCOPE: ${{ inputs.scope || 'all' }}
         run: |
           if [ "$SMOKE_SCOPE" = "library" ]; then
-            npm run test:e2e:production-free -- production-library.spec.js
+            npm run test:e2e:production-free -- production-library.spec.js production-library-restart.spec.js
           else
             npm run test:e2e:production-free
           fi
