@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { legacyLibraryFixture, verifyLegacyLibrary } from '../../scripts/verify-legacy-library.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { chromium, expect, test } from '@playwright/test';
@@ -84,6 +85,16 @@ for (const width of [375, 1440]) {
       for (const tab of [page, second]) await expect(tab.getByRole('button', { name: 'Permanently delete QA discarded prompt' })).toHaveCount(0);
       await expect.poll(async () => (await snapshot(page)).trash).toEqual([]);
       expect((await snapshot(page)).deleted).toBe('1');
+      // The stale-tab scenario is complete. Close its writer before the
+      // independent legacy import/restart scenario captures its baseline.
+      await second.close();
+      await page.getByRole('button', { name: /^All prompts/ }).click();
+      await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles({ name: 'legacy-schema-1.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacyLibraryFixture)) });
+      const preview = page.getByRole('dialog', { name: 'Review Library import' });
+      await preview.getByRole('button', { name: 'Apply import', exact: true }).click();
+      await expect(preview).toHaveCount(0);
+      await expect.poll(async () => (await snapshot(page)).library.filter(row => row.id === legacyLibraryFixture.library[0].id).length).toBe(1);
+      verifyLegacyLibrary((await snapshot(page)).library);
       const before = await snapshot(page);
       const cookies = await context.cookies();
       // Closing a persistent context terminates its browser process. Reuse the
@@ -94,11 +105,19 @@ for (const width of [375, 1440]) {
       await page.goto(appUrl.href);
       await library(page);
       await page.getByRole('button', { name: /^All prompts/ }).click();
-      await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem')).toHaveCount(14);
+      await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem')).toHaveCount(15);
       expect(await snapshot(page)).toEqual(before);
+      verifyLegacyLibrary((await snapshot(page)).library);
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      const downloadPromise = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Export Library', exact: true }).click();
+      const download = await downloadPromise;
+      const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+      expect(exported.schemaVersion).toBe(2);
+      verifyLegacyLibrary(exported.library);
       expect(await page.evaluate(() => window.Clerk?.session?.id)).toBe(sessionId);
       expect(blocked, 'No inference, purchase or telemetry requests').toEqual([]);
-      console.info(`[library-restart ${width}] actual starter load, stale deletion and full browser-process restart passed`);
+      console.info(`[library-restart ${width}] actual starter load, stale deletion, schema-1 import, process restart and schema-2 export passed`);
     } finally {
       try {
         if (sessionId) await clerk.sessions.revokeSession(sessionId);
