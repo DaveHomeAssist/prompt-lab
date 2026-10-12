@@ -102,14 +102,22 @@ same place and changing them changes production behaviour.
 | Name | Purpose |
 | --- | --- |
 | `PROMPTLAB_PRO_OWNER_CLERK_USER_IDS` | Comma-separated Clerk user IDs granted Pro without Stripe |
-| `PROMPTLAB_PRO_OWNER_EMAILS` | Same, by email |
-| `PROMPTLAB_PRO_OWNER_USERNAMES` | Same, by username |
+| `PROMPTLAB_PRO_OWNER_EMAILS` | Legacy configuration; does not grant owner access |
+| `PROMPTLAB_PRO_OWNER_USERNAMES` | Legacy configuration; does not grant owner access |
 | `CLERK_AUTHORIZED_PARTIES` | Extra allowed `azp` claims beyond the two default origins |
 
 `lookupOwnerEntitlement()` also accepts the aliases
 `PROMPTLAB_OWNER_CLERK_USER_IDS`, `PROMPTLAB_PRO_OWNER_USER_IDS` and
 `PROMPTLAB_OWNER_USER_IDS`. Only the Clerk **user ID** list is consulted for the
 entitlement itself — the email and username lists do not by themselves grant it.
+
+Use the manual Production Smoke `scope=owner` to verify the repository owner's
+actual production entitlement and accessible feature controls. The check resolves
+the public repository-owner email to one verified Clerk account, creates a
+disposable session, and checks Owner Pro after reload. It preserves pre-existing
+owner sessions and blocks purchases, providers and telemetry. Only synthetic
+workspace data in the disposable browser profile is used. Owner access is never
+part of the scheduled smoke.
 
 ### Optional, with working defaults
 
