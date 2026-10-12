@@ -88,7 +88,7 @@ The existing Production Smoke workflow accepts manual `scope: library` to run fo
 
 ## Plan J evidence closeout — 2026-10-09
 
-Plan J remains In progress: PR141 review found the cited imported/seeded extension scenarios did not directly exercise Phase 8 create/save/reload. The additional packaged-extension lifecycle and actual native starter-load controls are pending verification. The migration evidence below remains valid. This is Library contract acceptance, not overall installed-application or production readiness. [PR140](https://github.com/DaveHomeAssist/prompt-lab/pull/140) merged as `473d691236b7a70e7032a99b11719358a668dd15`; tested merge `ed3435b6f850af1dfb134f2efdf3488de8e1648d`, reviewed head `a7560c8` and delivered trees match.
+Plan J is complete for its bounded Phase 8 Library acceptance. PR141 review initially found missing direct extension create/save/reload coverage; that premature closeout was corrected before acceptance. The added editor save/update, historical version, reload, full process restart, actual starter loading and export controls passed in Desktop run [37928010828](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37928010828). All six jobs passed at head `10a4aa26`; tested merge `ccba8e0e` and delivered merge `83d6ac56` have identical trees. Downloaded MSI, NSIS, DEB and AppImage exercise/retention evidence passed. The earlier migration evidence below remains valid. This is Library contract acceptance, not overall installed-application or production readiness. [PR140](https://github.com/DaveHomeAssist/prompt-lab/pull/140) merged as `473d691236b7a70e7032a99b11719358a668dd15`; tested merge `ed3435b6f850af1dfb134f2efdf3488de8e1648d`, reviewed head `a7560c8` and delivered trees match.
 
 | Criterion | Owning evidence |
 | --- | --- |
@@ -107,3 +107,19 @@ Plan J remains In progress: PR141 review found the cited imported/seeded extensi
 [iOS 37911002859](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37911002859), source `923f4a4`, passed the recorded V1-store-to-V2 migration test on iPhone and iPad simulators. Each suite has 28 unit passes, one intentionally skipped live-model test, and five UI passes. All six native export fixtures pass the shared importer. iOS/application sources are unchanged in PR140.
 
 First failures remain retained: the legacy fixture's external links correctly migrate to unresolved references; import persistence must be awaited; a second writer can change ordering before a restart baseline settles. The new tests retain the exact final assertions and make those preconditions explicit. These checks do not prove arbitrary crash recovery, previous-version installer upgrade/rollback, signing, macOS interactive acceptance, physical devices, billing, live-model quality or human acceptance. Those remain with their existing gates, including Plan I.
+
+### Phase 8 scenario mapping
+
+| Required behavior | Executed coverage |
+| --- | --- |
+| Editor create/save/update/reload and restart | Packaged `library-artifact.spec.js`; authenticated activation37910231474; actual Tauri native save/restart and rejected-save retry |
+| Library/Composer search, tag/status/collection/sort, keyboard filtered reorder | `library-compatibility.spec.js`; production37911746704; native Library matrix in37928010828 |
+| Actual starter loading and newest order | Packaged artifact lifecycle, production restart suite and native Library matrix |
+| Active collection removal/unassignment/filter reset | Packaged compatibility, authenticated production and native matrix with restart/retention |
+| Stale deletion and clear | Packaged `library-deletion.spec.js`, authenticated stale-tab scenario and focused reconciliation tests |
+| Rejected writes retain draft, preview Cancel/conflicts, runs/tests/provenance | Expanded packaged negative suites, production follow-up/import coverage and native rejected-save/workspace scenarios |
+| Schema upgrade and cross-surface transfer | Historical schema-1 fixture through shared importer/restart/export; iPhone/iPad migration and six exported JSON fixtures under D-011 |
+
+Run37928010828 includes 1127 Vitest tests and 19 packaged/browser scenarios. The Windows predecessor37914772760 failed during its bounded PowerShell process query, returning null status. The final harness gives that infrastructure query 30 seconds and records status/signal/error; all seven MSI queries returned status0. All behavioral assertions remain required. This does not establish the precise cause of the older PR131 cancellation timeout.
+
+As rechecked on 2026-10-12, merge83d6ac5 is production READY and scheduled Production Smoke38246529314 passed on that head. This delivery proof does not close the independent release gates listed above.
