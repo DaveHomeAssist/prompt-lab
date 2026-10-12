@@ -59,6 +59,7 @@ describe('BillingModal landing period handoff', () => {
     });
     expect(requestedButton).toHaveAttribute('data-requested', 'true');
     expect(requestedButton).toHaveTextContent('Selected on pricing page');
+    expect(requestedButton).toHaveTextContent(period === 'monthly' ? '$9/month' : '$99/year');
     expect(billing.startCheckout).not.toHaveBeenCalled();
 
     fireEvent.click(requestedButton);

@@ -268,7 +268,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">$100/year, best value</div>
+            <div className="mt-1 text-xs text-emerald-200">$99/year, best value</div>
             {safeRequestedPeriod === 'annual' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
             )}

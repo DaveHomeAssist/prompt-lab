@@ -199,6 +199,28 @@ test('checkout requires a Clerk bearer token when billing is available', async (
   assert.match(await response.text(), /Clerk authorization/i);
 });
 
+test('production checkout refuses purchases until webhook signing and durable storage are configured', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.BILLING_ENABLED = 'true';
+  process.env.CLERK_SECRET_KEY = 'test-clerk-key';
+  process.env.STRIPE_SECRET_KEY = 'test-stripe-key';
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  globalThis.fetch = assert.fail;
+  const { default: handler } = await loadModule(checkoutUrl);
+
+  for (const missing of ['STRIPE_WEBHOOK_SECRET', 'KV_REST_API_URL', 'KV_REST_API_TOKEN']) {
+    process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+    process.env.KV_REST_API_URL = 'https://redis.example.test';
+    process.env.KV_REST_API_TOKEN = 'test-token';
+    delete process.env[missing];
+    const response = await handler(postRequest('/api/billing/checkout', { period: 'annual' }));
+    const payload = await assertTerminalDisabledResponse(response, missing);
+    assert.equal(payload.billingDisabled, true);
+    assert.equal(payload.url, undefined);
+  }
+});
+
 test('external fetch helper aborts stalled work with a typed timeout', async () => {
   globalThis.fetch = async (_url, init) => new Promise((resolve, reject) => {
     init.signal.addEventListener('abort', () => {

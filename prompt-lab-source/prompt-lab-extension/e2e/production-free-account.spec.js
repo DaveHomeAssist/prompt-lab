@@ -23,9 +23,10 @@ function reportPhase(phase) {
   console.info(`[production-free-smoke] ${phase}`);
 }
 
-test('@production signed-in Free account keeps features open and billing unavailable', async ({ page }) => {
+test('@production signed-in Free account matches the expected billing mode', async ({ page }) => {
   test.setTimeout(90_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
+  const billingEnabled = process.env.PROMPTLAB_EXPECT_BILLING_ENABLED !== 'false';
   const clerkClient = createClerkClient({ secretKey: clerkSecretKey });
   reportPhase('checking QA session preconditions');
   const activeSessions = await clerkClient.sessions.getSessionList({
@@ -98,27 +99,44 @@ test('@production signed-in Free account keeps features open and billing unavail
     reportPhase('checking the Free license response');
     const response = await licenseResponse;
     expect(response.status()).toBe(200);
-    expect(await response.json()).toMatchObject({
-      plan: 'free',
-      status: 'free',
-      billingDisabled: true,
-      retryable: false,
-    });
+    const license = await response.json();
+    expect(license.plan).toBe('free');
+    if (billingEnabled) {
+      expect(license.billingDisabled).not.toBe(true);
+      expect(license.status).toBe('inactive');
+      expect(license.customerId).toMatch(/^cus_/);
+      expect(license.subscriptionId).toBe('');
+    } else {
+      expect(license).toMatchObject({ status: 'free', billingDisabled: true, retryable: false });
+    }
 
-    reportPhase('checking terminal billing UI');
+    reportPhase('checking billing UI against the expected deployment mode');
     const billingTrigger = page.getByTestId('billing-trigger');
-    await expect(billingTrigger).toHaveText('All Features Open');
+    await expect(billingTrigger).toHaveText(billingEnabled ? 'Upgrade' : 'All Features Open');
     await billingTrigger.click();
-    const billingDialog = page.getByRole('dialog', { name: 'All workflow features are open' });
+    const billingDialog = page.getByRole('dialog', {
+      name: billingEnabled ? 'Unlock Prompt Lab Pro' : 'All workflow features are open',
+    });
     await expect(billingDialog).toBeVisible();
-    await expect(billingDialog.getByText('All workflow features are available during prelaunch. Purchases are temporarily unavailable.', { exact: true })).toBeVisible();
     await expect(billingDialog.locator('p').filter({ hasText: /^Free$/ })).toBeVisible();
     await expect(billingDialog.getByText(/Owner Pro/)).toHaveCount(0);
-    await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toBeVisible();
-    await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeDisabled();
-    await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeDisabled();
-    await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeDisabled();
-    await expect(billingDialog.getByRole('button', { name: /Go Pro/ })).toHaveCount(0);
+    if (billingEnabled) {
+      await expect(billingDialog.getByRole('button', { name: /Go Pro Monthly/ })).toBeEnabled();
+      await expect(billingDialog.getByRole('button', { name: /Go Pro Annual/ })).toBeEnabled();
+      await expect(billingDialog.getByText('$9/month via Stripe', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByText('$99/year, best value', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeEnabled();
+      await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeEnabled();
+      await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeEnabled();
+      await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toHaveCount(0);
+    } else {
+      await expect(billingDialog.getByText('All workflow features are available during prelaunch. Purchases are temporarily unavailable.', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByText('Purchases are temporarily unavailable', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeDisabled();
+      await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeDisabled();
+      await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeDisabled();
+      await expect(billingDialog.getByRole('button', { name: /Go Pro/ })).toHaveCount(0);
+    }
     await expect(billingDialog.getByRole('button', { name: 'Enable Owner Pro' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(billingDialog).toHaveCount(0);
