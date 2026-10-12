@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-09T09:50:13Z",
+  "snapshotAt": "2026-10-12T16:38:43Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,20 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "473d691236b7a70e7032a99b11719358a668dd15",
+  "mainSha": "83d6ac56ea5d5b7d4bc6e31b0e266d3a3e189c7f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the missing Phase 8 packaged-extension create/save/reload and actual shell starter-load controls before closing Plan J; retain separate release gates.",
+  "nextAction": "Maintain the completed Library acceptance controls; continue separate billing, native distribution and human acceptance gates.",
   "evidence": [
     {
-      "label": "Plan J closure review",
-      "state": "Running",
-      "detail": "PR141 review reopened the premature closeout: schema import/restart evidence is valid, but direct packaged-extension create/save/reload was missing. Added actual editor save/update/reload/restart and starter-loading controls; runtime pending.",
+      "label": "Current delivery verification",
+      "state": "Verified",
+      "detail": "2026-10-12: main83d6ac5 is deployed READY to promptlab.tools (dpl_FGERo2ovcsuTQQYf9nwnjuAPSof4). Latest Production Smoke38246529314 passed on the same head. Historical evidence cards retain their dated scope; none is an overall readiness score.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38246529314"
+    },
+    {
+      "label": "Plan J acceptance complete",
+      "state": "Verified",
+      "detail": "PR141 merged as 83d6ac5. Desktop37928010828 passed all six jobs at10a4aa26; merged and tested trees match. Actual extension editor save/update/reload/process restart/export, starter loading, tag/status filters and expanded negative controls pass. MSI/NSIS/DEB/AppImage exercise and retention artifacts inspected. Production37911746704 and iOS37911002859 provide authenticated web and native JSON/migration evidence. All bounded Phase8 criteria complete; separate release gates remain open.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/141"
     },
     {
@@ -270,14 +276,14 @@
     {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
       "inPlan": true,
-      "nextAction": "Complete the missing Phase 8 packaged-extension create/save/reload and actual shell starter-load controls before closing Plan J; retain separate release gates.",
-      "verification": "PR141 review reopened the premature closeout: schema import/restart evidence is valid, but direct packaged-extension create/save/reload was missing. Added actual editor save/update/reload/restart and starter-loading controls; runtime pending."
+      "nextAction": "Retain the Library regression matrix; continue independent release gates.",
+      "verification": "PR141 merged as 83d6ac5. Desktop37928010828 passed all six jobs at10a4aa26; merged and tested trees match. Actual extension editor save/update/reload/process restart/export, starter loading, tag/status filters and expanded negative controls pass. MSI/NSIS/DEB/AppImage exercise and retention artifacts inspected. Production37911746704 and iOS37911002859 provide authenticated web and native JSON/migration evidence. All bounded Phase8 criteria complete; separate release gates remain open."
     },
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
