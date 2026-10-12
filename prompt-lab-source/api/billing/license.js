@@ -67,6 +67,13 @@ async function licenseHandler(request) {
   }
 
   try {
+    // Purchase readiness is separate from entitlement lookup and portal access.
+    let checkoutDisabled = false;
+    try {
+      assertProductionConfig({ webhook: true, durableStore: true });
+    } catch {
+      checkoutDisabled = true;
+    }
     const ownerEntitlement = lookupOwnerEntitlement({
       clerkUserId: auth.clerkUserId,
       clerkEmail: auth.clerkEmail,
@@ -75,6 +82,7 @@ async function licenseHandler(request) {
       return jsonResponse({
         ok: true,
         ...ownerEntitlement,
+        checkoutDisabled,
       }, 200, {}, request);
     }
 
@@ -90,6 +98,7 @@ async function licenseHandler(request) {
     return jsonResponse({
       ok: true,
       ...payload,
+      checkoutDisabled,
     }, 200, {}, request);
   } catch (error) {
     const message = error.message || 'Billing request failed.';

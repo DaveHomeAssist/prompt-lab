@@ -67,6 +67,7 @@ function normalizeResponseState(payload, previousState) {
     customerName: hasField('customerName') ? payload.customerName : previousState.customerName,
     manageUrl: hasField('manageUrl') ? payload.manageUrl : previousState.manageUrl,
     billingDisabled: false,
+    checkoutDisabled: payload.checkoutDisabled === true,
     validationError: '',
     lastValidatedAt: new Date().toISOString(),
   });
@@ -324,6 +325,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [notify, telemetry]);
 
   const startCheckout = useCallback(async (period, source = 'billing-modal') => {
+    if (stateRef.current.checkoutDisabled) {
+      throw new Error('Purchases are temporarily unavailable. Existing purchase management is still available.');
+    }
     setBusyAction(`checkout:${period}`);
     try {
       const payload = await requestBilling('/billing/checkout', {

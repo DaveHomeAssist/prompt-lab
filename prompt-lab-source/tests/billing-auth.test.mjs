@@ -19,6 +19,14 @@ const portalUrl = billingModuleUrl('portal.js');
 const ownerEntitlementsUrl = pathToFileURL(path.join(sourceDir, 'api', '_lib', 'ownerEntitlements.js')).href;
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
+  'NODE_ENV',
+  'BILLING_ENABLED',
+  'CLERK_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'KV_REST_API_URL',
+  'KV_REST_API_TOKEN',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
   'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
@@ -247,6 +255,42 @@ test('billing license rejects missing Clerk authorization', async () => {
   }));
 
   assert.equal(response.status, 401);
+});
+
+test('license exposes checkout readiness while retaining entitlement and portal access', async () => {
+  const jwks = await createJwksHarness();
+  installStripeFetchMock();
+  process.env.NODE_ENV = 'production';
+  process.env.BILLING_ENABLED = 'true';
+  process.env.CLERK_SECRET_KEY = 'sk_test_clerk';
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  try {
+    const license = await loadHandler(licenseUrl);
+    const portal = await loadHandler(portalUrl);
+    const headers = { Authorization: `Bearer ${jwks.tokenFor()}`, 'Content-Type': 'application/json' };
+    for (const missing of ['STRIPE_WEBHOOK_SECRET', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', null]) {
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+      process.env.KV_REST_API_URL = 'https://redis.example.test';
+      process.env.KV_REST_API_TOKEN = 'test_token';
+      if (missing) delete process.env[missing];
+      const response = await license(new Request('https://promptlab.tools/api/billing/license', {
+        method: 'POST', headers, body: JSON.stringify({ action: 'validate' }),
+      }));
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.checkoutDisabled, Boolean(missing), missing || 'fully configured');
+      assert.equal(payload.plan, 'pro');
+      assert.notEqual(payload.billingDisabled, true);
+      const management = await portal(new Request('https://promptlab.tools/api/billing/portal', {
+        method: 'POST', headers, body: '{}',
+      }));
+      assert.equal(management.status, 200);
+      assert.equal(new URL((await management.json()).url).origin, 'https://billing.stripe.com');
+    }
+  } finally {
+    await jwks.close();
+  }
 });
 
 test('billing license node handler ends OPTIONS preflight response', async () => {

@@ -109,6 +109,20 @@ describe('BillingModal landing period handoff', () => {
     expect(billing.refreshLicense).not.toHaveBeenCalled();
   });
 
+  it('hides unavailable checkout while retaining existing purchase management', () => {
+    const billing = { ...createBilling(), checkoutDisabled: true, clerkUserId: 'user_test' };
+    render(<BillingModal m={theme} billing={billing} requestedPeriod="annual" onClose={vi.fn()} />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Purchases are temporarily unavailable');
+    expect(screen.queryByRole('button', { name: /Go Pro/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Manage Purchases' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Sync Purchase' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Refresh Status' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Manage Purchases' }));
+    expect(billing.openManagePurchases).toHaveBeenCalledTimes(1);
+    expect(billing.startCheckout).not.toHaveBeenCalled();
+  });
+
   it('shows open prelaunch access instead of an upgrade prompt for Free billing-disabled state', () => {
     const billing = {
       ...createBilling(),

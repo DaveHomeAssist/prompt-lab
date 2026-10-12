@@ -239,13 +239,22 @@ export default function BillingModal({
           </div>
         )}
 
-        {!billing.billingDisabled && safeRequestedPeriod && (
+        {!billing.billingDisabled && billing.checkoutDisabled && (
+          <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4" role="status">
+            <p className="text-sm font-semibold text-amber-300">Purchases are temporarily unavailable</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-200/90">
+              You can still manage existing purchases and refresh your access. Please check back later to start a new subscription.
+            </p>
+          </div>
+        )}
+
+        {!billing.billingDisabled && !billing.checkoutDisabled && safeRequestedPeriod && (
           <p className={`mt-4 text-xs leading-relaxed ${m.textMuted}`} role="status">
             Your {safeRequestedPeriod} choice from the pricing page is highlighted. Checkout starts only when you choose it below.
           </p>
         )}
 
-        {!billing.billingDisabled && (
+        {!billing.billingDisabled && !billing.checkoutDisabled && (
         <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
           <button
             type="button"

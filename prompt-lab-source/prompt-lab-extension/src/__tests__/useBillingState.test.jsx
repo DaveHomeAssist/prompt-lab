@@ -51,6 +51,21 @@ describe('useBillingState', () => {
     expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
   });
 
+  it('retains checkout readiness from license validation without blocking the portal', async () => {
+    global.fetch = vi.fn(async (url) => new Response(JSON.stringify(url.endsWith('/billing/portal')
+      ? { url: 'https://billing.stripe.com/session/test' }
+      : { ok: true, plan: 'free', customerId: 'cus_test', checkoutDisabled: true }), { status: 200 }));
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const clerkUser = { id: 'user_test' };
+    const { result } = renderHook(() => useBillingState({ clerkGetToken, clerkUser }));
+    await waitFor(() => expect(result.current.checkoutDisabled).toBe(true));
+    expect(result.current.billingDisabled).toBe(false);
+    await expect(result.current.startCheckout('monthly')).rejects.toThrow('Purchases are temporarily unavailable');
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/billing/checkout'), expect.anything());
+    await act(async () => { await result.current.openManagePurchases(); });
+    expect(window.open).toHaveBeenCalledWith('https://billing.stripe.com/session/test', '_blank', 'noopener,noreferrer');
+  });
+
   it('keeps cached Pro access when billing validation is temporarily offline', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',
