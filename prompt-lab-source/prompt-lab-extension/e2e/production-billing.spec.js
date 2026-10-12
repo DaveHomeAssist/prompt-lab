@@ -1,6 +1,6 @@
 import { createClerkClient } from '@clerk/backend';
 import { expect, test } from '@playwright/test';
-import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
+import { forbiddenRequestCategory, isProductionLicenseResponse, readProductionFreeSmokeConfig } from './production-auth.mjs';
 
 // Explicit manual scope only: scheduled Library smoke must never create checkouts.
 test('@production authenticated billing creates unpaid checkout and portal sessions', async ({ page }) => {
@@ -27,13 +27,16 @@ test('@production authenticated billing creates unpaid checkout and portal sessi
       taskDescription: 'Create unpaid checkout quotes and a portal session; never submit payment or change a subscription.',
       redirectUrl: appUrl.href, sessionMaxDurationInSeconds: 300,
     });
+    const initialLicense = page.waitForResponse(response => isProductionLicenseResponse(response.url(), appUrl.origin));
     await page.goto(task.url, { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
     sessionId = await page.evaluate(() => window.Clerk?.session?.id || '');
     expect(sessionId).toMatch(/^sess_/);
     const token = await page.evaluate(() => window.Clerk.session.getToken());
     const headers = { Authorization: `Bearer ${token}` };
-    const license = await page.request.post(`${appUrl.origin}/api/billing/license`, { headers, data: { action: 'validate' } });
+    // Let the app's first validation finish before issuing billing requests.
+    // Racing it could create duplicate QA customer records on a fresh account.
+    const license = await initialLicense;
     expect(license.status()).toBe(200);
     const before = await license.json();
     expect(before.plan).toBe('free');
