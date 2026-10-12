@@ -66,6 +66,7 @@ export function createDefaultBillingState() {
     validationError: '',
     manageUrl: '',
     billingDisabled: false,
+    checkoutDisabled: false,
   };
 }
 
@@ -121,6 +122,7 @@ export function normalizeBillingState(value = {}) {
     validationError: typeof value?.validationError === 'string' ? value.validationError : '',
     manageUrl: typeof value?.manageUrl === 'string' ? value.manageUrl : '',
     billingDisabled: value?.billingDisabled === true,
+    checkoutDisabled: value?.checkoutDisabled === true,
   };
 }
 

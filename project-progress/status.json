@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-12T16:38:43Z",
+  "snapshotAt": "2026-10-12T18:45:06.431240Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "83d6ac56ea5d5b7d4bc6e31b0e266d3a3e189c7f",
+  "mainSha": "95f05400ca59ccaa8630d0522ba564b6dd9494e0",
   "overall": "Acceptance incomplete",
-  "nextAction": "Maintain the completed Library acceptance controls; continue separate billing, native distribution and human acceptance gates.",
+  "nextAction": "Verify and deploy billing restoration, then run unpaid monthly/annual checkout and portal acceptance; retain separate paid lifecycle, feature-access policy and native distribution gates.",
   "evidence": [
+    {
+      "label": "Billing restoration in progress",
+      "state": "Running",
+      "detail": "2026-10-12: existing Stripe USD 9/month and USD 99/year prices configured in production. Customer portal created with end-of-period cancellation. Replacement webhook secret configured through APIs; billing remains disabled pending verified deployment and no-charge checkout. Source adds missing-webhook/storage checkout protection and correct annual copy. No Stripe price, subscription or feature-access policy changed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/billing-restoration-20261012"
+    },
     {
       "label": "Current delivery verification",
       "state": "Verified",

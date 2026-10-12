@@ -131,31 +131,40 @@ npx vercel env ls production
 npx vercel env ls preview
 ```
 
-## Gaps that only bite when billing is enabled
+## Billing restoration prerequisites
 
-Billing is currently in prelaunch — the UI reads "All Features Open" and
-purchases are disabled — so neither of these is live today. Both must be set
-before Stripe checkout is switched on.
+The October 12, 2026 restoration uses the existing Stripe product and active
+USD prices: $9 monthly and $99 annually. This corrects the old $100 annual UI
+copy without changing a Stripe price. The legacy `STRIPE_PRICE_ID` was invalid;
+production now explicitly sets `STRIPE_MONTHLY_PRICE_ID` and
+`STRIPE_YEARLY_PRICE_ID`.
 
-| Name | Status | Consequence when billing is enabled |
-| --- | --- | --- |
-| `STRIPE_WEBHOOK_SECRET` | **not set** | `assertProductionConfig({ webhook: true })` throws, so any route verifying Stripe webhooks refuses to start |
-| Yearly price ID | **not set** | Annual checkout throws `No Stripe price is configured for "yearly"` |
+Before enabling `BILLING_ENABLED`, production must have the Clerk and Stripe
+keys, `STRIPE_WEBHOOK_SECRET`, and the REST storage URL/token pair. Checkout
+fails closed when signing or durable storage configuration is missing. The
+customer portal supports invoices, payment-method updates and cancellation at
+the end of the current paid period, with no proration or plan switching.
 
-The yearly gap is easy to miss. `api/_lib/stripeBilling.js` resolves the two
-periods asymmetrically:
+The production webhook subscribes to checkout completion and subscription
+creation, updates and deletion. Replacement endpoint secrets go directly into
+Vercel configuration, never into source, logs or test artifacts. Disable the
+superseded endpoint after verifying the replacement.
 
-```js
-monthlyPriceId: readStringEnv('STRIPE_MONTHLY_PRICE_ID', 'STRIPE_PRICE_ID_MONTHLY', 'STRIPE_PRICE_ID'),
-yearlyPriceId:  readStringEnv('STRIPE_YEARLY_PRICE_ID',  'STRIPE_PRICE_ID_YEARLY',  'STRIPE_ANNUAL_PRICE_ID'),
-```
+Run Production Smoke with `scope=billing` only for a deliberate checkout check.
+It creates monthly and annual unpaid QA sessions and a portal session through
+real Clerk-authenticated API requests, then checks that reload still reports
+Free and revokes the disposable login. It never submits payment. Immediately
+expire the checkout sessions through Stripe and verify their unpaid status,
+price, amount, return URLs and account binding. Scheduled smoke excludes this
+checkout creation; its Free-account checks expect billing enabled. For a
+billing-off rollback, run that spec with
+`PROMPTLAB_EXPECT_BILLING_ENABLED=false` to retain the terminal disabled checks.
 
-Monthly falls back to `STRIPE_PRICE_ID`, which is set. Yearly has no such
-fallback, and none of its three accepted names is set — so monthly checkout
-would work and annual would fail. Set one of `STRIPE_YEARLY_PRICE_ID`,
-`STRIPE_PRICE_ID_YEARLY` or `STRIPE_ANNUAL_PRICE_ID` before enabling purchases.
-
-`STRIPE_SECRET_KEY` and `STRIPE_PRICE_ID` are already set.
+This restoration covers purchasing and account management. The existing
+prelaunch feature-access policy remains separate; enabling billing does not
+itself change `FEATURE_GATES_ENABLED`. Unpaid checkout proves neither paid
+activation nor renewal, cancellation, refund or native distribution acceptance.
+Keep those evidence gates separate from the completed Library acceptance.
 
 ## Optional tooling tokens
 

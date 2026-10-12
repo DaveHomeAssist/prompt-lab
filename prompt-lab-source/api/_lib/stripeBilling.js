@@ -223,7 +223,10 @@ export async function createCheckout(config, {
   params.set('line_items[0][quantity]', '1');
   params.set('client_reference_id', deviceId || sessionId || source || 'prompt-lab');
 
-  if (email) params.set('customer_email', email);
+  // License refresh and the portal resolve this same Clerk-bound customer.
+  // customer_email alone lets Checkout create a second, unbound customer.
+  const customer = await getOrCreateStripeCustomer(config, { clerkUserId, clerkEmail: email });
+  params.set('customer', customer.id);
 
   const metadata = {
     app: 'prompt-lab',
@@ -250,6 +253,7 @@ export async function createCheckout(config, {
   return {
     checkoutUrl: payload?.url || '',
     checkoutSessionId: payload?.id || '',
+    customerId: customer.id,
     priceId,
     period,
   };

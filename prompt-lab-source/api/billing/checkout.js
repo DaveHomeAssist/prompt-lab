@@ -41,7 +41,8 @@ async function checkoutHandler(request) {
   }
 
   try {
-    assertProductionConfig({ clerk: true, stripe: true });
+    // Never accept a purchase while its webhook cannot be verified and stored.
+    assertProductionConfig({ clerk: true, stripe: true, webhook: true, durableStore: true });
   } catch {
     return billingDisabledResponse(request, 'Billing is not configured.');
   }
@@ -76,6 +77,7 @@ async function checkoutHandler(request) {
       period: result.period,
       priceId: result.priceId,
       checkoutSessionId: result.checkoutSessionId,
+      customerId: result.customerId,
     }, 200, {}, request);
   } catch (error) {
     return jsonResponse(
