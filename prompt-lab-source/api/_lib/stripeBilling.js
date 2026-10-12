@@ -463,8 +463,11 @@ export async function createPortalSession(config, { customerId = '', customerEma
 }
 
 export async function createPortalSessionForClerk(config, { clerkUserId = '', clerkEmail = '' } = {}) {
-  const customer = await findCustomerByClerkUserId(config, clerkUserId);
-  if (!customer?.id) {
+  // Stripe Search can lag a newly created customer. The email list is a
+  // fallback only when its customer is already bound to this Clerk identity.
+  const customer = await findCustomerByClerkUserId(config, clerkUserId)
+    || (clerkEmail ? await findCustomerByEmail(config, clerkEmail) : null);
+  if (!customer?.id || !customerMatchesClerkUser(customer, clerkUserId)) {
     throw new Error('No Stripe customer is bound to this signed-in account.');
   }
 
