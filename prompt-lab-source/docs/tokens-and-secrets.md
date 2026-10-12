@@ -210,11 +210,35 @@ mobile prototype.
 gh workflow run "Production Smoke" --ref main
 ```
 
-## Verification
+## Verification — October 12, 2026
+
+PRs [143](https://github.com/DaveHomeAssist/prompt-lab/pull/143) and
+[144](https://github.com/DaveHomeAssist/prompt-lab/pull/144) merged through
+`a2b7e368d744d5d228d2171e171c5625cccffb0a`. Vercel production
+`dpl_4wTh4QYPsg7wRP76QBPxnnEdqjRf` is READY on that source.
 
 | Check | Result |
 | --- | --- |
-| GitHub repo secrets | `NOTION_TOKEN`, `NOTION_PARENT_PAGE_ID` present |
-| GitHub environment `Production – prompt-lab` | `CLERK_SECRET_KEY`, `PROMPTLAB_QA_FREE_USER_ID` present |
-| Vercel production env | All required names present; `STRIPE_WEBHOOK_SECRET` and every yearly-price name absent |
-| Production smoke, run 35698760219 | 2 passed — proves the CI credentials resolve and work end to end |
+| Production configuration | Billing enabled; monthly/yearly prices, webhook secret, durable store and portal present |
+| [Billing smoke 38296634420](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296634420) | Authenticated monthly/annual checkout, portal, Free after reload and disposable-session cleanup passed |
+| Stripe API cleanup | Four QA sessions across both attempts expired unpaid; no subscriptions or payment intents |
+| Replacement webhook | Four genuine expiration events persisted; temporary expiration subscription removed, normal four lifecycle events retained, old endpoint disabled |
+| [Owner smoke 38296805582](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296805582) | Test head `9229c2d` verified real Owner Pro entitlement, reload, collection input, export, batch access, Diff and Model Arena against unchanged runtime `a2b7e36`; disposable login revoked, prior logins preserved |
+| [Full production smoke 38296850377](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296850377) | Nine cases passed on exact main `a2b7e36`; the two explicit manual scopes ran separately above |
+| PR144 final-head CI | API Safety 38296445392 (82 tests), Extension 38296445413 and Landing 38296445470 passed |
+| Deployment logs through 19:22 UTC | 40 responses: 35 license, two checkout, one portal and two webhook; all 200, zero 5xx; duration unavailable in retrieved fields |
+
+The first checkout attempt reached portal 400 because Stripe Search had not yet
+indexed its customer. PR144 fixes that path without adopting a customer bound to
+another Clerk account. The initial owner probe returned Free; its exactly matched,
+verified Clerk ID was added through the supported production owner-ID alias,
+preserving the existing sensitive list. A later owner test selector incorrectly
+expected the Free Upgrade button; the final test asserts the Owner Pro badge and
+absence of Upgrade, preserving the feature assertions. Failed runs remain in CI.
+
+No payment or paid provider request was submitted. Existing hosted proxy/shared
+key flags remain enabled, telemetry persistence remains disabled, and billing
+routes retain their 10-second limit. Hosted proxy retains its existing 60-second
+limit and shared service budget. Paid lifecycle, hosted generation after exhausted
+quota, any other intended owner accounts, feature-access policy, native distribution
+and human acceptance remain separate gates.
