@@ -64,9 +64,11 @@ test('@production owner retains full Pro access without a paid subscription', as
     expect(license.customerId === `clerk:${owner.id}`).toBe(true);
     expect(license.clerkUserId === owner.id).toBe(true);
     expect(license.billingDisabled).not.toBe(true);
-    await expect(page.getByTestId('billing-trigger')).toHaveText('Owner Pro');
+    await expect(page.getByText('Owner Pro', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('billing-trigger')).toHaveCount(0);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await expect(page.getByTestId('billing-trigger')).toHaveText('Owner Pro');
+    await expect(page.getByText('Owner Pro', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('billing-trigger')).toHaveCount(0);
     const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-billing')));
     expect(persisted).toMatchObject({ plan: 'pro', billingPeriod: 'owner', subscriptionId: 'owner-entitlement' });
     await page.getByRole('tab', { name: 'Library', exact: true }).click();

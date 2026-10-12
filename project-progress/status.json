@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-12T18:45:06.431240Z",
+  "snapshotAt": "2026-10-12T19:23:27.797Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,21 +9,27 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "95f05400ca59ccaa8630d0522ba564b6dd9494e0",
+  "mainSha": "a2b7e368d744d5d228d2171e171c5625cccffb0a",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify and deploy billing restoration, then run unpaid monthly/annual checkout and portal acceptance; retain separate paid lifecycle, feature-access policy and native distribution gates.",
+  "nextAction": "Verify paid subscription lifecycle in an isolated Stripe test environment; retain separate feature-access policy, hosted generation and native distribution/human acceptance gates.",
   "evidence": [
     {
-      "label": "Billing restoration in progress",
-      "state": "Running",
-      "detail": "2026-10-12: existing Stripe USD 9/month and USD 99/year prices configured in production. Customer portal created with end-of-period cancellation. Replacement webhook secret configured through APIs; billing remains disabled pending verified deployment and no-charge checkout. Source adds missing-webhook/storage checkout protection and correct annual copy. No Stripe price, subscription or feature-access policy changed.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/billing-restoration-20261012"
+      "label": "Billing restored without a charge",
+      "state": "Verified",
+      "detail": "2026-10-12: PR143 df04008 and PR144 a2b7e36 merged; production dpl_4wTh4QYPsg7wRP76QBPxnnEdqjRf READY at a2b7e36. Billing enabled with existing USD9/month and USD99/year prices, authenticated customer binding, checkout readiness and portal search-lag correction. Billing smoke38296634420 passed. Four QA checkouts expired unpaid; no subscription/payment intent. Four genuine expiration events persisted; temporary event removed and old webhook disabled. Current runtime logs:40 responses, all200, no5xx. Paid lifecycle remains separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296634420"
+    },
+    {
+      "label": "Owner Pro access rechecked",
+      "state": "Verified",
+      "detail": "2026-10-12: exact verified owner Clerk ID added via supported production alias without overwriting prior sensitive membership. Owner smoke38296805582 at test head9229c2d against unchanged runtime a2b7e36 passed Pro server entitlement without subscription, reload, collection input, export download, batch control, Diff and Model Arena. Disposable session revoked; existing owner logins preserved. No paid provider request; separate hosted-generation issue remains In progress.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296805582"
     },
     {
       "label": "Current delivery verification",
       "state": "Verified",
-      "detail": "2026-10-12: main83d6ac5 is deployed READY to promptlab.tools (dpl_FGERo2ovcsuTQQYf9nwnjuAPSof4). Latest Production Smoke38246529314 passed on the same head. Historical evidence cards retain their dated scope; none is an overall readiness score.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38246529314"
+      "detail": "2026-10-12: exact-main a2b7e36 Production Smoke38296850377 passed9 cases; explicit billing/owner scenarios ran separately. API38296445392 (82 tests), Extension38296445413 and Landing38296445470 passed on PR144 final head49eda4a. Disposable sessions revoked. Synthetic provider responses only; no real inference or payments. Later documentation/test-only closeout changes do not alter production runtime source.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296850377"
     },
     {
       "label": "Plan J acceptance complete",
@@ -118,7 +124,7 @@
     {
       "label": "Owner hosted access",
       "state": "Open",
-      "detail": "2026-09-22: Production logs show the owner's signed-in session hit the per-IP demo cap (six paired 429s at 19:36\u201319:38 UTC) on a build that includes the exemption; the shared budget and burst limit are ruled out. The exemption did not apply; cause unverified. Next: read X-Hosted-Access on a signed-in request. 2026-09-20: PR #109 merged as 4a07867 after all nine checks passed. Production dpl_8rJgwgtWJ3ZW3Z3RAqA6zgkktzYd is READY at that SHA; live proxy 400/403 rejection paths and logs are verified. 76 API tests pass. Verified owners bypass personal limits while retaining the 100/day shared budget. Actual signed-in owner accounts remain unverified: browser admin-policy checking is unavailable and sensitive owner IDs cannot be read back. No paid provider calls were made.",
+      "detail": "2026-10-12: prior missing owner membership repaired for the exactly matched verified repository-owner account. Owner Pro server/UI/reload and feature controls passed smoke38296805582. Existing sensitive owner list preserved. No provider call made, so generation after exhausted demo quota and any other intended owner accounts remain unverified. Shared100/day service budget and provider ceilings remain. Earlier September failures are retained in the issue history. Next: run the existing hosted-generation acceptance separately.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/109"
     },
     {
@@ -184,7 +190,7 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "2026-09-23 metadata recheck: Vercel Preview still lacks STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, BILLING_ENABLED and durable-store URL/token variables. Development lacks the same prerequisites and backend Clerk configuration. No approved non-owner billing QA identity or test-price mode has been established. Production secret values were not read. Webhook duplicate-event and ordering guards remain absent in inspected source. Phase 4 stops at its explicit test-environment prerequisites; no Stripe call or charge was made.",
+      "detail": "2026-10-12: production configuration, unpaid monthly/yearly checkout, portal and real signed webhook persistence verified in PR143/144 and smoke38296634420. Four QA checkouts expired with no payments/subscriptions. This does not prove paid activation, renewal, cancellation/refund or webhook duplicate/order handling; isolated Stripe test-mode prerequisites and that lifecycle acceptance remain separate. Prelaunch FEATURE_GATES_ENABLED=false unchanged. Next: establish the existing test environment and execute the paid lifecycle contract.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
