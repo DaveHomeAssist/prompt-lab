@@ -242,3 +242,57 @@ routes retain their 10-second limit. Hosted proxy retains its existing 60-second
 limit and shared service budget. Paid lifecycle, hosted generation after exhausted
 quota, any other intended owner accounts, feature-access policy, native distribution
 and human acceptance remain separate gates.
+
+### Stripe test lifecycle verification
+
+`scripts/stripe-test-lifecycle.mjs` exercises actual Stripe test subscriptions
+through the production `lookupBilling()` helper. It requires Node 22 and these
+environment variables supplied through a secret manager or process environment:
+
+- `PROMPTLAB_STRIPE_TEST_RUN=true`: explicit opt-in to create disposable test data.
+- `STRIPE_TEST_SECRET_KEY`: only an `sk_test_` or `rk_test_` key is accepted.
+- `STRIPE_TEST_ACCOUNT_ID`: the expected account, verified before mutations.
+- `STRIPE_TEST_REPORT_PATH`: optional path for the sanitized JSON receipt.
+
+Run `node scripts/stripe-test-lifecycle.mjs` from `prompt-lab-source`.
+Never replace production `STRIPE_SECRET_KEY` with a test key. The harness refuses
+enabled webhook destinations so simulation events cannot reach production
+storage. Use a dedicated test environment when that preflight fails; do not
+disable another integration's endpoints to make the check pass.
+
+The test creates its own USD 9 monthly and USD 99 annual prices, customers with
+no email addresses, test Visa payment methods, subscriptions and test clocks.
+For each period it verifies Free before purchase, a paid activation invoice and
+Pro access, a distinct paid renewal invoice and extended period, partial and
+full refunds, Pro until scheduled cancellation takes effect, then Free with no
+extra charge. Refund alone retains active access under the current policy;
+refund and cancellation are separate actions. Assertions are exact, including
+the existing `annual` entitlement value.
+
+Cleanup deletes only the clocks created in that run (and their test customers
+and subscriptions), verifies customer deletion, and archives only its own
+tagged prices/product. Any failed assertion or cleanup makes the run fail.
+Receipts contain object IDs and outcomes, never payment URLs, card details,
+customer email, credentials or full provider payloads. API Safety runs the
+offline guard tests only; it cannot create Stripe objects.
+
+This proves Stripe test API and billing lookup integration. Authenticated paid
+browser behavior, signed webhook delivery/replay/order handling, production
+refund policy, hosted generation, and native/human acceptance remain distinct.
+Stripe's [test clock API](https://docs.stripe.com/api/test_clocks/advance) and
+[refund API](https://docs.stripe.com/api/refunds/create) define the simulation
+and refund operations used here.
+
+On 2026-10-12, Walter (Windows 11, Node 22.22.1) passed all 13 checks against
+the unchanged billing helper at `f0d42b0`. The [sanitized receipt](evidence/stripe-lifecycle-2026-10-12.json)
+records the exact source hashes, Stripe test IDs and cleanup. Both periods
+completed activation, renewal, partial/full refund and end-of-period cancellation.
+The first attempt is retained: its annual expectation incorrectly said `yearly`;
+the corrected harness asserts the helper's existing `annual` contract. Both
+attempts' customers were verified deleted and their catalog objects archived.
+No application behavior or billing policy changed.
+
+Fresh [owner smoke 38298989981](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38298989981)
+passed on `f0d42b0`: Owner Pro after reload, collection editor, export, batch
+controls, Diff and Model Arena. Its disposable session was revoked and prior
+owner sessions preserved. This does not close hosted-generation quota acceptance.
