@@ -77,6 +77,7 @@ async function checkoutHandler(request) {
       period: result.period,
       priceId: result.priceId,
       checkoutSessionId: result.checkoutSessionId,
+      customerId: result.customerId,
     }, 200, {}, request);
   } catch (error) {
     return jsonResponse(

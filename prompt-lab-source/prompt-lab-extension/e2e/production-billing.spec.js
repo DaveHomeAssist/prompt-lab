@@ -54,6 +54,7 @@ test('@production authenticated billing creates unpaid checkout and portal sessi
       expect(result.ok).toBe(true);
       expect(result.priceId).toBe(priceId);
       expect(result.period).toBe(period);
+      expect(result.customerId).toBe(before.customerId);
       expect(new URL(result.url).origin).toBe('https://checkout.stripe.com');
       expect(result.checkoutSessionId).toMatch(/^cs_live_/);
       // IDs identify only the synthetic QA sessions for immediate API expiration.

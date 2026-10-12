@@ -105,6 +105,13 @@ test('billing checkout uses verified Clerk identity and ignores posted identity 
   const captured = [];
   globalThis.fetch = async (url, init) => {
     if (String(url) === process.env.CLERK_JWKS_URL) return ORIGINAL_FETCH(url, init);
+    if (String(url).includes('/customers/search')) {
+      assert.match(decodeURIComponent(String(url)), /metadata\['clerkUserId'\]:'user_123'/);
+      return new Response(JSON.stringify({ data: [{
+        id: 'cus_existing', email: 'user@example.com', metadata: { clerkUserId: 'user_123' },
+      }] }), { status: 200 });
+    }
+    assert.match(String(url), /\/checkout\/sessions$/);
     captured.push(new URLSearchParams(init.body));
     return new Response(JSON.stringify({
       id: 'cs_test_123',
@@ -127,6 +134,7 @@ test('billing checkout uses verified Clerk identity and ignores posted identity 
         period: 'monthly',
         email: 'attacker@example.com',
         clerkUserId: 'user_attacker',
+        customerId: 'cus_attacker',
         contactEmail: 'attacker@example.com',
         source: 'upgrade-modal',
       }),
@@ -136,7 +144,9 @@ test('billing checkout uses verified Clerk identity and ignores posted identity 
     const payload = await response.json();
     assert.equal(payload.url, 'https://checkout.stripe.com/c/pay/cs_test_123');
     assert.equal(captured[0].get('line_items[0][price]'), 'price_monthly');
-    assert.equal(captured[0].get('customer_email'), 'user@example.com');
+    assert.equal(payload.customerId, 'cus_existing');
+    assert.equal(captured[0].get('customer'), 'cus_existing');
+    assert.equal(captured[0].get('customer_email'), null);
     assert.equal(captured[0].get('metadata[clerk_user_id]'), 'user_123');
     assert.equal(captured[0].get('subscription_data[metadata][clerk_user_id]'), 'user_123');
     assert.equal(captured[0].get('metadata[contact_email]'), null);
