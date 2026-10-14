@@ -8,8 +8,9 @@ const DEFAULT_STORAGE_PREFIX = 'promptlab:stripe';
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
 const STRIPE_TIMEOUT_MS = 5000;
 const REDIS_TIMEOUT_MS = 2000;
-const CUSTOMER_CREATE_RETRIES = 3;
-const CUSTOMER_CREATE_RETRY_MS = 250;
+// Waits after an in-flight 409: about 3.75s in total, which covers a slow
+// winning create while staying inside the billing routes' 10s limit.
+const CUSTOMER_CREATE_RETRY_DELAYS_MS = [250, 500, 1000, 2000];
 
 function readStringEnv(...names) {
   for (const name of names) {
@@ -327,8 +328,8 @@ async function createStripeCustomer(config, { clerkUserId = '', clerkEmail = '' 
     } catch (error) {
       // 409 means the same key is still in flight; once it finishes, a retry
       // replays its saved customer.
-      if (error.status !== 409 || attempt >= CUSTOMER_CREATE_RETRIES) throw error;
-      await new Promise((resolve) => setTimeout(resolve, CUSTOMER_CREATE_RETRY_MS));
+      if (error.status !== 409 || attempt >= CUSTOMER_CREATE_RETRY_DELAYS_MS.length) throw error;
+      await new Promise((resolve) => setTimeout(resolve, CUSTOMER_CREATE_RETRY_DELAYS_MS[attempt]));
     }
   }
 }

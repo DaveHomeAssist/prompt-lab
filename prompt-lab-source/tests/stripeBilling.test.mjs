@@ -437,3 +437,29 @@ test('customer creation retries an in-flight idempotent create and reuses its cu
   assert.equal(creates[0], creates[1]);
   assert.doesNotMatch(creates[0], /@/);
 });
+
+test('customer creation keeps waiting while a slow winning create is still in flight', async () => {
+  const { getOrCreateStripeCustomer } = await import(
+    `${pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href}?t=${Date.now()}`
+  );
+  // Another request holds the key for 1.2s, longer than three 250ms waits.
+  const inFlightUntil = Date.now() + 1200;
+  let creates = 0;
+  globalThis.fetch = async (url, init = {}) => {
+    const text = String(url);
+    if (text.includes('/customers/search') || text.includes('/customers?')) return stripeJson({ data: [] });
+    assert.ok(text.endsWith('/customers') && init.method === 'POST', `Unexpected Stripe request: ${text}`);
+    creates += 1;
+    return Date.now() < inFlightUntil
+      ? stripeJson({ error: { type: 'idempotency_error' } }, 409)
+      : stripeJson({ id: 'cus_slow_winner', email: 'user@example.com', metadata: { clerkUserId: 'user_123' } });
+  };
+
+  const customer = await getOrCreateStripeCustomer({ secretKey: 'sk_test_123' }, {
+    clerkUserId: 'user_123',
+    clerkEmail: 'user@example.com',
+  });
+
+  assert.equal(customer.id, 'cus_slow_winner');
+  assert.ok(creates >= 3);
+});
