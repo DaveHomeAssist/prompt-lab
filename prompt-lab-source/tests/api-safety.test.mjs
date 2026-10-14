@@ -216,8 +216,11 @@ test('production checkout refuses purchases until webhook signing and durable st
     delete process.env[missing];
     const response = await handler(postRequest('/api/billing/checkout', { period: 'annual' }));
     const payload = await assertTerminalDisabledResponse(response, missing);
-    assert.equal(payload.billingDisabled, true);
+    // Only purchases pause: billingDisabled would also lock purchase management.
+    assert.equal(payload.checkoutDisabled, true, missing);
+    assert.notEqual(payload.billingDisabled, true, missing);
     assert.equal(payload.url, undefined);
+    assert.match(payload.error, /Purchases are temporarily unavailable/i);
   }
 });
 

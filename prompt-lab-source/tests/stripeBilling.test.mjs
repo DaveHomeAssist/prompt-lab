@@ -336,3 +336,104 @@ test('billing portal returns the configured portal url', async () => {
     await jwks.close();
   }
 });
+
+function stripeJson(body, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+}
+
+test('first license check and checkout share one new customer while Stripe Search lags', async () => {
+  const jwks = await createJwksHarness();
+  process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+  process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
+  process.env.STRIPE_YEARLY_PRICE_ID = 'price_yearly';
+
+  // Search never sees new customers, the email list sees only finished
+  // creates, and Idempotency-Key replays a create (409 while in flight).
+  const customers = [];
+  const byKey = new Map();
+  const createKeys = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const text = String(url);
+    if (isJwksHarnessRequest(text)) return ORIGINAL_FETCH(url, init);
+    if (text.includes('/customers/search')) return stripeJson({ data: [] });
+    if (text.includes('/customers?')) {
+      const email = new URL(text).searchParams.get('email');
+      return stripeJson({ data: customers.filter((customer) => customer.email === email) });
+    }
+    if (text.includes('/subscriptions?')) return stripeJson({ data: [] });
+    if (text.endsWith('/customers') && init.method === 'POST') {
+      const key = init.headers['Idempotency-Key'];
+      createKeys.push(key);
+      const saved = byKey.get(key);
+      if (saved === 'in-flight') return stripeJson({ error: { type: 'idempotency_error' } }, 409);
+      if (saved) return stripeJson(saved);
+      byKey.set(key, 'in-flight');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const params = new URLSearchParams(init.body);
+      const customer = {
+        id: `cus_${customers.length + 1}`,
+        email: params.get('email'),
+        metadata: { clerkUserId: params.get('metadata[clerkUserId]') },
+      };
+      customers.push(customer);
+      byKey.set(key, customer);
+      return stripeJson(customer);
+    }
+    if (text.endsWith('/checkout/sessions')) {
+      return stripeJson({ id: 'cs_test_1', url: 'https://checkout.stripe.com/c/pay/cs_test_1' });
+    }
+    throw new Error(`Unexpected Stripe request: ${text}`);
+  };
+
+  try {
+    const license = await loadHandler(licenseUrl);
+    const checkout = await loadHandler(checkoutUrl);
+    const post = (pathname, body) => new Request(`https://promptlab.tools${pathname}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwks.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const [licenseResponse, checkoutResponse] = await Promise.all([
+      license(post('/api/billing/license', { action: 'validate' })),
+      checkout(post('/api/billing/checkout', { period: 'monthly' })),
+    ]);
+
+    assert.equal(licenseResponse.status, 200);
+    assert.equal(checkoutResponse.status, 200);
+    assert.equal(customers.length, 1);
+    assert.equal((await licenseResponse.json()).customerId, 'cus_1');
+    assert.equal((await checkoutResponse.json()).customerId, 'cus_1');
+    // Two or three creates, depending on whether the second hit the 409 first.
+    assert.ok(createKeys.length >= 2);
+    assert.equal(new Set(createKeys).size, 1);
+    assert.match(createKeys[0], /^promptlab-customer:user_123:[0-9a-f]{32}$/);
+  } finally {
+    await jwks.close();
+  }
+});
+
+test('customer creation retries an in-flight idempotent create and reuses its customer', async () => {
+  const { getOrCreateStripeCustomer } = await import(
+    `${pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href}?t=${Date.now()}`
+  );
+  const creates = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const text = String(url);
+    if (text.includes('/customers/search') || text.includes('/customers?')) return stripeJson({ data: [] });
+    assert.ok(text.endsWith('/customers') && init.method === 'POST', `Unexpected Stripe request: ${text}`);
+    creates.push(init.headers['Idempotency-Key']);
+    return creates.length === 1
+      ? stripeJson({ error: { type: 'idempotency_error', message: 'Another request is in progress.' } }, 409)
+      : stripeJson({ id: 'cus_replayed', email: 'user@example.com', metadata: { clerkUserId: 'user_123' } });
+  };
+
+  const customer = await getOrCreateStripeCustomer({ secretKey: 'sk_test_123' }, {
+    clerkUserId: 'user_123',
+    clerkEmail: 'User@Example.com',
+  });
+
+  assert.equal(customer.id, 'cus_replayed');
+  assert.equal(creates.length, 2);
+  assert.equal(creates[0], creates[1]);
+  assert.doesNotMatch(creates[0], /@/);
+});

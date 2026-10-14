@@ -149,8 +149,11 @@ production now explicitly sets `STRIPE_MONTHLY_PRICE_ID` and
 
 Before enabling `BILLING_ENABLED`, production must have the Clerk and Stripe
 keys, `STRIPE_WEBHOOK_SECRET`, and the REST storage URL/token pair. Checkout
-fails closed when signing or durable storage configuration is missing. The
-customer portal supports invoices, payment-method updates and cancellation at
+fails closed when signing or durable storage configuration is missing: it
+returns `checkoutDisabled`, not `billingDisabled`, so entitlement refresh and
+purchase management stay available. Stripe customer creation sends an
+`Idempotency-Key` per Clerk identity, so concurrent first requests that Stripe
+Search has not caught up with share one customer. The customer portal supports invoices, payment-method updates and cancellation at
 the end of the current paid period, with no proration or plan switching.
 
 The production webhook subscribes to checkout completion and subscription

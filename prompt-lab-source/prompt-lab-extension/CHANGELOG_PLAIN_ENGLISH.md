@@ -1,5 +1,20 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-14
+
+## Billing keeps one Stripe customer per account (unreleased)
+
+- A new account could get two Stripe customers when the first billing check
+  and a Go Pro click (or a second tab) ran at the same moment. A subscription
+  could then land on one customer while Prompt Lab read the other, so a paid
+  account could show as Free. Creating the customer now uses one Stripe
+  idempotency key per account, so those requests share a single customer.
+- If purchases are paused on the server because the webhook secret or billing
+  storage is missing, Go Pro now pauses only new purchases. Manage Purchases,
+  Sync Purchase and Refresh Status stay available, and the pause clears on the
+  next refresh once the server is ready. Before, it switched off all billing
+  controls until the page was reloaded.
+
 Date: 2026-10-07
 
 ## Desktop Library saves survive closing the app (unreleased)

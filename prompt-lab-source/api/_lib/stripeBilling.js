@@ -8,6 +8,8 @@ const DEFAULT_STORAGE_PREFIX = 'promptlab:stripe';
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
 const STRIPE_TIMEOUT_MS = 5000;
 const REDIS_TIMEOUT_MS = 2000;
+const CUSTOMER_CREATE_RETRIES = 3;
+const CUSTOMER_CREATE_RETRY_MS = 250;
 
 function readStringEnv(...names) {
   for (const name of names) {
@@ -172,7 +174,7 @@ function extractStripeError(payload, fallback = 'Stripe request failed.') {
   return fallback;
 }
 
-async function stripeRequest(config, path, { method = 'GET', body = null } = {}) {
+async function stripeRequest(config, path, { method = 'GET', body = null, idempotencyKey = '' } = {}) {
   if (!config.secretKey) {
     throw new Error('Stripe billing is not configured.');
   }
@@ -182,6 +184,7 @@ async function stripeRequest(config, path, { method = 'GET', body = null } = {})
     headers: {
       Authorization: `Bearer ${config.secretKey}`,
       ...(body == null ? {} : { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }),
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     ...(body == null ? {} : {
       body: body instanceof URLSearchParams ? body.toString() : String(body),
@@ -193,7 +196,9 @@ async function stripeRequest(config, path, { method = 'GET', body = null } = {})
 
   const payload = await parseJsonSafe(response);
   if (!response.ok) {
-    throw new Error(extractStripeError(payload, 'Stripe request failed.'));
+    const error = new Error(extractStripeError(payload, 'Stripe request failed.'));
+    error.status = response.status;
+    throw error;
   }
   return payload;
 }
@@ -308,10 +313,24 @@ async function createStripeCustomer(config, { clerkUserId = '', clerkEmail = '' 
   params.set('metadata[clerkUserId]', id);
   params.set('metadata[clerk_user_id]', id);
 
-  return stripeRequest(config, 'customers', {
-    method: 'POST',
-    body: params,
-  });
+  // The first license check, a checkout click and a second tab can all miss a
+  // customer that Stripe Search has not indexed yet. One key per identity makes
+  // Stripe return the same customer to each of them instead of creating more.
+  const idempotencyKey = `promptlab-customer:${id}:${(await sha256Hex(email)).slice(0, 32)}`;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await stripeRequest(config, 'customers', {
+        method: 'POST',
+        body: params,
+        idempotencyKey,
+      });
+    } catch (error) {
+      // 409 means the same key is still in flight; once it finishes, a retry
+      // replays its saved customer.
+      if (error.status !== 409 || attempt >= CUSTOMER_CREATE_RETRIES) throw error;
+      await new Promise((resolve) => setTimeout(resolve, CUSTOMER_CREATE_RETRY_MS));
+    }
+  }
 }
 
 export async function getOrCreateStripeCustomer(config, { clerkUserId = '', clerkEmail = '' } = {}) {
@@ -596,6 +615,13 @@ export async function persistStripeWebhookRecord(record, config = buildStripeCon
   }
 
   return { ok: true, mode: 'noop' };
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(value)));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 function normalizeEmail(value) {
