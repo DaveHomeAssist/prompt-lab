@@ -17,6 +17,17 @@ test('@production isolated paid billing transitions and signed webhook replay', 
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
   const clerk = createClerkClient({ secretKey: clerkSecretKey });
   expect((await clerk.sessions.getSessionList({ userId: clerkUserId, status: 'active', limit: 100 })).data).toHaveLength(0);
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init = {}) => {
+    const url = new URL(typeof input === 'string' ? input : input.url || input.href);
+    if (url.hostname === 'api.stripe.com') {
+      assert.equal(new Headers(init.headers).get('authorization'), `Bearer ${key}`);
+      if (url.pathname === '/v1/customers' && init.method === 'POST') {
+        assert.ok(new URLSearchParams(init.body).get('metadata[promptlab_test_run]'), 'Untracked customer creation blocked');
+      }
+    }
+    return originalFetch(input, init);
+  };
   const prefix = `promptlab-test-${randomUUID()}`;
   const storeToken = randomUUID();
   const ownedCustomers = new Set();
@@ -124,8 +135,8 @@ test('@production isolated paid billing transitions and signed webhook replay', 
         // Search indexing must finish before the real handler can run; otherwise
         // its create-customer fallback could create an unowned fixture.
         await expect.poll(async () => {
-          const query = encodeURIComponent(`metadata['clerkUserId']:'${clerkUserId}'`);
-          const result = await request(`customers/search?query=${query}`);
+          const query = encodeURIComponent(`metadata['clerkUserId']:'${clerkUserId}' OR metadata['clerk_user_id']:'${clerkUserId}'`);
+          const result = await request(`customers/search?limit=1&query=${query}`);
           return result.data?.[0]?.id;
         }, { timeout: 90_000, intervals: [1000, 2000, 5000] }).toBe(customer.id);
         billingReady = true;
@@ -164,6 +175,7 @@ test('@production isolated paid billing transitions and signed webhook replay', 
         console.info('[test billing] genuine signed webhook persisted; duplicate/stale replay leaves entitlement Free; invalid signature rejected');
       },
     });
+    console.info(JSON.stringify({ lifecyclePassed: report.passed, checks: report.checks.map(({ name }) => name), cleanup: report.cleanup }));
     assert.equal(report.passed, true, report.error || 'Lifecycle cleanup failed');
     expect(failures).toEqual([]);
     expect(deliveries.length).toBeGreaterThan(0);
@@ -172,6 +184,7 @@ test('@production isolated paid billing transitions and signed webhook replay', 
       limitations: ['Webhook arrival log has no deduplication or event ordering guarantee.', 'Refund retains access while subscription is active; policy approval remains separate.'] }));
   } finally {
     billingReady = false;
+    globalThis.fetch = originalFetch;
     if (listener) { listener.kill('SIGTERM'); await new Promise(resolve => { listener.once('exit', resolve); setTimeout(resolve, 3000); }); }
     await new Promise(resolve => server.close(resolve));
     if (sessionId) await clerk.sessions.revokeSession(sessionId);
