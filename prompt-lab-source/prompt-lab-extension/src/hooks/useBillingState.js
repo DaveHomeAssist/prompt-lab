@@ -13,6 +13,7 @@ import {
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
 const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
+const CHECKOUT_UNAVAILABLE_MESSAGE = 'Purchases are temporarily unavailable. Existing purchase management is still available.';
 
 function readClerkEmail(clerkUser) {
   const directEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -326,7 +327,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
 
   const startCheckout = useCallback(async (period, source = 'billing-modal') => {
     if (stateRef.current.checkoutDisabled) {
-      throw new Error('Purchases are temporarily unavailable. Existing purchase management is still available.');
+      throw new Error(CHECKOUT_UNAVAILABLE_MESSAGE);
     }
     setBusyAction(`checkout:${period}`);
     try {
@@ -341,6 +342,14 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       if (payload?.billingDisabled) {
         setState((prev) => normalizeBillingState({ ...prev, billingDisabled: true }));
         throw billingDisabledError(payload, 'Billing is disabled. Purchases are temporarily unavailable.');
+      }
+      if (payload?.checkoutDisabled) {
+        // Only purchases are paused; keep Manage Purchases, Sync and Refresh.
+        // The next license validation clears this once the server is ready.
+        setState((prev) => normalizeBillingState({ ...prev, checkoutDisabled: true }));
+        const error = new Error(CHECKOUT_UNAVAILABLE_MESSAGE);
+        error.retryable = false;
+        throw error;
       }
       if (!payload?.url) {
         throw new Error('Billing checkout did not return a URL.');

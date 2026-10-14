@@ -66,6 +66,43 @@ describe('useBillingState', () => {
     expect(window.open).toHaveBeenCalledWith('https://billing.stripe.com/session/test', '_blank', 'noopener,noreferrer');
   });
 
+  it('pauses only checkout when the checkout endpoint reports purchases unavailable', async () => {
+    global.fetch = vi.fn(async (url) => {
+      if (url.endsWith('/billing/checkout')) {
+        return new Response(JSON.stringify({
+          error: 'Purchases are temporarily unavailable.',
+          checkoutDisabled: true,
+          retryable: false,
+        }), { status: 200 });
+      }
+      if (url.endsWith('/billing/portal')) {
+        return new Response(JSON.stringify({ url: 'https://billing.stripe.com/session/test' }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ ok: true, plan: 'free', customerId: 'cus_test', checkoutDisabled: false }), { status: 200 });
+    });
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const clerkUser = { id: 'user_test' };
+    const { result } = renderHook(() => useBillingState({ clerkGetToken, clerkUser }));
+    await waitFor(() => expect(result.current.customerId).toBe('cus_test'));
+    expect(result.current.checkoutDisabled).toBe(false);
+
+    let checkoutError;
+    await act(async () => {
+      checkoutError = await result.current.startCheckout('annual').catch((error) => error);
+    });
+    expect(checkoutError.message).toMatch('Purchases are temporarily unavailable');
+    expect(checkoutError.retryable).toBe(false);
+    expect(result.current.checkoutDisabled).toBe(true);
+    expect(result.current.billingDisabled).toBe(false);
+    expect(window.open).not.toHaveBeenCalled();
+
+    // Refresh still reaches the server and clears the pause once it is ready.
+    await act(async () => { await result.current.refreshLicense({ silent: true }); });
+    expect(result.current.checkoutDisabled).toBe(false);
+    await act(async () => { await result.current.openManagePurchases(); });
+    expect(window.open).toHaveBeenCalledWith('https://billing.stripe.com/session/test', '_blank', 'noopener,noreferrer');
+  });
+
   it('keeps cached Pro access when billing validation is temporarily offline', async () => {
     localStorage.setItem('pl2-billing', JSON.stringify({
       plan: 'pro',
