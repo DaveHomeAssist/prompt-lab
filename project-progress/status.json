@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-12T19:40:58.851Z",
+  "snapshotAt": "2026-10-14T19:19:07.066Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f0d42b044e07e4f142774d2107c51f218fc907df",
+  "mainSha": "2cc57a845c9a090650d9936f1bba9b5b364a1063",
   "overall": "Acceptance incomplete",
   "nextAction": "Verify authenticated paid browser transitions and isolated webhook delivery/replay/order handling; retain separate refund/access policy, hosted generation and native/human acceptance gates.",
   "evidence": [
+    {
+      "label": "Billing lifecycle recovery delivered",
+      "state": "Verified",
+      "detail": "2026-10-14: PR146 merged as2cc57a8. Review fixes b16d4d4 recover lost Stripe mutation responses with stable idempotency keys; four offline guards passed. PR Landing/API/Docs/Progress/Dependency checks passed. Vercel dpl_Eg1eHFx5ukvX2D3AzUtPJKsVdG7Y READY on this merge and production aliases. Owner smoke38622431418 passed. PR147 remains draft pending isolated paid browser and webhook checks; no real charges.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/146"
+    },
     {
       "label": "Stripe test lifecycle passed",
       "state": "Verified",
@@ -497,8 +503,8 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Enter every Production Clerk user ID Dave signs in with into PROMPTLAB_PRO_OWNER_CLERK_USER_IDS, redeploy, and confirm the badge reads Owner access.",
-      "verification": "Owner Pro/access and disposable-session cleanup rechecked in38298989981 on f0d42b0. Hosted generation after exhausted quota and other intended owner accounts remain unverified; no provider call.",
+      "nextAction": "Verify the existing hosted-generation-after-quota contract separately; preserve shared service budget and provider ceilings.",
+      "verification": "2026-10-14: Owner Pro, reload, collection/export/batch/Diff/Model Arena and session cleanup passed run38622431418 on main2cc57a8. Hosted generation after exhausted quota and other intended owners remain separate.",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
