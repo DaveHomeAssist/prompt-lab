@@ -25,6 +25,23 @@ export function assertIsolated(account, balance, endpoints, expectedAccount) {
     'Use an isolated test account with no enabled webhook destinations.');
 }
 
+// Reuse the same mutation key when a response is lost after Stripe commits it.
+export async function requestWithRetry(url, options, fetcher = fetch, wait = sleep) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetcher(url, { ...options, signal: AbortSignal.timeout(20000) });
+      const payload = await response.json();
+      if (response.status >= 500 || response.status === 429) {
+        if (attempt < 2) { await wait(500 * (attempt + 1)); continue; }
+      }
+      return { response, payload };
+    } catch {
+      if (attempt === 2) throw new Error('Stripe response unavailable after three attempts; mutation outcome unknown.');
+      await wait(500 * (attempt + 1));
+    }
+  }
+}
+
 export async function runLifecycle(env = process.env, emit = console.log) {
   const { key, accountId } = testCredentials(env);
   const runId = `promptlab-${randomUUID()}`;
@@ -41,16 +58,14 @@ export async function runLifecycle(env = process.env, emit = console.log) {
   const metadata = { 'metadata[promptlab_test_run]': runId };
 
   async function request(path, data, method = data ? 'POST' : 'GET') {
-    const response = await fetch(`${API}${path}`, {
+    const { response, payload } = await requestWithRetry(`${API}${path}`, {
       method,
       headers: { Authorization: `Bearer ${key}`,
         ...(data ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
         ...(method === 'POST' ? { 'Idempotency-Key': `${runId}-${++sequence}` } : {}),
       },
       ...(data ? { body: new URLSearchParams(data) } : {}),
-      signal: AbortSignal.timeout(20000),
     });
-    const payload = await response.json();
     // Do not include upstream payloads, payment URLs, or credentials in receipts.
     assert.ok(response.ok, `Stripe ${method} ${path.split('?')[0]}: HTTP ${response.status} (${payload.error?.code || payload.error?.type || 'unknown'})`);
     if ('livemode' in payload) assert.equal(payload.livemode, false, 'Unexpected live object.');

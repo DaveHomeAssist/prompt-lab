@@ -196,7 +196,7 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "2026-10-12: production configuration, unpaid monthly/yearly checkout, portal and real signed webhook persistence verified in PR143/144 and smoke38296634420. Four QA checkouts expired with no payments/subscriptions. This does not prove paid activation, renewal, cancellation/refund or webhook duplicate/order handling; isolated Stripe test-mode prerequisites and that lifecycle acceptance remain separate. Prelaunch FEATURE_GATES_ENABLED=false unchanged. Next: establish the existing test environment and execute the paid lifecycle contract.",
+      "detail": "2026-10-14: isolated Stripe test API evidence proves monthly and annual activation, renewal, partial/full refunds, scheduled cancellation and final Free entitlement; all disposable clocks/customers were deleted and prices/product archived. Production unpaid checkout, portal and signed webhook persistence were previously verified in PR143/144. Still Open: authenticated paid browser transitions, webhook replay/order behavior and refund policy acceptance. Next: verify those remaining gates in an isolated test environment. No real charges; broader native and release gates remain separate.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
