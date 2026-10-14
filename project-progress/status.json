@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-12T19:23:27.797Z",
+  "snapshotAt": "2026-10-12T19:40:58.851Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "a2b7e368d744d5d228d2171e171c5625cccffb0a",
+  "mainSha": "f0d42b044e07e4f142774d2107c51f218fc907df",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify paid subscription lifecycle in an isolated Stripe test environment; retain separate feature-access policy, hosted generation and native distribution/human acceptance gates.",
+  "nextAction": "Verify authenticated paid browser transitions and isolated webhook delivery/replay/order handling; retain separate refund/access policy, hosted generation and native/human acceptance gates.",
   "evidence": [
+    {
+      "label": "Stripe test lifecycle passed",
+      "state": "Verified",
+      "detail": "2026-10-12: Walter Node22.22.1 passed13 checks using actual test Stripe APIs and unchanged f0d42b0 billing lookup. Monthly/annual Free before activation, paid activation/renewal and Pro, partial/full refunds, retained access until cancellation and then Free with no extra charge. Test clocks/customers deleted; own prices/product archived. First attempt annual-name mismatch and cleanup preserved. No live charges/config changes. Paid browser and webhook delivery/replay/order proof remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/blob/codex/stripe-test-lifecycle-20261012/prompt-lab-source/docs/evidence/stripe-lifecycle-2026-10-12.json"
+    },
     {
       "label": "Billing restored without a charge",
       "state": "Verified",
@@ -22,13 +28,13 @@
     {
       "label": "Owner Pro access rechecked",
       "state": "Verified",
-      "detail": "2026-10-12: exact verified owner Clerk ID added via supported production alias without overwriting prior sensitive membership. Owner smoke38296805582 at test head9229c2d against unchanged runtime a2b7e36 passed Pro server entitlement without subscription, reload, collection input, export download, batch control, Diff and Model Arena. Disposable session revoked; existing owner logins preserved. No paid provider request; separate hosted-generation issue remains In progress.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296805582"
+      "detail": "2026-10-12: fresh exact-main f0d42b0 owner smoke38298989981 passed Pro server entitlement without subscription, reload, collection editor, export, batch controls, Diff and Model Arena. Disposable session revoked; existing owner sessions preserved. No paid provider request; hosted-generation issue remains In progress.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38298989981"
     },
     {
       "label": "Current delivery verification",
       "state": "Verified",
-      "detail": "2026-10-12: exact-main a2b7e36 Production Smoke38296850377 passed9 cases; explicit billing/owner scenarios ran separately. API38296445392 (82 tests), Extension38296445413 and Landing38296445470 passed on PR144 final head49eda4a. Disposable sessions revoked. Synthetic provider responses only; no real inference or payments. Later documentation/test-only closeout changes do not alter production runtime source.",
+      "detail": "2026-10-12: PR145 merged f0d42b0 with all five workflows green; Vercel dpl_HYzXLESekF9HvLuYob6Dbf2XrZhD READY. Fresh owner38298989981 passed on exact main. Full smoke38296850377 and billing38296634420 remain applicable because application/API source and dependencies are unchanged. Current lifecycle harness and record delivery CI are pending; no runtime code changes.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38296850377"
     },
     {
@@ -130,7 +136,7 @@
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -184,13 +190,13 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "2026-10-12: production configuration, unpaid monthly/yearly checkout, portal and real signed webhook persistence verified in PR143/144 and smoke38296634420. Four QA checkouts expired with no payments/subscriptions. This does not prove paid activation, renewal, cancellation/refund or webhook duplicate/order handling; isolated Stripe test-mode prerequisites and that lifecycle acceptance remain separate. Prelaunch FEATURE_GATES_ENABLED=false unchanged. Next: establish the existing test environment and execute the paid lifecycle contract.",
+      "detail": "2026-10-14: isolated Stripe test API evidence proves monthly and annual activation, renewal, partial/full refunds, scheduled cancellation and final Free entitlement; all disposable clocks/customers were deleted and prices/product archived. Production unpaid checkout, portal and signed webhook persistence were previously verified in PR143/144. Still Open: authenticated paid browser transitions, webhook replay/order behavior and refund policy acceptance. Next: verify those remaining gates in an isolated test environment. No real charges; broader native and release gates remain separate.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
@@ -492,7 +498,7 @@
     {
       "inPlan": false,
       "nextAction": "Enter every Production Clerk user ID Dave signs in with into PROMPTLAB_PRO_OWNER_CLERK_USER_IDS, redeploy, and confirm the badge reads Owner access.",
-      "verification": "PR #109 deployed. 2026-09-23: Dave's signed-in request returned X-Hosted-Access standard with X-Demo-Remaining 1. Cookie name (clerk-js 5.127.2 writes plain and suffixed __session), issuer, audience, authorized parties and JWKS ruled out; remaining cause is the owner Clerk user-ID allowlist (set 2026-06-16, never edited). Allowlist value not read (sensitive).",
+      "verification": "Owner Pro/access and disposable-session cleanup rechecked in38298989981 on f0d42b0. Hosted generation after exhausted quota and other intended owner accounts remain unverified; no provider call.",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
@@ -611,7 +617,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
