@@ -197,3 +197,5 @@ Status Check Runs "Human Name"):
 [2026-10-14] [PLB] [fix] Send one Stripe Idempotency-Key per Clerk identity on customer creation and retry in-flight 409s so concurrent first billing requests share one customer (027)
 
 [2026-10-14] [PLB] [fix] Return checkoutDisabled instead of billingDisabled from checkout when webhook signing or durable storage is missing, keeping purchase management available (028)
+
+[2026-10-14] [PLB] [release] Merge PR #148 as b913eb7 after all 14 checks passed and the Codex backoff finding was fixed; production READY. Live/test-mode Stripe concurrency (027) and a preview run without the webhook secret (028) remain open

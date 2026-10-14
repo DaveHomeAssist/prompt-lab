@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-14T23:07:45.000Z",
+  "snapshotAt": "2026-10-14T23:34:21.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6773e7a48492a87f39503f4f7e0626aec84ca680",
+  "mainSha": "b913eb74758d407730fd41685a1c013e674687c9",
   "overall": "Acceptance incomplete",
   "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
     {
-      "label": "Billing customer idempotency and checkout pause",
-      "state": "Running",
-      "detail": "2026-10-14: PR #148 at fad1b17 fixes duplicate Stripe customers from concurrent first requests (027) and checkout's webhook/KV fail-closed locking purchase management (028). Local Node 22: test:api 88/88, extension Vitest 1130/1130 and node 222/222, build and docs:check passed; all 13 PR checks passed. Not exercised against live Stripe. Draft, not merged or deployed.",
+      "label": "Billing customer idempotency and checkout pause delivered",
+      "state": "Verified",
+      "detail": "2026-10-14: PR #148 merged as b913eb7; Vercel production dpl_4tgEcyauCn4HYcoKq5BKmhgFEEt5 READY on it. Fixes duplicate Stripe customers from concurrent first requests (027; idempotent create with 409 backoff to about 3.75s after Codex review) and checkout's webhook/KV fail-closed locking purchase management (028). All 14 checks passed on 88add6a; test:api 89/89, extension Vitest 1130/1130. Open: no live or test-mode Stripe concurrency run (027) and no preview run with the webhook secret unset (028).",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/148"
     },
     {
@@ -738,8 +738,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/3f9255fc8f448193bab6eb5582b6597e",
       "inPlan": false,
-      "nextAction": "Merge PR #148 once required checks pass, then confirm one customer per new account in production.",
-      "verification": "2026-10-14: PR #148 (fad1b17) sends one Stripe Idempotency-Key per Clerk identity and retries in-flight 409s; race and retry tests fail without the fix; all 13 PR checks passed. Not exercised against live Stripe; not merged."
+      "nextAction": "Run concurrent first license and checkout requests for a fresh Stripe test-mode account and confirm exactly one customer.",
+      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Idempotent customer create with 409 backoff; race, retry and slow-winner tests fail without the fix. Not exercised against live or test-mode Stripe."
     },
     {
       "id": "3f9255fc8f44816c8181c05b933b13c6",
@@ -750,8 +750,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/3f9255fc8f44816c8181c05b933b13c6",
       "inPlan": false,
-      "nextAction": "Merge PR #148 once required checks pass.",
-      "verification": "2026-10-14: PR #148 (fad1b17) returns checkoutDisabled instead of billingDisabled when webhook signing or KV is missing; server and hook tests fail without the fix; all 13 PR checks passed. Path not live in production; not merged."
+      "nextAction": "On a preview deployment with STRIPE_WEBHOOK_SECRET unset, confirm Go Pro pauses while Manage Purchases, Sync and Refresh stay enabled.",
+      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Checkout returns checkoutDisabled when webhook signing or KV is missing; server and hook tests fail without the fix. Path not live in production."
     }
   ]
 }
