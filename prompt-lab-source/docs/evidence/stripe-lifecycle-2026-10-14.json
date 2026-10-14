@@ -1,0 +1,84 @@
+{
+  "checks": [
+    "test isolation",
+    "monthly before activation",
+    "monthly activation",
+    "monthly renewal",
+    "monthly partial and full refund",
+    "monthly scheduled cancellation retains access",
+    "monthly cancellation takes effect",
+    "annual before activation",
+    "annual activation",
+    "annual renewal",
+    "annual partial and full refund",
+    "annual scheduled cancellation retains access",
+    "annual cancellation takes effect"
+  ],
+  "cleanup": [
+    {
+      "id": "clock_1UQXorAsNArhoaC1vBIFVOfn",
+      "deleted": true
+    },
+    {
+      "id": "clock_1UQXq7AsNArhoaC1nKTAoDPG",
+      "deleted": true
+    },
+    {
+      "id": "cus_VRQg4XAYHsdPbt",
+      "deleted": true
+    },
+    {
+      "id": "cus_VRQhrnhqXD8bCw",
+      "deleted": true
+    },
+    {
+      "id": "price_1UQXorAsNArhoaC11VogDCAy",
+      "active": false
+    },
+    {
+      "id": "price_1UQXq6AsNArhoaC1k0upnCJ9",
+      "active": false
+    },
+    {
+      "id": "prod_VRQgY1dWn357Od",
+      "active": false
+    }
+  ],
+  "paidBrowser": "monthly transitions and reload passed",
+  "annual": "Stripe API only",
+  "limitations": [
+    "Cached Pro can persist for six hours until Refresh Status; cancellation tested through refresh and reload.",
+    "Webhook arrival log has no deduplication or event ordering guarantee.",
+    "Refund retains access while subscription is active; policy approval remains separate."
+  ],
+  "date": "2026-10-14",
+  "runUrl": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38623592581",
+  "testHead": "9fd4a1d833a1b708c090d783edbc68e18d79a33b",
+  "productionMerge": "2cc57a845c9a090650d9936f1bba9b5b364a1063",
+  "executionHost": "GitHub Ubuntu runner, Node 22",
+  "passed": true,
+  "realCharges": false,
+  "webhooks": "Genuine signed Stripe CLI events persisted to isolated Redis; invalid signatures rejected; duplicate and stale activation replay kept canceled entitlement Free.",
+  "ownerRun": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38622431418",
+  "priorAttempts": [
+    {
+      "run": 38622501248,
+      "outcome": "Fixture search query mismatch; tracked objects cleaned; identified duplicate test customer deleted and verified without subscription."
+    },
+    {
+      "run": 38622867789,
+      "outcome": "Transient lookup failure; tracked objects cleaned."
+    },
+    {
+      "run": 38623135254,
+      "outcome": "Reload retained intentional six-hour cache; tracked objects cleaned. Final test uses actual Refresh Status then reload."
+    }
+  ],
+  "sourceHashes": {
+    "prompt-lab-source/scripts/stripe-test-lifecycle.mjs": "7b3afa65893df514cb935131206dcb24beb4ec093db6e5407e5835e2e83f1cf0",
+    "prompt-lab-source/api/_lib/stripeBilling.js": "a81a0f07b94dded0ada00d18407c0e3c59706f964c5de783248a1c54ee43c6e6",
+    "prompt-lab-source/api/billing/license.js": "e47b927303797bdc83ffbbdde97325a2470f6fd5d024d337d62cd10138e31ace",
+    "prompt-lab-source/api/billing/webhook.js": "e0b6c9cea2c8d1909889800f50be710aeb610f52b3576f9f91e39bab26c12978",
+    "prompt-lab-source/prompt-lab-extension/e2e/production-billing-lifecycle.spec.js": "e288c24c969ccef554ae53a15b41c29de42dc4a3d985228a41b9aba6fd096321"
+  }
+}

@@ -319,3 +319,11 @@ listener, test objects and ephemeral store are cleaned up at the end.
 The existing UI caches a recently validated Pro entitlement for six hours.
 Cancellation browser acceptance uses Settings → Manage Billing → Refresh Status,
 then reloads and asserts Free. Reload alone is not immediate revocation proof.
+
+On 2026-10-14, [run 38623592581](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38623592581)
+passed the isolated integration at `9fd4a1d`: all 13 API lifecycle checks, monthly
+paid UI transitions, explicit cancellation refresh/reload, genuine signed
+webhook persistence, invalid signature rejection and stale/duplicate replay
+entitlement safety. The [sanitized receipt](evidence/stripe-lifecycle-2026-10-14.json)
+retains source hashes, cleanup and earlier fixture failures. The disposable QA
+session, listener and Redis store were cleaned up. No real charges occurred.
