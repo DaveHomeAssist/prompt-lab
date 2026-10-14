@@ -315,3 +315,7 @@ provide deduplication or ordered snapshots. The browser slice covers monthly
 access and reloads; annual lifecycle remains API coverage. No refund/access
 policy decision or broader production readiness is implied. Sessions, CLI
 listener, test objects and ephemeral store are cleaned up at the end.
+
+The existing UI caches a recently validated Pro entitlement for six hours.
+Cancellation browser acceptance uses Settings → Manage Billing → Refresh Status,
+then reloads and asserts Free. Reload alone is not immediate revocation proof.

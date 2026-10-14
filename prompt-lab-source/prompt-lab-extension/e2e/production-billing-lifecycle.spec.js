@@ -161,6 +161,18 @@ test('@production isolated paid billing transitions and signed webhook replay', 
         if (!name.startsWith('monthly ')) return;
         await validate(evidence.plan);
         await validate(evidence.plan, 'activate');
+        if (name.includes('cancellation takes effect')) {
+          // Reload retains the intentional six-hour entitlement cache. Exercise
+          // the user's explicit refresh before asserting cancellation persists.
+          await page.getByRole('button', { name: 'Settings', exact: true }).click();
+          await page.getByRole('button', { name: 'Manage Billing', exact: true }).click();
+          const refreshed = page.waitForResponse(response => response.url().endsWith('/api/billing/license') && response.request().postData()?.includes('validate'));
+          await page.getByRole('button', { name: 'Refresh Status', exact: true }).click();
+          expect((await refreshed).status()).toBe(200);
+          await expect(page.getByRole('dialog').getByText('Free', { exact: true }).first()).toBeVisible();
+          await page.getByRole('button', { name: 'Close billing modal', exact: true }).click();
+          await page.getByRole('button', { name: 'Close settings', exact: true }).click();
+        }
         await page.reload({ waitUntil: 'domcontentloaded' });
         await expect(page.getByRole('tab', { name: 'Library', exact: true })).toBeVisible();
         if (evidence.plan === 'pro') await expect(page.getByText('Pro Monthly', { exact: true })).toBeVisible();
@@ -190,7 +202,7 @@ test('@production isolated paid billing transitions and signed webhook replay', 
     expect(deliveries.length).toBeGreaterThan(0);
     console.info(JSON.stringify({ checks: report.checks.map(({ name }) => name), cleanup: report.cleanup,
       paidBrowser: 'monthly transitions and reload passed', annual: 'Stripe API only',
-      limitations: ['Webhook arrival log has no deduplication or event ordering guarantee.', 'Refund retains access while subscription is active; policy approval remains separate.'] }));
+      limitations: ['Cached Pro can persist for six hours until Refresh Status; cancellation tested through refresh and reload.', 'Webhook arrival log has no deduplication or event ordering guarantee.', 'Refund retains access while subscription is active; policy approval remains separate.'] }));
   } finally {
     billingReady = false;
     globalThis.fetch = originalFetch;
