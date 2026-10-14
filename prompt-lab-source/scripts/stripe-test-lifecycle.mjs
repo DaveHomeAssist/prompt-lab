@@ -42,7 +42,7 @@ export async function requestWithRetry(url, options, fetcher = fetch, wait = sle
   }
 }
 
-export async function runLifecycle(env = process.env, emit = console.log) {
+export async function runLifecycle(env = process.env, emit = console.log, hooks = {}) {
   const { key, accountId } = testCredentials(env);
   const runId = `promptlab-${randomUUID()}`;
   const report = { runId, accountId, startedAt: new Date().toISOString(), livemode: false,
@@ -72,7 +72,8 @@ export async function runLifecycle(env = process.env, emit = console.log) {
     return payload;
   }
 
-  function check(name, evidence) {
+  async function check(name, evidence) {
+    await hooks.onCheck?.(name, evidence);
     report.checks.push({ name, ...evidence });
     emit(JSON.stringify({ check: name, ...evidence }));
   }
@@ -105,7 +106,7 @@ export async function runLifecycle(env = process.env, emit = console.log) {
     const balance = await request('balance');
     const endpoints = await request('webhook_endpoints?limit=100');
     assertIsolated(account, balance, endpoints, accountId);
-    check('test isolation', { accountId, livemode: false, enabledWebhookDestinations: 0 });
+    await check('test isolation', { accountId, livemode: false, enabledWebhookDestinations: 0 });
     product = await request('products', { name: `PromptLab disposable lifecycle ${runId}`, ...metadata });
     report.objects.push({ type: 'product', id: product.id });
 
@@ -127,6 +128,7 @@ export async function runLifecycle(env = process.env, emit = console.log) {
       report.objects.push({ type: 'customer', id: customer.id, period });
       const config = { secretKey: key, monthlyPriceId: period === 'monthly' ? price.id : '',
         yearlyPriceId: period === 'annual' ? price.id : '', portalReturnUrl: 'https://example.invalid/' };
+      await hooks.onCustomer?.({ period, customer, config, request });
       async function entitlement(expectedPlan, expectedStatus) {
         const billing = await lookupBilling(config, { customerId: customer.id });
         assert.equal(billing.customerId, customer.id);
@@ -135,7 +137,7 @@ export async function runLifecycle(env = process.env, emit = console.log) {
         if (expectedPlan === 'pro') assert.equal(billing.billingPeriod, period);
         return { plan: billing.plan, status: billing.status, billingPeriod: billing.billingPeriod };
       }
-      check(`${period} before activation`, await entitlement('free', 'inactive'));
+      await check(`${period} before activation`, await entitlement('free', 'inactive'));
       let subscription = await request('subscriptions', { customer: customer.id,
         'items[0][price]': price.id, payment_behavior: 'error_if_incomplete', ...metadata });
       report.objects.push({ type: 'subscription', id: subscription.id, period });
@@ -144,7 +146,7 @@ export async function runLifecycle(env = process.env, emit = console.log) {
       const firstInvoice = await request(`invoices/${firstInvoiceId}`);
       assert.equal(firstInvoice.status, 'paid');
       assert.equal(firstInvoice.amount_paid, amount);
-      check(`${period} activation`, { subscriptionId: subscription.id, invoiceId: firstInvoiceId,
+      await check(`${period} activation`, { subscriptionId: subscription.id, invoiceId: firstInvoiceId,
         amountPaid: amount, ...(await entitlement('pro', 'active')) });
 
       // Advance once to create the renewal invoice and again past automatic collection delay.
@@ -158,7 +160,7 @@ export async function runLifecycle(env = process.env, emit = console.log) {
       assert.equal(renewal.amount_paid, amount);
       assert.equal(renewal.billing_reason, 'subscription_cycle');
       assert.ok(periodEnd(subscription) > firstEnd);
-      check(`${period} renewal`, { invoiceId: renewalId, amountPaid: amount,
+      await check(`${period} renewal`, { invoiceId: renewalId, amountPaid: amount,
         ...(await entitlement('pro', 'active')) });
 
       const charges = await request(`charges?customer=${customer.id}&limit=100`);
@@ -178,18 +180,18 @@ export async function runLifecycle(env = process.env, emit = console.log) {
       const refunded = await request(`charges/${charge.id}`);
       assert.equal(refunded.amount_refunded, amount);
       assert.equal(refunded.refunded, true);
-      check(`${period} partial and full refund`, { chargeId: charge.id,
+      await check(`${period} partial and full refund`, { chargeId: charge.id,
         refundIds: [partial.id, remainder.id], amountRefunded: amount,
         ...(await entitlement('pro', 'active')) });
 
       await owned(`subscriptions/${subscription.id}`);
       subscription = await request(`subscriptions/${subscription.id}`, { cancel_at_period_end: true });
       assert.equal(subscription.cancel_at_period_end, true);
-      check(`${period} scheduled cancellation retains access`, await entitlement('pro', 'active'));
+      await check(`${period} scheduled cancellation retains access`, await entitlement('pro', 'active'));
       await advance(clock.id, periodEnd(subscription) + 60);
       subscription = await request(`subscriptions/${subscription.id}`);
       assert.equal(subscription.status, 'canceled');
-      check(`${period} cancellation takes effect`, await entitlement('free', 'canceled'));
+      await check(`${period} cancellation takes effect`, await entitlement('free', 'canceled'));
       const finalCharges = await request(`charges?customer=${customer.id}&limit=100`);
       assert.equal(finalCharges.has_more, false);
       assert.equal(finalCharges.data.length, 2, 'Canceled subscription must not charge again.');

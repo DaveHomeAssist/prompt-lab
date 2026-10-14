@@ -296,3 +296,34 @@ Fresh [owner smoke 38298989981](https://github.com/DaveHomeAssist/prompt-lab/act
 passed on `f0d42b0`: Owner Pro after reload, collection editor, export, batch
 controls, Diff and Model Arena. Its disposable session was revoked and prior
 owner sessions preserved. This does not close hosted-generation quota acceptance.
+
+The manual `Production Smoke` scope `billing-lifecycle` extends this with a real
+Clerk QA session and the production UI. It requires the test-only
+`STRIPE_TEST_SECRET_KEY` in the existing GitHub production test environment.
+Scheduled and `all` runs do not select it. The actual license handler runs inside
+the isolated runner process; browser billing traffic is intercepted before it
+can reach production. The process uses only a validated test key, disposable
+catalog/customer objects, and an ephemeral Redis container. Production secrets
+and deployment configuration are not replaced.
+
+Stripe CLI forwards genuine signed test subscription, invoice and refund events
+to the loopback handler. The fixture drops events for unrelated customers,
+checks durable storage and rejects an invalid signature. It then replays an old
+activation event twice after cancellation and checks that the license remains
+Free. This tests entitlement safety; the current webhook arrival log does not
+provide deduplication or ordered snapshots. The browser slice covers monthly
+access and reloads; annual lifecycle remains API coverage. No refund/access
+policy decision or broader production readiness is implied. Sessions, CLI
+listener, test objects and ephemeral store are cleaned up at the end.
+
+The existing UI caches a recently validated Pro entitlement for six hours.
+Cancellation browser acceptance uses Settings → Manage Billing → Refresh Status,
+then reloads and asserts Free. Reload alone is not immediate revocation proof.
+
+On 2026-10-14, [run 38623592581](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38623592581)
+passed the isolated integration at `9fd4a1d`: all 13 API lifecycle checks, monthly
+paid UI transitions, explicit cancellation refresh/reload, genuine signed
+webhook persistence, invalid signature rejection and stale/duplicate replay
+entitlement safety. The [sanitized receipt](evidence/stripe-lifecycle-2026-10-14.json)
+retains source hashes, cleanup and earlier fixture failures. The disposable QA
+session, listener and Redis store were cleaned up. No real charges occurred.

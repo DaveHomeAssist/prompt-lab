@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-12T19:40:58.851Z",
+  "snapshotAt": "2026-10-14T19:19:07.066Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f0d42b044e07e4f142774d2107c51f218fc907df",
+  "mainSha": "2cc57a845c9a090650d9936f1bba9b5b364a1063",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify authenticated paid browser transitions and isolated webhook delivery/replay/order handling; retain separate refund/access policy, hosted generation and native/human acceptance gates.",
+  "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
+    {
+      "label": "Isolated paid browser and webhook acceptance",
+      "state": "Verified",
+      "detail": "2026-10-14: run38623592581 passed13 monthly/annual Stripe API checks and monthly authenticated UI activation, renewal, refunds, scheduled cancellation, explicit Refresh Status to Free and reload. Genuine signed CLI events persisted to disposable Redis; invalid signatures rejected; duplicate/stale activation replay kept canceled access Free. Own clocks/customers deleted, prices/product archived, QA session revoked and store removed. No real charges. Existing six-hour UI cache, non-deduplicated arrival log and refund-retains-active-access behavior remain explicit policy/architecture limits. Annual browser and native/hosted-generation acceptance are separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38623592581"
+    },
+    {
+      "label": "Billing lifecycle recovery delivered",
+      "state": "Verified",
+      "detail": "2026-10-14: PR146 merged as2cc57a8. Review fixes b16d4d4 recover lost Stripe mutation responses with stable idempotency keys; four offline guards passed. PR Landing/API/Docs/Progress/Dependency checks passed. Vercel dpl_Eg1eHFx5ukvX2D3AzUtPJKsVdG7Y READY on this merge and production aliases. Owner smoke38622431418 passed. PR147 adds passing isolated paid browser and webhook checks; its delivery is tracked separately. No real charges.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/146"
+    },
     {
       "label": "Stripe test lifecycle passed",
       "state": "Verified",
@@ -196,7 +208,7 @@
     {
       "label": "Billing acceptance",
       "state": "Open",
-      "detail": "2026-10-14: isolated Stripe test API evidence proves monthly and annual activation, renewal, partial/full refunds, scheduled cancellation and final Free entitlement; all disposable clocks/customers were deleted and prices/product archived. Production unpaid checkout, portal and signed webhook persistence were previously verified in PR143/144. Still Open: authenticated paid browser transitions, webhook replay/order behavior and refund policy acceptance. Next: verify those remaining gates in an isolated test environment. No real charges; broader native and release gates remain separate.",
+      "detail": "2026-10-14: restoration PR143/144 and lifecycle PR146 delivered. Run38623592581 passed monthly/annual test API lifecycle and monthly authenticated paid browser transitions, cancellation through Refresh Status/reload, genuine signed webhook persistence, invalid signature rejection and replay entitlement safety. Open: commercial refund/access and six-hour cache policy; webhook arrival log has no deduplication/order guarantee. Annual browser, hosted generation and native/human gates remain separate. No real charges.",
       "url": "https://app.notion.com/p/3df255fc8f44819692cef4a6268cf08c"
     },
     {
@@ -497,8 +509,8 @@
     },
     {
       "inPlan": false,
-      "nextAction": "Enter every Production Clerk user ID Dave signs in with into PROMPTLAB_PRO_OWNER_CLERK_USER_IDS, redeploy, and confirm the badge reads Owner access.",
-      "verification": "Owner Pro/access and disposable-session cleanup rechecked in38298989981 on f0d42b0. Hosted generation after exhausted quota and other intended owner accounts remain unverified; no provider call.",
+      "nextAction": "Verify the existing hosted-generation-after-quota contract separately; preserve shared service budget and provider ceilings.",
+      "verification": "2026-10-14: Owner Pro, reload, collection/export/batch/Diff/Model Arena and session cleanup passed run38622431418 on main2cc57a8. Hosted generation after exhausted quota and other intended owners remain separate.",
       "id": "3e1255fc8f4481e58754eaf713aa11e9",
       "title": "Owner accounts are blocked by hosted demo rate limits",
       "status": "In progress",
