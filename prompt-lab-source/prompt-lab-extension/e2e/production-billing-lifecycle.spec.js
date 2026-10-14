@@ -21,7 +21,7 @@ test('@production isolated paid billing transitions and signed webhook replay', 
   globalThis.fetch = async (input, init = {}) => {
     const url = new URL(typeof input === 'string' ? input : input.url || input.href);
     if (url.hostname === 'api.stripe.com') {
-      assert.equal(new Headers(init.headers).get('authorization'), `Bearer ${key}`);
+      assert.ok(new Headers(init.headers).get('authorization') === `Bearer ${key}`, 'Stripe credential must remain test-only');
       if (url.pathname === '/v1/customers' && init.method === 'POST') {
         assert.ok(new URLSearchParams(init.body).get('metadata[promptlab_test_run]'), 'Untracked customer creation blocked');
       }
@@ -100,11 +100,20 @@ test('@production isolated paid billing transitions and signed webhook replay', 
   });
   async function validate(expectedPlan, action = 'validate') {
     const token = await page.evaluate(() => window.Clerk.session.getToken());
-    const response = await license(new Request(`${appUrl.origin}/api/billing/license`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json', Origin: appUrl.origin },
-      body: JSON.stringify({ action }),
-    }));
-    expect(response.status).toBe(action === 'activate' && expectedPlan === 'free' ? 404 : 200);
+    let response;
+    const expectedStatus = action === 'activate' && expectedPlan === 'free' ? 404 : 200;
+    await expect.poll(async () => {
+      response = await license(new Request(`${appUrl.origin}/api/billing/license`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json', Origin: appUrl.origin },
+        body: JSON.stringify({ action }),
+      }));
+      if (response.status === 400) {
+        const error = (await response.clone().json()).error || '';
+        if (error.includes('Untracked customer creation blocked')) return 'search index pending';
+        throw new Error(`License ${action} failed: ${error.replaceAll(key, '[redacted]')}`);
+      }
+      return response.status;
+    }, { timeout: 60_000, intervals: [1000, 2000, 5000] }).toBe(expectedStatus);
     if (response.status === 200) {
       const value = await response.json();
       expect(value.plan).toBe(expectedPlan);
