@@ -18,6 +18,7 @@ on:
           - activation
           - billing
           - owner
+          - billing-lifecycle
   schedule:
     # Every 6 hours. GitHub runs scheduled workflows on the default branch,
     # so this always exercises what production is actually built from.
@@ -34,7 +35,7 @@ jobs:
   smoke:
     name: Signed-in Free Account
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     environment: Production – prompt-lab
     defaults:
       run:
@@ -61,7 +62,31 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Prepare isolated test billing dependencies
+        if: inputs.scope == 'billing-lifecycle'
+        run: |
+          npm ci --prefix ..
+          docker run --detach --name promptlab-billing-test redis:7.4-alpine
+          curl --fail --silent --show-error --location https://github.com/stripe/stripe-cli/releases/download/v1.53.1/stripe_1.53.1_linux_x86_64.tar.gz -o /tmp/stripe_1.53.1_linux_x86_64.tar.gz
+          curl --fail --silent --show-error --location https://github.com/stripe/stripe-cli/releases/download/v1.53.1/stripe-linux-checksums.txt -o /tmp/stripe-checksums.txt
+          (cd /tmp && grep 'stripe_1.53.1_linux_x86_64.tar.gz$' stripe-checksums.txt | sha256sum --check --strict)
+          tar -xzf /tmp/stripe_1.53.1_linux_x86_64.tar.gz -C /tmp stripe
+
+      - name: Run isolated billing lifecycle
+        if: inputs.scope == 'billing-lifecycle'
+        env:
+          STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+          STRIPE_TEST_ACCOUNT_ID: acct_1TE0qmAsNArhoaC1
+          PROMPTLAB_STRIPE_TEST_RUN: 'true'
+          PROMPTLAB_BILLING_LIFECYCLE_SMOKE: 'true'
+        run: npm run test:e2e:production-free -- production-billing-lifecycle.spec.js
+
+      - name: Remove isolated test store
+        if: always() && inputs.scope == 'billing-lifecycle'
+        run: docker rm --force promptlab-billing-test
+
       - name: Run signed-in production acceptance
+        if: inputs.scope != 'billing-lifecycle'
         env:
           SMOKE_SCOPE: ${{ inputs.scope || 'all' }}
           PROMPTLAB_OWNER_GITHUB_LOGIN: ${{ github.repository_owner }}
