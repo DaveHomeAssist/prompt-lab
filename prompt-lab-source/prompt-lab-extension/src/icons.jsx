@@ -23,6 +23,7 @@ const PATHS = {
   FlaskConical: `<path d="M14 2v6l3.36 5.6a1 1 0 0 1-.9 1.4H7.54a1 1 0 0 1-.9-1.4L10 8V2"/><path d="M6 2h12"/>`,
   Share2: `<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>`,
   Plus: `<path d="M5 12h14"/><path d="M12 5v14"/>`,
+  MoreHorizontal: `<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>`,
   GripVertical: `<circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/>`,
   Check: `<path d="M20 6 9 17l-5-5"/>`,
   RotateCcw: `<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>`,

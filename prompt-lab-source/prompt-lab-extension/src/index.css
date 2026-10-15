@@ -1035,3 +1035,110 @@ textarea:disabled {
   .pl-library-card-actions button { min-height: 2.75rem; flex: 1; }
   .pl-mobile-nav button { font-size: 0.48rem; }
 }
+
+/* ── Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, slice 1) ──
+   Source and result sit side by side once the Create pane itself is wide enough,
+   measured with a container query so a library sidebar beside it is accounted for.
+   Narrower panes show one pane at a time behind the Source / Result switch; the
+   hidden pane stays mounted so drafts and candidate edits survive switching. */
+.pl-create-split {
+  container-type: inline-size;
+  container-name: create-split;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 0;
+  padding: 1rem;
+}
+.pl-create-split.is-flow { height: auto; }
+.pl-create-split-switch {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+  border-radius: 0.75rem;
+}
+.pl-create-split-switch button {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  border-radius: 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  opacity: 0.72;
+}
+.pl-create-split-switch button[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--pl-brand-ember) 88%, transparent);
+  color: #fff;
+  opacity: 1;
+}
+.pl-create-split-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--pl-brand-gold);
+}
+.pl-create-split-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pl-create-split:not(.is-flow) .pl-create-split-pane {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pl-create-split[data-active-pane='source'] .pl-create-split-pane[data-pane='result'],
+.pl-create-split[data-active-pane='result'] .pl-create-split-pane[data-pane='source'] {
+  display: none;
+}
+.pl-create-split-source {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 100%;
+}
+.pl-create-split-input { display: flex; flex-direction: column; flex: 1 1 auto; }
+.pl-create-split-textarea { flex: 1 1 auto; min-height: 12rem; resize: vertical; }
+.pl-create-split .pl-result-commit-bar .pl-commit-target { font-weight: 600; opacity: 0.86; }
+
+@container create-split (min-width: 60rem) {
+  .pl-create-split-switch { display: none; }
+  .pl-create-split-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+  }
+  .pl-create-split[data-active-pane] .pl-create-split-pane { display: block; }
+  .pl-create-split-pane[data-pane='source'] { padding-right: 0.25rem; }
+}
+
+/* "More" menu for secondary editor actions. */
+.pl-more-menu { position: relative; }
+.pl-more-menu > summary { list-style: none; cursor: pointer; min-height: 2.75rem; }
+.pl-more-menu > summary::-webkit-details-marker { display: none; }
+.pl-more-menu > summary:focus-visible {
+  outline: 2px solid transparent;
+  box-shadow:
+    0 0 0 2px var(--pl-focus-ring-offset),
+    0 0 0 4px var(--pl-focus-ring);
+}
+.pl-more-menu-panel {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 12rem;
+  padding: 0.45rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+}
+.pl-more-menu-panel > button { width: 100%; min-height: 2.75rem; justify-content: flex-start; }
+[data-theme='light'] .pl-more-menu-panel { box-shadow: 0 18px 40px rgba(50, 28, 18, 0.14); }

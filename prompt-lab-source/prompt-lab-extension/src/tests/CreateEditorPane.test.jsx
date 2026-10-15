@@ -225,4 +225,53 @@ describe('CreateEditorPane', () => {
 
     expect(onOpenEvaluate).toHaveBeenCalledTimes(1);
   });
+  describe('two-pane workspace (splitLayout)', () => {
+    it('keeps the stacked layout unless splitLayout is set', () => {
+      renderPane();
+      expect(screen.queryByRole('region', { name: 'Source prompt' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Workspace pane' })).toBeNull();
+    });
+
+    it('renders source and result panes and keeps both mounted while switching', () => {
+      const { container } = renderPane({ splitLayout: true, error: null });
+      const source = screen.getByRole('region', { name: 'Source prompt' });
+      const result = screen.getByRole('region', { name: 'Enhanced result' });
+      expect(source).toContainElement(screen.getByTestId('prompt-input'));
+      expect(result).toContainElement(screen.getByTestId('output-panel'));
+
+      const root = container.querySelector('.pl-create-split');
+      expect(root).toHaveAttribute('data-active-pane', 'source');
+      fireEvent.click(screen.getByRole('button', { name: 'Result' }));
+      expect(root).toHaveAttribute('data-active-pane', 'result');
+      expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-pressed', 'true');
+      // Switching only hides a pane through CSS; the draft stays in the DOM.
+      expect(screen.getByTestId('prompt-input')).toHaveValue('Draft prompt body');
+      fireEvent.click(screen.getByRole('button', { name: 'Source' }));
+      expect(root).toHaveAttribute('data-active-pane', 'source');
+    });
+
+    it('follows a refine run into the result pane', () => {
+      const { container } = renderPane({ splitLayout: true, error: null, enhanced: '', loading: true });
+      expect(container.querySelector('.pl-create-split')).toHaveAttribute('data-active-pane', 'result');
+    });
+
+    it('leaves one primary Save once a result exists and groups secondary actions', () => {
+      renderPane({ splitLayout: true, error: null, currentEntry: null, editingId: null });
+      const saves = screen.getAllByRole('button', { name: /^Save\b/ });
+      expect(saves).toHaveLength(1);
+      expect(saves[0]).toHaveAttribute('data-testid', 'save-to-library');
+      expect(saves[0]).toHaveTextContent('Save as new prompt · Improved');
+      expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine again');
+      const more = screen.getByTestId('editor-more-actions');
+      expect(more).toContainElement(screen.getByRole('button', { name: 'Run Cases' }));
+      expect(more).toContainElement(screen.getByRole('button', { name: /Reset Draft/ }));
+    });
+
+    it('keeps the draft Save in the source pane before any result exists', () => {
+      renderPane({ splitLayout: true, error: null, enhanced: '' });
+      const source = screen.getByRole('region', { name: 'Source prompt' });
+      expect(source).toContainElement(screen.getByRole('button', { name: 'Save new version' }));
+      expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine Prompt');
+    });
+  });
 });
