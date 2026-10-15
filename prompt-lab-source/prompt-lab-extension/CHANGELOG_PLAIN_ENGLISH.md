@@ -1,5 +1,19 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-15
+
+## Library cards and inspector no longer draw over each other (unreleased)
+
+- In tile view, a card with several tags or a long description drew its
+  version count, use count and date underneath the Editor, Copy and Favorite
+  buttons. Those buttons now sit on their own row at the bottom of the card,
+  and the card grows to fit. The details read as one line under the tags, and
+  short cards no longer push their title to the right.
+- In a window between about 700 and 1100 pixels wide, the prompt inspector
+  opened over the list with an almost transparent background, so its fields
+  mixed with the prompt cards behind it. It now has a solid background in both
+  light and dark mode.
+
 Date: 2026-10-14
 
 ## Billing keeps one Stripe customer per account (unreleased)
