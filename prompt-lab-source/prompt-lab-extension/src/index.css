@@ -694,10 +694,12 @@ textarea:disabled {
 .pl-library-card { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 0.7rem; border: 1px solid color-mix(in srgb, currentColor 11%, transparent); border-radius: 0.75rem; padding: 0.75rem; cursor: pointer; transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease; }
 .pl-library-card:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--pl-brand-ember) 35%, transparent); }
 .pl-library-card[aria-selected='true'] { border-color: color-mix(in srgb, var(--pl-brand-ember) 58%, transparent); background: color-mix(in srgb, var(--pl-brand-ember) 7%, transparent); }
-.pl-library-results.is-tiles .pl-library-card { grid-template-columns: auto minmax(0, 1fr) auto; align-content: start; min-height: 12rem; }
-.pl-library-results.is-tiles .pl-library-card-copy { grid-column: 2 / -1; }
-.pl-library-results.is-tiles .pl-library-card-meta { grid-column: 2 / -1; justify-content: flex-start; }
-.pl-library-results.is-tiles .pl-library-card-actions { position: absolute; right: 0.65rem; bottom: 0.65rem; }
+/* Tiles keep the action row in flow as the card's last row, so a full card
+   grows instead of drawing its date and use count underneath the buttons. */
+.pl-library-results.is-tiles .pl-library-card { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: 1fr auto; align-items: start; min-height: 12rem; }
+.pl-library-results.is-tiles .pl-library-card-open { grid-template-columns: minmax(0, 1fr); align-items: start; gap: 0.6rem; }
+.pl-library-results.is-tiles .pl-library-card-meta { grid-column: 1; min-width: 0; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 0.5rem; }
+.pl-library-results.is-tiles .pl-library-card-actions { grid-column: 2; flex-wrap: wrap; justify-content: flex-end; }
 .pl-library-card-title { display: flex; align-items: center; gap: 0.4rem; }
 .pl-library-card-title h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8rem; font-weight: 780; }
 .pl-suite-pass,
@@ -771,7 +773,8 @@ textarea:disabled {
 
 @media (max-width: 1100px) {
   .pl-library-workspace { grid-template-columns: 10.5rem minmax(20rem, 1fr); }
-  .pl-library-inspector { position: absolute; z-index: 5; right: 0; top: 0; bottom: 0; width: min(21rem, 86vw); box-shadow: -24px 0 60px rgba(0, 0, 0, 0.28); }
+  /* Floating over the list needs an opaque surface, not the column's 2% tint. */
+  .pl-library-inspector { position: absolute; z-index: 5; right: 0; top: 0; bottom: 0; width: min(21rem, 86vw); background: var(--pl-brand-ink); box-shadow: -24px 0 60px rgba(0, 0, 0, 0.28); }
   .pl-library-inspector:has(.pl-inspector-empty) { display: none; }
 }
 @media (max-width: 700px) {
