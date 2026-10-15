@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-14T23:34:21.000Z",
+  "snapshotAt": "2026-10-15T02:24:52.162341+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b913eb74758d407730fd41685a1c013e674687c9",
+  "mainSha": "18997e9b31b836d8036c6fcbd1aeee434b7b7bbc",
   "overall": "Acceptance incomplete",
   "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
+    {
+      "label": "Exact main remote regression",
+      "state": "Verified",
+      "detail": "2026-10-14: Dominic Linux, isolated Node 22.23.3, exact main 18997e9. All 1130 Vitest, 222 legacy, 89 API, 21 tooling, 28 landing, 13 DaveLLM adapter and 19 Chromium workflow tests passed. Extension, web and desktop frontend builds and docs checks passed. Four audit roots passed with the existing dev-only braces exception through 2026-11-05; 20 high occurrences remain accepted, not fixed. Exact-head GitHub Production Smoke 38657540136 passed. No fresh installed-native, paid-provider, Stripe lifecycle or human acceptance is claimed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/18997e9b31b836d8036c6fcbd1aeee434b7b7bbc"
+    },
     {
       "label": "Billing customer idempotency and checkout pause delivered",
       "state": "Verified",
