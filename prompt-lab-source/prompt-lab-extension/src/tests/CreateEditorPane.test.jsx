@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CreateEditorPane from '../CreateEditorPane.jsx';
 
@@ -253,6 +253,23 @@ describe('CreateEditorPane', () => {
     it('follows a refine run into the result pane', () => {
       const { container } = renderPane({ splitLayout: true, error: null, enhanced: '', loading: true });
       expect(container.querySelector('.pl-create-split')).toHaveAttribute('data-active-pane', 'result');
+    });
+
+    it('keeps a Cancel inside the result pane while a run is in flight', () => {
+      const cancelEnhance = vi.fn();
+      // A re-run keeps the previous result on screen, so this must not depend on the empty loading card.
+      renderPane({ splitLayout: true, error: null, loading: true, streaming: true, cancelEnhance });
+      const result = screen.getByRole('region', { name: 'Enhanced result' });
+      const bar = screen.getByTestId('result-pane-run-bar');
+      expect(result).toContainElement(bar);
+      expect(bar).toHaveTextContent('Streaming…');
+      fireEvent.click(within(bar).getByRole('button', { name: 'Cancel' }));
+      expect(cancelEnhance).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows no result-pane run bar when nothing is running', () => {
+      renderPane({ splitLayout: true, error: null });
+      expect(screen.queryByTestId('result-pane-run-bar')).toBeNull();
     });
 
     it('leaves one primary Save once a result exists and groups secondary actions', () => {

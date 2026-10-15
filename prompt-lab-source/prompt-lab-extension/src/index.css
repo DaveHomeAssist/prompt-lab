@@ -1107,9 +1107,25 @@ textarea:disabled {
 .pl-create-split-textarea { flex: 1 1 auto; min-height: 12rem; resize: vertical; }
 .pl-create-split .pl-result-commit-bar .pl-commit-target { font-weight: 600; opacity: 0.86; }
 .pl-create-split .pl-result-header-actions .pl-secondary-button { white-space: nowrap; }
+.pl-create-split-run-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 0.85rem;
+  border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--pl-brand-ink) 94%, var(--pl-brand-ember));
+}
+.pl-create-split-run-bar button { min-height: 2.75rem; }
 
 @container create-split (min-width: 60rem) {
-  .pl-create-split-switch { display: none; }
+  .pl-create-split-switch,
+  .pl-create-split-run-bar { display: none; }
   .pl-create-split-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 1rem;

@@ -864,6 +864,24 @@ export default function CreateEditorPane({
               </div>
             </section>
             <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane">
+              {/* Narrow widths jump here when a refine starts, which hides the
+                  source pane's Cancel; CSS hides this bar again once both panes show. */}
+              {loading && (
+                <div className="pl-create-split-run-bar" data-testid="result-pane-run-bar">
+                  <span role="status" className="flex items-center gap-1.5 text-xs font-semibold">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300 motion-safe:animate-pulse" aria-hidden="true" />
+                    {streaming ? 'Streaming…' : 'Preparing…'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={cancelEnhance}
+                    className="ui-control inline-flex items-center justify-center gap-1 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg py-2 text-xs font-semibold transition-colors"
+                  >
+                    <Ic n="Square" size={10} />
+                    Cancel
+                  </button>
+                </div>
+              )}
               <div className="space-y-3">
                 {resultSections}
               </div>
