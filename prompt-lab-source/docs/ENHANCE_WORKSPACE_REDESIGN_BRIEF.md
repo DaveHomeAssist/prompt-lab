@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Proposed — brief only, not approved for implementation`
+- Status: `Decided 2026-10-15 — slice 1 in progress`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`)
 - Inputs: the Enhance UI review of 2026-10-15 and its desktop mockup
@@ -13,7 +13,7 @@
   (visual direction), [`LIBRARY_COMPATIBILITY_CONTRACT.md`](LIBRARY_COMPATIBILITY_CONTRACT.md)
 - Governing rules: workspace WEB-1 (light and dark), WEB-2 (no page scroll), WEB-3 (ultrawide)
 
-Approving this brief approves the plan, not an implementation or a release.
+Dave accepted all four recommended answers on 2026-10-15, which authorises slice 1. Later slices and any release beyond the flag still need their own approval.
 
 ## Problem
 
@@ -161,9 +161,11 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 8. Both themes pass, keyboard focus is visible, tabs are keyboard-operable,
    status changes are announced, and touch targets are at least 44px.
 
-## Open decisions
+## Decisions
 
-| ID | Question | Options | Recommended | Unlocks |
+All four were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md).
+
+| ID | Question | Options | Decided | Unlocks |
 | --- | --- | --- | --- | --- |
 | D-ENH-1 | How does this relate to PR #138? | A. Rebase and land #138 first, then build slice 2 on it · B. Build slice 1 now on current `MODES`, slice 2 after #138 · C. Fold #138 into this redesign branch | **B** — slice 1 needs nothing from #138, and keeping them apart keeps both reviewable | Starting slice 1 |
 | D-ENH-2 | Does the redesign include the left navigation rail? | A. No; Create only, nav stays for Phase B1 · B. Approve the B1 four-destination rail now and include it · C. Rename Create to Write only | **A** — B1 has its own sign-off and rollback; bundling it doubles the blast radius | Slice 1 scope |
