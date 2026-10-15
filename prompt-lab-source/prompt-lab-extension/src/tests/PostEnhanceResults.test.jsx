@@ -25,7 +25,7 @@ const structuredMeta = {
   usage: { input: 30, output: 18, total: 48 },
 };
 
-function Harness({ onSaveAsNew = vi.fn(), initialMeta = structuredMeta }) {
+function Harness({ onSaveAsNew = vi.fn(), initialMeta = structuredMeta, splitWorkspace = false, copy = vi.fn() }) {
   const [enhanced, setEnhanced] = useState('Improved output with assumed audience.');
   const [meta, setMeta] = useState(initialMeta);
   return <PostEnhanceResults
@@ -36,7 +36,7 @@ function Harness({ onSaveAsNew = vi.fn(), initialMeta = structuredMeta }) {
     variants={[]}
     resultMeta={meta}
     setResultMeta={setMeta}
-    copy={vi.fn()}
+    copy={copy}
     enhance={vi.fn()}
     dismiss={vi.fn()}
     editingId="prompt-1"
@@ -51,6 +51,7 @@ function Harness({ onSaveAsNew = vi.fn(), initialMeta = structuredMeta }) {
     quickSaveAsNew={onSaveAsNew}
     openSavePanel={vi.fn()}
     currentEntry={{ id: 'prompt-1', title: 'Prompt title' }}
+    splitWorkspace={splitWorkspace}
   />;
 }
 
@@ -87,5 +88,36 @@ describe('PostEnhanceResults', () => {
 
     expect(screen.getByRole('tab', { name: 'Improved' })).toBeInTheDocument();
     expect(screen.getByLabelText('Improved candidate')).toHaveValue('Improved output with assumed audience.');
+  });
+  describe('split workspace', () => {
+    it('shows the assumptions count in the header and moves focus to the assumptions', () => {
+      render(<Harness splitWorkspace />);
+      const review = screen.getByTestId('review-assumptions');
+      expect(review).toHaveTextContent('Review assumptions · 1');
+      fireEvent.click(review);
+      expect(screen.getByRole('heading', { name: 'Review what the model inferred' })).toHaveFocus();
+    });
+
+    it('keeps one primary Save naming the selected candidate and moves Copy to the commit bar', () => {
+      const copy = vi.fn();
+      render(<Harness splitWorkspace copy={copy} />);
+      expect(screen.getByTestId('save-to-library')).toHaveTextContent('Save new version · Improved');
+      expect(screen.queryByRole('button', { name: 'Re-run' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Copy selected' })).toBeNull();
+      const candidateActions = screen.getByRole('toolbar', { name: 'Improved actions' });
+      expect(candidateActions).not.toHaveTextContent('Save');
+      expect(candidateActions).not.toHaveTextContent('Copy');
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+      expect(copy).toHaveBeenCalledWith('Improved output with assumed audience.', 'Improved copied');
+      fireEvent.click(screen.getByRole('option', { name: /Tighter/ }));
+      expect(screen.getByTestId('save-to-library')).toHaveTextContent('Save new version · Tighter');
+    });
+
+    it('leaves the stacked layout header actions unchanged', () => {
+      render(<Harness />);
+      expect(screen.getByRole('button', { name: 'Copy selected' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Re-run' })).toBeInTheDocument();
+      expect(screen.queryByTestId('review-assumptions')).toBeNull();
+    });
   });
 });
