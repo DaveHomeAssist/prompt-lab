@@ -212,7 +212,10 @@ test.describe('responsive hosted workspaces', () => {
         // primary candidate before checking its change list.
         await candidates.getByRole('option').nth(1).press('ArrowUp');
         await expect(candidates.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
-        await output.getByRole('button', { name: /Original prompt/ }).click();
+        // Keyboard focus can leave the toggle under the sticky commit bar; centre it first.
+        const originalToggle = output.getByRole('button', { name: /Original prompt/ });
+        await originalToggle.evaluate((element) => element.scrollIntoView({ block: 'center' }));
+        await originalToggle.click();
         await output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Changes' }).click();
         await expect(output.getByRole('tabpanel')).toContainText('Added a verification role.');
         await expectNoHorizontalOverflow(page);
