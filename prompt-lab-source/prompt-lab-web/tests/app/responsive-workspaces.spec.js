@@ -208,6 +208,10 @@ test.describe('responsive hosted workspaces', () => {
         await candidates.getByRole('option').nth(0).focus();
         await candidates.getByRole('option').nth(0).press('ArrowDown');
         await expect(candidates.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
+        // Review metadata is scoped to the selected candidate, so return to the
+        // primary candidate before checking its change list.
+        await candidates.getByRole('option').nth(1).press('ArrowUp');
+        await expect(candidates.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
         await output.getByRole('button', { name: /Original prompt/ }).click();
         await output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Changes' }).click();
         await expect(output.getByRole('tabpanel')).toContainText('Added a verification role.');
