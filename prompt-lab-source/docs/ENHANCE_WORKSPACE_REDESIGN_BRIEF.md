@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Decided 2026-10-15 — slice 1 in progress`
+- Status: `Decided 2026-10-15 — slice 1 built behind a flag on hosted web (PR #153)`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`)
 - Inputs: the Enhance UI review of 2026-10-15 and its desktop mockup
@@ -160,6 +160,27 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 7. Existing Library records, candidate identities and run history load unchanged.
 8. Both themes pass, keyboard focus is visible, tabs are keyboard-operable,
    status changes are announced, and touch targets are at least 44px.
+
+## Slice 1 delivery
+
+Built in [PR #153](https://github.com/DaveHomeAssist/prompt-lab/pull/153), off by default.
+
+- **Turning it on:** Settings → "Two-pane Create workspace" on hosted web. The choice is stored locally as `pl2-create-layout` (`stacked` or `split`). Extension and desktop do not offer it.
+- **Breakpoint:** a container query on the Create pane at 60rem (960px), not a viewport media query, so the layout responds to the space Create actually has. At a 1100px viewport each pane is about 526px; at 1440px about 696px.
+- **Narrow widths:** the Source / Result switch shows below the breakpoint. A refine run moves it to Result. Both panes stay mounted.
+- **Actions:** Run Cases, New prompt, Capture Page and Reset Draft sit under More, which opens upward because the action row is at the foot of the source pane. The editor-row Save shows only until a result exists; after that the commit bar holds the single primary Save (for example "Save as new prompt · Tighter") and Copy.
+
+Browser checks on 2026-10-15 used a local hosted-web dev server with the deterministic provider fixture, so a real Refine ran with no network or quota:
+
+| Viewport | Layout | Page scroll | Notes |
+| --- | --- | --- | --- |
+| 1440×900 | Two panes | None | One visible Save; label follows the selected candidate; assumptions button moves focus to the assumptions heading |
+| 1100×800 | Two panes | None | Result pane is tight with the candidate rail; slice 3's compact tabs will help |
+| 768×1024 | Switch | None | Switch buttons are 44px; Save reachable on Result |
+| 400×800 | Switch | None | Main region scrolls inside the shell; only the candidate rail scrolls sideways, as before |
+| 375×812 | Switch | None | — |
+
+Light and dark themes both checked at 1440×900. Turning the flag off restores the stacked layout unchanged.
 
 ## Decisions
 
