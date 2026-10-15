@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_GENERATION_OPTIONS, normalizeGenerationOptions, readGenerationOptions, writeGenerationOptions,
-  resolveGenerationOptions, generationOutputBudget, buildGenerationSystemPrompt,
+  resolveGenerationOptions, generationOutputBudget, buildGenerationSystemPrompt, restoreEditorMode
 } from '../lib/generationOptions.js';
 import { wordDiff, parseEnhancedPayload } from '../promptUtils.js';
 import { normalizeResultMeta } from '../lib/enhancementResult.js';
@@ -128,5 +128,16 @@ describe('complete prompt comparisons', () => {
       expect(reconstruct(parts, 'add')).toBe(before);
       expect(reconstruct(parts, 'del')).toBe(after);
     }
+  });
+  it('restores old default or one-off modes as the stored strategy preference, not Refined or Shorten', () => {
+    expect(restoreEditorMode('balanced', null)).toBe('expanded');
+    expect(restoreEditorMode(undefined, null)).toBe('expanded');
+    expect(restoreEditorMode('concise', { strategy: 'rebuilt' })).toBe('rebuilt');
+    expect(restoreEditorMode('shorten', null)).toBe('expanded');
+    expect(restoreEditorMode('json', null)).toBe('expanded');
+    // Explicit strategies and task/destination modes stay as chosen.
+    expect(restoreEditorMode('refined', null)).toBe('refined');
+    expect(restoreEditorMode('claude', null)).toBe('claude');
+    expect(restoreEditorMode('code', null)).toBe('code');
   });
 });

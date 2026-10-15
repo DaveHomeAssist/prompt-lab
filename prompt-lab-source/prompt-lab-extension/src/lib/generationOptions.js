@@ -49,6 +49,19 @@ export function writeGenerationOptions(value, storage) {
   }
 }
 
+/**
+ * A mode restored from an older session or draft is not a choice in this
+ * strategy model: "balanced" was the old picker's default, and the others would
+ * silently turn every later Refine into a strategy or a one-off transformation
+ * (Shorten, JSON) the user did not pick. Fall back to the stored preference,
+ * Expanded unless changed. Task and destination modes carry no strategy.
+ */
+const STALE_RESTORED_MODES = new Set(['balanced', 'concise', 'detailed', 'shorten', 'json']);
+export function restoreEditorMode(modeId, preferences) {
+  if (!modeId || STALE_RESTORED_MODES.has(modeId)) return normalizeGenerationOptions(preferences).strategy;
+  return modeId;
+}
+
 /** Legacy mode IDs remain replayable without modifying historical records. */
 export function resolveGenerationOptions(modeId, preferences) {
   const options = normalizeGenerationOptions(preferences);
