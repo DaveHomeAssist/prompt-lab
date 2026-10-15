@@ -151,9 +151,6 @@ export default function App({
   // surface shows Recover exactly as before. recoverLegacyWebLibrary self-guards
   // on origin, so it is inert wherever migration is unsupported.
   const showLegacyRecover = isWeb || isExtension;
-  // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, D-012):
-  // opt-in from Settings and hosted web only until it is accepted there.
-  const splitCreate = isWeb && createLayout === 'split';
   const {
     viewportWidth,
     viewportHeight,
@@ -183,6 +180,9 @@ export default function App({
     cmdQuery,
     setCmdQuery,
   } = ui;
+  // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, D-012):
+  // opt-in from Settings and hosted web only until it is accepted there.
+  const splitCreate = isWeb && createLayout === 'split';
   const m = T[colorMode];
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
