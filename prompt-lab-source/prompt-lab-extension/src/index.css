@@ -1106,6 +1106,7 @@ textarea:disabled {
 .pl-create-split-input { display: flex; flex-direction: column; flex: 1 1 auto; }
 .pl-create-split-textarea { flex: 1 1 auto; min-height: 12rem; resize: vertical; }
 .pl-create-split .pl-result-commit-bar .pl-commit-target { font-weight: 600; opacity: 0.86; }
+.pl-create-split .pl-result-header-actions .pl-secondary-button { white-space: nowrap; }
 
 @container create-split (min-width: 60rem) {
   .pl-create-split-switch { display: none; }
@@ -1113,7 +1114,8 @@ textarea:disabled {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 1rem;
   }
-  .pl-create-split[data-active-pane] .pl-create-split-pane { display: block; }
+  /* Same specificity as the hide rule above and later in source order, so it wins. */
+  .pl-create-split[data-active-pane] .pl-create-split-pane[data-pane] { display: block; }
   .pl-create-split-pane[data-pane='source'] { padding-right: 0.25rem; }
 }
 
@@ -1131,7 +1133,8 @@ textarea:disabled {
   position: absolute;
   z-index: 30;
   right: 0;
-  top: calc(100% + 0.35rem);
+  /* The action row sits at the foot of the source pane, so open upward. */
+  bottom: calc(100% + 0.35rem);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -1140,5 +1143,6 @@ textarea:disabled {
   border-radius: 0.75rem;
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
 }
-.pl-more-menu-panel > button { width: 100%; min-height: 2.75rem; justify-content: flex-start; }
+/* The inline action classes carry row flex-basis values that would turn into heights here. */
+.pl-more-menu-panel > button { flex: 0 0 auto; width: 100%; min-height: 2.75rem; justify-content: flex-start; margin-left: 0; }
 [data-theme='light'] .pl-more-menu-panel { box-shadow: 0 18px 40px rgba(50, 28, 18, 0.14); }
