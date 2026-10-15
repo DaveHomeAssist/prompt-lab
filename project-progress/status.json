@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-15T02:24:52.162341+00:00",
+  "snapshotAt": "2026-10-15T03:56:48.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "18997e9b31b836d8036c6fcbd1aeee434b7b7bbc",
+  "mainSha": "af528f2071046378982da7cc52ca763d1e788b1a",
   "overall": "Acceptance incomplete",
   "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
+    {
+      "label": "Library tile and inspector overlap fixes",
+      "state": "Running",
+      "detail": "2026-10-15: PR #151 at 8c5e1a4 fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. New e2e/library-layout-overlap.spec.js fails before and passes after (7/7); extension Vitest 1130/1130 and node 222/222. Draft, not merged or deployed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/151"
+    },
     {
       "label": "Exact main remote regression",
       "state": "Verified",
@@ -758,6 +764,30 @@
       "inPlan": false,
       "nextAction": "On a preview deployment with STRIPE_WEBHOOK_SECRET unset, confirm Go Pro pauses while Manage Purchases, Sync and Refresh stay enabled.",
       "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Checkout returns checkoutDisabled when webhook signing or KV is missing; server and hook tests fail without the fix. Path not live in production."
+    },
+    {
+      "id": "3fa255fc8f4481b38f48d336ef3d4a89",
+      "title": "Library tile cards draw their date and use count under the Editor/Copy/Favorite buttons",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
+      "inPlan": false,
+      "nextAction": "Merge PR #151 once required checks pass, then confirm tile cards in the deployed app.",
+      "verification": "2026-10-15: PR #151 (8c5e1a4) keeps tile actions in flow and the metadata as one line under the text; e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Not merged."
+    },
+    {
+      "id": "3fa255fc8f44811d9c59f511c58ef9a0",
+      "title": "Library inspector is see-through when it floats over the list (701-1100px)",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/3fa255fc8f44811d9c59f511c58ef9a0",
+      "inPlan": false,
+      "nextAction": "Merge PR #151 once required checks pass, then confirm the inspector in the deployed app at about 900 px.",
+      "verification": "2026-10-15: PR #151 (8c5e1a4) gives the floating inspector the theme's page colour; the spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Not merged."
     }
   ]
 }
