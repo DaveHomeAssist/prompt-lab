@@ -14,6 +14,12 @@
   "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
     {
+      "label": "Library import review: jump to unresolved conflicts",
+      "state": "Running",
+      "detail": "2026-10-15: PR #154 adds a banner naming the page that holds pending conflict choices, a Jump to unresolved button that pages to and focuses the pending prompt, and an amber outline on pending rows. Reported from a live 82-prompt import stuck at \"1 conflict choices required\" with the pending row on page 1 of 5. New WorkspaceImportModal test passes; workspaceImportRecovery has 3 pre-existing failures on main. Not merged.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/154"
+    },
+    {
       "label": "Library tile and inspector overlap fixes",
       "state": "Running",
       "detail": "2026-10-15: PR #151 at 8c5e1a4 fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. New e2e/library-layout-overlap.spec.js fails before and passes after (7/7); extension Vitest 1130/1130 and node 222/222. Draft, not merged or deployed.",
