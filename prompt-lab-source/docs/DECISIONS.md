@@ -106,6 +106,8 @@ Action remaining: Confirm Ollama on Walter and Home Assist. Assign static IPs vi
 
 Consequences: Partially unblocked — Duncan is ready for cluster work. Full deployment blocked on remaining nodes.
 
+Update (2026-10-06): superseded for DaveLLM routing. DaveLLM's macOS launcher resolves its nodes (Dominic and Walter, plus Duncan when it is online) from live Tailscale peer records at every start, so the router no longer depends on LAN IPs or DHCP reservations. The 2026-03-29 addresses above are historical. Prompt Lab reaches the cluster only through DaveLLM (`scripts/eval-davellm.mjs` and `POST /eval/chat`; see `DAVELLM_EVAL.md`).
+
 ---
 
 ### [D-004] Act Two Catering — Notion leads pipeline
@@ -209,6 +211,25 @@ Consequences: Billing integration unblocked. Implementation path: (1) add `plan`
 ---
 
 ## Resolved decisions
+
+---
+
+### [D-012] Enhance workspace redesign — sequencing, scope, rollout, quality label
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-10-15
+Date resolved: 2026-10-15
+
+Context: The Enhance workspace redesign brief (`ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`) left four choices open before slice 1 could start: how it relates to the draft Expanded-defaults PR #138, whether the left navigation rail (viewport plan Phase B1) is in scope, how it rolls out, and what happens to the 0–5 quality number.
+
+Options: see the brief's Decisions table (D-ENH-1 to D-ENH-4).
+
+Decision: Dave chose the recommended option for each. D-ENH-1 **B**: build slice 1 now on the current enhance modes, and the Strategy / Task / Destination split (slice 2) after PR #138 lands. D-ENH-2 **A**: Create workspace only; the nav rail stays with Phase B1. D-ENH-3 **A**: hosted web behind a flag first, then extension and desktop. D-ENH-4 **A**: keep the number, labelled as a heuristic structure check.
+
+Rationale: Slice 1 needs nothing from PR #138; keeping the nav change separate keeps its own sign-off and rollback; a flag on hosted web keeps Vercel instant rollback and matches the viewport Phase A pattern.
+
+Consequences: Slice 1 (two-pane Create, one primary Save, overflow for secondary actions, assumptions count in the result header) is authorised behind a flag on hosted web. Phase B1 navigation and PR #138 remain separately open.
 
 ---
 

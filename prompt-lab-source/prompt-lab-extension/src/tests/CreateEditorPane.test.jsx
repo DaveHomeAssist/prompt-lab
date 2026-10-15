@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import CreateEditorPane from '../CreateEditorPane.jsx';
 
@@ -68,13 +68,91 @@ describe('CreateEditorPane', () => {
     expect(screen.getByText('Incomplete response — request failed')).toBeInTheDocument();
     expect(screen.getByText('Incomplete fixture output')).toBeInTheDocument();
   });
+
+  it('saves the first draft without passing the click event as a Library entry', () => {
+    const openSavePanel = vi.fn();
+    renderPane({ raw: 'A first draft', currentEntry: null, enhanced: '', error: null, libraryCount: 0, evalRunCount: 0, openSavePanel });
+    fireEvent.click(screen.getByRole('button', { name: 'Save First Prompt' }));
+    expect(openSavePanel).toHaveBeenCalledWith();
+  });
+
   it('guides saved-but-unreviewed users toward Evaluate', () => {
     const onOpenEvaluate = vi.fn();
     renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: 'Draft prompt body',
       error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 1,
       evalRunCount: 0, onOpenEvaluate, showDiffUpgradeHint: false });
     expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
+    expect(screen.getByText('Run available')).toBeInTheDocument();
+    expect(screen.getByText('Open Evaluate to learn how to generate your first run.')).toBeInTheDocument();
+    expect(screen.queryByText('Run reviewed')).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'Open Evaluate' }));
     expect(onOpenEvaluate).toHaveBeenCalledTimes(1);
+  });
+  describe('two-pane workspace (splitLayout)', () => {
+    it('keeps the stacked layout unless splitLayout is set', () => {
+      renderPane();
+      expect(screen.queryByRole('region', { name: 'Source prompt' })).toBeNull();
+      expect(screen.queryByRole('group', { name: 'Workspace pane' })).toBeNull();
+    });
+
+    it('renders source and result panes and keeps both mounted while switching', () => {
+      const { container } = renderPane({ splitLayout: true, error: null });
+      const source = screen.getByRole('region', { name: 'Source prompt' });
+      const result = screen.getByRole('region', { name: 'Enhanced result' });
+      expect(source).toContainElement(screen.getByTestId('prompt-input'));
+      expect(result).toContainElement(screen.getByTestId('output-panel'));
+
+      const root = container.querySelector('.pl-create-split');
+      expect(root).toHaveAttribute('data-active-pane', 'source');
+      fireEvent.click(screen.getByRole('button', { name: 'Result' }));
+      expect(root).toHaveAttribute('data-active-pane', 'result');
+      expect(screen.getByRole('button', { name: 'Result' })).toHaveAttribute('aria-pressed', 'true');
+      // Switching only hides a pane through CSS; the draft stays in the DOM.
+      expect(screen.getByTestId('prompt-input')).toHaveValue('Draft prompt body');
+      fireEvent.click(screen.getByRole('button', { name: 'Source' }));
+      expect(root).toHaveAttribute('data-active-pane', 'source');
+    });
+
+    it('follows a refine run into the result pane', () => {
+      const { container } = renderPane({ splitLayout: true, error: null, enhanced: '', loading: true });
+      expect(container.querySelector('.pl-create-split')).toHaveAttribute('data-active-pane', 'result');
+    });
+
+    it('keeps a Cancel inside the result pane while a run is in flight', () => {
+      const cancelEnhance = vi.fn();
+      // A re-run keeps the previous result on screen, so this must not depend on the empty loading card.
+      renderPane({ splitLayout: true, error: null, loading: true, streaming: true, cancelEnhance });
+      const result = screen.getByRole('region', { name: 'Enhanced result' });
+      const bar = screen.getByTestId('result-pane-run-bar');
+      expect(result).toContainElement(bar);
+      expect(bar).toHaveTextContent('Streaming…');
+      fireEvent.click(within(bar).getByRole('button', { name: 'Cancel' }));
+      expect(cancelEnhance).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows no result-pane run bar when nothing is running', () => {
+      renderPane({ splitLayout: true, error: null });
+      expect(screen.queryByTestId('result-pane-run-bar')).toBeNull();
+    });
+
+    it('leaves one primary Save once a result exists and groups secondary actions', () => {
+      renderPane({ splitLayout: true, error: null, currentEntry: null, editingId: null });
+      const saves = screen.getAllByRole('button', { name: /^Save\b/ });
+      expect(saves).toHaveLength(1);
+      expect(saves[0]).toHaveAttribute('data-testid', 'save-to-library');
+      expect(saves[0]).toHaveTextContent('Save as new prompt · Improved');
+      expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine again');
+      const more = screen.getByTestId('editor-more-actions');
+      expect(more).toContainElement(screen.getByRole('button', { name: 'Test Enhancer' }));
+      expect(more).toContainElement(screen.getByRole('button', { name: /Reset Draft/ }));
+    });
+
+    it('keeps the draft Save in the source pane before any result exists', () => {
+      renderPane({ splitLayout: true, error: null, enhanced: '' });
+      const source = screen.getByRole('region', { name: 'Source prompt' });
+      expect(source).toContainElement(screen.getByRole('button', { name: 'Save new version' }));
+      expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine Prompt');
+    });
   });
 });

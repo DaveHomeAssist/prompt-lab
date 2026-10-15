@@ -22,6 +22,16 @@ function billingDisabledResponse(request, message) {
   }, 200, {}, request);
 }
 
+// Purchases alone are paused: entitlement lookup and the portal still work, so
+// the client must keep purchase management available.
+function checkoutDisabledResponse(request) {
+  return jsonResponse({
+    error: 'Purchases are temporarily unavailable.',
+    checkoutDisabled: true,
+    retryable: false,
+  }, 200, {}, request);
+}
+
 function readSource(value) {
   return typeof value === 'string'
     ? value.trim().replace(/[^a-zA-Z0-9._:-]+/g, '-').slice(0, 64)
@@ -44,6 +54,13 @@ async function checkoutHandler(request) {
     assertProductionConfig({ clerk: true, stripe: true });
   } catch {
     return billingDisabledResponse(request, 'Billing is not configured.');
+  }
+
+  try {
+    // Never accept a purchase while its webhook cannot be verified and stored.
+    assertProductionConfig({ webhook: true, durableStore: true });
+  } catch {
+    return checkoutDisabledResponse(request);
   }
 
   let auth;
@@ -76,6 +93,7 @@ async function checkoutHandler(request) {
       period: result.period,
       priceId: result.priceId,
       checkoutSessionId: result.checkoutSessionId,
+      customerId: result.customerId,
     }, 200, {}, request);
   } catch (error) {
     return jsonResponse(

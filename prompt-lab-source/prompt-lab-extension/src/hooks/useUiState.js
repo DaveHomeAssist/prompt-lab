@@ -11,6 +11,11 @@ export default function useUiState() {
   const [density, setDensity] = usePersistedState('pl2-density', 'comfortable', {
     validate: value => ['compact', 'comfortable', 'spacious'].includes(value) ? value : 'comfortable',
   });
+  // Opt-in two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md,
+  // slice 1). Off by default; App only honours it on hosted web.
+  const [createLayout, setCreateLayout] = usePersistedState('pl2-create-layout', 'stacked', {
+    validate: value => (value === 'split' || value === 'stacked') ? value : 'stacked',
+  });
   const [primaryView, setPrimaryView] = useState('create');
   const [workspaceView, setWorkspaceView] = useState('editor');
   const [runsView, setRunsView] = useState('history');
@@ -45,6 +50,8 @@ export default function useUiState() {
     setColorMode,
     density,
     setDensity,
+    createLayout,
+    setCreateLayout,
     primaryView,
     setPrimaryView,
     workspaceView,

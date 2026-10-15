@@ -342,6 +342,8 @@ This is lighter than originally scoped because the data model already exists.
 
 ## DaveLLM Integration (parallel workstream, independent of M0-M3)
 
+> Superseded (2026-10-06). DaveLLM did not adopt Ollama's API dialect, and DLM-1 to DLM-4 below were not built. The router keeps its own authenticated API (`X-API-Key`, fail closed) with no `/api/tags`, `/api/chat` or `/v1` routes of its own, and it now lives in the `DaveHomeAssist/DaveLLM` repository rather than the path below. Prompt Lab's Ollama adapter cannot send the key, so pointing it at the router would not work. Library Tests reach DaveLLM models through `prompt-lab-source/scripts/eval-davellm.mjs` and the router's stateless `POST /eval/chat` (`docs/DAVELLM_EVAL.md`). An in-app DaveLLM provider would be a separate provider module. The original plan is kept below for the record.
+
 **Location:** `/Users/daverobertson/Documents/DaveLLM/dave_llm_router.py`
 
 **Current state:** FastAPI with `/chat` (custom format) and `/health`. Forwards to llama.cpp nodes at `http://127.0.0.1:9001/generate`.

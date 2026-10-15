@@ -9,6 +9,8 @@ on:
       - contracts/promptlab-enhance-contract-v1.json
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/eval-davellm.mjs
+      - prompt-lab-source/scripts/eval-davellm.test.mjs
       - .github/workflows/extension-ci.yml
   pull_request:
     paths:
@@ -16,6 +18,8 @@ on:
       - contracts/promptlab-enhance-contract-v1.json
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/eval-davellm.mjs
+      - prompt-lab-source/scripts/eval-davellm.test.mjs
       - .github/workflows/extension-ci.yml
 
 permissions:
@@ -43,6 +47,10 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      # The DaveLLM eval runner imports the Enhance payload, PII gate, parser and checkTraits.
+      - name: Test DaveLLM eval runner
+        run: node --test ../scripts/eval-davellm.test.mjs
 
       - name: Build extension
         run: npm run build

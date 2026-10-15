@@ -1,5 +1,34 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-15
+
+## Library cards and inspector no longer draw over each other (unreleased)
+
+- In tile view, a card with several tags or a long description drew its
+  version count, use count and date underneath the Editor, Copy and Favorite
+  buttons. Those buttons now sit on their own row at the bottom of the card,
+  and the card grows to fit. The details read as one line under the tags, and
+  short cards no longer push their title to the right.
+- In a window between about 700 and 1100 pixels wide, the prompt inspector
+  opened over the list with an almost transparent background, so its fields
+  mixed with the prompt cards behind it. It now has a solid background in both
+  light and dark mode.
+
+Date: 2026-10-14
+
+## Billing keeps one Stripe customer per account (unreleased)
+
+- A new account could get two Stripe customers when the first billing check
+  and a Go Pro click (or a second tab) ran at the same moment. A subscription
+  could then land on one customer while Prompt Lab read the other, so a paid
+  account could show as Free. Creating the customer now uses one Stripe
+  idempotency key per account, so those requests share a single customer.
+- If purchases are paused on the server because the webhook secret or billing
+  storage is missing, Go Pro now pauses only new purchases. Manage Purchases,
+  Sync Purchase and Refresh Status stay available, and the pause clears on the
+  next refresh once the server is ready. Before, it switched off all billing
+  controls until the page was reloaded.
+
 Date: 2026-10-07
 
 ## Desktop Library saves survive closing the app (unreleased)

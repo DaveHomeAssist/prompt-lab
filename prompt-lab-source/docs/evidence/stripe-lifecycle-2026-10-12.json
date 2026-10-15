@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 1,
+  "runtimeSource": "f0d42b044e07e4f142774d2107c51f218fc907df",
+  "runner": "Walter, Windows 11, Node v22.22.1",
+  "sha256": {
+    "scripts/stripe-test-lifecycle.mjs": "f4fd44ad640f91d6260c4c201cc873a3f2cc992c30af06aaf55ca6e38e38cd92",
+    "api/_lib/stripeBilling.js": "a81a0f07b94dded0ada00d18407c0e3c59706f964c5de783248a1c54ee43c6e6",
+    "api/_lib/runtimeSafety.js": "399f30e7d851fff4e8cb4eb492d611c703c4d939a12fd9995a135a8d9fd4080b"
+  },
+  "attempts": [
+    {
+      "runId": "promptlab-7a6b2c00-ae01-44da-956f-0c7c3eeb1de3",
+      "accountId": "acct_1TE0qmAsNArhoaC1",
+      "startedAt": "2026-10-12T19:38:06.433Z",
+      "livemode": false,
+      "checks": [
+        {
+          "name": "test isolation",
+          "accountId": "acct_1TE0qmAsNArhoaC1",
+          "livemode": false,
+          "enabledWebhookDestinations": 0
+        },
+        {
+          "name": "monthly before activation",
+          "plan": "free",
+          "status": "inactive",
+          "billingPeriod": ""
+        },
+        {
+          "name": "monthly activation",
+          "subscriptionId": "sub_1UPp2yAsNArhoaC13zfyqBKC",
+          "invoiceId": "in_1UPp2yAsNArhoaC15E4HOtix",
+          "amountPaid": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly renewal",
+          "invoiceId": "in_1UPp37AsNArhoaC1j24IblVy",
+          "amountPaid": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly partial and full refund",
+          "chargeId": "ch_3UPp3CAsNArhoaC10z3TmrNu",
+          "refundIds": [
+            "re_3UPp3CAsNArhoaC10TVpGALF",
+            "re_3UPp3CAsNArhoaC10pWZbE68"
+          ],
+          "amountRefunded": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly scheduled cancellation retains access",
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly cancellation takes effect",
+          "plan": "free",
+          "status": "canceled",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "yearly before activation",
+          "plan": "free",
+          "status": "inactive",
+          "billingPeriod": ""
+        }
+      ],
+      "objects": [
+        {
+          "type": "product",
+          "id": "prod_VQgPgmMM4viE0q"
+        },
+        {
+          "type": "price",
+          "id": "price_1UPp2xAsNArhoaC1awaubF3h",
+          "period": "monthly"
+        },
+        {
+          "type": "clock",
+          "id": "clock_1UPp2xAsNArhoaC1flUzzcAp",
+          "period": "monthly"
+        },
+        {
+          "type": "customer",
+          "id": "cus_VQgPRQNkislAy9",
+          "period": "monthly"
+        },
+        {
+          "type": "subscription",
+          "id": "sub_1UPp2yAsNArhoaC13zfyqBKC",
+          "period": "monthly"
+        },
+        {
+          "type": "price",
+          "id": "price_1UPp3TAsNArhoaC1P0gKBqtW",
+          "period": "yearly"
+        },
+        {
+          "type": "clock",
+          "id": "clock_1UPp3TAsNArhoaC1lCQdyagq",
+          "period": "yearly"
+        },
+        {
+          "type": "customer",
+          "id": "cus_VQgQwKg5yrVWGb",
+          "period": "yearly"
+        },
+        {
+          "type": "subscription",
+          "id": "sub_1UPp3VAsNArhoaC1RBiOxnRs",
+          "period": "yearly"
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "clock_1UPp2xAsNArhoaC1flUzzcAp",
+          "deleted": true
+        },
+        {
+          "id": "clock_1UPp3TAsNArhoaC1lCQdyagq",
+          "deleted": true
+        },
+        {
+          "id": "price_1UPp2xAsNArhoaC1awaubF3h",
+          "active": false
+        },
+        {
+          "id": "price_1UPp3TAsNArhoaC1P0gKBqtW",
+          "active": false
+        },
+        {
+          "id": "prod_VQgPgmMM4viE0q",
+          "active": false
+        }
+      ],
+      "limitations": [
+        "Stripe test API and PromptLab billing lookup integration only; no real money.",
+        "No authenticated paid browser session or webhook delivery/storage acceptance.",
+        "Refund alone does not cancel an active subscription under current entitlement behavior."
+      ],
+      "error": "Expected values to be strictly equal:\n\n'annual' !== 'yearly'\n",
+      "finishedAt": "2026-10-12T19:38:46.554Z",
+      "passed": false,
+      "additionalCleanupReadback": [
+        {
+          "id": "cus_VQgPRQNkislAy9",
+          "deleted": true
+        },
+        {
+          "id": "cus_VQgQwKg5yrVWGb",
+          "deleted": true
+        }
+      ]
+    },
+    {
+      "runId": "promptlab-f43cc665-2a47-4e37-83ba-b879689f00a8",
+      "accountId": "acct_1TE0qmAsNArhoaC1",
+      "startedAt": "2026-10-12T19:39:03.810Z",
+      "livemode": false,
+      "checks": [
+        {
+          "name": "test isolation",
+          "accountId": "acct_1TE0qmAsNArhoaC1",
+          "livemode": false,
+          "enabledWebhookDestinations": 0
+        },
+        {
+          "name": "monthly before activation",
+          "plan": "free",
+          "status": "inactive",
+          "billingPeriod": ""
+        },
+        {
+          "name": "monthly activation",
+          "subscriptionId": "sub_1UPp3uAsNArhoaC10CrohS1H",
+          "invoiceId": "in_1UPp3uAsNArhoaC1yJAwgc4n",
+          "amountPaid": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly renewal",
+          "invoiceId": "in_1UPp40AsNArhoaC1YTTKrlKD",
+          "amountPaid": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly partial and full refund",
+          "chargeId": "ch_3UPp45AsNArhoaC11GeImyAp",
+          "refundIds": [
+            "re_3UPp45AsNArhoaC110Ke6CdT",
+            "re_3UPp45AsNArhoaC11u6Ph3jm"
+          ],
+          "amountRefunded": 900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly scheduled cancellation retains access",
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "monthly cancellation takes effect",
+          "plan": "free",
+          "status": "canceled",
+          "billingPeriod": "monthly"
+        },
+        {
+          "name": "annual before activation",
+          "plan": "free",
+          "status": "inactive",
+          "billingPeriod": ""
+        },
+        {
+          "name": "annual activation",
+          "subscriptionId": "sub_1UPp4OAsNArhoaC111qm1gsN",
+          "invoiceId": "in_1UPp4OAsNArhoaC18zB37WWl",
+          "amountPaid": 9900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "annual"
+        },
+        {
+          "name": "annual renewal",
+          "invoiceId": "in_1UPp4VAsNArhoaC1Hxne0QSk",
+          "amountPaid": 9900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "annual"
+        },
+        {
+          "name": "annual partial and full refund",
+          "chargeId": "ch_3UPp4cAsNArhoaC10FMyWygZ",
+          "refundIds": [
+            "re_3UPp4cAsNArhoaC10CyCYIY4",
+            "re_3UPp4cAsNArhoaC10bACqKg2"
+          ],
+          "amountRefunded": 9900,
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "annual"
+        },
+        {
+          "name": "annual scheduled cancellation retains access",
+          "plan": "pro",
+          "status": "active",
+          "billingPeriod": "annual"
+        },
+        {
+          "name": "annual cancellation takes effect",
+          "plan": "free",
+          "status": "canceled",
+          "billingPeriod": "annual"
+        }
+      ],
+      "objects": [
+        {
+          "type": "product",
+          "id": "prod_VQgQJRQD46fVFq"
+        },
+        {
+          "type": "price",
+          "id": "price_1UPp3sAsNArhoaC1FW5o4Jf3",
+          "period": "monthly"
+        },
+        {
+          "type": "clock",
+          "id": "clock_1UPp3sAsNArhoaC1W3Od1F0L",
+          "period": "monthly"
+        },
+        {
+          "type": "customer",
+          "id": "cus_VQgQaO6ZNFyl02",
+          "period": "monthly"
+        },
+        {
+          "type": "subscription",
+          "id": "sub_1UPp3uAsNArhoaC10CrohS1H",
+          "period": "monthly"
+        },
+        {
+          "type": "price",
+          "id": "price_1UPp4NAsNArhoaC1sbHzOHQs",
+          "period": "annual"
+        },
+        {
+          "type": "clock",
+          "id": "clock_1UPp4NAsNArhoaC1drfTHfJZ",
+          "period": "annual"
+        },
+        {
+          "type": "customer",
+          "id": "cus_VQgRhpOKR8ZHWw",
+          "period": "annual"
+        },
+        {
+          "type": "subscription",
+          "id": "sub_1UPp4OAsNArhoaC111qm1gsN",
+          "period": "annual"
+        }
+      ],
+      "cleanup": [
+        {
+          "id": "clock_1UPp3sAsNArhoaC1W3Od1F0L",
+          "deleted": true
+        },
+        {
+          "id": "clock_1UPp4NAsNArhoaC1drfTHfJZ",
+          "deleted": true
+        },
+        {
+          "id": "cus_VQgQaO6ZNFyl02",
+          "deleted": true
+        },
+        {
+          "id": "cus_VQgRhpOKR8ZHWw",
+          "deleted": true
+        },
+        {
+          "id": "price_1UPp3sAsNArhoaC1FW5o4Jf3",
+          "active": false
+        },
+        {
+          "id": "price_1UPp4NAsNArhoaC1sbHzOHQs",
+          "active": false
+        },
+        {
+          "id": "prod_VQgQJRQD46fVFq",
+          "active": false
+        }
+      ],
+      "limitations": [
+        "Stripe test API and PromptLab billing lookup integration only; no real money.",
+        "No authenticated paid browser session or webhook delivery/storage acceptance.",
+        "Refund alone does not cancel an active subscription under current entitlement behavior."
+      ],
+      "finishedAt": "2026-10-12T19:40:06.643Z",
+      "passed": true
+    }
+  ],
+  "ownerSmoke": {
+    "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38298989981",
+    "source": "f0d42b044e07e4f142774d2107c51f218fc907df",
+    "result": "passed",
+    "disposableSessionRevoked": true,
+    "existingSessionsPreserved": true
+  }
+}

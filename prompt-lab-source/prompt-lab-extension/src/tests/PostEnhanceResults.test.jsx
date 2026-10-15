@@ -18,7 +18,7 @@ const structuredMeta = {
   reasoning: 'The constraints now have a testable form.', provider: 'anthropic', model: 'claude-test',
   latencyMs: 420, usage: { input: 30, output: 18, total: 48 },
 };
-function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), onEnhance = vi.fn(), initialMeta = structuredMeta }) {
+function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), onEnhance = vi.fn(), initialMeta = structuredMeta, splitWorkspace = false }) {
   const [enhanced, setEnhanced] = useState('Improved output with assumed audience.');
   const [meta, setMeta] = useState(initialMeta);
   return <PostEnhanceResults m={m} raw="Original output." enhanced={enhanced} setEnhanced={setEnhanced}
@@ -26,7 +26,7 @@ function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), on
     editingId="prompt-1" lib={{ pinGoldenResponse: vi.fn() }} evalRuns={[]} showInlineSaveBar
     saveTitle="Prompt title" setSaveTitle={vi.fn()} suggestedSaveTitle="Prompt title" canSavePanel
     quickSave={onSave} quickSaveAsNew={onSaveAsNew} openSavePanel={vi.fn()}
-    currentEntry={{ id: 'prompt-1', title: 'Prompt title' }} />;
+    currentEntry={{ id: 'prompt-1', title: 'Prompt title' }} splitWorkspace={splitWorkspace} />;
 }
 
 describe('PostEnhanceResults', () => {
@@ -83,5 +83,44 @@ describe('PostEnhanceResults', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Diff' }));
     expect(screen.getByRole('tab', { name: 'Changes' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Text-level changes for Expanded')).toBeInTheDocument();
+  });
+  describe('split workspace', () => {
+    const modernMeta = {
+      schemaVersion: 2, primaryId: 'expanded', selectedCandidateId: 'expanded',
+      candidates: [{ id: 'expanded', content: 'Developed instructions with a new assumption.' }, { id: 'rebuilt', content: 'Different execution plan.' }],
+      assumptions: [{ id: 'a', text: 'Only Expanded assumes this.', addedText: ' with a new assumption', candidateId: 'expanded' }],
+    };
+
+    it('shows the selected candidate assumptions count in the header and moves focus to them', () => {
+      render(<Harness splitWorkspace initialMeta={modernMeta} />);
+      const review = screen.getByTestId('review-assumptions');
+      expect(review).toHaveTextContent('Review assumptions · 1');
+      fireEvent.click(review);
+      expect(screen.getByRole('heading', { name: 'Review what the model inferred' })).toHaveFocus();
+      fireEvent.click(screen.getByRole('option', { name: /Rebuilt/ }));
+      expect(screen.queryByTestId('review-assumptions')).toBeNull();
+    });
+
+    it('keeps one primary Save naming the selected candidate and moves Copy to the commit bar', () => {
+      const onCopy = vi.fn();
+      render(<Harness splitWorkspace onCopy={onCopy} initialMeta={modernMeta} />);
+      expect(screen.getByTestId('save-to-library')).toHaveTextContent('Save new version · Expanded');
+      expect(screen.queryByRole('button', { name: 'Re-run' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Copy selected' })).toBeNull();
+      const candidateActions = screen.getByRole('toolbar', { name: 'Expanded actions' });
+      expect(candidateActions).not.toHaveTextContent('Save');
+      expect(candidateActions).not.toHaveTextContent('Copy');
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+      expect(onCopy).toHaveBeenCalledWith('Developed instructions with a new assumption.', 'Expanded copied');
+      fireEvent.click(screen.getByRole('option', { name: /Rebuilt/ }));
+      expect(screen.getByTestId('save-to-library')).toHaveTextContent('Save new version · Rebuilt');
+    });
+
+    it('leaves the stacked layout header actions unchanged', () => {
+      render(<Harness />);
+      expect(screen.getByRole('button', { name: 'Copy selected' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Re-run' })).toBeInTheDocument();
+      expect(screen.queryByTestId('review-assumptions')).toBeNull();
+    });
   });
 });

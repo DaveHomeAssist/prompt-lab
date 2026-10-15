@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { legacyLibraryFixture, verifyLegacyLibrary } from '../../scripts/verify-legacy-library.mjs';
 import { libraryFixture } from '../../scripts/verify-library-interchange.mjs';
 
 const runId = 'native-import-run';
@@ -24,6 +25,7 @@ async function storedHistory(executeAsync) {
 
 export async function checkWorkspacePersisted(api, expected) {
   const library = await api.readLibrary();
+  verifyLegacyLibrary(library);
   const history = await storedHistory(api.executeAsync);
   const target = library.find(row => row.id === expected.targetId);
   assert.equal(target?.enhanced, 'Native imported replacement body');
@@ -59,6 +61,13 @@ export async function checkWorkspacePersisted(api, expected) {
 
 export async function exerciseWorkspace(api, parentId) {
   const { execute, executeAsync, readLibrary, click, waitFor, uploadJson, screenshot, closeSession, openSession, checkpoint } = api;
+  await click('[data-testid="nav-library"]');
+  await uploadJson('[aria-label="Import Prompt Lab workspace"]', legacyLibraryFixture);
+  await waitFor(() => execute('return Boolean(document.querySelector("[role=dialog][aria-labelledby=workspace-import-title]"));'), 'legacy schema-1 preview');
+  await click('//*[@role="dialog"]//button[normalize-space(.)="Apply import"]', 'xpath');
+  await waitFor(() => execute('return !document.querySelector("[role=dialog][aria-labelledby=workspace-import-title]");'), 'legacy schema-1 import completed');
+  await waitFor(async () => (await readLibrary()).some(row => row.id === legacyLibraryFixture.library[0].id), 'legacy import persisted');
+  verifyLegacyLibrary(await readLibrary());
   const baseline = await readLibrary();
   const parent = baseline.find(row => row.id === parentId);
   const target = baseline.find(row => row.id === 'native-library-alpha');
@@ -150,6 +159,7 @@ export async function exerciseWorkspace(api, parentId) {
   api.recordDiagnostic?.('workspaceExportUi', exportUi);
   await screenshot('workspace-export-result');
   assert.equal(exported.schemaVersion, 2);
+  verifyLegacyLibrary(exported.library);
   assert.deepEqual(exported.packs, packs);
   assert.equal(exported.library.length, expected.count);
   assert.equal(exported.runs.find(row => row.id === runId)?.promptId, target.id);
@@ -161,6 +171,6 @@ export async function exerciseWorkspace(api, parentId) {
   await closeSession();
   await openSession();
   await checkWorkspacePersisted(api, expected);
-  await checkpoint('native file preview cancel, Skip/Replace/Keep both, associated history/provenance, completed export download and restart passed');
+  await checkpoint('native file preview cancel, Skip/Replace/Keep both, associated history/provenance, completed export download, schema-1 migration and restart passed');
   return expected;
 }

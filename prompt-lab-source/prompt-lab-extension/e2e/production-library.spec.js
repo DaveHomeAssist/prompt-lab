@@ -35,12 +35,12 @@ async function storedState(page) {
 const initialWorkspace = {
   product: 'Prompt Lab', schemaVersion: 2, collections: ['Ops', 'Other'],
   library: [
-    { id: 'qa-alpha', title: 'QA Alpha', collection: 'Ops', metadata: { owner: 'Avery', purpose: 'Navigation' } },
+    { id: 'qa-alpha', title: 'QA Alpha', collection: 'Ops', metadata: { owner: 'Avery', purpose: 'Navigation', status: 'active' } },
     { id: 'qa-hidden', title: 'QA Hidden', collection: 'Other' },
     { id: 'qa-beta', title: 'QA Beta', collection: 'Ops', metadata: { packLoadedAt: '2026-09-05T00:00:00Z' } },
     { id: 'qa-child', title: 'QA Child', collection: '' },
   ].map(row => ({ ...row, original: `${row.title} instructions`, enhanced: `${row.title} improved`,
-    tags: ['qa-library'], currentVersionId: `${row.id}-v1`,
+    tags: [row.id === 'qa-alpha' ? 'qa-active' : 'qa-library'], currentVersionId: `${row.id}-v1`,
     createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' })),
 };
 
@@ -96,6 +96,17 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
+
+      await page.getByRole('button', { name: '#qa-active', exact: true }).click();
+      await expect(list.getByRole('listitem')).toHaveCount(1);
+      await expect(list).toContainText('QA Alpha');
+      await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('draft');
+      await expect(list.getByRole('listitem')).toHaveCount(0);
+      await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
+      await expect(list.getByRole('listitem')).toHaveCount(1);
+      await expect(list).toContainText('QA Alpha');
+      await page.getByRole('button', { name: 'Clear all', exact: true }).click();
+      await expect(list.getByRole('listitem')).toHaveCount(4);
 
       await page.getByTestId('library-search').fill('avery navigation');
       await expect(list.getByRole('listitem')).toHaveCount(1);

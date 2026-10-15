@@ -71,4 +71,33 @@ describe('EditorActions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Format source as JSON' }));
     expect(baseProps.onEnhance).toHaveBeenLastCalledWith(undefined, { modeId: 'json' });
   });
+  it('groups secondary actions under More and hides Save when the result owns it', () => {
+    const onClear = vi.fn();
+    const onNewPrompt = vi.fn();
+    render(<EditorActions {...baseProps} onClear={onClear} onNewPrompt={onNewPrompt} groupSecondary showSave={false} hasResult />);
+    const more = screen.getByTestId('editor-more-actions');
+    expect(screen.queryByRole('button', { name: 'Save as new prompt' })).toBeNull();
+    expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine again Cmd+Enter');
+    expect(more).toContainElement(screen.getByRole('button', { name: 'Test Enhancer' }));
+    expect(more).toContainElement(screen.getByRole('button', { name: /New prompt/ }));
+    more.open = true;
+    fireEvent.click(screen.getByRole('button', { name: /Reset Draft/ }));
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(more.open).toBe(false);
+  });
+
+  it('closes the More menu on Escape', () => {
+    render(<EditorActions {...baseProps} groupSecondary />);
+    const more = screen.getByTestId('editor-more-actions');
+    more.open = true;
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Test Enhancer' }), { key: 'Escape' });
+    expect(more.open).toBe(false);
+  });
+
+  it('keeps every action inline in the stacked layout', () => {
+    render(<EditorActions {...baseProps} />);
+    expect(screen.queryByTestId('editor-more-actions')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save as new prompt' })).toBeInTheDocument();
+    expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine Prompt Cmd+Enter');
+  });
 });

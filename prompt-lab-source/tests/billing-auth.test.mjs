@@ -19,6 +19,14 @@ const portalUrl = billingModuleUrl('portal.js');
 const ownerEntitlementsUrl = pathToFileURL(path.join(sourceDir, 'api', '_lib', 'ownerEntitlements.js')).href;
 const ORIGINAL_FETCH = globalThis.fetch;
 const ENV_KEYS = [
+  'NODE_ENV',
+  'BILLING_ENABLED',
+  'CLERK_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'KV_REST_API_URL',
+  'KV_REST_API_TOKEN',
+  'UPSTASH_REDIS_REST_URL',
+  'UPSTASH_REDIS_REST_TOKEN',
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
   'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
@@ -123,13 +131,14 @@ async function createJwksHarness() {
   };
 }
 
-function installStripeFetchMock(calls = []) {
+function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId = 'user_a' } = {}) {
   globalThis.fetch = async (url, init = {}) => {
     const urlText = String(url);
     if (isJwksHarnessRequest(urlText)) return ORIGINAL_FETCH(url, init);
     calls.push({ url: urlText, init });
 
     if (urlText.includes('/customers/search')) {
+      if (searchLag) return new Response(JSON.stringify({ data: [] }), { status: 200 });
       const decoded = decodeURIComponent(urlText);
       if (decoded.includes('user_a') || decoded.includes('user-a@example.com')) {
         return new Response(JSON.stringify({
@@ -154,7 +163,7 @@ function installStripeFetchMock(calls = []) {
             id: 'cus_a',
             email: 'user-a@example.com',
             name: 'User A',
-            metadata: { clerkUserId: 'user_a' },
+            metadata: { clerkUserId: fallbackUserId },
           }],
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
@@ -247,6 +256,42 @@ test('billing license rejects missing Clerk authorization', async () => {
   }));
 
   assert.equal(response.status, 401);
+});
+
+test('license exposes checkout readiness while retaining entitlement and portal access', async () => {
+  const jwks = await createJwksHarness();
+  installStripeFetchMock();
+  process.env.NODE_ENV = 'production';
+  process.env.BILLING_ENABLED = 'true';
+  process.env.CLERK_SECRET_KEY = 'sk_test_clerk';
+  delete process.env.UPSTASH_REDIS_REST_URL;
+  delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  try {
+    const license = await loadHandler(licenseUrl);
+    const portal = await loadHandler(portalUrl);
+    const headers = { Authorization: `Bearer ${jwks.tokenFor()}`, 'Content-Type': 'application/json' };
+    for (const missing of ['STRIPE_WEBHOOK_SECRET', 'KV_REST_API_URL', 'KV_REST_API_TOKEN', null]) {
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+      process.env.KV_REST_API_URL = 'https://redis.example.test';
+      process.env.KV_REST_API_TOKEN = 'test_token';
+      if (missing) delete process.env[missing];
+      const response = await license(new Request('https://promptlab.tools/api/billing/license', {
+        method: 'POST', headers, body: JSON.stringify({ action: 'validate' }),
+      }));
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.checkoutDisabled, Boolean(missing), missing || 'fully configured');
+      assert.equal(payload.plan, 'pro');
+      assert.notEqual(payload.billingDisabled, true);
+      const management = await portal(new Request('https://promptlab.tools/api/billing/portal', {
+        method: 'POST', headers, body: '{}',
+      }));
+      assert.equal(management.status, 200);
+      assert.equal(new URL((await management.json()).url).origin, 'https://billing.stripe.com');
+    }
+  } finally {
+    await jwks.close();
+  }
 });
 
 test('billing license node handler ends OPTIONS preflight response', async () => {
@@ -389,34 +434,54 @@ test('billing license grants owner Pro by Clerk user id when the token has no em
   }
 });
 
-test('billing portal uses the verified Clerk customer instead of a posted customer id', async () => {
+for (const searchLag of [false, true]) {
+  test(`billing portal uses the verified Clerk customer instead of a posted customer id (search lag: ${searchLag})`, async () => {
+    const jwks = await createJwksHarness();
+    const calls = [];
+    installStripeFetchMock(calls, { searchLag });
+
+    try {
+      const handler = await loadHandler(portalUrl);
+      const response = await handler(new Request('https://promptlab.tools/api/billing/portal', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_a', email: 'user-a@example.com' })}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerId: 'cus_b',
+          customerEmail: 'user-b@example.com',
+        }),
+      }));
+
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.customerId, 'cus_a');
+      assert.equal(payload.customerEmail, 'user-a@example.com');
+
+      const portalCall = calls.find((call) => call.url.includes('/billing_portal/sessions'));
+      assert.ok(portalCall);
+      assert.equal(new URLSearchParams(portalCall.init.body).get('customer'), 'cus_a');
+      assert.equal(calls.some((call) => call.url.includes('user-b%40example.com') || call.url.includes('cus_b')), false);
+    } finally {
+      await jwks.close();
+    }
+  });
+}
+
+test('portal search fallback rejects a customer bound to another Clerk user', async () => {
   const jwks = await createJwksHarness();
   const calls = [];
-  installStripeFetchMock(calls);
-
+  installStripeFetchMock(calls, { searchLag: true, fallbackUserId: 'user_b' });
   try {
     const handler = await loadHandler(portalUrl);
     const response = await handler(new Request('https://promptlab.tools/api/billing/portal', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${jwks.tokenFor({ userId: 'user_a', email: 'user-a@example.com' })}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customerId: 'cus_b',
-        customerEmail: 'user-b@example.com',
-      }),
+      headers: { Authorization: `Bearer ${jwks.tokenFor()}`, 'Content-Type': 'application/json' },
+      body: '{}',
     }));
-
-    assert.equal(response.status, 200);
-    const payload = await response.json();
-    assert.equal(payload.customerId, 'cus_a');
-    assert.equal(payload.customerEmail, 'user-a@example.com');
-
-    const portalCall = calls.find((call) => call.url.includes('/billing_portal/sessions'));
-    assert.ok(portalCall);
-    assert.equal(new URLSearchParams(portalCall.init.body).get('customer'), 'cus_a');
-    assert.equal(calls.some((call) => call.url.includes('user-b%40example.com') || call.url.includes('cus_b')), false);
+    assert.equal(response.status, 400);
+    assert.equal(calls.some((call) => call.url.includes('/billing_portal/sessions')), false);
   } finally {
     await jwks.close();
   }

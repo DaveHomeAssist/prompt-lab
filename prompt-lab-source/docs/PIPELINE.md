@@ -66,7 +66,7 @@ Stack: React, Tailwind, Dexie.js (IndexedDB), Vite, MV3
 
 Key architectural decisions locked:
 - Dexie.js is the source of truth (SQLite WASM ruled out — MV3 incompatible)
-- DaveLLM Router is an optional local super-provider on localhost:8000
+- DaveLLM Router (localhost:8000) is not an in-app provider: it speaks only its own authenticated API, with no OpenAI-compatible `/v1` routes. Library Tests reach its models through `scripts/eval-davellm.mjs` and the stateless `POST /eval/chat` (see `DAVELLM_EVAL.md`)
 - Flat Run Object schema aligned to OpenInference/OpenTelemetry conventions
 - Graph Explorer export seam for LLM run lineage visualization
 
@@ -127,7 +127,7 @@ Relevant to DaveLLM cluster deployment.
 | Dell home server | Dokku/Dokploy host | Active |
 | Raspberry Pi units | Supporting infra | Active |
 
-All machines connected via Tailscale. DaveLLM cluster is blocked until LAN IPs for GP66, Katana x2, and Duncan are confirmed.
+All machines connected via Tailscale. DaveLLM's macOS launcher resolves its nodes (dominic, walter, and duncan when online) from live Tailscale peer records, so the cluster no longer waits on LAN IPs.
 
 Deployment stack:
 - Dokku/Dokploy on Dell server

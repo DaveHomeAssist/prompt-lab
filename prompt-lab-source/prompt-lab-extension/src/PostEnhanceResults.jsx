@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview';
 import { scorePrompt, wordDiff } from './promptUtils';
@@ -35,7 +35,12 @@ export default function PostEnhanceResults({
   m, compact, raw, enhanced, setEnhanced, variants, resultMeta, setResultMeta, copy, enhance, dismiss,
   editingId, lib, evalRuns, showInlineSaveBar, saveTitle, setSaveTitle, suggestedSaveTitle, canSavePanel,
   quickSave, quickSaveAsNew, openSavePanel, currentEntry, onCandidateSelection,
+  // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, slice 1):
+  // one primary Save and Copy live in the commit bar, and the assumptions count
+  // sits in the header.
+  splitWorkspace = false,
 }) {
+  const assumptionsHeadingRef = useRef(null);
   const [view, setView] = useState('improved');
   const [preview, setPreview] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -115,8 +120,27 @@ export default function PostEnhanceResults({
           {normalized.tags.length > 0 && <ul className="pl-result-tags" aria-label="Suggested tags">{normalized.tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
         </div>
         <div className="pl-result-header-actions" role="toolbar" aria-label="Result actions">
-          <button type="button" onClick={() => copy(selected.content)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy selected</button>
-          <button type="button" onClick={enhance} className="pl-secondary-button"><Ic n="RefreshCw" size={13} /> Re-run</button>
+          {splitWorkspace ? (
+            assumptions.length > 0 && (
+              <button
+                type="button"
+                data-testid="review-assumptions"
+                onClick={() => {
+                  const heading = assumptionsHeadingRef.current;
+                  heading?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+                  heading?.focus?.({ preventScroll: true });
+                }}
+                className="pl-secondary-button"
+              >
+                <Ic n="Eye" size={13} /> Review assumptions · {assumptions.length}
+              </button>
+            )
+          ) : (
+            <>
+              <button type="button" onClick={() => copy(selected.content)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy selected</button>
+              <button type="button" onClick={enhance} className="pl-secondary-button"><Ic n="RefreshCw" size={13} /> Re-run</button>
+            </>
+          )}
           {normalized.schemaVersion === 2 && normalized.candidates.length === 1 && ['expanded', 'refined', 'rebuilt'].includes(primaryId) && (
             <button type="button" className="pl-secondary-button" onClick={() => enhance(undefined, { options: { alternatives: true } })}>Re-run with alternatives</button>
           )}
@@ -143,8 +167,8 @@ export default function PostEnhanceResults({
           <div className="pl-candidate-actions" role="toolbar" aria-label={`${selected.label} actions`}>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'improved', preview: true })}>Preview</button>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'changes', preview: false })}>Diff</button>
-            <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>
-            <button type="button" disabled={!canSavePanel} onClick={() => quickSave(selected)}>Save</button>
+            {!splitWorkspace && <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>}
+            {!splitWorkspace && <button type="button" disabled={!canSavePanel} onClick={() => quickSave(selected)}>Save</button>}
             {editingId && <button type="button" onClick={() => pinCandidate(selected)}>Pin</button>}
           </div>
         </aside>
@@ -182,7 +206,7 @@ export default function PostEnhanceResults({
           {view === 'compare' && <div id="result-panel-compare" role="tabpanel" aria-labelledby="result-tab-compare" className="pl-side-by-side"><div><p className="pl-eyebrow">Original</p><pre>{raw}</pre></div><div><p className="pl-eyebrow">{selected.label}</p><pre>{selected.content}</pre></div></div>}
           {assumptions.length > 0 && (
             <section className="pl-result-section">
-              <div className="pl-section-heading"><div><p className="pl-eyebrow">Assumptions</p><h3>Review what the model inferred</h3></div><span>{assumptions.length}</span></div>
+              <div className="pl-section-heading"><div><p className="pl-eyebrow">Assumptions</p><h3 ref={assumptionsHeadingRef} tabIndex={-1}>Review what the model inferred</h3></div><span>{assumptions.length}</span></div>
               <div className="pl-assumption-list">{assumptions.map(assumption => {
                 const hasStructuredEdit = reversibleEdits.some(edit => edit.after === assumption.addedText);
                 const canRevert = !hasStructuredEdit && Boolean(assumption.addedText && selected.content.includes(assumption.addedText));
@@ -209,9 +233,12 @@ export default function PostEnhanceResults({
       <footer className="pl-result-commit-bar">
         <div className="pl-commit-copy"><p className="pl-eyebrow">Commit selected result</p><label htmlFor="result-save-title" className="sr-only">Prompt title</label><input id="result-save-title" value={saveTitle} placeholder={suggestedSaveTitle} onChange={event => setSaveTitle(event.target.value)} /></div>
         <div className="pl-commit-actions">
+          {splitWorkspace && (
+            <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
+          )}
           {editingId && <button type="button" onClick={() => pinCandidate(selected)} className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
           {currentEntry && <button type="button" onClick={() => quickSaveAsNew(selected)} disabled={!canSavePanel} className="pl-secondary-button">Save as new prompt</button>}
-          <button data-testid="save-to-library" type="button" onClick={() => quickSave(selected)} disabled={!canSavePanel} className="pl-primary-button"><Ic n="Save" size={13} /> {currentEntry ? 'Save new version' : 'Save as new prompt'}</button>
+          <button data-testid="save-to-library" type="button" onClick={() => quickSave(selected)} disabled={!canSavePanel} className="pl-primary-button"><Ic n="Save" size={13} /> {currentEntry ? 'Save new version' : 'Save as new prompt'}{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
           {showInlineSaveBar && <button type="button" className="pl-icon-button" onClick={() => openSavePanel()} aria-label="Open library details"><Ic n="SlidersHorizontal" size={14} /></button>}
         </div>
       </footer>

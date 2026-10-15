@@ -147,6 +147,19 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('');
   });
 
+  it('gives accurate guidance for zero, one and two selected runs', () => {
+    renderPanel();
+    expect(screen.getByText('Pick two runs to unlock compare mode')).toBeInTheDocument();
+    const buttons = screen.getAllByRole('button', { name: 'Compare', exact: true });
+    fireEvent.click(buttons[0]);
+    expect(screen.getByText('Select one more run to open side-by-side compare')).toBeInTheDocument();
+    fireEvent.click(buttons[1]);
+    expect(screen.getByText('Ready to compare the selected runs')).toBeInTheDocument();
+    expect(screen.queryByText('Select one more run to open side-by-side compare')).not.toBeInTheDocument();
+    fireEvent.click(buttons[0]);
+    expect(screen.getByText('Select one more run to open side-by-side compare')).toBeInTheDocument();
+  });
+
   it('shows quick-start actions when the global evaluate timeline is empty', () => {
     const onQuickStart = vi.fn();
     const onOpenCompare = vi.fn();

@@ -33,6 +33,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `LIBRARY_COMPATIBILITY_CONTRACT.md`
+- `DAVELLM_EVAL.md`
 - `glossary.md`
 
 Use these for runtime shape, platform model, UI/state mapping, and shared terminology.
@@ -95,6 +96,7 @@ Dated audit reports are point-in-time snapshots, not status. See below.
 - `guardrails-guide.md`
 - `tokens-and-secrets.md`
 - `VIEWPORT_SHELL_OVERHAUL_PLAN.md`
+- `ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`
 - `BEHAVIORAL_AUDIT_2026-08-11.md`
 - `CODEBASE_AUDIT_2026-03-30.md`
 - `create-evaluate-restructure-plan.md`
