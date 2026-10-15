@@ -205,3 +205,5 @@ Status Check Runs "Human Name"):
 [2026-10-15] [PLB] [fix] Keep Library tile actions in flow so card metadata no longer draws under Editor/Copy/Favorite, and give the floating inspector an opaque surface between 701 and 1100 px (029, 030)
 
 [2026-10-15] [PLB] [test] Add e2e/library-layout-overlap.spec.js to desktop-build CI: rendered-box overlap checks at five widths and inspector opacity in both themes
+
+[2026-10-15] [PLB] [release] Merge PR #151 as 8eceda5 after all 14 checks passed; production READY with both CSS fixes live. A signed-in visual check of the production Library (029, 030) remains open
