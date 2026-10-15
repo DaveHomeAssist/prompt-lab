@@ -96,6 +96,7 @@ Dated audit reports are point-in-time snapshots, not status. See below.
 - `guardrails-guide.md`
 - `tokens-and-secrets.md`
 - `VIEWPORT_SHELL_OVERHAUL_PLAN.md`
+- `ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`
 - `BEHAVIORAL_AUDIT_2026-08-11.md`
 - `CODEBASE_AUDIT_2026-03-30.md`
 - `create-evaluate-restructure-plan.md`

@@ -80,6 +80,7 @@ Updated: 2026-09-05
 | `docs/uxui-bold-restructure-spec.md` | UX/UI redesign spec | Active | Bold cross-surface UX/UI restructuring spec covering landing conversion, app-shell coherence, and phased execution. |
 | `docs/uxui-bold-restructure-plan.md` | UX/UI slice 1 plan | Active | Task-by-task implementation plan for the first cross-surface redesign slice. |
 | `docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md` | Viewport shell overhaul plan | Active | Phased plan to remove whole-page vertical scrolling from the app shell and rebuild navigation, with measured diagnosis and production-monitoring guardrails. |
+| `docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md` | Enhance workspace redesign brief | Proposed | Feature brief for the two-pane Create/Enhance workspace: findings verified against code, first layout-only slice, mockup corrections, acceptance, and open decisions D-ENH-1 to D-ENH-4. Not approved for implementation. |
 | `docs/guardrails-guide.md` | Guardrails operating guide | Active | How the production smoke, layout invariant, and shell height contract work; how to run them, and exactly what to do when each one fails. |
 | `docs/tokens-and-secrets.md` | Token and secret reference | Active | Every token PromptLab reads, where each lives (GitHub secrets, Vercel env, end-user device), what breaks without it, and rotation order. Names only, never values. |
 | `docs/CODEBASE_AUDIT_2026-03-30.md` | Codebase audit and execution plan | Active | Audit of architecture, infrastructure, stale artifacts, UX gaps, and the executed top-five remediation batch. |
