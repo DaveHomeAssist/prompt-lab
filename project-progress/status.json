@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-15T03:56:48.000Z",
+  "snapshotAt": "2026-10-15T05:11:37.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "af528f2071046378982da7cc52ca763d1e788b1a",
+  "mainSha": "6dfb4b21b460b50288df782f9aa24cfa8a39bc83",
   "overall": "Acceptance incomplete",
   "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
   "evidence": [
     {
-      "label": "Library tile and inspector overlap fixes",
-      "state": "Running",
-      "detail": "2026-10-15: PR #151 at 8c5e1a4 fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. New e2e/library-layout-overlap.spec.js fails before and passes after (7/7); extension Vitest 1130/1130 and node 222/222. Draft, not merged or deployed.",
+      "label": "Library tile and inspector overlap fixes delivered",
+      "state": "Verified",
+      "detail": "2026-10-15: PR #151 merged as 8eceda5 after all 14 checks passed; Vercel production dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o READY on it. Fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. e2e/library-layout-overlap.spec.js fails before and passes after (7/7) and now runs in desktop-build CI; extension Vitest 1130/1130 and node 222/222. The live app CSS carries both rules. Open: no signed-in visual check of the production Library, because the hosted app requires Clerk sign-in.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/151"
     },
     {
@@ -774,8 +774,8 @@
       "type": "UX",
       "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
       "inPlan": false,
-      "nextAction": "Merge PR #151 once required checks pass, then confirm tile cards in the deployed app.",
-      "verification": "2026-10-15: PR #151 (8c5e1a4) keeps tile actions in flow and the metadata as one line under the text; e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Not merged."
+      "nextAction": "Hard-refresh the signed-in production Library in tile view and confirm card details no longer sit under Editor/Copy/Favorite.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS keeps tile actions in their own grid column. e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Signed-in production view not checked."
     },
     {
       "id": "3fa255fc8f44811d9c59f511c58ef9a0",
@@ -786,8 +786,8 @@
       "type": "UX",
       "url": "https://app.notion.com/3fa255fc8f44811d9c59f511c58ef9a0",
       "inPlan": false,
-      "nextAction": "Merge PR #151 once required checks pass, then confirm the inspector in the deployed app at about 900 px.",
-      "verification": "2026-10-15: PR #151 (8c5e1a4) gives the floating inspector the theme's page colour; the spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Not merged."
+      "nextAction": "Open a prompt in the signed-in production Library at about 900 px and confirm the inspector is solid in both themes.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS gives the floating inspector var(--pl-brand-ink). The spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Signed-in production view not checked."
     }
   ]
 }
