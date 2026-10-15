@@ -558,8 +558,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Answer D-ENH-1 to D-ENH-4 in the Enhance workspace redesign brief, then implement slice 1 on hosted web behind a flag.",
-      "verification": "2026-10-15: external UI review checked against main 8eceda5 (8 findings confirmed, 1 likely); brief in prompt-lab-source/docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md via PR #152. Brief only; Notion note appended and read back."
+      "nextAction": "Try the two-pane Create workspace on hosted web (Settings toggle) and accept or reject slice 1; then plan slice 2 after PR #138.",
+      "verification": "2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
