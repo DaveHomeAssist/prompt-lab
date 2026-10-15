@@ -558,8 +558,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
+      "nextAction": "Answer D-ENH-1 to D-ENH-4 in the Enhance workspace redesign brief, then implement slice 1 on hosted web behind a flag.",
+      "verification": "2026-10-15: external UI review checked against main 8eceda5 (8 findings confirmed, 1 likely); brief in prompt-lab-source/docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md via PR #152. Brief only; Notion note appended and read back."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
