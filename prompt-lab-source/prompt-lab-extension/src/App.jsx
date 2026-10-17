@@ -640,15 +640,15 @@ export default function App({
 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
-  const handleEnhanceRequest = () => {
+  const handleEnhanceRequest = (overridePayload, meta) => {
     trackTelemetry('editor.enhance_requested', {
-      mode: enhMode,
+      mode: meta?.modeId || enhMode,
       inputLength: raw.length,
       wordCount: wc,
       editing: Boolean(editingId),
       plan: billing.plan,
     });
-    enhance();
+    enhance(overridePayload, meta);
   };
   const handleExportLibrary = () => {
     if (canExportLibrary) {
