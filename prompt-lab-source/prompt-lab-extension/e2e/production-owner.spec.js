@@ -85,7 +85,7 @@ test('@production owner retains full Pro access without a paid subscription', as
     await page.getByRole('button', { name: 'Save Case', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Test cases' })).toContainText('Test Cases (1)');
     await page.getByRole('button', { name: 'Open in Editor', exact: true }).click();
-    const batch = page.getByRole('button', { name: 'Run Cases', exact: true });
+    const batch = page.getByRole('button', { name: 'Test Enhancer', exact: true });
     await expect(batch).toBeEnabled();
     await expect(batch).not.toHaveAttribute('data-testid', 'pro-gated-action');
     await expect(batch).not.toHaveAttribute('title', 'Batch runs are part of Prompt Lab Pro.');

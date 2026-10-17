@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import Ic from './icons';
-import { MODES } from './constants';
+import GenerationControls from './GenerationControls.jsx';
 
 export default function EditorActions({
   m,
@@ -31,8 +31,8 @@ export default function EditorActions({
 }) {
   const moreMenuRef = useRef(null);
   const batchLabel = batchProgress?.active
-    ? `Run Cases ${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}`
-    : 'Run Cases';
+    ? `Test Enhancer ${Math.min(batchProgress.completed, batchProgress.total)}/${batchProgress.total}`
+    : 'Test Enhancer';
   const refineButtonClass = 'pl-primary-button ui-control min-w-[10rem] flex-[999_1_15rem] px-3 py-2 text-sm';
   const refineLabel = groupSecondary && hasResult ? 'Refine again' : 'Refine Prompt';
   const runCasesButtonClass = runCasesLocked
@@ -57,7 +57,7 @@ export default function EditorActions({
       disabled={loading || runningCases || testCaseCount === 0}
       aria-busy={runningCases}
       aria-label={runCasesLocked ? `${batchLabel} Pro` : batchLabel}
-      title={runCasesLocked ? 'Batch runs are part of Prompt Lab Pro.' : undefined}
+      title={runCasesLocked ? 'Batch runs are part of Prompt Lab Pro.' : 'Test how the enhancer rewrites case inputs, not the downstream answers.'}
       className={`ui-control min-w-[8rem] flex-[0_1_9rem] flex items-center justify-center gap-1 px-3 rounded-lg py-2 text-xs font-semibold transition-colors ${runCasesButtonClass}`}
     >
       {runningCases
@@ -113,18 +113,8 @@ export default function EditorActions({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <select
-        aria-label="Enhancement mode"
-        value={enhMode}
-        onChange={(e) => onEnhanceModeChange(e.target.value)}
-        className={`ui-control ${m.input} border rounded-lg px-2 py-1.5 text-xs ${m.text} focus:outline-none min-w-[8.25rem] max-w-[10rem] flex-[0_1_9rem]`}
-      >
-        {MODES.map((mode) => (
-          <option key={mode.id} value={mode.id}>
-            {mode.label}
-          </option>
-        ))}
-      </select>
+      <GenerationControls m={m} mode={enhMode} onModeChange={onEnhanceModeChange}
+        disabled={loading} onTransform={modeId => onEnhance(undefined, { modeId })} />
       <button
         type="button"
         data-testid="refine-action"

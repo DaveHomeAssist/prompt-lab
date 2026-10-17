@@ -592,7 +592,7 @@ export default function CreateEditorPane({
             </div>
             <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
               <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Refine</p>
-              <p className={`mt-1 text-sm ${m.text}`}>Generate a tighter version with the mode that fits the task.</p>
+              <p className={`mt-1 text-sm ${m.text}`}>Generate a fuller, clearer version with the settings that fit the task.</p>
             </div>
             <div className={`${m.codeBlock} border ${m.border} rounded-lg px-3 py-2`}>
               <p className={`text-[10px] font-semibold uppercase tracking-wider ${accentTextClass}`}>Keep</p>

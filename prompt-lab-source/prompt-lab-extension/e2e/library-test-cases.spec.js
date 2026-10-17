@@ -105,11 +105,11 @@ for (const surface of surfaces) for (const width of [400, 1180]) {
       await expect(cases).toContainText('Test Cases (1)');
       await expect(cases).toContainText('Avoid: jargon');
 
-      // Run Cases in Create stays disabled with no cases; with this one it runs. No
+      // Test Enhancer (batch case runs) in Create stays disabled with no cases; with this one it runs. No
       // provider is configured here, so the batch records the case as failed; what
       // matters is that it accepted and attempted the saved case.
       await page.getByRole('button', { name: 'Open in Editor' }).click();
-      const runCases = page.getByRole('button', { name: 'Run Cases', exact: true });
+      const runCases = page.getByRole('button', { name: 'Test Enhancer', exact: true });
       await expect(runCases).toBeEnabled();
       await runCases.click();
       await expect(page.getByText(/Ran \d+\/1 test cases/)).toBeVisible({ timeout: 20_000 });

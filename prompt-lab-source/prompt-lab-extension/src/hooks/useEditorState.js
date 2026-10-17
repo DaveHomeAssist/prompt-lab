@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { lintPrompt, applyLintQuickFixAtSelection } from '../promptLint';
 import { normalizeError } from '../lib/errorTaxonomy.js';
+import useGenerationOptions from './useGenerationOptions.js';
 
 /**
  * Editor-local state only: text buffers, cursor, layout, and lint.
  */
 export default function useEditorState() {
+  const { options: generationOptions } = useGenerationOptions();
   const [raw, setRaw] = useState('');
   const [enhanced, setEnhanced] = useState('');
   const [variants, setVariants] = useState([]);
   const [notes, setNotes] = useState('');
   const [resultMeta, setResultMeta] = useState(null);
-  const [enhMode, setEnhMode] = useState('balanced');
+  const [enhMode, setEnhMode] = useState(generationOptions.strategy);
   const [showNotes, setShowNotes] = useState(true);
   const [editorLayout, setEditorLayout] = useState('editor');
   const [composerBlocks, setComposerBlocks] = useState([]);
   const [cursor, setCursor] = useState({ start: 0, end: 0 });
+
+  useEffect(() => { setEnhMode(generationOptions.strategy); }, [generationOptions.strategy]);
 
   const [lintIssues, setLintIssues] = useState([]);
   const [lintOpen, setLintOpen] = useState(false);

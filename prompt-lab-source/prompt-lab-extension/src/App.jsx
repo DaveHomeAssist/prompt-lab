@@ -58,6 +58,7 @@ import {
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
+import { readGenerationOptions, restoreEditorMode } from './lib/generationOptions.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -445,7 +446,7 @@ export default function App({
     setVariants(Array.isArray(editor.variants) ? editor.variants : []);
     setNotes(editor.notes || '');
     setResultMeta(editor.resultMeta || null);
-    setEnhMode(editor.enhMode || 'balanced');
+    setEnhMode(restoreEditorMode(editor.enhMode, readGenerationOptions()));
     if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
     setSaveTitle(persistence?.saveTitle || '');
@@ -639,15 +640,15 @@ export default function App({
 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
-  const handleEnhanceRequest = () => {
+  const handleEnhanceRequest = (overridePayload, meta) => {
     trackTelemetry('editor.enhance_requested', {
-      mode: enhMode,
+      mode: meta?.modeId || enhMode,
       inputLength: raw.length,
       wordCount: wc,
       editing: Boolean(editingId),
       plan: billing.plan,
     });
-    enhance();
+    enhance(overridePayload, meta);
   };
   const handleExportLibrary = () => {
     if (canExportLibrary) {

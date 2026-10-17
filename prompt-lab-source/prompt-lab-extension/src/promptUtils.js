@@ -1,3 +1,4 @@
+import { computeDiff } from './DiffEngine.js';
 import { ensureString } from './lib/utils.js';
 import {
   normalizeAssumptions,
@@ -5,34 +6,11 @@ import {
   normalizeSemanticChanges,
 } from './lib/enhancementResult.js';
 
+/** Full-length semantic diff, including whitespace and the final edit. */
 export function wordDiff(a, b) {
-  const left = typeof a === 'string' ? a : '';
-  const right = typeof b === 'string' ? b : '';
-  const wa = left.split(' ').slice(0, 200);
-  const wb = right.split(' ').slice(0, 200);
-  const dp = Array(wa.length + 1).fill(null).map(() => Array(wb.length + 1).fill(0));
-  for (let i = 1; i <= wa.length; i += 1) {
-    for (let j = 1; j <= wb.length; j += 1) {
-      dp[i][j] = wa[i - 1] === wb[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1]);
-    }
-  }
-  const out = [];
-  let i = wa.length;
-  let j = wb.length;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && wa[i - 1] === wb[j - 1]) {
-      out.unshift({ t: 'eq', v: wa[i - 1] });
-      i -= 1;
-      j -= 1;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      out.unshift({ t: 'add', v: wb[j - 1] });
-      j -= 1;
-    } else {
-      out.unshift({ t: 'del', v: wa[i - 1] });
-      i -= 1;
-    }
-  }
-  return out;
+  const types = { EQUAL: 'eq', INSERT: 'add', DELETE: 'del' };
+  const parts = computeDiff(a, b).map(part => ({ t: types[part.type], v: part.text }));
+  return parts.length ? parts : [{ t: 'eq', v: '' }];
 }
 
 export function scorePrompt(text) {
@@ -233,24 +211,25 @@ function coercePromptText(value) {
   return result;
 }
 
-function normalizeParsedPayload(payload) {
+function normalizeParsedPayload(payload, modern = false) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
   const assumptionDetails = normalizeAssumptions(payload.assumptions);
+  const promptText = modern || payload.schema_version === 2
+    ? value => typeof value === 'string' ? value.trim() : ''
+    : coercePromptText;
   return {
     ...payload,
-    enhanced: coercePromptText(payload.enhanced),
+    enhanced: promptText(payload.enhanced),
     variants: Array.isArray(payload.variants)
       ? payload.variants
         .map((variant) => {
           if (!variant || typeof variant !== 'object') {
-            return {
-              label: 'Variant',
-              content: coercePromptText(variant),
-            };
+            return { label: 'Variant', content: promptText(variant) };
           }
           return {
+            ...(variant.id ? { id: ensureString(variant.id) } : {}),
             label: stringifyPromptValue(variant.label).trim() || 'Variant',
-            content: coercePromptText(
+            content: promptText(
               Object.prototype.hasOwnProperty.call(variant, 'content') ? variant.content : variant
             ),
           };
@@ -260,8 +239,6 @@ function normalizeParsedPayload(payload) {
     notes: coercePromptText(payload.notes),
     changeSummary: coercePromptText(payload.changeSummary || payload.change_summary),
     changes: normalizeSemanticChanges(payload.changes),
-    // Keep the long-standing parser contract (string assumptions) stable while
-    // exposing the structured details needed by the reversible result UI.
     assumptions: assumptionDetails.map((assumption) => assumption.text),
     assumptionDetails,
     reversibleEdits: normalizeReversibleEdits(
@@ -276,82 +253,55 @@ function normalizeParsedPayload(payload) {
 }
 
 function extractCompleteJsonStringField(text, fieldName) {
-  const fieldPattern = new RegExp(`"${fieldName.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')}"\\s*:\\s*"`, 'g');
+  const fieldPattern = new RegExp(`"${fieldName}"\\s*:\\s*"`, 'g');
   const match = fieldPattern.exec(text);
   if (!match) return '';
-
   const valueStart = match.index + match[0].length;
   let escaped = false;
-
   for (let index = valueStart; index < text.length; index += 1) {
     const char = text[index];
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-    if (char === '\\') {
-      escaped = true;
-      continue;
-    }
+    if (escaped) { escaped = false; continue; }
+    if (char === '\\') { escaped = true; continue; }
     if (char !== '"') continue;
-
-    try {
-      return JSON.parse(`"${text.slice(valueStart, index)}"`);
-    } catch {
-      return '';
-    }
+    try { return JSON.parse(`"${text.slice(valueStart, index)}"`); }
+    catch { return ''; }
   }
-
   return '';
 }
 
-export function parseEnhancedPayload(rawText) {
-  const cleaned = String(rawText || '').replace(/```json|```/g, '').trim();
+export function parseEnhancedPayload(rawText, options = {}) {
+  // Strip an outer transport fence only. Fences inside prompt strings are data.
+  const cleaned = String(rawText || '').trim()
+    .replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '').trim();
   if (!cleaned) throw new Error('Model returned empty content. Try again.');
-
   let parsed = null;
-
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
+  try { parsed = JSON.parse(cleaned); }
+  catch {
     const firstBrace = cleaned.indexOf('{');
     const lastBrace = cleaned.lastIndexOf('}');
     if (firstBrace >= 0 && lastBrace > firstBrace) {
-      try {
-        parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1));
-      } catch {}
+      try { parsed = JSON.parse(cleaned.slice(firstBrace, lastBrace + 1)); }
+      catch {}
     }
   }
-
-  // Hosted responses can hit the bounded output ceiling after finishing the
-  // first field but before variants/notes close. Preserve only a fully closed
-  // JSON string; never surface a partially generated enhanced prompt.
+  // Recover only a fully closed primary string, never a partially generated prompt.
   if (parsed === null) {
     const recoveredEnhanced = extractCompleteJsonStringField(cleaned, 'enhanced');
     if (recoveredEnhanced.trim()) {
       parsed = {
         enhanced: recoveredEnhanced,
+        primary_id: extractCompleteJsonStringField(cleaned, 'primary_id'),
+        schema_version: options.modern ? 2 : undefined,
+        metadataIncomplete: true,
         variants: [],
         notes: 'The enhanced prompt completed, but optional variants and notes were cut off by the hosted output limit.',
-        assumptions: [],
-        assumptionDetails: [],
-        changeSummary: '',
-        changes: [],
-        reasoning: '',
-        tags: [],
+        assumptions: [], assumptionDetails: [], changeSummary: '', changes: [], reasoning: '', tags: [],
       };
     }
   }
-
   if (parsed === null) throw new Error('Model response was not valid JSON. Try again.');
-
-  const normalized = normalizeParsedPayload(parsed);
-  if (
-    !normalized ||
-    typeof normalized !== 'object' ||
-    typeof normalized.enhanced !== 'string' ||
-    !normalized.enhanced.trim()
-  ) {
+  const normalized = normalizeParsedPayload(parsed, options.modern === true);
+  if (!normalized || typeof normalized !== 'object' || typeof normalized.enhanced !== 'string' || !normalized.enhanced.trim()) {
     throw new Error('Model response JSON is missing an enhanced prompt string. Try again.');
   }
   return normalized;
@@ -403,12 +353,8 @@ export function checkTraits(outputText, expectedTraits = [], expectedExclusions 
     const raw = String(needle || '').trim();
     if (!raw) return false;
     if (raw.length > 2 && raw.startsWith('/') && raw.endsWith('/')) {
-      try {
-        return new RegExp(raw.slice(1, -1), 'i').test(text);
-      } catch {
-        // Invalid regex traits degrade to a literal match instead of failing the case.
-        return lower.includes(raw.toLowerCase());
-      }
+      try { return new RegExp(raw.slice(1, -1), 'i').test(text); }
+      catch { return lower.includes(raw.toLowerCase()); }
     }
     return lower.includes(raw.toLowerCase());
   };
