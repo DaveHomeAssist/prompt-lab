@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-17T18:17:31.760Z",
+  "snapshotAt": "2026-10-17T18:32:53Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "36aa5e21b33c29f61689c3891ba9f9257ca82c8c",
+  "mainSha": "476c2514b1f2c3247b48bfb5b6dad8309d4a40e3",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete release verification of the remaining JSON control removal; broader Enhance UX, billing, hosted model quality and native/human acceptance remain separate.",
+  "nextAction": "Retain the released generation regression coverage; broader Enhance UX, billing-policy, hosted model quality and native/human acceptance remain separately scoped.",
   "evidence": [
     {
-      "label": "CI and generation options reconciliation",
-      "state": "Running",
-      "detail": "2026-10-17: ownership reconciled in the existing chat; no separate active owner or open PR. PR138 merged4b3616f with footer fix6dd2104 and forwarding fix2498a11. All15 returned PR checks and8 merge workflows passed, including Landing39005812071 and Desktop39005812076. Main36aa5e2 production smoke39056243828 passed. New candidate removes the remaining Format source as JSON control; 23 focused generation/control tests passed on Dominic Node22. Production activation coverage checks stale JSON/concise migration, candidate choices and the intercepted request policy. Candidate CI/deployment/live acceptance pending. Existing45-row backlog retained, broader UX stays In progress. Private Next Steps Board has no PromptLab registry mapping.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/138"
+      "label": "CI and generation options delivered",
+      "state": "Verified",
+      "detail": "2026-10-17: ownership reconciled in the existing chat; no separate active owner/open PR. PR138 CI fixes and automatic Tighter/Strict JSON removal were already merged4b3616f; all15 returned PR checks and8 merge workflows passed. PR161 merged476c251 removes the remaining Format source as JSON control while preserving historical prompts, JSON transport and explicit Shorten. Dominic Node22.23.3 passed23 focused tests and extension build/assembly, with source hashes matching the commit. Exact-main Extension39057528505 passed1169 Vitest,223 legacy and13 evaluator tests; Landing39057528538, API39057528499, Progress39057528500, Pages39057528036 and Desktop39057528495 passed, including MSI/NSIS/DEB/AppImage acceptance and macOS universal build. Vercel dpl_4YXpu7uy1u32FRprVz3faX9ept19 READY on476c251 at promptlab.tools. Signed-in production39057598319 passed375/1440px restored JSON/concise defaults, Expanded/Refined/Rebuilt controls, alternatives off, intercepted request policy, save/refine/history/comparison/reload/reuse and disposable-session cleanup. No real model calls. Broader UX, billing-policy, native distribution/human and model-quality gates remain open. All45 backlog dispositions preserved; no PromptLab Next Steps Board registry mapping exists.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/161"
     },
     {
       "label": "First visit splash delivery",
