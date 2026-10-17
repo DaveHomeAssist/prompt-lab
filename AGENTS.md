@@ -212,3 +212,5 @@ Status Check Runs "Human Name"):
 [2026-10-15] [PLB] [fix] Name the page that holds pending import conflict choices and add Jump to unresolved, which pages to and focuses the next pending prompt, in the Library import review (031)
 
 [2026-10-17] [PLB] [release] Merge PR #154 as d2dc37a after all 13 checks passed; the production bundle carries Jump to unresolved. A signed-in production import with a pending conflict beyond page 1 (031) remains open
+
+[2026-10-17] [PLB] [docs] Record DEC-01 as D-013: the refinement workspace mockup folds into Create as the slice 2 reference; add slice 2 acceptance to the Enhance brief and open D-ENH-5 and D-ENH-6 (D-014)
