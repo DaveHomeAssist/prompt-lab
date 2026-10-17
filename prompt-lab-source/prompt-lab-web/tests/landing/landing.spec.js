@@ -115,7 +115,7 @@ test('public content security policy blocks injected third-party scripts', async
 });
 
 test('reveal motion is a JavaScript enhancement with a visible completion state', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
   await expect(page.locator('html')).toHaveClass(/reveal-motion/);
 
   const pricingHeader = page.locator('#pricing .pricing-header');
@@ -129,7 +129,7 @@ test.describe('mobile navigation', () => {
 
   test('opens from the keyboard, traps focus, closes with Escape, and returns focus', async ({ page }) => {
     test.setTimeout(30_000);
-    await page.goto('/');
+    await page.goto('/?splash=1');
 
     const toggle = page.locator('#navToggle');
     const dialog = page.locator('#mobileNav');
@@ -183,7 +183,7 @@ test.describe('mobile navigation', () => {
   });
 
   test('keeps the persistent app action named and moves focus to an in-page destination', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?splash=1');
 
     await expect(page.locator('.nav-mobile-cta')).toHaveAccessibleName('Open PromptLab app');
     await page.locator('#navToggle').click();
@@ -203,7 +203,7 @@ test.describe('mobile navigation', () => {
 });
 
 test('critical landing controls work through the tab order without pointer input', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
 
   const skipLink = page.getByRole('link', { name: 'Skip to main content' });
   await page.keyboard.press('Tab');
@@ -241,7 +241,7 @@ test('critical landing controls work through the tab order without pointer input
 });
 
 test('sample modes, shortcut scope, busy state, status, result, and handoff work', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
 
   const demo = page.locator('#demo');
   const input = page.locator('#demoInput');
@@ -328,7 +328,7 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
 });
 
 test('landing controls purge poisoned attribution and store only allowlisted funnel events', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
   await page.evaluate(() => {
     const now = Date.now();
     sessionStorage.setItem('promptlab_landing_attribution', JSON.stringify({
@@ -440,7 +440,7 @@ test.describe('reduced motion', () => {
         return nativeSetTimeout(handler, delay, ...args);
       };
     });
-    await page.goto('/');
+    await page.goto('/?splash=1');
     await expect.poll(() => page.evaluate(() => (
       matchMedia('(prefers-reduced-motion: reduce)').matches
     ))).toBe(true);
@@ -478,7 +478,7 @@ test.describe('JavaScript disabled', () => {
   test.use({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
 
   test('keeps the complete marketing story visible', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?splash=1');
     for (const selector of ['#main-content', 'h1', '#demo', '#workflow', '#pricing', '#faq', 'footer']) {
       await expect(page.locator(selector)).toBeVisible();
     }
@@ -567,7 +567,7 @@ test('setup provider tabs retain keyboard behavior with JavaScript enabled', asy
 test('1280x800 at 200% reflow proxy stays usable at a 640x400 CSS viewport', async ({ page }) => {
   // This exercises the CSS viewport expected after zoom reflow. It does not simulate browser zoom.
   await page.setViewportSize({ width: 640, height: 400 });
-  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await page.goto('/?splash=1', { waitUntil: 'domcontentloaded' });
 
   const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
   const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
@@ -598,7 +598,7 @@ test('target viewports avoid horizontal overflow', async ({ page }) => {
   test.setTimeout(30_000);
   for (const viewport of targetViewports) {
     await page.setViewportSize(viewport);
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.goto('/?splash=1', { waitUntil: 'domcontentloaded' });
     if (viewport.width === 320) {
       await page.evaluate(() => {
         document.documentElement.style.scrollbarGutter = 'stable';
@@ -623,7 +623,7 @@ test.describe('mobile touch targets', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('primary landing controls are at least 44 by 44 CSS pixels', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/?splash=1');
 
     const modeLabels = await page.locator('input[name="demoMode"]').evaluateAll((inputs) => (
       inputs.map((input) => `label[for="${CSS.escape(input.id)}"]`)
@@ -656,7 +656,7 @@ test.describe('mobile touch targets', () => {
 });
 
 test('billing-period radios update displayed pricing and the explicit app handoff', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
 
   const monthly = page.locator('#billingMonthly');
   const annual = page.locator('#billingAnnual');
@@ -697,7 +697,7 @@ test('target-blank links protect the opener in rendered landing and docs pages',
 });
 
 test('landing task destinations load and identify real headings', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?splash=1');
   const landingHrefs = await page.locator('a[href*="guide.html#"], a[href*="setup.html#"]').evaluateAll((links) => (
     links.map((link) => new URL(link.href).pathname + new URL(link.href).hash)
   ));

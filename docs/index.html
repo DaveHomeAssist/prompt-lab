@@ -5,6 +5,25 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com; font-src 'self'; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; object-src 'none'; base-uri 'self'; form-action 'self'">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script id="first-visit-splash">
+// Run before rendering so returning visitors do not see a landing-page flash.
+(function () {
+  try {
+    const key = 'promptlab_splash_seen';
+    const url = new URL(window.location.href);
+    const seen = window.localStorage.getItem(key) === '1';
+    window.localStorage.setItem(key, '1');
+    // Keep deliberate landing-section links and an explicit splash override usable.
+    if (seen && !url.hash && url.searchParams.get('splash') !== '1') {
+      url.pathname = '/app';
+      url.searchParams.delete('splash');
+      window.location.replace(url.href);
+    }
+  } catch {
+    // Storage can be blocked or full. Keep the landing page and app links usable.
+  }
+}());
+</script>
 <title>Prompt Lab — Turn rough prompts into reusable workflows</title>
 <link rel="canonical" href="https://promptlab.tools/">
 <meta name="robots" content="index,follow">
