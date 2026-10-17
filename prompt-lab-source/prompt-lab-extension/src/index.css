@@ -535,7 +535,9 @@ textarea:disabled {
 .pl-reasoning { margin-top: 0.75rem; border: 1px solid var(--result-line); border-radius: 0.65rem; padding: 0.7rem 0.8rem; }
 .pl-reasoning summary { cursor: pointer; font-size: 0.72rem; font-weight: 750; }
 .pl-reasoning p { margin-top: 0.55rem; font-size: 0.73rem; line-height: 1.6; opacity: 0.7; }
-.pl-result-commit-bar { position: sticky; bottom: 0; border-top: 1px solid var(--result-line); background: color-mix(in srgb, var(--pl-brand-ink) 92%, transparent); backdrop-filter: blur(18px); }
+/* Keep save actions in document flow: a sticky footer can cover review controls
+   when the result scrollport is shorter than the candidate rail at tablet sizes. */
+.pl-result-commit-bar { position: static; border-top: 1px solid var(--result-line); background: color-mix(in srgb, var(--pl-brand-ink) 92%, transparent); backdrop-filter: blur(18px); }
 [data-theme="light"] .pl-result-commit-bar { background: rgba(255, 253, 250, 0.94); }
 .pl-commit-copy { min-width: 10rem; flex: 1; }
 .pl-commit-copy input { width: min(100%, 24rem); margin-top: 0.3rem; border: 0; border-bottom: 1px solid var(--result-line); border-radius: 0; background: transparent; padding: 0.25rem 0; font-size: 0.82rem; font-weight: 700; }
