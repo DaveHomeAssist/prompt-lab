@@ -4,7 +4,8 @@
 
 - Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; D-ENH-5 and D-ENH-6 open`
 - Created: `2026-10-15`
-- Source revision checked: `8eceda5` (`origin/main`)
+- Source revision checked: `8eceda5` (`origin/main`) for the original findings;
+  `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison
 - Inputs: the Enhance UI review of 2026-10-15 and its desktop mockup
   ([`evidence/enhance-workspace-mockup-2026-10-15.webp`](evidence/enhance-workspace-mockup-2026-10-15.webp));
   the refinement workspace mockup of 2026-10-17
@@ -98,8 +99,10 @@ mobile, per WEB-2). Switching never discards the draft or candidate edits.
 - No change to prompt generation, provider calls, budgets or quotas.
 - No storage schema change. Library records, version identities, candidate
   identities, Golden Responses and run history stay as they are.
-- No new visual language. The Nocturne palette, ember accent and warm type
-  carry over; the uxui-bold-restructure spec still governs the visual pass.
+- No new visual language in slices 1, 3 and 4. The Nocturne palette, ember
+  accent and warm type carry over; the uxui-bold-restructure spec still governs
+  the visual pass. Slice 2's visual identity is open (D-ENH-5) and is settled by
+  that answer, not by this exclusion.
 - No native iOS change.
 
 ## Rule, data, save and API effects
@@ -149,7 +152,7 @@ The mockup is the visual reference for slice 1, with these corrections:
 ## Refinement workspace mockup (DEC-01)
 
 A second, standalone mockup was reviewed on 2026-10-16 and restyled on
-2026-10-17: a Draft / Refine / Review workspace running a local simulation only
+2026-10-17 (compared against `main` at `6942b8e`): a Draft / Refine / Review workspace running a local simulation only
 ([`evidence/refinement-workspace-mockup-2026-10-17.webp`](evidence/refinement-workspace-mockup-2026-10-17.webp)).
 Dave chose DEC-01 **A** on 2026-10-17 (recorded as D-013 in
 [`DECISIONS.md`](DECISIONS.md)): integrate it as a focused Create view, not a
@@ -158,7 +161,7 @@ destination.
 
 | Mockup element | Create on `main` today | Where it lands |
 | --- | --- | --- |
-| Three columns: Draft, Refine conditions, Review | Two panes with a control row (slice 1, behind the flag) | Two panes stay; the conditions belong in the control row (D-ENH-6) |
+| Three columns: Draft, Refine conditions, Review | Two panes with a control row (slice 1, behind the flag) | Pending D-ENH-6 (recommended: keep two panes with the conditions in the control row) |
 | Changed-condition markers: a Δ on edited source sections and on changed strategy, task, destination or guardrails, with a "Δ n changed" readout | None. A candidate gives no sign that the draft or options moved after it was generated | Slice 2 |
 | Stale-candidate notice: "Draft or settings changed. Refine again before applying this snapshot." | None | Slice 2 |
 | Candidate receipt: input revision, method, additions kept, model output untested | Result header shows the candidate and the assumptions count | Slice 2, as one line in the result header |
@@ -166,9 +169,12 @@ destination.
 | Pin baseline and compare | Pin golden response | No change; the golden response stays the comparison anchor |
 | Run log with observations | Evaluate run history | Out of scope: DEC-01 covers Create only |
 | Evaluate comparison bench with per-difference evidence; Scratch capture channels | Not present | Out of scope; each needs its own brief and decision |
-| Graphite, smoked glass and electric cyan; squared panels; large run ID | Nocturne palette and ember accent; the visual-language exclusion above | Not adopted by this brief (D-ENH-5) |
+| Graphite, smoked glass and electric cyan; squared panels; large run ID | Nocturne palette and ember accent | Pending D-ENH-5 (recommended: not adopted in slice 2; offered to the visual pass) |
 
 ### Slice 2 acceptance (draft)
+
+These criteria cover behaviour only. Layout and visual criteria are added
+once D-ENH-5 and D-ENH-6 are answered.
 
 Slice 2 is accepted when all of these hold on hosted web with the flag on:
 
