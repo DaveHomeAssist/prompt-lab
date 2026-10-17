@@ -39,20 +39,25 @@ for (const width of [375, 1440]) {
     const blocked = [];
     const outputs = ['Write a concise launch brief with three measured outcomes.', 'Write a concise launch brief with three measured outcomes and a named owner.'];
     await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: appUrl.origin });
-    await page.addInitScript(origin => {
+    await page.addInitScript(({ origin, staleMode }) => {
       if (location.origin !== origin) return;
       if (!localStorage.getItem('__activationQA')) {
         localStorage.setItem('__activationQA', '1');
         localStorage.setItem('pl2-library', '[]');
+        localStorage.setItem('pl2-session-pl2-session', JSON.stringify({ enhMode: staleMode }));
       }
       localStorage.setItem('pl_telemetry_consent', 'denied');
       localStorage.setItem('pl2-telemetry', JSON.stringify({ telemetryEnabled: false, pendingEvents: [] }));
-    }, appUrl.origin);
+    }, { origin: appUrl.origin, staleMode: width === 375 ? 'json' : 'concise' });
     await page.route('**/*', async route => {
       const request = route.request();
       if (request.url() === `${appUrl.origin}/api/proxy` && request.method() === 'POST') {
         expect(calls, 'Only the two deliberate refinement requests are allowed').toBeLessThan(2);
         const payload = JSON.parse(request.postDataJSON().body);
+        expect(payload.system).toContain('"primary_id":"expanded"');
+        expect(payload.system).toContain('"variants":[]');
+        expect(payload.system).not.toContain('Strict JSON');
+        expect(payload.system).not.toContain('Tighter');
         const result = JSON.stringify({ title: 'Synthetic launch brief', enhanced: outputs[calls++], changes: ['Added measurable outcomes'], variants: [] });
         if (payload.stream) {
           const frame = data => `data: ${JSON.stringify(data)}\n\n`;
@@ -94,6 +99,14 @@ for (const width of [375, 1440]) {
       qaSession.sessionId = sessionId;
       expect(sessionId).toMatch(/^sess_/);
       await page.setViewportSize({ width, height: 900 });
+      phase('verify restored generation defaults');
+      await page.getByText(/Generation options · Expanded/).click();
+      const strategies = page.getByLabel('Preferred primary candidate');
+      await expect(strategies).toHaveValue('expanded');
+      await expect(strategies.locator('option')).toHaveText(['Expanded', 'Refined', 'Rebuilt']);
+      await expect(page.getByRole('checkbox', { name: /Generate alternatives/ })).not.toBeChecked();
+      await expect(page.getByRole('button', { name: /JSON/i })).toHaveCount(0);
+      await page.getByText(/Generation options · Expanded/).click();
       phase('load and save starter');
       await page.getByRole('button', { name: 'Load Starter Draft', exact: true }).click();
       await expect(page.getByTestId('prompt-input')).not.toHaveValue('');

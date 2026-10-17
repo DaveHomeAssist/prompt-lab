@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-17T15:05:53.770454Z",
+  "snapshotAt": "2026-10-17T18:17:31.760Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "13d5721e4d4ee796388746d1b4fda23e5c1a75ed",
+  "mainSha": "36aa5e21b33c29f61689c3891ba9f9257ca82c8c",
   "overall": "Acceptance incomplete",
-  "nextAction": "Reconcile newer direct CI/Tighter/JSON steering before the next accepted Create slice; D-ENH-5/6 remain open and broader runtime/human gates remain separate.",
+  "nextAction": "Complete release verification of the remaining JSON control removal; broader Enhance UX, billing, hosted model quality and native/human acceptance remain separate.",
   "evidence": [
+    {
+      "label": "CI and generation options reconciliation",
+      "state": "Running",
+      "detail": "2026-10-17: ownership reconciled in the existing chat; no separate active owner or open PR. PR138 merged4b3616f with footer fix6dd2104 and forwarding fix2498a11. All15 returned PR checks and8 merge workflows passed, including Landing39005812071 and Desktop39005812076. Main36aa5e2 production smoke39056243828 passed. New candidate removes the remaining Format source as JSON control; 23 focused generation/control tests passed on Dominic Node22. Production activation coverage checks stale JSON/concise migration, candidate choices and the intercepted request policy. Candidate CI/deployment/live acceptance pending. Existing45-row backlog retained, broader UX stays In progress. Private Next Steps Board has no PromptLab registry mapping.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/138"
+    },
     {
       "label": "First visit splash delivery",
       "state": "Verified",
@@ -184,7 +190,7 @@
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -238,7 +244,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -389,7 +395,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
