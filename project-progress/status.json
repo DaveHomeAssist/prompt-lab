@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "7d6ed100f18a1051f14a6f41121dc9c76c98a20e",
+  "mainSha": "13d5721e4d4ee796388746d1b4fda23e5c1a75ed",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the first visit splash PR checks, merge and live navigation verification; preserve open Create visual/layout decisions and existing acceptance gates.",
+  "nextAction": "Reconcile newer direct CI/Tighter/JSON steering before the next accepted Create slice; D-ENH-5/6 remain open and broader runtime/human gates remain separate.",
   "evidence": [
     {
       "label": "First visit splash delivery",
-      "state": "Open",
-      "detail": "2026-10-17: Reconstructed prior unpublished 061eee8 behavior from retained source under explicit delivery authorization on main7d6ed10. Walter Node22.22.1 passed34 landing tests and Chromium first/repeat/new-tab, query, override, hash, storage-clear/blocked and direct-app navigation checks against source HTML with an app destination fixture. PR/CI/merge/deployment and live navigation pending. Existing vertical landing scroll remains; no redesign included. Complete45-row Notion snapshot inspected with no matching splash row; existing issue dispositions preserved; implementation RUN appended/read back. PR156 already closed as superseded; PR158 already merged. Next Steps Board has no registered PromptLab entry, so board synchronization is unavailable.",
-      "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
+      "state": "Verified",
+      "detail": "2026-10-17: PR159 merged13d5721 from4ca21fe after the sign-out review fix routed afterSignOutUrl to /?splash=1. Walter Node22.22.1 passed35 landing tests. Final candidate Landing CI39049017972 and exact-main Landing CI39049032608 passed; all returned exact-main workflows including API/Docs/Progress/Pages passed. Production dpl_5FamdeaNFYQERZFEjkwh1p7T196b READY at13d5721. Walter Chromium live promptlab.tools navigation passed first/repeat/new-tab visits, preserved query, forced splash, hash, storage-clear/access/quota failure and direct app entry. Third-party requests blocked; signed-in Clerk sign-out, native and human acceptance not exercised. Existing vertical landing scroll remains. Complete45-row backlog re-read; no splash row, dispositions preserved. Implementation RUN and Hub appended/read back; newer Hub Next Action preserved. PR156 already closed. Private Next Steps Board has no PromptLab registry entry, so synchronization unavailable.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/159"
     },
     {
       "label": "Library import review: jump to unresolved delivered",
