@@ -8,6 +8,8 @@ export default function SettingsModal({
   setShowNotes,
   density,
   setDensity,
+  createLayout,
+  setCreateLayout,
   collections,
   deleteCollection,
   exportLib,
@@ -58,6 +60,21 @@ export default function SettingsModal({
           <span>Show enhancement notes</span>
           <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-orange-500" />
         </label>
+        {typeof setCreateLayout === 'function' && (
+          <label className={`flex min-h-11 items-center justify-between gap-3 text-sm ${m.textBody} cursor-pointer`}>
+            <span>
+              Two-pane Create workspace
+              <span className={`block text-xs ${m.textMuted}`}>Preview: source and result side by side</span>
+            </span>
+            <input
+              type="checkbox"
+              data-testid="create-layout-toggle"
+              checked={createLayout === 'split'}
+              onChange={e => setCreateLayout(e.target.checked ? 'split' : 'stacked')}
+              className="accent-orange-500"
+            />
+          </label>
+        )}
         <fieldset>
           <legend className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Density</legend>
           <div className="flex gap-1">

@@ -430,7 +430,7 @@ describe('LibraryWorkspace test cases', () => {
 
     renderCases({ testCasesByPrompt: { favorite: [boardCase] }, testCaseControls: makeControls() });
     openTestsTab('Favorite prompt');
-    expect(screen.getByText('Run all cases from Create: choose Open in Editor, then Run Cases.')).toBeInTheDocument();
+    expect(screen.getByText('Run all cases from Create: choose Open in Editor, then Test Enhancer.')).toBeInTheDocument();
     // The control it names exists in the same inspector.
     expect(screen.getByRole('button', { name: 'Open in Editor' })).toBeInTheDocument();
   });

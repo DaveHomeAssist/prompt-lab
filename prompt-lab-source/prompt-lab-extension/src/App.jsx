@@ -58,6 +58,7 @@ import {
   normalizeLandingIntent,
 } from './lib/landingAttribution.js';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
+import { readGenerationOptions, restoreEditorMode } from './lib/generationOptions.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -158,6 +159,8 @@ export default function App({
     setColorMode,
     density,
     setDensity,
+    createLayout,
+    setCreateLayout,
     primaryView,
     setPrimaryView,
     workspaceView,
@@ -178,6 +181,9 @@ export default function App({
     cmdQuery,
     setCmdQuery,
   } = ui;
+  // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, D-012):
+  // opt-in from Settings and hosted web only until it is accepted there.
+  const splitCreate = isWeb && createLayout === 'split';
   const m = T[colorMode];
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
@@ -440,7 +446,7 @@ export default function App({
     setVariants(Array.isArray(editor.variants) ? editor.variants : []);
     setNotes(editor.notes || '');
     setResultMeta(editor.resultMeta || null);
-    setEnhMode(editor.enhMode || 'balanced');
+    setEnhMode(restoreEditorMode(editor.enhMode, readGenerationOptions()));
     if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
     setSaveTitle(persistence?.saveTitle || '');
@@ -634,15 +640,15 @@ export default function App({
 
   // ── Command palette (driven by navigationRegistry) ──
   const closePalette = () => setShowCmdPalette(false);
-  const handleEnhanceRequest = () => {
+  const handleEnhanceRequest = (overridePayload, meta) => {
     trackTelemetry('editor.enhance_requested', {
-      mode: enhMode,
+      mode: meta?.modeId || enhMode,
       inputLength: raw.length,
       wordCount: wc,
       editing: Boolean(editingId),
       plan: billing.plan,
     });
-    enhance();
+    enhance(overridePayload, meta);
   };
   const handleExportLibrary = () => {
     if (canExportLibrary) {
@@ -1157,6 +1163,7 @@ export default function App({
               onUseFollowUp={handleUseFollowUp}
               onChainFollowUp={handleChainFollowUp}
               onSaveFollowUp={handleSaveFollowUp}
+              splitLayout={splitCreate}
               savedFollowUps={savedFollowUps}
               followUpSource={followUpSource}
               followUpRuns={followUpRuns}
@@ -1448,6 +1455,8 @@ export default function App({
         <SettingsModal
           m={m} showNotes={showNotes} setShowNotes={setShowNotes}
           density={density} setDensity={setDensity}
+          createLayout={isWeb ? createLayout : undefined}
+          setCreateLayout={isWeb ? setCreateLayout : undefined}
           collections={lib.collections} deleteCollection={lib.deleteCollection}
           exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
           pendingImport={lib.pendingImport} retryImport={lib.retryImport}

@@ -218,7 +218,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
   if (inspectorTab === 'tests') {
     // Runnable cases live in the experiment store (keyed by prompt id), separate
     // from the read-only `testCases` that packs and imports embed in the entry.
-    // Run Cases in Create only runs the former.
+    // Test Enhancer in Create only runs the former.
     const embeddedCases = selected.testCases || [];
     const hasGolden = Boolean(selected.goldenResponse?.text);
     const savedCases = testCasesByPrompt?.[selected.id] || [];
@@ -226,7 +226,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
     return <div className="pl-saved-tests">
       {selected.metadata?.suite && <div className={`pl-suite-summary is-${selected.metadata.suite.verdict || 'unknown'}`}><strong>Latest suite: {selected.metadata.suite.verdict || 'Unknown'}</strong><span>{selected.metadata.suite.passed || 0}/{selected.metadata.suite.total || 0} passed</span></div>}
       {canManageCases && <TestCasesPanel m={m} entry={selected} cases={savedCases} {...testCaseControls} />}
-      {canManageCases && savedCases.length > 0 && <small>Run all cases from Create: choose Open in Editor, then Run Cases.</small>}
+      {canManageCases && savedCases.length > 0 && <small>Run all cases from Create: choose Open in Editor, then Test Enhancer.</small>}
       {hasGolden && <section><h3>Golden response</h3><pre>{selected.goldenResponse.text}</pre><small>Similarity threshold: {Math.round((selected.goldenThreshold ?? DEFAULT_GOLDEN_THRESHOLD) * 100)}%</small></section>}
       {canManageCases && embeddedCases.length > 0 && <h3>Included with this prompt (read-only)</h3>}
       {embeddedCases.map((testCase, index) => <section key={testCase.id || index}><h3>{testCase.name || `Test ${index + 1}`}</h3><pre>{testCase.input}</pre>{testCase.expectedTraits?.length > 0 && <p><strong>Expected:</strong> {testCase.expectedTraits.join(', ')}</p>}{testCase.exclusions?.length > 0 && <p><strong>Exclude:</strong> {testCase.exclusions.join(', ')}</p>}{testCase.notes && <small>{testCase.notes}</small>}</section>)}

@@ -208,7 +208,15 @@ test.describe('responsive hosted workspaces', () => {
         await candidates.getByRole('option').nth(0).focus();
         await candidates.getByRole('option').nth(0).press('ArrowDown');
         await expect(candidates.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
-        await output.getByRole('button', { name: /Original prompt/ }).click();
+        // Review metadata is scoped to the selected candidate, so return to the
+        // primary candidate before checking its change list.
+        await candidates.getByRole('option').nth(1).press('ArrowUp');
+        await expect(candidates.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
+        // Review controls must be reachable after candidate keyboard navigation
+        // without forcing clicks or manually compensating for overlapping UI.
+        const originalToggle = output.getByRole('button', { name: /Original prompt/ });
+        await originalToggle.click();
+        await expect(originalToggle).toHaveAttribute('aria-expanded', 'true');
         await output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Changes' }).click();
         await expect(output.getByRole('tabpanel')).toContainText('Added a verification role.');
         await expectNoHorizontalOverflow(page);

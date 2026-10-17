@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-15T03:56:48.000Z",
+  "snapshotAt": "2026-10-17T05:17:19.847Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,9 +9,9 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "af528f2071046378982da7cc52ca763d1e788b1a",
+  "mainSha": "150b32a078ddf901f2fd94ba0d7ee5fc96ec8f60",
   "overall": "Acceptance incomplete",
-  "nextAction": "Resolve remaining webhook log deduplication/order and entitlement refresh policy separately; retain hosted-generation, commercial refund policy and native/human acceptance gates.",
+  "nextAction": "Deliver the explicit action handler correction and verify current-head checks; retain broader UX and live model acceptance gates.",
   "evidence": [
     {
       "label": "Library import review: jump to unresolved conflicts",
@@ -20,9 +20,15 @@
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/154"
     },
     {
-      "label": "Library tile and inspector overlap fixes",
-      "state": "Running",
-      "detail": "2026-10-15: PR #151 at 8c5e1a4 fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. New e2e/library-layout-overlap.spec.js fails before and passes after (7/7); extension Vitest 1130/1130 and node 222/222. Draft, not merged or deployed.",
+      "label": "Explicit transform action correction",
+      "state": "Verified",
+      "detail": "2026-10-17: PR138 prior head 6dd2104 has all14 checks passing. Independently confirmed App discarded Shorten/JSON/alternatives overrides. App now forwards payload and metadata; the new regression failed before and passed after;46 focused tests and the extension production build passed under Node22. The broader local suite stopped reporting progress and was interrupted; no full-suite pass is claimed. New-head CI and deployed/model-quality acceptance remain pending. Direct user request is the current Focus None exception.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/138"
+    },
+    {
+      "label": "Library tile and inspector overlap fixes delivered",
+      "state": "Verified",
+      "detail": "2026-10-15: PR #151 merged as 8eceda5 after all 14 checks passed; Vercel production dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o READY on it. Fixes tile cards drawing version/use-count/date under Editor/Copy/Favorite (029) and the see-through floating inspector between 701 and 1100 px (030), both reported from production screenshots. e2e/library-layout-overlap.spec.js fails before and passes after (7/7) and now runs in desktop-build CI; extension Vitest 1130/1130 and node 222/222. The live app CSS carries both rules. Open: no signed-in visual check of the production Library, because the hosted app requires Clerk sign-in.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/151"
     },
     {
@@ -172,7 +178,7 @@
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -226,7 +232,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -268,126 +274,6 @@
   ],
   "issues": [
     {
-      "id": "2cb0cb70403440e3bc223c225408b4e9",
-      "title": "Add rich-text editing and rename controls to Scratchpads",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "Feature",
-      "url": "https://app.notion.com/2cb0cb70403440e3bc223c225408b4e9",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "3d2255fc8f44816e82f1d4357108daad",
-      "title": "Alternate execution paths bypass sensitive-data preflight",
-      "status": "Done",
-      "severity": "High",
-      "area": "A/B Test",
-      "type": "Security",
-      "url": "https://app.notion.com/3d2255fc8f44816e82f1d4357108daad",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "3d2255fc8f448134b193d06a4bc73bf0",
-      "title": "Chain substitution interprets prompt text as replacement syntax",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Composer",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f448134b193d06a4bc73bf0",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "32d255fc8f4481d49143d134ed1839fc",
-      "title": "Collection deletion leaves orphaned entries and stale filter state",
-      "status": "Done",
-      "severity": "High",
-      "area": "Library",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f4481d49143d134ed1839fc",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "2026-10-07 Production Smoke37654136908 passed authenticated active-collection deletion at375x812 and1440x900: all four prompts retained, assignments cleared, All prompts filter active, persisted storage verified."
-    },
-    {
-      "id": "bb55eb8e71734aaf9b9f43c4dbec2bec",
-      "title": "Complete follow-up prompt provenance and save-to-library workflow",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Composer",
-      "type": "Feature",
-      "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
-      "inPlan": true,
-      "nextAction": "Continue remaining cross-shell and human acceptance; the bounded signed-in source/save/reload scenario now passes. Next independent accepted work is plan J signed-in Library navigation/import acceptance.",
-      "verification": "2026-10-07: Accepted plan K signed-in production follow-up slice verified by Production Smoke 37650271051 at test head 35b68f23b33b3c4b5cbd02c9d3d38fb4baa8fe22 against production deployment dpl_4918XfC1n8npLEYwd7zvaaobqQfx (main 25a3b87). All three smoke scenarios passed on GitHub Ubuntu/Chromium. The new case creates a parent through the actual signed-in UI, seeds only synthetic upstream editor/run data, intercepts one provider response without inference, verifies selected source output, visible source, rejected Library write with no mutation, successful retry without regeneration, independent child identity, unchanged parent and provenance after reload. The disposable Clerk session was revoked; no inference, purchase, or telemetry requests occurred. The first run 37649255988 timed out because the fixture omitted the enhanced editor result needed to expose the panel; corrected fixture passed without changing product code. This snapshot records runtime acceptance; PR134 owns the delivery state. Keep this umbrella In progress: this bounded path does not prove all supported shells, human acceptance, or the complete Library matrix. Next: verify the separately accepted signed-in Library navigation/import matrix (plan J) using existing fixture and QA controls. https://github.com/DaveHomeAssist/prompt-lab/pull/134 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37650271051"
-    },
-    {
-      "id": "48d82c475b0448649ff2372a00bb6e33",
-      "title": "Converge Library navigation, sync, persistence, and compatibility",
-      "status": "Done",
-      "severity": "High",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
-      "inPlan": true,
-      "nextAction": "Retain the Library regression matrix; continue independent release gates.",
-      "verification": "PR141 merged as 83d6ac5. Desktop37928010828 passed all six jobs at10a4aa26; merged and tested trees match. Actual extension editor save/update/reload/process restart/export, starter loading, tag/status filters and expanded negative controls pass. MSI/NSIS/DEB/AppImage exercise and retention artifacts inspected. Production37911746704 and iOS37911002859 provide authenticated web and native JSON/migration evidence. All bounded Phase8 criteria complete; separate release gates remain open."
-    },
-    {
-      "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
-      "title": "Cross-tab reconciliation resurrects permanent deletions",
-      "status": "Done",
-      "severity": "High",
-      "area": "Library",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "8048986ebc4541a9aba130d6a1df6add",
-      "title": "Decide admin-only access model for PromptLab health dashboards",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Security",
-      "url": "https://app.notion.com/8048986ebc4541a9aba130d6a1df6add",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "633182d5e7a14bb6b5027e88fbfd8e71",
-      "title": "Define Agent Lab execution model and safety boundaries",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/633182d5e7a14bb6b5027e88fbfd8e71",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "cecbf7cfcd9d489a8e92770131436505",
-      "title": "Define iOS Swift release scope after universal prototype",
-      "status": "In progress",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
       "id": "20087f568bbe47248442cddfee89a92c",
       "title": "Define Skill Lab feature scope and first usable experiment",
       "status": "Not started",
@@ -400,229 +286,13 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "32d255fc8f448146a3d3eeb8a62425e9",
-      "title": "Duplicate header files: HeaderNav.jsx and HeaderNav 2.jsx",
-      "status": "Done",
-      "severity": "Low",
-      "area": "Layout",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/32d255fc8f448146a3d3eeb8a62425e9",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "3d2255fc8f44816b9a5ed471be3b493d",
-      "title": "Fallback persistence acknowledges writes that failed",
-      "status": "Done",
-      "severity": "High",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f44816b9a5ed471be3b493d",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "d39b7b5b076041de8718e4c2f1134422",
-      "title": "Finish desktop stabilization and cross-platform packaging proof",
+      "id": "2cb0cb70403440e3bc223c225408b4e9",
+      "title": "Add rich-text editing and rename controls to Scratchpads",
       "status": "In progress",
-      "severity": "High",
-      "area": "Background",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
-      "inPlan": true,
-      "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
-      "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
-    },
-    {
-      "id": "32d255fc8f44817faa12dc09d3ede05d",
-      "title": "Import Library path has no duplicate check, preview, or conflict resolution",
-      "status": "Done",
-      "severity": "High",
-      "area": "Import",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f44817faa12dc09d3ede05d",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "32d255fc8f448146bf28e5f8e50a7d8f",
-      "title": "Import Pack allows near-duplicates (title-similar) to import without blocking",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Import",
-      "type": "UX",
-      "url": "https://app.notion.com/32d255fc8f448146bf28e5f8e50a7d8f",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "32d255fc8f4481e8ba1fc886f993c24d",
-      "title": "Legacy Recover import uses weak 200-char dedupe and ignores title differences",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Import",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f4481e8ba1fc886f993c24d",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "32d255fc8f4481448f66d78cbe58de55",
-      "title": "Manual reorder operates on full array but UI shows filtered subset",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Sort/Filter",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f4481448f66d78cbe58de55",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "3d2255fc8f448182b060d4be9f2140ee",
-      "title": "Mobile generation silently truncates source instructions",
-      "status": "Not started",
       "severity": "Medium",
       "area": "Editor",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f448182b060d4be9f2140ee",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "32d255fc8f448115a64cc88a7ec2f640",
-      "title": "Newest sort wrong for starter-pack prompts",
-      "status": "Done",
-      "severity": "High",
-      "area": "Sort/Filter",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f448115a64cc88a7ec2f640",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "2026-10-07 Production Smoke37654136908 passed the imported newer packLoadedAt sorting control on authenticated production at375x812 and1440x900. This is sorting evidence, not actual starter-pack loading."
-    },
-    {
-      "id": "32d255fc8f44817bbf7fd261e0cad492",
-      "title": "No test coverage for preset-pack import or raw Import Library merge",
-      "status": "Done",
-      "severity": "Low",
-      "area": "Import",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/32d255fc8f44817bbf7fd261e0cad492",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "32d255fc8f44811896f7f91177a77274",
-      "title": "No test coverage for sort, filter, collections, tags, or manual reorder",
-      "status": "Done",
-      "severity": "Low",
-      "area": "Library",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/32d255fc8f44811896f7f91177a77274",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "inPlan": false,
-      "nextAction": "Verify the existing hosted-generation-after-quota contract separately; preserve shared service budget and provider ceilings.",
-      "verification": "2026-10-14: Owner Pro, reload, collection/export/batch/Diff/Model Arena and session cleanup passed run38622431418 on main2cc57a8. Hosted generation after exhausted quota and other intended owners remain separate.",
-      "id": "3e1255fc8f4481e58754eaf713aa11e9",
-      "title": "Owner accounts are blocked by hosted demo rate limits",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3e1255fc8f4481e58754eaf713aa11e9"
-    },
-    {
-      "id": "3d2255fc8f448128a3c7d878a2b5d799",
-      "title": "Packaged extension drops provider cancellation",
-      "status": "Done",
-      "severity": "High",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f448128a3c7d878a2b5d799",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "59fa88b863524c9dad1d77de40f4ffee",
-      "title": "Polish Enhance screen flow and interaction hierarchy",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
-      "inPlan": false,
-      "nextAction": "Answer D-ENH-1 to D-ENH-4 in the Enhance workspace redesign brief, then implement slice 1 on hosted web behind a flag.",
-      "verification": "2026-10-15: external UI review checked against main 8eceda5 (8 findings confirmed, 1 likely); brief in prompt-lab-source/docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md via PR #152. Brief only; Notion note appended and read back."
-    },
-    {
-      "id": "3d5255fc8f4481afbf7ed26ad3432781",
-      "title": "Publish durable billing pilot companion",
-      "status": "Done",
-      "severity": "Low",
-      "area": "Background",
       "type": "Feature",
-      "url": "https://app.notion.com/3d5255fc8f4481afbf7ed26ad3432781",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion is Done. Production /companion and /companion/ passed asset, noindex, CSP, sandbox, desktop/mobile layout, interaction and console verification at main 0451f07."
-    },
-    {
-      "id": "3d2255fc8f448162849ad8dbe5c12595",
-      "title": "Release labels are not validated against artifact versions",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
-    },
-    {
-      "id": "3d2255fc8f4481a78178ef20130a6082",
-      "title": "Request identity can outlive its editor or variant",
-      "status": "Done",
-      "severity": "High",
-      "area": "A/B Test",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f4481a78178ef20130a6082",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "3d2255fc8f44814ebf3dfff35975b014",
-      "title": "Scratch migration discards readable notes when a write fails",
-      "status": "Done",
-      "severity": "High",
-      "area": "Editor",
-      "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f44814ebf3dfff35975b014",
-      "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
-    },
-    {
-      "id": "32d255fc8f448108880edaf71b679a42",
-      "title": "Search behavior inconsistent between library and composer",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Sort/Filter",
-      "type": "Bug",
-      "url": "https://app.notion.com/32d255fc8f448108880edaf71b679a42",
+      "url": "https://app.notion.com/2cb0cb70403440e3bc223c225408b4e9",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
@@ -640,25 +310,157 @@
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
-      "id": "3d2255fc8f4481a8b120e73745ee803d",
-      "title": "Streaming provider errors become successful partial responses",
+      "id": "32d255fc8f448108880edaf71b679a42",
+      "title": "Search behavior inconsistent between library and composer",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Sort/Filter",
+      "type": "Bug",
+      "url": "https://app.notion.com/32d255fc8f448108880edaf71b679a42",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f448115a64cc88a7ec2f640",
+      "title": "Newest sort wrong for starter-pack prompts",
       "status": "Done",
       "severity": "High",
-      "area": "Background",
+      "area": "Sort/Filter",
       "type": "Bug",
-      "url": "https://app.notion.com/3d2255fc8f4481a8b120e73745ee803d",
+      "url": "https://app.notion.com/32d255fc8f448115a64cc88a7ec2f640",
       "inPlan": true,
       "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "verification": "2026-10-07 Production Smoke37654136908 passed the imported newer packLoadedAt sorting control on authenticated production at375x812 and1440x900. This is sorting evidence, not actual starter-pack loading."
+    },
+    {
+      "id": "32d255fc8f44811896f7f91177a77274",
+      "title": "No test coverage for sort, filter, collections, tags, or manual reorder",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Library",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/32d255fc8f44811896f7f91177a77274",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f4481448f66d78cbe58de55",
+      "title": "Manual reorder operates on full array but UI shows filtered subset",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Sort/Filter",
+      "type": "Bug",
+      "url": "https://app.notion.com/32d255fc8f4481448f66d78cbe58de55",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f448146a3d3eeb8a62425e9",
+      "title": "Duplicate header files: HeaderNav.jsx and HeaderNav 2.jsx",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Layout",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/32d255fc8f448146a3d3eeb8a62425e9",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f448146bf28e5f8e50a7d8f",
+      "title": "Import Pack allows near-duplicates (title-similar) to import without blocking",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Import",
+      "type": "UX",
+      "url": "https://app.notion.com/32d255fc8f448146bf28e5f8e50a7d8f",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
       "type": "UX",
       "url": "https://app.notion.com/32d255fc8f448169844bf43faa73ace4",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f44817bbf7fd261e0cad492",
+      "title": "No test coverage for preset-pack import or raw Import Library merge",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Import",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/32d255fc8f44817bbf7fd261e0cad492",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "32d255fc8f44817faa12dc09d3ede05d",
+      "title": "Import Library path has no duplicate check, preview, or conflict resolution",
+      "status": "Done",
+      "severity": "High",
+      "area": "Import",
+      "type": "Bug",
+      "url": "https://app.notion.com/32d255fc8f44817faa12dc09d3ede05d",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "32d255fc8f4481d49143d134ed1839fc",
+      "title": "Collection deletion leaves orphaned entries and stale filter state",
+      "status": "Done",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "url": "https://app.notion.com/32d255fc8f4481d49143d134ed1839fc",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "2026-10-07 Production Smoke37654136908 passed authenticated active-collection deletion at375x812 and1440x900: all four prompts retained, assignments cleared, All prompts filter active, persisted storage verified."
+    },
+    {
+      "id": "32d255fc8f4481e8ba1fc886f993c24d",
+      "title": "Legacy Recover import uses weak 200-char dedupe and ignores title differences",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Import",
+      "type": "Bug",
+      "url": "https://app.notion.com/32d255fc8f4481e8ba1fc886f993c24d",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3d2255fc8f448128a3c7d878a2b5d799",
+      "title": "Packaged extension drops provider cancellation",
+      "status": "Done",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f448128a3c7d878a2b5d799",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f448134b193d06a4bc73bf0",
+      "title": "Chain substitution interprets prompt text as replacement syntax",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Composer",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f448134b193d06a4bc73bf0",
       "inPlan": false,
       "nextAction": null,
       "verification": "Notion disposition only; not independently re-audited in this refresh."
@@ -674,6 +476,126 @@
       "inPlan": true,
       "nextAction": null,
       "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f44814ebf3dfff35975b014",
+      "title": "Scratch migration discards readable notes when a write fails",
+      "status": "Done",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f44814ebf3dfff35975b014",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f448162849ad8dbe5c12595",
+      "title": "Release labels are not validated against artifact versions",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3d2255fc8f44816b9a5ed471be3b493d",
+      "title": "Fallback persistence acknowledges writes that failed",
+      "status": "Done",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f44816b9a5ed471be3b493d",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f44816e82f1d4357108daad",
+      "title": "Alternate execution paths bypass sensitive-data preflight",
+      "status": "Done",
+      "severity": "High",
+      "area": "A/B Test",
+      "type": "Security",
+      "url": "https://app.notion.com/3d2255fc8f44816e82f1d4357108daad",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f448182b060d4be9f2140ee",
+      "title": "Mobile generation silently truncates source instructions",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f448182b060d4be9f2140ee",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "3d2255fc8f4481a78178ef20130a6082",
+      "title": "Request identity can outlive its editor or variant",
+      "status": "Done",
+      "severity": "High",
+      "area": "A/B Test",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f4481a78178ef20130a6082",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f4481a8b120e73745ee803d",
+      "title": "Streaming provider errors become successful partial responses",
+      "status": "Done",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f4481a8b120e73745ee803d",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
+      "title": "Cross-tab reconciliation resurrects permanent deletions",
+      "status": "Done",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
+      "inPlan": true,
+      "nextAction": null,
+      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+    },
+    {
+      "id": "3d5255fc8f4481afbf7ed26ad3432781",
+      "title": "Publish durable billing pilot companion",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/3d5255fc8f4481afbf7ed26ad3432781",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion is Done. Production /companion and /companion/ passed asset, noindex, CSP, sandbox, desktop/mobile layout, interaction and console verification at main 0451f07."
+    },
+    {
+      "inPlan": false,
+      "nextAction": "Verify the existing hosted-generation-after-quota contract separately; preserve shared service budget and provider ceilings.",
+      "verification": "2026-10-14: Owner Pro, reload, collection/export/batch/Diff/Model Arena and session cleanup passed run38622431418 on main2cc57a8. Hosted generation after exhausted quota and other intended owners remain separate.",
+      "id": "3e1255fc8f4481e58754eaf713aa11e9",
+      "title": "Owner accounts are blocked by hosted demo rate limits",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3e1255fc8f4481e58754eaf713aa11e9"
     },
     {
       "id": "3e3255fc8f44810da971e75115180562",
@@ -724,6 +646,90 @@
       "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
     },
     {
+      "id": "48d82c475b0448649ff2372a00bb6e33",
+      "title": "Converge Library navigation, sync, persistence, and compatibility",
+      "status": "Done",
+      "severity": "High",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/48d82c475b0448649ff2372a00bb6e33",
+      "inPlan": true,
+      "nextAction": "Retain the Library regression matrix; continue independent release gates.",
+      "verification": "PR141 merged as 83d6ac5. Desktop37928010828 passed all six jobs at10a4aa26; merged and tested trees match. Actual extension editor save/update/reload/process restart/export, starter loading, tag/status filters and expanded negative controls pass. MSI/NSIS/DEB/AppImage exercise and retention artifacts inspected. Production37911746704 and iOS37911002859 provide authenticated web and native JSON/migration evidence. All bounded Phase8 criteria complete; separate release gates remain open."
+    },
+    {
+      "id": "59fa88b863524c9dad1d77de40f4ffee",
+      "title": "Polish Enhance screen flow and interaction hierarchy",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
+      "inPlan": false,
+      "nextAction": "Try the two-pane Create workspace on hosted web (Settings toggle) and accept or reject slice 1; then plan slice 2 after PR #138.",
+      "verification": "2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
+    },
+    {
+      "id": "633182d5e7a14bb6b5027e88fbfd8e71",
+      "title": "Define Agent Lab execution model and safety boundaries",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/633182d5e7a14bb6b5027e88fbfd8e71",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "8048986ebc4541a9aba130d6a1df6add",
+      "title": "Decide admin-only access model for PromptLab health dashboards",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Security",
+      "url": "https://app.notion.com/8048986ebc4541a9aba130d6a1df6add",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "bb55eb8e71734aaf9b9f43c4dbec2bec",
+      "title": "Complete follow-up prompt provenance and save-to-library workflow",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Composer",
+      "type": "Feature",
+      "url": "https://app.notion.com/bb55eb8e71734aaf9b9f43c4dbec2bec",
+      "inPlan": true,
+      "nextAction": "Continue remaining cross-shell and human acceptance; the bounded signed-in source/save/reload scenario now passes. Next independent accepted work is plan J signed-in Library navigation/import acceptance.",
+      "verification": "2026-10-07: Accepted plan K signed-in production follow-up slice verified by Production Smoke 37650271051 at test head 35b68f23b33b3c4b5cbd02c9d3d38fb4baa8fe22 against production deployment dpl_4918XfC1n8npLEYwd7zvaaobqQfx (main 25a3b87). All three smoke scenarios passed on GitHub Ubuntu/Chromium. The new case creates a parent through the actual signed-in UI, seeds only synthetic upstream editor/run data, intercepts one provider response without inference, verifies selected source output, visible source, rejected Library write with no mutation, successful retry without regeneration, independent child identity, unchanged parent and provenance after reload. The disposable Clerk session was revoked; no inference, purchase, or telemetry requests occurred. The first run 37649255988 timed out because the fixture omitted the enhanced editor result needed to expose the panel; corrected fixture passed without changing product code. This snapshot records runtime acceptance; PR134 owns the delivery state. Keep this umbrella In progress: this bounded path does not prove all supported shells, human acceptance, or the complete Library matrix. Next: verify the separately accepted signed-in Library navigation/import matrix (plan J) using existing fixture and QA controls. https://github.com/DaveHomeAssist/prompt-lab/pull/134 ; https://github.com/DaveHomeAssist/prompt-lab/actions/runs/37650271051"
+    },
+    {
+      "id": "cecbf7cfcd9d489a8e92770131436505",
+      "title": "Define iOS Swift release scope after universal prototype",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/cecbf7cfcd9d489a8e92770131436505",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh."
+    },
+    {
+      "id": "d39b7b5b076041de8718e4c2f1134422",
+      "title": "Finish desktop stabilization and cross-platform packaging proof",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
+      "inPlan": true,
+      "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
+      "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+    },
+    {
       "id": "3f0255fc8f44811d8794c092ba1bb88f",
       "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
       "status": "In progress",
@@ -748,18 +754,6 @@
       "url": "https://app.notion.com/3f0255fc8f4481629234d824e518447d"
     },
     {
-      "id": "3f9255fc8f448193bab6eb5582b6597e",
-      "title": "Concurrent first billing requests create duplicate Stripe customers",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3f9255fc8f448193bab6eb5582b6597e",
-      "inPlan": false,
-      "nextAction": "Run concurrent first license and checkout requests for a fresh Stripe test-mode account and confirm exactly one customer.",
-      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Idempotent customer create with 409 backoff; race, retry and slow-winner tests fail without the fix. Not exercised against live or test-mode Stripe."
-    },
-    {
       "id": "3f9255fc8f44816c8181c05b933b13c6",
       "title": "Checkout webhook/KV fail-closed switches off all billing controls",
       "status": "In progress",
@@ -772,16 +766,16 @@
       "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Checkout returns checkoutDisabled when webhook signing or KV is missing; server and hook tests fail without the fix. Path not live in production."
     },
     {
-      "id": "3fa255fc8f4481b38f48d336ef3d4a89",
-      "title": "Library tile cards draw their date and use count under the Editor/Copy/Favorite buttons",
+      "id": "3f9255fc8f448193bab6eb5582b6597e",
+      "title": "Concurrent first billing requests create duplicate Stripe customers",
       "status": "In progress",
       "severity": "Medium",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f9255fc8f448193bab6eb5582b6597e",
       "inPlan": false,
-      "nextAction": "Merge PR #151 once required checks pass, then confirm tile cards in the deployed app.",
-      "verification": "2026-10-15: PR #151 (8c5e1a4) keeps tile actions in flow and the metadata as one line under the text; e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Not merged."
+      "nextAction": "Run concurrent first license and checkout requests for a fresh Stripe test-mode account and confirm exactly one customer.",
+      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Idempotent customer create with 409 backoff; race, retry and slow-winner tests fail without the fix. Not exercised against live or test-mode Stripe."
     },
     {
       "id": "3fa255fc8f44811d9c59f511c58ef9a0",
@@ -792,8 +786,20 @@
       "type": "UX",
       "url": "https://app.notion.com/3fa255fc8f44811d9c59f511c58ef9a0",
       "inPlan": false,
-      "nextAction": "Merge PR #151 once required checks pass, then confirm the inspector in the deployed app at about 900 px.",
-      "verification": "2026-10-15: PR #151 (8c5e1a4) gives the floating inspector the theme's page colour; the spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Not merged."
+      "nextAction": "Open a prompt in the signed-in production Library at about 900 px and confirm the inspector is solid in both themes.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS gives the floating inspector var(--pl-brand-ink). The spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Signed-in production view not checked."
+    },
+    {
+      "id": "3fa255fc8f4481b38f48d336ef3d4a89",
+      "title": "Library tile cards draw their date and use count under the Editor/Copy/Favorite buttons",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
+      "inPlan": false,
+      "nextAction": "Hard-refresh the signed-in production Library in tile view and confirm card details no longer sit under Editor/Copy/Favorite.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS keeps tile actions in their own grid column. e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Signed-in production view not checked."
     }
   ]
 }

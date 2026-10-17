@@ -234,7 +234,13 @@ vi.mock('../MainWorkspace.jsx', () => ({
 }));
 
 vi.mock('../EditorActions.jsx', () => ({
-  default: () => <div data-testid="editor-actions" />,
+  default: ({ onEnhance }) => (
+    <div data-testid="editor-actions">
+      <button onClick={() => onEnhance(undefined, { modeId: 'shorten' })}>Shorten source</button>
+      <button onClick={() => onEnhance(undefined, { modeId: 'json' })}>Format source as JSON</button>
+      <button onClick={() => onEnhance(undefined, { options: { alternatives: true } })}>Request alternatives</button>
+    </div>
+  ),
 }));
 
 vi.mock('../MarkdownPreview.jsx', () => ({
@@ -342,6 +348,23 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Prompt Lab' })).toBeInTheDocument();
     expect(mocks.useNavigation).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('app-header')).toBeInTheDocument();
+  });
+
+  it('forwards explicit transforms and alternative options to execution without changing the selected strategy', () => {
+    const execution = useDefaultMock('useExecutionFlow');
+    const editor = useDefaultMock('useEditorState');
+    const enhance = vi.fn();
+    mocks.useExecutionFlow.mockImplementationOnce(() => ({ ...execution, enhance }));
+    mocks.useEditorState.mockImplementationOnce(() => ({ ...editor, raw: 'Explain the design' }));
+    render(<MemoryRouter><App /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Shorten source' }));
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'shorten' });
+    fireEvent.click(screen.getByRole('button', { name: 'Format source as JSON' }));
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { modeId: 'json' });
+    fireEvent.click(screen.getByRole('button', { name: 'Request alternatives' }));
+    expect(enhance).toHaveBeenLastCalledWith(undefined, { options: { alternatives: true } });
+    expect(editor.setEnhMode).not.toHaveBeenCalled();
   });
 
   it('renders and dismisses the post-save receipt without crashing', () => {

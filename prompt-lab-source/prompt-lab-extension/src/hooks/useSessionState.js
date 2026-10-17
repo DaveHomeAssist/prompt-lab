@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { sessionGet, sessionSet } from '../lib/platform.js';
+import { readGenerationOptions, restoreEditorMode } from '../lib/generationOptions.js';
 
 const SESSION_KEY = 'pl2-session';
 const DEBOUNCE_MS = 500;
@@ -14,7 +15,7 @@ export function useSessionRestore(setters) {
       if ('notes' in s) setters.setNotes(s.notes);
       if ('resultMeta' in s && typeof setters.setResultMeta === 'function') setters.setResultMeta(s.resultMeta);
       if ('tab' in s) setters.setTab(s.tab);
-      if ('enhMode' in s) setters.setEnhMode(s.enhMode);
+      if ('enhMode' in s) setters.setEnhMode(restoreEditorMode(s.enhMode, readGenerationOptions()));
       if ('editingId' in s && typeof setters.setEditingId === 'function') setters.setEditingId(s.editingId || null);
       if ('saveTitle' in s && typeof setters.setSaveTitle === 'function') setters.setSaveTitle(s.saveTitle || '');
       if ('saveTags' in s && typeof setters.setSaveTags === 'function') setters.setSaveTags(Array.isArray(s.saveTags) ? s.saveTags : []);
