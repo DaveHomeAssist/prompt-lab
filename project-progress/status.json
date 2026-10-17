@@ -14,6 +14,12 @@
   "nextAction": "Deliver the explicit action handler correction and verify current-head checks; retain broader UX and live model acceptance gates.",
   "evidence": [
     {
+      "label": "Library import review: jump to unresolved conflicts",
+      "state": "Running",
+      "detail": "2026-10-15: PR #154 adds a banner naming the page that holds pending conflict choices, a Jump to unresolved button that pages to and focuses the pending prompt, and an amber outline on pending rows. Reported from a live 82-prompt import stuck at \"1 conflict choices required\" with the pending row on page 1 of 5. New WorkspaceImportModal test passes; workspaceImportRecovery has 3 pre-existing failures on main. Not merged.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/154"
+    },
+    {
       "label": "Explicit transform action correction",
       "state": "Verified",
       "detail": "2026-10-17: PR138 prior head 6dd2104 has all14 checks passing. Independently confirmed App discarded Shorten/JSON/alternatives overrides. App now forwards payload and metadata; the new regression failed before and passed after;46 focused tests and the extension production build passed under Node22. The broader local suite stopped reporting progress and was interrupted; no full-suite pass is claimed. New-head CI and deployed/model-quality acceptance remain pending. Direct user request is the current Focus None exception.",

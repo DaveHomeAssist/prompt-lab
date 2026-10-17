@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 
 export default function WorkspaceImportModal({ m, preview, applying, onChoice, onApply, onRetry, onClose }) {
@@ -8,8 +8,29 @@ export default function WorkspaceImportModal({ m, preview, applying, onChoice, o
   const headingRef = useRef(null);
   const dialogRef = useDialogA11y({ open: true, onClose: close, initialFocusRef: headingRef });
   const [page, setPage] = useState(0);
+  const [focusChoiceId, setFocusChoiceId] = useState(null);
   const pageSize = 20;
-  const pageCount = Math.ceil((preview.rows?.length || 0) / pageSize);
+  const rows = preview.rows || [];
+  const pageCount = Math.ceil(rows.length / pageSize);
+  const unresolvedRows = rows.map((row, index) => ({ row, index })).filter(({ row }) => !row.choice);
+  const unresolvedPages = [...new Set(unresolvedRows.map(({ index }) => Math.floor(index / pageSize) + 1))];
+  const choiceInputId = id => `workspace-import-choice-${id}`;
+  // Page to the next prompt still waiting on a choice (after the current page, wrapping) and focus its action picker.
+  const jumpToUnresolved = () => {
+    if (!unresolvedRows.length) return;
+    const next = unresolvedRows.find(({ index }) => Math.floor(index / pageSize) > page) || unresolvedRows[0];
+    setPage(Math.floor(next.index / pageSize));
+    setFocusChoiceId(next.row.entry.id);
+  };
+  useEffect(() => {
+    if (!focusChoiceId) return;
+    const input = document.getElementById(choiceInputId(focusChoiceId));
+    if (input) { input.focus(); input.scrollIntoView?.({ block: 'center' }); }
+    setFocusChoiceId(null);
+  }, [focusChoiceId, page]);
+  const unresolvedSummary = preview.unresolved
+    ? `${preview.unresolved} conflict ${preview.unresolved === 1 ? 'choice' : 'choices'} required${unresolvedPages.length ? ` on page ${unresolvedPages.join(', ')}` : ''}.`
+    : '';
   const plan = preview.plan;
   const ready = Boolean(plan && !preview.error && !preview.unresolved);
   const completed = preview.completedStages || [];
@@ -43,15 +64,19 @@ export default function WorkspaceImportModal({ m, preview, applying, onChoice, o
         </div>}
         {!!plan?.warnings.length && <ul className="list-disc pl-5 text-xs text-amber-500">{plan.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}
         {!preview.partial && <div className="flex flex-col gap-2">
-          {(preview.rows || []).slice(page * pageSize, (page + 1) * pageSize).map(({ entry, kind, conflicts, choice }) => (
-            <div key={entry.id} className={`border ${m.border} rounded-lg p-3 flex flex-col gap-2`}>
+          {!!preview.unresolved && <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-500 p-3 text-sm text-amber-500">
+            <span>{unresolvedSummary}</span>
+            <button type="button" disabled={applying} onClick={jumpToUnresolved} className={`min-h-11 px-3 rounded-lg ${m.btn} ${m.textBody}`}>Jump to unresolved</button>
+          </div>}
+          {rows.slice(page * pageSize, (page + 1) * pageSize).map(({ entry, kind, conflicts, choice }) => (
+            <div key={entry.id} className={`border ${choice ? m.border : 'border-amber-500'} rounded-lg p-3 flex flex-col gap-2`}>
               <p className={`font-semibold text-sm break-words ${m.text}`}>{entry.title}</p>
-              <p className={`text-xs ${m.textSub}`}>{kind === 'duplicate' ? 'Exact body duplicate' : kind === 'conflict' ? 'Title or ID conflict' : 'New prompt'}</p>
+              <p className={`text-xs ${choice ? m.textSub : 'font-semibold text-amber-500'}`}>{kind === 'duplicate' ? 'Exact body duplicate' : kind === 'conflict' ? 'Title or ID conflict' : 'New prompt'}{choice ? '' : ' · choice required'}</p>
               <p className={`text-xs whitespace-pre-wrap break-words max-h-24 overflow-y-auto ${m.textBody}`}>{entry.enhanced}</p>
               {conflicts.length > 0 && <>
                 <label className={`text-xs ${m.textBody}`}>
                   Conflict action for {entry.title}
-                  <select aria-label={`Conflict action for ${entry.title}`} disabled={applying} value={choice?.action || ''}
+                  <select id={choiceInputId(entry.id)} aria-label={`Conflict action for ${entry.title}`} disabled={applying} value={choice?.action || ''}
                     onChange={event => onChoice(entry.id, { action: event.target.value, existingId: choice?.existingId || conflicts[0].id, targetSource: choice?.targetSource || conflicts[0].targetSource })}
                     className={`mt-1 block min-h-11 w-full rounded-lg border px-2 ${m.input} ${m.text}`}>
                     <option value="" disabled>Choose an action</option>
@@ -90,7 +115,7 @@ export default function WorkspaceImportModal({ m, preview, applying, onChoice, o
           </button>
           <button type="button" disabled={applying} onClick={close} className={`min-h-11 rounded-lg px-4 py-2 text-sm ${m.btn} ${m.textBody}`}>{preview.partial ? 'Close' : 'Cancel'}</button>
         </div>
-        {!preview.partial && <p className={`text-xs ${m.textSub}`}>{preview.unresolved ? `${preview.unresolved} conflict choices required.` : 'Cancel makes no import writes.'}</p>}
+        {!preview.partial && <p className={`text-xs ${m.textSub}`}>{preview.unresolved ? unresolvedSummary : 'Cancel makes no import writes.'}</p>}
       </section>
     </div>
   );
