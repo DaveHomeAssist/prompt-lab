@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "150b32a078ddf901f2fd94ba0d7ee5fc96ec8f60",
+  "mainSha": "4b3616f3199525c7ba4f4481169ab49bee94b4b6",
   "overall": "Acceptance incomplete",
-  "nextAction": "Deliver the explicit action handler correction and verify current-head checks; retain broader UX and live model acceptance gates.",
+  "nextAction": "Verify the remaining new-head/main checks and signed-in production strategy/transform behavior; retain broader UX and live model acceptance gates.",
   "evidence": [
     {
       "label": "Explicit transform action correction",
       "state": "Verified",
-      "detail": "2026-10-17: PR138 prior head 6dd2104 has all14 checks passing. Independently confirmed App discarded Shorten/JSON/alternatives overrides. App now forwards payload and metadata; the new regression failed before and passed after;46 focused tests and the extension production build passed under Node22. The broader local suite stopped reporting progress and was interrupted; no full-suite pass is claimed. New-head CI and deployed/model-quality acceptance remain pending. Direct user request is the current Focus None exception.",
+      "detail": "2026-10-17: PR138 merged via its existing auto-merge setting as4b3616f. App now forwards explicit Shorten/JSON/Alternatives payload and metadata. The regression failed before and passed after;46 focused tests and extension build passed under Node22. Merge-gate and progress-snapshot passed; broader new-head checks were still running. The merge commit has a successful Vercel status; signed-in production behavior and live model quality were not checked. The full local suite stalled and was interrupted. Direct user request is the Focus None exception.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/138"
     },
     {
