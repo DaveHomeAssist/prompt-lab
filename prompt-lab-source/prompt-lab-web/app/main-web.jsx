@@ -107,7 +107,7 @@ function AuthGate() {
             {...landingProps}
             clerkUser={user}
             clerkGetToken={getToken}
-            clerkUserButton={<UserButton afterSignOutUrl="/" appearance={{ variables: { colorPrimary: '#c2410c' } }} />}
+            clerkUserButton={<UserButton afterSignOutUrl="/?splash=1" appearance={{ variables: { colorPrimary: '#c2410c' } }} />}
           />
         </HashRouter>
       </SignedIn>

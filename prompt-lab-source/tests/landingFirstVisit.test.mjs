@@ -61,3 +61,11 @@ for (const failure of ['access', 'write']) {
     assert.equal(visit(new Map([['promptlab_splash_seen', '1']]), '/', failure), undefined);
   });
 }
+
+
+test('sign-out explicitly returns repeat visitors to the public landing', () => {
+  const app = readFileSync(new URL('../prompt-lab-web/app/main-web.jsx', import.meta.url), 'utf8');
+  const destination = app.match(/afterSignOutUrl="([^"]+)"/)[1];
+  assert.equal(destination, '/?splash=1');
+  assert.equal(visit(new Map([['promptlab_splash_seen', '1']]), destination), undefined);
+});
