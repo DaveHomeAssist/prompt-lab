@@ -10,7 +10,7 @@ Runtime code was verified at `173a0436c03323d6369798165d79017cb9816a79`; an addi
 
 - Expanded is the persisted primary strategy. Refined and Rebuilt are optional alternatives; three candidates are no longer mandatory.
 - Task type and intended destination are independent of rewrite strategy and the provider doing the enhancement.
-- Shorten source and Format source as JSON are explicit actions. JSON transport does not change the requested downstream answer format.
+- Shorten source remains an explicit action. Dave's renewed October 17 removal instruction removes the remaining Format source as JSON control. JSON transport and historical replay remain compatible and do not change the requested downstream answer format.
 - New generation instructions preserve facts, exclusions, technical context, scope, and requested answer length. Constraint and format quick fixes no longer inject concision or a fixed Markdown layout.
 - Complete semantic diffs retain final edits, exact whitespace, Unicode, and line endings beyond the former 200-word limit.
 - Generation budgets account for source length and candidate count. Comparison budgets are configurable and shared across variants; changing a budget invalidates stale comparisons.

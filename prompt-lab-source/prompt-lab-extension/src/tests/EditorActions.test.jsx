@@ -63,13 +63,13 @@ describe('EditorActions', () => {
     expect(screen.getByLabelText('Intended destination')).toHaveValue('claude');
     expect(screen.getByLabelText('Preferred primary candidate')).toHaveValue('rebuilt');
   });
-  it('makes shortening and JSON explicit source transformations', () => {
+  it('keeps explicit shortening without exposing the removed JSON or Tighter choices', () => {
     render(<EditorActions {...baseProps} />);
     fireEvent.click(screen.getByText(/Generation options/));
     fireEvent.click(screen.getByRole('button', { name: 'Shorten source' }));
     expect(baseProps.onEnhance).toHaveBeenLastCalledWith(undefined, { modeId: 'shorten' });
-    fireEvent.click(screen.getByRole('button', { name: 'Format source as JSON' }));
-    expect(baseProps.onEnhance).toHaveBeenLastCalledWith(undefined, { modeId: 'json' });
+    expect(screen.queryByRole('button', { name: /JSON/i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Preferred primary candidate').textContent).toBe('ExpandedRefinedRebuilt');
   });
   it('groups secondary actions under More and hides Save when the result owns it', () => {
     const onClear = vi.fn();

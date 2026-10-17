@@ -47,7 +47,6 @@ export default function GenerationControls({ m, mode, onModeChange, onTransform,
           <p className="w-full">The destination does not change your enhancement provider. Budgets cover the whole response; hosted and provider limits may be lower. Answer length stays as requested in your prompt.</p>
           <div className="flex flex-wrap gap-2" aria-label="Optional transformations">
             <button type="button" className={`ui-control rounded-lg px-3 py-1.5 ${m.btn}`} onClick={() => onTransform('shorten')}>Shorten source</button>
-            <button type="button" className={`ui-control rounded-lg px-3 py-1.5 ${m.btn}`} onClick={() => onTransform('json')}>Format source as JSON</button>
           </div>
         </fieldset>
       </details>
