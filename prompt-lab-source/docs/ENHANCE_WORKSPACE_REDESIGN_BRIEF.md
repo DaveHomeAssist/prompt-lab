@@ -2,18 +2,20 @@
 
 ## Status
 
-- Status: `Decided 2026-10-15 — slice 1 built behind a flag on hosted web (PR #153)`
+- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; D-ENH-5 and D-ENH-6 open`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`)
 - Inputs: the Enhance UI review of 2026-10-15 and its desktop mockup
-  ([`evidence/enhance-workspace-mockup-2026-10-15.webp`](evidence/enhance-workspace-mockup-2026-10-15.webp))
+  ([`evidence/enhance-workspace-mockup-2026-10-15.webp`](evidence/enhance-workspace-mockup-2026-10-15.webp));
+  the refinement workspace mockup of 2026-10-17
+  ([`evidence/refinement-workspace-mockup-2026-10-17.webp`](evidence/refinement-workspace-mockup-2026-10-17.webp))
 - Related: [PR #138](https://github.com/DaveHomeAssist/prompt-lab/pull/138)
-  (Expanded defaults, draft), [`VIEWPORT_SHELL_OVERHAUL_PLAN.md`](VIEWPORT_SHELL_OVERHAUL_PLAN.md)
+  (Expanded defaults, merged 2026-10-17 as `4b3616f`), [`VIEWPORT_SHELL_OVERHAUL_PLAN.md`](VIEWPORT_SHELL_OVERHAUL_PLAN.md)
   (Phase B navigation), [`uxui-bold-restructure-spec.md`](uxui-bold-restructure-spec.md)
   (visual direction), [`LIBRARY_COMPATIBILITY_CONTRACT.md`](LIBRARY_COMPATIBILITY_CONTRACT.md)
 - Governing rules: workspace WEB-1 (light and dark), WEB-2 (no page scroll), WEB-3 (ultrawide)
 
-Dave accepted all four recommended answers on 2026-10-15, which authorises slice 1. Later slices and any release beyond the flag still need their own approval.
+Dave accepted all four recommended answers on 2026-10-15, which authorises slice 1. Later slices and any release beyond the flag still need their own approval. On 2026-10-17 Dave chose DEC-01 A (D-013): the refinement workspace mockup becomes part of Create, as the reference for slice 2, not a separate workspace.
 
 ## Problem
 
@@ -82,7 +84,9 @@ mobile, per WEB-2). Switching never discards the draft or candidate edits.
 
 ### Later slices
 
-- Slice 2 — Strategy / Task / Destination controls on top of PR #138's model.
+- Slice 2 — Strategy / Task / Destination controls on top of PR #138's model, plus
+  changed-condition markers and a candidate receipt from the refinement workspace
+  mockup (DEC-01; see below).
 - Slice 3 — compact candidate tabs replace the candidate rail; merge Preview
   and Diff into Output / Changes.
 - Slice 4 — roll out to the extension side panel and desktop shells.
@@ -111,8 +115,9 @@ mobile, per WEB-2). Switching never discards the draft or candidate edits.
 
 ## Dependencies
 
-- PR #138 is a draft with merge conflicts against `main` and was last updated on
-  2026-10-09. Slice 2 depends on it; slice 1 does not.
+- PR #138 merged on 2026-10-17 as `4b3616f`; its Task type and Intended
+  destination controls (`GenerationControls.jsx`) are on `main`, so slice 2 is
+  unblocked. Slice 1 never depended on it.
 - Phase B1 navigation sign-off, only if the rail is brought into scope.
 - The viewport guardrails from Phase 0 (`e2e/responsive-smoke.spec.js`) must
   stay green; the new layout is a contained two-pane variant, not an opt-out.
@@ -140,6 +145,45 @@ The mockup is the visual reference for slice 1, with these corrections:
 4. With a result present, the primary control should read **Refine again**.
 5. It shows dark mode only and no theme toggle. A light equivalent is required.
 6. The Write / Library / Evaluate / Scratch rail is out of scope for slice 1.
+
+## Refinement workspace mockup (DEC-01)
+
+A second, standalone mockup was reviewed on 2026-10-16 and restyled on
+2026-10-17: a Draft / Refine / Review workspace running a local simulation only
+([`evidence/refinement-workspace-mockup-2026-10-17.webp`](evidence/refinement-workspace-mockup-2026-10-17.webp)).
+Dave chose DEC-01 **A** on 2026-10-17 (recorded as D-013 in
+[`DECISIONS.md`](DECISIONS.md)): integrate it as a focused Create view, not a
+separate workspace. It feeds the slices above instead of adding a navigation
+destination.
+
+| Mockup element | Create on `main` today | Where it lands |
+| --- | --- | --- |
+| Three columns: Draft, Refine conditions, Review | Two panes with a control row (slice 1, behind the flag) | Two panes stay; the conditions belong in the control row (D-ENH-6) |
+| Changed-condition markers: a Δ on edited source sections and on changed strategy, task, destination or guardrails, with a "Δ n changed" readout | None. A candidate gives no sign that the draft or options moved after it was generated | Slice 2 |
+| Stale-candidate notice: "Draft or settings changed. Refine again before applying this snapshot." | None | Slice 2 |
+| Candidate receipt: input revision, method, additions kept, model output untested | Result header shows the candidate and the assumptions count | Slice 2, as one line in the result header |
+| Per-addition Keep switches | Assumptions and reversible edits already revert individual changes | No new mechanism; slice 3 may borrow the "+" addition styling |
+| Pin baseline and compare | Pin golden response | No change; the golden response stays the comparison anchor |
+| Run log with observations | Evaluate run history | Out of scope: DEC-01 covers Create only |
+| Evaluate comparison bench with per-difference evidence; Scratch capture channels | Not present | Out of scope; each needs its own brief and decision |
+| Graphite, smoked glass and electric cyan; squared panels; large run ID | Nocturne palette and ember accent; the visual-language exclusion above | Not adopted by this brief (D-ENH-5) |
+
+### Slice 2 acceptance (draft)
+
+Slice 2 is accepted when all of these hold on hosted web with the flag on:
+
+1. After a candidate exists, changing the source text, strategy, task,
+   destination or provider marks each changed control and section with a text
+   label, not colour alone, and shows a stale notice on the result.
+2. Reverting a change clears its mark; Refine again clears every mark and the
+   notice.
+3. The result header shows a one-line receipt naming the source revision and the
+   generation options the selected candidate came from.
+4. Marks and the notice are announced through the existing status region.
+5. Save, Copy, candidate identities and Library records behave as on `main`;
+   a stale candidate can still be saved, and the notice says it came from an
+   earlier draft.
+6. Slice 1 acceptance items 1, 2 and 8 still hold.
 
 ## Acceptance
 
@@ -184,7 +228,7 @@ Light and dark themes both checked at 1440×900. Turning the flag off restores t
 
 ## Decisions
 
-All four were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md).
+D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md). DEC-01 (D-013) was resolved on 2026-10-17. D-ENH-5 and D-ENH-6 are open (D-014); slice 2's behaviour does not depend on them, only its visual spec and layout do.
 
 | ID | Question | Options | Decided | Unlocks |
 | --- | --- | --- | --- | --- |
@@ -192,3 +236,5 @@ All four were resolved on 2026-10-15: Dave chose the recommended option for each
 | D-ENH-2 | Does the redesign include the left navigation rail? | A. No; Create only, nav stays for Phase B1 · B. Approve the B1 four-destination rail now and include it · C. Rename Create to Write only | **A** — B1 has its own sign-off and rollback; bundling it doubles the blast radius | Slice 1 scope |
 | D-ENH-3 | How does it roll out? | A. Hosted web behind a flag, then extension and desktop · B. Replace the layout everywhere at once | **A** — matches the Phase A pattern and keeps Vercel instant rollback | Slice 1 delivery plan |
 | D-ENH-4 | What happens to the 0–5 quality number? | A. Keep it, labelled "Structure checks · heuristic" · B. Drop the number and show only the five checks | **A** — honest label, keeps the at-a-glance signal; PR #138 already moves this way | Slice 3 copy |
+| D-ENH-5 | What visual identity does slice 2 use? | A. Keep the current palette; take structure and behaviour from the mockup, and route the graphite direction to the uxui-bold-restructure visual pass as a proposal · B. Restyle the Create view alone in graphite now · C. Open an app-wide graphite visual pass before slice 2 | **Open.** Recommended **A**: B leaves Create visually unlike Library, Evaluate and Scratch; C delays slice 2 behind a separate brief | Slice 2 visual spec |
+| D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **Open.** Recommended **A**: matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |

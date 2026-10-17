@@ -22,6 +22,20 @@ Consequences: what this unlocks or closes off
 
 ---
 
+### [D-014] Enhance redesign slice 2 — visual identity and layout
+
+Status: open
+Owner: Dave
+Date opened: 2026-10-17
+
+Context: D-013 folds the refinement workspace mockup into the Create view as the reference for slice 2 of the Enhance workspace redesign. The mockup carries a graphite, smoked-glass and electric-cyan look and a three-column Draft / Refine / Review layout, while the brief excludes new visual language and slice 1 shipped two panes with a control row.
+
+Options: see D-ENH-5 (visual identity) and D-ENH-6 (layout) in [`ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`](ENHANCE_WORKSPACE_REDESIGN_BRIEF.md#decisions). Recommended: D-ENH-5 **A** (keep the current palette; take structure and behaviour only, and route the graphite direction to the visual pass) and D-ENH-6 **A** (keep two panes; conditions live in the control row).
+
+Consequences: the answers fix slice 2's visual spec and layout. Slice 2 behaviour (changed-condition markers, candidate receipt) does not depend on them and can be specified now.
+
+---
+
 ### [D-001] PLB nav strategy — hash mode vs state router
 
 Status: resolved
@@ -211,6 +225,25 @@ Consequences: Billing integration unblocked. Implementation path: (1) add `plan`
 ---
 
 ## Resolved decisions
+
+---
+
+### [D-013] Refinement workspace mockup — integration scope (DEC-01)
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-10-16
+Date resolved: 2026-10-17
+
+Context: A standalone refinement workspace mockup (Draft / Refine / Review, local simulation only) was reviewed on 2026-10-16 and restyled on 2026-10-17. Its review left one scope question: integrate it into the product or keep it as a separate workspace.
+
+Options: A. Integrate as a focused Create view, keeping the Library / Evaluate / Scratch structure. B. Keep it as a separate experimental workspace, which permits more experimentation but adds a navigation surface.
+
+Decision: **A**, chosen by Dave on 2026-10-17.
+
+Rationale: Create already holds the refinement lifecycle, and the Enhance workspace redesign is reshaping it in flagged slices; a second workspace would duplicate that path and add a destination the nav plan (Phase B1) has not approved.
+
+Consequences: The mockup becomes the reference for slice 2 of [`ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`](ENHANCE_WORKSPACE_REDESIGN_BRIEF.md) (changed-condition markers, a candidate receipt) rather than a new surface. Its Evaluate comparison bench and Scratch capture channels are out of scope and would need their own briefs. Opens D-014 (slice 2 visual identity and layout).
 
 ---
 

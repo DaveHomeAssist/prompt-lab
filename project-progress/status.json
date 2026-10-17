@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-17T11:27:58.000Z",
+  "snapshotAt": "2026-10-17T11:34:49.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "d2dc37a7133aff7afa00bafa4a8b7f3352d4b2f4",
+  "mainSha": "6942b8e4ab2dcd39defa245fef738553bef642c5",
   "overall": "Acceptance incomplete",
   "nextAction": "Run signed-in production checks for the merged generation-action (PR #138) and import-review (PR #154) fixes; retain broader UX, live model and billing acceptance gates.",
   "evidence": [
@@ -666,8 +666,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Try the two-pane Create workspace on hosted web (Settings toggle) and accept or reject slice 1; then plan slice 2 after PR #138.",
-      "verification": "2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
+      "nextAction": "Answer D-ENH-5 and D-ENH-6, then build slice 2 (changed-condition markers, candidate receipt, Strategy/Task/Destination row) behind the hosted-web flag; slice 1 acceptance on promptlab.tools is still open.",
+      "verification": "2026-10-17: DEC-01 A (D-013) folds the refinement workspace mockup into Create as the slice 2 reference; PR #138 merged as 4b3616f, unblocking slice 2; slice 2 draft acceptance added to the brief. 2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",
