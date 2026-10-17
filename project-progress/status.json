@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-17T11:34:49.000Z",
+  "snapshotAt": "2026-10-17T15:05:53.770454Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6942b8e4ab2dcd39defa245fef738553bef642c5",
+  "mainSha": "7d6ed100f18a1051f14a6f41121dc9c76c98a20e",
   "overall": "Acceptance incomplete",
-  "nextAction": "Run signed-in production checks for the merged generation-action (PR #138) and import-review (PR #154) fixes; retain broader UX, live model and billing acceptance gates.",
+  "nextAction": "Complete the first visit splash PR checks, merge and live navigation verification; preserve open Create visual/layout decisions and existing acceptance gates.",
   "evidence": [
+    {
+      "label": "First visit splash delivery",
+      "state": "Open",
+      "detail": "2026-10-17: Reconstructed prior unpublished 061eee8 behavior from retained source under explicit delivery authorization on main7d6ed10. Walter Node22.22.1 passed34 landing tests and Chromium first/repeat/new-tab, query, override, hash, storage-clear/blocked and direct-app navigation checks against source HTML with an app destination fixture. PR/CI/merge/deployment and live navigation pending. Existing vertical landing scroll remains; no redesign included. Complete45-row Notion snapshot inspected with no matching splash row; existing issue dispositions preserved; implementation RUN appended/read back. PR156 already closed as superseded; PR158 already merged. Next Steps Board has no registered PromptLab entry, so board synchronization is unavailable.",
+      "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
+    },
     {
       "label": "Library import review: jump to unresolved delivered",
       "state": "Verified",
