@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-17T05:17:19.847Z",
+  "snapshotAt": "2026-10-17T11:27:58.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,20 +9,20 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "150b32a078ddf901f2fd94ba0d7ee5fc96ec8f60",
+  "mainSha": "d2dc37a7133aff7afa00bafa4a8b7f3352d4b2f4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Deliver the explicit action handler correction and verify current-head checks; retain broader UX and live model acceptance gates.",
+  "nextAction": "Run signed-in production checks for the merged generation-action (PR #138) and import-review (PR #154) fixes; retain broader UX, live model and billing acceptance gates.",
   "evidence": [
     {
-      "label": "Library import review: jump to unresolved conflicts",
-      "state": "Running",
-      "detail": "2026-10-15: PR #154 adds a banner naming the page that holds pending conflict choices, a Jump to unresolved button that pages to and focuses the pending prompt, and an amber outline on pending rows. Reported from a live 82-prompt import stuck at \"1 conflict choices required\" with the pending row on page 1 of 5. New WorkspaceImportModal test passes; workspaceImportRecovery has 3 pre-existing failures on main. Not merged.",
+      "label": "Library import review: jump to unresolved delivered",
+      "state": "Verified",
+      "detail": "2026-10-17: PR #154 merged as d2dc37a after all 13 checks passed; the Vercel deployment succeeded and the production bundle at promptlab.tools contains the Jump to unresolved control. Banner names the page holding pending conflict choices, Jump to unresolved pages to and focuses the pending prompt, pending rows get an amber outline. The 3 local workspaceImportRecovery failures from 2026-10-15 do not reproduce in CI (9/9 under Node 22). Open: no signed-in production import with a pending conflict beyond page 1.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/154"
     },
     {
       "label": "Explicit transform action correction",
       "state": "Verified",
-      "detail": "2026-10-17: PR138 prior head 6dd2104 has all14 checks passing. Independently confirmed App discarded Shorten/JSON/alternatives overrides. App now forwards payload and metadata; the new regression failed before and passed after;46 focused tests and the extension production build passed under Node22. The broader local suite stopped reporting progress and was interrupted; no full-suite pass is claimed. New-head CI and deployed/model-quality acceptance remain pending. Direct user request is the current Focus None exception.",
+      "detail": "2026-10-17: PR138 merged via its existing auto-merge setting as4b3616f. App now forwards explicit Shorten/JSON/Alternatives payload and metadata. The regression failed before and passed after;46 focused tests and extension build passed under Node22. Merge-gate and progress-snapshot passed; broader new-head checks were still running. The merge commit has a successful Vercel status; signed-in production behavior and live model quality were not checked. The full local suite stalled and was interrupted. Direct user request is the Focus None exception.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/138"
     },
     {
@@ -800,6 +800,18 @@
       "inPlan": false,
       "nextAction": "Hard-refresh the signed-in production Library in tile view and confirm card details no longer sit under Editor/Copy/Favorite.",
       "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS keeps tile actions in their own grid column. e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Signed-in production view not checked."
+    },
+    {
+      "id": "3fc255fc8f44810594d3d3ee3ab722fe",
+      "title": "Library import review hides which page holds pending conflict choices",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Import",
+      "type": "UX",
+      "url": "https://app.notion.com/3fc255fc8f44810594d3d3ee3ab722fe",
+      "inPlan": false,
+      "nextAction": "Import a library with a pending conflict beyond page 1 in the signed-in production app and confirm Jump to unresolved reaches and focuses it.",
+      "verification": "2026-10-17: PR #154 merged as d2dc37a after all 13 checks passed; the Vercel deployment succeeded and the production bundle contains the Jump to unresolved control. New WorkspaceImportModal test passes; CI's full extension suite passes workspaceImportRecovery 9/9 under Node 22. Signed-in production import not checked."
     }
   ]
 }
