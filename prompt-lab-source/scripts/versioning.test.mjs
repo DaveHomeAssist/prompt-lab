@@ -47,3 +47,16 @@ test('release guard accepts only a matching stable tag', () => {
     assert.equal(result.status, expected);
   }
 });
+
+test('build identity marks only a matching tag as a release', () => {
+  const version = checkVersions().canonical;
+  for (const [tag, stable] of [[`v${version}`, true], ['v99.98.97', false], ['', false]]) {
+    const result = spawnSync(process.execPath, ['--input-type=module', '-e', "import { buildIdentity } from './scripts/build-identity.mjs'; console.log(JSON.stringify(buildIdentity()));"], {
+      cwd: sourceRoot, encoding: 'utf8', env: { ...process.env, GITHUB_SHA: 'abcdef1234567890', GITHUB_REF_TYPE: 'branch', PROMPTLAB_RELEASE_TAG: tag },
+    });
+    assert.equal(result.status, 0);
+    const identity = JSON.parse(result.stdout);
+    assert.equal(identity.__PL_BUILD_REVISION__, '"abcdef1"');
+    assert.equal(identity.__PL_RELEASE_BUILD__, String(stable));
+  }
+});

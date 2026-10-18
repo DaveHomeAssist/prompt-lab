@@ -10,7 +10,7 @@ import {
   suggestTitleFromText,
   updatePromptEntry,
 } from '../lib/promptSchema.js';
-import { loadJson, saveJson, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
+import { loadJson, saveJson, removeKey, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { commitLibrarySave } from '../lib/libraryJournal.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
@@ -972,7 +972,7 @@ export default function usePromptLibrary(notify) {
         ? stampRecordMutation(entry, { ...entry, collection: pathChanges.get(entry.collection) }) : entry);
       const before = [storageKeys.folders, storageKeys.collections, storageKeys.library].map(key => [key, loadJson(key, null)]);
       if (!saveJson(storageKeys.folders, next) || !saveJson(storageKeys.collections, nextCollections) || !persistRecords(storageKeys.library, nextLibrary)) {
-        for (const [key, value] of before) if (value !== null) saveJson(key, value);
+        for (const [key, value] of before) { if (value === null) removeKey(key); else saveJson(key, value); }
         throw new Error('Folder changes were not saved. Your prompts remain available.');
       }
       const durable = commitLibrarySave();

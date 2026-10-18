@@ -126,7 +126,11 @@ for (const viewport of viewports) {
     await expectNoHorizontalOverflow(page);
 
     await openWorkspace(page, 'Library', compact);
-    await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
+    if (compact) {
+          await page.getByRole('button', { name: 'Show Library drawer', exact: true }).click();
+          await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible();
+          await page.keyboard.press('Escape');
+        } else await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
     await expect(page.getByRole('region', { name: 'Prompt index' })).toBeVisible();
     await expect(page.getByRole('list', { name: 'Saved prompts' })).toContainText('Desktop release checklist');
     await expectNoHorizontalOverflow(page);

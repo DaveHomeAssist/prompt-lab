@@ -227,7 +227,11 @@ test.describe('responsive hosted workspaces', () => {
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(2);
         await receipt.getByRole('button', { name: 'View in Library' }).click();
 
-        await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
+        if (compact) {
+          await page.getByRole('button', { name: 'Show Library drawer', exact: true }).click();
+          await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible();
+          await page.keyboard.press('Escape');
+        } else await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
         await expect(page.getByRole('region', { name: 'Prompt index' })).toBeVisible();
         await page.getByTestId('library-search').fill('Release verification checklist');
         await expect(page.getByRole('list', { name: 'Saved prompts' })).toContainText('Release verification checklist');

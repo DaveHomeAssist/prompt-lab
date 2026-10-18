@@ -261,7 +261,10 @@ export default function LibraryWorkspace({
   const [layout, setLayout] = usePersistedState('pl2-library-layout', 'list', {
     validate: (value) => (LIBRARY_LAYOUTS.includes(value) ? value : 'list'),
   });
-  const [drawerOpen, setDrawerOpen] = usePersistedState(compact ? 'pl2-library-mobile-drawer' : 'pl2-library-drawer', !compact, { validate: value => typeof value === 'boolean' ? value : !compact });
+  const [desktopDrawerOpen, setDesktopDrawerOpen] = usePersistedState('pl2-library-drawer', true, { validate: value => typeof value === 'boolean' ? value : true });
+  const [mobileDrawerOpen, setMobileDrawerOpen] = usePersistedState('pl2-library-mobile-drawer', false, { validate: value => typeof value === 'boolean' ? value : false });
+  const drawerOpen = compact ? mobileDrawerOpen : desktopDrawerOpen;
+  const setDrawerOpen = compact ? setMobileDrawerOpen : setDesktopDrawerOpen;
   const [inspectorWidth, setInspectorWidth] = usePersistedState('pl2-inspector-width', 336, { validate: value => Number.isFinite(value) ? Math.max(260, Math.min(640, value)) : 336 });
   const [collapsedFolders, setCollapsedFolders] = useState([]);
   const [collectionParent, setCollectionParent] = useState('');
@@ -388,6 +391,11 @@ export default function LibraryWorkspace({
         version: '1.7.1', schemaVersion: 1, exportedAt: new Date().toISOString(),
         count: checkedEntries.length, library: checkedEntries,
         collections: uniqueStrings(checkedEntries.map((entry) => entry.collection)),
+        folders: folderRecords.filter(folder => checkedEntries.some(entry => {
+          let current = folderRecords.find(item => item.collection === entry.collection);
+          while (current) { if (current.id === folder.id) return true; current = folderRecords.find(item => item.id === current.parentId); }
+          return false;
+        })),
       };
       const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
       const anchor = Object.assign(document.createElement('a'), { href: url, download: 'prompt-library-selection.json' });
@@ -399,7 +407,7 @@ export default function LibraryWorkspace({
   const persistFolders = async (next) => {
     if (typeof lib.saveFolders !== 'function') { setFolderError('Folder storage is unavailable.'); return false; }
     setFolderSaving(true); setFolderError('');
-    const changes = new Map(folderRecords.map(folder => [folder.collection, next.find(item => item.id === folder.id)?.collection ?? '']));
+    const changes = new Map(folderRecords.map(folder => [folder.collection, next.find(item => item.id === folder.id)?.collection ?? '']).filter(([before, after]) => before !== after));
     try {
       const saved = await lib.saveFolders(next, changes);
       if (!saved) { setFolderError('Folder changes were not saved. Please retry.'); return false; }
