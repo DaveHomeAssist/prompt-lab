@@ -24,29 +24,15 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 - Separate authoring, library, experiments, and notebook concerns even when they share one shell
 - Persist prompt, run, and settings state locally to keep the tool fast and offline tolerant where possible
 
-## Codex Session Naming
+## Session naming
 
-Follow NAME-1 to NAME-3 in the shared workspace contract. The default for an
-agent-generated PromptLab task title is:
+Follow [Status Naming](https://github.com/DaveHomeAssist/skills/blob/master/status-naming.md), the canonical authority for the format, parent/subproject emoji map, phases, date semantics and exceptions.
 
-`🧪 PromptLab | <PHASE> | <Title> <MM-DD>`
+`<emoji(s)> <Project> | <PHASE> | <Title> <MM-DD>`
 
-Example: `🧪 PromptLab | REVIEW | Create Slice 2A 10-18`
+Preserve Dave's manual titles and protected or uncertain sessions. Status belongs in the body; status changes do not authorize renames or Notion writes. Local instructions extend this rule only through a named, purposeful exception; they do not maintain a competing format.
 
-- Lead with the established project emoji (one or more symbols) and preserve the project's normal spelling and capitalization.
-- Use an uppercase phase: RESEARCH, PLAN, DESIGN, BUILD, FIX, AUDIT, REVIEW, VERIFY, RELEASE, OPS or SCHEDULED.
-- Keep the title concise and recognizable; preserve identifiers such as BUS073 and filenames.
-- End with the task's creation date in America/New_York as MM-DD; retain it across status changes. Use the current Eastern date when first applying the format to an undated task.
-- Do not include a status light, progress badge, reason, clock time or automatic date rollover. Put status, evidence and blockers in the body.
-- Preserve a title Dave sets manually, even if it differs from this format. Naming rules never authorize overwriting his title; rename it only when he explicitly asks.
-- For agent-generated titles, update only when the work's material scope changes or Dave asks; unchanged checks and status changes do not trigger a rename.
-- Existing historical logs and Notion rows retain their names; do not bulk rename tasks or write to Notion solely to enforce this format.
-
-Before closeout, read the current title through supported task tools. Preserve a
-manual title rather than normalizing it. If readback is unavailable, report that
-gap; do not guess or claim the title was verified.
-
-Canonical reference: [Status Naming](https://github.com/DaveHomeAssist/skills/blob/master/status-naming.md).
+Before closeout, read the current title through supported task tools. Preserve manual titles; if readback is unavailable, report the gap rather than claiming verification.
 
 ## Merge policy
 
@@ -56,8 +42,8 @@ For PromptLab pull requests, once all required checks pass, mark the PR ready an
 
 Verify current Git, files, relevant test/build output, CI/deployment and user
 behavior before reporting status. Put status and verification in the report body;
-retain the existing task title, including Dave's manual name. Use the session
-naming convention above only when generating a title, not a status-light or
+retain the existing task title, including Dave's manual name. Use the
+canonical session naming convention only when generating a title, not a status-light or
 timestamp naming format. A title is never evidence of completion.
 
 ## Required Notion and visual progress updates
@@ -169,12 +155,6 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-06] [PLB] [build] Add scripts/eval-davellm.mjs: Library Test cases through DaveLLM's stateless /eval/chat, scored with the app's Enhance payload, PII gate, parser and checkTraits; node --test suite wired into Extension CI (DaveLLM DL-EVAL-01 milestone 2)
 [2026-10-06] [PLB] [build] Clear the audit gate again: bump source-map-js to 1.2.2 in extension, web and desktop lockfiles (GHSA-68fv-2mgg-jv7q, high)
 [2026-10-06] [PLB] [docs] Mark DECISIONS.md D-003 and the EXECUTION_PRD DaveLLM integration (DLM-1 to DLM-4) superseded: Tailscale-resolved nodes, no Ollama dialect, eval through /eval/chat
-
-## Status naming
-
-The Codex Session Naming section above and the shared workspace NAME rules are
-canonical. Preserve manual titles. Status changes belong in the body and never
-require a new name or an automatic Notion title write.
 
 [2026-10-07] [PLB] [fix] Apply PL-DUR-1A: gate desktop save receipts on durable commits, retain visible failure and draft state, coalesce/retry without duplicate entries or versions; extend interrupted-write and installed fixture acceptance (026)
 
