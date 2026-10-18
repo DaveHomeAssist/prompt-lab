@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T23:51:41.309109+00:00",
+  "snapshotAt": "2026-10-18T23:56:24.689079+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "eba6c4c6e1a9b1ba905ed3cf1d88158b5f85c5a1",
+  "mainSha": "eda7142be2e7c71ee0ccbd50615a88137f2d9314",
   "overall": "Acceptance incomplete",
   "nextAction": "Complete the remaining accepted hosted Slice1 Acceptance checklist under D-012 with synthetic responses. Preserve the Library L1–L8 owner and hold graphite until L4; no new feature scope is implied.",
   "evidence": [
     {
-      "label": "Library L1–L8 implementation in review",
+      "label": "Library L1–L8 merged and deployed; acceptance open",
       "state": "Running",
-      "detail": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed.",
+      "detail": "2026-10-18: PR170 merged eda7142. Vercel production dpl_FwKqUCCuF6FxeFkNuXZdfwMt4dCo READY on that merge. Signed-in browser shows 1.8.0-dev (eda7142), 15 preserved prompts, unified destinations, palettes/views/resize control; drawer collapse/reopen verified. Dominic passed 1195 shared, 223 legacy, five version and 32 focused tests; 18 extension, nine hosted and four desktop browser checks. Hosted arrow-key fixture corrected to Library after Write. GitHub merged immediately when auto-merge was requested because required checks passed while broader CI was still running; full CI completion remains pending. Installed-native, physical touch, tagged release and human acceptance remain open. No personal prompt edits or real model calls.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/170"
     },
     {
@@ -522,8 +522,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
       "inPlan": false,
-      "nextAction": "Verify branch CI and deployed development identity; retain tagged-release acceptance.",
-      "verification": "2026-10-18: Added allowlisted bump, metadata consistency and pre-artifact tag guard. Four version tests pass under Node 22 on Dominic. Shared source 1.8.0; no tagged release is claimed."
+      "nextAction": "Validate an authorized tagged release against its packaged artifact versions.",
+      "verification": "PR170 synchronizes 14 distributed version files to 1.8.0 and adds five passing version/tag/build-identity tests. Signed-in production reports 1.8.0-dev (eda7142). No tagged release published."
     },
     {
       "id": "3d2255fc8f44816b9a5ed471be3b493d",
@@ -658,18 +658,6 @@
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     },
     {
-      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
-      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Editor",
-      "type": "Security",
-      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
-      "inPlan": false,
-      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
-      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
-    },
-    {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
       "status": "Done",
@@ -752,6 +740,18 @@
       "inPlan": true,
       "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
       "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+    },
+    {
+      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
+      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Security",
+      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
+      "inPlan": false,
+      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
+      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
     },
     {
       "id": "3f0255fc8f44811d8794c092ba1bb88f",
@@ -846,8 +846,8 @@
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
-      "nextAction": "Finish Library L1–L8 branch CI, merge and hosted acceptance; retain native and signed-in gaps.",
-      "verification": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed."
+      "nextAction": "Deliver keyboard-test correction; confirm final CI and complete physical/native/human acceptance.",
+      "verification": "2026-10-18: PR170 merged eda7142. Vercel production dpl_FwKqUCCuF6FxeFkNuXZdfwMt4dCo READY on that merge. Signed-in browser shows 1.8.0-dev (eda7142), 15 preserved prompts, unified destinations, palettes/views/resize control; drawer collapse/reopen verified. Dominic passed 1195 shared, 223 legacy, five version and 32 focused tests; 18 extension, nine hosted and four desktop browser checks. Hosted arrow-key fixture corrected to Library after Write. GitHub merged immediately when auto-merge was requested because required checks passed while broader CI was still running; full CI completion remains pending. Installed-native, physical touch, tagged release and human acceptance remain open. No personal prompt edits or real model calls."
     }
   ]
 }
