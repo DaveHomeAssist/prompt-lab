@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T04:40:25.000Z",
+  "snapshotAt": "2026-10-18T22:51:22.275Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "dec604d0ff6e81bc6e7a84e134c92dc16f2995d0",
+  "mainSha": "fc80410e53625d22a57a69b266755c90106e78a1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Retain the released generation regression coverage; broader Enhance UX, billing-policy, hosted model quality and native/human acceptance remain separately scoped.",
+  "nextAction": "Complete PR164 CI and merge, verify the exact deployment, then run the existing signed-in activation check for both hosted Create layouts. Library L1–L8 remains with its owner; graphite waits for L4.",
   "evidence": [
+    {
+      "label": "Create slice 2A release integration",
+      "state": "Running",
+      "detail": "2026-10-18: accepted decisions BAAB verified from direct human instructions; Library ownership retained separately. Reviewed PR164 head9ff914e had15 successful checks but a confirmed false-clean state for alternate-candidate edits and an AGENTS naming-history conflict with mainfc80410. Integration09736e6 compares the complete Save snapshot, adds three regressions, preserves both naming/implementation histories and extends the existing production activation check for stacked/split context and shortcut persistence at375x812/1440x900. Dominic Node22.23.3 passed36 focused tests and extension build/assembly after correcting missing sibling files in the scratch transfer. Integrated candidate CI, merge and production acceptance pending. UX issue and implementation RUN appended/read back. All45 issue dispositions and14-item plan preserved. No new agents/chats/model calls; private board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/164"
+    },
     {
       "label": "CI and generation options delivered",
       "state": "Verified",
