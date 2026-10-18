@@ -47,10 +47,11 @@ function renderHeader(overrides = {}) {
 }
 
 describe('AppHeader', () => {
-  it('shows Create, Evaluate, and Scratch as the primary workspaces', () => {
+  it('shows one unified set of workspace destinations', () => {
     renderHeader();
 
-    expect(screen.getByRole('tab', { name: 'Create' })).toBeInTheDocument();
+    expect(screen.getAllByRole('tablist')).toHaveLength(1);
+    expect(screen.getByRole('tab', { name: 'Write' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Evaluate' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Scratch' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Experiments' })).not.toBeInTheDocument();
@@ -83,7 +84,7 @@ describe('AppHeader', () => {
   it('uses the shared ember accent for active shell controls', () => {
     renderHeader();
 
-    expect(screen.getByRole('tab', { name: 'Create' })).toHaveClass(
+    expect(screen.getByRole('tab', { name: 'Write' })).toHaveClass(
       'border',
       'border-orange-300/55',
       'bg-orange-400/15',

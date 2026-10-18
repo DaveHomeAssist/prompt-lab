@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
-import { LIBRARY_LAYOUTS, collectionTree, collectionContains, safeArtwork } from './lib/libraryPresentation.js';
+import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { sortLibraryEntries } from './hooks/usePromptLibrary.js';
+import { reconcileFolders, folderTree, folderDescendants, changeFolder } from './lib/collectionFolders.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
 import StarterPackCard from './StarterPackCard.jsx';
 import TestCasesPanel from './TestCasesPanel.jsx';
@@ -260,14 +261,20 @@ export default function LibraryWorkspace({
   const [layout, setLayout] = usePersistedState('pl2-library-layout', 'list', {
     validate: (value) => (LIBRARY_LAYOUTS.includes(value) ? value : 'list'),
   });
-  const [drawerOpen, setDrawerOpen] = usePersistedState('pl2-library-drawer', !compact, { validate: value => typeof value === 'boolean' ? value : !compact });
+  const [drawerOpen, setDrawerOpen] = usePersistedState(compact ? 'pl2-library-mobile-drawer' : 'pl2-library-drawer', !compact, { validate: value => typeof value === 'boolean' ? value : !compact });
   const [inspectorWidth, setInspectorWidth] = usePersistedState('pl2-inspector-width', 336, { validate: value => Number.isFinite(value) ? Math.max(260, Math.min(640, value)) : 336 });
-  const [folderArtwork, setFolderArtwork] = usePersistedState('pl2-collection-artwork', {}, { validate: value => value && typeof value === 'object' && !Array.isArray(value) ? value : {} });
   const [collapsedFolders, setCollapsedFolders] = useState([]);
   const [collectionParent, setCollectionParent] = useState('');
   const [artworkCollection, setArtworkCollection] = useState('');
+  const [folderSaving, setFolderSaving] = useState(false);
+  const [folderError, setFolderError] = useState('');
   const workspaceRef = useRef(null);
-  const folderRows = useMemo(() => collectionTree(lib.collections), [lib.collections]);
+  const folderRecords = useMemo(() => lib.folders || reconcileFolders([], lib.collections), [lib.folders, lib.collections]);
+  const folderRows = useMemo(() => folderTree(folderRecords), [folderRecords]);
+  const activeFolder = folderRecords.find(folder => folder.collection === lib.activeCollection);
+  const activeFolderIds = activeFolder ? folderDescendants(folderRecords, activeFolder.id) : new Set();
+  const folderMatches = collection => activeFolder ? folderRecords.some(folder => folder.collection === collection && activeFolderIds.has(folder.id)) : collection === lib.activeCollection;
+  const drawerRef = useDialogA11y({ open: compact && drawerOpen, onClose: () => setDrawerOpen(false) });
   const resizeInspector = width => {
     const available = workspaceRef.current?.clientWidth || window.innerWidth;
     setInspectorWidth(Math.max(260, Math.min(640, available * 0.55, width)));
@@ -294,7 +301,7 @@ export default function LibraryWorkspace({
 
   useEffect(() => setSearchDraft(lib.search || ''), [lib.search]);
   useEffect(() => {
-    const invalidCollection = smartView === 'collection' && (!lib.activeCollection || !folderRows.some(folder => folder.path === lib.activeCollection));
+    const invalidCollection = smartView === 'collection' && (!lib.activeCollection || !folderRows.some(folder => folder.collection === lib.activeCollection));
     const invalidTag = smartView === 'tag' && (!lib.activeTag || !lib.allLibTags.includes(lib.activeTag));
     if (invalidCollection || invalidTag) {
       if (invalidCollection) lib.setActiveCollection(null);
@@ -315,13 +322,13 @@ export default function LibraryWorkspace({
     if (smartView === 'favorites') source = source.filter((entry) => entry.favorite);
     if (smartView === 'templates') source = source.filter(isTemplate);
     if (smartView === 'incomplete') source = source.filter(isIncomplete);
-    if (smartView === 'collection') source = source.filter((entry) => collectionContains(lib.activeCollection, entry.collection));
+    if (smartView === 'collection') source = source.filter((entry) => folderMatches(entry.collection));
     if (smartView === 'tag') source = source.filter((entry) => (entry.tags || []).includes(lib.activeTag));
     if (smartView === 'recent') return source.sort((left, right) => timestamp(right.lastAccessedAt || right.updatedAt) - timestamp(left.lastAccessedAt || left.updatedAt));
     if (smartView === 'frequent') return source.sort((left, right) => (right.useCount || 0) - (left.useCount || 0));
     if (smartView === 'trash') return source.sort((left, right) => timestamp(right.deletedAt) - timestamp(left.deletedAt));
     return sortLibraryEntries(source, lib.sortBy);
-  }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter]);
+  }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter, folderRecords]);
 
   const checkedEntries = useMemo(() => {
     const ids = new Set(checkedIds);
@@ -334,16 +341,17 @@ export default function LibraryWorkspace({
     setSmartView(nextView); setCheckedIds([]); setSelectedId(null); setInspectorTab('details');
     if (nextView !== 'collection') lib.setActiveCollection(null);
     if (nextView !== 'tag') lib.setActiveTag(null);
+    if (compact) setDrawerOpen(false);
   };
-  const selectEntry = (entry) => { setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
+  const selectEntry = (entry) => { if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
   const toggleChecked = (id) => setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const clearFilters = () => {
     setSmartView('all'); setSearchDraft(''); setStatusFilter(''); lib.setSearch('');
     lib.setActiveTag(null); lib.setActiveCollection(null); setCheckedIds([]);
   };
-  const saveDetails = () => {
+  const saveDetails = async () => {
     if (!selected || smartView === 'trash' || !detailsDraft.title.trim()) return;
-    const result = lib.updateEntries([selected.id], (entry) => ({
+    const update = (entry) => ({
       ...entry,
       title: detailsDraft.title.trim(),
       tags: uniqueStrings(detailsDraft.tags),
@@ -354,7 +362,8 @@ export default function LibraryWorkspace({
         compatibility: uniqueStrings(detailsDraft.compatibility),
       },
       updatedAt: new Date().toISOString(),
-    }));
+    });
+    const result = lib.saveEntryDetails ? await lib.saveEntryDetails(selected.id, update) : lib.updateEntries([selected.id], update);
     if (result === false || result === 0 || result === null) {
       setAnnouncement('Details were not saved. Your edits remain in the inspector.');
       return;
@@ -387,32 +396,46 @@ export default function LibraryWorkspace({
     }
     setAnnouncement(`Exported ${checkedEntries.length} prompts with complete metadata.`);
   };
-  const createCollection = () => {
-    if (!canUseCollections) { openBilling?.('collections'); return; }
-    const name = [collectionParent, collectionDraft.trim().replace(/^\/+|\/+$/g, '')].filter(Boolean).join('/');
-    if (!name || lib.collections.some((collection) => collection.toLowerCase() === name.toLowerCase())) return;
-    lib.setCollections((current) => [...current, name]); setCollectionDraft(''); setAnnouncement(`Created collection ${name}.`);
+  const persistFolders = async (next) => {
+    if (typeof lib.saveFolders !== 'function') { setFolderError('Folder storage is unavailable.'); return false; }
+    setFolderSaving(true); setFolderError('');
+    const changes = new Map(folderRecords.map(folder => [folder.collection, next.find(item => item.id === folder.id)?.collection ?? '']));
+    try {
+      const saved = await lib.saveFolders(next, changes);
+      if (!saved) { setFolderError('Folder changes were not saved. Please retry.'); return false; }
+      if (changes.has(lib.activeCollection)) lib.setActiveCollection(changes.get(lib.activeCollection) || null);
+      return true;
+    } finally { setFolderSaving(false); }
   };
-  const saveCollectionRename = () => {
-    const nextName = renameCollectionDraft.trim();
-    if (!renamingCollection || !nextName) return;
-    if (nextName.startsWith(`${renamingCollection}/`)) { setAnnouncement('Choose a path outside this folder.'); return; }
-    const rename = path => collectionContains(renamingCollection, path) ? nextName + path.slice(renamingCollection.length) : path;
-    const renamed = lib.collections.map(rename);
-    if (new Set(renamed.map(name => name.toLowerCase())).size !== renamed.length) { setAnnouncement('A folder with that name already exists.'); return; }
-    const ids = lib.library.filter(entry => collectionContains(renamingCollection, entry.collection)).map(entry => entry.id);
-    lib.updateEntries(ids, entry => ({ ...entry, collection: rename(entry.collection) }));
-    lib.setCollections(renamed);
-    setFolderArtwork(current => Object.fromEntries(Object.entries(current).map(([path, artwork]) => [rename(path), artwork])));
-    if (lib.activeCollection && collectionContains(renamingCollection, lib.activeCollection)) lib.setActiveCollection(rename(lib.activeCollection));
-    setRenamingCollection(''); setRenameCollectionDraft(''); setAnnouncement(`Renamed collection to ${nextName}.`);
+  const createCollection = async () => {
+    if (!canUseCollections) { openBilling?.('collections'); return; }
+    const name = collectionDraft.trim(); if (!name || folderSaving) return;
+    try {
+      const id = crypto.randomUUID();
+      const parent = folderRecords.find(folder => folder.id === collectionParent);
+      const draft = [...folderRecords, { id, name: '__new__', parentId: null, collection: `__new__${id}`, artwork: {} }];
+      const next = changeFolder(draft, id, { name, parentId: parent?.id || null });
+      if (await persistFolders(next)) { setCollectionDraft(''); setAnnouncement(`Created folder ${name}.`); }
+    } catch (error) { setFolderError(error.message); }
+  };
+  const saveCollectionRename = async () => {
+    if (folderSaving) return;
+    try {
+      const next = changeFolder(folderRecords, renamingCollection, { name: renameCollectionDraft, parentId: collectionParent || null });
+      if (await persistFolders(next)) { setRenamingCollection(''); setAnnouncement('Folder and prompt assignments updated.'); }
+    } catch (error) { setFolderError(error.message); }
+  };
+  const deleteFolder = async folder => {
+    if (folderRecords.some(item => item.parentId === folder.id)) { setFolderError('Move this folder’s subfolders before removing it. Prompts will be kept.'); return; }
+    if (await persistFolders(folderRecords.filter(item => item.id !== folder.id))) setAnnouncement('Folder removed; its prompts remain in All prompts.');
   };
   const handleNewPrompt = () => { setSelectedId(null); if (onNewPrompt) onNewPrompt(); else openSavePanel?.({ mode: 'new' }); };
 
   return <div ref={workspaceRef} style={{ '--pl-inspector-width': `${inspectorWidth}px` }} className={`pl-library-workspace${drawerOpen ? ' is-drawer-open' : ' is-drawer-collapsed'}${selected ? ' has-inspector-selection' : ''}${smartView === 'trash' ? ' is-trash-view' : ''}`}>
     <p className="sr-only" aria-live="polite">{announcement}</p>
-    <aside id="library-drawer" className="pl-library-rail" aria-label="Library views" hidden={!drawerOpen}>
-      <button type="button" className="pl-drawer-close" onClick={() => setDrawerOpen(false)}>Hide Library drawer <Ic n="X" size={14} /></button>
+    {compact && drawerOpen && <button type="button" className="pl-drawer-backdrop" aria-label="Close Library drawer" onClick={() => setDrawerOpen(false)} />}
+    <aside ref={drawerRef} role={compact && drawerOpen ? 'dialog' : undefined} aria-modal={compact && drawerOpen ? 'true' : undefined} tabIndex={compact && drawerOpen ? -1 : undefined} id="library-drawer" className="pl-library-rail" aria-label="Library views" hidden={!drawerOpen}>
+      <button type="button" className="pl-drawer-close" aria-label="Close Library drawer" onClick={() => setDrawerOpen(false)}>Hide Library drawer <Ic n="X" size={14} /></button>
       <div className="pl-library-rail-title"><div><p className="pl-eyebrow">Prompt index</p><h2>Library</h2></div><span>{lib.library.length}</span></div>
       <button type="button" className="pl-library-new-button" onClick={handleNewPrompt}><Ic n="Plus" size={14} /> New Prompt</button>
       <nav aria-label="Smart views">
@@ -421,24 +444,24 @@ export default function LibraryWorkspace({
 
       <section className="pl-library-collections">
         <div className="pl-library-section-heading"><p className="pl-eyebrow">Collections</p><button type="button" onClick={() => { if (!canUseCollections) openBilling?.('collections'); else setShowCollectionManager((value) => !value); }} aria-expanded={canUseCollections ? showCollectionManager : undefined} aria-label={canUseCollections ? 'Manage collections' : 'Unlock collections'}><Ic n="Plus" size={12} /></button></div>
-        {canUseCollections ? folderRows.filter(folder => !collapsedFolders.some(parent => folder.path.startsWith(`${parent}/`))).map(({ path, label, depth, hasChildren }) => <div key={path} className="pl-library-folder" style={{ paddingLeft: `${Math.min(depth, 6) * 10}px` }}>
-          {hasChildren && <button type="button" aria-label={`${collapsedFolders.includes(path) ? 'Expand' : 'Collapse'} folder ${path}`} aria-expanded={!collapsedFolders.includes(path)} onClick={() => setCollapsedFolders(current => current.includes(path) ? current.filter(item => item !== path) : [...current, path])}><Ic n={collapsedFolders.includes(path) ? 'ArrowRight' : 'ChevronDown'} size={12} /></button>}
-          <button type="button" className="pl-folder-select" title={path} aria-current={smartView === 'collection' && lib.activeCollection === path ? 'page' : undefined} onClick={() => { setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(path); if (compact) setDrawerOpen(false); }}><Artwork value={folderArtwork[path]} fallback="Folder" /><span>{label}</span><small>{lib.library.filter(entry => collectionContains(path, entry.collection)).length}</small></button>
+        {canUseCollections ? folderRows.filter(folder => !collapsedFolders.some(id => folderDescendants(folderRecords, id).has(folder.id) && id !== folder.id)).map(folder => <div key={folder.id} className="pl-library-folder" style={{ paddingLeft: `${Math.min(folder.depth, 6) * 10}px` }}>
+          {folder.hasChildren && <button type="button" aria-label={`${collapsedFolders.includes(folder.id) ? 'Expand' : 'Collapse'} folder ${folder.name}`} aria-expanded={!collapsedFolders.includes(folder.id)} onClick={() => setCollapsedFolders(current => current.includes(folder.id) ? current.filter(item => item !== folder.id) : [...current, folder.id])}><Ic n={collapsedFolders.includes(folder.id) ? 'ArrowRight' : 'ChevronDown'} size={12} /></button>}
+          <button type="button" className="pl-folder-select" title={folder.collection} aria-current={smartView === 'collection' && lib.activeCollection === folder.collection ? 'page' : undefined} onClick={() => { setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(folder.collection); if (compact) setDrawerOpen(false); }}><Artwork value={folder.artwork} fallback="Folder" /><span>{folder.name}</span><small>{lib.library.filter(entry => folderRecords.some(item => item.collection === entry.collection && folderDescendants(folderRecords, folder.id).has(item.id))).length}</small></button>
         </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections · Pro</button>}
-
         {showCollectionManager && canUseCollections && <div className="pl-collection-manager">
-          <label>Parent folder<select aria-label="Parent folder" value={collectionParent} onChange={event => setCollectionParent(event.target.value)}><option value="">Library root</option>{folderRows.map(folder => <option key={folder.path}>{folder.path}</option>)}</select></label>
-          <div className="pl-collection-create"><input value={collectionDraft} onChange={(event) => setCollectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createCollection(); }} placeholder="New collection" aria-label="New collection name" /><button type="button" onClick={createCollection} disabled={!collectionDraft.trim()}>Add</button></div>
-          {lib.collections.map((collection) => renamingCollection === collection
-            ? <div key={collection} className="pl-collection-edit"><input value={renameCollectionDraft} onChange={(event) => setRenameCollectionDraft(event.target.value)} aria-label={`Rename ${collection}`} /><button type="button" onClick={saveCollectionRename}>Save</button><button type="button" onClick={() => setRenamingCollection('')}>Cancel</button></div>
-            : <div key={collection} className="pl-collection-manage-row"><span>{collection}</span><button type="button" onClick={() => setArtworkCollection(artworkCollection === collection ? '' : collection)}>Artwork</button><button type="button" onClick={() => { setRenamingCollection(collection); setRenameCollectionDraft(collection); }}>Rename</button><button type="button" onClick={() => lib.deleteCollection(collection)} aria-label={`Delete collection ${collection}`}>Delete</button></div>)}
-          {artworkCollection && <ArtworkPicker label={`Collection ${artworkCollection} artwork`} value={folderArtwork[artworkCollection]} onChange={artwork => setFolderArtwork(current => ({ ...current, [artworkCollection]: artwork }))} />}
-          <small>Folders use / paths. Deleting a collection keeps its prompts and subfolders. Collection artwork is a local preference.</small>
+          <label>Parent folder<select aria-label="Parent folder" value={collectionParent} onChange={event => setCollectionParent(event.target.value)}><option value="">Library root</option>{folderRows.map(folder => <option key={folder.id} value={folder.id}>{folder.collection}</option>)}</select></label>
+          <div className="pl-collection-create"><input value={collectionDraft} onChange={(event) => setCollectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createCollection(); }} placeholder="New collection" aria-label="New collection name" /><button type="button" onClick={createCollection} disabled={!collectionDraft.trim() || folderSaving}>Add</button></div>
+          {folderRows.map(folder => renamingCollection === folder.id
+            ? <div key={folder.id} className="pl-collection-edit"><input value={renameCollectionDraft} onChange={event => setRenameCollectionDraft(event.target.value)} aria-label={`Rename ${folder.name}`} /><button type="button" disabled={folderSaving} onClick={saveCollectionRename}>Save</button><button type="button" onClick={() => setRenamingCollection('')}>Cancel</button></div>
+            : <div key={folder.id} className="pl-collection-manage-row"><span>{folder.collection}</span><button type="button" onClick={() => setArtworkCollection(artworkCollection === folder.id ? '' : folder.id)}>Artwork</button><button type="button" onClick={() => { setRenamingCollection(folder.id); setRenameCollectionDraft(folder.name); setCollectionParent(folder.parentId || ''); }}>Rename / Move</button><button type="button" disabled={folderSaving} onClick={() => deleteFolder(folder)} aria-label={`Remove folder ${folder.name}, keep prompts`}>Remove</button></div>)}
+          {artworkCollection && <ArtworkPicker key={artworkCollection} label="Collection artwork" disabled={folderSaving} value={folderRecords.find(folder => folder.id === artworkCollection)?.artwork} onChange={artwork => persistFolders(folderRecords.map(folder => folder.id === artworkCollection ? { ...folder, artwork } : folder))} />}
+          {folderError && <p role="alert">{folderError}</p>}
+          <small>Select a parent, then add a folder or save Rename / Move. Parent views include subfolders. Removing a folder keeps its prompts. Artwork travels with workspace exports.</small>
         </div>}
       </section>
 
       <section><p className="pl-eyebrow">Tags</p><div className="pl-library-tag-cloud">
-        {lib.allLibTags.map((tag) => <button key={tag} type="button" aria-pressed={smartView === 'tag' && lib.activeTag === tag} onClick={() => { setSmartView('tag'); setCheckedIds([]); setSelectedId(null); lib.setActiveCollection(null); lib.setActiveTag(tag); }}>#{tag}</button>)}
+        {lib.allLibTags.map((tag) => <button key={tag} type="button" aria-pressed={smartView === 'tag' && lib.activeTag === tag} onClick={() => { setSmartView('tag'); setCheckedIds([]); setSelectedId(null); lib.setActiveCollection(null); lib.setActiveTag(tag); if (compact) setDrawerOpen(false); }}>#{tag}</button>)}
       </div></section>
       <button type="button" className="pl-trash-link" aria-current={smartView === 'trash' ? 'page' : undefined} onClick={() => chooseView('trash')}><Ic n="Trash2" size={14} /><span>Recently Deleted</span><small>{lib.trash.length}</small></button>
       <small className="pl-trash-retention-note">Items are permanently removed after 30 days.</small>
@@ -450,7 +473,7 @@ export default function LibraryWorkspace({
         <label className="pl-library-search"><span className="sr-only">Search prompts</span><Ic n="Search" size={14} /><input data-testid="library-search" value={searchDraft} onChange={(event) => { setSearchDraft(event.target.value); lib.setSearch(event.target.value); }} placeholder="Search title, text, tags, metadata…" /></label>
         <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option></select>
         <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
-        <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /></button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /></button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /></button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /></button></div>
+        <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
         <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
         <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
         {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}

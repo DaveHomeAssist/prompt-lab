@@ -1,3 +1,4 @@
+import { reconcileFolders, mergeFolders } from '../lib/collectionFolders.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
@@ -134,6 +135,9 @@ export default function usePromptLibrary(notify) {
   const [trash, setTrash] = useState([]);
   const [libReady, setLibReady] = useState(false);
   const [collections, setCollections] = useState([]);
+  const [folderRecords, setFolderRecords] = useState([]);
+  const foldersRef = useRef([]);
+  const folders = useMemo(() => reconcileFolders(folderRecords, collections), [folderRecords, collections]);
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState(null);
   const [activeCollection, setActiveCollection] = useState(null);
@@ -246,6 +250,9 @@ export default function usePromptLibrary(notify) {
     trashRef.current = initialTrash;
     setTrash(initialTrash);
     setCollections(initialCollections);
+    try { foldersRef.current = reconcileFolders(loadJson(storageKeys.folders, []), initialCollections); }
+    catch { foldersRef.current = reconcileFolders([], initialCollections); notify('Folder metadata could not be read. Existing collections are preserved.'); }
+    setFolderRecords(foldersRef.current);
     setLoadedStarterPackIds(getLoadedPacks());
     setLibReady(true);
 
@@ -329,7 +336,7 @@ export default function usePromptLibrary(notify) {
   useEffect(() => {
     if (!libReady) return undefined;
     const handleStorage = (event) => {
-      if (![storageKeys.library, storageKeys.trash, storageKeys.collections].includes(event.key) && !isLibraryDeletionKey(event.key)) return;
+      if (![storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.folders].includes(event.key) && !isLibraryDeletionKey(event.key)) return;
       const deletionState = readLibraryDeletionState();
       const generationChanged = generationRef.current !== deletionState.generation;
       generationRef.current = deletionState.generation;
@@ -351,6 +358,8 @@ export default function usePromptLibrary(notify) {
       );
       collectionsRef.current = mergedCollections;
       setCollections(mergedCollections);
+      try { foldersRef.current = reconcileFolders(loadJson(storageKeys.folders, []), mergedCollections); setFolderRecords(foldersRef.current); }
+      catch { notifyRef.current?.('Folder changes from another tab could not be read.'); }
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
@@ -733,6 +742,10 @@ export default function usePromptLibrary(notify) {
     }
     collectionsRef.current = nextCollections;
     setCollections(nextCollections);
+    const removedFolder = foldersRef.current.find(folder => folder.collection === collectionName);
+    const nextFolders = foldersRef.current.filter(folder => folder.collection !== collectionName).map(folder => folder.parentId === removedFolder?.id ? { ...folder, parentId: null, name: folder.collection } : folder);
+    if (!saveJson(storageKeys.folders, nextFolders)) notify('Folder metadata cleanup failed. Retry collection removal.');
+    foldersRef.current = nextFolders; setFolderRecords(nextFolders);
     setActiveCollection(prev => prev === collectionName ? null : prev);
     notify(`Removed collection: ${collectionName}`);
     return true;
@@ -743,13 +756,14 @@ export default function usePromptLibrary(notify) {
       notify('Clear failed. The Library has not been removed.');
       return false;
     }
-    const cleaned = persistRecords(storageKeys.library, []) && persistRecords(storageKeys.trash, []) && saveJson(storageKeys.collections, []);
+    const cleaned = persistRecords(storageKeys.library, []) && persistRecords(storageKeys.trash, []) && saveJson(storageKeys.collections, []) && saveJson(storageKeys.folders, []);
     libraryRef.current = [];
     collectionsRef.current = [];
     setLibrary([]);
     trashRef.current = [];
     setTrash([]);
     setCollections([]);
+    foldersRef.current = []; setFolderRecords([]);
     setActiveCollection(null);
     setActiveTag(null);
     setExpandedId(null);
@@ -936,13 +950,48 @@ export default function usePromptLibrary(notify) {
     return assigned;
   };
 
+  const saveEntryDetails = async (id, updater) => {
+    const before = libraryRef.current;
+    const current = before.find(entry => entry.id === id);
+    if (!current) return false;
+    const next = before.map(entry => entry.id === id ? stampRecordMutation(entry, updater(entry)) : entry);
+    try {
+      if (!persistRecords(storageKeys.library, next)) throw new Error('Library storage write failed.');
+      const durable = commitLibrarySave(); if (durable) await durable;
+      if (libraryRef.current !== before) throw new Error('The Library changed while saving. Review your edits and retry.');
+      libraryRef.current = next; setLibrary(next); return true;
+    } catch (error) { notify(error.message || 'Prompt details were not saved.'); return false; }
+  };
+
+  const saveFolders = async (nextFolders, pathChanges = new Map()) => {
+    try {
+      const next = reconcileFolders(nextFolders);
+      const nextCollections = next.map(folder => folder.collection);
+      const beforeLibrary = libraryRef.current;
+      const nextLibrary = beforeLibrary.map(entry => pathChanges.has(entry.collection)
+        ? stampRecordMutation(entry, { ...entry, collection: pathChanges.get(entry.collection) }) : entry);
+      const before = [storageKeys.folders, storageKeys.collections, storageKeys.library].map(key => [key, loadJson(key, null)]);
+      if (!saveJson(storageKeys.folders, next) || !saveJson(storageKeys.collections, nextCollections) || !persistRecords(storageKeys.library, nextLibrary)) {
+        for (const [key, value] of before) if (value !== null) saveJson(key, value);
+        throw new Error('Folder changes were not saved. Your prompts remain available.');
+      }
+      const durable = commitLibrarySave();
+      if (durable) await durable;
+      if (libraryRef.current !== beforeLibrary) throw new Error('The Library changed while saving folders. Review and retry.');
+      foldersRef.current = next; setFolderRecords(next);
+      collectionsRef.current = nextCollections; setCollections(nextCollections);
+      libraryRef.current = nextLibrary; setLibrary(nextLibrary);
+      return true;
+    } catch (error) { notify(error.message || 'Folder changes were not saved.'); return false; }
+  };
+
   const exportLib = async () => {
     const scratch = loadJson('pl2-pads', null);
     const runs = await listEvalRuns({ limit: null });
     // M-4: saved experiment test cases are part of the promised experiments
     // export and must leave with the workspace file.
     const testCases = await listTestCases({ limit: null });
-    if (library.length === 0 && trash.length === 0 && !scratch && runs.length === 0 && testCases.length === 0) {
+    if (library.length === 0 && trash.length === 0 && folders.length === 0 && !scratch && runs.length === 0 && testCases.length === 0) {
       notify('Prompt Lab has no saved workspace data to export.');
       return null;
     }
@@ -958,6 +1007,7 @@ export default function usePromptLibrary(notify) {
       library,
       trash,
       collections,
+      folders,
       packs: loadPackRegistry(),
       scratch,
       runs,
@@ -1082,6 +1132,12 @@ export default function usePromptLibrary(notify) {
         if (!saveJson(storageKeys.collections, next)) throw new Error('Collection storage write failed.');
         collectionsRef.current = next;
         setCollections(next);
+      });
+      if (plan.parsed.folders) await stage('Folders', async () => {
+        const next = mergeFolders(foldersRef.current, plan.parsed.folders, collectionsRef.current);
+        if (!saveJson(storageKeys.folders, next)) throw new Error('Folder storage write failed.');
+        const durable = commitLibrarySave(); if (durable) await durable;
+        foldersRef.current = next; setFolderRecords(next);
       });
       if (plan.scratch) await stage('Scratch', () => localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch)));
       if (plan.parsed.packs) await stage('Packs', () => {
@@ -1265,7 +1321,7 @@ export default function usePromptLibrary(notify) {
   }, [library]);
 
   return {
-    library, setLibrary, trash, setTrash, libReady, collections, setCollections,
+    library, setLibrary, trash, setTrash, libReady, collections, setCollections, folders, saveFolders, saveEntryDetails,
     search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,

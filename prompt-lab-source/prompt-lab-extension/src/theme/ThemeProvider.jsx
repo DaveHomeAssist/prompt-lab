@@ -1,8 +1,8 @@
 import usePersistedState from '../usePersistedState.js';
 
-export const PALETTES = ['ember', 'ocean', 'forest', 'plum'];
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react';
 
-import { createContext, useContext, useEffect, useMemo } from 'react';
+export const PALETTES = ['ember', 'ocean', 'forest', 'plum'];
 
 const ThemeContext = createContext({
   mode: 'light', palette: 'ember', setPalette: () => {},
@@ -46,7 +46,7 @@ function buildTagChipClass(mode, tag, selected, clickable) {
 
 export function ThemeProvider({ mode = 'dark', children }) {
   const [palette, setPalette] = usePersistedState('pl2-palette', 'ember', { validate: value => PALETTES.includes(value) ? value : 'ember' });
-  useEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
+  useLayoutEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
   const value = useMemo(() => ({
     mode, palette, setPalette,
     getTagChipClass: ({ tag, selected = false, clickable = false }) => buildTagChipClass(mode, tag, selected, clickable),

@@ -28,7 +28,7 @@ for (const width of [375, 1440]) {
     };
     const library = async page => {
       if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
-      else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name: 'Library', exact: true }).click();
+      else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Library', exact: true }).click();
     };
     const snapshot = page => page.evaluate(() => ({
       library: JSON.parse(localStorage.getItem('pl2-library') || '[]'),

@@ -17,11 +17,10 @@ The fixed version label gives no indication of deployed source changes.
    navigation row. Retain Evaluate's History/Compare controls and existing routes.
 4. Offer Ember, Ocean, Forest and Plum palettes, each with light/dark mode.
 5. Assign a built-in icon or a bounded local PNG/JPEG/WebP to each prompt or
-   collection. Store prompt artwork in metadata; collection artwork is a local
-   UI preference. No external image requests or new dependencies.
-6. Represent nested folders as collection paths separated by `/`. Add a parent
-   chooser and collapsible tree; show descendants when selecting a parent.
-   Preserve legacy collection strings and prompt assignments.
+   collection. Store prompt artwork in metadata; collection artwork is stored in the portable folder registry. No external image requests or new dependencies.
+6. Use stable folder IDs and parent IDs, with collection strings as a compatibility
+   projection. Add a parent chooser and collapsible tree; show descendants in
+   parent views. Preserve legacy names, including literal slashes, and assignments.
 7. Offer list, tiles, compact and gallery displays, persisted per installation.
 8. Implement the accepted release-versioning contract: synchronized version
    tooling, mismatch and tag guards, and source revision in development labels.
@@ -34,8 +33,8 @@ Toolbar opens the drawer; collection management creates folders and edits their
 artwork. Inspect a prompt to edit artwork with its existing Details save action.
 Folder deletion retains prompts under the existing collection deletion contract;
 folder renaming also updates descendant paths and assignments. Flat collection
-selectors and exports retain their string format. Collection artwork/layout
-preferences are local and excluded from workspace exports. No provider, billing,
+selectors and exports retain their string format. Folder IDs, parent links and artwork travel with workspace exports. Layout
+preferences remain local. Older consumers can continue using collection strings. No provider, billing,
 cloud sync, native iOS, or personal Library data changes.
 
 ## Acceptance and risks
@@ -46,5 +45,5 @@ rename, all four views and legacy import/export. Run focused and broader existin
 regressions under Node 22 on Dominic. Browser checks include 375×812, 1440×900,
 1920×1080 and 32:9, with no document overflow. Confirm the new deployed build
 identity separately from CI and retain installed native/human acceptance gaps.
-Folder names using `/` become paths; do not rewrite their stored values. Local
+Legacy folder names using `/` remain literal roots until explicitly changed. Local
 artwork can consume storage, so cap images and preserve honest save failure UI.

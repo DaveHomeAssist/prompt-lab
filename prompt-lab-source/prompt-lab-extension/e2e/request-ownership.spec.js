@@ -48,7 +48,7 @@ for (const width of [400, 1180]) {
         await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Evaluate', exact: true }).click();
         await page.getByRole('button', { name: 'Compare View' }).click();
       } else {
-        await page.getByRole('tablist', { name: 'Primary workspaces' }).getByRole('tab', { name: 'Evaluate', exact: true }).click();
+        await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Evaluate', exact: true }).click();
         await page.getByRole('tablist', { name: 'Evaluate views' }).getByRole('tab', { name: 'Compare' }).click();
       }
       await page.getByRole('textbox', { name: 'Prompt for variant A' }).fill('Contact first@example.com');

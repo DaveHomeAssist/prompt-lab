@@ -1,3 +1,4 @@
+import { reconcileFolders } from './collectionFolders.js';
 import { arePromptSnapshotsEqual, normalizeLibrary } from './promptSchema.js';
 import { normalizeEvalRunRecord, normalizeTestCaseRecord } from './evalSchema.js';
 import { normalizeFollowUpOrigin } from './followUpProvenance.js';
@@ -41,6 +42,7 @@ export function prepareWorkspaceImport(parsed, {
     || !parsed.scratch.pads.length || parsed.scratch.pads.some((pad) => !pad || typeof pad.content !== 'string'))) {
     throw new Error('Scratch must contain readable note records.');
   }
+  if (parsed?.folders != null) reconcileFolders(parsed.folders);
   uniqueSourceIds(payload, 'prompt');
   uniqueSourceIds(parsed?.runs || [], 'run');
   uniqueSourceIds(parsed?.testCases || [], 'test case');

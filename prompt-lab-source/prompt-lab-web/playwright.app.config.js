@@ -14,7 +14,7 @@ export default defineConfig({
   use: {
     baseURL,
     browserName: 'chromium',
-    channel: 'chrome',
+    channel: process.env.PL_BROWSER_CHANNEL || 'chrome',
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
     video: 'off',

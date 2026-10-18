@@ -61,7 +61,7 @@ async function withLibrary({ width, layout, mode = 'dark' }, run) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(`chrome-extension://${new URL(worker.url()).host}/panel.html`);
     if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
-    else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name: 'Library', exact: true }).click();
+    else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Library', exact: true }).click();
     await expect(page.getByRole('button', { name: layout === 'tiles' ? 'Tile view' : 'List view' })).toHaveAttribute('aria-pressed', 'true');
     await run(page);
   } finally {

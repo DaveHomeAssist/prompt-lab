@@ -203,10 +203,26 @@ describe('workspace export and import contract', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('keeps details pending when storage rejects artwork and saves them after retry', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([richPrompt]));
+    const { result } = renderHook(() => usePromptLibrary(vi.fn()));
+    await waitFor(() => expect(result.current.libReady).toBe(true));
+    const originalTitle = result.current.library[0].title;
+    const write = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Quota exceeded'); });
+    let saved;
+    await act(async () => { saved = await result.current.saveEntryDetails(richPrompt.id, entry => ({ ...entry, title: 'Artwork update', metadata: { ...entry.metadata, artwork: { icon: 'Star' } } })); });
+    expect(saved).toBe(false); expect(result.current.library[0].title).toBe(originalTitle);
+    write.mockRestore();
+    await act(async () => { saved = await result.current.saveEntryDetails(richPrompt.id, entry => ({ ...entry, title: 'Artwork update', metadata: { ...entry.metadata, artwork: { icon: 'Star' } } })); });
+    expect(saved).toBe(true); expect(result.current.library[0].metadata.artwork.icon).toBe('Star');
+  });
+
   it('round-trips prompt detail, trash, collections, packs, Scratch, and runs', async () => {
     localStorage.setItem(storageKeys.library, JSON.stringify([richPrompt]));
     localStorage.setItem(storageKeys.trash, JSON.stringify([deletedPrompt]));
     localStorage.setItem(storageKeys.collections, JSON.stringify(['Releases']));
+    const folders = [{ id: 'folder-release', name: 'Releases', collection: 'Releases', parentId: null, artwork: { icon: 'Star', image: '' } }];
+    localStorage.setItem(storageKeys.folders, JSON.stringify(folders));
     localStorage.setItem(storageKeys.packs, JSON.stringify(packRegistry));
     localStorage.setItem('pl2-pads', JSON.stringify(scratchWorkspace));
 
@@ -217,6 +233,7 @@ describe('workspace export and import contract', () => {
     let payload;
     await act(async () => {
       payload = await exportedHook.result.current.exportLib();
+      expect(payload.folders).toEqual(folders);
     });
 
     expect(experimentMocks.listEvalRuns).toHaveBeenCalledWith({ limit: null });
@@ -288,6 +305,7 @@ describe('workspace export and import contract', () => {
     expect(importedHook.result.current.trash).toEqual([
       expect.objectContaining({ id: 'prompt-deleted', tombstoneVersion: 3 }),
     ]);
+    expect(importedHook.result.current.folders).toEqual(expect.arrayContaining(folders));
     expect(importedHook.result.current.collections).toContain('Releases');
     expect(JSON.parse(localStorage.getItem(storageKeys.packs))).toEqual(packRegistry);
     expect(JSON.parse(localStorage.getItem('pl2-pads'))).toEqual(scratchWorkspace);

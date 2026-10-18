@@ -56,7 +56,7 @@ for (const width of [400, 1180]) {
         if (width < 720) {
           await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name, exact: true }).click();
         } else {
-          await page.getByRole('tablist', { name: 'Primary workspaces' }).getByRole('tab', { name, exact: true }).click();
+          await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name, exact: true }).click();
         }
       };
       await openWorkspace('Scratch');

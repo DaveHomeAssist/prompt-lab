@@ -8,8 +8,7 @@ const viewports = [
 ];
 
 const compactNavigationLabels = ['Write', 'Library', 'Compose', 'Dual', 'Evaluate', 'Scratch'];
-const primaryWorkspaceLabels = ['Create', 'Evaluate', 'Scratch'];
-const createViewLabels = ['Write', 'Library', 'Compose', 'Dual Pane'];
+const primaryWorkspaceLabels = ['Write', 'Library', 'Compose', 'Dual Pane', 'Evaluate', 'Scratch'];
 
 function browserSeed() {
   const now = Date.now();
@@ -83,14 +82,13 @@ async function expectNavigationContract(page, compact) {
   if (compact) {
     const nav = page.getByRole('navigation', { name: 'Primary mobile navigation' });
     await expect(nav).toBeVisible();
-    await expect(page.getByRole('tablist', { name: 'Primary workspaces' })).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: 'Workspaces' })).toHaveCount(0);
     await expect(nav.getByRole('button')).toHaveText(compactNavigationLabels);
     return;
   }
 
   await expect(page.getByRole('navigation', { name: 'Primary mobile navigation' })).toHaveCount(0);
-  await expect(page.getByRole('tablist', { name: 'Primary workspaces' }).getByRole('tab')).toHaveText(primaryWorkspaceLabels);
-  await expect(page.getByRole('tablist', { name: 'Create views' }).getByRole('tab')).toHaveText(createViewLabels);
+  await expect(page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab')).toHaveText(primaryWorkspaceLabels);
 }
 
 async function openWorkspace(page, label, compact) {
@@ -102,16 +100,16 @@ async function openWorkspace(page, label, compact) {
   }
 
   if (label === 'Scratch') {
-    await page.getByRole('tablist', { name: 'Primary workspaces' })
+    await page.getByRole('tablist', { name: 'Workspaces' })
       .getByRole('tab', { name: 'Scratch', exact: true })
       .click();
     return;
   }
 
-  await page.getByRole('tablist', { name: 'Primary workspaces' })
-    .getByRole('tab', { name: 'Create', exact: true })
+  await page.getByRole('tablist', { name: 'Workspaces' })
+    .getByRole('tab', { name: 'Write', exact: true })
     .click();
-  await page.getByRole('tablist', { name: 'Create views' })
+  await page.getByRole('tablist', { name: 'Workspaces' })
     .getByRole('tab', { name: label, exact: true })
     .click();
 }

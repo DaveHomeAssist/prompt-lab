@@ -29,7 +29,7 @@ export function commitLibrarySave() {
 // Everything Library rendering depends on, restored as one snapshot: rows are
 // filtered by the newest clear marker, and packs track which starters loaded.
 const RECORD_KEYS = [
-  storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.packs, storageKeys.loadedPacks,
+  storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.folders, storageKeys.packs, storageKeys.loadedPacks,
 ];
 
 export const isLibraryJournalKey = (key) => RECORD_KEYS.includes(key) || isLibraryDeletionKey(key);
