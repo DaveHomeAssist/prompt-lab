@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; D-ENH-5 and D-ENH-6 open; Create annotations C1 to C7 and M1 planned 2026-10-17, D-ENH-7 and D-ENH-8 open`
+- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; Create annotations C1 to C7 and M1 planned 2026-10-17; D-ENH-5 to D-ENH-8 decided 2026-10-18 (B, A, A, B); slice 2A in progress`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`) for the original findings;
   `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison;
@@ -107,8 +107,9 @@ mobile, per WEB-2). Switching never discards the draft or candidate edits.
   identities, Golden Responses and run history stay as they are.
 - No new visual language in slices 1, 3 and 4. The Nocturne palette, ember
   accent and warm type carry over; the uxui-bold-restructure spec still governs
-  the visual pass. Slice 2's visual identity is open (D-ENH-5) and is settled by
-  that answer, not by this exclusion.
+  the visual pass. D-ENH-5 B restyles the Create view in graphite; on
+  2026-10-18 Dave held that restyle until the Library palette work (L4) lands,
+  so it builds on those palette tokens rather than around them.
 - No native iOS change.
 
 ## Rule, data, save and API effects
@@ -167,7 +168,7 @@ destination.
 
 | Mockup element | Create on `main` today | Where it lands |
 | --- | --- | --- |
-| Three columns: Draft, Refine conditions, Review | Two panes with a control row (slice 1, behind the flag) | Pending D-ENH-6 (recommended: keep two panes with the conditions in the control row) |
+| Three columns: Draft, Refine conditions, Review | Two panes with a control row (slice 1, behind the flag) | Two panes stay; the conditions go in the control row (D-ENH-6 A) |
 | Changed-condition markers: a Δ on edited source sections and on changed strategy, task, destination or guardrails, with a "Δ n changed" readout | None. A candidate gives no sign that the draft or options moved after it was generated | Slice 2 |
 | Stale-candidate notice: "Draft or settings changed. Refine again before applying this snapshot." | None | Slice 2 |
 | Candidate receipt: input revision, method, additions kept, model output untested | Result header shows the candidate and the assumptions count | Slice 2, as one line in the result header |
@@ -175,12 +176,13 @@ destination.
 | Pin baseline and compare | Pin golden response | No change; the golden response stays the comparison anchor |
 | Run log with observations | Evaluate run history | Out of scope: DEC-01 covers Create only |
 | Evaluate comparison bench with per-difference evidence; Scratch capture channels | Not present | Out of scope; each needs its own brief and decision |
-| Graphite, smoked glass and electric cyan; squared panels; large run ID | Nocturne palette and ember accent | Pending D-ENH-5 (recommended: not adopted in slice 2; offered to the visual pass) |
+| Graphite, smoked glass and electric cyan; squared panels; large run ID | Nocturne palette and ember accent | Adopted for the Create view (D-ENH-5 B), held until the Library palette work (L4) lands |
 
 ### Slice 2 acceptance (draft)
 
-These criteria cover behaviour only. Layout and visual criteria are added
-once D-ENH-5 and D-ENH-6 are answered.
+These criteria cover behaviour. Layout follows D-ENH-6 A (two panes with the
+conditions in the control row); visual criteria come with the graphite restyle
+(D-ENH-5 B) when it is scheduled.
 
 Slice 2 is accepted when all of these hold on hosted web with the flag on:
 
@@ -279,7 +281,7 @@ Light and dark themes both checked at 1440×900. Turning the flag off restores t
 
 ## Decisions
 
-D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md). DEC-01 (D-013) was resolved on 2026-10-17. D-ENH-5 and D-ENH-6 are open (D-014); slice 2's behaviour does not depend on them, only its visual spec and layout do. D-ENH-7 and D-ENH-8 cover the Create annotations and are open (D-015).
+D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md). DEC-01 (D-013) was resolved on 2026-10-17. D-ENH-5 to D-ENH-8 were resolved on 2026-10-18 (D-014, D-015): Dave chose B, A, A and B, and held the graphite restyle until the Library palette work (L4) lands.
 
 | ID | Question | Options | Decided | Unlocks |
 | --- | --- | --- | --- | --- |
@@ -287,7 +289,7 @@ D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended optio
 | D-ENH-2 | Does the redesign include the left navigation rail? | A. No; Create only, nav stays for Phase B1 · B. Approve the B1 four-destination rail now and include it · C. Rename Create to Write only | **A** — B1 has its own sign-off and rollback; bundling it doubles the blast radius | Slice 1 scope |
 | D-ENH-3 | How does it roll out? | A. Hosted web behind a flag, then extension and desktop · B. Replace the layout everywhere at once | **A** — matches the Phase A pattern and keeps Vercel instant rollback | Slice 1 delivery plan |
 | D-ENH-4 | What happens to the 0–5 quality number? | A. Keep it, labelled "Structure checks · heuristic" · B. Drop the number and show only the five checks | **A** — honest label, keeps the at-a-glance signal; PR #138 already moves this way | Slice 3 copy |
-| D-ENH-5 | What visual identity does slice 2 use? | A. Keep the current palette; take structure and behaviour from the mockup, and route the graphite direction to the uxui-bold-restructure visual pass as a proposal · B. Restyle the Create view alone in graphite now · C. Open an app-wide graphite visual pass before slice 2 | **Open.** Recommended **A**: B leaves Create visually unlike Library, Evaluate and Scratch; C delays slice 2 behind a separate brief | Slice 2 visual spec |
-| D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **Open.** Recommended **A**: matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |
-| D-ENH-7 | Which Create annotation slice comes first? | A. Slice 2A (prompt shortcuts and editing context, C6 and C7) · B. Slice 3 (output tabs and single-candidate mode, C1 and C3 to C5) · C. Slice 2 (refinement settings, C2), after D-ENH-5 and D-ENH-6 | **Open.** Recommended **A**: smallest, independent of the open visual and layout choices, and the largest mobile gain in M1 | Start of Create annotation work |
-| D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **Open.** Recommended **B**: the two-pane flag is off by default and works at every width (narrow screens get its Source / Result switch), so A reaches only users who turn the flag on, while B also reaches the default stacked layout; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |
+| D-ENH-5 | What visual identity does slice 2 use? | A. Keep the current palette; take structure and behaviour from the mockup, and route the graphite direction to the uxui-bold-restructure visual pass as a proposal · B. Restyle the Create view alone in graphite now · C. Open an app-wide graphite visual pass before slice 2 | **B** (Dave, 2026-10-18). Recommended was A because B leaves Create visually unlike Library, Evaluate and Scratch. The restyle is held until the Library palette work (L4) lands | Slice 2 visual spec |
+| D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **A** (Dave, 2026-10-18): matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |
+| D-ENH-7 | Which Create annotation slice comes first? | A. Slice 2A (prompt shortcuts and editing context, C6 and C7) · B. Slice 3 (output tabs and single-candidate mode, C1 and C3 to C5) · C. Slice 2 (refinement settings, C2), after D-ENH-5 and D-ENH-6 | **A** (Dave, 2026-10-18): smallest, independent of the visual and layout choices, and the largest mobile gain in M1 | Start of Create annotation work |
+| D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **B** (Dave, 2026-10-18): the two-pane flag is off by default and works at every width (narrow screens get its Source / Result switch), so A reaches only users who turn the flag on, while B also reaches the default stacked layout; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |
