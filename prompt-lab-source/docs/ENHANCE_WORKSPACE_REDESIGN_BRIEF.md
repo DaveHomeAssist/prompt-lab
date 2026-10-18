@@ -215,7 +215,7 @@ checked against `e0b4a3b`.
 | C4 | Run history hard to discover | A collapsed "Run History" or "Recent Runs" panel sits at the bottom of the results stack (`CreateEditorPane.jsx:772-780`), and the result header has a second "Prompt history" list of the latest five (`PostEnhanceResults.jsx:226-227`) | Confirmed; two entry points | 3 |
 | C5 | Candidate sidebar confusing with one candidate | The candidate rail renders whenever results exist, including a single candidate (`PostEnhanceResults.jsx:152-160`) | Confirmed | 3 |
 | C6 | Quick prompts dominate mobile space | A Recent strip and a Quick strip render as wrapping chip rows above the editor whenever they have entries, with no collapse (`CreateEditorPane.jsx:288-338`) | Confirmed | 2A |
-| C7 | Editing a saved prompt and creating a new one look alike | The context row shows a small "Editing" or "Draft" badge and a title (`CreateEditorPane.jsx:255-263`); "New prompt" is one action among several (`EditorActions.jsx:87`); the explicit Save labels exist only in the flagged two-pane layout | Confirmed | 2A |
+| C7 | Editing a saved prompt and creating a new one look alike | Save buttons already name their target in both layouts: "Save new version" or "Save as new prompt" before a result (`lib/promptLifecycle.js:7-9`, `EditorActions.jsx:77`) and in the result commit bar (`PostEnhanceResults.jsx:240-241`), apart from a bare Save in the stacked candidate toolbar (`:171`). What is missing is a persistent statement of what is being edited: the context row shows only a small "Editing" or "Draft" badge and a title (`CreateEditorPane.jsx:255-263`), with no unsaved-change state, and "New prompt" is one action among several (`EditorActions.jsx:87`) | Confirmed, narrowed: context and start-new, not Save labels | 2A |
 | M1 | Mobile layout pushes the editor and results down | Supporting evidence for C1, C2 and C6 rather than a separate change | Evidence only | All |
 
 Notes for implementers:
@@ -227,8 +227,9 @@ Notes for implementers:
   them; it does not change their data.
 - **C6 and C7.** These are layout and labelling changes. Loading a shortcut must
   keep using the existing draft-preservation path, and Save semantics must
-  match storage: a saved prompt saves changes or a new version, a new draft
-  saves a new prompt.
+  match storage: keep the labels from `getPrimarySaveLabel` (a saved prompt
+  saves a new version, a new draft saves a new prompt) and give the stacked
+  candidate toolbar's bare Save the same label.
 - **M1.** Each slice's acceptance includes the M1 checks: 375×812, the
   screenshot's proportions and short landscape, with the on-screen keyboard
   tested separately.
