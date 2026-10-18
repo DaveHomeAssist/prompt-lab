@@ -281,6 +281,8 @@ Light and dark themes both checked at 1440×900. Turning the flag off restores t
 
 ## Slice 2A delivery
 
+Release review scope (2026-10-18): preserve the approved C6/C7 implementation and Library ownership. Correct the context bar false-clean state after an alternate candidate is edited and the unchanged primary is reselected. Compare the complete persisted prompt snapshot, including result metadata, variants and notes; verify the state is dirty before Save and clean after the same content is saved. Resolve only the naming-history merge conflict while preserving the shared naming rules. The existing signed-in activation check now covers saved/unsaved context, remembered shortcut expansion and both hosted layouts at 375×812 and 1440×900. Dominic Node 22.23.3 passed 36 focused tests (20 slice 2A and 16 persistence) and the extension build/assembly. The first scratch run lacked the sibling docs/schema and shared module files; these transfer omissions were corrected before the passing checks. Production verification is pending deployment.
+
 Built for hosted web in both layouts, as D-ENH-8 B set. Extension and desktop
 keep the previous context row and chip strips.
 

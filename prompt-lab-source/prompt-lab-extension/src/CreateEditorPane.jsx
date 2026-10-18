@@ -260,6 +260,7 @@ export default function CreateEditorPane({
       {contextControls && (
         <CreateContextBar
           m={m} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+          resultMeta={resultMeta} variants={variants} notes={notes}
           suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle} saveCollection={saveCollection}
           saveTags={saveTags} canSavePanel={canSavePanel}
           openSavePanel={openSavePanel} openSection={openSection} onStartNew={newPrompt}

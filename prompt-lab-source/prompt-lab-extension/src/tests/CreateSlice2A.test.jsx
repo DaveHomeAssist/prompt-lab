@@ -6,6 +6,7 @@ import CreateEditorPane from '../CreateEditorPane.jsx';
 import PostEnhanceResults from '../PostEnhanceResults.jsx';
 import PromptShortcuts from '../PromptShortcuts.jsx';
 import { PROMPT_SHORTCUTS_KEY, readPromptShortcutsOpen } from '../lib/promptShortcutsPreference.js';
+import { normalizeEntry, updatePromptEntry } from '../lib/promptSchema.js';
 
 vi.mock('../icons.jsx', () => ({ default: () => null }));
 vi.mock('../MarkdownPreview.jsx', () => ({ default: ({ text }) => <div>{text}</div> }));
@@ -172,6 +173,37 @@ function renderPane(overrides = {}) {
 }
 
 describe('CreateEditorPane slice 2A wiring', () => {
+  const entryWithResults = () => normalizeEntry({
+    ...savedEntry, notes: 'Saved notes', variants: [{ label: 'Refined', content: 'Alternate output' }],
+    resultMeta: { schemaVersion: 2, selectedCandidateId: 'expanded', candidates: [
+      { id: 'expanded', label: 'Expanded', content: savedEntry.enhanced },
+      { id: 'refined', label: 'Refined', content: 'Alternate output' },
+    ] },
+  });
+  it('keeps an alternate candidate edit dirty after returning to the unchanged primary, then clears after Save', () => {
+    const entry = entryWithResults();
+    const resultMeta = { ...entry.resultMeta, candidates: entry.resultMeta.candidates.map(candidate => (
+      candidate.id === 'refined' ? { ...candidate, content: 'Edited alternate output' } : candidate
+    )) };
+    const { unmount } = renderPane({ contextControls: true, currentEntry: entry,
+      resultMeta, variants: entry.variants, notes: entry.notes });
+    expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Unsaved changes');
+    const saved = updatePromptEntry(entry, { resultMeta });
+    expect(saved.currentVersionId).not.toBe(entry.currentVersionId);
+    unmount();
+    renderPane({ contextControls: true, currentEntry: saved,
+      resultMeta: saved.resultMeta, variants: saved.variants, notes: saved.notes });
+    expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('No unsaved changes');
+  });
+  it.each([
+    ['notes', { notes: 'Edited notes' }],
+    ['variants', { variants: [{ label: 'Refined', content: 'Edited variant' }] }],
+  ])('counts changed %s as unsaved even when the selected output is unchanged', (_field, changes) => {
+    const entry = entryWithResults();
+    renderPane({ contextControls: true, currentEntry: entry,
+      resultMeta: entry.resultMeta, variants: entry.variants, notes: entry.notes, ...changes });
+    expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Unsaved changes');
+  });
   it('keeps the existing context row and chip strips when the controls are off', () => {
     renderPane();
     expect(screen.queryByRole('region', { name: 'Editing context' })).not.toBeInTheDocument();

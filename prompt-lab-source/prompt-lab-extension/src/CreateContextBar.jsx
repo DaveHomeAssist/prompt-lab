@@ -1,3 +1,5 @@
+import { arePromptSnapshotsEqual } from './lib/promptSchema.js';
+
 const sameTags = (left, right) => {
   const a = [...(left || [])].map(String).sort();
   const b = [...(right || [])].map(String).sort();
@@ -9,6 +11,7 @@ const sameTags = (left, right) => {
 // so edits made in the details panel count as unsaved even after it closes.
 export function describeEditingContext({
   currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+  resultMeta, variants, notes,
 }) {
   const draft = raw ?? '';
   const result = enhanced ?? '';
@@ -16,7 +19,13 @@ export function describeEditingContext({
   const pendingTitle = typeof saveTitle === 'string' ? saveTitle.trim() : '';
   const pendingFolder = typeof saveCollection === 'string' ? saveCollection.trim() : undefined;
   if (currentEntry) {
-    const contentChanged = draft !== (currentEntry.original ?? '') || result !== (currentEntry.enhanced ?? '');
+    const contentChanged = !arePromptSnapshotsEqual(currentEntry, {
+      original: draft,
+      enhanced: result,
+      resultMeta: resultMeta === undefined ? currentEntry.resultMeta : resultMeta,
+      variants: variants === undefined ? currentEntry.variants : variants,
+      notes: notes === undefined ? currentEntry.notes : notes,
+    });
     const savedTitle = currentEntry.title || 'Untitled prompt';
     const savedFolder = currentEntry.collection || '';
     const detailsChanged = (pendingTitle && pendingTitle !== savedTitle)
@@ -56,10 +65,12 @@ export function describeEditingContext({
  */
 export default function CreateContextBar({
   m, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
+  resultMeta, variants, notes,
   openSavePanel, openSection, onStartNew, accentTextClass, accentHoverTextClass, accentBadgeClass,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+    resultMeta, variants, notes,
   });
   const linkClass = `min-h-8 [@media(pointer:coarse)]:min-h-11 items-center px-2 text-[11px] font-semibold transition-colors ${accentHoverTextClass}`;
   return (

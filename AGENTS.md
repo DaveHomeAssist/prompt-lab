@@ -26,33 +26,27 @@ Prompt Lab is a multi surface prompt engineering tool with extension, desktop, a
 
 ## Codex Session Naming
 
-This policy applies to every user-facing Codex task whose saved project is PromptLab or whose local checkout, worktree, or cloud task resolves to the `DaveHomeAssist/prompt-lab` repository. Internal sub-agent threads and ChatGPT chats are exempt.
+Follow NAME-1 to NAME-3 in the shared workspace contract. The default for an
+agent-generated PromptLab task title is:
 
-The root agent owns the task title. Once the primary deliverable is clear, set the title using:
+`🧪 PromptLab | <PHASE> | <Title> <MM-DD>`
 
-`PromptLab | <Work Type> | <Scope>`
+Example: `🧪 PromptLab | REVIEW | Create Slice 2A 10-18`
 
-Before the completion report, the root agent must read the title back through the supported task tools and correct any mismatch. If title management or readback is unavailable, report the exact blocker instead of guessing, bypassing an application guard, or claiming success.
+- Lead with the established project emoji (one or more symbols) and preserve the project's normal spelling and capitalization.
+- Use an uppercase phase: RESEARCH, PLAN, DESIGN, BUILD, FIX, AUDIT, REVIEW, VERIFY, RELEASE, OPS or SCHEDULED.
+- Keep the title concise and recognizable; preserve identifiers such as BUS073 and filenames.
+- End with the task's creation date in America/New_York as MM-DD; retain it across status changes. Use the current Eastern date when first applying the format to an undated task.
+- Do not include a status light, progress badge, reason, clock time or automatic date rollover. Put status, evidence and blockers in the body.
+- Preserve a title Dave sets manually, even if it differs from this format. Naming rules never authorize overwriting his title; rename it only when he explicitly asks.
+- For agent-generated titles, update only when the work's material scope changes or Dave asks; unchanged checks and status changes do not trigger a rename.
+- Existing historical logs and Notion rows retain their names; do not bulk rename tasks or write to Notion solely to enforce this format.
 
-Choose the single Work Type that best describes the primary deliverable:
+Before closeout, read the current title through supported task tools. Preserve a
+manual title rather than normalizing it. If readback is unavailable, report that
+gap; do not guess or claim the title was verified.
 
-- Audit: systematically inventory or test a broad product, system, or behavioral surface
-- Build: implement a new capability or artifact
-- Design: define architecture, interfaces, structure, or interaction behavior
-- Fix: correct a confirmed defect or regression
-- Ops: perform maintenance, governance, task administration, or operational housekeeping
-- Plan: produce an ordered roadmap or execution sequence
-- Research: discover and synthesize facts when the current state is not yet known
-- Review: assess the quality of a bounded artifact, change, prompt, or plan
-- Release: integrate, package, publish, deploy, or close out a release
-- Verify: prove or disprove a specific claim against its source of truth
-
-- Scope should be two to five words; use Title Case for ordinary words and preserve canonical identifiers such as `packLoadedAt`, `AGENTS.md`, routes, filenames, and model names exactly
-- Retain a version only when it distinguishes the deliverable
-- Do not include emojis, timestamps, completion badges, or sentence-style action phrases
-- Retitle a task when its material outcome changes; keep status and progress out of the title
-
-Examples: `PromptLab | Audit | Behavioral Paths`, `PromptLab | Fix | packLoadedAt Sort`, `PromptLab | Ops | Session Naming`, `PromptLab | Release | Five Feature Hardening`
+Canonical reference: [Status Naming](https://github.com/DaveHomeAssist/skills/blob/master/status-naming.md).
 
 ## Merge policy
 
@@ -60,15 +54,11 @@ For PromptLab pull requests, once all required checks pass, mark the PR ready an
 
 ## Status reports
 
-When asked to report status, create one verified operational session title for the current work.
-
-First inspect live authoritative sources: current Git state, relevant files, test and build output, CI and deployment status, and the actual user-facing behavior when it applies. Never infer status from prior conversation, a cached report, a task name, or an HTTP 200 alone.
-
-Use exactly this format:
-
-```text
-<STATUS> | <PROJECT> | <ACTION> | <TITLE> | <TIMESTAMP>
-```
+Verify current Git, files, relevant test/build output, CI/deployment and user
+behavior before reporting status. Put status and verification in the report body;
+retain the existing task title, including Dave's manual name. Use the session
+naming convention above only when generating a title, not a status-light or
+timestamp naming format. A title is never evidence of completion.
 
 ## Required Notion and visual progress updates
 
@@ -182,16 +172,9 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 
 ## Status naming
 
-Name work with one string everywhere (chat status title, session title, Notion
-Status Check Runs "Human Name"):
-
-`Project | 🚦 | Phase | Title → state, reason | MM-DD`
-
-- 🚦: 🟢 complete and verified · 🟡 partial · 🔴 not started, blocked or failed · ⚪ unverifiable.
-  Add ⏳ scheduled, 🙋 awaiting Dave or 🚧 blocked to 🟡/🔴/⚪, never to 🟢.
-- Phase: Research, Design, Build, Audit or Scheduled. MM-DD: date of the latest light change.
-- Every light change gets a new name: a `RENAME:` line in chat and the Notion row updated.
-- Canonical source: <https://github.com/DaveHomeAssist/skills/blob/master/status-naming.md>
+The Codex Session Naming section above and the shared workspace NAME rules are
+canonical. Preserve manual titles. Status changes belong in the body and never
+require a new name or an automatic Notion title write.
 
 [2026-10-07] [PLB] [fix] Apply PL-DUR-1A: gate desktop save receipts on durable commits, retain visible failure and draft state, coalesce/retry without duplicate entries or versions; extend interrupted-write and installed fixture acceptance (026)
 
@@ -220,3 +203,5 @@ Status Check Runs "Human Name"):
 [2026-10-18] [PLB] [docs] Record D-ENH-5 to D-ENH-8 (B, A, A, B): graphite Create held until the Library palette work lands, two panes, slice 2A first, hosted web in both layouts
 
 [2026-10-18] [PLB] [feature] Build Enhance slice 2A on hosted web: collapsible Prompt shortcuts (C6) and a persistent editing context bar (C7), plus an explicit Save label in the stacked candidate toolbar
+
+[2026-10-18] [PLB] [ops] Adopt emoji/project, uppercase phase, concise title and MM-DD naming; preserve manual task names and remove conflicting status-title rules
