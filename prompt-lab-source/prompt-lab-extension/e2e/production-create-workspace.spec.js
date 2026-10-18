@@ -126,7 +126,7 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
       console.info(`[Create ${width}x${height} ${theme}] ${JSON.stringify({ dimensions, smallTargets })}`);
       expect.soft(smallTargets, `${width} ${theme}: 44px Create targets`).toEqual([]);
       expect.soft(await reachable(save), `${width} ${theme}: primary Save reachable`).toBe(true);
-      await expect(page.locator('.pl-create-split .pl-primary-button:visible').filter({ hasText: /^Save/ })).toHaveCount(1);
+      await expect(page.locator('.pl-create-split .pl-primary-button:visible').filter({ hasText: /Save (?:new version|as new prompt)/ })).toHaveCount(1);
       if (width === 1440) {
         await expect(page.getByTestId('prompt-input')).toBeVisible();
         const left = await page.locator('#create-source-pane').boundingBox();
@@ -174,6 +174,7 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
   await expect(page.getByTestId('output-panel').getByRole('status')).toContainText('Expanded selected');
   await save.click();
   await expect.poll(async () => (await library(page))[0].versions.length).toBe(saved.versions.length + 1);
+  await pane(page, 'Source');
   await expect(page.getByRole('region', { name: 'Editing context' })).toContainText('No unsaved changes');
   const edited = await library(page);
   expect(edited[0].id).toBe(saved.id);
@@ -193,12 +194,38 @@ test('@production Create Slice 1 Cancel, partial failure and retry', async ({ pa
   test.setTimeout(150_000);
   await page.setViewportSize({ width: 375, height: 812 });
   await authenticate(page, qa, false);
+  // A held ReadableStream lets the real parser paint a chunk before Cancel.
+  // Only this one synthetic proxy request is intercepted inside the browser.
+  await page.evaluate(() => {
+    const originalFetch = window.fetch;
+    let pending = true;
+    window.__createStreamCalls = 0;
+    window.__createStreamAborted = false;
+    window.fetch = (input, init = {}) => {
+      if (pending && new URL(typeof input === 'string' ? input : input.url, location.href).pathname === '/api/proxy') {
+        pending = false;
+        window.__createStreamCalls++;
+        const body = new ReadableStream({ start(controller) {
+          const data = { type: 'content_block_delta', delta: { text: 'Synthetic streaming output visible before cancellation.' } };
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`));
+          init.signal.addEventListener('abort', () => {
+            window.__createStreamAborted = true;
+            controller.error(new DOMException('Synthetic request cancelled', 'AbortError'));
+          }, { once: true });
+        } });
+        return Promise.resolve(new Response(body, { headers: { 'Content-Type': 'text/event-stream' } }));
+      }
+      return originalFetch(input, init);
+    };
+  });
   qa.mode = 'cancel';
   await page.getByTestId('refine-action').click();
-  await expect.poll(() => qa.calls.length).toBe(1);
+  await expect(page.getByTestId('result-pane-run-bar').getByRole('status')).toHaveText('Streaming…');
+  await expect(page.getByText('Synthetic streaming output visible before cancellation.', { exact: true })).toBeVisible();
   const cancel = page.getByTestId('result-pane-run-bar').getByRole('button', { name: 'Cancel', exact: true });
   expect(await reachable(cancel)).toBe(true);
   await cancel.click();
+  expect(await page.evaluate(() => window.__createStreamAborted)).toBe(true);
   await expect(cancel).toBeHidden();
   await expect(page.getByText('Generation cancelled.', { exact: true })).toBeVisible();
   await pane(page, 'Source');
@@ -207,8 +234,8 @@ test('@production Create Slice 1 Cancel, partial failure and retry', async ({ pa
   await page.getByTestId('refine-action').click();
   await expect(page.getByText('Incomplete response — request failed', { exact: true })).toBeVisible();
   await expect(page.getByText('Synthetic partial output retained for recovery.', { exact: true })).toBeVisible();
-  await pane(page, 'Source');
   await expect(page.getByRole('alert')).toContainText('Recovery');
+  await pane(page, 'Source');
   await expect(page.getByTestId('prompt-input')).toHaveValue(source);
   qa.mode = 'success';
   await page.getByTestId('refine-action').click();
@@ -217,7 +244,8 @@ test('@production Create Slice 1 Cancel, partial failure and retry', async ({ pa
   await expect(page.getByTestId('output-panel').getByRole('status')).toContainText('Enhancement complete');
   await page.getByTestId('save-to-library').click();
   await expect.poll(async () => (await library(page)).length).toBe(1);
-  expect(qa.calls).toEqual(['cancel', 'partial', 'success']);
+  expect(await page.evaluate(() => window.__createStreamCalls)).toBe(1);
+  expect(qa.calls).toEqual(['partial', 'success']);
   expect(qa.blocked).toEqual([]);
   console.info('[Create acceptance] reachable Cancel, preserved source, incomplete-stream recovery, synthetic successful retry and acknowledged Save passed');
 });
