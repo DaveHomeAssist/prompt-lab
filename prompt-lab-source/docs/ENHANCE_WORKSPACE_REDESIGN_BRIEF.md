@@ -2,10 +2,11 @@
 
 ## Status
 
-- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; D-ENH-5 and D-ENH-6 open`
+- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; D-ENH-5 and D-ENH-6 open; Create annotations C1 to C7 and M1 planned 2026-10-17, D-ENH-7 and D-ENH-8 open`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`) for the original findings;
-  `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison
+  `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison;
+  `e0b4a3b` (`origin/main`, 2026-10-17) for the Create annotations
 - Inputs: the Enhance UI review of 2026-10-15 and its desktop mockup
   ([`evidence/enhance-workspace-mockup-2026-10-15.webp`](evidence/enhance-workspace-mockup-2026-10-15.webp));
   the refinement workspace mockup of 2026-10-17
@@ -87,9 +88,14 @@ mobile, per WEB-2). Switching never discards the draft or candidate edits.
 
 - Slice 2 — Strategy / Task / Destination controls on top of PR #138's model, plus
   changed-condition markers and a candidate receipt from the refinement workspace
-  mockup (DEC-01; see below).
+  mockup (DEC-01; see below). The Create annotations add C2: group them as
+  **Refinement settings** with plain descriptions and a collapsed summary.
+- Slice 2A — Prompt shortcuts and editing context (C6, C7). Independent of
+  D-ENH-5 and D-ENH-6; see the Create annotations below.
 - Slice 3 — compact candidate tabs replace the candidate rail; merge Preview
-  and Diff into Output / Changes.
+  and Diff into Output / Changes. The Create annotations extend it into a
+  bounded output workspace with Result, Follow-ups and History tabs (C1, C3,
+  C4) and a single-candidate mode with no selector (C5).
 - Slice 4 — roll out to the extension side panel and desktop shells.
 
 ## Exclusions
@@ -191,6 +197,44 @@ Slice 2 is accepted when all of these hold on hosted web with the flag on:
    earlier draft.
 6. Slice 1 acceptance items 1, 2 and 8 still hold.
 
+## Create annotations (2026-10-17)
+
+Dave annotated the hosted Create screen and one mobile screenshot on
+2026-10-17 and supplied implementation details and acceptance checks for each
+item. The full source table, including the Library items owned by a separate
+draft, is in
+[`evidence/workspace-annotations-2026-10-17.md`](evidence/workspace-annotations-2026-10-17.md).
+Its acceptance column is the acceptance for each item below. Each finding was
+checked against `e0b4a3b`.
+
+| ID | Annotation | Evidence on `e0b4a3b` | State | Slice |
+| --- | --- | --- | --- | --- |
+| C1 | Unnecessary result scrolling and nested scroll regions | The results region is its own scroller (`CreateEditorPane.jsx:172-174`, `overflow-y-auto`) and stacks the result (`:672`), follow-ups (`:701`) and run history (`:772`), and the history list scrolls again inside it (`:780`, `max-h-56 overflow-y-auto`) | Confirmed | 3 |
+| C2 | Generation controls hard to read; purpose unclear | `GenerationControls.jsx:13-39` shows Task type and Intended destination selects, with strategy, primary candidate and budget under a "Generation options" summary; one explanatory paragraph covers destination only (`:47`) | Confirmed | 2 |
+| C3 | Follow-ups hard to discover | Follow-up suggestions render only below the result once a result exists and nothing is loading (`CreateEditorPane.jsx:701-713`) | Confirmed | 3 |
+| C4 | Run history hard to discover | A collapsed "Run History" or "Recent Runs" panel sits at the bottom of the results stack (`CreateEditorPane.jsx:772-780`), and the result header has a second "Prompt history" list of the latest five (`PostEnhanceResults.jsx:226-227`) | Confirmed; two entry points | 3 |
+| C5 | Candidate sidebar confusing with one candidate | The candidate rail renders whenever results exist, including a single candidate (`PostEnhanceResults.jsx:152-160`) | Confirmed | 3 |
+| C6 | Quick prompts dominate mobile space | A Recent strip and a Quick strip render as wrapping chip rows above the editor whenever they have entries, with no collapse (`CreateEditorPane.jsx:288-338`) | Confirmed | 2A |
+| C7 | Editing a saved prompt and creating a new one look alike | The context row shows a small "Editing" or "Draft" badge and a title (`CreateEditorPane.jsx:255-263`); "New prompt" is one action among several (`EditorActions.jsx:87`); the explicit Save labels exist only in the flagged two-pane layout | Confirmed | 2A |
+| M1 | Mobile layout pushes the editor and results down | Supporting evidence for C1, C2 and C6 rather than a separate change | Evidence only | All |
+
+Notes for implementers:
+
+- **C1 and C4.** The History tab replaces both history entry points; keep a
+  route to Evaluate for the full timeline.
+- **C3.** Follow-ups already carry provenance (`FollowUpOrigin.jsx`,
+  `lib/followUpProvenance.js`) and use, chain and save handlers. The tab moves
+  them; it does not change their data.
+- **C6 and C7.** These are layout and labelling changes. Loading a shortcut must
+  keep using the existing draft-preservation path, and Save semantics must
+  match storage: a saved prompt saves changes or a new version, a new draft
+  saves a new prompt.
+- **M1.** Each slice's acceptance includes the M1 checks: 375×812, the
+  screenshot's proportions and short landscape, with the on-screen keyboard
+  tested separately.
+- **Shared header.** Compact branding and account controls on mobile depend on
+  the unified navigation in the Library draft (L3) and are not planned here.
+
 ## Acceptance
 
 Slice 1 is accepted when all of these hold on hosted web with the flag on:
@@ -234,7 +278,7 @@ Light and dark themes both checked at 1440×900. Turning the flag off restores t
 
 ## Decisions
 
-D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md). DEC-01 (D-013) was resolved on 2026-10-17. D-ENH-5 and D-ENH-6 are open (D-014); slice 2's behaviour does not depend on them, only its visual spec and layout do.
+D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended option for each. They are also recorded as D-012 in [`DECISIONS.md`](DECISIONS.md). DEC-01 (D-013) was resolved on 2026-10-17. D-ENH-5 and D-ENH-6 are open (D-014); slice 2's behaviour does not depend on them, only its visual spec and layout do. D-ENH-7 and D-ENH-8 cover the Create annotations and are open (D-015).
 
 | ID | Question | Options | Decided | Unlocks |
 | --- | --- | --- | --- | --- |
@@ -244,3 +288,5 @@ D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended optio
 | D-ENH-4 | What happens to the 0–5 quality number? | A. Keep it, labelled "Structure checks · heuristic" · B. Drop the number and show only the five checks | **A** — honest label, keeps the at-a-glance signal; PR #138 already moves this way | Slice 3 copy |
 | D-ENH-5 | What visual identity does slice 2 use? | A. Keep the current palette; take structure and behaviour from the mockup, and route the graphite direction to the uxui-bold-restructure visual pass as a proposal · B. Restyle the Create view alone in graphite now · C. Open an app-wide graphite visual pass before slice 2 | **Open.** Recommended **A**: B leaves Create visually unlike Library, Evaluate and Scratch; C delays slice 2 behind a separate brief | Slice 2 visual spec |
 | D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **Open.** Recommended **A**: matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |
+| D-ENH-7 | Which Create annotation slice comes first? | A. Slice 2A (prompt shortcuts and editing context, C6 and C7) · B. Slice 3 (output tabs and single-candidate mode, C1 and C3 to C5) · C. Slice 2 (refinement settings, C2), after D-ENH-5 and D-ENH-6 | **Open.** Recommended **A**: smallest, independent of the open visual and layout choices, and the largest mobile gain in M1 | Start of Create annotation work |
+| D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **Open.** Recommended **B**: mobile uses the stacked layout, so A misses the M1 screen; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |
