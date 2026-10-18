@@ -1054,6 +1054,8 @@ textarea:disabled {
   padding: 1rem;
 }
 .pl-create-split.is-flow { height: auto; }
+/* Slice 1 acceptance applies to every Create action in both hosted themes. */
+.pl-create-split button { min-width: 2.75rem; min-height: 2.75rem; }
 .pl-create-split-switch {
   display: flex;
   gap: 0.25rem;
