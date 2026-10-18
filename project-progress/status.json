@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T23:35:52.035Z",
+  "snapshotAt": "2026-10-18T23:51:41.309109+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Complete the remaining accepted hosted Slice1 Acceptance checklist under D-012 with synthetic responses. Preserve the Library L1–L8 owner and hold graphite until L4; no new feature scope is implied.",
   "evidence": [
+    {
+      "label": "Library L1–L8 implementation in review",
+      "state": "Running",
+      "detail": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/170"
+    },
     {
       "label": "Create slice 2A delivered",
       "state": "Verified",
@@ -841,7 +847,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
       "nextAction": "Finish Library L1–L8 branch CI, merge and hosted acceptance; retain native and signed-in gaps.",
-      "verification": "2026-10-18: Library controls implemented in an isolated branch. On Dominic: four version tests, 223 legacy tests, extension/web/desktop frontend builds, 12 extension layout browser checks and four hosted-web palette/reload checks pass. The full unit pass found two failures; both corrected and targeted reruns pass. Final CI and live acceptance are pending."
+      "verification": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed."
     }
   ]
 }

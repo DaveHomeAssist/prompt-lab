@@ -244,6 +244,8 @@ for (const viewport of viewports) {
         await expect(candidates.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
         await expect(output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Prompt' })).toBeVisible();
 
+        await candidates.getByRole('option').nth(1).press('ArrowUp');
+        await expect(candidates.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
         const originalToggle = output.getByRole('button', { name: /Original prompt/ });
         await originalToggle.click();
         await expect(originalToggle).toHaveAttribute('aria-expanded', 'true');

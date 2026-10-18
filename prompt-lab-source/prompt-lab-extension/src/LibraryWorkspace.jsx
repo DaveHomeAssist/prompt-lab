@@ -13,7 +13,7 @@ import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { extractVars, wordDiff } from './promptUtils.js';
 import usePersistedState from './usePersistedState.js';
-import { DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
+import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -388,7 +388,7 @@ export default function LibraryWorkspace({
     else if (typeof lib.exportEntries === 'function') lib.exportEntries(checkedEntries);
     else {
       const payload = {
-        version: '1.7.1', schemaVersion: 1, exportedAt: new Date().toISOString(),
+        version: APP_VERSION, schemaVersion: 1, exportedAt: new Date().toISOString(),
         count: checkedEntries.length, library: checkedEntries,
         collections: uniqueStrings(checkedEntries.map((entry) => entry.collection)),
         folders: folderRecords.filter(folder => checkedEntries.some(entry => {

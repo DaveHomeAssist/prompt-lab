@@ -1,6 +1,6 @@
 import { reconcileFolders, mergeFolders } from '../lib/collectionFolders.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { DEFAULT_LIBRARY_SEEDS } from '../constants.js';
+import { APP_VERSION, DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
   createPromptEntry,
@@ -1000,7 +1000,7 @@ export default function usePromptLibrary(notify) {
       && !window.confirm('Export may include sensitive prompt content. Continue?')) return;
     const exportPayload = {
       product: 'Prompt Lab',
-      version: '1.7.1',
+      version: APP_VERSION,
       schemaVersion: 2,
       exportedAt: new Date().toISOString(),
       count: library.length,
