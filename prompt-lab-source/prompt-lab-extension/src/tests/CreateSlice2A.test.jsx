@@ -45,6 +45,16 @@ describe('describeEditingContext', () => {
     expect(context.unsaved).toBe(true);
     expect(context.saveState).toBe('Unsaved changes');
   });
+  it('counts pending Library details as unsaved and shows what Save will write', () => {
+    const base = { currentEntry: { ...savedEntry, tags: ['ops', 'audio'] }, raw: 'Draft prompt body', enhanced: 'Refined prompt output' };
+    expect(describeEditingContext({ ...base, saveTitle: 'Voice Memo Cleanup', saveCollection: 'Ops', saveTags: ['audio', 'ops'] }))
+      .toMatchObject({ unsaved: false, title: 'Voice Memo Cleanup', folder: 'Ops' });
+    expect(describeEditingContext({ ...base, saveTitle: 'Voice memo tidy-up', saveCollection: 'Ops', saveTags: ['ops', 'audio'] }))
+      .toMatchObject({ unsaved: true, saveState: 'Unsaved changes', title: 'Voice memo tidy-up' });
+    expect(describeEditingContext({ ...base, saveTitle: 'Voice Memo Cleanup', saveCollection: 'Archive', saveTags: ['ops', 'audio'] }))
+      .toMatchObject({ unsaved: true, folder: 'Archive' });
+    expect(describeEditingContext({ ...base, saveTitle: 'Voice Memo Cleanup', saveCollection: 'Ops', saveTags: ['ops'] }).unsaved).toBe(true);
+  });
   it('reports a new draft and an empty editor', () => {
     expect(describeEditingContext({ currentEntry: null, raw: 'Something', enhanced: '', suggestedSaveTitle: 'Something' }))
       .toMatchObject({ mode: 'new', title: 'Something', unsaved: true, saveState: 'Not saved yet', saveBehavior: 'Save creates a new prompt', canStartNew: true });
@@ -70,6 +80,14 @@ describe('CreateContextBar', () => {
     expect(onStartNew).toHaveBeenCalledTimes(1);
     fireEvent.click(within(bar).getByRole('button', { name: 'View in Library' }));
     expect(openSection).toHaveBeenCalledWith('library');
+  });
+  it('shows the pending title and folder from Library details', () => {
+    render(<CreateContextBar {...baseProps} currentEntry={savedEntry} raw="Draft prompt body" enhanced="Refined prompt output"
+      saveTitle="Voice memo tidy-up" saveCollection="Archive" saveTags={[]} openSection={vi.fn()} onStartNew={vi.fn()} />);
+    const bar = screen.getByRole('region', { name: 'Editing context' });
+    expect(within(bar).getByText('Voice memo tidy-up')).toBeInTheDocument();
+    expect(within(bar).getByText('Folder: Archive')).toBeInTheDocument();
+    expect(within(bar).getByText('Unsaved changes')).toBeInTheDocument();
   });
   it('labels an empty editor as a new prompt with nothing to start over', () => {
     render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced="" openSection={vi.fn()} onStartNew={vi.fn()} />);

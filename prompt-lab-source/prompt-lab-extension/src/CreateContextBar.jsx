@@ -1,15 +1,33 @@
-// What the Create editor is working on, for the context bar below.
-export function describeEditingContext({ currentEntry, raw, enhanced, suggestedSaveTitle }) {
+const sameTags = (left, right) => {
+  const a = [...(left || [])].map(String).sort();
+  const b = [...(right || [])].map(String).sort();
+  return a.length === b.length && a.every((tag, index) => tag === b[index]);
+};
+
+// What the Create editor is working on, for the context bar below. The pending
+// Library details (saveTitle, saveCollection, saveTags) are what Save will write,
+// so edits made in the details panel count as unsaved even after it closes.
+export function describeEditingContext({
+  currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+}) {
   const draft = raw ?? '';
   const result = enhanced ?? '';
   const hasContent = Boolean(draft.trim() || result.trim());
+  const pendingTitle = typeof saveTitle === 'string' ? saveTitle.trim() : '';
+  const pendingFolder = typeof saveCollection === 'string' ? saveCollection.trim() : undefined;
   if (currentEntry) {
-    const unsaved = draft !== (currentEntry.original ?? '') || result !== (currentEntry.enhanced ?? '');
+    const contentChanged = draft !== (currentEntry.original ?? '') || result !== (currentEntry.enhanced ?? '');
+    const savedTitle = currentEntry.title || 'Untitled prompt';
+    const savedFolder = currentEntry.collection || '';
+    const detailsChanged = (pendingTitle && pendingTitle !== savedTitle)
+      || (pendingFolder !== undefined && pendingFolder !== savedFolder)
+      || (Array.isArray(saveTags) && !sameTags(saveTags, currentEntry.tags));
+    const unsaved = contentChanged || detailsChanged;
     return {
       mode: 'editing',
       heading: 'Editing saved prompt:',
-      title: currentEntry.title || 'Untitled prompt',
-      folder: currentEntry.collection || '',
+      title: pendingTitle || savedTitle,
+      folder: pendingFolder !== undefined ? pendingFolder : savedFolder,
       unsaved,
       saveState: unsaved ? 'Unsaved changes' : 'No unsaved changes',
       saveBehavior: 'Save adds a new version',
@@ -19,8 +37,8 @@ export function describeEditingContext({ currentEntry, raw, enhanced, suggestedS
   return {
     mode: 'new',
     heading: 'New unsaved prompt',
-    title: hasContent ? (suggestedSaveTitle || 'Untitled prompt') : '',
-    folder: '',
+    title: hasContent ? (pendingTitle || suggestedSaveTitle || 'Untitled prompt') : '',
+    folder: hasContent && pendingFolder ? pendingFolder : '',
     unsaved: hasContent,
     saveState: hasContent ? 'Not saved yet' : 'Empty draft',
     saveBehavior: 'Save creates a new prompt',
@@ -37,10 +55,12 @@ export function describeEditingContext({ currentEntry, raw, enhanced, suggestedS
  * recovery before clearing.
  */
 export default function CreateContextBar({
-  m, currentEntry, raw, enhanced, suggestedSaveTitle, canSavePanel,
+  m, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
   openSavePanel, openSection, onStartNew, accentTextClass, accentHoverTextClass, accentBadgeClass,
 }) {
-  const context = describeEditingContext({ currentEntry, raw, enhanced, suggestedSaveTitle });
+  const context = describeEditingContext({
+    currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+  });
   const linkClass = `min-h-8 [@media(pointer:coarse)]:min-h-11 items-center px-2 text-[11px] font-semibold transition-colors ${accentHoverTextClass}`;
   return (
     <section

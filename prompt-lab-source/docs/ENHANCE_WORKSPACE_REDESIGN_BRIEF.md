@@ -299,7 +299,9 @@ keep the previous context row and chip strips.
 - **Editing context bar (C7).** `CreateContextBar.jsx` is always shown in
   Create and reads "New unsaved prompt" or "Editing saved prompt:" with the
   title, folder, save state (Empty draft, Not saved yet, No unsaved changes or
-  Unsaved changes, announced politely) and what Save does. Start new prompt
+  Unsaved changes, announced politely) and what Save does. Title, folder and
+  tags edited in Library details count as unsaved and show their pending values,
+  because Save writes them even after the panel closes. Start new prompt
   uses the existing draft reset, which moves current work to session recovery.
   On phones the save-behaviour text and the Library links are hidden so the bar
   stays two short rows; the Save buttons still name their target.
@@ -307,7 +309,7 @@ keep the previous context row and chip strips.
   reads "Save new version" or "Save as new prompt", matching the commit bar.
 
 Verification on 2026-10-18 on Dominic (Node 22 container): the full extension
-suite passes ({VITEST} Vitest and 223 legacy tests), including 15 new tests in
+suite passes (1186 Vitest and 223 legacy tests), including 17 new tests in
 `src/tests/CreateSlice2A.test.jsx`. A hosted-web browser pass (local Vite dev
 server, seeded Library, Playwright Chromium) covered 1440×900, 1280×720,
 375×812 and 812×375 in both layouts:

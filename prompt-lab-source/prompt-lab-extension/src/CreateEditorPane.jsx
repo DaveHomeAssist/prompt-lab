@@ -154,6 +154,9 @@ export default function CreateEditorPane({
   // Slice 2A of the same brief (hosted web, both layouts): a persistent editing
   // context bar (C7) and collapsible prompt shortcuts (C6).
   contextControls = false,
+  // Pending Library details, so the context bar can count them as unsaved.
+  saveCollection,
+  saveTags,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
@@ -257,7 +260,8 @@ export default function CreateEditorPane({
       {contextControls && (
         <CreateContextBar
           m={m} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
-          suggestedSaveTitle={suggestedSaveTitle} canSavePanel={canSavePanel}
+          suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle} saveCollection={saveCollection}
+          saveTags={saveTags} canSavePanel={canSavePanel}
           openSavePanel={openSavePanel} openSection={openSection} onStartNew={newPrompt}
           accentTextClass={accentTextClass} accentHoverTextClass={accentHoverTextClass}
           accentBadgeClass={accentBadgeClass}
