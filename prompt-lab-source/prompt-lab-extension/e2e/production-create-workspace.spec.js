@@ -178,7 +178,7 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
   await expect(page.getByRole('region', { name: 'Editing context' })).toContainText('No unsaved changes');
   const edited = await library(page);
   expect(edited[0].id).toBe(saved.id);
-  await expect.poll(() => session(page)).toMatchObject({ raw: `${source} Retain this source edit.` });
+  await expect.poll(() => session(page)).toMatchObject({ raw: `${source} Retain this source edit.`, enhanced: 'Write a launch brief with three measured outcomes.', editingId: saved.id });
   await page.reload();
   await pane(page, 'Result');
   await expect(output).toHaveValue('Write a launch brief with three measured outcomes.');
