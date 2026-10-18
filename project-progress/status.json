@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T03:20:05.000Z",
+  "snapshotAt": "2026-10-18T04:40:25.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,7 +9,7 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "e0b4a3b65c2c4be98d40ba92a26fb2613b758ef7",
+  "mainSha": "dec604d0ff6e81bc6e7a84e134c92dc16f2995d0",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the released generation regression coverage; broader Enhance UX, billing-policy, hosted model quality and native/human acceptance remain separately scoped.",
   "evidence": [
@@ -678,8 +678,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Answer D-ENH-5 to D-ENH-8; the recommended start is slice 2A (prompt shortcuts and editing context, C6 and C7) on hosted web in both layouts. Slice 1 acceptance on promptlab.tools is still open.",
-      "verification": "2026-10-17: Dave's Create annotations C1 to C7 and M1 confirmed against e0b4a3b and planned into slices 2, 2A and 3 (D-015 open). 2026-10-17: DEC-01 A (D-013) folds the refinement workspace mockup into Create as the slice 2 reference; PR #138 merged as 4b3616f, unblocking slice 2; slice 2 draft acceptance added to the brief. 2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
+      "nextAction": "Merge slice 2A (prompt shortcuts and editing context bar on hosted web), then check it signed in on promptlab.tools; slice 2 and the held graphite restyle follow. Slice 1 acceptance is still open.",
+      "verification": "2026-10-18: D-ENH-5 to D-ENH-8 decided (B, A, A, B). Slice 2A built for hosted web: full extension suite and a hosted-web browser pass at four viewports passed on Dominic; not yet checked signed in. 2026-10-17: Dave's Create annotations C1 to C7 and M1 confirmed against e0b4a3b and planned into slices 2, 2A and 3 (D-015 open). 2026-10-17: DEC-01 A (D-013) folds the refinement workspace mockup into Create as the slice 2 reference; PR #138 merged as 4b3616f, unblocking slice 2; slice 2 draft acceptance added to the brief. 2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",

@@ -3,6 +3,7 @@ import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview';
 import { scorePrompt, wordDiff } from './promptUtils';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
+import { SAVE_LABELS } from './lib/promptLifecycle.js';
 import { normalizeResultMeta, replaceCandidateContent, revertAssumptionFromText, revertStructuredEdit } from './lib/enhancementResult.js';
 
 const CHANGE_STYLES = {
@@ -39,6 +40,8 @@ export default function PostEnhanceResults({
   // one primary Save and Copy live in the commit bar, and the assumptions count
   // sits in the header.
   splitWorkspace = false,
+  // Slice 2A: name what the candidate toolbar's Save does, as the commit bar does.
+  explicitSaveLabels = false,
 }) {
   const assumptionsHeadingRef = useRef(null);
   const [view, setView] = useState('improved');
@@ -168,7 +171,7 @@ export default function PostEnhanceResults({
             <button type="button" onClick={() => selectCandidate(selected, { view: 'improved', preview: true })}>Preview</button>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'changes', preview: false })}>Diff</button>
             {!splitWorkspace && <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>}
-            {!splitWorkspace && <button type="button" disabled={!canSavePanel} onClick={() => quickSave(selected)}>Save</button>}
+            {!splitWorkspace && <button type="button" disabled={!canSavePanel} onClick={() => quickSave(selected)}>{explicitSaveLabels ? (currentEntry ? SAVE_LABELS.newVersion : SAVE_LABELS.newPrompt) : 'Save'}</button>}
             {editingId && <button type="button" onClick={() => pinCandidate(selected)}>Pin</button>}
           </div>
         </aside>

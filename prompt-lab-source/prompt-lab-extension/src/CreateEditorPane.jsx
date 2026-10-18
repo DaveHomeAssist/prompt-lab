@@ -9,6 +9,8 @@ import { describeFollowUpSource } from './lib/followUpProvenance.js';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
 import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
+import CreateContextBar from './CreateContextBar.jsx';
+import PromptShortcuts from './PromptShortcuts.jsx';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -149,6 +151,9 @@ export default function CreateEditorPane({
   // Source and result sit side by side when the pane is wide enough (a CSS
   // container query); narrower panes show one at a time behind a switch.
   splitLayout = false,
+  // Slice 2A of the same brief (hosted web, both layouts): a persistent editing
+  // context bar (C7) and collapsible prompt shortcuts (C6).
+  contextControls = false,
 }) {
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
@@ -249,7 +254,16 @@ export default function CreateEditorPane({
   const sourceSections = (
     <>
       {/* ── Context breadcrumb ── */}
-      {showCreateContext && (
+      {contextControls && (
+        <CreateContextBar
+          m={m} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+          suggestedSaveTitle={suggestedSaveTitle} canSavePanel={canSavePanel}
+          openSavePanel={openSavePanel} openSection={openSection} onStartNew={newPrompt}
+          accentTextClass={accentTextClass} accentHoverTextClass={accentHoverTextClass}
+          accentBadgeClass={accentBadgeClass}
+        />
+      )}
+      {!contextControls && showCreateContext && (
         <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
           <span className={`text-[10px] uppercase tracking-widest font-bold ${accentTextClass}`}>
             {currentEntry ? 'Editing' : 'Draft'}
@@ -285,8 +299,16 @@ export default function CreateEditorPane({
         </div>
       )}
 
+      {contextControls && (
+        <PromptShortcuts
+          m={m} recentPrompts={recentPrompts} quickInject={quickInject}
+          loadEntry={loadEntry} copy={copy} bumpUse={bumpUse}
+          accentTextClass={accentTextClass} accentHoverTextClass={accentHoverTextClass}
+        />
+      )}
+
       {/* ── Recent strip ── */}
-      {recentPrompts?.length > 0 && (
+      {!contextControls && recentPrompts?.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-[10px] ${m.textMuted} uppercase tracking-wider font-semibold shrink-0 flex items-center gap-1`}>
             <Ic n="Clock" size={9} className="text-blue-400" />
@@ -309,7 +331,7 @@ export default function CreateEditorPane({
       )}
 
       {/* ── Quick inject (inline chips) ── */}
-      {quickInject.length > 0 && (
+      {!contextControls && quickInject.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-[10px] ${m.textMuted} uppercase tracking-wider font-semibold shrink-0 flex items-center gap-1`}>
             <Ic n="Zap" size={9} className="text-yellow-500" />
@@ -697,6 +719,7 @@ export default function CreateEditorPane({
             currentEntry={currentEntry}
             onCandidateSelection={onCandidateSelection}
             splitWorkspace={splitLayout}
+            explicitSaveLabels={contextControls}
           />
           {/* Follow-up suggestions */}
           {Boolean((enhanced || '').trim()) && !loading && typeof fetchFollowUps === 'function' && (

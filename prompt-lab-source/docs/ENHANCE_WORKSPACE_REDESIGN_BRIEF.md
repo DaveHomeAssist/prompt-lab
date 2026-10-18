@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; Create annotations C1 to C7 and M1 planned 2026-10-17; D-ENH-5 to D-ENH-8 decided 2026-10-18 (B, A, A, B); slice 2A in progress`
+- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; Create annotations C1 to C7 and M1 planned 2026-10-17; D-ENH-5 to D-ENH-8 decided 2026-10-18 (B, A, A, B); slice 2A built for hosted web (see Slice 2A delivery)`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`) for the original findings;
   `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison;
@@ -278,6 +278,53 @@ Browser checks on 2026-10-15 used a local hosted-web dev server with the determi
 | 375×812 | Switch | None | — |
 
 Light and dark themes both checked at 1440×900. Turning the flag off restores the stacked layout unchanged.
+
+## Slice 2A delivery
+
+Built for hosted web in both layouts, as D-ENH-8 B set. Extension and desktop
+keep the previous context row and chip strips.
+
+- **Prompt shortcuts (C6).** `PromptShortcuts.jsx` folds the Recent and Quick
+  rows into one "Prompt shortcuts (n)" section; the count is unique prompts.
+  Phones and windows up to 800px tall (767px wide or 800px tall and smaller)
+  start closed and larger screens open; a toggle is remembered as
+  `pl2-prompt-shortcuts`, kept in its own module
+  (`lib/promptShortcutsPreference.js`) rather than `useUiState`. When open, a
+  bounded set of chips gives each prompt a readable title and labelled Load
+  and, for Quick prompts, Copy actions, with 44px targets on touch screens.
+  On windows up to 800px tall the open shortcuts sit in one horizontally
+  scrolling row beside the toggle, so opening them never makes the page scroll.
+  Load goes through the existing `loadEntry` path, so draft preservation is
+  unchanged.
+- **Editing context bar (C7).** `CreateContextBar.jsx` is always shown in
+  Create and reads "New unsaved prompt" or "Editing saved prompt:" with the
+  title, folder, save state (Empty draft, Not saved yet, No unsaved changes or
+  Unsaved changes, announced politely) and what Save does. Start new prompt
+  uses the existing draft reset, which moves current work to session recovery.
+  On phones the save-behaviour text and the Library links are hidden so the bar
+  stays two short rows; the Save buttons still name their target.
+- **Save label.** In the stacked layout the candidate toolbar's bare Save now
+  reads "Save new version" or "Save as new prompt", matching the commit bar.
+
+Verification on 2026-10-18 on Dominic (Node 22 container): the full extension
+suite passes ({VITEST} Vitest and 223 legacy tests), including 15 new tests in
+`src/tests/CreateSlice2A.test.jsx`. A hosted-web browser pass (local Vite dev
+server, seeded Library, Playwright Chromium) covered 1440×900, 1280×720,
+375×812 and 812×375 in both layouts:
+
+- No page overflow in any case, including after loading a prompt and with
+  shortcuts opened on a phone or a 1280×720 laptop.
+- Shortcuts start open on desktop and closed on phones, laptops up to 800px
+  tall and short landscape; the choice survives a reload.
+- Loading a prompt switches the bar to "Editing saved prompt" with its folder;
+  an edit shows Unsaved changes; Start new prompt opens the existing recovery
+  dialog.
+- axe finds no WCAG A or AA violations in the new regions.
+
+Against `main`, the editor sits 159px higher on a 375×812 phone, 35px higher in
+812×375 landscape and 22px higher on a 1280×720 laptop with a prompt loaded. On
+a 1440×900 desktop it sits 60px lower with shortcuts open and 22px higher with
+them closed. Not verified: the signed-in production app and real touch devices.
 
 ## Decisions
 
