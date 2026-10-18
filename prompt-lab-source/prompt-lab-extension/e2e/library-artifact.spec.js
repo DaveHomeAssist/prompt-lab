@@ -34,7 +34,7 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
     let context;
     const openLibrary = async page => {
       if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
-      else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name: 'Library', exact: true }).click();
+      else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Library', exact: true }).click();
     };
     const readLibrary = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]'));
     const launch = async (libraryView = true) => {

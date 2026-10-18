@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T23:35:52.035Z",
+  "snapshotAt": "2026-10-18T23:51:41.309109+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "a39faadb9c013b24ba83853728ec1cbb07e2aa70",
+  "mainSha": "eba6c4c6e1a9b1ba905ed3cf1d88158b5f85c5a1",
   "overall": "Acceptance incomplete",
   "nextAction": "Complete the remaining accepted hosted Slice1 Acceptance checklist under D-012 with synthetic responses. Preserve the Library L1–L8 owner and hold graphite until L4; no new feature scope is implied.",
   "evidence": [
+    {
+      "label": "Library L1–L8 implementation in review",
+      "state": "Running",
+      "detail": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/170"
+    },
     {
       "label": "Create slice 2A delivered",
       "state": "Verified",
@@ -516,8 +522,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh."
+      "nextAction": "Verify branch CI and deployed development identity; retain tagged-release acceptance.",
+      "verification": "2026-10-18: Added allowlisted bump, metadata consistency and pre-artifact tag guard. Four version tests pass under Node 22 on Dominic. Shared source 1.8.0; no tagged release is claimed."
     },
     {
       "id": "3d2255fc8f44816b9a5ed471be3b493d",
@@ -834,14 +840,14 @@
     {
       "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
       "title": "Library workspace controls L1–L8",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
-      "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b"
+      "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
+      "nextAction": "Finish Library L1–L8 branch CI, merge and hosted acceptance; retain native and signed-in gaps.",
+      "verification": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed."
     }
   ]
 }

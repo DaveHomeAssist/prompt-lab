@@ -1,7 +1,7 @@
 {
   "name": "prompt-lab",
   "private": true,
-  "version": "1.7.1",
+  "version": "1.8.0",
   "type": "module",
   "engines": {
     "node": "22.x"
@@ -29,7 +29,10 @@
     "test:tooling": "npm run check:node && node --test tests/runtime-contract.test.mjs tests/audit-workspaces.test.mjs scripts/desktop-fixture-server.test.mjs",
     "eval:davellm": "npm run check:node && node scripts/eval-davellm.mjs",
     "test:eval-davellm": "npm run check:node && node --test scripts/eval-davellm.test.mjs",
-    "audit:all": "npm run check:node && node scripts/audit-workspaces.mjs"
+    "audit:all": "npm run check:node && node scripts/audit-workspaces.mjs",
+    "version:check": "npm run check:node && node scripts/check-version-consistency.mjs",
+    "version:bump": "npm run check:node && node scripts/bump-version.mjs",
+    "test:version": "npm run check:node && node --test scripts/versioning.test.mjs"
   },
   "devDependencies": {
     "markdownlint-cli2": "^0.23.2"

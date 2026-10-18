@@ -82,7 +82,7 @@ export function buildWorkspaceImportPreview(source, context, resolutions = {}) {
     // Validate related records even while prompt choices are unresolved.
     plan = prepareWorkspaceImport(source, { ...context, resolutions: effective });
   } catch (caught) { error = caught.message; }
-  const hasExtras = ['trash', 'collections', 'packs', 'scratch', 'runs', 'testCases'].some(key => source[key] != null);
+  const hasExtras = ['trash', 'collections', 'folders', 'packs', 'scratch', 'runs', 'testCases'].some(key => source[key] != null);
   if (!source.library.length && !hasExtras) error = 'No valid prompts or workspace data found.';
   return { source, context, resolutions: effective, rows, unresolved, plan, error, revision: workspaceImportRevision(context) };
 }

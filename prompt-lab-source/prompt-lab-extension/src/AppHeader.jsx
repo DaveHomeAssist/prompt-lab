@@ -1,5 +1,7 @@
 import Ic from './icons';
 import { APP_VERSION } from './constants';
+import { BUILD_IDENTITY } from './buildIdentity.js';
+import { PALETTES, useThemeTokens } from './theme/ThemeProvider.jsx';
 import { isPrelaunchOpenAccess } from './lib/billing.js';
 import { SUBVIEWS } from './lib/navigationRegistry.js';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
@@ -16,6 +18,7 @@ export default function AppHeader({
   settingsButtonRef,
   renderMobileNavigation = true,
 }) {
+  const { palette, setPalette } = useThemeTokens();
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
     plan: billingPlan,
     billingDisabled,
@@ -37,11 +40,7 @@ export default function AppHeader({
       : activeSection === 'evaluate'
         ? 'Compare + run history'
         : 'Reusable library';
-  const selectPrimaryTab = (id) => {
-    if (id === 'runs') openSection('evaluate');
-    else if (id === 'notebook') setPrimaryView('notebook');
-    else openCreateView(workspaceView === 'library' || workspaceView === 'composer' || workspaceView === 'split' ? workspaceView : 'editor');
-  };
+
 
   return (
     <>
@@ -52,7 +51,7 @@ export default function AppHeader({
             <div className="flex items-center gap-1.5 shrink-0">
               <Ic n="Wand2" size={15} className="text-orange-400" />
               <span className="pl-brand-title font-bold text-sm">Prompt Lab</span>
-              <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}</span>
+              <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}{BUILD_IDENTITY}</span>
             </div>
             <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
               {utilityCopy}
@@ -78,53 +77,17 @@ export default function AppHeader({
           <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}>
             {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
           </button>
+          <label className="pl-palette-control"><span className="sr-only">Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
           <button type="button" aria-label="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Keyboard" size={13} /></button>
           <button ref={settingsButtonRef} type="button" aria-label="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Settings" size={13} /></button>
           {clerkUserButton && <div className="ml-1">{clerkUserButton}</div>}
         </div>
       </div>
-      {!compact && <div className="mt-2 flex items-center gap-2">
-        <div role="tablist" aria-label="Primary workspaces" onKeyDown={(event) => handleTabArrowKeys(event, primaryView, selectPrimaryTab)}>
-          <div className="pl-scroll-row">
-            <button type="button" data-tab-id="create" tabIndex={primaryView === 'create' ? 0 : -1} data-testid="nav-create" onClick={() => openCreateView('editor')} role="tab" aria-selected={primaryView === 'create'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'create' ? activeTabClass : inactiveTabClass}`}>Create</button>
-            <button type="button" data-tab-id="runs" tabIndex={primaryView === 'runs' ? 0 : -1} data-testid="nav-evaluate" onClick={() => openSection('evaluate')} role="tab" aria-selected={primaryView === 'runs'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'runs' ? activeTabClass : inactiveTabClass}`}>Evaluate</button>
-            <button type="button" data-tab-id="notebook" tabIndex={primaryView === 'notebook' ? 0 : -1} data-testid="nav-scratch" onClick={() => setPrimaryView('notebook')} role="tab" aria-selected={primaryView === 'notebook'} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${primaryView === 'notebook' ? activeTabClass : inactiveTabClass}`}>Scratch</button>
-          </div>
+      {!compact && <div className="pl-unified-navigation">
+        <div role="tablist" aria-label="Workspaces" className="pl-workspace-tabs" onKeyDown={event => handleTabArrowKeys(event, primaryView === 'create' ? workspaceView : primaryView, id => id === 'runs' ? openSection('evaluate') : id === 'notebook' ? setPrimaryView('notebook') : openCreateView(id))}>
+          {[...createModeButtons, { id: 'runs', label: 'Evaluate', action: () => openSection('evaluate'), active: primaryView === 'runs' }, { id: 'notebook', label: 'Scratch', action: () => setPrimaryView('notebook'), active: primaryView === 'notebook' }].map(({ id, label, action, active }) => <button key={id} type="button" data-tab-id={id} data-testid={`nav-${id === 'editor' ? 'create' : id === 'runs' ? 'evaluate' : id === 'notebook' ? 'scratch' : id}`} tabIndex={active ? 0 : -1} role="tab" aria-selected={active} onClick={action} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg ${active ? activeTabClass : inactiveTabClass}`}>{label}</button>)}
         </div>
-        <div className="ml-auto min-w-0" aria-label="Prompt Lab context controls">
-          <div className="pl-scroll-row">
-            {activeSection === 'evaluate' && (
-              <div role="tablist" aria-label="Evaluate views" className="pl-scroll-row" onKeyDown={(event) => handleTabArrowKeys(event, runsView, openRunsView)}>
-                {SUBVIEWS.runs.map(({ id, label }) => (
-                  <button key={id} type="button" data-tab-id={id} tabIndex={runsView === id ? 0 : -1} onClick={() => openRunsView(id)} role="tab" aria-selected={runsView === id}
-                    className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${runsView === id ? activeTabClass : inactiveTabClass}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {primaryView === 'create' && (
-              <div role="tablist" aria-label="Create views" className="pl-scroll-row" onKeyDown={(event) => handleTabArrowKeys(event, workspaceView, openCreateView)}>
-                {createModeButtons.map(({ id, label, action, active }) => (
-                  <button key={id} type="button" data-testid={id === 'library' && !compact ? 'nav-library' : undefined} onClick={action}
-                    data-tab-id={id} tabIndex={active ? 0 : -1} role="tab" aria-selected={active}
-                    className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${active ? activeTabClass : inactiveTabClass}`}>
-                    {label}
-                  </button>
-                ))}
-                {createLayoutOptions.map(([id, label]) => (
-                  <button key={id} type="button" onClick={() => setEditorLayout(id)}
-                    className={`pl-tab-btn ui-control px-2.5 py-1 text-[11px] font-semibold rounded-lg transition-colors whitespace-nowrap ${effectiveEditorLayout === id ? activeTabClass : inactiveTabClass}`}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-            {primaryView === 'notebook' && (
-              <span className={`text-[11px] ${m.textMuted}`}>Markdown notes with linked prompt promotion</span>
-            )}
-          </div>
-        </div>
+        {primaryView === 'runs' && <div role="tablist" aria-label="Evaluate views" className="pl-scroll-row" onKeyDown={event => handleTabArrowKeys(event, runsView, openRunsView)}>{SUBVIEWS.runs.map(({ id, label }) => <button key={id} type="button" data-tab-id={id} tabIndex={runsView === id ? 0 : -1} role="tab" aria-selected={runsView === id} onClick={() => openRunsView(id)} className={`pl-tab-btn ui-control px-2.5 py-1 text-xs rounded-lg ${runsView === id ? activeTabClass : inactiveTabClass}`}>{label}</button>)}</div>}
       </div>}
       </header>
       {compact && renderMobileNavigation && (

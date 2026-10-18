@@ -8,8 +8,7 @@ const viewports = [
 ];
 
 const compactNavigationLabels = ['Write', 'Library', 'Compose', 'Dual', 'Evaluate', 'Scratch'];
-const primaryWorkspaceLabels = ['Create', 'Evaluate', 'Scratch'];
-const createViewLabels = ['Write', 'Library', 'Compose', 'Dual Pane'];
+const primaryWorkspaceLabels = ['Write', 'Library', 'Compose', 'Dual Pane', 'Evaluate', 'Scratch'];
 
 const providerPayload = {
   enhanced: 'You are a release verification assistant.\n\nVerify every required surface and report pass or fail with evidence.\n\nAudience: release engineers.',
@@ -142,7 +141,7 @@ async function expectNavigationContract(page, compact) {
   if (compact) {
     const nav = page.getByRole('navigation', { name: 'Primary mobile navigation' });
     await expect(nav).toBeVisible();
-    await expect(page.getByRole('tablist', { name: 'Primary workspaces' })).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: 'Workspaces' })).toHaveCount(0);
     await expect(nav.getByRole('button')).toHaveText(compactNavigationLabels);
     expect(await page.evaluate(() => {
       const main = document.querySelector('#prompt-lab-main');
@@ -153,8 +152,7 @@ async function expectNavigationContract(page, compact) {
   }
 
   await expect(page.getByRole('navigation', { name: 'Primary mobile navigation' })).toHaveCount(0);
-  await expect(page.getByRole('tablist', { name: 'Primary workspaces' }).getByRole('tab')).toHaveText(primaryWorkspaceLabels);
-  await expect(page.getByRole('tablist', { name: 'Create views' }).getByRole('tab')).toHaveText(createViewLabels);
+  await expect(page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab')).toHaveText(primaryWorkspaceLabels);
 }
 
 async function openWorkspace(page, label, compact) {
@@ -166,16 +164,16 @@ async function openWorkspace(page, label, compact) {
   }
 
   if (label === 'Scratch') {
-    await page.getByRole('tablist', { name: 'Primary workspaces' })
+    await page.getByRole('tablist', { name: 'Workspaces' })
       .getByRole('tab', { name: 'Scratch', exact: true })
       .click();
     return;
   }
 
-  await page.getByRole('tablist', { name: 'Primary workspaces' })
-    .getByRole('tab', { name: 'Create', exact: true })
+  await page.getByRole('tablist', { name: 'Workspaces' })
+    .getByRole('tab', { name: 'Write', exact: true })
     .click();
-  await page.getByRole('tablist', { name: 'Create views' })
+  await page.getByRole('tablist', { name: 'Workspaces' })
     .getByRole('tab', { name: label, exact: true })
     .click();
 }
@@ -229,7 +227,11 @@ test.describe('responsive hosted workspaces', () => {
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(2);
         await receipt.getByRole('button', { name: 'View in Library' }).click();
 
-        await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
+        if (compact) {
+          await page.getByRole('button', { name: 'Show Library drawer', exact: true }).click();
+          await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible();
+          await page.keyboard.press('Escape');
+        } else await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
         await expect(page.getByRole('region', { name: 'Prompt index' })).toBeVisible();
         await page.getByTestId('library-search').fill('Release verification checklist');
         await expect(page.getByRole('list', { name: 'Saved prompts' })).toContainText('Release verification checklist');
@@ -274,14 +276,14 @@ test.describe('responsive hosted workspaces', () => {
 test('hosted wide shell preserves tab and modal keyboard behavior', async ({ page }) => {
   await prepareWorkspace(page, viewports.find(({ width }) => width === 1180));
 
-  const primary = page.getByRole('tablist', { name: 'Primary workspaces' });
-  const createTab = primary.getByRole('tab', { name: 'Create' });
+  const primary = page.getByRole('tablist', { name: 'Workspaces' });
+  const createTab = primary.getByRole('tab', { name: 'Write' });
   await createTab.focus();
   await createTab.press('ArrowRight');
   await expect(primary.getByRole('tab', { name: 'Evaluate' })).toBeFocused();
   await expect(primary.getByRole('tab', { name: 'Evaluate' })).toHaveAttribute('aria-selected', 'true');
 
-  await primary.getByRole('tab', { name: 'Create' }).click();
+  await primary.getByRole('tab', { name: 'Write' }).click();
   const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts' });
   await shortcutTrigger.focus();
   await shortcutTrigger.click();

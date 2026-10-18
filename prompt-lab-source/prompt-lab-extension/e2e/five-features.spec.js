@@ -73,16 +73,16 @@ async function openWorkspace(page, viewport, label) {
   }
 
   if (label === 'Evaluate') {
-    await page.getByRole('tablist', { name: 'Primary workspaces' })
+    await page.getByRole('tablist', { name: 'Workspaces' })
       .getByRole('tab', { name: 'Evaluate', exact: true })
       .click();
     return;
   }
 
-  await page.getByRole('tablist', { name: 'Primary workspaces' })
-    .getByRole('tab', { name: 'Create', exact: true })
+  await page.getByRole('tablist', { name: 'Workspaces' })
+    .getByRole('tab', { name: 'Write', exact: true })
     .click();
-  await page.getByRole('tablist', { name: 'Create views' })
+  await page.getByRole('tablist', { name: 'Workspaces' })
     .getByRole('tab', { name: label, exact: true })
     .click();
 }

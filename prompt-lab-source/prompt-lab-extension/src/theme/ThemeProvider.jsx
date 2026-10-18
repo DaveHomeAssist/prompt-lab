@@ -1,7 +1,11 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
+import usePersistedState from '../usePersistedState.js';
+
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo } from 'react';
+
+export const PALETTES = ['ember', 'ocean', 'forest', 'plum'];
 
 const ThemeContext = createContext({
-  mode: 'dark',
+  mode: 'light', palette: 'ember', setPalette: () => {},
   getTagChipClass: () => '',
 });
 
@@ -41,10 +45,12 @@ function buildTagChipClass(mode, tag, selected, clickable) {
 }
 
 export function ThemeProvider({ mode = 'dark', children }) {
+  const [palette, setPalette] = usePersistedState('pl2-palette', 'ember', { validate: value => PALETTES.includes(value) ? value : 'ember' });
+  useLayoutEffect(() => { document.documentElement.dataset.palette = palette; }, [palette]);
   const value = useMemo(() => ({
-    mode,
+    mode, palette, setPalette,
     getTagChipClass: ({ tag, selected = false, clickable = false }) => buildTagChipClass(mode, tag, selected, clickable),
-  }), [mode]);
+  }), [mode, palette, setPalette]);
 
   useEffect(() => {
     document.body.style.background = mode === 'light' ? '#e2e8f0' : '#030712';

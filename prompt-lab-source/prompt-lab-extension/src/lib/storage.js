@@ -4,6 +4,7 @@ export const storageKeys = Object.freeze({
   library: 'pl2-library',
   trash: 'pl2-library-trash',
   collections: 'pl2-collections',
+  folders: 'pl2-collection-folders',
   sortBy: 'pl2-sort-by',
   mode: 'pl2-mode',
   pad: 'pl2-pad',
