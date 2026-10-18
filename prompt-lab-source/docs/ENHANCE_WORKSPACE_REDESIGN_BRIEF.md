@@ -200,12 +200,12 @@ Slice 2 is accepted when all of these hold on hosted web with the flag on:
 ## Create annotations (2026-10-17)
 
 Dave annotated the hosted Create screen and one mobile screenshot on
-2026-10-17 and supplied implementation details and acceptance checks for each
-item. The full source table, including the Library items owned by a separate
-draft, is in
+2026-10-17. The implementation details and acceptance checks that accompany
+the annotations are Codex proposals based on them, not approved requirements.
+Both, including the Library items owned by a separate draft, are in
 [`evidence/workspace-annotations-2026-10-17.md`](evidence/workspace-annotations-2026-10-17.md).
-Its acceptance column is the acceptance for each item below. Each finding was
-checked against `e0b4a3b`.
+The proposals inform each slice's acceptance once that slice is approved. Each
+finding was checked against `e0b4a3b`.
 
 | ID | Annotation | Evidence on `e0b4a3b` | State | Slice |
 | --- | --- | --- | --- | --- |
@@ -290,4 +290,4 @@ D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended optio
 | D-ENH-5 | What visual identity does slice 2 use? | A. Keep the current palette; take structure and behaviour from the mockup, and route the graphite direction to the uxui-bold-restructure visual pass as a proposal · B. Restyle the Create view alone in graphite now · C. Open an app-wide graphite visual pass before slice 2 | **Open.** Recommended **A**: B leaves Create visually unlike Library, Evaluate and Scratch; C delays slice 2 behind a separate brief | Slice 2 visual spec |
 | D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **Open.** Recommended **A**: matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |
 | D-ENH-7 | Which Create annotation slice comes first? | A. Slice 2A (prompt shortcuts and editing context, C6 and C7) · B. Slice 3 (output tabs and single-candidate mode, C1 and C3 to C5) · C. Slice 2 (refinement settings, C2), after D-ENH-5 and D-ENH-6 | **Open.** Recommended **A**: smallest, independent of the open visual and layout choices, and the largest mobile gain in M1 | Start of Create annotation work |
-| D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **Open.** Recommended **B**: mobile uses the stacked layout, so A misses the M1 screen; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |
+| D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **Open.** Recommended **B**: the two-pane flag is off by default and works at every width (narrow screens get its Source / Result switch), so A reaches only users who turn the flag on, while B also reaches the default stacked layout; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |

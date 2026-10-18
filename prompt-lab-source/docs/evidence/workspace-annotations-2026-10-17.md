@@ -1,17 +1,18 @@
 # Workspace annotations — 2026-10-17
 
-Source: Dave's annotated review of the hosted Library and Create screens and one
-mobile screenshot, with the proposed implementation details and acceptance
-checks he supplied on 2026-10-17. They describe intended behaviour; none of it
-was verified when recorded.
+Source: Dave's annotations of the hosted Library and Create screens and one
+mobile screenshot on 2026-10-17 (the first table). The implementation details
+and acceptance checks in the second table are **Codex proposals based on Dave's
+annotations**, which Dave relayed as proposals. They are recommendations, not
+approved requirements, and none of it was verified when recorded.
 
 Ownership on 2026-10-17:
 
 - **L1 to L8 (Library and shared header):** being built in the uncommitted
   `codex/library-workspace-controls` draft, whose own brief is not yet on `main`.
   That draft stores collection artwork as a local UI preference and represents
-  folders as `/` separated paths. Rows L5 and L6 below recommend exported
-  collection artwork and stable folder IDs with parent references instead;
+  folders as `/` separated paths. The L5 and L6 proposals below recommend
+  exported collection artwork and stable folder IDs with parent references instead;
   reconcile before that draft merges.
 - **C1 to C7 and M1 (Create):** planned in
   [`../ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`](../ENHANCE_WORKSPACE_REDESIGN_BRIEF.md#create-annotations-2026-10-17).
@@ -37,7 +38,10 @@ Ownership on 2026-10-17:
 | C7 | Create | Editing context | Clearly distinguish editing a saved prompt from creating a new one. |
 | M1 | Mobile screenshot | Overall Create layout | Supporting evidence: Quick prompts, wrapped header, and action rows push the editor and results down. |
 
-## Proposed implementation and acceptance
+## Codex proposals based on Dave's annotations
+
+Recommendations only. Each item still needs the decisions and approval named in
+its owning brief before it becomes a requirement.
 
 | ID | Item | Implementation details | Acceptance |
 |---|---|---|---|
