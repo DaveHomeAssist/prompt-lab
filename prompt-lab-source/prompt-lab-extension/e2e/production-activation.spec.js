@@ -160,6 +160,11 @@ for (const width of [375, 1440]) {
       await expect.poll(() => page.evaluate(output => JSON.parse(localStorage.getItem('pl2-library') || '[]').some(row => row.original === output), outputs[1])).toBe(true);
       await expect(editingContext).toContainText('No unsaved changes');
       phase('verify slice 2A in both hosted layouts');
+      const savedWinner = await page.evaluate(output => JSON.parse(localStorage.getItem('pl2-library') || '[]')
+        .find(row => row.original === output), outputs[1]);
+      // Library Save is immediate; useSessionSave commits the editor after 500 ms.
+      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}')))
+        .toMatchObject({ raw: outputs[1], editingId: savedWinner.id });
       for (const layout of ['stacked', 'split']) {
         await page.evaluate(value => localStorage.setItem('pl2-create-layout', JSON.stringify(value)), layout);
         await page.reload();
