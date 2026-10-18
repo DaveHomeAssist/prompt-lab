@@ -42,7 +42,7 @@ For PromptLab pull requests, once all required checks pass, mark the PR ready an
 
 Verify current Git, files, relevant test/build output, CI/deployment and user
 behavior before reporting status. Put status and verification in the report body;
-retain the existing task title, including Dave's manual name. Use the session
+retain the existing task title, including Dave's manual name. Use the
 canonical session naming convention only when generating a title, not a status-light or
 timestamp naming format. A title is never evidence of completion.
 
@@ -155,7 +155,6 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-06] [PLB] [build] Add scripts/eval-davellm.mjs: Library Test cases through DaveLLM's stateless /eval/chat, scored with the app's Enhance payload, PII gate, parser and checkTraits; node --test suite wired into Extension CI (DaveLLM DL-EVAL-01 milestone 2)
 [2026-10-06] [PLB] [build] Clear the audit gate again: bump source-map-js to 1.2.2 in extension, web and desktop lockfiles (GHSA-68fv-2mgg-jv7q, high)
 [2026-10-06] [PLB] [docs] Mark DECISIONS.md D-003 and the EXECUTION_PRD DaveLLM integration (DLM-1 to DLM-4) superseded: Tailscale-resolved nodes, no Ollama dialect, eval through /eval/chat
-
 
 [2026-10-07] [PLB] [fix] Apply PL-DUR-1A: gate desktop save receipts on durable commits, retain visible failure and draft state, coalesce/retry without duplicate entries or versions; extend interrupted-write and installed fixture acceptance (026)
 
