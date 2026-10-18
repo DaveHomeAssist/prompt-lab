@@ -1,3 +1,4 @@
+import { buildIdentity } from '../scripts/build-identity.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -5,6 +6,7 @@ import { resolve } from 'path';
 // Desktop Vite config — resolves shared source from the extension project.
 // No symlinks needed; works on Windows, macOS, and Linux.
 export default defineConfig({
+  define: buildIdentity(),
   plugins: [react()],
   resolve: {
     alias: {

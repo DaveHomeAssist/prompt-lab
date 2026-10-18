@@ -5,8 +5,8 @@ import { deriveTab, resolveTabState } from '../lib/navigationRegistry.js';
 export default function useUiState() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 420));
   const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== 'undefined' ? window.innerHeight : 720));
-  const [colorMode, setColorMode] = usePersistedState('pl2-mode', 'dark', {
-    validate: value => (value === 'dark' || value === 'light') ? value : 'dark',
+  const [colorMode, setColorMode] = usePersistedState('pl2-mode', 'light', {
+    validate: value => (value === 'dark' || value === 'light') ? value : 'light',
   });
   const [density, setDensity] = usePersistedState('pl2-density', 'comfortable', {
     validate: value => ['compact', 'comfortable', 'spacious'].includes(value) ? value : 'comfortable',

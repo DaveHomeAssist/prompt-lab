@@ -1,3 +1,4 @@
+import { buildIdentity } from '../scripts/build-identity.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -6,6 +7,7 @@ export default defineConfig({
   appType: 'mpa',
   plugins: [react()],
   define: {
+    ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
   },
   resolve: {

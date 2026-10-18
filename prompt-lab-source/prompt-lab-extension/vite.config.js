@@ -1,8 +1,10 @@
+import { buildIdentity } from '../scripts/build-identity.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
 
 export default defineConfig({
+  define: buildIdentity(),
   plugins: [react()],
   build: {
     outDir: 'dist',
