@@ -185,3 +185,5 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-18] [PLB] [feature] Build Enhance slice 2A on hosted web: collapsible Prompt shortcuts (C6) and a persistent editing context bar (C7), plus an explicit Save label in the stacked candidate toolbar
 
 [2026-10-18] [PLB] [ops] Adopt emoji/project, uppercase phase, concise title and MM-DD naming; preserve manual task names and remove conflicting status-title rules
+
+[2026-10-18] [PLB] [feature] Implement Library L1 to L8: drawer, inspector resizing, unified navigation, palettes, portable artwork and stable folders, compact/gallery views, and synchronized 1.8.0 development identity

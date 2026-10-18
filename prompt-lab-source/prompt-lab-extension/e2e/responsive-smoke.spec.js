@@ -15,8 +15,7 @@ const viewports = [
 ];
 
 const compactNavigationLabels = ['Write', 'Library', 'Compose', 'Dual', 'Evaluate', 'Scratch'];
-const primaryWorkspaceLabels = ['Create', 'Evaluate', 'Scratch'];
-const createViewLabels = ['Write', 'Library', 'Compose', 'Dual Pane'];
+const primaryWorkspaceLabels = ['Write', 'Library', 'Compose', 'Dual Pane', 'Evaluate', 'Scratch'];
 
 const providerResponse = {
   enhanced: [
@@ -174,7 +173,7 @@ async function expectNavigationContract(page, compact) {
   if (compact) {
     const nav = page.getByRole('navigation', { name: 'Primary mobile navigation' });
     await expect(nav).toBeVisible();
-    await expect(page.getByRole('tablist', { name: 'Primary workspaces' })).toHaveCount(0);
+    await expect(page.getByRole('tablist', { name: 'Workspaces' })).toHaveCount(0);
     await expect(nav.getByRole('button')).toHaveText(compactNavigationLabels);
     expect(await page.evaluate(() => {
       const main = document.querySelector('#prompt-lab-main');
@@ -185,10 +184,8 @@ async function expectNavigationContract(page, compact) {
   }
 
   await expect(page.getByRole('navigation', { name: 'Primary mobile navigation' })).toHaveCount(0);
-  const primary = page.getByRole('tablist', { name: 'Primary workspaces' });
-  const createViews = page.getByRole('tablist', { name: 'Create views' });
+  const primary = page.getByRole('tablist', { name: 'Workspaces' });
   await expect(primary.getByRole('tab')).toHaveText(primaryWorkspaceLabels);
-  await expect(createViews.getByRole('tab')).toHaveText(createViewLabels);
 }
 
 async function openWorkspace(page, label, compact) {
@@ -200,16 +197,16 @@ async function openWorkspace(page, label, compact) {
   }
 
   if (['Evaluate', 'Scratch'].includes(label)) {
-    await page.getByRole('tablist', { name: 'Primary workspaces' })
+    await page.getByRole('tablist', { name: 'Workspaces' })
       .getByRole('tab', { name: label, exact: true })
       .click();
     return;
   }
 
-  await page.getByRole('tablist', { name: 'Primary workspaces' })
-    .getByRole('tab', { name: 'Create', exact: true })
+  await page.getByRole('tablist', { name: 'Workspaces' })
+    .getByRole('tab', { name: 'Write', exact: true })
     .click();
-  await page.getByRole('tablist', { name: 'Create views' })
+  await page.getByRole('tablist', { name: 'Workspaces' })
     .getByRole('tab', { name: label, exact: true })
     .click();
 }
@@ -237,7 +234,7 @@ for (const viewport of viewports) {
         await expect(output).toBeVisible({ timeout: 15_000 });
         const candidates = output.getByRole('listbox', { name: 'Enhancement candidates' });
         await expect(candidates.getByRole('option')).toHaveCount(3);
-        await expect(candidates.getByRole('option').nth(0)).toContainText('Improved');
+        await expect(candidates.getByRole('option').nth(0)).toContainText('Expanded');
         await expect(candidates.getByRole('option').nth(1)).toContainText('Tighter');
         await expect(candidates.getByRole('option').nth(2)).toContainText('Strict JSON');
 
@@ -245,8 +242,10 @@ for (const viewport of viewports) {
         await improved.focus();
         await improved.press('ArrowDown');
         await expect(candidates.getByRole('option').nth(1)).toHaveAttribute('aria-selected', 'true');
-        await expect(output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Improved' })).toBeVisible();
+        await expect(output.getByRole('tablist', { name: 'Result views' }).getByRole('tab', { name: 'Prompt' })).toBeVisible();
 
+        await candidates.getByRole('option').nth(1).press('ArrowUp');
+        await expect(candidates.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
         const originalToggle = output.getByRole('button', { name: /Original prompt/ });
         await originalToggle.click();
         await expect(originalToggle).toHaveAttribute('aria-expanded', 'true');
@@ -264,7 +263,11 @@ for (const viewport of viewports) {
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(2);
 
         await receipt.getByRole('button', { name: 'View in Library' }).click();
-        await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
+        if (compact) {
+          await page.getByRole('button', { name: 'Show Library drawer', exact: true }).click();
+          await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible();
+          await page.keyboard.press('Escape');
+        } else await expect(page.getByRole('complementary', { name: 'Library views' })).toBeVisible();
         await expect(page.getByRole('region', { name: 'Prompt index' })).toBeVisible();
         await page.getByTestId('library-search').fill('Release verification checklist');
         await expect(page.getByRole('list', { name: 'Saved prompts' })).toContainText('Release verification checklist');
@@ -318,14 +321,14 @@ test('wide navigation and modal keyboard behavior remains accessible', async () 
   const viewport = viewports.find(({ width }) => width === 1180);
   const { page, cleanup } = await launchMockedExtension(viewport);
   try {
-    const primary = page.getByRole('tablist', { name: 'Primary workspaces' });
-    const createTab = primary.getByRole('tab', { name: 'Create' });
+    const primary = page.getByRole('tablist', { name: 'Workspaces' });
+    const createTab = primary.getByRole('tab', { name: 'Write' });
     await createTab.focus();
     await createTab.press('ArrowRight');
-    await expect(primary.getByRole('tab', { name: 'Evaluate' })).toHaveAttribute('aria-selected', 'true');
-    await expect(primary.getByRole('tab', { name: 'Evaluate' })).toBeFocused();
+    await expect(primary.getByRole('tab', { name: 'Library' })).toHaveAttribute('aria-selected', 'true');
+    await expect(primary.getByRole('tab', { name: 'Library' })).toBeFocused();
 
-    await primary.getByRole('tab', { name: 'Create' }).click();
+    await primary.getByRole('tab', { name: 'Write' }).click();
     const shortcutTrigger = page.getByRole('button', { name: 'Keyboard shortcuts' });
     await shortcutTrigger.focus();
     await shortcutTrigger.click();

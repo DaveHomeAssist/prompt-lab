@@ -11,7 +11,7 @@ if (process.env.PL_COMPAT_DESKTOP_URL) surfaces.push({ name: 'desktop-frontend',
 
 async function openView(page, name, width) {
   if (width < 720) await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name, exact: true }).click();
-  else await page.getByRole('tablist', { name: 'Create views' }).getByRole('tab', { name, exact: true }).click();
+  else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name, exact: true }).click();
 }
 
 for (const surface of surfaces) for (const width of [400, 480, 1180]) {

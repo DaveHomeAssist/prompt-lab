@@ -2,7 +2,7 @@
 
 Status: canonical
 
-Last updated: 2026-09-04
+Last updated: 2026-10-18
 
 ## Scope
 
@@ -14,8 +14,8 @@ release decision explicitly joins it to the shared version line.
 ## Accepted release decision
 
 - The next feature release is `1.8.0`.
-- The current shared source remains `1.7.1` and unreleased until the required
-  version tooling is implemented and used.
+- Shared source is now `1.8.0`. Untagged builds display `1.8.0-dev` plus the
+  source revision; this is not a claim of a published tagged release.
 - A local or CI build does not become a release merely because it compiles or
   carries the next version number. A release also requires a matching source
   tag, successful release workflow, published artifacts, and distribution
@@ -129,13 +129,14 @@ number alone does not.
 | Requirement | State |
 | --- | --- |
 | Next feature release is `1.8.0` | Accepted |
-| One allowlisted version-bump script | Required; not yet implemented |
-| CI rejects mismatched versions | Required; not yet implemented |
-| Release tag must match the internal version | Required; not yet implemented |
-| Development UI shows version plus commit | Required; not yet implemented |
+| One allowlisted version-bump script | Implemented in Library workspace controls; CI/runtime verification pending |
+| CI rejects mismatched versions | Implemented in Library workspace controls; CI/runtime verification pending |
+| Release tag must match the internal version | Implemented in Library workspace controls; CI/runtime verification pending |
+| Development UI shows version plus commit | Implemented in Library workspace controls; CI/runtime verification pending |
 
-Until every required control is implemented and verified, `1.8.0` release
-promotion remains blocked. Documentation of the requirement is not evidence
+The guard implementation and the tagged release are separate gates. `1.8.0`
+release promotion still requires successful workflow execution, matching artifacts
+and distribution acceptance. Documentation of the requirement is not evidence
 that the automation exists.
 
 ## Acceptance checks

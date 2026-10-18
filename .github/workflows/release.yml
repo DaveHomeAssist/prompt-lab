@@ -13,11 +13,27 @@ on:
         type: boolean
         default: true
 
+env:
+  PROMPTLAB_RELEASE_TAG: ${{ inputs.version }}
+
 permissions:
   contents: write
 
 jobs:
+  release-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: prompt-lab-source/.nvmrc
+      - name: Verify tag before creating artifacts
+        env:
+          RELEASE_INPUT: ${{ inputs.version }}
+        run: node prompt-lab-source/scripts/check-release-tag.mjs "$RELEASE_INPUT"
+
   extension-tests:
+    needs: release-version
     runs-on: ubuntu-latest
     defaults:
       run:

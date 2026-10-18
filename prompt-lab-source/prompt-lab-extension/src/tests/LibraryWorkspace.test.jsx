@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LibraryWorkspace from '../LibraryWorkspace.jsx';
 
@@ -45,7 +45,7 @@ function makeLib(overrides = {}) {
     library: entries,
     trash: [{ ...entries[1], id: 'trash', title: 'Deleted prompt', deletedAt: new Date().toISOString() }],
     filtered: entries,
-    collections: ['Ops'], setCollections: vi.fn(), deleteCollection: vi.fn(),
+    collections: ['Ops'], saveFolders: vi.fn().mockResolvedValue(true), setCollections: vi.fn(), deleteCollection: vi.fn(),
     allLibTags: ['template'],
     search: '', setSearch: vi.fn(),
     sortBy: 'newest', setSortBy: vi.fn(),
@@ -198,20 +198,24 @@ describe('LibraryWorkspace', () => {
     expect(callbacks.onNewPrompt).toHaveBeenCalledTimes(1);
   });
 
-  it('manages collections without prompt dialogs and keeps import, export, and packs connected', () => {
+  it('manages collections without prompt dialogs and keeps import, export, and packs connected', async () => {
     const { lib } = renderLibrary();
     fireEvent.click(screen.getByRole('button', { name: 'Manage collections' }));
     fireEvent.change(screen.getByLabelText('New collection name'), { target: { value: 'Research' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
-    expect(lib.setCollections).toHaveBeenCalledWith(expect.any(Function));
-    expect(lib.setCollections.mock.calls[0][0](['Ops'])).toEqual(['Ops', 'Research']);
+    await waitFor(() => expect(lib.saveFolders).toHaveBeenCalledTimes(1));
+    expect(lib.saveFolders.mock.calls[0][0].map(folder => folder.collection)).toEqual(['Ops', 'Research']);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled());
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Rename / Move' }));
     fireEvent.change(screen.getByLabelText('Rename Ops'), { target: { value: 'Operations' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(lib.updateEntries).toHaveBeenCalledWith(['favorite'], expect.any(Function));
-    fireEvent.click(screen.getByLabelText('Delete collection Ops'));
-    expect(lib.deleteCollection).toHaveBeenCalledWith('Ops');
+    await waitFor(() => expect(lib.saveFolders).toHaveBeenCalledTimes(2));
+    expect(lib.saveFolders.mock.calls[1][0][0].collection).toBe('Operations');
+    await waitFor(() => expect(screen.queryByLabelText('Rename Ops')).not.toBeInTheDocument());
+    fireEvent.click(screen.getByLabelText('Remove folder Ops, keep prompts'));
+    await waitFor(() => expect(lib.saveFolders).toHaveBeenCalledTimes(3));
+    expect(lib.saveFolders.mock.calls[2][0]).toEqual([]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     expect(lib.exportLib).toHaveBeenCalledTimes(1);
