@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; Create annotations C1 to C7 and M1 planned 2026-10-17; D-ENH-5 to D-ENH-8 decided 2026-10-18 (B, A, A, B); slice 2A built for hosted web (see Slice 2A delivery)`
+- Status: `Slice 1 merged behind a flag on hosted web (PR #153); DEC-01 decided 2026-10-17 — the refinement workspace mockup is the slice 2 reference; Create annotations C1 to C7 and M1 planned 2026-10-17; D-ENH-5 to D-ENH-8 decided 2026-10-18 (B, A, A, B); slice 2A merged and verified on hosted web (PR #164; see Slice 2A delivery)`
 - Created: `2026-10-15`
 - Source revision checked: `8eceda5` (`origin/main`) for the original findings;
   `6942b8e` (`origin/main`, 2026-10-17) for the DEC-01 mockup comparison;
@@ -281,7 +281,7 @@ Light and dark themes both checked at 1440×900. Turning the flag off restores t
 
 ## Slice 2A delivery
 
-Release review scope (2026-10-18): preserve the approved C6/C7 implementation and Library ownership. Correct the context bar false-clean state after an alternate candidate is edited and the unchanged primary is reselected. Compare the complete persisted prompt snapshot, including result metadata, variants and notes; verify the state is dirty before Save and clean after the same content is saved. Resolve only the naming-history merge conflict while preserving the shared naming rules. The existing signed-in activation check now covers saved/unsaved context, remembered shortcut expansion and both hosted layouts at 375×812 and 1440×900. Dominic Node 22.23.3 passed 36 focused tests (20 slice 2A and 16 persistence) and the extension build/assembly. The first scratch run lacked the sibling docs/schema and shared module files; these transfer omissions were corrected before the passing checks. Production verification is pending deployment.
+Release review scope (2026-10-18): preserve the approved C6/C7 implementation and Library ownership. Correct the context bar false-clean state after an alternate candidate is edited and the unchanged primary is reselected. Compare the complete persisted prompt snapshot, including result metadata, variants and notes; verify the state is dirty before Save and clean after the same content is saved. Resolve only the naming-history merge conflict while preserving the shared naming rules. The existing signed-in activation check now covers saved/unsaved context, remembered shortcut expansion and both hosted layouts at 375×812 and 1440×900. Dominic Node 22.23.3 passed 36 focused tests (20 slice 2A and 16 persistence) and the extension build/assembly. The first scratch run lacked the sibling docs/schema and shared module files; these transfer omissions were corrected before the passing checks. Production verification passed after the test-only session-save timing correction described below.
 
 Built for hosted web in both layouts, as D-ENH-8 B set. Extension and desktop
 keep the previous context row and chip strips.
@@ -328,7 +328,33 @@ server, seeded Library, Playwright Chromium) covered 1440×900, 1280×720,
 Against `main`, the editor sits 159px higher on a 375×812 phone, 35px higher in
 812×375 landscape and 22px higher on a 1280×720 laptop with a prompt loaded. On
 a 1440×900 desktop it sits 60px lower with shortcuts open and 22px higher with
-them closed. Not verified: the signed-in production app and real touch devices.
+them closed. This local browser pass did not cover the signed-in production app or real touch devices; the later production evidence below supersedes only the signed-in gap.
+
+### Release verification — 2026-10-18
+
+[PR #164](https://github.com/DaveHomeAssist/prompt-lab/pull/164) merged as `15a421b`.
+All 15 checks passed at integration `5810fa5`; the required base update changed
+only naming instructions. All seven automatic workflows on `15a421b` passed,
+including [Desktop 39175748450](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39175748450)
+with MSI, NSIS, DEB and AppImage acceptance and macOS universal packaging.
+Shared verification passed 1189 Vitest, 223 legacy and 13 evaluator tests.
+
+The first [production check](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39175809303)
+passed Library Save, context, refinement and history, then reloaded before the
+existing 500 ms editor-session write. [PR #167](https://github.com/DaveHomeAssist/prompt-lab/pull/167),
+merged as `a39faad`, waits for the persisted editor content and prompt ID.
+The [corrected production check](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39176037165)
+passed at 375×812 and 1440×900 in both hosted layouts: saved/unsaved context,
+remembered shortcut expansion, synthetic refinement, save, history, reload and
+reuse. Both disposable sessions were revoked; no real model calls were made.
+Its test commit `2c15e82` and merge `a39faad` have the same source tree.
+Production deployment `dpl_47d2AUH46HjnVVJMDXrogs8cX4SN` is READY at `a39faad`;
+application source matches the tested `15a421b` deployment.
+
+Physical touch, macOS interaction and full parent UX acceptance remain open.
+Next accepted verification is the remaining hosted Slice 1 Acceptance checklist
+under D-012. Library L1–L8 stays with its owner; graphite remains held until L4.
+Later slice proposals are not additional implementation approval.
 
 ## Decisions
 

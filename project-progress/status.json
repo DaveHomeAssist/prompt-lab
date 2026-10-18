@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T22:51:22.275Z",
+  "snapshotAt": "2026-10-18T23:35:52.035Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "fc80410e53625d22a57a69b266755c90106e78a1",
+  "mainSha": "a39faadb9c013b24ba83853728ec1cbb07e2aa70",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete PR164 CI and merge, verify the exact deployment, then run the existing signed-in activation check for both hosted Create layouts. Library L1–L8 remains with its owner; graphite waits for L4.",
+  "nextAction": "Complete the remaining accepted hosted Slice1 Acceptance checklist under D-012 with synthetic responses. Preserve the Library L1–L8 owner and hold graphite until L4; no new feature scope is implied.",
   "evidence": [
     {
-      "label": "Create slice 2A release integration",
-      "state": "Running",
-      "detail": "2026-10-18: accepted decisions BAAB verified from direct human instructions; Library ownership retained separately. Reviewed PR164 head9ff914e had15 successful checks but a confirmed false-clean state for alternate-candidate edits and an AGENTS naming-history conflict with mainfc80410. Integration09736e6 compares the complete Save snapshot, adds three regressions, preserves both naming/implementation histories and extends the existing production activation check for stacked/split context and shortcut persistence at375x812/1440x900. Dominic Node22.23.3 passed36 focused tests and extension build/assembly after correcting missing sibling files in the scratch transfer. Integrated candidate CI, merge and production acceptance pending. UX issue and implementation RUN appended/read back. All45 issue dispositions and14-item plan preserved. No new agents/chats/model calls; private board mapping absent.",
+      "label": "Create slice 2A delivered",
+      "state": "Verified",
+      "detail": "2026-10-18: PR164 merged15a421b after ownership reconciliation and the full-snapshot dirty-state correction09736e6. All15 integration5810fa5 checks passed. Required base updatebd81890 changed only AGENTS.md. All7 automatic exact15a workflows passed: Extension39175748410, Landing39175748319, API39175748327, Docs39175748433, Progress39175748357, Pages39175748081 and Desktop39175748450, including MSI/NSIS/DEB/AppImage acceptance and macOS packaging. Shared1189 Vitest/223 legacy/13 evaluator tests; Dominic36 focused tests and build passed with matching source hashes. Initial production39175809303 raced the existing500ms editor-session save; Library/context checks passed and both sessions were revoked. Test-only PR167 mergeda39faad; all5 PR checks and3 main workflows pass. Corrected production39176037165 at2c15e82 passed375x812/1440x900 and both hosted layouts, shortcut persistence, clean/dirty state and synthetic refine/save/history/reload/reuse; sessions revoked. Test and mergeda39 source trees match774d4017afb79d63b9a28bd4bacd2385c9659a40. Productiondpl_47d2AUH46HjnVVJMDXrogs8cX4SN READY ata39faad; runtime source matches tested15a. All46 backlog rows,14-item plan and Library ownership preserved; UX/RUN/Hub written/read back. No new agents/chats/model calls. Physical touch, macOS interaction and parent acceptance remain open; private board mapping absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/164"
     },
     {
@@ -510,7 +510,7 @@
     {
       "id": "3d2255fc8f448162849ad8dbe5c12595",
       "title": "Release labels are not validated against artifact versions",
-      "status": "Not started",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Background",
       "type": "Tech Debt",
@@ -830,6 +830,18 @@
       "inPlan": false,
       "nextAction": "Import a library with a pending conflict beyond page 1 in the signed-in production app and confirm Jump to unresolved reaches and focuses it.",
       "verification": "2026-10-17: PR #154 merged as d2dc37a after all 13 checks passed; the Vercel deployment succeeded and the production bundle contains the Jump to unresolved control. New WorkspaceImportModal test passes; CI's full extension suite passes workspaceImportRecovery 9/9 under Node 22. Signed-in production import not checked."
+    },
+    {
+      "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Library workspace controls L1–L8",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b"
     }
   ]
 }
