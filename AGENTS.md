@@ -214,3 +214,5 @@ Status Check Runs "Human Name"):
 [2026-10-17] [PLB] [release] Merge PR #154 as d2dc37a after all 13 checks passed; the production bundle carries Jump to unresolved. A signed-in production import with a pending conflict beyond page 1 (031) remains open
 
 [2026-10-17] [PLB] [docs] Record DEC-01 as D-013: the refinement workspace mockup folds into Create as the slice 2 reference; add slice 2 acceptance to the Enhance brief and open D-ENH-5 and D-ENH-6 (D-014)
+
+[2026-10-17] [PLB] [docs] Plan Dave's Create annotations C1 to C7 and M1 into Enhance slices 2, 2A and 3 with code evidence, record the full 16-item annotation table, and open D-ENH-7 and D-ENH-8 (D-015)

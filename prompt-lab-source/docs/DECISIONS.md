@@ -36,6 +36,20 @@ Consequences: the answers fix slice 2's visual spec and layout. Slice 2 behaviou
 
 ---
 
+### [D-015] Create annotations — first slice and rollout
+
+Status: open
+Owner: Dave
+Date opened: 2026-10-17
+
+Context: Dave annotated the hosted Create screen and a mobile screenshot on 2026-10-17 (C1 to C7, M1). Codex proposed implementation details and acceptance checks based on those annotations; they are recommendations, not approved requirements. All seven findings were confirmed against `e0b4a3b` and placed in the Enhance workspace redesign slices: C2 in slice 2, C6 and C7 in a new slice 2A, and C1, C3, C4 and C5 in slice 3. Source: [`evidence/workspace-annotations-2026-10-17.md`](evidence/workspace-annotations-2026-10-17.md).
+
+Options: see D-ENH-7 (which slice first) and D-ENH-8 (where C6 and C7 ship) in [`ENHANCE_WORKSPACE_REDESIGN_BRIEF.md`](ENHANCE_WORKSPACE_REDESIGN_BRIEF.md#decisions). Recommended: D-ENH-7 **A** (slice 2A first) and D-ENH-8 **B** (hosted web, both layouts).
+
+Consequences: the answers authorise the first Create annotation implementation. Library items L1 to L8 are outside this decision; they belong to the separate Library workspace controls draft.
+
+---
+
 ### [D-001] PLB nav strategy — hash mode vs state router
 
 Status: resolved
