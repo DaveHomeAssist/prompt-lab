@@ -1164,6 +1164,9 @@ export default function App({
               onChainFollowUp={handleChainFollowUp}
               onSaveFollowUp={handleSaveFollowUp}
               splitLayout={splitCreate}
+              contextControls={isWeb}
+              saveCollection={saveCollection}
+              saveTags={saveTags}
               savedFollowUps={savedFollowUps}
               followUpSource={followUpSource}
               followUpRuns={followUpRuns}

@@ -31,6 +31,7 @@ for (const width of [375, 1440]) {
     const { clerk } = qaSession;
     page.setDefaultTimeout(15_000);
     page.setDefaultNavigationTimeout(30_000);
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
     const phase = name => console.info(`[activation ${width}] ${name}`);
     expect((await clerk.sessions.getSessionList({ userId: clerkUserId, status: 'active', limit: 100 })).data.length).toBe(0);
     let task;
@@ -98,7 +99,8 @@ for (const width of [375, 1440]) {
       sessionId = await page.evaluate(() => window.Clerk?.session?.id || '');
       qaSession.sessionId = sessionId;
       expect(sessionId).toMatch(/^sess_/);
-      await page.setViewportSize({ width, height: 900 });
+      const editingContext = page.getByRole('region', { name: 'Editing context' });
+      await expect(editingContext).toContainText('New unsaved prompt');
       phase('verify restored generation defaults');
       await page.getByText(/Generation options · Expanded/).click();
       const strategies = page.getByLabel('Preferred primary candidate');
@@ -113,10 +115,16 @@ for (const width of [375, 1440]) {
       await page.getByRole('button', { name: 'Save First Prompt', exact: true }).click();
       await page.getByRole('dialog', { name: 'Save as new prompt', exact: true }).getByRole('button', { name: /^Save as new prompt (?:Ctrl|⌘)\+S$/ }).click();
       await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(1);
+      await expect(editingContext).toContainText('Editing saved prompt:');
+      await expect(editingContext).toContainText('No unsaved changes');
+      const shortcuts = page.getByRole('button', { name: /^Prompt shortcuts/ });
+      await expect(shortcuts).toHaveAttribute('aria-expanded', width === 375 ? 'false' : 'true');
+      await shortcuts.click();
       for (let i = 0; i < 2; i++) {
         phase(`refine ${i + 1}`);
         await page.getByTestId('refine-action').click();
         await expect.poll(async () => (await runs()).filter(row => row.status === 'success').length).toBe(i + 1);
+        await expect(editingContext).toContainText('Unsaved changes');
       }
       phase('compare saved runs');
       await page.goto(`${appUrl.href}#/evaluate`);
@@ -146,10 +154,20 @@ for (const width of [375, 1440]) {
       // Make the discard-confirmation precondition explicit on both viewports.
       await page.getByTestId('prompt-input').fill('Synthetic draft to discard before reusing the selected run.');
       await page.getByRole('button', { name: 'New prompt', exact: true }).click();
-      await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Start a new prompt?' }).getByRole('button', { name: 'Start new prompt', exact: true }).click();
       await page.getByTestId('prompt-input').fill(reused);
       await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
       await expect.poll(() => page.evaluate(output => JSON.parse(localStorage.getItem('pl2-library') || '[]').some(row => row.original === output), outputs[1])).toBe(true);
+      await expect(editingContext).toContainText('No unsaved changes');
+      phase('verify slice 2A in both hosted layouts');
+      for (const layout of ['stacked', 'split']) {
+        await page.evaluate(value => localStorage.setItem('pl2-create-layout', JSON.stringify(value)), layout);
+        await page.reload();
+        await expect(editingContext).toContainText('Editing saved prompt:');
+        await expect(editingContext).toContainText('No unsaved changes');
+        await expect(shortcuts).toHaveAttribute('aria-expanded', width === 375 ? 'true' : 'false');
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+      }
       expect(calls).toBe(2);
       expect(blocked).toEqual([]);
       console.info(`[activation ${width}] real starter/save/refine/history/compare/copy/verdict/reload flow passed with two synthetic provider responses`);

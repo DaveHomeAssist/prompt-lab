@@ -180,4 +180,8 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 
 [2026-10-17] [PLB] [docs] Plan Dave's Create annotations C1 to C7 and M1 into Enhance slices 2, 2A and 3 with code evidence, record the full 16-item annotation table, and open D-ENH-7 and D-ENH-8 (D-015)
 
+[2026-10-18] [PLB] [docs] Record D-ENH-5 to D-ENH-8 (B, A, A, B): graphite Create held until the Library palette work lands, two panes, slice 2A first, hosted web in both layouts
+
+[2026-10-18] [PLB] [feature] Build Enhance slice 2A on hosted web: collapsible Prompt shortcuts (C6) and a persistent editing context bar (C7), plus an explicit Save label in the stacked candidate toolbar
+
 [2026-10-18] [PLB] [ops] Adopt emoji/project, uppercase phase, concise title and MM-DD naming; preserve manual task names and remove conflicting status-title rules

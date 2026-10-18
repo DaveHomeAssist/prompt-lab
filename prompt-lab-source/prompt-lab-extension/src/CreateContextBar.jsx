@@ -1,0 +1,117 @@
+import { arePromptSnapshotsEqual } from './lib/promptSchema.js';
+
+const sameTags = (left, right) => {
+  const a = [...(left || [])].map(String).sort();
+  const b = [...(right || [])].map(String).sort();
+  return a.length === b.length && a.every((tag, index) => tag === b[index]);
+};
+
+// What the Create editor is working on, for the context bar below. The pending
+// Library details (saveTitle, saveCollection, saveTags) are what Save will write,
+// so edits made in the details panel count as unsaved even after it closes.
+export function describeEditingContext({
+  currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+  resultMeta, variants, notes,
+}) {
+  const draft = raw ?? '';
+  const result = enhanced ?? '';
+  const hasContent = Boolean(draft.trim() || result.trim());
+  const pendingTitle = typeof saveTitle === 'string' ? saveTitle.trim() : '';
+  const pendingFolder = typeof saveCollection === 'string' ? saveCollection.trim() : undefined;
+  if (currentEntry) {
+    const contentChanged = !arePromptSnapshotsEqual(currentEntry, {
+      original: draft,
+      enhanced: result,
+      resultMeta: resultMeta === undefined ? currentEntry.resultMeta : resultMeta,
+      variants: variants === undefined ? currentEntry.variants : variants,
+      notes: notes === undefined ? currentEntry.notes : notes,
+    });
+    const savedTitle = currentEntry.title || 'Untitled prompt';
+    const savedFolder = currentEntry.collection || '';
+    const detailsChanged = (pendingTitle && pendingTitle !== savedTitle)
+      || (pendingFolder !== undefined && pendingFolder !== savedFolder)
+      || (Array.isArray(saveTags) && !sameTags(saveTags, currentEntry.tags));
+    const unsaved = contentChanged || detailsChanged;
+    return {
+      mode: 'editing',
+      heading: 'Editing saved prompt:',
+      title: pendingTitle || savedTitle,
+      folder: pendingFolder !== undefined ? pendingFolder : savedFolder,
+      unsaved,
+      saveState: unsaved ? 'Unsaved changes' : 'No unsaved changes',
+      saveBehavior: 'Save adds a new version',
+      canStartNew: true,
+    };
+  }
+  return {
+    mode: 'new',
+    heading: 'New unsaved prompt',
+    title: hasContent ? (pendingTitle || suggestedSaveTitle || 'Untitled prompt') : '',
+    folder: hasContent && pendingFolder ? pendingFolder : '',
+    unsaved: hasContent,
+    saveState: hasContent ? 'Not saved yet' : 'Empty draft',
+    saveBehavior: 'Save creates a new prompt',
+    canStartNew: hasContent,
+  };
+}
+
+/**
+ * Editing context bar — slice 2A (C7) of docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md.
+ *
+ * Always says whether Create holds a new draft or a saved prompt, which folder
+ * it belongs to, whether anything is unsaved, and what Save will do. "Start new
+ * prompt" uses the existing draft reset, which moves current work to session
+ * recovery before clearing.
+ */
+export default function CreateContextBar({
+  m, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
+  resultMeta, variants, notes,
+  openSavePanel, openSection, onStartNew, accentTextClass, accentHoverTextClass, accentBadgeClass,
+}) {
+  const context = describeEditingContext({
+    currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
+    resultMeta, variants, notes,
+  });
+  const linkClass = `min-h-8 [@media(pointer:coarse)]:min-h-11 items-center px-2 text-[11px] font-semibold transition-colors ${accentHoverTextClass}`;
+  return (
+    <section
+      aria-label="Editing context"
+      data-editing-mode={context.mode}
+      className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
+    >
+      <p className="flex items-center gap-2 min-w-0 flex-1 text-xs">
+        <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
+        {context.title && <span className={`font-semibold ${m.text} truncate min-w-0`} title={context.title}>{context.title}</span>}
+        {context.folder && (
+          <span className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${m.codeBlock} ${m.textSub}`}>
+            Folder: {context.folder}
+          </span>
+        )}
+      </p>
+      <p className="flex items-center gap-2 text-[11px] flex-wrap">
+        <span aria-live="polite" className={context.unsaved ? `rounded px-1.5 py-0.5 font-semibold ${accentBadgeClass}` : m.textMuted}>
+          {context.saveState}
+        </span>
+        {/* Phones rely on the Save buttons' own labels to keep this bar short. */}
+        <span className={`hidden sm:inline ${m.textSub}`}>{context.saveBehavior}</span>
+      </p>
+      <div className="flex items-center gap-1 shrink-0">
+        {currentEntry && (
+          <button type="button" onClick={() => openSection('library')} className={`${linkClass} hidden sm:inline-flex ${m.textAlt}`}>
+            View in Library
+          </button>
+        )}
+        {canSavePanel && (currentEntry || context.unsaved) && (
+          <button type="button" onClick={() => openSavePanel()} className={`${linkClass} hidden sm:inline-flex ${accentTextClass}`}>
+            Library Details
+          </button>
+        )}
+        {context.canStartNew && typeof onStartNew === 'function' && (
+          <button type="button" onClick={onStartNew} className={`${linkClass} inline-flex ${m.textAlt}`}>
+            Start new prompt
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
