@@ -4,7 +4,9 @@ Status: **Draft, not yet published.** This is the proposed customer policy for
 the two open billing-acceptance items (commercial refund and access policy, and
 the six-hour entitlement cache). It needs the owner's approval and a legal
 review before it is published on promptlab.tools or relied on with customers.
-Sections marked "Operator notes" are internal.
+Sections marked "Operator notes" are internal. The customer-facing draft is
+`prompt-lab-web/public/terms.html` (served at `/terms`, marked DRAFT,
+`noindex`, and not linked from the site until it is approved).
 
 ## Customer policy
 
