@@ -187,3 +187,5 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-18] [PLB] [ops] Adopt emoji/project, uppercase phase, concise title and MM-DD naming; preserve manual task names and remove conflicting status-title rules
 
 [2026-10-18] [PLB] [feature] Implement Library L1 to L8: drawer, inspector resizing, unified navigation, palettes, portable artwork and stable folders, compact/gallery views, and synchronized 1.8.0 development identity
+
+[2026-10-18] [PLB] [release] Deliver Library L1–L8 through PR170/171: drawer, inspector sizing, unified navigation, palettes, portable artwork and nested folder IDs, four views and version guards. All 16 PR171 checks and four production Library scenarios pass; MSI/NSIS/DEB/AppImage acceptance and macOS packaging pass. Retain physical/human/macOS-interaction and tagged-release gates.

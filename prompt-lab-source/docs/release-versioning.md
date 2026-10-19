@@ -129,15 +129,14 @@ number alone does not.
 | Requirement | State |
 | --- | --- |
 | Next feature release is `1.8.0` | Accepted |
-| One allowlisted version-bump script | Implemented in Library workspace controls; CI/runtime verification pending |
-| CI rejects mismatched versions | Implemented in Library workspace controls; CI/runtime verification pending |
-| Release tag must match the internal version | Implemented in Library workspace controls; CI/runtime verification pending |
-| Development UI shows version plus commit | Implemented in Library workspace controls; CI/runtime verification pending |
+| One allowlisted version-bump script | Verified by six regression tests, including Windows CRLF check/bump |
+| CI rejects mismatched versions | Version Consistency and all three shell builds passed; mismatch fixtures fail as required |
+| Release tag must match the internal version | Guard and rejection tests pass; a real tagged release has not been published |
+| Development UI shows version plus commit | Signed-in production reports `1.8.0-dev (4b9319b)` on exact PR171 deployment |
 
 The guard implementation and the tagged release are separate gates. `1.8.0`
 release promotion still requires successful workflow execution, matching artifacts
-and distribution acceptance. Documentation of the requirement is not evidence
-that the automation exists.
+and distribution acceptance. The implemented guards are verified separately from that future release.
 
 ## Acceptance checks
 

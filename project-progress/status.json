@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T00:27:26.262710+00:00",
+  "snapshotAt": "2026-10-19T01:07:30.523635+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "0a5fdd8add4d03ddf561cf3dd4a6669d203d6437",
+  "mainSha": "4b9319b2bc57ffe6e9f21a3c42fa6b70cb07f2f8",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish PR171 native/package and serialized production Library acceptance, preserving the delivered Create Slice1 receipt and all46 backlog/14plan records. Retain physical/human, tagged-release and full parent UX gates; no graphite or later feature scope is started.",
+  "nextAction": "Complete remaining Library human, physical-touch and macOS interaction acceptance. Retain future authorized tagged-release validation and full parent UX/billing/provider gates; preserve the delivered Create receipt and all 46 backlog/14 plan identities.",
   "evidence": [
     {
-      "label": "Library L1–L8 CI recovery in PR171",
-      "state": "Running",
-      "detail": "2026-10-18: PR170 deployed eda7142; signed-in Library retains 15 prompts and shows 1.8.0-dev source identity. PR171 reconciles main1f60dcc and corrects active-folder removal plus responsive/native/production fixtures. Dominic passed the complete32-test Library browser gate, nine hosted and four desktop-shell checks. Exact e153e27 CI shared1195/legacy223 passed; initial Desktop/Landing fixture failures retained. Windows job117828611838 then rejected CRLF Cargo.lock in the version guard; normalization/bump fixes plus a CRLF regression now pass all six version tests. Corrected native packages and serialized production Library acceptance remain pending. Scheduled39178875628 timed out during Library restart and subsequent session guards prevented overlap; production fixture drawer access and bounded waits/revocation verification are corrected. No physical/human or tagged-release acceptance claimed. Windows/Linux package builds succeeded on003397e, but native startup driver still waited for the removed Primary workspaces label. Head39c94cf uses shared nav-library identity; corrected native checks are rerunning. Main Create test/records PR173 is preserved.",
+      "label": "Library L1–L8 automated delivery verified",
+      "state": "Verified",
+      "detail": "2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/171"
     },
     {
@@ -528,8 +528,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
       "inPlan": false,
-      "nextAction": "Validate an authorized tagged release against its packaged artifact versions.",
-      "verification": "Windows CRLF checkouts exposed a guard parsing defect in job117828611838. Check/bump now normalize or preserve line endings; all six version tests pass on Dominic. Native build/acceptance rerun pending."
+      "nextAction": "Validate a future authorized tagged release against distributed artifact versions before Done.",
+      "verification": "Delivered in 4b9319b: all 14 distributed files agree on 1.8.0; six regression tests, Windows CRLF parsing/bump, cross-platform packages and exact-main workflows pass. Live development identity verified. No tagged release published."
     },
     {
       "id": "3d2255fc8f44816b9a5ed471be3b493d",
@@ -664,6 +664,18 @@
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     },
     {
+      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
+      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Security",
+      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
+      "inPlan": false,
+      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
+      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
+    },
+    {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
       "status": "Done",
@@ -746,18 +758,6 @@
       "inPlan": true,
       "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
       "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
-    },
-    {
-      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
-      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Editor",
-      "type": "Security",
-      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
-      "inPlan": false,
-      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
-      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
     },
     {
       "id": "3f0255fc8f44811d8794c092ba1bb88f",
@@ -852,8 +852,8 @@
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
-      "nextAction": "Pass corrected exact-head CI, merge PR171 and run serialized production Library acceptance.",
-      "verification": "2026-10-18: PR170 deployed eda7142; signed-in Library retains 15 prompts and shows 1.8.0-dev source identity. PR171 reconciles main1f60dcc and corrects active-folder removal plus responsive/native/production fixtures. Dominic passed the complete32-test Library browser gate, nine hosted and four desktop-shell checks. Exact e153e27 CI shared1195/legacy223 passed; initial Desktop/Landing fixture failures retained. Windows job117828611838 then rejected CRLF Cargo.lock in the version guard; normalization/bump fixes plus a CRLF regression now pass all six version tests. Corrected native packages and serialized production Library acceptance remain pending. Scheduled39178875628 timed out during Library restart and subsequent session guards prevented overlap; production fixture drawer access and bounded waits/revocation verification are corrected. No physical/human or tagged-release acceptance claimed. Windows/Linux package builds succeeded on003397e, but native startup driver still waited for the removed Primary workspaces label. Head39c94cf uses shared nav-library identity; corrected native checks are rerunning. Main Create test/records PR173 is preserved."
+      "nextAction": "Obtain the remaining human/physical-touch and macOS interaction acceptance; keep In progress until the full contract passes.",
+      "verification": "2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
     }
   ]
 }

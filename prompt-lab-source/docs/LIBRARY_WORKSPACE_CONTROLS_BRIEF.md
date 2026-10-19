@@ -50,4 +50,28 @@ artwork can consume storage, so cap images and preserve honest save failure UI.
 
 ## Delivery evidence — 2026-10-18
 
-PR170 merged as `eda7142`. Production `dpl_FwKqUCCuF6FxeFkNuXZdfwMt4dCo` is READY on the merge; signed-in Library shows `1.8.0-dev (eda7142)` with 15 existing prompts. Drawer collapse/reopen verified. Dominic passed 1195 shared tests, 223 legacy tests, five version tests, 32 final focused tests, 18 extension browser checks, nine hosted browser checks and four desktop-shell browser checks. The hosted keyboard fixture now expects Library after Write. GitHub merged under configured required checks while broader CI was still running; their completion is a separate gate. Native installed interaction, physical touch, tagged-release artifact validation and human acceptance remain open.
+PR170 merged as `eda7142`; PR171 merged as `4b9319b` after all 16 checks
+passed on `934ad07`. Candidate and merge source trees match
+`42d5672a458e9b32a0e71df25635ab8cfb24c53d`. Production deployment
+`dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1` is READY on the exact merge. Signed-in
+Library shows `1.8.0-dev (4b9319b)` and preserves all 15 existing prompts.
+
+Verification includes 1,195 shared tests, 223 legacy tests, 13 evaluator tests,
+six version regressions (including Windows CRLF), the complete set of 32 Library
+browser checks, nine hosted checks and four desktop-shell checks. GitHub Desktop
+run 39180860730 passed Windows MSI/NSIS and Linux DEB/AppImage installed
+retention, plus macOS universal packaging. Production run 39182361884 passed
+all four 375/1440px Library scenarios: starter loading, search/filter/reorder,
+folder removal preserving prompts, explicit import conflicts, legacy import,
+stale deletion protection, full process restart, export and reload retention.
+Synthetic QA sessions were cleaned up; no real inference or purchases occurred.
+
+Earlier failures are retained in runs 39178388110, 39178388142 and39179694257.
+Corrections cover obsolete drawer/theme/navigation fixtures, active-folder
+removal, the Windows CRLF version parser and stable native startup detection.
+Production restart actions are bounded and session revocation is checked.
+
+All 10 returned exact-main workflows passed, including the repeated native
+acceptance in run 39182308915. Physical touch,
+human acceptance, macOS interaction and an authorized tagged release remain
+open. No graphite or later Create slice is introduced by this delivery.
