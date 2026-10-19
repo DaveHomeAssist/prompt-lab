@@ -2,15 +2,41 @@
 
 ## Scope and current gaps
 
+### Current Windows and Linux package acceptance — 2026-10-19
+
+[Desktop 39211387600](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600)
+passed all six jobs on exact runtime `ea73681019365611dc94a35ff3522bfe81192fd3`.
+The downloaded final `exercise.json` and `retention.json` receipts each report
+`passed` for MSI, NSIS, DEB and AppImage. They cover actual native launch,
+loopback enhancement, save and full restart, follow-up provenance, Cancel,
+provider failure, Library search/order/collections, file import conflicts,
+completed workspace export and retained data after package replacement.
+MSI/NSIS/DEB use uninstall/reinstall; AppImage uses file replacement, despite
+the shared receipt's generic uninstall wording. The synthetic native Library
+fixture supplies a local test entitlement; it does not prove real billing.
+
+| Package | SHA-256 |
+| --- | --- |
+| MSI | `f5f8f7fb01fadd4dfd97892f6599e5216054108af8c66c86bfc4a41a349b9818` |
+| NSIS | `4362bb9d2f29ed2cc3eaa853a448972d078601dd5651524638e35fc754b9bed1` |
+| DEB | `436f573af14008be813c90543b7ab5aebebdadd8c669b6801d8c8380a772e0de` |
+| AppImage | `a97634b3edb1460cdeca220b304301e4efb17e0e814e3a8d0a43172a7a8afd33` |
+
+Candidate Desktop 39211365106 also passed. PR184 merged before these checks
+finished because the auto-merge command did not wait; these are subsequent
+candidate/main verification results, not pre-merge approvals. Prior-version
+upgrade, snapshot restore, physical interaction and human acceptance remain
+separate from this same-version package retention proof.
+
 ### Refreshed macOS package inspection — 2026-10-19
 
-The macOS artifact from [Desktop 39203966636](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39203966636)
-targets runtime merge `df5da95fa2523e552f3cb00843f0bc898a6cbca5` and declares
+The macOS artifact from [Desktop 39211387600](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600)
+targets runtime merge `ea73681019365611dc94a35ff3522bfe81192fd3` and declares
 1.8.0, bundle ID `com.promptlab.desktop`. Its binary contains both `x86_64` and
 `arm64`. The DMG SHA-256 is
-`4f5606214098fa73e116d5aa25163fab922f6933838a7073f66f7f6c2eb722d6`;
+`a2aac7d1eec8acb30a24cc725717611ae5473de39d3aab48fbe5d124a4e138b5`;
 the app archive SHA-256 is
-`2e528d952ce8a9565c5beda08effb546d3ca1e142e129535dd1e5001583ba555`.
+`daed081b857a4368b8dacd72ca56627c39fd3809a52af43e04fed2b389d7c7fe`.
 
 Bounded inspection on macOS 27.0.1 arm64 found an ad-hoc linker signature on
 the executable, no sealed app resources or team identity, and a failed strict
