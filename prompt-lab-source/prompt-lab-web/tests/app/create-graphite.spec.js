@@ -25,6 +25,12 @@ async function pane(page, name) {
 }
 
 async function checkSurface(page, label) {
+  // Theme text updates before the existing control background transitions finish.
+  await page.locator('.pl-create-graphite').evaluate(async root => {
+    const animations = root.getAnimations({ subtree: true })
+      .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime));
+    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+  });
   const bounds = await page.evaluate(() => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.documentElement.scrollHeight }));
   expect.soft(bounds.scrollWidth, label).toBeLessThanOrEqual(bounds.width);
   expect.soft(bounds.scrollHeight, label).toBeLessThanOrEqual(bounds.height);
@@ -95,6 +101,7 @@ test('graphite empty and error states retain legible controls', async ({ page },
   await expect(page.getByRole('alert').first()).toBeVisible();
   await checkSurface(page, 'Error light');
   await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+  await expect(page.locator('.pl-create-graphite')).toHaveAttribute('data-create-theme', 'dark');
   await checkSurface(page, 'Error dark');
   await page.screenshot({ path: testInfo.outputPath('graphite-error-dark-375.png') });
 });
