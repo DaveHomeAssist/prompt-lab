@@ -5,6 +5,7 @@ import path from 'node:path';
 import { chromium, expect, test } from '@playwright/test';
 import { createClerkClient } from '@clerk/backend';
 import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
+import { downloadFreeWorkspace } from './production-export.mjs';
 
 async function showLibraryDrawer(page) {
   const toggle = page.getByRole('button', { name: 'Show Library drawer', exact: true });
@@ -119,15 +120,16 @@ for (const width of [375, 1440]) {
       expect(await snapshot(page)).toEqual(before);
       verifyLegacyLibrary((await snapshot(page)).library);
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByRole('button', { name: 'Export Library', exact: true }).click();
-      const download = await downloadPromise;
-      const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
-      expect(exported.schemaVersion).toBe(2);
-      verifyLegacyLibrary(exported.library);
+      const download = await downloadFreeWorkspace(page);
+      if (download) {
+        const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+        expect(exported.schemaVersion).toBe(2);
+        verifyLegacyLibrary(exported.library);
+        console.info(`[library-restart ${width}] actual schema-2 file export verified`);
+      }
       expect(await page.evaluate(() => window.Clerk?.session?.id)).toBe(sessionId);
       expect(blocked, 'No inference, purchase or telemetry requests').toEqual([]);
-      console.info(`[library-restart ${width}] actual starter load, stale deletion, schema-1 import, process restart and schema-2 export passed`);
+      console.info(`[library-restart ${width}] actual starter load, stale deletion, schema-1 import, process restart and current Free export policy passed`);
     } finally {
       try {
         if (sessionId) {

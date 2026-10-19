@@ -260,6 +260,75 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 
 ## Slice 1 delivery
 
+### Remaining parent acceptance — 2026-10-19
+
+The serial acceptance pass resumed from main `1cf6979`, preserving the completed
+Slice 1, 2A and graphite receipts below. Both existing layouts were checked with
+synthetic data on Dominic under Node 22.22.1 and Playwright 1.61.1 with Chromium.
+An automated accessibility scan reproduced a keyboard gap after cancellation:
+the stacked desktop results scroller and split short-landscape result pane
+had no focusable descendants once their buttons disappeared. Both now have
+named regions and keyboard stops when they own scrolling; existing focus
+styles supply the visible indicators. Flowing mobile content does not gain
+an extra tab stop.
+
+The new browser regression failed before the stacked correction in both
+themes, then passed all four layout/theme cases after both corrections. It cancels a deterministic stream, verifies the abort,
+reaches results with Tab, checks visible focus and the scroll-region rule, and
+confirms the source survives. An initial test assumed results immediately
+followed Reset Draft; the existing status-bar Save sits between them. The test
+now walks a bounded sequence of real Tab presses. No cancellation, generation,
+storage or save behavior changed. Current PR CI and delivery are recorded in
+the implementation RUN; these local checks alone do not establish deployment.
+
+The final Dominic pass also completed 30 structural accessibility scans across
+empty, loading, cancelled, result and follow-up states in both layouts at
+1440×900, 375×812 and 812×375 with no violations. It exercised real result-tab
+keyboard navigation and exact selected Copy through a synthetic clipboard.
+Color contrast was excluded from this pass and retains its existing palette
+receipt; physical clipboard behavior is not inferred. The first uncorrected
+scans and the intermediate split-pane failure are retained.
+
+The correction shipped in [PR184](https://github.com/DaveHomeAssist/prompt-lab/pull/184),
+merge `ea73681019365611dc94a35ff3522bfe81192fd3`. The auto-merge command merged
+before all checks finished; subsequent candidate and exact-main CI passed,
+including Desktop 39211387600 and Landing 39211387626 (1,222 shared tests,
+25 landing and 35 hosted browser scenarios). Production Create
+[39211510446](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211510446)
+passed both authenticated scenarios on that runtime, including editing,
+candidate/assumption controls, save/reload, streaming Cancel, partial failure
+and retry; both disposable sessions were revoked and read back. Deployment
+`dpl_GU4qtn4k8cNUNGWixgKZQkRCGz3J` was READY on the exact merge.
+
+[PR185](https://github.com/DaveHomeAssist/prompt-lab/pull/185) subsequently
+merged as `160176fc9d70f65077664de0c7aabe20c3f4e259` after all six candidate
+checks and four corrected Library production scenarios passed. It repairs
+acceptance fixtures for the current Free plan's Arena, collection and export
+gates, handles download rejection inside session cleanup, and retains failure
+screenshots. Gated exports and collection removal are explicitly not claimed
+as exercised. The actual product policy and independent pricing PR183 are
+unchanged. All application source remains identical to the tested runtime;
+deployment `dpl_HdUTD6qbBYZ4hRT2wpQCbfv76nfJ` is READY on the exact merge.
+
+Final full [Production 39213547604](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39213547604)
+on `160176f` passed nine scenarios in 49.6 seconds with five opt-in skips.
+Core save/reload and layout, independent follow-up, Free routing and the four
+Library scenarios passed with disposable-session cleanup. The separate Create
+run above covers its two opt-in scenarios; no success is inferred for the
+remaining skipped scopes. All four other automatic workflows on `160176f`
+passed. The original scheduled failure and two intermediate fixture failures
+remain retained. The owned Dominic container and temporary claim were removed
+and verified absent; scratch evidence remains.
+
+The parent criteria retain their separate evidence: source/result flow and
+primary actions in the slice map below; candidate edits, assumptions, saving,
+reload, keyboard tabs and streaming recovery in production 39179972239;
+Evaluate handoff in activation 39176037165; independent follow-up provenance
+in its maintained production scenario; palette contrast in 39203966650.
+Physical touch, on-screen keyboards, screen-reader listening and full human
+acceptance remain open. This acceptance pass does not authorize later feature
+slices or a tagged release.
+
 ### Create graphite visual increment — scoped 2026-10-18
 
 D-014's Create-only graphite choice and the later hold until L4 were checked

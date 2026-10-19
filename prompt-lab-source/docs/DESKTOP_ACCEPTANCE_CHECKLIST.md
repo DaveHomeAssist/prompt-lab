@@ -2,6 +2,60 @@
 
 ## Scope and current gaps
 
+### Current Windows and Linux package acceptance — 2026-10-19
+
+[Desktop 39211387600](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600)
+passed all six jobs on exact runtime `ea73681019365611dc94a35ff3522bfe81192fd3`.
+The downloaded final `exercise.json` and `retention.json` receipts each report
+`passed` for MSI, NSIS, DEB and AppImage. They cover actual native launch,
+loopback enhancement, save and full restart, follow-up provenance, Cancel,
+provider failure, Library search/order/collections, file import conflicts,
+completed workspace export and retained data after package replacement.
+MSI/NSIS/DEB use uninstall/reinstall; AppImage uses file replacement, despite
+the shared receipt's generic uninstall wording. The synthetic native Library
+fixture supplies a local test entitlement; it does not prove real billing.
+
+| Package | SHA-256 |
+| --- | --- |
+| MSI | `f5f8f7fb01fadd4dfd97892f6599e5216054108af8c66c86bfc4a41a349b9818` |
+| NSIS | `4362bb9d2f29ed2cc3eaa853a448972d078601dd5651524638e35fc754b9bed1` |
+| DEB | `436f573af14008be813c90543b7ab5aebebdadd8c669b6801d8c8380a772e0de` |
+| AppImage | `a97634b3edb1460cdeca220b304301e4efb17e0e814e3a8d0a43172a7a8afd33` |
+
+Candidate Desktop 39211365106 also passed. PR184 merged before these checks
+finished because the auto-merge command did not wait; these are subsequent
+candidate/main verification results, not pre-merge approvals. Prior-version
+upgrade, snapshot restore, physical interaction and human acceptance remain
+separate from this same-version package retention proof.
+
+### Refreshed macOS package inspection — 2026-10-19
+
+The macOS artifact from [Desktop 39211387600](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600)
+targets runtime merge `ea73681019365611dc94a35ff3522bfe81192fd3` and declares
+1.8.0, bundle ID `com.promptlab.desktop`. Its binary contains both `x86_64` and
+`arm64`. The DMG SHA-256 is
+`a2aac7d1eec8acb30a24cc725717611ae5473de39d3aab48fbe5d124a4e138b5`;
+the app archive SHA-256 is
+`daed081b857a4368b8dacd72ca56627c39fd3809a52af43e04fed2b389d7c7fe`.
+
+Bounded inspection on macOS 27.0.1 arm64 found an ad-hoc linker signature on
+the executable, no sealed app resources or team identity, and a failed strict
+bundle signature verification. Stapler found no ticket attached to the DMG;
+this is not a claim about an online notarization service lookup. Do not label
+this artifact signed or notarized for distribution.
+
+Installed interaction was not attempted: the host has an existing 1.7.0 app,
+the package exposes no isolated profile selector, and no designated disposable
+macOS account or VM was established. Existing personal application/data were
+preserved. Install, launch, save/reopen, upgrade and snapshot restore remain
+Unknown on macOS. The earlier Windows/Linux package lifecycle receipts are
+separate evidence, not substitutes for this lane. The next native action is to
+run the exact package in a designated disposable macOS account/VM, after the
+applicable distribution/signing route is resolved. No public release or signing
+operation was performed.
+
+### Historical preparation and maintained procedure
+
 This is the executable handoff for implementation-plan issue I and the native desktop portion of J. Packaging and browser frontend checks do not close installation or operator acceptance. Run this checklist only in disposable accounts or VMs with synthetic data. No paid-provider call, public release, signing operation, personal-data deletion, or user's application uninstall is part of this checklist.
 
 The product candidate is main merge `a12b7e6fe85ff23219606e5167a5eed35b548ea5` (PR #88), containing phases 2–8. Refresh main and CI before choosing final artifacts. Later commits changing only this checklist or its operator fixture do not change the packaged application; record that distinction explicitly. Source packages declare 1.7.1; this does not create a public 1.7.1 release. Follow [release versioning](release-versioning.md) for a separately authorized release.

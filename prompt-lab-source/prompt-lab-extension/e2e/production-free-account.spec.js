@@ -143,7 +143,12 @@ test('@production signed-in Free account matches the expected billing mode', asy
 
     reportPhase('checking Model Arena access');
     await page.goto(`${appUrl.href}#/compare`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText(/Model Arena/)).toBeVisible();
+    if (billingEnabled && license.checkoutDisabled !== true) {
+      await expect(page).toHaveURL(/#\/evaluate$/);
+      await expect(page.getByText(/Model Arena/)).toHaveCount(0);
+    } else {
+      await expect(page.getByText(/Model Arena/)).toBeVisible();
+    }
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 
   } finally {
