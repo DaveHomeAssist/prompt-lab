@@ -60,3 +60,15 @@ test('build identity marks only a matching tag as a release', () => {
     assert.equal(identity.__PL_RELEASE_BUILD__, String(stable));
   }
 });
+
+test('checks and bumps Windows CRLF checkouts', () => fixture(root => {
+  for (const file of versionFiles) {
+    const path = join(root, file);
+    writeFileSync(path, readFileSync(path, 'utf8').replace(/\r?\n/g, '\r\n'));
+  }
+  const current = checkVersions(root);
+  assert.deepEqual(current.errors, []);
+  const next = `${Number(current.canonical.split('.')[0]) + 1}.0.0`;
+  bumpVersion(next, root);
+  assert.deepEqual(checkVersions(root), { canonical: next, errors: [] });
+}));

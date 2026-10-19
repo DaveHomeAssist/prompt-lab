@@ -6,6 +6,11 @@ import { chromium, expect, test } from '@playwright/test';
 import { createClerkClient } from '@clerk/backend';
 import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
 
+async function showLibraryDrawer(page) {
+  const toggle = page.getByRole('button', { name: 'Show Library drawer', exact: true });
+  if (await toggle.isVisible()) await toggle.click();
+}
+
 for (const width of [375, 1440]) {
   test(`@production Library starter and stale deletion survive process restart at ${width}px`, async () => {
     test.setTimeout(180_000);
@@ -19,6 +24,8 @@ for (const width of [375, 1440]) {
     let sessionId;
     const launch = async () => {
       context = await chromium.launchPersistentContext(profile, { headless: true, viewport: { width, height: 900 }, serviceWorkers: 'block' });
+      context.setDefaultTimeout(15_000);
+      context.setDefaultNavigationTimeout(30_000);
       await context.route('**/*', async route => {
         const category = forbiddenRequestCategory(route.request().url());
         if (category) { blocked.push(category); await route.abort('blockedbyclient'); }
@@ -68,6 +75,7 @@ for (const width of [375, 1440]) {
       await second.goto(appUrl.href);
       for (const tab of [page, second]) {
         await library(tab);
+        await showLibraryDrawer(tab);
         await tab.getByRole('button', { name: /Recently Deleted/ }).click();
         await expect(tab.getByRole('button', { name: 'Permanently delete QA discarded prompt' })).toBeVisible();
       }
@@ -88,6 +96,7 @@ for (const width of [375, 1440]) {
       // The stale-tab scenario is complete. Close its writer before the
       // independent legacy import/restart scenario captures its baseline.
       await second.close();
+      await showLibraryDrawer(page);
       await page.getByRole('button', { name: /^All prompts/ }).click();
       await page.locator('[aria-label="Import Prompt Lab workspace"]').setInputFiles({ name: 'legacy-schema-1.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacyLibraryFixture)) });
       const preview = page.getByRole('dialog', { name: 'Review Library import' });
@@ -104,6 +113,7 @@ for (const width of [375, 1440]) {
       await context.addCookies(cookies);
       await page.goto(appUrl.href);
       await library(page);
+      await showLibraryDrawer(page);
       await page.getByRole('button', { name: /^All prompts/ }).click();
       await expect(page.getByRole('list', { name: 'Saved prompts' }).getByRole('listitem')).toHaveCount(15);
       expect(await snapshot(page)).toEqual(before);
@@ -120,7 +130,11 @@ for (const width of [375, 1440]) {
       console.info(`[library-restart ${width}] actual starter load, stale deletion, schema-1 import, process restart and schema-2 export passed`);
     } finally {
       try {
-        if (sessionId) await clerk.sessions.revokeSession(sessionId);
+        if (sessionId) {
+          await clerk.sessions.revokeSession(sessionId);
+          expect((await clerk.sessions.getSession(sessionId)).status).toBe('revoked');
+          console.info(`[library-restart ${width}] disposable session revocation verified`);
+        }
         else if (task) await clerk.agentTasks.revoke(task.agentTaskId);
       } finally {
         await context?.close();
