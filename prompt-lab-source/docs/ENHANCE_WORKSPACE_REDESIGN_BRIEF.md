@@ -359,9 +359,14 @@ of Desktop39203966636.
 The prior signed-in visual proof applies to unchanged application source;
 no extra paid-provider or personal-data exercise was performed.
 
-Dominic remains unreachable through both documented routes; the interrupted
-prior-run result and old diagnostic container/claim cleanup remain unverified.
-No duplicate allocation, service change or heavy local fallback was started.
+At initial closeout Dominic was unreachable, so the interrupted diagnostic
+result and allocation cleanup were unverified. After Dominic returned on
+2026-10-19, the exact owned container was found stopped, removed, and verified
+absent. Its temporary claim was already absent. The interrupted log was also
+absent and container logs were empty, so that result remains unknown; the
+passing candidate and main CI receipts remain the acceptance evidence.
+Cleanup is complete. No other service, duplicate allocation or heavy local
+fallback was started or changed.
 The existing Notion UX/RUN/Hub records retain the full parent acceptance gaps;
 all 46 backlog rows and 14 approved plan IDs are preserved.
 
