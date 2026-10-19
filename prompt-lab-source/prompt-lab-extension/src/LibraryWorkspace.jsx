@@ -435,7 +435,10 @@ export default function LibraryWorkspace({
   };
   const deleteFolder = async folder => {
     if (folderRecords.some(item => item.parentId === folder.id)) { setFolderError('Move this folder’s subfolders before removing it. Prompts will be kept.'); return; }
-    if (await persistFolders(folderRecords.filter(item => item.id !== folder.id))) setAnnouncement('Folder removed; its prompts remain in All prompts.');
+    if (await persistFolders(folderRecords.filter(item => item.id !== folder.id))) {
+      if (lib.activeCollection === folder.collection) chooseView('all');
+      setAnnouncement('Folder removed; its prompts remain in All prompts.');
+    }
   };
   const handleNewPrompt = () => { setSelectedId(null); if (onNewPrompt) onNewPrompt(); else openSavePanel?.({ mode: 'new' }); };
 

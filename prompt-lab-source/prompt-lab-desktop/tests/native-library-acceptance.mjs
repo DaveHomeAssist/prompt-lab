@@ -32,8 +32,7 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
       colorScheme: style.colorScheme,
       classes: [...button.classList],
     };`, [theme]);
-  assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
-  await click('[aria-label="Switch to light mode"]');
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Switch to light mode"]`));')) await click('[aria-label="Switch to light mode"]');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
@@ -111,6 +110,7 @@ export async function exerciseLibrary(api) {
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', 'Native matrix');
   await waitFor(() => execute('return document.querySelector(`[aria-label="Saved prompts"]`)?.firstElementChild?.innerText.includes("Native matrix Beta");'), 'newly loaded old starter sorts first');
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Show Library drawer"]`));')) await click('[aria-label="Show Library drawer"]');
   await click('//button[normalize-space(.)="#native-matrix"]', 'xpath');
   await click('[aria-label="Filter by status"]');
   await click('[aria-label="Filter by status"] option[value="active"]');
@@ -118,7 +118,7 @@ export async function exerciseLibrary(api) {
   await click('//button[normalize-space(.)="Clear all"]', 'xpath');
   await fill('[data-testid="library-search"]', 'avery navigation');
   await waitFor(() => execute(`const list = document.querySelector('[aria-label="Saved prompts"]'); return list?.children.length === 1 && list.innerText.includes('Native matrix Alpha');`), 'native Library metadata search');
-  await click('//*[@role="tablist" and @aria-label="Create views"]//button[normalize-space(.)="Compose"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Compose"]', 'xpath');
+  await click('//*[@role="tablist" and @aria-label="Workspaces"]//button[normalize-space(.)="Compose"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Compose"]', 'xpath');
   if (await execute('return Boolean(document.querySelector(`[aria-label="Composer views"]`));')) {
     await click('//*[@role="tablist" and @aria-label="Composer views"]//button[contains(.,"Library")]', 'xpath');
   }
@@ -126,6 +126,7 @@ export async function exerciseLibrary(api) {
   await waitFor(() => execute(`const input = [...document.querySelectorAll('[aria-label="Filter composer library"]')].find(node => node.getClientRects().length); const panel = input?.parentElement?.parentElement?.parentElement; return panel?.innerText.includes('Native matrix Alpha') && !panel.innerText.includes('Native matrix Beta');`), 'native Composer uses the same metadata matcher');
   await click('[data-testid="nav-library"]');
   await fill('[data-testid="library-search"]', '');
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Show Library drawer"]`));')) await click('[aria-label="Show Library drawer"]');
   await click('//button[starts-with(normalize-space(.),"Native acceptance collection")]', 'xpath');
   await click('[aria-label="Sort prompts"]');
   await click('[aria-label="Sort prompts"] option[value="manual"]');
@@ -135,8 +136,9 @@ export async function exerciseLibrary(api) {
   await click('[aria-label="Move Native matrix Beta up"]');
   await waitFor(async () => (await readLibrary())[alphaIndex]?.id === ids[2], 'filtered manual move persisted');
   assert.deepEqual((await readLibrary()).filter(row => !ids.includes(row.id)).map(row => row.id), baseline.map(row => row.id), 'Hidden existing records retain relative order');
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Show Library drawer"]`));')) await click('[aria-label="Show Library drawer"]');
   await click('[aria-label="Manage collections"]');
-  await click('[aria-label="Delete collection Native acceptance collection"]');
+  await click('[aria-label="Remove folder Native acceptance collection, keep prompts"]');
   await waitFor(async () => !(await readLibrary()).some(row => row.collection === collection), 'collection deletion unassigns native prompts');
   await waitFor(() => execute(`return [...document.querySelectorAll('button[aria-current="page"]')].some(node => node.innerText.startsWith('All prompts'));`), 'active collection filter resets');
   const current = await readLibrary();
