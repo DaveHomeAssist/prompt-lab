@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T07:07:34Z",
+  "snapshotAt": "2026-10-19T10:18:02.134Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "160176fc9d70f65077664de0c7aabe20c3f4e259",
+  "mainSha": "f9e6f60f783eced1ba5f6fb55bb4b347966c2726",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. Preserve independent pricing PR183 and CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Pricing rollout verified in production",
+      "state": "Verified",
+      "detail": "2026-10-19: PR183 candidate 4df8f3c reviewed against current main including PR185/186 and merged f9e6f60. Required merge gate, API 101, shared 1222, legacy 229, evaluator 13, tooling 21, landing 43, landing-browser 25 and hosted-browser 35 checks pass. Walter Node 22 independently passed API/landing, 17 billing/gate and 3 extension-link tests, extension/web builds, 25 landing and 35 hosted browser scenarios (one credential-dependent local sign-in skipped). Fixed misleading legacy-renewal copy and stale annual acceptance ID. Historical failed Codex 589190f summary has no published reviews/comments/threads explaining it; independent review receipt records that limitation. Vercel dpl_HQT1HUsKUqYjJoXxcfaLZwcLnH9s READY exact f9e6f60 on promptlab.tools. Live USD 79 annual price created, USD 9 monthly unchanged and USD 99 annual preserved in legacy env; all values read back. Public 1440/375px pricing passed. Production39235873168 passed 9 with 5 opt-in skips: actual Free schema2 downloads/content/association checks at 375/1440px, Model Arena/collection gates and session cleanup. Billing39235912086 passed actual hosted Checkout USD 79/year and USD 9/month. Independent Stripe line-item/amount/interval readbacks passed; both owned sessions expired unpaid with no subscription. No real purchase, subscription migration or paid inference. Four Pro gates retained by source/focused tests. Extension link merged/built/tested; CWS publication, draft legal review and broader native/human gates remain separate. Notion Library/RUN/Hub writes read back; 46 rows/14plan identities retained. Private Next Steps Board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39235912086"
+    },
     {
       "label": "Parent keyboard and production acceptance delivered",
       "state": "Verified",
@@ -877,7 +883,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
       "nextAction": "Obtain the remaining human/physical-touch and macOS interaction acceptance; keep In progress until the full contract passes.",
-      "verification": "2026-10-19: PR185/160176f fixture aligns with current Free gates. Four Library39212882244 cases and full Production39213547604 (9pass/5skip) passed; sessions revoked/read back. Current Free export/collection gates verified without fake entitlement; gated file export and folder removal not exercised. Search/reorder/import/restart associations pass. Independent pricing PR183 unchanged; later free-export policy reactivates file assertions. 2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
+      "verification": "Pricing PR183 f9e6f60: Free JSON downloads/content and association checks passed at375/1440px in production39235873168; Pro collection gate retained. Parent stays In progress for existing human/physical/macOS acceptance. Earlier evidence retained: 2026-10-19: PR185/160176f fixture aligns with current Free gates. Four Library39212882244 cases and full Production39213547604 (9pass/5skip) passed; sessions revoked/read back. Current Free export/collection gates verified without fake entitlement; gated file export and folder removal not exercised. Search/reorder/import/restart associations pass. Independent pricing PR183 unchanged; later free-export policy reactivates file assertions. 2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
     }
   ]
 }
