@@ -141,3 +141,22 @@ values above against `billingPolicy.js`.
 - The webhook arrival log is still not deduplicated or ordered. For dispute
   events its customer key holds the dispute ID, because a dispute object has no
   customer field.
+
+## Pricing rollout receipt — 2026-10-19
+
+[PR #183](https://github.com/DaveHomeAssist/prompt-lab/pull/183) merged as
+`f9e6f60`, with the new USD 79 annual price configured in production and the
+previous USD 99 annual price retained as a legacy entitlement. USD 9 monthly
+is unchanged. No subscriptions were migrated. The billing modal distinguishes
+new subscriptions from existing annual renewal prices.
+
+[Production acceptance](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39235873168)
+verified the annual modal, actual Free JSON downloads and their contents at
+375px and 1440px, and the existing Model Arena and collection restrictions.
+Focused tests retain all four Pro gates, including batch runs and the diff viewer.
+[Unpaid checkout acceptance](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39235912086)
+opened real hosted Stripe Checkout and verified USD 79.00/year and USD 9.00/month.
+Independent Stripe readback confirmed price IDs, amounts and intervals. Both
+owned checkout sessions were expired unpaid with no subscription; no purchase
+was completed. The extension link is merged and built; this receipt does not
+establish Chrome Web Store publication or resolve the draft legal review.
