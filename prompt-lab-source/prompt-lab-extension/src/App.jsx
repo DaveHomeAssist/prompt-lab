@@ -289,7 +289,7 @@ export default function App({
   const canRunBatchCases = billing.hasFeature('batchRuns');
   const canUseDiffView = billing.hasFeature('diffView');
   const canUseAbTesting = billing.hasFeature('abTesting');
-  const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '' };
+  const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '', preserveExistingCollection: true };
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
   const kbFns = useRef({ enhance, doSave, openSavePanel, primarySave: doSave });

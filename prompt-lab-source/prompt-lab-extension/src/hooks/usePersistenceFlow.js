@@ -382,9 +382,17 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const titleValue = Object.prototype.hasOwnProperty.call(overrides, 'titleOverride')
       ? overrides.titleOverride
       : saveTitle;
-    const collectionValue = Object.prototype.hasOwnProperty.call(overrides, 'collectionOverride')
+    let collectionValue = Object.prototype.hasOwnProperty.call(overrides, 'collectionOverride')
       ? overrides.collectionOverride
       : saveCollection;
+    // Free plans can't assign collections, but saving an edit must not strip
+    // the membership an entry already has, so upgrading restores it intact.
+    if (overrides.preserveExistingCollection === true && targetId && overrides.copyAsNew !== true) {
+      const existingEntry = lib.library?.find(entry => entry.id === targetId);
+      if (existingEntry && typeof existingEntry.collection === 'string') {
+        collectionValue = existingEntry.collection;
+      }
+    }
     const metadata = {
       ...(contentSource?.metadata || lib.library?.find(entry => entry.id === targetId)?.metadata || activeEntryRef.current?.metadata || {}),
       ...(followUpOrigin && !contentSource ? { followUpOrigin } : {}),
