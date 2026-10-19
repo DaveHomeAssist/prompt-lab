@@ -73,3 +73,8 @@ test('clauses that need a legal review stay flagged while the page is a draft', 
     assert.match(all, topic, `missing legal-check flag for ${topic}`);
   }
 });
+
+test('library export is described as free on every plan, not as a Pro feature', () => {
+  assert.match(text, /JSON library export is available on every plan, including Free/);
+  assert.doesNotMatch(text, /Pro adds[^.]*export/);
+});

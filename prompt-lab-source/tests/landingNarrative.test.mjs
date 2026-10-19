@@ -111,3 +111,13 @@ test('pricing uses two plans with accurate monthly and annual math', () => {
     'Annual billing must not be presented as a third pricing tier',
   );
 });
+
+test('pricing card lists library export under Free and keeps it out of Pro', () => {
+  const freeCard = landingHtml.match(/<div class="pricing-tier">Free<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
+  const proCard = landingHtml.match(/<div class="pricing-tier">Pro<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
+  assert.match(freeCard, /JSON library export/);
+  assert.doesNotMatch(proCard, /export/i);
+  for (const feature of ['A/B Compare', 'diff viewer', 'Batch test-case runs', 'Collections']) {
+    assert.ok(proCard.includes(feature), `Pro card should list ${feature}`);
+  }
+});

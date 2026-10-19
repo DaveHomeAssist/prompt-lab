@@ -130,7 +130,8 @@ values above against `billingPolicy.js`.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
-  A/B testing, the diff viewer, batch runs, collections or library export.
+  A/B testing, the diff viewer, batch runs or collections. Library export,
+  import, preset packs and enhancement stay free on every plan.
   Free accounts keep every feature while the server reports `billingDisabled`
   or `checkoutDisabled`. The extension and desktop builds have no sign-in or
   checkout and never gate.
