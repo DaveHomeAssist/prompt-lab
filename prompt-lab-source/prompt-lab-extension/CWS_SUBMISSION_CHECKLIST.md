@@ -30,4 +30,10 @@
 - Screenshots regenerated from that build in the Free state; screenshot 5 caption no longer says "no telemetry" (opt-in analytics exists).
 - Listing copy, category (`Developer Tools`; `Productivity` is no longer selectable) and permission text updated.
 - Privacy policy source now discloses Capture Page; the live page changes only after the landing deploy.
-- Open before submit: the extension shows an Upgrade / Prompt Lab Pro dialog it cannot complete (no sign-in in the extension); the options page shows an Ollama error to users without Ollama; the Free vs Contains in-app purchases choice; the localhost Ollama decision above.
+- Open before submit: the localhost Ollama decision above.
+
+## Status 2026-10-18, later (billing UI hidden)
+
+- Extension production builds hide all billing UI (`VITE_PROMPTLAB_BILLING_UI=off`, `scripts/billing-ui-define.mjs`); Distribution → Payments: **Free**.
+- The options page probes Ollama only when Ollama is the selected provider, so a fresh install shows no Ollama error.
+- Rebuilt with `PROMPTLAB_RELEASE_TAG=v1.8.0 npm run build:cws`; all five screenshots regenerated from that build (no plan badge or Upgrade; screenshot 5 shows the default Anthropic settings with no key and no local provider configured, nothing mocked).

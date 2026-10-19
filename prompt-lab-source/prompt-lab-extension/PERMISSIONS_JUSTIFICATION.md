@@ -24,7 +24,7 @@ and saving AI prompts with the AI provider the user chooses.
 
 | Host | Justification | Used in |
 |---|---|---|
-| `https://promptlab.tools/*` | Prompt Lab's own API. Sends usage analytics events only after the user chooses Allow analytics, and Prompt Lab Pro license/checkout requests if the user opens billing. Never receives prompt text, responses, or API keys. | `src/hooks/useTelemetryState.js` (`/api/telemetry`), `src/hooks/useBillingState.js` (`/api/billing/*`), base URL in `src/lib/telemetry.js` / `src/lib/billing.js` |
+| `https://promptlab.tools/*` | Prompt Lab's own API. Receives usage analytics events only after the user chooses Allow analytics. The extension build has no billing UI and sends no billing requests. Never receives prompt text, responses, or API keys. | `src/hooks/useTelemetryState.js` (`/api/telemetry`), base URL in `src/lib/telemetry.js` |
 | `https://api.anthropic.com/*` | Sends the user's prompt to the Anthropic Messages API (`/v1/messages`) with the user's own key when Anthropic is the selected provider. | `extension/lib/providers.js` |
 | `https://api.openai.com/*` | Sends the user's prompt to the OpenAI Chat Completions API (`/v1/chat/completions`) when OpenAI is selected. | `extension/lib/providers.js` |
 | `https://generativelanguage.googleapis.com/*` | Sends the user's prompt to the Google Gemini `generateContent` endpoint when Gemini is selected. | `extension/lib/providers.js` |

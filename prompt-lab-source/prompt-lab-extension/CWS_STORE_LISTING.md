@@ -68,14 +68,15 @@ reviewer text for every permission. In short:
 - `sidePanel`: Prompt Lab runs in Chrome's side panel.
 - `activeTab` + `scripting`: the Capture Page button reads the current tab's selection, title, and URL, only when the user clicks it.
 - Provider host access: requests go only to the AI provider the user selects, plus local Ollama.
-- `promptlab.tools`: opt-in usage analytics and Prompt Lab Pro license checks.
+- `promptlab.tools`: opt-in usage analytics only (the extension build has no billing UI).
 
 ## 6. Pricing and in-app purchases
 
-All extension features are available without payment today
-(`FEATURE_GATES_ENABLED = false` in `src/lib/billing.js`). The extension still
-shows an Upgrade button and a Prompt Lab Pro dialog ($9/month, $99/year via
-Stripe), but the extension has no sign-in, so checkout stops at "Sign in to
-Prompt Lab before syncing billing." Do not advertise Pro in the listing until
-the extension can complete a purchase. Decide the dashboard's Free / Contains
-in-app purchases setting together with that UI.
+The extension is listed as **Free**. Every feature is available without
+payment, and extension builds contain no purchase path: production builds
+(`npm run build` / `npm run build:cws`) set `VITE_PROMPTLAB_BILLING_UI=off`
+(`scripts/billing-ui-define.mjs`), which removes the plan badge, the Upgrade
+button, the Settings billing card and the Prompt Lab Pro dialog. The extension
+has no sign-in, so it could not complete a checkout anyway. Pro feature gates
+never apply to extension builds. Do not mention Pro or paid plans in the
+listing. Prompt Lab Pro is sold only in the hosted web app.
