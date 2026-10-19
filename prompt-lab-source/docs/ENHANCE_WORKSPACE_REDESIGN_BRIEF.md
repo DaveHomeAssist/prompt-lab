@@ -260,6 +260,55 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 
 ## Slice 1 delivery
 
+### Hosted acceptance evidence — 2026-10-18
+
+The eight hosted criteria above have passing automated evidence on production
+`1f60dcc` with the split flag enabled. [PR #169](https://github.com/DaveHomeAssist/prompt-lab/pull/169)
+merged as `081b9b5`; [PR #172](https://github.com/DaveHomeAssist/prompt-lab/pull/172)
+merged as `1f60dcc`. They establish a 44px minimum for Create buttons, fields,
+disclosures and choice labels. Production deployment
+`dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8` is READY at that revision.
+
+[Production acceptance 39179972239](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39179972239)
+passed both scenarios in 12 seconds at test revision `9d5509f`.
+It uses synthetic candidates and intercepted provider responses; actual UI
+editing, persistence, AbortSignal cancellation and Save acknowledgements are
+exercised. Both disposable sign-in sessions were revoked and read back.
+
+| Criterion | Passing evidence |
+| --- | --- |
+| 1. Desktop layout | 1440×900, both panes usable, no overlap or document overflow in either theme. |
+| 2. Narrow layouts | 375×812, 400×800 and 768×1024, Source/Result switching, reachable Save/Refine and no document overflow. |
+| 3. Save target | Exactly one primary Save; new prompt/version and candidate labels; stable prompt ID and version increment after acknowledgement. |
+| 4. Edit retention | Source and both candidate edits survive pane/candidate/tab changes and reload; persisted content and candidate IDs match. |
+| 5. Assumptions | Count, keyboard focus into review, individual reversal and retained source verified. |
+| 6. Recovery | Visible streaming chunk, real Cancel abort, preserved source, partial failure, synthetic successful retry and Save pass. Broader CI recovery remains with the Library owner. |
+| 7. Existing records | Prompt and candidate identity/version checks pass. Scheduled run39178875628's passing 375/1440 activation scenarios supply current Library history/comparison/reload/reuse evidence; its separate Library restart failure is retained below. |
+| 8. Accessibility | Both themes, visible keyboard focus, candidate/tab keyboard interaction, live status semantics and all 16 expanded-control target scans pass at a 44px minimum. |
+
+Dominic's local browser matrix also passed both scenarios, including all four
+sizes and both themes. Phone and desktop screenshots were inspected. No paid
+provider calls, billing changes, new workflow or new schedule were introduced.
+The existing production workflow has an explicit `create-workspace` scope.
+
+Failed attempts remain part of the evidence: run39178130735 exposed the small
+targets and test selector issues. Run39179095194 attempt1 stopped before Create
+at the active-session guard after scheduled run39178875628's Library restart
+timeout. A single retry after the previous session's expiry passed recovery and
+the layout/edit checks but timed out selecting a candidate after reload.
+[PR #173](https://github.com/DaveHomeAssist/prompt-lab/pull/173) waits for the
+signed-in workspace and visible result before selecting the candidate. The
+passing run logged zero mounted workspaces before that readiness wait,
+confirming the remount race without weakening the persistence assertions.
+
+This closes the bounded hosted checklist, not the full Enhance parent issue.
+At this snapshot, main1f60dcc's Desktop39178986364 and Landing39178986318 are
+failed; [Library PR #171](https://github.com/DaveHomeAssist/prompt-lab/pull/171)
+owns their fixture/version corrections and remaining native packaging checks.
+Physical touch, screen-reader listening, macOS interaction and full parent UX
+acceptance remain separate. L4's palette implementation is merged, but this
+acceptance closeout does not start graphite or later feature slices.
+
 Built in [PR #153](https://github.com/DaveHomeAssist/prompt-lab/pull/153), off by default.
 
 - **Turning it on:** Settings → "Two-pane Create workspace" on hosted web. The choice is stored locally as `pl2-create-layout` (`stacked` or `split`). Extension and desktop do not offer it.
