@@ -3,10 +3,13 @@ import { BILLING_FEATURES } from '../src/lib/billing.js';
 
 // Keep the Free-account smoke aligned with this revision's declared policy.
 // A gated export is verified as gated, never counted as downloaded-file proof.
+export function isFreeFeatureGated(feature) {
+  return process.env.PROMPTLAB_EXPECT_BILLING_ENABLED !== 'false'
+    && Object.hasOwn(BILLING_FEATURES, feature);
+}
+
 export async function downloadFreeWorkspace(page) {
-  const exportIsPro = process.env.PROMPTLAB_EXPECT_BILLING_ENABLED !== 'false'
-    && Object.hasOwn(BILLING_FEATURES, 'export');
-  if (exportIsPro) {
+  if (isFreeFeatureGated('export')) {
     await page.getByRole('button', { name: 'Export Library (Pro)', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'Library export is a Pro feature', exact: true });
     await expect(dialog).toBeVisible();
