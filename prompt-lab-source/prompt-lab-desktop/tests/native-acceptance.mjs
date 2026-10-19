@@ -355,7 +355,7 @@ async function openSession() {
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
-  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[data-testid="nav-create"]'));`), 'native application rendered');
+  await waitFor(() => execute(`return Boolean(window.__TAURI_INTERNALS__ && document.querySelector('[data-testid="nav-library"]'));`), 'native application rendered');
   await installPageProbe();
   (evidence.libraryJournalBoots ||= []).push({ launch: launchNumber, ...await execute(`
     const mark = performance.getEntriesByName('prompt-lab:library-journal-boot').at(-1);
