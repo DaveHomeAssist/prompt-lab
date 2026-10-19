@@ -463,3 +463,45 @@ test('customer creation keeps waiting while a slow winning create is still in fl
   assert.equal(customer.id, 'cus_slow_winner');
   assert.ok(creates >= 3);
 });
+
+test('legacy annual price IDs keep Pro for existing subscribers but never reach checkout', async () => {
+  const lib = await import(pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href);
+  const config = {
+    monthlyPriceId: 'price_monthly',
+    yearlyPriceId: 'price_yearly_79',
+    legacyYearlyPriceIds: ['price_yearly_99'],
+  };
+  const map = lib.getAllowedPriceMap(config);
+  assert.equal(map.get('price_yearly_79'), 'annual');
+  assert.equal(map.get('price_yearly_99'), 'annual');
+  assert.equal(lib.resolveCheckoutPriceId(config, 'annual'), 'price_yearly_79');
+  assert.equal(lib.resolveCheckoutPriceId(config, 'monthly'), 'price_monthly');
+
+  const record = lib.normalizeBillingRecord({
+    customer: { id: 'cus_legacy', email: 'legacy@example.com' },
+    subscriptions: [{ id: 'sub_legacy', status: 'active', items: { data: [{ price: { id: 'price_yearly_99' } }] } }],
+    config,
+  });
+  assert.equal(record.plan, 'pro');
+  assert.equal(record.billingPeriod, 'annual');
+  assert.equal(record.priceId, 'price_yearly_99');
+
+  const unrelated = lib.normalizeBillingRecord({
+    customer: { id: 'cus_other' },
+    subscriptions: [{ id: 'sub_other', status: 'active', items: { data: [{ price: { id: 'price_other' } }] } }],
+    config,
+  });
+  assert.equal(unrelated.plan, 'free');
+});
+
+test('STRIPE_LEGACY_YEARLY_PRICE_IDS is parsed as a comma-separated list', async () => {
+  const previous = process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS;
+  process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS = ' price_a , ,price_b ';
+  try {
+    const lib = await import(pathToFileURL(path.join(sourceDir, 'api', '_lib', 'stripeBilling.js')).href);
+    assert.deepEqual(lib.buildStripeConfig().legacyYearlyPriceIds, ['price_a', 'price_b']);
+  } finally {
+    if (typeof previous === 'undefined') delete process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS;
+    else process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS = previous;
+  }
+});

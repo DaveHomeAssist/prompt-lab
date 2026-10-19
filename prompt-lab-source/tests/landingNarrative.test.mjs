@@ -99,9 +99,11 @@ test('pricing uses two plans with accurate monthly and annual math', () => {
   expectLandingToMatch(/\bFree\b/);
   expectLandingToMatch(/\bPro\b/);
   expectLandingToMatch(/\$\s*9(?:\.00)?/);
-  expectSourceToMatch(/proPrice\.textContent\s*=\s*["']99["']/);
-  expectSourceToMatch(/\$8\.25 effective monthly/i);
-  expectSourceToMatch(/save \$9\/year/i);
+  expectSourceToMatch(/proPrice\.textContent\s*=\s*["']79["']/);
+  // $79/12 = $6.58; 12 x $9 - $79 = $29 saved.
+  expectSourceToMatch(/\$6\.58 effective monthly/i);
+  expectSourceToMatch(/save \$29\/year/i);
+  assert.equal(/proPrice\.textContent\s*=\s*["']99["']/.test(landingHtml), false, "old $99 annual price must be gone");
   expectLandingNotToMatch(/2 months free/i);
   assert.equal(
     /class="pricing-tier"[^>]*>\s*Annual\s*</i.test(landingHtml),

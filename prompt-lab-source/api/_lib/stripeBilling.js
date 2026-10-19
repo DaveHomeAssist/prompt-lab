@@ -117,6 +117,12 @@ export function buildStripeConfig() {
     webhookSecret: readStringEnv('STRIPE_WEBHOOK_SECRET'),
     monthlyPriceId: readStringEnv('STRIPE_MONTHLY_PRICE_ID', 'STRIPE_PRICE_ID_MONTHLY', 'STRIPE_PRICE_ID'),
     yearlyPriceId: readStringEnv('STRIPE_YEARLY_PRICE_ID', 'STRIPE_PRICE_ID_YEARLY', 'STRIPE_ANNUAL_PRICE_ID'),
+    // Earlier annual prices (USD 99 before the 2026-10 change). They still grant
+    // Pro to existing subscribers but are never offered at checkout.
+    legacyYearlyPriceIds: readStringEnv('STRIPE_LEGACY_YEARLY_PRICE_IDS')
+      .split(',')
+      .map((priceId) => priceId.trim())
+      .filter(Boolean),
     successUrl: readStringEnv('STRIPE_CHECKOUT_SUCCESS_URL', 'STRIPE_SUCCESS_URL') || DEFAULT_SUCCESS_URL,
     cancelUrl: readStringEnv('STRIPE_CHECKOUT_CANCEL_URL', 'STRIPE_CANCEL_URL') || DEFAULT_CANCEL_URL,
     portalReturnUrl: readStringEnv('STRIPE_PORTAL_RETURN_URL') || DEFAULT_PORTAL_RETURN_URL,
@@ -129,6 +135,8 @@ export function getAllowedPriceMap(config = buildStripeConfig()) {
     [
       [config.monthlyPriceId, 'monthly'],
       [config.yearlyPriceId, 'annual'],
+      ...(Array.isArray(config.legacyYearlyPriceIds) ? config.legacyYearlyPriceIds : [])
+        .map((priceId) => [priceId, 'annual']),
     ].filter(([priceId]) => Boolean(priceId)),
   );
 }

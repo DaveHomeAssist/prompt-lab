@@ -48,8 +48,9 @@ test('terms cover every required topic', () => {
 
 test('terms state the same prices as checkout', () => {
   assert.match(billingModal, /\$9\/month/);
-  assert.match(billingModal, /\$99\/year/);
-  assert.match(text, /USD 9 per month or USD 99 per year/);
+  assert.match(billingModal, /\$79\/year/);
+  assert.doesNotMatch(billingModal, /\$99\/year/);
+  assert.match(text, /USD 9 per month or USD 79 per year/);
 });
 
 test('terms match the billing policy: refunds, disputes and device checks', () => {

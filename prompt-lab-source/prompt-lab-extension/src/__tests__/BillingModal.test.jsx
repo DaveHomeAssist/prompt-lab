@@ -59,7 +59,7 @@ describe('BillingModal landing period handoff', () => {
     });
     expect(requestedButton).toHaveAttribute('data-requested', 'true');
     expect(requestedButton).toHaveTextContent('Selected on pricing page');
-    expect(requestedButton).toHaveTextContent(period === 'monthly' ? '$9/month' : '$99/year');
+    expect(requestedButton).toHaveTextContent(period === 'monthly' ? '$9/month' : '$79/year');
     expect(billing.startCheckout).not.toHaveBeenCalled();
 
     fireEvent.click(requestedButton);
@@ -197,7 +197,7 @@ describe('BillingModal billing policy disclosure', () => {
   it('states renewal, cancellation and refund terms next to checkout', () => {
     render(<BillingModal m={theme} billing={createBilling()} onClose={vi.fn()} />);
     const terms = screen.getByTestId('billing-terms');
-    expect(terms).toHaveTextContent('renews automatically at $9/month or $99/year until you cancel');
+    expect(terms).toHaveTextContent('renews automatically at $9/month or $79/year until you cancel');
     expect(terms).toHaveTextContent('Cancel anytime in Manage Purchases');
     expect(terms).toHaveTextContent('until the end of the period you paid for');
     expect(terms).toHaveTextContent('within 14 days of your first payment or an annual renewal');
