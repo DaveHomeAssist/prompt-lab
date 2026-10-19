@@ -1,5 +1,6 @@
 import { checkVersions } from '../scripts/check-version-consistency.mjs';
 import { buildIdentity } from '../scripts/build-identity.mjs';
+import { billingUiDefine } from './scripts/billing-ui-define.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -7,8 +8,9 @@ import { resolve } from 'path';
 const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
-export default defineConfig({
-  define: buildIdentity(),
+// Extension production builds hide billing UI; see scripts/billing-ui-define.mjs.
+export default defineConfig(({ command }) => ({
+  define: { ...buildIdentity(), ...billingUiDefine(command) },
   plugins: [react()],
   build: {
     outDir: 'dist',
@@ -40,4 +42,4 @@ export default defineConfig({
     maxWorkers: 1,
     minWorkers: 1,
   },
-});
+}));

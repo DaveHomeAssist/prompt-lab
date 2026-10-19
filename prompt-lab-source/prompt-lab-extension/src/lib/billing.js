@@ -78,6 +78,16 @@ export function isOwnerAccessAvailable() {
   return ownerAccessEnabled;
 }
 
+// Build flag: the Chrome extension has no sign-in, so Upgrade/checkout can
+// never complete there. vite.config.js sets VITE_PROMPTLAB_BILLING_UI=off for
+// extension production builds (npm run build / build:cws); the hosted web app
+// and desktop builds use their own configs and keep billing UI. Read at call
+// time so tests can stub it.
+export function isBillingUiEnabled() {
+  if (typeof import.meta === 'undefined') return true;
+  return import.meta.env?.VITE_PROMPTLAB_BILLING_UI !== 'off';
+}
+
 export function createOwnerBillingState() {
   return normalizeBillingState({
     plan: PLAN_PRO,
