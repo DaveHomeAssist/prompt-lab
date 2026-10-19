@@ -268,8 +268,9 @@ no email addresses, test Visa payment methods, subscriptions and test clocks.
 For each period it verifies Free before purchase, a paid activation invoice and
 Pro access, a distinct paid renewal invoice and extended period, partial and
 full refunds, Pro until scheduled cancellation takes effect, then Free with no
-extra charge. Refund alone retains active access under the current policy;
-refund and cancellation are separate actions. Assertions are exact, including
+extra charge. Refund alone retains active access: the lookup reads
+subscription status only. The draft [billing policy](billing-policy.md) pairs a
+full refund with immediate cancellation in the Stripe Dashboard. Assertions are exact, including
 the existing `annual` entitlement value.
 
 Cleanup deletes only the clocks created in that run (and their test customers
@@ -319,9 +320,11 @@ access and reloads; annual lifecycle remains API coverage. No refund/access
 policy decision or broader production readiness is implied. Sessions, CLI
 listener, test objects and ephemeral store are cleaned up at the end.
 
-The existing UI caches a recently validated Pro entitlement for six hours.
-Cancellation browser acceptance uses Settings → Manage Billing → Refresh Status,
-then reloads and asserts Free. Reload alone is not immediate revocation proof.
+The UI caches a recently validated Pro entitlement for six hours, re-checks
+open tabs on that schedule, and limits cached Pro to seven days without a
+successful check ([billing policy](billing-policy.md)). Cancellation browser
+acceptance uses Settings → Manage Billing → Refresh Status, then reloads and
+asserts Free. Reload alone is not immediate revocation proof.
 
 On 2026-10-14, [run 38623592581](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/38623592581)
 passed the isolated integration at `9fd4a1d`: all 13 API lifecycle checks, monthly

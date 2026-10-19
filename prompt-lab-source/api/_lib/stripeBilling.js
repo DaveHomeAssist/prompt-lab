@@ -6,6 +6,9 @@ const DEFAULT_CANCEL_URL = 'https://promptlab.tools/app/?billing=cancelled';
 const DEFAULT_PORTAL_RETURN_URL = 'https://promptlab.tools/app/';
 const DEFAULT_STORAGE_PREFIX = 'promptlab:stripe';
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
+// Statuses that still grant Pro or can still be charged. A disputed customer's
+// Prompt Lab subscriptions in these states are canceled (docs/billing-policy.md).
+const DISPUTE_CANCELABLE_STATUSES = new Set(['active', 'trialing', 'past_due', 'unpaid', 'incomplete']);
 const STRIPE_TIMEOUT_MS = 5000;
 const REDIS_TIMEOUT_MS = 2000;
 // Waits after an in-flight 409: about 3.75s in total, which covers a slow
@@ -571,6 +574,68 @@ export function buildStripeWebhookRecord(payload = {}, config = buildStripeConfi
     rawType: String(payload?.type || ''),
     payload,
   };
+}
+
+function objectId(value) {
+  if (typeof value === 'string') return value.trim();
+  return String(value?.id || '').trim();
+}
+
+function isAlreadyCanceledError(error) {
+  return (error?.status === 400 || error?.status === 404)
+    && /already been canceled|already canceled|No such subscription/i.test(error?.message || '');
+}
+
+// Billing policy (docs/billing-policy.md): when a customer opens a card dispute
+// (chargeback or inquiry) on a payment, their Prompt Lab subscription is canceled
+// immediately, which ends Pro on the next license check and stops further
+// charges. Only subscriptions on configured Prompt Lab prices that existed when
+// the dispute was opened are touched, so a later resubscription survives a
+// delayed or retried delivery of the same event. All other events are recorded
+// only; refunds do not change access by themselves.
+export async function applyWebhookAccessPolicy(payload = {}, config = buildStripeConfig()) {
+  const eventType = String(payload?.type || '').trim().toLowerCase();
+  if (eventType !== 'charge.dispute.created') return { action: 'none' };
+
+  const dispute = payload?.data?.object || {};
+  const disputeId = objectId(dispute);
+  let customerId = objectId(dispute?.charge?.customer);
+  if (!customerId) {
+    const chargeId = objectId(dispute?.charge);
+    if (!chargeId) return { action: 'none', reason: 'dispute has no charge' };
+    const charge = await stripeRequest(config, `charges/${encodeURIComponent(chargeId)}`);
+    customerId = objectId(charge?.customer);
+  }
+  if (!customerId) return { action: 'none', reason: 'disputed charge has no customer' };
+
+  const allowedPriceMap = getAllowedPriceMap(config);
+  const disputeCreated = Number(dispute?.created);
+  const subscriptions = await listSubscriptions(config, customerId);
+  const targets = subscriptions.filter((subscription) => {
+    const candidate = buildSubscriptionCandidate(subscription, allowedPriceMap);
+    if (!candidate || !DISPUTE_CANCELABLE_STATUSES.has(candidate.status)) return false;
+    const subscriptionCreated = Number(subscription?.created);
+    return !Number.isFinite(disputeCreated) || !Number.isFinite(subscriptionCreated)
+      || subscriptionCreated <= disputeCreated;
+  });
+
+  const canceled = [];
+  for (const subscription of targets) {
+    const params = new URLSearchParams();
+    params.set('cancellation_details[comment]', `prompt-lab billing policy: payment disputed (${disputeId || 'dispute'})`);
+    try {
+      await stripeRequest(config, `subscriptions/${encodeURIComponent(subscription.id)}?${params.toString()}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      if (!isAlreadyCanceledError(error)) throw error;
+    }
+    canceled.push(String(subscription.id));
+  }
+
+  return canceled.length > 0
+    ? { action: 'canceled', reason: 'payment disputed', customerId, subscriptionIds: canceled }
+    : { action: 'none', reason: 'no cancelable Prompt Lab subscription', customerId };
 }
 
 export async function persistStripeWebhookRecord(record, config = buildStripeConfig()) {

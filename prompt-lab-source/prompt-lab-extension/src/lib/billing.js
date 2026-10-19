@@ -1,8 +1,11 @@
 import { isExtension } from './platform.js';
+import { BILLING_OFFLINE_GRACE_DAYS } from './billingPolicy.js';
 
 export const PLAN_FREE = 'free';
 export const PLAN_PRO = 'pro';
 export const BILLING_STATUS_OWNER = 'owner';
+// Cached Pro outlived the offline grace window without a successful check.
+export const BILLING_STATUS_VERIFICATION_EXPIRED = 'verification_expired';
 export const PRELAUNCH_OPEN_ACCESS_COPY = 'All workflow features are available during prelaunch. Purchases are temporarily unavailable.';
 
 export const BILLING_FEATURES = Object.freeze({
@@ -63,6 +66,7 @@ export function createDefaultBillingState() {
     customerEmail: '',
     customerName: '',
     lastValidatedAt: '',
+    lastVerifiedAt: '',
     validationError: '',
     manageUrl: '',
     billingDisabled: false,
@@ -119,6 +123,7 @@ export function normalizeBillingState(value = {}) {
     customerEmail: typeof value?.customerEmail === 'string' ? value.customerEmail : '',
     customerName: typeof value?.customerName === 'string' ? value.customerName : '',
     lastValidatedAt: typeof value?.lastValidatedAt === 'string' ? value.lastValidatedAt : '',
+    lastVerifiedAt: typeof value?.lastVerifiedAt === 'string' ? value.lastVerifiedAt : '',
     validationError: typeof value?.validationError === 'string' ? value.validationError : '',
     manageUrl: typeof value?.manageUrl === 'string' ? value.manageUrl : '',
     billingDisabled: value?.billingDisabled === true,
@@ -189,6 +194,8 @@ export function describeBillingStatus(state) {
       return 'This Prompt Lab Pro subscription has been canceled.';
     case 'unpaid':
       return 'Stripe reports this subscription as unpaid.';
+    case BILLING_STATUS_VERIFICATION_EXPIRED:
+      return `Pro is paused on this device because billing could not be verified for ${BILLING_OFFLINE_GRACE_DAYS} days. Refresh Status when you are back online.`;
     case 'error':
       return state.validationError || 'Billing could not be verified.';
     default:

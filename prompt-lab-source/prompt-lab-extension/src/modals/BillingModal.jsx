@@ -285,6 +285,14 @@ export default function BillingModal({
         </div>
         )}
 
+        {!billing.billingDisabled && !billing.checkoutDisabled && (
+          <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
+            Pro renews automatically at $9/month or $99/year until you cancel. Cancel anytime in Manage Purchases;
+            Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
+            your first payment or an annual renewal, and a refund ends Pro.
+          </p>
+        )}
+
         {billing.ownerAccessAvailable && billing.plan !== 'pro' && (
           <div className={`mt-4 rounded-xl border p-3 ${m.surface} ${m.border}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

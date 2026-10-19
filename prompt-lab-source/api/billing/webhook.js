@@ -1,4 +1,5 @@
 import {
+  applyWebhookAccessPolicy,
   buildStripeConfig,
   buildStripeWebhookRecord,
   corsRejectionResponse,
@@ -43,7 +44,16 @@ async function webhookHandler(request) {
     const payload = JSON.parse(rawBody || '{}');
     const record = buildStripeWebhookRecord(payload, config);
     const result = await persistStripeWebhookRecord(record, config);
-    return jsonResponse({ ok: true, mode: result.mode }, 200, {}, request);
+    let access;
+    try {
+      access = await applyWebhookAccessPolicy(payload, config);
+    } catch (error) {
+      // The event is recorded, but access enforcement did not finish. A non-2xx
+      // answer makes Stripe redeliver it; the arrival log may repeat the entry.
+      const status = isExternalFetchTimeout(error) ? 504 : 502;
+      return jsonResponse({ error: error.message || 'Could not apply billing access policy.', retryable: true }, status, {}, request);
+    }
+    return jsonResponse({ ok: true, mode: result.mode, access: access.action }, 200, {}, request);
   } catch (error) {
     const status = isExternalFetchTimeout(error) ? 504 : 400;
     return jsonResponse({ error: error.message || 'Could not process webhook.' }, status, {}, request);

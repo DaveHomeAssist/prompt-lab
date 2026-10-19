@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import useBillingState from '../hooks/useBillingState.js';
+import useBillingState, { applyFailedValidation } from '../hooks/useBillingState.js';
+import { BILLING_OFFLINE_GRACE_MS, BILLING_REVALIDATE_AFTER_MS } from '../lib/billingPolicy.js';
 
 describe('useBillingState', () => {
   const originalFetch = global.fetch;
@@ -512,5 +513,137 @@ describe('useBillingState', () => {
     expect(global.fetch).not.toHaveBeenCalled();
     expect(window.open).not.toHaveBeenCalled();
     expect(notify).toHaveBeenCalledWith('Owner Pro access is managed by Prompt Lab owner settings.');
+  });
+});
+
+describe('useBillingState entitlement cache policy', () => {
+  const originalFetch = global.fetch;
+  const HOUR = 60 * 60 * 1000;
+  const DAY = 24 * HOUR;
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    global.fetch = originalFetch;
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('pins the documented six-hour cache and seven-day offline grace', () => {
+    expect(BILLING_REVALIDATE_AFTER_MS).toBe(6 * HOUR);
+    expect(BILLING_OFFLINE_GRACE_MS).toBe(7 * DAY);
+  });
+
+  it('keeps cached Pro offline within the grace window and pauses it afterwards', () => {
+    const now = Date.parse('2026-10-18T12:00:00Z');
+    const cached = { plan: 'pro', status: 'active', customerId: 'cus_123', billingPeriod: 'monthly' };
+    const error = new Error('Billing service unavailable.');
+
+    const within = applyFailedValidation({ ...cached, lastVerifiedAt: new Date(now - 6 * DAY).toISOString() }, error, now);
+    expect(within.plan).toBe('pro');
+    expect(within.status).toBe('offline');
+
+    const expired = applyFailedValidation({ ...cached, lastVerifiedAt: new Date(now - 8 * DAY).toISOString() }, error, now);
+    expect(expired.plan).toBe('free');
+    expect(expired.status).toBe('verification_expired');
+    expect(expired.customerId).toBe('cus_123');
+    expect(expired.lastVerifiedAt).toBe(new Date(now - 8 * DAY).toISOString());
+    expect(expired.lastValidatedAt).toBe(new Date(now).toISOString());
+  });
+
+  it('anchors legacy caches once so repeated failures cannot extend the grace window', () => {
+    const now = Date.parse('2026-10-18T12:00:00Z');
+    const legacyStamp = new Date(now - 5 * DAY).toISOString();
+    const error = new Error('offline');
+    const first = applyFailedValidation({ plan: 'pro', status: 'active', customerId: 'cus_123', lastValidatedAt: legacyStamp }, error, now);
+    expect(first.status).toBe('offline');
+    expect(first.lastVerifiedAt).toBe(legacyStamp);
+
+    const later = applyFailedValidation(first, error, now + 3 * DAY);
+    expect(later.plan).toBe('free');
+    expect(later.status).toBe('verification_expired');
+  });
+
+  it('never expires owner access and leaves Free failures as errors', () => {
+    const now = Date.now();
+    const owner = applyFailedValidation({ plan: 'pro', status: 'owner', billingPeriod: 'owner', lastValidatedAt: new Date(now - 30 * DAY).toISOString() }, new Error('x'), now);
+    expect(owner.plan).toBe('pro');
+    const free = applyFailedValidation({ plan: 'free', status: 'free', customerId: 'cus_1' }, new Error('x'), now);
+    expect(free.plan).toBe('free');
+    expect(free.status).toBe('error');
+    expect(free.lastVerifiedAt).toBe('');
+  });
+
+  it('pauses stale cached Pro on load when billing stays unreachable past the grace window', async () => {
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'pro',
+      status: 'active',
+      customerEmail: 'user@example.com',
+      customerId: 'cus_123',
+      lastValidatedAt: new Date(Date.now() - 8 * DAY).toISOString(),
+      lastVerifiedAt: new Date(Date.now() - 8 * DAY).toISOString(),
+    }));
+    global.fetch = vi.fn(async () => { throw new Error('Billing service unavailable.'); });
+
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn() }));
+
+    await waitFor(() => expect(result.current.status).toBe('verification_expired'));
+    expect(result.current.plan).toBe('free');
+    expect(result.current.statusCopy).toMatch(/could not be verified for 7 days/);
+  });
+
+  it('stamps lastVerifiedAt only on a successful server answer', async () => {
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      ok: true, plan: 'pro', status: 'active', billingPeriod: 'monthly', customerId: 'cus_123',
+    }), { status: 200 }));
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkGetToken }));
+
+    await act(async () => { await result.current.activateLicense('user@example.com'); });
+    const verifiedAt = result.current.lastVerifiedAt;
+    expect(Date.parse(verifiedAt)).toBeGreaterThan(0);
+
+    global.fetch = vi.fn(async () => { throw new Error('offline'); });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await act(async () => { await result.current.refreshLicense({ silent: true }); });
+    expect(result.current.status).toBe('offline');
+    expect(result.current.plan).toBe('pro');
+    expect(result.current.lastVerifiedAt).toBe(verifiedAt);
+    expect(Date.parse(result.current.lastValidatedAt)).toBeGreaterThan(Date.parse(verifiedAt));
+  });
+
+  it('re-checks a long-lived tab after six hours without a reload', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date('2026-10-18T12:00:00Z'));
+    const stamp = new Date().toISOString();
+    localStorage.setItem('pl2-billing', JSON.stringify({
+      plan: 'pro', status: 'active', billingPeriod: 'monthly', customerId: 'cus_123',
+      customerEmail: 'user@example.com', lastValidatedAt: stamp, lastVerifiedAt: stamp,
+    }));
+    global.fetch = vi.fn(async () => new Response(JSON.stringify({
+      ok: true, plan: 'free', status: 'canceled', customerId: 'cus_123',
+    }), { status: 200 }));
+    const clerkGetToken = vi.fn(async () => 'clerk-token');
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkGetToken }));
+    const settle = async () => {
+      for (let i = 0; i < 5; i += 1) {
+        // setTimeout stays real here, so this drains pending fetch promises.
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+      }
+    };
+
+    await act(async () => { vi.advanceTimersByTime(5 * HOUR); });
+    await settle();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(result.current.plan).toBe('pro');
+
+    await act(async () => { vi.advanceTimersByTime(HOUR + 16 * 60 * 1000); });
+    await settle();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(result.current.plan).toBe('free');
+    expect(result.current.status).toBe('canceled');
   });
 });
