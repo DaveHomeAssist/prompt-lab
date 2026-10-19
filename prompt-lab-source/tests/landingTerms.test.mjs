@@ -48,8 +48,9 @@ test('terms cover every required topic', () => {
 
 test('terms state the same prices as checkout', () => {
   assert.match(billingModal, /\$9\/month/);
-  assert.match(billingModal, /\$99\/year/);
-  assert.match(text, /USD 9 per month or USD 99 per year/);
+  assert.match(billingModal, /\$79\/year/);
+  assert.doesNotMatch(billingModal, /\$99\/year/);
+  assert.match(text, /USD 9 per month or USD 79 per year/);
 });
 
 test('terms match the billing policy: refunds, disputes and device checks', () => {
@@ -71,4 +72,9 @@ test('clauses that need a legal review stay flagged while the page is a draft', 
   for (const topic of [/withdrawal/i, /Automatic Renewal Law/, /click-to-cancel/, /VAT/, /hi@promptlab\.tools/]) {
     assert.match(all, topic, `missing legal-check flag for ${topic}`);
   }
+});
+
+test('library export is described as free on every plan, not as a Pro feature', () => {
+  assert.match(text, /JSON library export is available on every plan, including Free/);
+  assert.doesNotMatch(text, /Pro adds[^.]*export/);
 });

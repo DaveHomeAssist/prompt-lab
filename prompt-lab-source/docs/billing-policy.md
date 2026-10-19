@@ -13,8 +13,10 @@ Sections marked "Operator notes" are internal. The customer-facing draft is
 ### Plans and renewal
 
 Prompt Lab Pro is sold as a subscription through Stripe Checkout: USD 9 per
-month or USD 99 per year. A subscription renews automatically at the end of
-each period at the same price until you cancel. Stripe processes payments;
+month or USD 79 per year (USD 99 per year before the 2026-10 price change). A
+subscription renews automatically at the end of each period at the price it
+was bought at until you cancel; existing USD 99 annual subscriptions keep that
+price. Stripe processes payments;
 Prompt Lab does not store card details.
 
 ### Cancelling
@@ -128,7 +130,8 @@ values above against `billingPolicy.js`.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
-  A/B testing, the diff viewer, batch runs, collections or library export.
+  A/B testing, the diff viewer, batch runs or collections. Library export,
+  import, preset packs and enhancement stay free on every plan.
   Free accounts keep every feature while the server reports `billingDisabled`
   or `checkoutDisabled`. The extension and desktop builds have no sign-in or
   checkout and never gate.

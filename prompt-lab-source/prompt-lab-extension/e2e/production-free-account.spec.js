@@ -124,7 +124,7 @@ test('@production signed-in Free account matches the expected billing mode', asy
       await expect(billingDialog.getByRole('button', { name: /Go Pro Monthly/ })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: /Go Pro Annual/ })).toBeEnabled();
       await expect(billingDialog.getByText('$9/month via Stripe', { exact: true })).toBeVisible();
-      await expect(billingDialog.getByText('$99/year, best value', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByText('$79/year, save $29', { exact: true })).toBeVisible();
       await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeEnabled();

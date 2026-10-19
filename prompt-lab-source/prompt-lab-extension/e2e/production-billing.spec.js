@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 import { forbiddenRequestCategory, isProductionLicenseResponse, readProductionFreeSmokeConfig } from './production-auth.mjs';
 
 // Explicit manual scope only: scheduled Library smoke must never create checkouts.
-test('@production authenticated billing creates unpaid checkout and portal sessions', async ({ page }) => {
+test('@production authenticated billing creates unpaid checkout and portal sessions', async ({ page, browser }) => {
   test.skip(process.env.PROMPTLAB_BILLING_CHECKOUT_SMOKE !== 'true', 'Requires explicit billing scope.');
   test.setTimeout(90_000);
   const { appUrl, clerkSecretKey, clerkUserId } = readProductionFreeSmokeConfig();
@@ -42,9 +42,9 @@ test('@production authenticated billing creates unpaid checkout and portal sessi
     expect(before.plan).toBe('free');
     expect(before.billingDisabled).not.toBe(true);
 
-    for (const [period, priceId] of [
-      ['monthly', 'price_1TM8l1AsNArhoaC1UZ0IATWJ'],
-      ['annual', 'price_1TM8l1AsNArhoaC1J8otOv5p'],
+    for (const [period, priceId, dollars] of [
+      ['monthly', 'price_1TM8l1AsNArhoaC1UZ0IATWJ', '9'],
+      ['annual', 'price_1USDLGAsNArhoaC1xLbo1eqv', '79'],
     ]) {
       const response = await page.request.post(`${appUrl.origin}/api/billing/checkout`, {
         headers, data: { period, source: 'billing-restoration-smoke-20261012' },
@@ -57,6 +57,18 @@ test('@production authenticated billing creates unpaid checkout and portal sessi
       expect(result.customerId).toBe(before.customerId);
       expect(new URL(result.url).origin).toBe('https://checkout.stripe.com');
       expect(result.checkoutSessionId).toMatch(/^cs_live_/);
+      // A separate, empty context can render Stripe's hosted quote. The app's
+      // request guard stays intact. Never fill or submit any payment fields.
+      const quoteContext = await browser.newContext();
+      try {
+        const quote = await quoteContext.newPage();
+        await quote.goto(result.url, { waitUntil: 'domcontentloaded' });
+        await expect(quote.locator('body')).toContainText(new RegExp(`\\$${dollars}\\.00`));
+        await expect(quote.locator('body')).toContainText(period === 'annual' ? /per year/i : /per month/i);
+        console.info(`[billing-smoke] ${period} hosted Checkout displays USD ${dollars}.00`);
+      } finally {
+        await quoteContext.close();
+      }
       // IDs identify only the synthetic QA sessions for immediate API expiration.
       // Checkout/portal URLs and authentication tokens must never enter logs.
       console.info(`[billing-smoke] ${period} unpaid session ${result.checkoutSessionId}`);

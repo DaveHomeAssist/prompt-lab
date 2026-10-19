@@ -231,7 +231,7 @@ test('critical landing controls work through the tab order without pointer input
   await page.keyboard.press('ArrowRight');
   await expect(annual).toBeChecked();
   await expect(annual).toBeFocused();
-  await expect(page.locator('#proPrice')).toContainText('99');
+  await expect(page.locator('#proPrice')).toContainText('79');
   await expect(page.locator('#proCta')).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
 
   const firstQuestion = page.locator('#faq summary').first();
@@ -670,11 +670,11 @@ test('billing-period radios update displayed pricing and the explicit app handof
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=monthly&source=landing-pricing');
 
   await page.locator('label[for="billingAnnual"]').click();
-  await expect(price).toContainText('99');
+  await expect(price).toContainText('79');
   await expect(period).toContainText(/year/i);
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
-  await expect(page.locator('#pricing')).toContainText('$8.25');
-  await expect(page.locator('#pricing')).toContainText(/Save \$9\/year/i);
+  await expect(page.locator('#pricing')).toContainText('$6.58');
+  await expect(page.locator('#pricing')).toContainText(/Save \$29\/year/i);
 
   await page.locator('label[for="billingMonthly"]').click();
   await expect(price).toContainText('9');

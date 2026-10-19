@@ -147,6 +147,13 @@ copy without changing a Stripe price. The legacy `STRIPE_PRICE_ID` was invalid;
 production now explicitly sets `STRIPE_MONTHLY_PRICE_ID` and
 `STRIPE_YEARLY_PRICE_ID`.
 
+Annual price change (pricing v2, proposed 2026-10-18): new annual checkouts use
+a new USD 79 yearly price set in `STRIPE_YEARLY_PRICE_ID`. The old USD 99
+yearly price ID moves to `STRIPE_LEGACY_YEARLY_PRICE_IDS` (comma-separated) so
+existing annual subscribers keep Pro, dispute handling and correct
+`billingPeriod`; legacy IDs are never offered at checkout. Dashboard steps:
+`/workspace/labbot/pricing-v2/STRIPE-STEPS.md` (owner hand-off, not in repo).
+
 Before enabling `BILLING_ENABLED`, production must have the Clerk and Stripe
 keys, `STRIPE_WEBHOOK_SECRET`, and the REST storage URL/token pair. Checkout
 fails closed when signing or durable storage configuration is missing: it

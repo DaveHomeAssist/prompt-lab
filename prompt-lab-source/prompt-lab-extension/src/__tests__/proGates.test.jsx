@@ -18,7 +18,7 @@ vi.mock('../lib/platform.js', () => ({
   get isExtension() { return platformState.isExtension; },
 }));
 
-const PRO_FEATURE_IDS = ['abTesting', 'diffView', 'batchRuns', 'collections', 'export'];
+const PRO_FEATURE_IDS = ['abTesting', 'diffView', 'batchRuns', 'collections'];
 
 function enableWebGates() {
   vi.stubEnv('VITE_WEB_MODE', 'true');
@@ -47,7 +47,7 @@ describe('Pro feature gates', () => {
     localStorage.clear();
   });
 
-  it('gates exactly the five advertised Pro features and nothing else', () => {
+  it('gates exactly the four advertised Pro features and nothing else', () => {
     expect(Object.keys(BILLING_FEATURES).sort()).toEqual([...PRO_FEATURE_IDS].sort());
     for (const id of PRO_FEATURE_IDS) expect(isProFeature(id)).toBe(true);
     // Import and preset packs are Free on the landing page.
@@ -182,12 +182,14 @@ describe('Pro feature gates', () => {
     }));
     const clerkGetToken = vi.fn(async () => 'clerk-token');
     const { result } = renderHook(() => useBillingState({ clerkGetToken }));
-    expect(result.current.hasFeature('export')).toBe(true);
+    expect(result.current.hasFeature('collections')).toBe(true);
 
     await act(async () => {
       await result.current.refreshLicense({ silent: true });
     });
     expect(result.current.plan).toBe('free');
-    expect(result.current.hasFeature('export')).toBe(false);
+    expect(result.current.hasFeature('collections')).toBe(false);
+    // Export stays available after Pro ends so users can take their data out.
+    expect(result.current.hasFeature('export')).toBe(true);
   });
 });

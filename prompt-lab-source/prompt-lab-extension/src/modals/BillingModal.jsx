@@ -277,7 +277,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">$99/year, best value</div>
+            <div className="mt-1 text-xs text-emerald-200">$79/year, save $29</div>
             {safeRequestedPeriod === 'annual' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
             )}
@@ -287,7 +287,7 @@ export default function BillingModal({
 
         {!billing.billingDisabled && !billing.checkoutDisabled && (
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
-            Pro renews automatically at $9/month or $99/year until you cancel. Cancel anytime in Manage Purchases;
+            New Pro subscriptions renew automatically at $9/month or $79/year until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
             your first payment or an annual renewal, and a refund ends Pro.
           </p>

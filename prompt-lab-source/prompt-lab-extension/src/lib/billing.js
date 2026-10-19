@@ -29,12 +29,10 @@ export const BILLING_FEATURES = Object.freeze({
     label: 'Collections',
     description: 'Organize prompts into reusable groups.',
   },
-  export: {
-    id: 'export',
-    label: 'Library export',
-    description: 'Export your library as JSON.',
-  },
 });
+// Library export is deliberately free on every plan (pricing v2, 2026-10-18):
+// users must always be able to take their data out. Import, packs and
+// enhance are free as well; anything not listed above is never gated.
 
 const PRO_FEATURES = new Set(Object.keys(BILLING_FEATURES));
 

@@ -2236,7 +2236,7 @@ section[id] { scroll-margin-top: 88px; }
     <fieldset class="billing-toggle">
       <legend>Choose a Pro billing period</legend>
       <div class="billing-option"><input type="radio" name="billingPeriod" id="billingMonthly" value="monthly" checked data-analytics-id="landing.pricing.monthly"><label for="billingMonthly">Monthly</label></div>
-      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingAnnual" value="annual" data-analytics-id="landing.pricing.annual"><label for="billingAnnual">Annual <span class="billing-save">Save $9</span></label></div>
+      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingAnnual" value="annual" data-analytics-id="landing.pricing.annual"><label for="billingAnnual">Annual <span class="billing-save">Save $29</span></label></div>
     </fieldset>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
@@ -2247,6 +2247,7 @@ section[id] { scroll-margin-top: 88px; }
           <li>All 7 enhancement modes</li>
           <li>Prompt library with search</li>
           <li>Preset pack and library import</li>
+          <li>JSON library export</li>
           <li>Composer for saved prompt blocks</li>
           <li>Extension setup guide</li>
           <li>Local browser storage</li>
@@ -2263,7 +2264,6 @@ section[id] { scroll-margin-top: 88px; }
           <li>Side-by-side diff viewer</li>
           <li>Batch test-case runs</li>
           <li>Collections for grouped libraries</li>
-          <li>JSON library export</li>
         </ul>
         <a href="/app?upgrade=pro&amp;period=monthly&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-analytics-id="landing.pricing.pro">Continue to PromptLab &rarr;</a>
         <p class="pricing-note">Opens Prompt Lab and asks you to confirm before checkout. Selecting a plan here never charges you.</p>
@@ -2743,8 +2743,8 @@ section[id] { scroll-margin-top: 88px; }
     const selected = document.querySelector('input[name="billingPeriod"]:checked');
     const period = selected ? selected.value : 'monthly';
     if (period === 'annual') {
-      proPrice.textContent = '99';
-      proPeriod.textContent = 'per year · $8.25 effective monthly · save $9/year';
+      proPrice.textContent = '79';
+      proPeriod.textContent = 'per year · $6.58 effective monthly · save $29/year';
     } else {
       proPrice.textContent = '9';
       proPeriod.textContent = 'per month';
