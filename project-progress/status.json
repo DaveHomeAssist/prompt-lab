@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T05:00:12.428Z",
+  "snapshotAt": "2026-10-19T05:24:54Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "dbf8d90aa07116686f25deb852c1e061620298f4",
+  "mainSha": "df5da95fa2523e552f3cb00843f0bc898a6cbca5",
   "overall": "Acceptance incomplete",
-  "nextAction": "Validate and deliver the existing Create transition-measurement and native sticky-toolbar click fixes through exact-head CI. Preserve all assertions and other owners PR177/178 releases; release the old Dominic container/claim when reachable. Human/physical/macOS interaction and tagged-release gates remain open.",
+  "nextAction": "Complete the remaining parent UX and human/physical/macOS interaction acceptance under the existing brief. Release the old owned Dominic diagnostic allocation when connectivity returns; private Next Steps Board mapping and tagged-release proof remain open.",
   "evidence": [
     {
-      "label": "Scoped CI corrections in progress",
-      "state": "Running",
-      "detail": "2026-10-19: PR176 merged dd190d9 after16checks; production dpl_JB7hwmP1k7CeGNu3uc2LJPNMwsRv READY exact merge. Both-mode signed-in1280×720 graphite check passed with Ember,15saved prompts and clean draft; light/off preview restored. Landing39187555977 sampled an existing180ms background transition: exact #c75531 intermediate reproduced; #fb7a55 settled contrast passes. Test now waits finite animations/theme without weakening assertions. Desktop39187555972 NSIS and current-main39194245537 MSI clicked controls centered under sticky Library toolbar; harness now uses nearest reveal and requires an unobscured native target. Save/restart/follow-up/cancel/error proof preceded failure; failed receipts retained. Main dbf8d90 and other owners PR177/178 reconciled. New browser/native CI pending; syntax/diff checks pass. Dominic alias and documented LAN unreachable: old final runner result/container/claim cleanup unknown. Notion UX/RUN/Hub read back;46rows/14plan IDs preserved; private board mapping absent.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39187555972"
+      "label": "Create graphite CI corrections delivered",
+      "state": "Verified",
+      "detail": "2026-10-19: PR180 merged df5da95 from b14015b after all15 checks passed. Candidate/tested87a6f40/merge trees match eec9239f. Landing39202363590 passed1222tests,25landing and31hosted/1existing skip. Desktop39202363597 passed all6jobs: MSI/NSIS/DEB/AppImage actual exercise and retention, macOS universal packaging. Both failed Windows paths now pass; package digests and receipts inspected. Contrast test awaits finite transitions; native click uses nearest reveal plus unobscured target; all assertions preserved, product source unchanged. Exact production dpl_H6pRUouN4TagVbE4qTiReegVkThR READY with promptlab.tools and HTTP200. All7 exact-main workflows passed, including Landing39203966650 and all6 Desktop39203966636 jobs. Original transition/NSIS/MSI failures retained. Prior both-mode live graphite proof preserved; preview/light restored, no personal edits or paid calls. Notion UX/RUN/Hub written/read back;46rows/14plan IDs unchanged. Both Dominic routes time out; old diagnostic result/container/claim cleanup unverified. No new chats, agents or heavy Mac fallback. Parent human/physical/macOS/tagged-release gates and private-board mapping remain open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/180"
     },
     {
       "label": "Create graphite visual increment verified on runner",
@@ -708,8 +708,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Validate and deliver the existing Create transition-measurement and native sticky-toolbar click fixes through exact-head CI. Preserve all assertions and other owners PR177/178 releases; release the old Dominic container/claim when reachable. Human/physical/macOS interaction and tagged-release gates remain open.",
-      "verification": "Graphite merged/live verified at dd190d9. Focused transition measurement and native actionability corrections await exact-head CI; full parent UX remains In progress."
+      "nextAction": "Complete the remaining parent UX and human/physical/macOS interaction acceptance under the existing brief. Release the old owned Dominic diagnostic allocation when connectivity returns; private Next Steps Board mapping and tagged-release proof remain open.",
+      "verification": "Graphite merged/live verified at dd190d9; scoped CI corrections delivered as PR180/df5da95 with all15 candidate checks and all7 exact-main workflows passing. Both candidate and main MSI/NSIS/DEB/AppImage exercise/retention passed. Full parent UX remains In progress; human/physical/macOS/tagged-release acceptance and old Dominic cleanup remain open."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",
