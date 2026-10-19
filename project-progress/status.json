@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T01:35:48.879Z",
+  "snapshotAt": "2026-10-19T05:00:12.428Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "93bd3b079d704c487c80022df52dd3db44d6f81c",
+  "mainSha": "dbf8d90aa07116686f25deb852c1e061620298f4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish approved Create-only graphite CI, merge, deployment and focused live visual verification. Preserve the existing split flag, palette choices and light default; retain broader UX, human/physical/macOS interaction and tagged-release gates.",
+  "nextAction": "Validate and deliver the existing Create transition-measurement and native sticky-toolbar click fixes through exact-head CI. Preserve all assertions and other owners PR177/178 releases; release the old Dominic container/claim when reachable. Human/physical/macOS interaction and tagged-release gates remain open.",
   "evidence": [
+    {
+      "label": "Scoped CI corrections in progress",
+      "state": "Running",
+      "detail": "2026-10-19: PR176 merged dd190d9 after16checks; production dpl_JB7hwmP1k7CeGNu3uc2LJPNMwsRv READY exact merge. Both-mode signed-in1280×720 graphite check passed with Ember,15saved prompts and clean draft; light/off preview restored. Landing39187555977 sampled an existing180ms background transition: exact #c75531 intermediate reproduced; #fb7a55 settled contrast passes. Test now waits finite animations/theme without weakening assertions. Desktop39187555972 NSIS and current-main39194245537 MSI clicked controls centered under sticky Library toolbar; harness now uses nearest reveal and requires an unobscured native target. Save/restart/follow-up/cancel/error proof preceded failure; failed receipts retained. Main dbf8d90 and other owners PR177/178 reconciled. New browser/native CI pending; syntax/diff checks pass. Dominic alias and documented LAN unreachable: old final runner result/container/claim cleanup unknown. Notion UX/RUN/Hub read back;46rows/14plan IDs preserved; private board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39187555972"
+    },
     {
       "label": "Create graphite visual increment verified on runner",
       "state": "Verified",
@@ -702,8 +708,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Finish approved Create-only graphite CI, merge, deployment and focused live visual verification. Preserve the existing split flag, palette choices and light default; retain broader UX, human/physical/macOS interaction and tagged-release gates.",
-      "verification": "Create graphite focused visual matrix, 13 component tests and build passed on Dominic; normal release and live visual proof pending. Parent UX remains In progress."
+      "nextAction": "Validate and deliver the existing Create transition-measurement and native sticky-toolbar click fixes through exact-head CI. Preserve all assertions and other owners PR177/178 releases; release the old Dominic container/claim when reachable. Human/physical/macOS interaction and tagged-release gates remain open.",
+      "verification": "Graphite merged/live verified at dd190d9. Focused transition measurement and native actionability corrections await exact-head CI; full parent UX remains In progress."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",

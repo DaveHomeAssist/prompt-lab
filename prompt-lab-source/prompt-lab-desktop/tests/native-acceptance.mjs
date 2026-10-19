@@ -247,14 +247,25 @@ async function click(selector, using) {
   await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
   let previousRect;
   await waitFor(async () => {
-    // Dialog focus can move the scroll position after the first reveal.
-    // Reestablish visibility while waiting for native actionability.
-    await execute('arguments[0].scrollIntoView({block:"center",behavior:"instant"}); return true;', [{ 'element-6066-11e4-a52e-4f735466cecf': id }]);
+    // Centering a visible control can move it underneath the sticky Library
+    // toolbar in a short native window. Reveal only the missing portion.
+    const hit = await execute(`
+      const target = arguments[0];
+      target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
+      const box = target.getBoundingClientRect();
+      const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
+      const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+      const cover = document.elementFromPoint(x, y);
+      // Native option popups do not participate in the document's hit test.
+      return { uncovered: target.tagName === 'OPTION' || target.contains(cover),
+        x, y, cover: cover?.tagName + '.' + cover?.className };
+    `, [{ 'element-6066-11e4-a52e-4f735466cecf': id }]);
+    if (!hit.uncovered) recordDiagnostic('clickOcclusion', { selector, ...hit });
     const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
     const stable = rect === previousRect;
     previousRect = rect;
-    return stable;
-  }, `${selector} position stable`);
+    return stable && hit.uncovered;
+  }, `${selector} position stable and unobscured`);
   await command('POST', `/session/${session}/element/${id}/click`, {});
 }
 async function fill(selector, text) {

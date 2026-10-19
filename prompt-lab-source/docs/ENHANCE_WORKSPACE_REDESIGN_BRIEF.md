@@ -297,8 +297,54 @@ phone screenshots were inspected. All 13 existing Create component tests and
 the extension build passed. The first matrix failed on muted-label contrast
 and mobile overflow from an absolutely positioned hidden title label. Scoped
 muted text and a positioned Create root fixed those findings; the failed log is
-retained. Merge, production deployment and new live visual inspection are still
-pending. Existing production editing/save/recovery and native proof is reused.
+retained. Existing production editing/save/recovery and native proof is reused.
+
+[PR176](https://github.com/DaveHomeAssist/prompt-lab/pull/176) merged as
+`dd190d957fe782a6e3f85f04b36868beb65daaa5` from `2bd5d0b` after all 16 checks
+passed. Candidate and merge trees match. The normal CI passed 1195 shared tests,
+223 legacy tests, 13 evaluator tests, 25 landing browser checks and 31 hosted
+browser checks (one existing skip), including the graphite matrix. Automatic
+MSI, NSIS, DEB and AppImage acceptance and macOS universal packaging passed.
+
+Production deployment `dpl_JB7hwmP1k7CeGNu3uc2LJPNMwsRv` is READY on that
+exact merge with `promptlab.tools` assigned. A bounded signed-in visual check at
+1280×720 confirmed the `dd190d9` source label and the graphite split presentation
+in both modes with Ember selected. All 15 personal prompts remained present and
+the current saved draft stayed clean. The existing preview flag and light mode
+were restored to their original values; no prompt, generation or save action
+was performed. The temporary browser tab and owned Dominic container are closed.
+
+[Post-merge Landing39187555977](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39187555977)
+exposed a timing error in the new visual test: the Retry button's text switched
+to dark-mode ink while its existing 180ms background transition was still
+running. The failed background `#c75531` was reproduced exactly in the transition
+frames; settled `#fb7a55` passes. The test now awaits finite Create animations and
+the requested theme before measuring, retaining the contrast assertion and all
+other checks. No production styles or shared theme behavior changed for this
+test correction. The original failed run is retained.
+
+The exact-main Desktop39187555972 failed separately in NSIS acceptance:
+the harness centered Clear all at (432,386), underneath the sticky Library
+toolbar. The retained screenshot and driver error show the interception;
+save, restart, follow-up persistence, cancellation and provider-error checks
+had already passed. NSIS artifact SHA256
+`F4C320B19FDD9420650119950E4E7AA7F7F9922515B87A52D47B9945448C7F65`
+is unsigned, as recorded by the workflow; this was not an installation failure.
+Current-main Desktop39194245537 repeats the same toolbar interception on MSI,
+this time while clicking Starter Libraries at (237,386).
+
+The 2026-10-19 continuation reconciled current main `dbf8d90`, preserving the
+other owners' PR177/178 releases. The native harness now reveals the nearest
+missing portion and requires a stable, unobscured target before its real
+WebDriver click. Native options retain their driver-owned popup handling.
+No retention assertion or product source changed. Exact-head CI verification
+of both focused corrections is pending. Dominic is unreachable through both
+documented routes; the final prior-run result and old container/claim cleanup
+remain unverified. GitHub owns the next browser and installed-package checks.
+
+Full parent UX,
+human/physical-device/macOS interaction and future tagged-release acceptance
+remain separate; the private Next Steps Board has no PromptLab registry mapping.
 
 ### Hosted acceptance evidence — 2026-10-18
 
