@@ -71,6 +71,8 @@ async function resetDocsDir() {
     join(docsDir, 'privacy'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
+    // promptlab.tools is served by Vercel; the Pages mirror must not claim it
+    // (2026-08-05 decision), so a stale CNAME is removed and never rewritten.
     join(docsDir, 'CNAME'),
   ];
 
@@ -151,10 +153,6 @@ async function copyCompanionDir() {
 
 async function writeNoJekyll() {
   await writeFile(join(docsDir, '.nojekyll'), '', 'utf8');
-}
-
-async function writeCname() {
-  await writeFile(join(docsDir, 'CNAME'), 'promptlab.tools\n', 'utf8');
 }
 
 async function writeLegacyPrivacyRedirect() {
@@ -266,7 +264,6 @@ async function main() {
   }
 
   await writeNoJekyll();
-  await writeCname();
   await writeLegacyPrivacyRedirect();
   await writePrivacyPrettyRoute();
   await instrumentGoogleAnalytics(docsDir);
