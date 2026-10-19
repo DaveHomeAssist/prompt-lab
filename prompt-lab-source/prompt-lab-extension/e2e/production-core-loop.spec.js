@@ -172,7 +172,8 @@ test('@production signed-in Free account can write, save, and reload a prompt', 
       await page.setViewportSize(viewport);
       for (const route of LAYOUT_ROUTES) {
         await page.goto(`${appUrl.href}${route}`, { waitUntil: 'domcontentloaded' });
-        await expect(page.getByRole('banner')).toBeVisible();
+        reportPhase(`layout ${route} at ${viewport.width}x${viewport.height}`);
+        await expect(page.getByTestId('nav-library')).toBeVisible();
         await page.waitForTimeout(350);
         const overflow = await documentOverflow(page);
         if (overflow > 1) overflowing.push(`${route} @ ${viewport.width}x${viewport.height}: ${overflow}px`);

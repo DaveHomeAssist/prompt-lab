@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createClerkClient } from '@clerk/backend';
 import { expect, test } from '@playwright/test';
 import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
+import { downloadFreeWorkspace, isFreeFeatureGated } from './production-export.mjs';
 
 test.use({ serviceWorkers: 'block', acceptDownloads: true });
 
@@ -125,7 +126,21 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await openView(page, 'Library', viewport.width);
       await page.getByTestId('library-search').fill('');
       await showLibraryDrawer(page);
-      await page.getByRole('button', { name: /^Ops\s*2$/ }).click();
+      const collectionsGated = isFreeFeatureGated('collections');
+      if (collectionsGated) {
+        const beforeGate = await storedState(page);
+        await page.getByRole('button', { name: 'Collections · Pro', exact: true }).click();
+        const gate = page.getByRole('dialog', { name: 'Collections is a Pro feature', exact: true });
+        await expect(gate).toBeVisible();
+        await gate.getByRole('button', { name: 'Close billing modal', exact: true }).click();
+        expect(await storedState(page)).toEqual(beforeGate);
+        if (viewport.width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
+        // Collection names remain searchable on Free; keep the filtered-order
+        // assertion without granting the fixture a synthetic Pro entitlement.
+        await page.getByTestId('library-search').fill('Ops');
+      } else {
+        await page.getByRole('button', { name: /^Ops\s*2$/ }).click();
+      }
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
       await expect(list.getByRole('listitem')).toHaveCount(2);
       const move = page.getByRole('button', { name: 'Move QA Beta up', exact: true });
@@ -133,15 +148,23 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await move.press('Enter');
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
       await expect.poll(async () => (await storedState(page)).library.map(row => row.id)).toEqual(['qa-beta', 'qa-alpha', 'qa-hidden', 'qa-child']);
-      await showLibraryDrawer(page);
-      await page.getByRole('button', { name: 'Manage collections', exact: true }).click();
-      await page.getByRole('button', { name: 'Remove folder Ops, keep prompts', exact: true }).click();
+      if (collectionsGated) {
+        await page.getByTestId('library-search').fill('');
+        expect((await storedState(page)).library.filter(row => row.collection === 'Ops')).toHaveLength(2);
+        console.info(`[production-library ${viewport.width}] Free collection gate verified; folder removal not exercised`);
+      } else {
+        await showLibraryDrawer(page);
+        await page.getByRole('button', { name: 'Manage collections', exact: true }).click();
+        await page.getByRole('button', { name: 'Remove folder Ops, keep prompts', exact: true }).click();
+        await showLibraryDrawer(page);
+        await expect(page.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
+        await expect.poll(async () => (await storedState(page)).library.some(row => row.collection === 'Ops')).toBe(false);
+        console.info(`[production-library ${viewport.width}] active collection removal passed`);
+      }
       await expect(list.getByRole('listitem')).toHaveCount(4);
-      await showLibraryDrawer(page);
-      await expect(page.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
-      await expect.poll(async () => (await storedState(page)).library.some(row => row.collection === 'Ops')).toBe(false);
-      if (viewport.width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
-      console.info(`[production-library ${viewport.width}] shared search, keyboard reorder and collection cleanup passed`);
+      const closeDrawer = page.getByRole('button', { name: 'Close Library drawer', exact: true });
+      if (await closeDrawer.isVisible()) await closeDrawer.click();
+      console.info(`[production-library ${viewport.width}] shared search, keyboard reorder and current Free collection policy passed`);
 
       const baseline = await storedState(page);
       const alpha = baseline.library.find(row => row.id === 'qa-alpha');
@@ -190,14 +213,14 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       };
       verifyImported(await storedState(page));
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByRole('button', { name: 'Export Library', exact: true }).click();
-      const download = await downloadPromise;
-      const bytes = fs.readFileSync(await download.path());
-      const exported = JSON.parse(bytes.toString());
-      expect(exported.schemaVersion).toBe(2);
-      verifyImported(exported);
-      console.info(`[production-library ${viewport.width}] actual export SHA256 ${createHash('sha256').update(bytes).digest('hex')}; cancel, Skip/Replace/Keep both and mapped associations passed`);
+      const download = await downloadFreeWorkspace(page);
+      if (download) {
+        const bytes = fs.readFileSync(await download.path());
+        const exported = JSON.parse(bytes.toString());
+        expect(exported.schemaVersion).toBe(2);
+        verifyImported(exported);
+        console.info(`[production-library ${viewport.width}] actual export SHA256 ${createHash('sha256').update(bytes).digest('hex')}; mapped associations passed`);
+      }
       await page.getByRole('button', { name: 'Close settings', exact: true }).click();
       await page.reload({ waitUntil: 'domcontentloaded' });
       await openView(page, 'Library', viewport.width);
