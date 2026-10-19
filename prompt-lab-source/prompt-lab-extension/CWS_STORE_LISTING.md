@@ -91,5 +91,5 @@ Behavior, Quality Guidelines; <https://developer.chrome.com/docs/webstore/progra
 Owner decision: the distribution doc says "If you plan to use a third party
 service to offer additional paid features or subscriptions, choose Contains in-app
 purchases" (<https://developer.chrome.com/docs/webstore/cws-dashboard-distribution>).
-Pro adds nothing to the extension itself, so **Free** remains defensible; choose
-**Contains in-app purchases** if you want the conservative reading.
+Pro adds nothing to the extension itself. **Decision (Dave, 2026-10-19): list as
+Free.**
