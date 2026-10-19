@@ -892,7 +892,7 @@ export default function CreateEditorPane({
                 {sourceSections}
               </div>
             </section>
-            <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane">
+            <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane" tabIndex={scrollWithWorkspace ? undefined : 0}>
               {/* Narrow widths jump here when a refine starts, which hides the
                   source pane's Cancel; CSS hides this bar again once both panes show. */}
               {loading && (
@@ -927,7 +927,7 @@ export default function CreateEditorPane({
         {sourceSections}
 
         {/* ── Scrollable results container ── */}
-        <div className={resultsClass}>
+        <div className={resultsClass} role="region" aria-label="Enhancement results" tabIndex={scrollWithWorkspace ? undefined : 0}>
           {resultSections}
         </div>
       </div>

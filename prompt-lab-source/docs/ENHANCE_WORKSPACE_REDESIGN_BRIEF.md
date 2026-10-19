@@ -260,6 +260,36 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 
 ## Slice 1 delivery
 
+### Remaining parent acceptance — 2026-10-19
+
+The serial acceptance pass resumed from main `1cf6979`, preserving the completed
+Slice 1, 2A and graphite receipts below. Both existing layouts were checked with
+synthetic data on Dominic under Node 22.22.1 and Playwright 1.61.1 with Chromium.
+An automated accessibility scan reproduced a keyboard gap after cancellation:
+the stacked desktop results scroller and split short-landscape result pane
+had no focusable descendants once their buttons disappeared. Both now have
+named regions and keyboard stops when they own scrolling; existing focus
+styles supply the visible indicators. Flowing mobile content does not gain
+an extra tab stop.
+
+The new browser regression failed before the stacked correction in both
+themes, then passed all four layout/theme cases after both corrections. It cancels a deterministic stream, verifies the abort,
+reaches results with Tab, checks visible focus and the scroll-region rule, and
+confirms the source survives. An initial test assumed results immediately
+followed Reset Draft; the existing status-bar Save sits between them. The test
+now walks a bounded sequence of real Tab presses. No cancellation, generation,
+storage or save behavior changed. Current PR CI and delivery are recorded in
+the implementation RUN; these local checks alone do not establish deployment.
+
+The parent criteria retain their separate evidence: source/result flow and
+primary actions in the slice map below; candidate edits, assumptions, saving,
+reload, keyboard tabs and streaming recovery in production 39179972239;
+Evaluate handoff in activation 39176037165; independent follow-up provenance
+in its maintained production scenario; palette contrast in 39203966650.
+Physical touch, on-screen keyboards, screen-reader listening and full human
+acceptance remain open. This acceptance pass does not authorize later feature
+slices or a tagged release.
+
 ### Create graphite visual increment — scoped 2026-10-18
 
 D-014's Create-only graphite choice and the later hold until L4 were checked
