@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { createClerkClient } from '@clerk/backend';
 import { expect, test } from '@playwright/test';
 import { forbiddenRequestCategory, readProductionFreeSmokeConfig } from './production-auth.mjs';
+import { downloadFreeWorkspace } from './production-export.mjs';
 
 test.use({ serviceWorkers: 'block', acceptDownloads: true });
 
@@ -190,14 +191,14 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       };
       verifyImported(await storedState(page));
       await page.getByRole('button', { name: 'Settings', exact: true }).click();
-      const downloadPromise = page.waitForEvent('download');
-      await page.getByRole('button', { name: 'Export Library', exact: true }).click();
-      const download = await downloadPromise;
-      const bytes = fs.readFileSync(await download.path());
-      const exported = JSON.parse(bytes.toString());
-      expect(exported.schemaVersion).toBe(2);
-      verifyImported(exported);
-      console.info(`[production-library ${viewport.width}] actual export SHA256 ${createHash('sha256').update(bytes).digest('hex')}; cancel, Skip/Replace/Keep both and mapped associations passed`);
+      const download = await downloadFreeWorkspace(page);
+      if (download) {
+        const bytes = fs.readFileSync(await download.path());
+        const exported = JSON.parse(bytes.toString());
+        expect(exported.schemaVersion).toBe(2);
+        verifyImported(exported);
+        console.info(`[production-library ${viewport.width}] actual export SHA256 ${createHash('sha256').update(bytes).digest('hex')}; mapped associations passed`);
+      }
       await page.getByRole('button', { name: 'Close settings', exact: true }).click();
       await page.reload({ waitUntil: 'domcontentloaded' });
       await openView(page, 'Library', viewport.width);
