@@ -101,8 +101,9 @@ async function openPanel(context, extensionId) {
   await page.addInitScript(() => {
     localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
     localStorage.setItem('pl_telemetry_consent', 'denied');
-    // No billing seed: store screenshots must show the Free state every new
-    // install sees, not a paid plan badge the extension cannot sell.
+    // No billing seed: store screenshots must show the state every new install
+    // sees. Extension builds hide the plan badge and Upgrade entirely (no
+    // sign-in, so Pro cannot be bought there; see scripts/billing-ui-define.mjs).
   });
   await page.goto(`chrome-extension://${extensionId}/panel.html`);
   await page.waitForTimeout(1500);
@@ -159,7 +160,10 @@ test('capture CWS listing screenshots and promo tile', async () => {
     }, 'screenshot-4-notebook.png');
     captured.push('screenshot-4-notebook.png');
 
-    // 5 — Options / provider settings
+    // 5 — Options / provider settings, exactly as a fresh install opens it:
+    // the default hosted provider (Anthropic) with no key and no local
+    // provider configured. options.js only probes Ollama when it is selected,
+    // so no connection error is shown and nothing is mocked.
     const opt = await context.newPage();
     await opt.setViewportSize(PANEL);
     await opt.goto(`chrome-extension://${extensionId}/options.html`);

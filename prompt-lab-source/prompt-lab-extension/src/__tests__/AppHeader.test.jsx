@@ -61,4 +61,14 @@ describe('AppHeader billing presentation', () => {
 
     expect(screen.getByTestId('billing-trigger')).toHaveTextContent('Upgrade');
   });
+
+  it('hides the plan chip and Upgrade when billing UI is off (extension builds)', () => {
+    const { openBilling } = renderHeader({ billingDisabled: false, billingUiEnabled: false });
+
+    expect(screen.queryByTestId('billing-trigger')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('billing-plan-chip')).not.toBeInTheDocument();
+    expect(screen.queryByText('Upgrade')).not.toBeInTheDocument();
+    expect(screen.queryByText('Free')).not.toBeInTheDocument();
+    expect(openBilling).not.toHaveBeenCalled();
+  });
 });

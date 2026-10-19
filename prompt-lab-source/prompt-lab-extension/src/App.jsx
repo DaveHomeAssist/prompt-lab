@@ -53,6 +53,7 @@ import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import WorkspaceImportModal from './modals/WorkspaceImportModal.jsx';
 import BillingModal from './modals/BillingModal.jsx';
+import { isBillingUiEnabled } from './lib/billing.js';
 import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
@@ -130,6 +131,8 @@ export default function App({
     initialFocusRef: resetCancelRef,
   });
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
+  // Extension builds hide Upgrade/Pro UI (no sign-in, so checkout cannot complete).
+  const billingUiEnabled = isBillingUiEnabled();
   // Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
   //
   // 'contained' locks the shell to the viewport and scrolls inside it.
@@ -263,6 +266,7 @@ export default function App({
   } = ed;
 
   const openBilling = (featureId = null) => {
+    if (!billingUiEnabled) return;
     trackTelemetry('billing.modal_opened', {
       featureId: featureId || 'general',
       plan: billing.plan,
@@ -314,14 +318,14 @@ export default function App({
   const landingAttributionHandledRef = useRef(false);
 
   useEffect(() => {
-    if (!isWeb || !landingRequestedPeriod || landingIntentHandledRef.current) return;
+    if (!isWeb || !billingUiEnabled || !landingRequestedPeriod || landingIntentHandledRef.current) return;
     landingIntentHandledRef.current = true;
     setBillingFeaturePrompt(null);
     setRequestedBillingPeriod(landingRequestedPeriod);
     setRequestedBillingSource(landingRequestedSource);
     setShowBillingModal(true);
     onLandingIntentConsumed?.();
-  }, [isWeb, landingRequestedPeriod, landingRequestedSource, onLandingIntentConsumed]);
+  }, [billingUiEnabled, isWeb, landingRequestedPeriod, landingRequestedSource, onLandingIntentConsumed]);
 
   useEffect(() => {
     if (!isWeb || landingAttributionHandledRef.current || telemetry.consentGiven == null) return;
@@ -1035,6 +1039,7 @@ export default function App({
         billingLabel={billing.planLabel}
         billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
+        billingUiEnabled={billingUiEnabled}
         clerkUserButton={clerkUser ? clerkUserButton : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
@@ -1464,7 +1469,7 @@ export default function App({
           exportLib={handleExportLibrary} importLib={lib.importLib} clearLibrary={lib.clearLibrary}
           pendingImport={lib.pendingImport} retryImport={lib.retryImport}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
-          billing={billing}
+          billing={billingUiEnabled ? billing : null}
           openBilling={(featureId) => {
             setBillingReturnToSettings(true);
             setShowSettings(false);
@@ -1488,7 +1493,7 @@ export default function App({
         <ShortcutsModal m={m} primaryModKey={primaryModKey} saveLabel={primarySaveLabel} onClose={() => setShowShortcuts(false)} />
       )}
 
-      {showBillingModal && (
+      {billingUiEnabled && showBillingModal && (
         <BillingModal
           m={m}
           billing={billing}

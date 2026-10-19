@@ -221,7 +221,7 @@ vi.mock('../icons.jsx', () => ({
 }));
 
 vi.mock('../AppHeader.jsx', () => ({
-  default: () => <div data-testid="app-header" />,
+  default: ({ billingUiEnabled }) => <div data-testid="app-header" data-billing-ui={String(billingUiEnabled)} />,
 }));
 
 vi.mock('../MainWorkspace.jsx', () => ({
@@ -423,6 +423,34 @@ describe('App', () => {
       </MemoryRouter>,
     );
     expect(onLandingIntentConsumed).toHaveBeenCalledTimes(1);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps billing UI on by default (web and desktop builds)', () => {
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('app-header')).toHaveAttribute('data-billing-ui', 'true');
+  });
+
+  it('hides Upgrade and the pricing handoff in builds with billing UI off', () => {
+    vi.stubEnv('VITE_PROMPTLAB_BILLING_UI', 'off');
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    const onLandingIntentConsumed = vi.fn();
+    render(
+      <MemoryRouter>
+        <App
+          landingIntent={{ upgrade: 'pro', period: 'annual', source: 'landing-pricing' }}
+          onLandingIntentConsumed={onLandingIntentConsumed}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('app-header')).toHaveAttribute('data-billing-ui', 'false');
+    expect(screen.queryByRole('dialog', { name: 'Billing handoff' })).not.toBeInTheDocument();
+    expect(onLandingIntentConsumed).not.toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
