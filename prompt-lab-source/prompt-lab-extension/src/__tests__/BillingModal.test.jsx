@@ -197,7 +197,7 @@ describe('BillingModal billing policy disclosure', () => {
   it('states renewal, cancellation and refund terms next to checkout', () => {
     render(<BillingModal m={theme} billing={createBilling()} onClose={vi.fn()} />);
     const terms = screen.getByTestId('billing-terms');
-    expect(terms).toHaveTextContent('renews automatically at $9/month or $79/year until you cancel');
+    expect(terms).toHaveTextContent('New Pro subscriptions renew automatically at $9/month or $79/year until you cancel');
     expect(terms).toHaveTextContent('Existing annual subscriptions retain their current price.');
     expect(terms).toHaveTextContent('Cancel anytime in Manage Purchases');
     expect(terms).toHaveTextContent('until the end of the period you paid for');
