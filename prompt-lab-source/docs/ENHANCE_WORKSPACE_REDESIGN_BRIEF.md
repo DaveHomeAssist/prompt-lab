@@ -260,6 +260,46 @@ Slice 1 is accepted when all of these hold on hosted web with the flag on:
 
 ## Slice 1 delivery
 
+### Create graphite visual increment — scoped 2026-10-18
+
+D-014's Create-only graphite choice and the later hold until L4 were checked
+against the original human messages. The dependency is delivered in PR170/171,
+with final records at `93bd3b0`. The Library owner finished its turn, released
+its checkout claim and retained no pending edits. Existing Create ownership
+continues in the delivery chat; shared theme and Library files remain excluded.
+
+This increment changes only the flagged hosted two-pane Create presentation:
+neutral graphite working surfaces, squared panels, fine dividing lines,
+monospace section labels and clear focus/selection states. Light mode uses cool
+light surfaces. Action, selection and focus accents consume L4's existing palette
+tokens: Ember, Ocean, Forest and Plum remain user choices, with Ocean supplying
+the mockup's cyan. It does not select a palette or change persistence/defaults.
+
+Owned implementation: `CreateEditorPane.jsx` and a dedicated
+`CreateGraphite.css`, plus focused visual tests and these existing records.
+No shared `index.css`, theme provider, navigation, Library, storage, generation,
+native-package or billing changes. The existing flag stays off by default;
+stacked/extension/desktop presentation and all Slice 2/3 behavior are unchanged.
+
+Acceptance delta: inspect all eight palette/mode combinations on desktop and
+mobile, plus tablet, short landscape and ultrawide layouts; confirm no document
+overflow, preserved 44px targets, legible controls and visible keyboard focus.
+Check empty/source/result/error surfaces, contrast, selected-palette reload and
+flag-off styling isolation. Reuse completed editing/save/recovery/native proof;
+new live verification covers only this visual change. Physical-device and human
+acceptance remain separate.
+
+Focused verification (Dominic, Node 22): both Chromium scenarios passed in
+1.4 minutes. The matrix covers all four palettes in both modes at 1440×900 and
+375×812, plus 768×1024, 812×375 and 3200×900. Source/result/empty/error contrast,
+44px targets, keyboard focus, reload and flag-off isolation passed; desktop and
+phone screenshots were inspected. All 13 existing Create component tests and
+the extension build passed. The first matrix failed on muted-label contrast
+and mobile overflow from an absolutely positioned hidden title label. Scoped
+muted text and a positioned Create root fixed those findings; the failed log is
+retained. Merge, production deployment and new live visual inspection are still
+pending. Existing production editing/save/recovery and native proof is reused.
+
 ### Hosted acceptance evidence — 2026-10-18
 
 The eight hosted criteria above have passing automated evidence on production
