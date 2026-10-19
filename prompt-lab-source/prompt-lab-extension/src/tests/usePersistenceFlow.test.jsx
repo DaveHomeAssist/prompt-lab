@@ -161,6 +161,26 @@ describe('usePersistenceFlow', () => {
     expect(result.current.editingId).toBe(entry.id);
   });
 
+  it('keeps an existing collection when a Free save blocks collection assignment', () => {
+    const entry = makeEntry();
+    const { result, doSave } = renderPersistenceFlow({
+      entry,
+      doSaveImpl: (payload) => ({ id: payload.editingId || 'new-entry-id', title: payload.title || entry.title }),
+    });
+    const freeOverrides = { collectionOverride: '', preserveExistingCollection: true };
+
+    act(() => { result.current.applyEntry(entry); });
+    act(() => { result.current.doSave(undefined, freeOverrides); });
+    expect(doSave).toHaveBeenLastCalledWith(expect.objectContaining({ editingId: entry.id, collection: 'Ops' }));
+  });
+
+  it('does not assign a collection to a new prompt saved on Free', () => {
+    const { result, doSave } = renderPersistenceFlow();
+    act(() => { result.current.setSaveCollection('Ops'); });
+    act(() => { result.current.doSave(undefined, { collectionOverride: '', preserveExistingCollection: true }); });
+    expect(doSave).toHaveBeenLastCalledWith(expect.objectContaining({ collection: '' }));
+  });
+
   it('edit_existing_cancel_preserves_editing_id', () => {
     const entry = makeEntry();
     const { result } = renderPersistenceFlow({ entry });

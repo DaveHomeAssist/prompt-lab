@@ -13,6 +13,11 @@ export default defineConfig({
   define: {
     ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
+    // Pro feature gates are on for the hosted web app (the only surface with
+    // sign-in and checkout). Build with VITE_PROMPTLAB_PRO_GATES=off to reopen.
+    'import.meta.env.VITE_PROMPTLAB_PRO_GATES': JSON.stringify(
+      process.env.VITE_PROMPTLAB_PRO_GATES === 'off' ? 'off' : 'on',
+    ),
   },
   resolve: {
     alias: {

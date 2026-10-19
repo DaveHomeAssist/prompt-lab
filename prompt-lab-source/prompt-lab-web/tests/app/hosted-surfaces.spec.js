@@ -217,7 +217,7 @@ test('mobile Clear requires confirmation and restores the cleared composer', asy
   await expect(composer).toHaveValue('Keep this mobile composer draft.');
 });
 
-test('workspace navigation keeps browser history and opens a free compare deep link', async ({ page }) => {
+test('workspace navigation keeps browser history and routes a Free compare deep link to Evaluate', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
     localStorage.setItem('pl_telemetry_consent', 'denied');
@@ -230,8 +230,9 @@ test('workspace navigation keeps browser history and opens a free compare deep l
   await expect(page).toHaveURL(/\/app\/$/);
   await expect(page.getByTestId('prompt-input')).toBeVisible();
 
+  // A/B compare is a Pro feature in hosted builds with gates on, so a signed-in
+  // Free account lands on Evaluate instead of the Model Arena.
   await page.goto('/app/#/compare');
-  await expect(page).toHaveURL(/\/app\/#\/compare$/);
-  await expect(page.getByText(/Model Arena/)).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/app\/#\/evaluate$/);
+  await expect(page.getByText(/Model Arena/)).toHaveCount(0);
 });

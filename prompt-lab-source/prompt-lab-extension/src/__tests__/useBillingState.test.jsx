@@ -52,6 +52,30 @@ describe('useBillingState', () => {
     expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
   });
 
+  it('retries the silent account sync after a transient failure so paid accounts unlock', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      let calls = 0;
+      global.fetch = vi.fn(async () => {
+        calls += 1;
+        if (calls === 1) throw new TypeError('Failed to fetch');
+        return new Response(JSON.stringify({
+          ok: true, plan: 'pro', status: 'active', billingPeriod: 'monthly', customerId: 'cus_retry',
+        }), { status: 200 });
+      });
+      const clerkGetToken = vi.fn(async () => 'clerk-token');
+      const clerkUser = { id: 'user_retry' };
+      const { result } = renderHook(() => useBillingState({ clerkGetToken, clerkUser }));
+      await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+      expect(result.current.plan).toBe('free');
+      await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+      await waitFor(() => expect(result.current.plan).toBe('pro'));
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('retains checkout readiness from license validation without blocking the portal', async () => {
     global.fetch = vi.fn(async (url) => new Response(JSON.stringify(url.endsWith('/billing/portal')
       ? { url: 'https://billing.stripe.com/session/test' }

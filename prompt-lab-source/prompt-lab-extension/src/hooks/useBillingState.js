@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BILLING_STATUS_VERIFICATION_EXPIRED,
   canAccessFeature,
+  areFeatureGatesActive,
   createOwnerBillingState,
   createDefaultBillingState,
   describeBillingStatus,
@@ -19,6 +20,7 @@ import {
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
 const CHECKOUT_UNAVAILABLE_MESSAGE = 'Purchases are temporarily unavailable. Existing purchase management is still available.';
+const AUTO_SYNC_RETRY_BASE_MS = 5000;
 
 function readClerkEmail(clerkUser) {
   const directEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -157,6 +159,8 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   ));
   const [busyAction, setBusyAction] = useState('');
   const autoSyncKeyRef = useRef('');
+  const autoSyncAttemptsRef = useRef(0);
+  const [autoSyncRetryTick, setAutoSyncRetryTick] = useState(0);
   const revalidateKeyRef = useRef('');
   // Latest-state ref so callbacks can read fresh state without depending on
   // it, which would recreate them (and re-fire effects) on every state write.
@@ -235,6 +239,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     autoSyncKeyRef.current = autoSyncKey;
 
     let cancelled = false;
+    let retryTimer = null;
     (async () => {
       try {
         const payload = await requestBilling('/billing/license', {
@@ -245,16 +250,26 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
           }),
         });
         if (cancelled) return;
+        autoSyncAttemptsRef.current = 0;
         setState((prev) => normalizeResponseState(payload, prev));
       } catch {
         // Account sync is quiet on load; manual Sync or Refresh surfaces errors.
+        // A transient failure (offline, Clerk token not ready) must not leave a
+        // paid account on Free for the whole session, so retry with backoff.
+        if (cancelled) return;
+        if (autoSyncKeyRef.current === autoSyncKey) autoSyncKeyRef.current = '';
+        const attempt = autoSyncAttemptsRef.current + 1;
+        autoSyncAttemptsRef.current = attempt;
+        const delay = Math.min(AUTO_SYNC_RETRY_BASE_MS * (2 ** (attempt - 1)), BILLING_REVALIDATE_CHECK_INTERVAL_MS);
+        retryTimer = setTimeout(() => setAutoSyncRetryTick((tick) => tick + 1), delay);
       }
     })();
 
     return () => {
       cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [clerkGetToken, requestBilling, state.clerkUserId, state.customerEmail, state.customerId, state.plan]);
+  }, [autoSyncRetryTick, clerkGetToken, requestBilling, state.clerkUserId, state.customerEmail, state.customerId, state.plan]);
 
   const refreshLicense = useCallback(async ({ silent = false } = {}) => {
     if (isOwnerProState(stateRef.current)) return true;
@@ -461,7 +476,8 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     isPro: state.plan === 'pro',
     planLabel: getPlanLabel(state),
     statusCopy: describeBillingStatus(state),
-    hasFeature: (featureId) => canAccessFeature(state.plan, featureId),
+    hasFeature: (featureId) => canAccessFeature(state, featureId),
+    featureGatesActive: areFeatureGatesActive(state),
     ownerAccessAvailable: isOwnerAccessAvailable(),
     activateOwnerAccess,
     refreshLicense,
