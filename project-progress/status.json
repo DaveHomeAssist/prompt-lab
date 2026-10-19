@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T06:17:47Z",
+  "snapshotAt": "2026-10-19T07:07:34Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "75f6d7aa0c494729cd0c10e6e1729d21f5936ce7",
+  "mainSha": "160176fc9d70f65077664de0c7aabe20c3f4e259",
   "overall": "Acceptance incomplete",
-  "nextAction": "Record the remaining parent UX, human/physical/macOS interaction and tagged-release acceptance against the existing brief; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. Preserve independent pricing PR183 and CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Parent keyboard and production acceptance delivered",
+      "state": "Verified",
+      "detail": "2026-10-19: PR184/ea73681 fixes keyboard entry into cancelled results in stacked desktop and split short landscape. Dominic Node22.22.1 passed4 regressions and30 structural scans across both layouts,3 viewports and5 states; contrast excluded and prior palette proof retained. All15 candidate checks and7 exact-main workflows ultimately passed; PR184 merged before checks completed, so these are subsequent verification. Landing39211387626 passed1222 shared,25 landing and35 hosted tests. Desktop39211387600 passed all6 jobs; eight final MSI/NSIS/DEB/AppImage exercise/retention receipts passed, with package hashes retained. Separate authenticated Create39211510446 passed2 cases and session cleanup. PR185/160176f corrects stale Free-plan acceptance assumptions, download rejection cleanup and mobile drawer fixture, after6 candidate checks and4 Library cases passed. Full Production39213547604 passed9 in49.6s with5 opt-in skips; gated file export and collection removal are explicitly not exercised on Free. All4 other exact160176f workflows passed. Product source matches ea73681; exact production dpl_HdUTD6qbBYZ4hRT2wpQCbfv76nfJ READY. Pricing PR183 untouched. Original/intermediate failures retained. Notion UX/Library/Desktop/RUN/Hub written and read back;46rows/14plan IDs preserved. Dominic owned container/claim removed and verified; evidence retained. No new chats/agents, paid calls or personal-data edits.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39213547604"
+    },
+    {
+      "label": "Current macOS distribution and interaction gaps",
+      "state": "Open",
+      "detail": "2026-10-19: exact ea73681 universal1.8.0 package inspected on macOS27.0.1 arm64. DMG SHA256a2aac7d1eec8acb30a24cc725717611ae5473de39d3aab48fbe5d124a4e138b5; archive daed081b857a4368b8dacd72ca56627c39fd3809a52af43e04fed2b389d7c7fe. x86_64+arm64 confirmed, but strict bundle signing fails, resources/team identity absent and no stapled ticket. No online notarization lookup or installed runtime test. Personal1.7.0 app/profile preserved; disposable Mac account/VM not designated. Same-version Windows/Linux retention does not close prior-version upgrade/snapshot restore, physical/human or tagged-release gates.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600"
+    },
     {
       "label": "Create graphite CI corrections delivered",
       "state": "Verified",
@@ -708,8 +720,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Record the remaining parent UX, human/physical/macOS interaction and tagged-release acceptance against the existing brief; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
-      "verification": "Graphite merged/live verified at dd190d9; scoped CI corrections delivered as PR180/df5da95 with all15 candidate checks and all7 exact-main workflows passing. Both candidate and main MSI/NSIS/DEB/AppImage exercise/retention passed. Full parent UX remains In progress; human/physical/macOS/tagged-release acceptance remains open. Old Dominic allocation cleanup verified2026-10-19; interrupted local result unavailable, independent passing CI retained."
+      "nextAction": "Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. Preserve independent pricing PR183 and CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+      "verification": "2026-10-19: PR184/ea73681 fixes keyboard entry into cancelled results in stacked desktop and split short landscape. Dominic Node22.22.1 passed4 regressions and30 structural scans across both layouts,3 viewports and5 states; contrast excluded and prior palette proof retained. All15 candidate checks and7 exact-main workflows ultimately passed; PR184 merged before checks completed, so these are subsequent verification. Landing39211387626 passed1222 shared,25 landing and35 hosted tests. Desktop39211387600 passed all6 jobs; eight final MSI/NSIS/DEB/AppImage exercise/retention receipts passed, with package hashes retained. Separate authenticated Create39211510446 passed2 cases and session cleanup. PR185/160176f corrects stale Free-plan acceptance assumptions, download rejection cleanup and mobile drawer fixture, after6 candidate checks and4 Library cases passed. Full Production39213547604 passed9 in49.6s with5 opt-in skips; gated file export and collection removal are explicitly not exercised on Free. All4 other exact160176f workflows passed. Product source matches ea73681; exact production dpl_HdUTD6qbBYZ4hRT2wpQCbfv76nfJ READY. Pricing PR183 untouched. Original/intermediate failures retained. Notion UX/Library/Desktop/RUN/Hub written and read back;46rows/14plan IDs preserved. Dominic owned container/claim removed and verified; evidence retained. No new chats/agents, paid calls or personal-data edits. Full parent UX remains In progress for human/physical acceptance. Earlier record: Graphite merged/live verified at dd190d9; scoped CI corrections delivered as PR180/df5da95 with all15 candidate checks and all7 exact-main workflows passing. Both candidate and main MSI/NSIS/DEB/AppImage exercise/retention passed. Full parent UX remains In progress; human/physical/macOS/tagged-release acceptance remains open. Old Dominic allocation cleanup verified2026-10-19; interrupted local result unavailable, independent passing CI retained."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",
@@ -768,8 +780,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
-      "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+      "nextAction": "Establish disposable macOS acceptance environment and required signing identity; finish installed interaction, prior-version upgrade/snapshot restore and human/tagged-release proof.",
+      "verification": "2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
     },
     {
       "id": "3f0255fc8f44811d8794c092ba1bb88f",
@@ -865,7 +877,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
       "nextAction": "Obtain the remaining human/physical-touch and macOS interaction acceptance; keep In progress until the full contract passes.",
-      "verification": "2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
+      "verification": "2026-10-19: PR185/160176f fixture aligns with current Free gates. Four Library39212882244 cases and full Production39213547604 (9pass/5skip) passed; sessions revoked/read back. Current Free export/collection gates verified without fake entitlement; gated file export and folder removal not exercised. Search/reorder/import/restart associations pass. Independent pricing PR183 unchanged; later free-export policy reactivates file assertions. 2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
     }
   ]
 }
