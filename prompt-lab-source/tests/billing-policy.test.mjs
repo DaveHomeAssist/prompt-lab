@@ -67,14 +67,39 @@ function disputeEvent(charge = 'ch_disputed') {
   };
 }
 
-function stripeFake({ subscriptions, cancelResponse } = {}) {
+function invoice(subscriptionId, priceId = 'price_monthly') {
+  return {
+    id: 'in_disputed',
+    ...(subscriptionId ? { subscription: subscriptionId } : {}),
+    lines: { data: [{ price: { id: priceId } }] },
+  };
+}
+
+// charge: what GET /v1/charges/ch_disputed returns. Defaults to an older API
+// version shape that carries the invoice id on the charge.
+function stripeFake({
+  subscriptions,
+  cancelResponse,
+  charge = { id: 'ch_disputed', customer: 'cus_disputed', invoice: 'in_disputed' },
+  invoiceBody = invoice('sub_monthly_active'),
+  invoicePayments = null,
+} = {}) {
   const calls = [];
   const fetch = async (url, init = {}) => {
     const parsed = new URL(String(url));
     calls.push({ method: init.method || 'GET', path: parsed.pathname, search: parsed.search, auth: init.headers?.Authorization });
     assert.equal(parsed.hostname, 'api.stripe.com');
     if (parsed.pathname === '/v1/charges/ch_disputed') {
-      return Response.json({ id: 'ch_disputed', customer: 'cus_disputed' });
+      assert.equal(parsed.search, '', 'no expansion: it fails on newer API versions');
+      return Response.json(charge);
+    }
+    if (parsed.pathname === '/v1/invoice_payments') {
+      assert.equal(parsed.searchParams.get('payment[payment_intent]'), 'pi_disputed');
+      if (!invoicePayments) return Response.json({ error: { message: 'Unrecognized request URL' } }, { status: 404 });
+      return Response.json({ data: invoicePayments });
+    }
+    if (parsed.pathname === '/v1/invoices/in_disputed') {
+      return Response.json(invoiceBody);
     }
     if (parsed.pathname === '/v1/subscriptions' && (init.method || 'GET') === 'GET') {
       assert.equal(parsed.searchParams.get('customer'), 'cus_disputed');
@@ -89,52 +114,95 @@ function stripeFake({ subscriptions, cancelResponse } = {}) {
   return { calls, fetch };
 }
 
-test('a dispute immediately cancels only Prompt Lab subscriptions that existed when it opened', async () => {
-  configureEnv();
-  const fake = stripeFake({
-    subscriptions: [
-      subscription('sub_monthly_active', 'price_monthly', 'active'),
-      subscription('sub_yearly_past_due', 'price_yearly', 'past_due'),
-      subscription('sub_other_product', 'price_other_product', 'active'),
-      subscription('sub_already_canceled', 'price_monthly', 'canceled'),
-      subscription('sub_resubscribed_later', 'price_monthly', 'active', DISPUTE_CREATED + 3600),
-    ],
-  });
+const CUSTOMER_SUBSCRIPTIONS = [
+  subscription('sub_monthly_active', 'price_monthly', 'active'),
+  subscription('sub_yearly_past_due', 'price_yearly', 'past_due'),
+  subscription('sub_other_product', 'price_other_product', 'active'),
+  subscription('sub_already_canceled', 'price_monthly', 'canceled'),
+  subscription('sub_resubscribed_later', 'price_monthly', 'active', DISPUTE_CREATED + 3600),
+];
+
+async function runDispute(fake, charge) {
   globalThis.fetch = fake.fetch;
   const webhook = await loadWebhook();
-
-  const response = await webhook(signedRequest(disputeEvent()));
+  const response = await webhook(signedRequest(disputeEvent(charge)));
   assert.equal(response.status, 200);
   const body = await response.json();
+  const cancels = fake.calls.filter((call) => call.method === 'DELETE').map((call) => call.path);
+  return { body, cancels };
+}
+
+test('a dispute of a Prompt Lab payment cancels only the subscription that invoice belongs to', async () => {
+  configureEnv();
+  const fake = stripeFake({ subscriptions: CUSTOMER_SUBSCRIPTIONS });
+  const { body, cancels } = await runDispute(fake);
   assert.equal(body.ok, true);
   assert.equal(body.access, 'canceled');
-
-  const cancels = fake.calls.filter((call) => call.method === 'DELETE');
-  assert.deepEqual(cancels.map((call) => call.path), [
-    '/v1/subscriptions/sub_monthly_active',
-    '/v1/subscriptions/sub_yearly_past_due',
-  ]);
-  for (const call of cancels) {
-    assert.equal(call.auth, 'Bearer sk_test_policy_fixture');
-    assert.match(new URLSearchParams(call.search).get('cancellation_details[comment]'), /payment disputed \(du_123\)/);
-  }
+  assert.deepEqual(cancels, ['/v1/subscriptions/sub_monthly_active']);
+  const cancel = fake.calls.find((call) => call.method === 'DELETE');
+  assert.equal(cancel.auth, 'Bearer sk_test_policy_fixture');
+  assert.match(new URLSearchParams(cancel.search).get('cancellation_details[comment]'), /payment disputed \(du_123\)/);
 });
 
-test('an expanded disputed charge is used without another Stripe lookup', async () => {
+test('a dispute of another product\'s charge on the same customer changes nothing', async () => {
+  configureEnv();
+  const fake = stripeFake({
+    subscriptions: CUSTOMER_SUBSCRIPTIONS,
+    invoiceBody: invoice('sub_other_product', 'price_other_product'),
+  });
+  const { body, cancels } = await runDispute(fake);
+  assert.equal(body.access, 'none');
+  assert.deepEqual(cancels, []);
+});
+
+test('a dispute of a one-off charge with no invoice changes nothing', async () => {
+  configureEnv();
+  const fake = stripeFake({
+    subscriptions: CUSTOMER_SUBSCRIPTIONS,
+    charge: { id: 'ch_disputed', customer: 'cus_disputed', payment_intent: 'pi_disputed' },
+  });
+  const { body, cancels } = await runDispute(fake);
+  assert.equal(body.access, 'none');
+  assert.deepEqual(cancels, []);
+  assert.equal(fake.calls.some((call) => call.path === '/v1/subscriptions'), false);
+});
+
+test('newer API versions find the invoice through invoice payments', async () => {
+  configureEnv();
+  const fake = stripeFake({
+    subscriptions: CUSTOMER_SUBSCRIPTIONS,
+    charge: { id: 'ch_disputed', customer: 'cus_disputed', payment_intent: 'pi_disputed' },
+    invoicePayments: [{ id: 'inpay_1', invoice: 'in_disputed' }],
+    invoiceBody: {
+      id: 'in_disputed',
+      parent: { subscription_details: { subscription: 'sub_yearly_past_due' } },
+      lines: { data: [{ pricing: { price_details: { price: 'price_yearly' } } }] },
+    },
+  });
+  const { body, cancels } = await runDispute(fake);
+  assert.equal(body.access, 'canceled');
+  assert.deepEqual(cancels, ['/v1/subscriptions/sub_yearly_past_due']);
+});
+
+test('an invoice that paid a Prompt Lab price without naming a subscription cancels live Prompt Lab subscriptions', async () => {
+  configureEnv();
+  const fake = stripeFake({ subscriptions: CUSTOMER_SUBSCRIPTIONS, invoiceBody: invoice('', 'price_yearly') });
+  const { body, cancels } = await runDispute(fake);
+  assert.equal(body.access, 'canceled');
+  assert.deepEqual(cancels, ['/v1/subscriptions/sub_monthly_active', '/v1/subscriptions/sub_yearly_past_due']);
+});
+
+test('an expanded disputed charge is used without another charge lookup', async () => {
   configureEnv();
   const fake = stripeFake({ subscriptions: [subscription('sub_monthly_active', 'price_monthly', 'trialing')] });
-  globalThis.fetch = fake.fetch;
-  const webhook = await loadWebhook();
-
-  const response = await webhook(signedRequest(disputeEvent({ id: 'ch_expanded', customer: 'cus_disputed' })));
-  assert.equal(response.status, 200);
-  assert.equal((await response.json()).access, 'canceled');
-  assert.equal(fake.calls.some((call) => call.path.startsWith('/v1/charges/')), false);
+  const { body } = await runDispute(fake, { id: 'ch_expanded', customer: 'cus_disputed', invoice: invoice('sub_monthly_active') });
+  assert.equal(body.access, 'canceled');
+  assert.equal(fake.calls.some((call) => call.path.startsWith('/v1/charges/') || call.path.startsWith('/v1/invoices/')), false);
 });
 
 test('a dispute with no cancelable Prompt Lab subscription changes nothing', async () => {
   configureEnv();
-  const fake = stripeFake({ subscriptions: [subscription('sub_old', 'price_monthly', 'canceled')] });
+  const fake = stripeFake({ subscriptions: [subscription('sub_old', 'price_monthly', 'canceled')], invoiceBody: invoice('sub_old') });
   globalThis.fetch = fake.fetch;
   const webhook = await loadWebhook();
 

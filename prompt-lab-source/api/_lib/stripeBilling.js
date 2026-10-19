@@ -586,10 +586,68 @@ function isAlreadyCanceledError(error) {
     && /already been canceled|already canceled|No such subscription/i.test(error?.message || '');
 }
 
+function invoiceSubscriptionId(invoice) {
+  const direct = objectId(invoice?.subscription)
+    || objectId(invoice?.parent?.subscription_details?.subscription);
+  if (direct) return direct;
+  const lines = Array.isArray(invoice?.lines?.data) ? invoice.lines.data : [];
+  for (const line of lines) {
+    const fromLine = objectId(line?.subscription)
+      || objectId(line?.parent?.subscription_item_details?.subscription);
+    if (fromLine) return fromLine;
+  }
+  return '';
+}
+
+function invoicePriceIds(invoice) {
+  const lines = Array.isArray(invoice?.lines?.data) ? invoice.lines.data : [];
+  return lines
+    .map((line) => objectId(line?.price) || objectId(line?.pricing?.price_details?.price))
+    .filter(Boolean);
+}
+
+// Resolve the disputed charge and the invoice it paid, so the policy only acts
+// on disputes of Prompt Lab subscription payments. Older Stripe API versions put
+// the invoice on the charge; from 2025-03-31 it is found through the charge's
+// PaymentIntent in /v1/invoice_payments. No expansion is requested, so the
+// lookup works whatever API version the account defaults to.
+async function resolveDisputedPayment(config, dispute) {
+  let charge = dispute?.charge && typeof dispute.charge === 'object' ? dispute.charge : null;
+  if (!charge) {
+    const chargeId = objectId(dispute?.charge);
+    if (!chargeId) return { charge: null, invoice: null };
+    charge = await stripeRequest(config, `charges/${encodeURIComponent(chargeId)}`);
+  }
+  let invoice = charge?.invoice && typeof charge.invoice === 'object' ? charge.invoice : null;
+  let invoiceId = invoice ? '' : objectId(charge?.invoice);
+  const paymentIntentId = objectId(charge?.payment_intent);
+  if (!invoice && !invoiceId && paymentIntentId) {
+    const params = new URLSearchParams({
+      'payment[type]': 'payment_intent',
+      'payment[payment_intent]': paymentIntentId,
+      limit: '1',
+    });
+    try {
+      const payments = await stripeRequest(config, `invoice_payments?${params.toString()}`);
+      invoiceId = objectId(payments?.data?.[0]?.invoice);
+    } catch (error) {
+      // Accounts on API versions without invoice payments answer 400/404; the
+      // charge then has no invoice to find.
+      if (error?.status !== 400 && error?.status !== 404) throw error;
+    }
+  }
+  if (!invoice && invoiceId) {
+    invoice = await stripeRequest(config, `invoices/${encodeURIComponent(invoiceId)}`);
+  }
+  return { charge, invoice };
+}
+
 // Billing policy (docs/billing-policy.md): when a customer opens a card dispute
-// (chargeback or inquiry) on a payment, their Prompt Lab subscription is canceled
-// immediately, which ends Pro on the next license check and stops further
-// charges. Only subscriptions on configured Prompt Lab prices that existed when
+// (chargeback or inquiry) on a Prompt Lab subscription payment, that Prompt Lab
+// subscription is canceled immediately, which ends Pro on the next license check
+// and stops further charges. The disputed charge must have paid an invoice for
+// a configured Prompt Lab price or subscription; disputes of other charges on
+// the same Stripe customer change nothing. Only subscriptions that existed when
 // the dispute was opened are touched, so a later resubscription survives a
 // delayed or retried delivery of the same event. All other events are recorded
 // only; refunds do not change access by themselves.
@@ -599,25 +657,42 @@ export async function applyWebhookAccessPolicy(payload = {}, config = buildStrip
 
   const dispute = payload?.data?.object || {};
   const disputeId = objectId(dispute);
-  let customerId = objectId(dispute?.charge?.customer);
-  if (!customerId) {
-    const chargeId = objectId(dispute?.charge);
-    if (!chargeId) return { action: 'none', reason: 'dispute has no charge' };
-    const charge = await stripeRequest(config, `charges/${encodeURIComponent(chargeId)}`);
-    customerId = objectId(charge?.customer);
-  }
+  if (!objectId(dispute?.charge)) return { action: 'none', reason: 'dispute has no charge' };
+  const { charge, invoice } = await resolveDisputedPayment(config, dispute);
+  const customerId = objectId(charge?.customer);
   if (!customerId) return { action: 'none', reason: 'disputed charge has no customer' };
+  if (!invoice) {
+    return { action: 'none', reason: 'disputed charge is not a subscription payment', customerId };
+  }
 
   const allowedPriceMap = getAllowedPriceMap(config);
+  const disputedSubscriptionId = invoiceSubscriptionId(invoice);
+  const paidPromptLabPrice = invoicePriceIds(invoice).some((priceId) => allowedPriceMap.has(priceId));
+
   const disputeCreated = Number(dispute?.created);
   const subscriptions = await listSubscriptions(config, customerId);
-  const targets = subscriptions.filter((subscription) => {
+  const promptLabSubscriptions = subscriptions.filter((subscription) => {
     const candidate = buildSubscriptionCandidate(subscription, allowedPriceMap);
     if (!candidate || !DISPUTE_CANCELABLE_STATUSES.has(candidate.status)) return false;
     const subscriptionCreated = Number(subscription?.created);
     return !Number.isFinite(disputeCreated) || !Number.isFinite(subscriptionCreated)
       || subscriptionCreated <= disputeCreated;
   });
+  // Cancel the subscription the disputed invoice belongs to. Only when the
+  // invoice names no subscription but did pay a Prompt Lab price, fall back to
+  // the customer's live Prompt Lab subscriptions.
+  const targets = disputedSubscriptionId
+    ? promptLabSubscriptions.filter((subscription) => String(subscription?.id) === disputedSubscriptionId)
+    : (paidPromptLabPrice ? promptLabSubscriptions : []);
+  if (targets.length === 0) {
+    return {
+      action: 'none',
+      reason: disputedSubscriptionId || paidPromptLabPrice
+        ? 'no cancelable Prompt Lab subscription'
+        : 'disputed charge is not a Prompt Lab payment',
+      customerId,
+    };
+  }
 
   const canceled = [];
   for (const subscription of targets) {
@@ -633,9 +708,7 @@ export async function applyWebhookAccessPolicy(payload = {}, config = buildStrip
     canceled.push(String(subscription.id));
   }
 
-  return canceled.length > 0
-    ? { action: 'canceled', reason: 'payment disputed', customerId, subscriptionIds: canceled }
-    : { action: 'none', reason: 'no cancelable Prompt Lab subscription', customerId };
+  return { action: 'canceled', reason: 'payment disputed', customerId, subscriptionIds: canceled };
 }
 
 export async function persistStripeWebhookRecord(record, config = buildStripeConfig()) {

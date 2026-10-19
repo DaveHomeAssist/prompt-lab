@@ -567,6 +567,19 @@ describe('useBillingState entitlement cache policy', () => {
     expect(later.status).toBe('verification_expired');
   });
 
+  it('keeps a grace-paused device retrying when later checks also fail', () => {
+    const now = Date.parse('2026-10-18T12:00:00Z');
+    const cached = { plan: 'pro', status: 'active', customerId: 'cus_123', lastVerifiedAt: new Date(now - 8 * DAY).toISOString() };
+    const error = new Error('offline');
+    const paused = applyFailedValidation(cached, error, now);
+    expect(paused.status).toBe('verification_expired');
+
+    const stillPaused = applyFailedValidation(paused, error, now + 15 * 60 * 1000);
+    expect(stillPaused.plan).toBe('free');
+    expect(stillPaused.status).toBe('verification_expired');
+    expect(stillPaused.customerId).toBe('cus_123');
+  });
+
   it('never expires owner access and leaves Free failures as errors', () => {
     const now = Date.now();
     const owner = applyFailedValidation({ plan: 'pro', status: 'owner', billingPeriod: 'owner', lastValidatedAt: new Date(now - 30 * DAY).toISOString() }, new Error('x'), now);

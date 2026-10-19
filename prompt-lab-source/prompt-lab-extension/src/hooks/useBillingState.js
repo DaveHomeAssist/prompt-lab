@@ -67,7 +67,9 @@ export function applyFailedValidation(previousState, error, now = Date.now()) {
   return normalizeBillingState({
     ...previousState,
     ...(graceExpired ? { plan: 'free' } : {}),
-    status: graceExpired
+    // A device already paused by the grace limit stays in that state on later
+    // failures, so it keeps retrying and recovers once a check succeeds.
+    status: graceExpired || previousState.status === BILLING_STATUS_VERIFICATION_EXPIRED
       ? BILLING_STATUS_VERIFICATION_EXPIRED
       : (previousState.plan === 'pro' ? 'offline' : 'error'),
     validationError,

@@ -91,8 +91,11 @@ operator in the Stripe Dashboard.
 
 ### Disputes are automated
 
-`POST /api/billing/webhook` cancels the disputed customer's Prompt Lab
-subscriptions when it receives `charge.dispute.created`. It only touches
+`POST /api/billing/webhook` cancels the disputed Prompt Lab subscription when
+it receives `charge.dispute.created`. The disputed charge must have paid an
+invoice for that subscription or for a configured Prompt Lab price (found on the
+charge, or through `/v1/invoice_payments` on newer Stripe API versions);
+disputes of other charges on the same customer change nothing. It only touches
 subscriptions on the configured Prompt Lab prices that are active, trialing,
 past due, unpaid or incomplete and that existed when the dispute was opened.
 If cancellation fails, the webhook answers 5xx so that Stripe redelivers the
