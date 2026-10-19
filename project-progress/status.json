@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-18T23:51:41.309109+00:00",
+  "snapshotAt": "2026-10-19T00:22:04.302Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "eba6c4c6e1a9b1ba905ed3cf1d88158b5f85c5a1",
+  "mainSha": "1f60dcc306d0fb12b9d271e8a21387bb2dcb7ac7",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the remaining accepted hosted Slice1 Acceptance checklist under D-012 with synthetic responses. Preserve the Library L1–L8 owner and hold graphite until L4; no new feature scope is implied.",
+  "nextAction": "Finish PR173 Create acceptance test/records delivery. Preserve the existing Library owner and PR171 package recovery; retain full parent UX, physical/native/human and billing/provider gates. L4 is merged; this acceptance closeout starts no graphite or later feature slice.",
   "evidence": [
+    {
+      "label": "Hosted Create Slice 1 automated acceptance passed",
+      "state": "Verified",
+      "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes×2themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39179972239"
+    },
     {
       "label": "Library L1–L8 implementation in review",
       "state": "Running",
@@ -690,8 +696,8 @@
       "type": "UX",
       "url": "https://app.notion.com/59fa88b863524c9dad1d77de40f4ffee",
       "inPlan": false,
-      "nextAction": "Merge slice 2A (prompt shortcuts and editing context bar on hosted web), then check it signed in on promptlab.tools; slice 2 and the held graphite restyle follow. Slice 1 acceptance is still open.",
-      "verification": "2026-10-18: D-ENH-5 to D-ENH-8 decided (B, A, A, B). Slice 2A built for hosted web: full extension suite and a hosted-web browser pass at four viewports passed on Dominic; not yet checked signed in. 2026-10-17: Dave's Create annotations C1 to C7 and M1 confirmed against e0b4a3b and planned into slices 2, 2A and 3 (D-015 open). 2026-10-17: DEC-01 A (D-013) folds the refinement workspace mockup into Create as the slice 2 reference; PR #138 merged as 4b3616f, unblocking slice 2; slice 2 draft acceptance added to the brief. 2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
+      "nextAction": "Close PR173 records and preserve the existing Library PR171 recovery. Full parent UX and physical/native/human acceptance remain open; no later feature slice is started here.",
+      "verification": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes×2themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent. Historical evidence: 2026-10-18: D-ENH-5 to D-ENH-8 decided (B, A, A, B). Slice 2A built for hosted web: full extension suite and a hosted-web browser pass at four viewports passed on Dominic; not yet checked signed in. 2026-10-17: Dave's Create annotations C1 to C7 and M1 confirmed against e0b4a3b and planned into slices 2, 2A and 3 (D-015 open). 2026-10-17: DEC-01 A (D-013) folds the refinement workspace mockup into Create as the slice 2 reference; PR #138 merged as 4b3616f, unblocking slice 2; slice 2 draft acceptance added to the brief. 2026-10-15: decisions resolved (D-012); slice 1 built behind a hosted-web flag in PR #153. Full suite passed on a Node 22 container (1,143 Vitest, 222 legacy); extension and web builds passed; local hosted-web browser pass at five viewports, both themes. No deployed-surface check (previews do not boot; production requires sign-in)."
     },
     {
       "id": "633182d5e7a14bb6b5027e88fbfd8e71",
