@@ -134,6 +134,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
         await expect(gate).toBeVisible();
         await gate.getByRole('button', { name: 'Close billing modal', exact: true }).click();
         expect(await storedState(page)).toEqual(beforeGate);
+        if (viewport.width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
         // Collection names remain searchable on Free; keep the filtered-order
         // assertion without granting the fixture a synthetic Pro entitlement.
         await page.getByTestId('library-search').fill('Ops');
@@ -161,7 +162,8 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
         console.info(`[production-library ${viewport.width}] active collection removal passed`);
       }
       await expect(list.getByRole('listitem')).toHaveCount(4);
-      if (viewport.width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
+      const closeDrawer = page.getByRole('button', { name: 'Close Library drawer', exact: true });
+      if (await closeDrawer.isVisible()) await closeDrawer.click();
       console.info(`[production-library ${viewport.width}] shared search, keyboard reorder and current Free collection policy passed`);
 
       const baseline = await storedState(page);
