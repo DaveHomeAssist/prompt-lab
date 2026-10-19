@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BILLING_STATUS_VERIFICATION_EXPIRED,
   canAccessFeature,
+  areFeatureGatesActive,
   createOwnerBillingState,
   createDefaultBillingState,
   describeBillingStatus,
@@ -461,7 +462,8 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     isPro: state.plan === 'pro',
     planLabel: getPlanLabel(state),
     statusCopy: describeBillingStatus(state),
-    hasFeature: (featureId) => canAccessFeature(state.plan, featureId),
+    hasFeature: (featureId) => canAccessFeature(state, featureId),
+    featureGatesActive: areFeatureGatesActive(state),
     ownerAccessAvailable: isOwnerAccessAvailable(),
     activateOwnerAccess,
     refreshLicense,

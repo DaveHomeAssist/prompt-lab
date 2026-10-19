@@ -171,9 +171,15 @@ checkout creation; its Free-account checks expect billing enabled. For a
 billing-off rollback, run that spec with
 `PROMPTLAB_EXPECT_BILLING_ENABLED=false` to retain the terminal disabled checks.
 
-This restoration covers purchasing and account management. The existing
-prelaunch feature-access policy remains separate; enabling billing does not
-itself change `FEATURE_GATES_ENABLED`. Unpaid checkout proves neither paid
+This restoration covers purchasing and account management. Pro feature
+gates are a separate build setting: `prompt-lab-web/vite.config.js` sets
+`VITE_PROMPTLAB_PRO_GATES=on`, so the hosted web app locks A/B testing, the
+diff viewer, batch runs, collections and library export for Free accounts
+(`src/lib/billing.js` `areFeatureGatesActive`). Free accounts keep every
+feature while the server reports `billingDisabled` or `checkoutDisabled`.
+The extension and desktop builds have no sign-in or checkout, so they never
+gate. Build the web app with `VITE_PROMPTLAB_PRO_GATES=off` to reopen every
+feature without touching billing routes. Unpaid checkout proves neither paid
 activation nor renewal, cancellation, refund or native distribution acceptance.
 Keep those evidence gates separate from the completed Library acceptance.
 

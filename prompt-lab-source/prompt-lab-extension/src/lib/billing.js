@@ -37,10 +37,30 @@ export const BILLING_FEATURES = Object.freeze({
 });
 
 const PRO_FEATURES = new Set(Object.keys(BILLING_FEATURES));
-// Prelaunch branch policy: the full workflow is open to every user while
-// commercial billing remains disabled. Keep payment routes fail-closed; this
-// flag controls only in-app feature access.
-const FEATURE_GATES_ENABLED = false;
+
+// Pro feature gates are enforced only on a surface that can sell Pro: the
+// hosted web app, where users sign in with Clerk and checkout can complete.
+// prompt-lab-web/vite.config.js sets VITE_PROMPTLAB_PRO_GATES=on (override
+// with VITE_PROMPTLAB_PRO_GATES=off at build time to reopen every feature).
+// The Chrome extension and the desktop app have no sign-in, so a Free user
+// there could never buy Pro; they keep the full workflow instead of being
+// locked out of features they cannot purchase. Read at call time so tests
+// can stub the environment.
+export function areProGatesBuildEnabled() {
+  if (isExtension) return false;
+  if (typeof import.meta === 'undefined') return false;
+  return import.meta.env?.VITE_WEB_MODE === 'true'
+    && import.meta.env?.VITE_PROMPTLAB_PRO_GATES === 'on';
+}
+
+// Even where gates are built in, a Free user is never locked out while the
+// server reports that purchases are unavailable (billing off or checkout
+// paused): they cannot buy, so the features stay open, as in prelaunch.
+export function areFeatureGatesActive(state = {}) {
+  return areProGatesBuildEnabled()
+    && state?.billingDisabled !== true
+    && state?.checkoutDisabled !== true;
+}
 const ownerAccessEnabled = typeof import.meta !== 'undefined' && (
   import.meta.env?.MODE === 'test' ||
   (
@@ -131,14 +151,23 @@ export function normalizeBillingState(value = {}) {
   };
 }
 
-export function canAccessFeature(plan, featureId) {
-  if (!PRO_FEATURES.has(featureId)) return true;
-  return !FEATURE_GATES_ENABLED || plan === PLAN_PRO;
+export function isProFeature(featureId) {
+  return PRO_FEATURES.has(featureId);
 }
 
+// Accepts a billing state (preferred) or a bare plan string for callers that
+// only know the plan; a bare plan is treated as purchasable.
+export function canAccessFeature(stateOrPlan, featureId) {
+  if (!PRO_FEATURES.has(featureId)) return true;
+  const state = typeof stateOrPlan === 'string' ? { plan: stateOrPlan } : (stateOrPlan || {});
+  if (state.plan === PLAN_PRO) return true;
+  return !areFeatureGatesActive(state);
+}
+
+// Billing switched off on the server: Free users keep the full workflow and
+// see the prelaunch copy instead of an upgrade prompt, gates or not.
 export function isPrelaunchOpenAccess(state = {}) {
-  return !FEATURE_GATES_ENABLED
-    && state?.plan !== PLAN_PRO
+  return state?.plan !== PLAN_PRO
     && state?.billingDisabled === true;
 }
 

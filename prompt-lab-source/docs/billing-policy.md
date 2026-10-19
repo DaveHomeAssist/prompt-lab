@@ -125,10 +125,13 @@ values above against `billingPolicy.js`.
 - The entitlement cache is a client convenience, not a security boundary. A user
   who edits local storage can show Pro locally. Any future server-provided Pro
   feature must check the entitlement on the server.
-- In-app feature gates are currently off (`FEATURE_GATES_ENABLED = false` in
-  `prompt-lab-extension/src/lib/billing.js`), so every workflow feature is open
-  to every user whatever their plan. This policy therefore changes the plan label
-  and the purchase lifecycle, not which features a user can open today.
+- In-app Pro feature gates apply only to the hosted web app (built with
+  `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
+  `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
+  A/B testing, the diff viewer, batch runs, collections or library export.
+  Free accounts keep every feature while the server reports `billingDisabled`
+  or `checkoutDisabled`. The extension and desktop builds have no sign-in or
+  checkout and never gate.
 - Stripe retry and final-failure behavior (Smart Retries, then unpaid or
   canceled), portal cancellation mode and renewal reminder emails are Stripe
   Dashboard settings, not code. They must match this policy.
