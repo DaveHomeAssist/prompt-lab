@@ -11,6 +11,7 @@ import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 import CreateContextBar from './CreateContextBar.jsx';
 import PromptShortcuts from './PromptShortcuts.jsx';
+import './CreateGraphite.css';
 
 /**
  * CreateEditorPane – compressed Create workflow.
@@ -412,7 +413,7 @@ export default function CreateEditorPane({
               </span>
               <div className="flex gap-1.5">
                 {scoreChecks.map(([lbl, ok]) => (
-                  <span key={lbl} className={`flex items-center gap-0.5 text-[10px] ${ok ? m.scoreGood : m.scoreBad}`}>
+                  <span key={lbl} className={`flex items-center gap-0.5 text-[10px] ${ok ? m.scoreGood : splitLayout ? 'pl-create-muted' : m.scoreBad}`}>
                     {ok ? <Ic n="Check" size={8} /> : <Ic n="X" size={8} />}{lbl}
                   </span>
                 ))}
@@ -877,7 +878,7 @@ export default function CreateEditorPane({
   if (splitLayout) {
     return (
       <div className={shellClass}>
-        <div className={`pl-create-split ${scrollWithWorkspace ? 'is-flow' : ''}`} data-active-pane={activePane}>
+        <div className={`pl-create-split pl-create-graphite ${scrollWithWorkspace ? 'is-flow' : ''}`} data-active-pane={activePane} data-create-theme={colorMode}>
           <div className="pl-create-split-switch" role="group" aria-label="Workspace pane">
             <button type="button" aria-pressed={activePane === 'source'} aria-controls="create-source-pane" onClick={() => setActivePane('source')}>Source</button>
             <button type="button" aria-pressed={activePane === 'result'} aria-controls="create-result-pane" onClick={() => setActivePane('result')}>

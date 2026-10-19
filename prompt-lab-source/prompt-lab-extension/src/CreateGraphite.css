@@ -1,0 +1,99 @@
+/* Hosted split Create only. Palette choices stay with the shared theme owner. */
+.pl-create-split.pl-create-graphite {
+  --create-surface: #14191f;
+  --create-inset: #0d1117;
+  --create-raised: #1b222a;
+  --create-text: #edf2f7;
+  --create-muted: #b7c2ce;
+  --create-line: #455362;
+  --create-grid: #ffffff06;
+  --create-radius: 0.25rem;
+  /* Contain hidden field labels without relying on a backdrop-filter layer. */
+  position: relative;
+  color: var(--create-text);
+  background-color: var(--create-inset);
+  background-image: linear-gradient(var(--create-grid) 1px, transparent 1px), linear-gradient(90deg, var(--create-grid) 1px, transparent 1px);
+  background-size: 2rem 2rem;
+}
+.pl-create-graphite[data-create-theme='light'] {
+  --create-surface: #f5f7f9;
+  --create-inset: #e8edf2;
+  --create-raised: #ffffff;
+  --create-text: #1c2834;
+  --create-muted: #4c5c6c;
+  --create-line: #7c8c9b;
+  --create-grid: #17253308;
+}
+.pl-create-graphite .pl-create-split-source {
+  padding: 0.75rem;
+  border: 1px solid var(--create-line);
+  border-top: 2px solid var(--pl-brand-ember);
+  border-radius: var(--create-radius);
+  background: var(--create-surface);
+}
+.pl-create-split.pl-create-graphite .pl-results-shell {
+  --result-line: var(--create-line);
+  border-color: var(--create-line);
+  border-top: 2px solid var(--pl-brand-ember);
+  border-radius: var(--create-radius);
+  background: var(--create-surface);
+  box-shadow: none;
+}
+.pl-create-graphite :is(.pl-results-verdict, .pl-result-commit-bar, .pl-create-split-run-bar, .pl-create-split-switch) {
+  background: var(--create-raised);
+  border-color: var(--create-line);
+  backdrop-filter: none;
+}
+.pl-create-graphite :is(.pl-results-verdict h2, .pl-section-heading h3) {
+  font-family: inherit;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+.pl-create-graphite :is(.pl-eyebrow, .pl-candidate-number, #prompt-input-label) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  color: var(--pl-brand-ember-bright);
+}
+.pl-create-graphite .pl-candidate-number { font-size: 1.1rem; }
+.pl-create-graphite .pl-create-muted,
+.pl-create-graphite [aria-label='Prompt shortcuts'] :is(.font-normal, h3) { color: var(--create-muted); }
+.pl-create-graphite :is(.pl-candidate-rail, .pl-reasoning, .pl-result-history, .pl-assumption-row, .pl-reversible-row, [aria-label='Editing context']) {
+  background: var(--create-raised);
+  border-color: var(--create-line);
+}
+.pl-create-graphite :is(button, select, textarea, input, summary, details, .pl-create-split-switch, .pl-assumption-row, .pl-reversible-row, .pl-result-history, .pl-reasoning, .pl-side-by-side, .pl-empty-copy, [aria-label='Editing context']) {
+  border-radius: var(--create-radius);
+}
+.pl-create-graphite :is(textarea, select, input:not([type='checkbox']):not([type='radio']), .pl-original-content, .pl-diff-copy, .pl-empty-copy) {
+  background: var(--create-inset);
+  border-color: var(--create-line);
+  color: var(--create-text);
+}
+.pl-create-graphite :is(textarea, input)::placeholder { color: var(--create-muted); opacity: 1; }
+.pl-create-graphite :is(.pl-candidate-card, .pl-original-toggle, .pl-secondary-button, .pl-icon-button, .pl-create-split-switch button, .pl-segmented button) {
+  color: var(--create-text);
+  border-color: var(--create-line);
+  opacity: 1;
+}
+.pl-create-graphite :is(.pl-candidate-card, .pl-segmented button)[aria-selected='true'] {
+  background: color-mix(in srgb, var(--pl-brand-ember) 14%, var(--create-raised));
+  color: var(--pl-brand-ember-bright);
+  box-shadow: inset 3px 0 var(--pl-brand-ember);
+}
+.pl-create-graphite .pl-create-split-switch button[aria-pressed='true'] {
+  background: var(--pl-brand-ember);
+  color: var(--pl-action-text);
+}
+.pl-create-graphite :is(button, summary):hover:not(:disabled) { border-color: var(--pl-brand-ember); }
+.pl-create-graphite :is(button, summary, select, textarea, input, [tabindex]):focus-visible {
+  outline: 2px solid var(--pl-brand-ember);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--create-inset);
+}
+.pl-create-graphite ::selection {
+  background: var(--pl-brand-ember);
+  color: var(--pl-action-text);
+}
+@media (forced-colors: active) {
+  .pl-create-graphite :is(button, summary, select, textarea, input, [tabindex]):focus-visible { outline-color: Highlight; }
+}
