@@ -101,7 +101,8 @@ async function openPanel(context, extensionId) {
   await page.addInitScript(() => {
     localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
     localStorage.setItem('pl_telemetry_consent', 'denied');
-    localStorage.setItem('pl2-billing', JSON.stringify({ plan: 'pro', status: 'active', productName: 'Prompt Lab Pro' }));
+    // No billing seed: store screenshots must show the Free state every new
+    // install sees, not a paid plan badge the extension cannot sell.
   });
   await page.goto(`chrome-extension://${extensionId}/panel.html`);
   await page.waitForTimeout(1500);
@@ -164,7 +165,7 @@ test('capture CWS listing screenshots and promo tile', async () => {
     await opt.goto(`chrome-extension://${extensionId}/options.html`);
     await opt.waitForTimeout(900);
     await frame(context, await opt.screenshot(), {
-      title: 'Bring your own key — no account, no telemetry',
+      title: 'Bring your own key — no account, analytics off by default',
       body: 'Connect Anthropic, OpenAI, Gemini, OpenRouter, or a local Ollama model. Keys live in your browser storage and go straight to the provider.',
     }, 'screenshot-5-providers.png');
     captured.push('screenshot-5-providers.png');

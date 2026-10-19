@@ -19,9 +19,13 @@ The extension transmits data to:
 
 Supported providers are Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama (local). Prompt and response content is not sent to Prompt Lab billing or insights endpoints.
 
+## Page Capture
+
+The extension's Capture Page button reads the selected text, title, and URL of the active tab only when you click it, using the `activeTab` and `scripting` permissions. The captured values are inserted into your draft locally. They leave the device only if you run a prompt that includes them, and then only to the AI provider you selected. The extension does not read pages in the background, keep browsing history, or send captured page content to Prompt Lab endpoints.
+
 ## Telemetry and Tracking
 
-Prompt Lab can send limited product telemetry to developer-controlled endpoints. This includes event names, app surface, plan, anonymous device/session identifiers, and an optional contact email if you provide one in Settings. Prompt text, model responses, and provider API keys are not included in telemetry payloads.
+Prompt Lab can send limited product telemetry to developer-controlled endpoints, only after you choose Allow analytics (it is off by default). This includes event names, app surface, plan, anonymous device/session identifiers, and an optional contact email if you provide one in Settings. Prompt text, model responses, and provider API keys are not included in telemetry payloads.
 
 If you start Stripe billing flows, Stripe and Prompt Lab also process billing metadata such as customer email, Stripe customer ID, subscription status, and product/price identifiers so Prompt Lab can unlock Pro features locally on your device.
 
