@@ -91,6 +91,16 @@ async function reachable(locator) {
   });
 }
 
+async function checkTargets(page, label) {
+  const smallTargets = await page.locator('.pl-create-split :is(button, select, summary, input:not([type="hidden"])):visible').evaluateAll(elements => elements.flatMap(element => {
+    const target = element.matches('input[type="checkbox"], input[type="radio"]') ? element.closest('label') || element : element;
+    const r = target.getBoundingClientRect();
+    return r.width < 44 || r.height < 44 ? [{ name: element.getAttribute('aria-label') || target.textContent.trim().slice(0, 70), width: r.width, height: r.height }] : [];
+  }));
+  console.info(`[Create targets ${label}] ${JSON.stringify(smallTargets)}`);
+  expect.soft(smallTargets, `${label}: 44px interactive targets`).toEqual([]);
+}
+
 test('@production Create Slice 1 viewport, editing and accessibility acceptance', async ({ page, qa }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -119,12 +129,8 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
       });
       expect.soft(dimensions.scrollWidth, `${width} ${theme}: document width`).toBeLessThanOrEqual(dimensions.width);
       expect.soft(dimensions.scrollHeight, `${width} ${theme}: document height`).toBeLessThanOrEqual(dimensions.height);
-      const smallTargets = await page.locator('.pl-create-split button:visible, .pl-create-split [role="tab"]:visible').evaluateAll(elements => elements.flatMap(element => {
-        const r = element.getBoundingClientRect();
-        return r.width < 44 || r.height < 44 ? [{ name: element.getAttribute('aria-label') || element.textContent.trim().slice(0, 70), width: r.width, height: r.height }] : [];
-      }));
-      console.info(`[Create ${width}x${height} ${theme}] ${JSON.stringify({ dimensions, smallTargets })}`);
-      expect.soft(smallTargets, `${width} ${theme}: 44px Create targets`).toEqual([]);
+      await checkTargets(page, `${width} ${theme} Result`);
+      console.info(`[Create ${width}x${height} ${theme}] ${JSON.stringify({ dimensions })}`);
       expect.soft(await reachable(save), `${width} ${theme}: primary Save reachable`).toBe(true);
       await expect(page.locator('.pl-create-split .pl-primary-button:visible').filter({ hasText: /Save (?:new version|as new prompt)/ })).toHaveCount(1);
       if (width === 1440) {
@@ -139,6 +145,12 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
         expect.soft(await reachable(page.getByTestId('refine-action')), `${width} ${theme}: Refine reachable`).toBe(true);
         await pane(page, 'Result');
       }
+      await pane(page, 'Source');
+      const options = page.getByText(/Generation options ·/);
+      await options.click();
+      await checkTargets(page, `${width} ${theme} Source with options`);
+      await options.click();
+      await pane(page, 'Result');
     }
   }
   expect(await library(page)).toEqual(baseline);
