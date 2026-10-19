@@ -35,7 +35,9 @@ test.skip(process.env.PROMPTLAB_CREATE_WORKSPACE_SMOKE !== 'true', 'Explicit Cre
 
 async function authenticate(page, qa, seeded = true) {
   const { config, clerk } = qa;
-  expect((await clerk.sessions.getSessionList({ userId: config.clerkUserId, status: 'active', limit: 100 })).data).toHaveLength(0);
+  page.setDefaultTimeout(15_000);
+  page.setDefaultNavigationTimeout(30_000);
+  expect((await clerk.sessions.getSessionList({ userId: config.clerkUserId, status: 'active', limit: 100 })).data.length).toBe(0);
   await page.addInitScript(({ origin, source, expanded, resultMeta, seeded }) => {
     if (location.origin !== origin) return;
     if (!localStorage.getItem('__createAcceptance')) {
@@ -75,6 +77,8 @@ async function authenticate(page, qa, seeded = true) {
 }
 
 async function pane(page, name) {
+  // Clerk remounts the signed-in shell after reload; isVisible alone does not wait.
+  await expect(page.locator('.pl-create-split')).toBeVisible();
   const control = page.getByRole('group', { name: 'Workspace pane' }).getByRole('button', { name, exact: true });
   if (await control.isVisible()) await control.click();
 }
@@ -192,7 +196,10 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
   expect(edited[0].id).toBe(saved.id);
   await expect.poll(() => session(page)).toMatchObject({ raw: `${source} Retain this source edit.`, enhanced: 'Write a launch brief with three measured outcomes.', editingId: saved.id });
   await page.reload();
+  console.info(`[Create reload] mounted workspaces before readiness: ${await page.locator('.pl-create-split').count()}`);
   await pane(page, 'Result');
+  await expect(output).toBeVisible();
+  await expect(candidates.getByRole('option')).toHaveCount(2);
   await expect(output).toHaveValue('Write a launch brief with three measured outcomes.');
   expect(await library(page)).toEqual(edited);
   await candidates.getByRole('option').last().click();
