@@ -2,6 +2,34 @@
 
 ## Scope and current gaps
 
+### Refreshed macOS package inspection — 2026-10-19
+
+The macOS artifact from [Desktop 39203966636](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39203966636)
+targets runtime merge `df5da95fa2523e552f3cb00843f0bc898a6cbca5` and declares
+1.8.0, bundle ID `com.promptlab.desktop`. Its binary contains both `x86_64` and
+`arm64`. The DMG SHA-256 is
+`4f5606214098fa73e116d5aa25163fab922f6933838a7073f66f7f6c2eb722d6`;
+the app archive SHA-256 is
+`2e528d952ce8a9565c5beda08effb546d3ca1e142e129535dd1e5001583ba555`.
+
+Bounded inspection on macOS 27.0.1 arm64 found an ad-hoc linker signature on
+the executable, no sealed app resources or team identity, and a failed strict
+bundle signature verification. Stapler found no ticket attached to the DMG;
+this is not a claim about an online notarization service lookup. Do not label
+this artifact signed or notarized for distribution.
+
+Installed interaction was not attempted: the host has an existing 1.7.0 app,
+the package exposes no isolated profile selector, and no designated disposable
+macOS account or VM was established. Existing personal application/data were
+preserved. Install, launch, save/reopen, upgrade and snapshot restore remain
+Unknown on macOS. The earlier Windows/Linux package lifecycle receipts are
+separate evidence, not substitutes for this lane. The next native action is to
+run the exact package in a designated disposable macOS account/VM, after the
+applicable distribution/signing route is resolved. No public release or signing
+operation was performed.
+
+### Historical preparation and maintained procedure
+
 This is the executable handoff for implementation-plan issue I and the native desktop portion of J. Packaging and browser frontend checks do not close installation or operator acceptance. Run this checklist only in disposable accounts or VMs with synthetic data. No paid-provider call, public release, signing operation, personal-data deletion, or user's application uninstall is part of this checklist.
 
 The product candidate is main merge `a12b7e6fe85ff23219606e5167a5eed35b548ea5` (PR #88), containing phases 2–8. Refresh main and CI before choosing final artifacts. Later commits changing only this checklist or its operator fixture do not change the packaged application; record that distinction explicitly. Source packages declare 1.7.1; this does not create a public 1.7.1 release. Follow [release versioning](release-versioning.md) for a separately authorized release.
