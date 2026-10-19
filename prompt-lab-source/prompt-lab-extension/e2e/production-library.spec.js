@@ -44,6 +44,11 @@ const initialWorkspace = {
     createdAt: '2025-01-01T00:00:00Z', updatedAt: '2025-01-01T00:00:00Z' })),
 };
 
+async function showLibraryDrawer(page) {
+  const toggle = page.getByRole('button', { name: 'Show Library drawer', exact: true });
+  if (await toggle.isVisible()) await toggle.click();
+}
+
 for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 }]) {
   test(`@production signed-in Library navigation and import at ${viewport.width}px`, async ({ page }) => {
     test.setTimeout(150_000);
@@ -97,6 +102,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
 
+      await showLibraryDrawer(page);
       await page.getByRole('button', { name: '#qa-active', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('QA Alpha');
@@ -118,6 +124,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await expect(page.getByText('QA Beta', { exact: true })).toHaveCount(0);
       await openView(page, 'Library', viewport.width);
       await page.getByTestId('library-search').fill('');
+      await showLibraryDrawer(page);
       await page.getByRole('button', { name: /^Ops\s*2$/ }).click();
       await page.getByRole('combobox', { name: 'Sort prompts', exact: true }).selectOption('manual');
       await expect(list.getByRole('listitem')).toHaveCount(2);
@@ -126,11 +133,14 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await move.press('Enter');
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
       await expect.poll(async () => (await storedState(page)).library.map(row => row.id)).toEqual(['qa-beta', 'qa-alpha', 'qa-hidden', 'qa-child']);
+      await showLibraryDrawer(page);
       await page.getByRole('button', { name: 'Manage collections', exact: true }).click();
-      await page.getByRole('button', { name: 'Delete collection Ops', exact: true }).click();
+      await page.getByRole('button', { name: 'Remove folder Ops, keep prompts', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(4);
+      await showLibraryDrawer(page);
       await expect(page.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
       await expect.poll(async () => (await storedState(page)).library.some(row => row.collection === 'Ops')).toBe(false);
+      if (viewport.width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
       console.info(`[production-library ${viewport.width}] shared search, keyboard reorder and collection cleanup passed`);
 
       const baseline = await storedState(page);

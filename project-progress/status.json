@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T00:22:04.302Z",
+  "snapshotAt": "2026-10-19T00:27:26.262710+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,21 +9,21 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "1f60dcc306d0fb12b9d271e8a21387bb2dcb7ac7",
+  "mainSha": "0a5fdd8add4d03ddf561cf3dd4a6669d203d6437",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish PR173 Create acceptance test/records delivery. Preserve the existing Library owner and PR171 package recovery; retain full parent UX, physical/native/human and billing/provider gates. L4 is merged; this acceptance closeout starts no graphite or later feature slice.",
+  "nextAction": "Finish PR171 native/package and serialized production Library acceptance, preserving the delivered Create Slice1 receipt and all46 backlog/14plan records. Retain physical/human, tagged-release and full parent UX gates; no graphite or later feature scope is started.",
   "evidence": [
+    {
+      "label": "Library L1–L8 CI recovery in PR171",
+      "state": "Running",
+      "detail": "2026-10-18: PR170 deployed eda7142; signed-in Library retains 15 prompts and shows 1.8.0-dev source identity. PR171 reconciles main1f60dcc and corrects active-folder removal plus responsive/native/production fixtures. Dominic passed the complete32-test Library browser gate, nine hosted and four desktop-shell checks. Exact e153e27 CI shared1195/legacy223 passed; initial Desktop/Landing fixture failures retained. Windows job117828611838 then rejected CRLF Cargo.lock in the version guard; normalization/bump fixes plus a CRLF regression now pass all six version tests. Corrected native packages and serialized production Library acceptance remain pending. Scheduled39178875628 timed out during Library restart and subsequent session guards prevented overlap; production fixture drawer access and bounded waits/revocation verification are corrected. No physical/human or tagged-release acceptance claimed. Windows/Linux package builds succeeded on003397e, but native startup driver still waited for the removed Primary workspaces label. Head39c94cf uses shared nav-library identity; corrected native checks are rerunning. Main Create test/records PR173 is preserved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/171"
+    },
     {
       "label": "Hosted Create Slice 1 automated acceptance passed",
       "state": "Verified",
       "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes×2themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39179972239"
-    },
-    {
-      "label": "Library L1–L8 implementation in review",
-      "state": "Running",
-      "detail": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/170"
     },
     {
       "label": "Create slice 2A delivered",
@@ -528,8 +528,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/3d2255fc8f448162849ad8dbe5c12595",
       "inPlan": false,
-      "nextAction": "Verify branch CI and deployed development identity; retain tagged-release acceptance.",
-      "verification": "2026-10-18: Added allowlisted bump, metadata consistency and pre-artifact tag guard. Four version tests pass under Node 22 on Dominic. Shared source 1.8.0; no tagged release is claimed."
+      "nextAction": "Validate an authorized tagged release against its packaged artifact versions.",
+      "verification": "Windows CRLF checkouts exposed a guard parsing defect in job117828611838. Check/bump now normalize or preserve line endings; all six version tests pass on Dominic. Native build/acceptance rerun pending."
     },
     {
       "id": "3d2255fc8f44816b9a5ed471be3b493d",
@@ -664,18 +664,6 @@
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     },
     {
-      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
-      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Editor",
-      "type": "Security",
-      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
-      "inPlan": false,
-      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
-      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
-    },
-    {
       "id": "48d82c475b0448649ff2372a00bb6e33",
       "title": "Converge Library navigation, sync, persistence, and compatibility",
       "status": "Done",
@@ -758,6 +746,18 @@
       "inPlan": true,
       "nextAction": "Complete prior-version upgrade/restore, macOS interaction, applicable signing and human acceptance separately.",
       "verification": "PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+    },
+    {
+      "id": "3f0255fc8f4481ed9dacfe608a61e14e",
+      "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Editor",
+      "type": "Security",
+      "url": "https://app.notion.com/3f0255fc8f4481ed9dacfe608a61e14e",
+      "inPlan": false,
+      "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
+      "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
     },
     {
       "id": "3f0255fc8f44811d8794c092ba1bb88f",
@@ -852,8 +852,8 @@
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
-      "nextAction": "Finish Library L1–L8 branch CI, merge and hosted acceptance; retain native and signed-in gaps.",
-      "verification": "2026-10-18: PR170 implementation reconciled with main eba6c4c. Dominic passed all 1195 shared Vitest tests, 223 legacy tests, three frontend builds, 13 Library overlap/control checks and four hosted palette/view persistence checks. Five version checks and final responsive rerun pending; CI and signed-in deployed acceptance pending. Native/human acceptance not claimed."
+      "nextAction": "Pass corrected exact-head CI, merge PR171 and run serialized production Library acceptance.",
+      "verification": "2026-10-18: PR170 deployed eda7142; signed-in Library retains 15 prompts and shows 1.8.0-dev source identity. PR171 reconciles main1f60dcc and corrects active-folder removal plus responsive/native/production fixtures. Dominic passed the complete32-test Library browser gate, nine hosted and four desktop-shell checks. Exact e153e27 CI shared1195/legacy223 passed; initial Desktop/Landing fixture failures retained. Windows job117828611838 then rejected CRLF Cargo.lock in the version guard; normalization/bump fixes plus a CRLF regression now pass all six version tests. Corrected native packages and serialized production Library acceptance remain pending. Scheduled39178875628 timed out during Library restart and subsequent session guards prevented overlap; production fixture drawer access and bounded waits/revocation verification are corrected. No physical/human or tagged-release acceptance claimed. Windows/Linux package builds succeeded on003397e, but native startup driver still waited for the removed Primary workspaces label. Head39c94cf uses shared nav-library identity; corrected native checks are rerunning. Main Create test/records PR173 is preserved."
     }
   ]
 }

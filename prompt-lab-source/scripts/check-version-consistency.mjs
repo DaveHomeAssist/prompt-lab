@@ -10,7 +10,7 @@ export function checkVersions(root = sourceRoot, read = file => readFileSync(res
   const canonical = JSON.parse(read('package.json')).version;
   const errors = [];
   for (const file of versionFiles) {
-    const text = read(file);
+    const text = read(file).replace(/\r\n/g, '\n');
     let versions;
     if (file.endsWith('.json')) {
       const data = JSON.parse(text);

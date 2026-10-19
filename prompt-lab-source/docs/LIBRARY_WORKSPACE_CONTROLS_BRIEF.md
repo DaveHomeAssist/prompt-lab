@@ -47,3 +47,7 @@ regressions under Node 22 on Dominic. Browser checks include 375×812, 1440×900
 identity separately from CI and retain installed native/human acceptance gaps.
 Legacy folder names using `/` remain literal roots until explicitly changed. Local
 artwork can consume storage, so cap images and preserve honest save failure UI.
+
+## Delivery evidence — 2026-10-18
+
+PR170 merged as `eda7142`. Production `dpl_FwKqUCCuF6FxeFkNuXZdfwMt4dCo` is READY on the merge; signed-in Library shows `1.8.0-dev (eda7142)` with 15 existing prompts. Drawer collapse/reopen verified. Dominic passed 1195 shared tests, 223 legacy tests, five version tests, 32 final focused tests, 18 extension browser checks, nine hosted browser checks and four desktop-shell browser checks. The hosted keyboard fixture now expects Library after Write. GitHub merged under configured required checks while broader CI was still running; their completion is a separate gate. Native installed interaction, physical touch, tagged-release artifact validation and human acceptance remain open.

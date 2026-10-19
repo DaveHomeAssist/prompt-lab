@@ -14,6 +14,14 @@ async function openView(page, name, width) {
   else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name, exact: true }).click();
 }
 
+async function showDrawer(page) {
+  const show = page.getByRole('button', { name: 'Show Library drawer', exact: true });
+  if (await show.isVisible()) await show.click();
+}
+async function closeMobileDrawer(page, width) {
+  if (width < 720) await page.getByRole('button', { name: 'Close Library drawer', exact: true }).click();
+}
+
 for (const surface of surfaces) for (const width of [400, 480, 1180]) {
   test(`${surface.name} Library compatibility at ${width}px`, async () => {
     const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'promptlab-compatibility-'));
@@ -48,6 +56,7 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       });
       await page.goto(url);
       await openView(page, 'Library', width);
+      await showDrawer(page);
       if (width < 720) {
         const labelsFit = await page.getByRole('navigation', { name: 'Smart views' }).evaluate(nav =>
           [...nav.querySelectorAll('button')].every(button => {
@@ -60,17 +69,19 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
           }));
         expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);
       }
-      await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
-      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
-      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
-      await page.getByRole('button', { name: 'Switch to light mode' }).click();
+      await closeMobileDrawer(page, width);
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
       await page.getByRole('button', { name: 'Switch to dark mode' }).click();
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
+      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
+      await page.getByRole('button', { name: 'Switch to light mode' }).click();
+      await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
+      await showDrawer(page);
       await page.getByRole('button', { name: '#verification', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
@@ -88,6 +99,7 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await expect(page.getByText('Beta starter', { exact: true })).toHaveCount(0);
       await openView(page, 'Library', width);
       await page.getByTestId('library-search').fill('');
+      await showDrawer(page);
       await page.getByRole('button', { name: /^Ops\s*2$/ }).click();
       await page.getByRole('combobox', { name: /Sort/ }).selectOption('manual');
       await expect(list.getByRole('listitem')).toHaveCount(2);
@@ -96,11 +108,14 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await move.press('Enter');
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
       await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).map(row => row.id))).toEqual(['beta', 'alpha', 'hidden', 'child']);
+      await showDrawer(page);
       await page.getByRole('button', { name: 'Manage collections' }).click();
-      await page.getByRole('button', { name: 'Delete collection Ops' }).click();
+      await page.getByRole('button', { name: 'Remove folder Ops, keep prompts' }).click();
       await expect(list.getByRole('listitem')).toHaveCount(4);
+      await showDrawer(page);
       await expect(page.getByRole('button', { name: /^All prompts/ })).toHaveAttribute('aria-current', 'page');
       await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).filter(row => row.collection === 'Ops').length)).toBe(0);
+      await closeMobileDrawer(page, width);
       await page.getByRole('button', { name: 'Inspect Follow-up child' }).click();
       const provenance = page.getByRole('region', { name: 'Follow-up provenance' });
       await expect(provenance).toContainText('fixture-model');
@@ -112,6 +127,7 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await page.reload();
       await openView(page, 'Library', width);
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');
+      await showDrawer(page);
       await expect(page.getByRole('button', { name: /^Ops\d+$/ })).toHaveCount(0);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     } finally {

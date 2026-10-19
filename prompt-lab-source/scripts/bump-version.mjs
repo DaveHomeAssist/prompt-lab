@@ -20,7 +20,7 @@ export function planVersionBump(version, root = sourceRoot) {
       text = JSON.stringify(data, null, 2) + '\n';
     } else if (file.endsWith('constants.js')) text = source.replace(/(export const APP_VERSION\s*=\s*['"])[^'"]+/, `$1${version}`);
     else if (file.endsWith('Cargo.toml')) text = source.replace(/(\[package\][\s\S]*?\nversion\s*=\s*")[^"]+/, `$1${version}`);
-    else text = source.replace(/(\[\[package\]\]\nname = "prompt-lab-desktop"\nversion = ")[^"]+/, `$1${version}`);
+    else text = source.replace(/(\[\[package\]\]\r?\nname = "prompt-lab-desktop"\r?\nversion = ")[^"]+/, `$1${version}`);
     after.set(file, text);
   }
   const checked = checkVersions(root, file => after.get(file));
