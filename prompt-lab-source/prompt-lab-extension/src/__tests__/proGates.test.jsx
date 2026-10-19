@@ -47,7 +47,7 @@ describe('Pro feature gates', () => {
     localStorage.clear();
   });
 
-  it('gates exactly the five advertised Pro features and nothing else', () => {
+  it('gates exactly the four advertised Pro features and nothing else', () => {
     expect(Object.keys(BILLING_FEATURES).sort()).toEqual([...PRO_FEATURE_IDS].sort());
     for (const id of PRO_FEATURE_IDS) expect(isProFeature(id)).toBe(true);
     // Import and preset packs are Free on the landing page.

@@ -287,7 +287,7 @@ export default function BillingModal({
 
         {!billing.billingDisabled && !billing.checkoutDisabled && (
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
-            Pro renews automatically at $9/month or $79/year until you cancel. Cancel anytime in Manage Purchases;
+            New Pro subscriptions renew automatically at $9/month or $79/year until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
             your first payment or an annual renewal, and a refund ends Pro.
           </p>
