@@ -312,7 +312,8 @@ exact merge with `promptlab.tools` assigned. A bounded signed-in visual check at
 in both modes with Ember selected. All 15 personal prompts remained present and
 the current saved draft stayed clean. The existing preview flag and light mode
 were restored to their original values; no prompt, generation or save action
-was performed. The temporary browser tab and owned Dominic container are closed.
+was performed. The temporary browser tab and initial Dominic container were
+closed; the later diagnostic allocation is tracked separately below.
 
 [Post-merge Landing39187555977](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39187555977)
 exposed a timing error in the new visual test: the Retry button's text switched
@@ -337,10 +338,32 @@ The 2026-10-19 continuation reconciled current main `dbf8d90`, preserving the
 other owners' PR177/178 releases. The native harness now reveals the nearest
 missing portion and requires a stable, unobscured target before its real
 WebDriver click. Native options retain their driver-owned popup handling.
-No retention assertion or product source changed. Exact-head CI verification
-of both focused corrections is pending. Dominic is unreachable through both
-documented routes; the final prior-run result and old container/claim cleanup
-remain unverified. GitHub owns the next browser and installed-package checks.
+No retention assertion or product source changed.
+
+[PR180](https://github.com/DaveHomeAssist/prompt-lab/pull/180) merged normally as
+`df5da95fa2523e552f3cb00843f0bc898a6cbca5` from `b14015b` after all 15 returned
+checks passed. Candidate, tested PR merge `87a6f40`, and delivered main share
+source tree `eec9239f17dfbaf65e2d9cccc66dd14b496f0f56`.
+[Landing39202363590](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39202363590)
+passed 1222 tests, 25 landing browser checks and 31 hosted checks with one
+existing skip. [Desktop39202363597](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39202363597)
+passed all six jobs, including actual MSI, NSIS, DEB and AppImage exercise and
+retention plus macOS universal packaging. Both previously failing Windows
+paths pass; the exact package hashes and exercise/retention artifacts were
+inspected and the failed receipts remain retained.
+
+Production `dpl_H6pRUouN4TagVbE4qTiReegVkThR` is READY on exact `df5da95`
+with `promptlab.tools` assigned; its homepage returned HTTP 200. Automatic
+exact-main workflows all passed, including Landing39203966650 and all six jobs
+of Desktop39203966636.
+The prior signed-in visual proof applies to unchanged application source;
+no extra paid-provider or personal-data exercise was performed.
+
+Dominic remains unreachable through both documented routes; the interrupted
+prior-run result and old diagnostic container/claim cleanup remain unverified.
+No duplicate allocation, service change or heavy local fallback was started.
+The existing Notion UX/RUN/Hub records retain the full parent acceptance gaps;
+all 46 backlog rows and 14 approved plan IDs are preserved.
 
 Full parent UX,
 human/physical-device/macOS interaction and future tagged-release acceptance
