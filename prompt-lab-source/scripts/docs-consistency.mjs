@@ -231,10 +231,49 @@ async function checkGoldenThreshold() {
   pass(contract, `documented threshold matches DEFAULT_GOLDEN_THRESHOLD (${DEFAULT_GOLDEN_THRESHOLD})`);
 }
 
+// ── Contract 4: billing entitlement cache policy ───────────────────────────
+// The customer-facing billing policy promises how long a device trusts cached
+// Pro and how long it survives without a successful check. Both promises must
+// track the constants the client actually uses.
+async function checkBillingCachePolicy() {
+  const contract = 'billing-cache-policy';
+  const policyPath = 'prompt-lab-extension/src/lib/billingPolicy.js';
+  const {
+    BILLING_REVALIDATE_AFTER_HOURS,
+    BILLING_REVALIDATE_AFTER_MS,
+    BILLING_OFFLINE_GRACE_DAYS,
+    BILLING_OFFLINE_GRACE_MS,
+  } = await import(moduleUrl(policyPath));
+
+  if (BILLING_REVALIDATE_AFTER_MS !== BILLING_REVALIDATE_AFTER_HOURS * 3_600_000
+    || BILLING_OFFLINE_GRACE_MS !== BILLING_OFFLINE_GRACE_DAYS * 86_400_000) {
+    fail(contract, `${policyPath} exports inconsistent unit and millisecond values`);
+    return;
+  }
+
+  const docPath = 'docs/billing-policy.md';
+  const doc = await read(docPath);
+  const expectations = [
+    ['Revalidation window', `${BILLING_REVALIDATE_AFTER_HOURS} hours`],
+    ['Offline grace', `${BILLING_OFFLINE_GRACE_DAYS} days`],
+  ];
+  for (const [label, value] of expectations) {
+    const declared = new RegExp(`^${label}:\\s*\`([^\`]+)\`\\s*$`, 'm').exec(doc);
+    if (!declared) {
+      fail(contract, `${docPath} has no "${label}: \`<value>\`" line to check`);
+    } else if (declared[1] !== value) {
+      fail(contract, `${docPath} declares ${label} ${declared[1]} but ${policyPath} uses ${value}`);
+    }
+  }
+
+  pass(contract, `documented cache policy matches billingPolicy.js (${BILLING_REVALIDATE_AFTER_HOURS} hours, ${BILLING_OFFLINE_GRACE_DAYS} days)`);
+}
+
 async function main() {
   await checkRoutes();
   await checkProxyBoundary();
   await checkGoldenThreshold();
+  await checkBillingCachePolicy();
 
   for (const entry of checked) {
     console.log(`  ok    ${entry.contract} — ${entry.detail}`);

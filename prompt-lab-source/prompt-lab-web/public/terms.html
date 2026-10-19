@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com; font-src 'self'; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompt Lab | Terms of Service (Draft)</title>
+<meta name="description" content="Draft Terms of Service for Prompt Lab and Prompt Lab Pro: subscription, renewal, cancellation, refunds, disputes, offline access, acceptable use and liability.">
+<!-- DRAFT: keep out of search results until the owner and a legal reviewer approve publication. -->
+<meta name="robots" content="noindex,nofollow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Prompt Lab">
+<meta property="og:title" content="Prompt Lab | Terms of Service (Draft)">
+<meta property="og:description" content="Draft Terms of Service for Prompt Lab and Prompt Lab Pro: subscription, renewal, cancellation, refunds, disputes, offline access, acceptable use and liability.">
+<meta property="og:url" content="https://promptlab.tools/terms.html">
+<meta property="og:image" content="https://promptlab.tools/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Prompt Lab | Terms of Service (Draft)">
+<meta name="twitter:description" content="Draft Terms of Service for Prompt Lab and Prompt Lab Pro: subscription, renewal, cancellation, refunds, disputes, offline access, acceptable use and liability.">
+<meta name="twitter:image" content="https://promptlab.tools/og-image.png">
+<link rel="icon" type="image/png" href="./hero-logo.png">
+<link rel="canonical" href="https://promptlab.tools/terms.html">
+<link rel="preload" href="./fonts/outfit.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./fonts/jetbrains-mono.woff2" as="font" type="font/woff2" crossorigin>
+<script src="/google-analytics.js" defer></script>
+<style>
+@font-face {
+  font-family: 'Outfit';
+  src: url('./fonts/outfit.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --lab-violet: #7C3AED;
+  --lab-violet-light: #A78BFA;
+  --lab-violet-dim: #6D28D9;
+  --surface-950: #020617;
+  --surface-900: #0F172A;
+  --surface-800: #1E293B;
+  --surface-500: #64748B;
+  --surface-400: #94A3B8;
+  --surface-300: #CBD5E1;
+  --surface-100: #F1F5F9;
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-display);
+  background: var(--surface-950);
+  color: var(--surface-300);
+  line-height: 1.7;
+  min-height: 100vh;
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  transform: translateY(-180%);
+  background: var(--surface-100);
+  color: var(--surface-950);
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.skip-link:focus { transform: translateY(0); }
+
+a:focus-visible {
+  outline: 3px solid var(--lab-violet-light);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 2rem;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+}
+.site-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--surface-100);
+  text-decoration: none;
+}
+.site-nav-brand img { border-radius: 6px; }
+.site-nav-links { display: flex; align-items: center; gap: 0.15rem; }
+.site-nav-links a {
+  color: var(--surface-400);
+  text-decoration: none;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+.site-nav-links a:hover { color: var(--surface-100); background: rgba(255,255,255,0.06); }
+
+.wrapper {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 4rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--surface-100);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  font-size: 0.85rem;
+  color: var(--surface-400);
+  margin-bottom: 2.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--surface-100);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+p { margin-bottom: 1rem; font-size: 0.92rem; }
+.wrapper a {
+  color: var(--lab-violet-light);
+}
+
+ul {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+li {
+  margin-bottom: 0.4rem;
+  font-size: 0.92rem;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  color: var(--lab-violet-light);
+}
+
+footer {
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.72rem;
+  color: var(--surface-400);
+  border-top: 1px solid var(--glass-border);
+  margin-top: 3rem;
+}
+footer a {
+  color: var(--lab-violet-light);
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .site-nav {
+    padding: 0.5rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+  }
+  .site-nav-links {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .wrapper { padding: 2rem 1rem 3rem; }
+  h1 { font-size: 1.4rem; }
+}
+
+.draft-banner {
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.08);
+  color: #FDE68A;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 2rem;
+  font-size: 0.88rem;
+}
+.draft-banner strong { color: #FEF3C7; }
+.legal-flag {
+  display: block;
+  border-left: 3px solid #F59E0B;
+  background: rgba(245, 158, 11, 0.07);
+  color: #FCD34D;
+  padding: 0.5rem 0.75rem;
+  margin: -0.25rem 0 1rem;
+  font-size: 0.8rem;
+  border-radius: 0 6px 6px 0;
+}
+.legal-flag::before { content: "LEGAL CHECK: "; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<nav class="site-nav" aria-label="Site navigation">
+  <a href="./" class="site-nav-brand">
+    <img src="hero-logo.png" alt="" width="24" height="24">
+    Prompt Lab
+  </a>
+  <div class="site-nav-links">
+    <a href="./index.html">Home</a>
+    <a href="./guide.html">Guide</a>
+    <a href="./setup.html">Setup</a>
+    <a href="./privacy.html">Privacy</a>
+    <a href="./terms.html" class="active" aria-current="page" style="color:var(--surface-100);">Terms</a>
+    <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</nav>
+
+<main class="wrapper" id="main-content" tabindex="-1">
+
+<h1>Terms of Service</h1>
+<p class="subtitle">DRAFT &middot; Not yet in effect &middot; Prepared October 18, 2026</p>
+
+<div class="draft-banner" role="note" data-draft="true">
+  <strong>DRAFT, not in effect.</strong> This page is a working draft of Prompt Lab's terms. It has not been approved by the owner or reviewed by a lawyer, it is not legal advice, and it does not yet govern any purchase. Clauses marked &ldquo;Legal check&rdquo; need a qualified reviewer before publication. The refund, cancellation and device-check rules match the draft billing policy in the Prompt Lab repository.
+</div>
+
+<h2 id="agreement">1. About these terms</h2>
+<p>These terms apply when you use Prompt Lab: the Chrome extension, the desktop app, and the hosted web app at <code>promptlab.tools</code>, including the paid Prompt Lab Pro plan. By using Prompt Lab or buying Prompt Lab Pro you agree to these terms and to the <a href="./privacy.html">Privacy Policy</a>. &ldquo;We&rdquo; and &ldquo;us&rdquo; means the operator of Prompt Lab.</p>
+<span class="legal-flag">Name the legal operator (individual or company), its address and country, and the governing law and venue in section 15. Confirm how consent to these terms is captured at sign-up and at checkout (checkout currently collects no terms or renewal consent).</span>
+
+<h2 id="service">2. The service</h2>
+<p>Prompt Lab is a workspace for writing, testing, comparing and saving AI prompts. It works with AI providers you choose (Anthropic, OpenAI, Google Gemini, OpenRouter and Ollama), usually with your own API key. Your prompts, library and settings are stored on your device; see the Privacy Policy for what is sent where.</p>
+<ul>
+  <li>The Chrome extension and the desktop app are free and include every workflow feature. They do not sell Prompt Lab Pro.</li>
+  <li>The hosted web app requires a free account. Its Free plan includes enhancement modes, the prompt library, preset packs and import, and the composer. Prompt Lab Pro adds A/B testing, the side-by-side diff viewer, batch test-case runs, collections and JSON library export.</li>
+  <li>Requests to an AI provider are governed by that provider's own terms and pricing. Usage you pay a provider for with your own key is between you and that provider.</li>
+</ul>
+
+<h2 id="accounts">3. Accounts</h2>
+<p>The hosted web app uses an account managed by our sign-in provider, Clerk. Keep your sign-in secure and tell us promptly if you think your account has been used without permission. You must be old enough to form a binding contract where you live to buy Prompt Lab Pro.</p>
+<span class="legal-flag">Minimum age (for example 13 in the US, up to 16 in parts of the EU) and whether a parent or guardian may consent.</span>
+
+<h2 id="subscription">4. Prompt Lab Pro subscription and automatic renewal</h2>
+<p><strong>Prompt Lab Pro is a subscription that renews automatically until you cancel.</strong> It costs USD 9 per month or USD 99 per year, charged when you subscribe and then at the start of each new monthly or yearly period at the same price, to the payment method you gave at checkout. Payments are processed by Stripe; we do not see or store your full card details.</p>
+<ul>
+  <li>Prices are shown in US dollars. Taxes may apply where required.</li>
+  <li>If we change the price, we will tell you by email at least 30 days before the change applies to your next renewal, and you can cancel before then.</li>
+  <li>Promotion codes apply only as described when you redeem them.</li>
+</ul>
+<span class="legal-flag">California Automatic Renewal Law (Bus. &amp; Prof. Code &sect;17600 and following, as amended effective July 1, 2025) and other US state laws: clear and conspicuous renewal terms next to the purchase button, affirmative consent, an acknowledgment with cancellation terms, annual or price-change notices, and online cancellation. ROSCA applies federally. The FTC's 2024 &ldquo;click-to-cancel&rdquo; amendments were vacated and the pre-2024 Negative Option Rule was restored effective February 12, 2026; confirm the current status before publishing.</span>
+<span class="legal-flag">Sales tax and VAT on digital services: checkout does not calculate tax today. Decide whether prices include or exclude tax and whether to enable Stripe Tax.</span>
+
+<h2 id="cancellation">5. Cancelling</h2>
+<p>You can cancel at any time in the web app from Settings &rarr; Manage Billing &rarr; Manage Purchases, which opens the Stripe customer portal. Cancelling online takes effect at the end of the period you have already paid for. Pro stays available until then and you are not charged again. Cancelling does not by itself refund the current period; see section 6.</p>
+
+<h2 id="refunds">6. Refunds</h2>
+<ul>
+  <li><strong>14-day refund.</strong> You can ask for a full refund within 14 days of your first Prompt Lab Pro payment (monthly or annual), or within 14 days of an annual renewal payment. Email <a href="mailto:hi@promptlab.tools">hi@promptlab.tools</a> from the address on your account.</li>
+  <li><strong>A full refund ends Pro.</strong> When we refund a payment in full, we cancel the subscription at the same time, and Pro ends on your devices at their next billing check (section 8).</li>
+  <li><strong>Monthly renewals</strong> are not refundable, except for billing errors or where the law requires a refund.</li>
+  <li><strong>Billing errors</strong>, such as a duplicate charge, a charge after a cancellation took effect, or a charge at the wrong price, are refunded in full.</li>
+  <li><strong>Partial refunds or credits</strong> that we offer as a goodwill gesture do not change your access.</li>
+</ul>
+<p>Nothing in these terms limits refund or withdrawal rights you have under the law where you live.</p>
+<span class="legal-flag">EU/UK 14-day right of withdrawal for digital services (Consumer Rights Directive 2011/83/EU; UK Consumer Contracts Regulations 2013): checkout collects no express consent to immediate supply or acknowledgment of losing the right. Confirm that the 14-day full refund meets or exceeds the statutory right, and whether a proportionate charge applies instead. Also check the UK DMCCA 2024 subscription rules (reminders, renewal cooling-off) and whether &ldquo;monthly renewals are not refundable&rdquo; is enforceable for EU, UK and Australian consumers.</span>
+
+<h2 id="failed-payments">7. Failed payments and disputes</h2>
+<p><strong>Failed payments.</strong> If a renewal payment fails, Stripe retries it. Pro stays available while the subscription is past due. If the payment is not recovered and the subscription becomes unpaid or canceled, Pro ends. Updating your card in Manage Purchases restores a past-due subscription.</p>
+<p><strong>Disputes and chargebacks.</strong> Please contact us before disputing a charge with your bank; we refund billing errors directly. If you dispute a Prompt Lab charge, we cancel your subscription immediately so you are not charged again, and Pro ends. The outcome of a dispute does not restore the canceled subscription. You can subscribe again at any time.</p>
+<span class="legal-flag">Card-network rules on cancelling during a dispute (including inquiries) and how disputes will be contested; Stripe's terms on posting refund and cancellation policies.</span>
+
+<h2 id="device-access">8. Pro status on your devices and offline access</h2>
+<p>Prompt Lab checks your subscription with our billing server and remembers a successful result on each device.</p>
+<ul>
+  <li>A device re-checks your subscription once 6 hours have passed since its last check, including in a tab that stays open, and whenever you choose <strong>Refresh Status</strong>.</li>
+  <li>A cancellation that takes effect, a full refund or a dispute can therefore take up to 6 hours to appear on a device that already shows Pro. Refresh Status applies it immediately.</li>
+  <li>A new purchase appears as soon as you choose <strong>Sync Purchase</strong> or refresh.</li>
+  <li>If our billing server cannot be reached, Pro stays available on that device for up to 7 days after its last successful check. After that, Pro pauses on that device until a check succeeds. Nothing is canceled or charged because of this.</li>
+  <li>If we temporarily turn billing off, access a device already has is kept, and Free accounts can use every feature while purchases are unavailable.</li>
+</ul>
+<p>Your prompts and library stay on your device and remain available on the Free plan. Data you organized with a Pro feature, such as collections, is kept, but the Pro feature itself is unavailable until you subscribe again.</p>
+
+<h2 id="acceptable-use">9. Acceptable use</h2>
+<p>Do not use Prompt Lab to:</p>
+<ul>
+  <li>break the law, or infringe anyone's intellectual property, privacy or other rights;</li>
+  <li>violate the terms or usage policies of the AI provider you send a request to;</li>
+  <li>attack, overload, probe or bypass the security, rate limits or billing checks of Prompt Lab or its hosted proxy, or use the hosted proxy for anything other than Prompt Lab requests;</li>
+  <li>resell or share a Pro subscription, or alter the app or its stored data to unlock Pro without paying;</li>
+  <li>create or distribute malware, spam, or content that exploits or harms children.</li>
+</ul>
+<p>We may suspend or end access for serious or repeated violations. Where we can, we will warn you first.</p>
+
+<h2 id="your-content">10. Your content and the software</h2>
+<p>You keep all rights to the prompts, notes and other content you create. We do not claim ownership of it and, apart from what the Privacy Policy describes, we do not receive it. You are responsible for your content and for keeping your own backups; library export is available on Pro, and you can export your data before your subscription ends.</p>
+<p>The Prompt Lab software is source-available under the license in its <a href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer">GitHub repository</a>. That license, not these terms, governs copying or modifying the code. The Prompt Lab name and logo are ours.</p>
+<span class="legal-flag">Gating library export behind Pro: check data-portability expectations (for example GDPR Article 20) and whether Free users need a way to take their data out.</span>
+
+<h2 id="disclaimers">11. Disclaimers</h2>
+<p>Prompt Lab is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;. AI outputs can be wrong, incomplete or inappropriate; check them before you rely on them. We do not promise that Prompt Lab or any AI provider will be uninterrupted or error-free. To the extent the law allows, we disclaim implied warranties of merchantability, fitness for a particular purpose and non-infringement.</p>
+
+<h2 id="liability">12. Limitation of liability</h2>
+<p>To the extent the law allows, we are not liable for indirect, incidental, special, consequential or punitive damages, or for lost profits, data or goodwill. Our total liability for any claim about Prompt Lab is limited to the amount you paid us for Prompt Lab Pro in the 12 months before the claim. Some places do not allow these limits, so they may not apply to you, and nothing here limits liability that cannot be limited by law.</p>
+<span class="legal-flag">Enforceability of the disclaimer and cap for consumers (EU/UK unfair-terms rules, US state law); whether to add an indemnity clause.</span>
+
+<h2 id="changes">13. Changes to Prompt Lab and to these terms</h2>
+<p>We may change or discontinue features. If we discontinue Prompt Lab Pro, we will refund the unused part of any prepaid period. We may update these terms; for material changes we will give at least 30 days' notice by email or in the app before they apply to your next renewal. If you do not agree, you can cancel before then.</p>
+
+<h2 id="termination">14. Ending these terms</h2>
+<p>You can stop using Prompt Lab at any time and cancel Pro as described in section 5. We may end your access under section 9. Sections 6, 10, 11, 12 and 15 continue after these terms end.</p>
+
+<h2 id="law">15. Governing law and disputes</h2>
+<p>[To be completed: governing law and courts.] Before starting a formal claim, please email us so we can try to resolve the issue informally. Consumers keep any rights to bring claims in the courts where they live.</p>
+<span class="legal-flag">Choose governing law and venue; decide whether to include an arbitration clause and class-action waiver (and their limits for consumers); EU online dispute resolution wording if applicable.</span>
+
+<h2 id="contact">16. Contact</h2>
+<p>Questions about these terms, refunds or billing: <a href="mailto:hi@promptlab.tools">hi@promptlab.tools</a>. Bug reports and feature requests: <a href="https://github.com/DaveHomeAssist/prompt-lab/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a>.</p>
+<span class="legal-flag">Confirm that hi@promptlab.tools is a monitored mailbox before publishing (promptlab.tools mail is handled by registrar email forwarding).</span>
+
+</main>
+
+<footer>
+  <span>&aleph;</span> Prompt Lab
+  <br><a href="./index.html">Home</a> &middot; <a href="./guide.html">Guide</a> &middot; <a href="./setup.html">Setup</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab" rel="noopener noreferrer">Source</a>
+</footer>
+
+</body>
+</html>

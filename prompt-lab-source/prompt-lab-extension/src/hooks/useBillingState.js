@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  BILLING_STATUS_VERIFICATION_EXPIRED,
   canAccessFeature,
   createOwnerBillingState,
   createDefaultBillingState,
@@ -10,9 +11,13 @@ import {
   isOwnerAccessAvailable,
   normalizeBillingState,
 } from '../lib/billing.js';
+import {
+  BILLING_OFFLINE_GRACE_MS,
+  BILLING_REVALIDATE_AFTER_MS,
+  BILLING_REVALIDATE_CHECK_INTERVAL_MS,
+} from '../lib/billingPolicy.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 
-const REVALIDATE_AFTER_MS = 6 * 60 * 60 * 1000;
 const CHECKOUT_UNAVAILABLE_MESSAGE = 'Purchases are temporarily unavailable. Existing purchase management is still available.';
 
 function readClerkEmail(clerkUser) {
@@ -37,7 +42,43 @@ function shouldRevalidate(state) {
   if (!state.customerEmail && !state.customerId && !state.clerkUserId) return false;
   const lastValidated = Date.parse(state.lastValidatedAt || '');
   if (!Number.isFinite(lastValidated)) return true;
-  return (Date.now() - lastValidated) > REVALIDATE_AFTER_MS;
+  // Pro paused by the offline grace limit retries on the short check cadence so
+  // access returns soon after the device is back online.
+  const retryAfter = state.status === BILLING_STATUS_VERIFICATION_EXPIRED
+    ? BILLING_REVALIDATE_CHECK_INTERVAL_MS
+    : BILLING_REVALIDATE_AFTER_MS;
+  return (Date.now() - lastValidated) > retryAfter;
+}
+
+// Billing policy (docs/billing-policy.md): a failed check keeps cached Pro only
+// within the offline grace window, counted from the last successful check.
+export function applyFailedValidation(previousState, error, now = Date.now()) {
+  const stamp = new Date(now).toISOString();
+  const validationError = error?.message || 'Could not verify billing.';
+  // Caches written before lastVerifiedAt existed fall back to their last stamp
+  // once; persisting it means later failures cannot keep moving the anchor.
+  const lastVerifiedAt = previousState.plan === 'pro'
+    ? (previousState.lastVerifiedAt || previousState.lastValidatedAt || stamp)
+    : previousState.lastVerifiedAt;
+  const verifiedAt = Date.parse(lastVerifiedAt || '');
+  const graceExpired = previousState.plan === 'pro'
+    && !isOwnerProState(previousState)
+    && (!Number.isFinite(verifiedAt) || (now - verifiedAt) > BILLING_OFFLINE_GRACE_MS);
+  return normalizeBillingState({
+    ...previousState,
+    ...(graceExpired ? { plan: 'free' } : {}),
+    // A device already paused by the grace limit stays in that state on later
+    // failures, so it keeps retrying and recovers once a check succeeds.
+    status: graceExpired || previousState.status === BILLING_STATUS_VERIFICATION_EXPIRED
+      ? BILLING_STATUS_VERIFICATION_EXPIRED
+      : (previousState.plan === 'pro' ? 'offline' : 'error'),
+    validationError,
+    // Stamp even on failure: a failed validation is still a completed
+    // attempt, and leaving the clock stale is what caused revalidation
+    // to retry in a loop.
+    lastValidatedAt: stamp,
+    lastVerifiedAt: lastVerifiedAt || '',
+  });
 }
 
 function normalizeResponseState(payload, previousState) {
@@ -46,13 +87,18 @@ function normalizeResponseState(payload, previousState) {
     // keep whatever this device already knows and stamp the validation clock
     // so revalidation stops retrying. The flag is kept so purchase UI can
     // render a truthful disabled state instead of dead checkout controls.
+    const stamp = new Date().toISOString();
     return normalizeBillingState({
       ...previousState,
       billingDisabled: true,
       validationError: '',
-      lastValidatedAt: new Date().toISOString(),
+      lastValidatedAt: stamp,
+      // A definitive server answer: billing being off must not expire access
+      // a customer already paid for.
+      lastVerifiedAt: stamp,
     });
   }
+  const verifiedAt = new Date().toISOString();
   const hasField = (name) => Object.prototype.hasOwnProperty.call(payload || {}, name);
   return normalizeBillingState({
     ...previousState,
@@ -70,7 +116,8 @@ function normalizeResponseState(payload, previousState) {
     billingDisabled: false,
     checkoutDisabled: payload.checkoutDisabled === true,
     validationError: '',
-    lastValidatedAt: new Date().toISOString(),
+    lastValidatedAt: verifiedAt,
+    lastVerifiedAt: verifiedAt,
   });
 }
 
@@ -243,30 +290,43 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       }
       return nextState.plan === 'pro';
     } catch (error) {
-      setState((prev) => normalizeBillingState({
-        ...prev,
-        status: prev.plan === 'pro' ? 'offline' : 'error',
-        validationError: error.message || 'Could not verify billing.',
-        // Stamp even on failure: a failed validation is still a completed
-        // attempt, and leaving the clock stale is what caused revalidation
-        // to retry in a loop.
-        lastValidatedAt: new Date().toISOString(),
-      }));
+      const failedAt = Date.now();
+      const nextState = applyFailedValidation(stateRef.current, error, failedAt);
+      setState((prev) => applyFailedValidation(prev, error, failedAt));
       if (!silent) notify?.(error.message || 'Could not verify billing.');
-      return stateRef.current.plan === 'pro';
+      return nextState.plan === 'pro';
     } finally {
       if (!silent) setBusyAction('');
     }
   }, [notify, requestBilling]);
 
+  // Without a timer the six-hour window was only re-evaluated on reload or a
+  // state change, so a long-lived tab could keep stale Pro indefinitely.
+  const [revalidateTick, setRevalidateTick] = useState(0);
+  const watchesEntitlementCache = (state.plan === 'pro' && !isOwnerProState(state))
+    || state.status === BILLING_STATUS_VERIFICATION_EXPIRED;
   useEffect(() => {
-    if (clerkGetToken && state.plan !== 'pro') return;
+    if (!watchesEntitlementCache) return undefined;
+    const tick = () => setRevalidateTick(Date.now());
+    const intervalId = setInterval(tick, BILLING_REVALIDATE_CHECK_INTERVAL_MS);
+    const onVisibilityChange = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') tick();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearInterval(intervalId);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [watchesEntitlementCache]);
+
+  useEffect(() => {
+    if (clerkGetToken && state.plan !== 'pro' && state.status !== BILLING_STATUS_VERIFICATION_EXPIRED) return;
     if (!shouldRevalidate(state)) return;
     const revalidateKey = `${state.clerkUserId}:${state.customerEmail || ''}:${state.customerId || ''}:${state.lastValidatedAt || ''}`;
     if (revalidateKeyRef.current === revalidateKey) return;
     revalidateKeyRef.current = revalidateKey;
     refreshLicense({ silent: true });
-  }, [clerkGetToken, refreshLicense, state]);
+  }, [clerkGetToken, refreshLicense, revalidateTick, state]);
 
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || state.customerEmail || '').trim().toLowerCase();

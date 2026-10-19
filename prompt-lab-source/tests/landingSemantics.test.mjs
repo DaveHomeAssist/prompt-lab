@@ -12,6 +12,7 @@ const guideHtml = readFileSync(join(webDir, 'public', 'guide.html'), 'utf8');
 const setupHtml = readFileSync(join(webDir, 'public', 'setup.html'), 'utf8');
 const privacyHtml = readFileSync(join(webDir, 'public', 'privacy.html'), 'utf8');
 const privacyRedirectHtml = readFileSync(join(webDir, 'public', 'privacy', 'index.html'), 'utf8');
+const termsHtml = readFileSync(join(webDir, 'public', 'terms.html'), 'utf8');
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -157,6 +158,7 @@ test('target-blank links protect the opener on landing and task documentation', 
     ['guide', guideHtml],
     ['setup', setupHtml],
     ['privacy', privacyHtml],
+    ['terms', termsHtml],
   ];
 
   for (const [pageName, html] of pages) {
@@ -175,6 +177,7 @@ test('public landing surfaces load fonts locally without automatic third-party r
     ['guide', guideHtml, './fonts/'],
     ['setup', setupHtml, './fonts/'],
     ['privacy', privacyHtml, './fonts/'],
+    ['terms', termsHtml, './fonts/'],
   ];
 
   for (const [pageName, html, fontRoot] of pages) {
@@ -196,6 +199,7 @@ test('public landing surfaces declare a restrictive content security policy', ()
     ['guide', guideHtml],
     ['setup', setupHtml],
     ['privacy', privacyHtml],
+    ['terms', termsHtml],
     ['privacy redirect', privacyRedirectHtml],
   ];
   const requiredDirectives = [
