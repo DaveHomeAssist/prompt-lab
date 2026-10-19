@@ -13,7 +13,7 @@ export default function AppHeader({
   primaryView, setPrimaryView, workspaceView, runsView,
   effectiveEditorLayout, setEditorLayout, createLayoutOptions,
   setShowCmdPalette, setCmdQuery, setShowShortcuts, setShowSettings,
-  billingPlan, billingLabel, billingDisabled, openBilling,
+  billingPlan, billingLabel, billingDisabled, openBilling, billingUiEnabled = true,
   clerkUserButton,
   settingsButtonRef,
   renderMobileNavigation = true,
@@ -58,10 +58,10 @@ export default function AppHeader({
             </span>
           </div>
           <span data-testid="library-count" className={`text-[11px] ${m.textMuted}`}>{libraryCount} saved</span>
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
+          {billingUiEnabled && <span data-testid="billing-plan-chip" className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
             {billingLabel}
-          </span>
-          {billingPlan !== 'pro' && (
+          </span>}
+          {billingUiEnabled && billingPlan !== 'pro' && (
             <button
               type="button"
               data-testid="billing-trigger"

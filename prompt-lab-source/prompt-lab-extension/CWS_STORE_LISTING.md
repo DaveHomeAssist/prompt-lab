@@ -1,49 +1,52 @@
 # Chrome Web Store Listing Draft
 
-## 1. Short Description
+Copy for the Chrome Web Store dashboard. Field-by-field values for a
+submission live in the release's `SUBMISSION.md`; this file is the source copy.
 
-Multi-provider prompt side panel with enhance, A/B testing, library, composer, and Ollama support.
+## 1. Summary
+
+The store summary is the manifest `description` (CWS limit: 132 characters).
+Keep this line identical to `extension/manifest.json` and `public/manifest.json`:
+
+AI prompt enhancer, library, composer, A/B tester, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
+
+(123 characters.)
 
 ## 2. Full Description
 
-Prompt Lab is a prompt engineering workspace that lives in your browser side panel.
+Prompt Lab is a prompt engineering workspace that lives in your browser side panel. Write a prompt, refine it, compare versions across AI models, and save the ones that work, without leaving the page you are on.
 
-This Chrome Web Store listing is for the extension workflow. Prompt Lab also has a hosted web app at `https://promptlab.tools/app/`, but the side-panel version is optimized for in-browser use while you work.
-
-Use it to refine prompts, compare variants, save reusable prompt assets, and switch between providers without leaving the page you are already working on.
-
-Prompt Lab currently supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
+Prompt Lab works with Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama. Hosted providers use your own API key. If you prefer local models, point it at Ollama running on your machine.
 
 ### What you can do
 
 - Enhance and rewrite prompts with better structure, specificity, and clarity
-- Compare prompt variants side by side with A/B testing
-- Save prompts to a reusable library with tags and JSON import/export
+- Compare prompt variants side by side with A/B testing and keep the run history
+- Save prompts to a reusable library with tags, collections, and JSON import/export
 - Build larger prompts from reusable blocks in the composer
-- Keep working notes in the built-in notepad
-- Run prompt linting and prompt quality checks while you write
-- Scan for potentially sensitive content before sending prompts
+- Keep working notes in the built-in Scratch notepad and promote them to prompts
+- Run prompt linting and quality checks while you write
+- Scan for potentially sensitive content before a prompt is sent
+- Capture the selected text, title, and URL of the current page into your draft with one click
 
 ### Who it is for
 
-Prompt Lab is designed for people who actively iterate on prompts:
-
-- AI power users
-- prompt engineers
-- researchers
-- writers
-- developers
-- anyone comparing models or refining repeated prompt workflows
+People who iterate on prompts: AI power users, prompt engineers, researchers, writers, and developers who compare models or reuse prompt workflows.
 
 ### How it works
 
-Prompt Lab opens as a side panel so it stays available while you browse. You can choose your provider, configure your model, and run prompt workflows without constant tab switching.
+Click the Prompt Lab toolbar icon to open the side panel. Choose a provider in Settings, add your API key or your local Ollama address, and start writing. The side panel stays open while you browse.
 
-Hosted providers use your own API key. If you prefer local models, Prompt Lab also supports Ollama running on your machine.
+### Privacy
 
-## 3. Category Recommendation
+Your prompts, library, settings, and API keys are stored locally in your browser. Prompts go directly from your browser to the AI provider you choose. Prompt Lab has no account requirement for the extension. Usage analytics are off until you choose Allow analytics. Page capture runs only when you click Capture Page. Full policy: `https://promptlab.tools/privacy`
 
-`Productivity`
+Prompt Lab also has a hosted web app at `https://promptlab.tools/app/`.
+
+## 3. Category
+
+`Developer Tools`. The old `Productivity` category was split in 2023 and is
+no longer selectable; `Workflow & Planning` is the alternative.
 
 ## 4. Key Features
 
@@ -54,9 +57,26 @@ Hosted providers use your own API key. If you prefer local models, Prompt Lab al
 - Prompt library with tags plus JSON import/export
 - Prompt composer for building larger prompts from reusable parts
 - Prompt linting and sensitive-data scanning before send
+- One-click page capture (selection, title, URL) into the draft
 
 ## 5. Permissions Explanation
 
-- `Storage`: Prompt Lab saves your settings, prompt library, and app state locally in your browser so your workspace persists between sessions.
-- `Side panel`: Prompt Lab uses Chrome's side panel so it can stay open next to the page you are viewing.
-- `Provider site access`: Prompt Lab only connects to the AI provider you choose, plus local Ollama if you use it. It does not need broad access to every site you visit.
+See [PERMISSIONS_JUSTIFICATION.md](./PERMISSIONS_JUSTIFICATION.md) for the
+reviewer text for every permission. In short:
+
+- `storage`: settings, provider keys, and app state persist locally.
+- `sidePanel`: Prompt Lab runs in Chrome's side panel.
+- `activeTab` + `scripting`: the Capture Page button reads the current tab's selection, title, and URL, only when the user clicks it.
+- Provider host access: requests go only to the AI provider the user selects, plus local Ollama.
+- `promptlab.tools`: opt-in usage analytics only (the extension build has no billing UI).
+
+## 6. Pricing and in-app purchases
+
+The extension is listed as **Free**. Every feature is available without
+payment, and extension builds contain no purchase path: production builds
+(`npm run build` / `npm run build:cws`) set `VITE_PROMPTLAB_BILLING_UI=off`
+(`scripts/billing-ui-define.mjs`), which removes the plan badge, the Upgrade
+button, the Settings billing card and the Prompt Lab Pro dialog. The extension
+has no sign-in, so it could not complete a checkout anyway. Pro feature gates
+never apply to extension builds. Do not mention Pro or paid plans in the
+listing. Prompt Lab Pro is sold only in the hosted web app.

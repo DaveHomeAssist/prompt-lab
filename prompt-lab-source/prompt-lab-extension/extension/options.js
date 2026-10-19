@@ -34,6 +34,11 @@ const els = {
 };
 
 let currentProvider = DEFAULTS.provider;
+// The saved Ollama model, applied the first time the model list is fetched.
+// Ollama is probed only while it is the selected provider, so users of a
+// hosted provider never see a local-connection error.
+let savedOllamaModelPref = DEFAULTS.ollamaModel;
+let ollamaModelsLoaded = false;
 let storedKeys = { apiKey: '', openaiApiKey: '', geminiApiKey: '', openrouterApiKey: '' };
 // Guards against a rapid second Test activation billing a duplicate provider
 // call: `testPending` covers the save-then-test delay, `testInFlight` the
@@ -88,7 +93,8 @@ function fetchOllamaModels(selectModel) {
         const errMsg = resp?.error || chrome.runtime.lastError?.message || 'Cannot reach Ollama';
         setOllamaStatus('offline', 'err');
         els.ollamaModel.innerHTML = '<option value="">— Ollama not reachable —</option>';
-        setStatus(`Ollama: ${errMsg}`, 'err');
+        // The user may have switched to another provider while this was pending.
+        if (currentProvider === 'ollama') setStatus(`Ollama: ${errMsg}`, 'err');
         return;
       }
 
@@ -100,6 +106,7 @@ function fetchOllamaModels(selectModel) {
       }
 
       setOllamaStatus(`${models.length} model${models.length > 1 ? 's' : ''}`, 'ok');
+      ollamaModelsLoaded = true;
 
       // Build dropdown options
       els.ollamaModel.innerHTML = models.map(m => {
@@ -184,8 +191,11 @@ function loadSettings() {
       // Ollama
       els.ollamaBaseUrl.value = normalizeUrl(store.ollamaBaseUrl, DEFAULTS.ollamaBaseUrl);
       const savedOllamaModel = (store.ollamaModel || DEFAULTS.ollamaModel).trim();
-      // Attempt to fetch models; if offline, fall back to manual input
-      fetchOllamaModels(savedOllamaModel);
+      savedOllamaModelPref = savedOllamaModel;
+      // Probe the local Ollama server only when it is the selected provider;
+      // if offline, the user can fall back to manual input.
+      if (currentProvider === 'ollama') fetchOllamaModels(savedOllamaModel);
+      else setOllamaStatus('');
 
       renderSections();
     }
@@ -357,6 +367,9 @@ els.chips.forEach(chip => {
     currentProvider = normalizeProvider(chip.dataset.provider);
     clearStatus();
     renderSections();
+    if (currentProvider === 'ollama') {
+      fetchOllamaModels(ollamaModelsLoaded ? getOllamaModelValue() : savedOllamaModelPref);
+    }
   });
 });
 

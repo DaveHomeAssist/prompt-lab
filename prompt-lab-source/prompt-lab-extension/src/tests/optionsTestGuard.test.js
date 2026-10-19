@@ -52,11 +52,13 @@ const ELEMENT_IDS = [
 
 let sendMessage;
 
-function loadOptionsScript() {
+function loadOptionsScript({ chips = [] } = {}) {
   document.body.innerHTML = ELEMENT_IDS
     .map((id) => (id.endsWith('Btn')
       ? `<button id="${id}"></button>`
       : `<input id="${id}" value="" />`))
+    .join('') + chips
+    .map((provider) => `<button class="provider-chip" data-provider="${provider}"></button>`)
     .join('');
 
   // eslint-disable-next-line no-new-func
@@ -198,5 +200,57 @@ describe('options Test button dispatch guard', () => {
     await vi.advanceTimersByTimeAsync(400);
 
     expect(modelRequestCount()).toBe(2);
+  });
+});
+
+// CWS screenshot 5 / gap G3: the page used to probe Ollama on every load and
+// show "Ollama: Failed to fetch" in red to anyone without a local server, even
+// with a hosted provider selected.
+describe('options Ollama probe', () => {
+  function ollamaProbeCount() {
+    return sendMessage.mock.calls.filter(([message]) => message?.type === 'OLLAMA_LIST_MODELS').length;
+  }
+
+  function openWith(stored, { chips } = {}) {
+    sendMessage.mockClear();
+    sendMessage.mockImplementation((message, callback) => {
+      if (message?.type === 'OLLAMA_LIST_MODELS') {
+        setTimeout(() => callback({ error: 'Failed to fetch' }), 50);
+        return;
+      }
+      setTimeout(() => callback({ data: { content: [{ text: 'ok' }] } }), 50);
+    });
+    globalThis.chrome.storage.local.get = vi.fn((_keys, callback) => callback(stored));
+    loadOptionsScript({ chips });
+  }
+
+  it('does not contact Ollama or show an error when a hosted provider is selected', async () => {
+    openWith({});
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(ollamaProbeCount()).toBe(0);
+    expect(document.getElementById('status').textContent).toBe('');
+    expect(document.getElementById('ollamaStatus').textContent).toBe('');
+  });
+
+  it('probes Ollama and reports an unreachable server when Ollama is selected', async () => {
+    openWith({ provider: 'ollama', ollamaModel: 'llama3.2:3b' });
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(ollamaProbeCount()).toBe(1);
+    expect(document.getElementById('ollamaStatus').textContent).toBe('offline');
+    expect(document.getElementById('status').textContent).toBe('Ollama: Failed to fetch');
+  });
+
+  it('probes when the user switches to Ollama and drops a stale error after switching away', async () => {
+    openWith({}, { chips: ['anthropic', 'ollama'] });
+    const [anthropicChip, ollamaChip] = document.querySelectorAll('.provider-chip');
+
+    ollamaChip.click();
+    expect(ollamaProbeCount()).toBe(1);
+    anthropicChip.click();
+    await vi.advanceTimersByTimeAsync(200);
+
+    expect(document.getElementById('status').textContent).toBe('');
   });
 });
