@@ -80,3 +80,16 @@ button, the Settings billing card and the Prompt Lab Pro dialog. The extension
 has no sign-in, so it could not complete a checkout anyway. Pro feature gates
 never apply to extension builds. Do not mention Pro or paid plans in the
 listing. Prompt Lab Pro is sold only in the hosted web app.
+
+The options page has one static line, "Everything in this extension is free.
+Prompt Lab Pro is a separate subscription for the hosted web app, sold by
+Prompt Lab, not Google", with a "Pro features on the web" link to
+`https://promptlab.tools/#pricing`. There is no popup, badge, counter or
+repeated prompt (`tests/extension-pro-link.test.mjs`). Checked against the
+Program Policies (Accepting Payment From Users, Misleading or Unexpected
+Behavior, Quality Guidelines; <https://developer.chrome.com/docs/webstore/program-policies/policies>).
+Owner decision: the distribution doc says "If you plan to use a third party
+service to offer additional paid features or subscriptions, choose Contains in-app
+purchases" (<https://developer.chrome.com/docs/webstore/cws-dashboard-distribution>).
+Pro adds nothing to the extension itself, so **Free** remains defensible; choose
+**Contains in-app purchases** if you want the conservative reading.

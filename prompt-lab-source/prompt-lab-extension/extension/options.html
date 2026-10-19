@@ -180,6 +180,7 @@
     .status.warn { color: var(--orange); }
 
     .link-row { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+    .about-pro { margin-top: 1rem; }
     a {
       font-size: .7rem;
       color: var(--accent);
@@ -338,6 +339,11 @@
       <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">OpenRouter keys →</a>
       <a href="https://ollama.com/library" target="_blank" rel="noreferrer">Ollama models →</a>
     </div>
+
+    <!-- Quiet, static pointer to the web app's paid plan (pricing v2). No popup,
+         badge, counter or repeat prompt; the extension itself stays fully free. -->
+    <p class="hint about-pro" id="aboutPro">Everything in this extension is free. Prompt Lab Pro is a separate subscription for the hosted web app, sold by Prompt Lab, not Google:
+      <a href="https://promptlab.tools/?source=extension&amp;placement=options_about#pricing" target="_blank" rel="noopener noreferrer" data-analytics-id="extension.options.pro_web">Pro features on the web →</a></p>
   </div>
   <script type="module" src="options.js"></script>
 </body>
