@@ -49,3 +49,14 @@ test('privacy export claim matches the shipped workspace export', () => {
   // page must say so instead of promising to export them.
   assert.match(privacy, /API keys[^.]*are (never|not) (part of|included in)[^.]*export/i);
 });
+
+
+test('privacy discloses Free account billing validation and separates local and server records', () => {
+  assert.match(privacy, /create a Stripe customer even on the Free plan, before you start a Pro upgrade/);
+  assert.match(privacy, /account email and Clerk user ID to Stripe/);
+  assert.match(privacy, /Removing local workspace data does not by itself delete/);
+  assert.match(privacy, /No user-provided provider API keys stored/);
+  assert.match(privacy, /operator-managed provider credential on the server/);
+  assert.match(privacy, /source available under the repository's license/);
+  assert.doesNotMatch(privacy, /Prompt Lab is open source/);
+});

@@ -26,11 +26,13 @@ test('terms page is served at /terms', () => {
 });
 
 test('a draft terms page is labeled, unindexed and unlinked', () => {
-  if (!isDraft) return;
+  assert.ok(isDraft, 'terms must remain a draft until separately approved');
   assert.match(terms, /<title>[^<]*Draft[^<]*<\/title>/);
   assert.match(terms, /<meta name="robots" content="noindex,nofollow">/);
   assert.match(text, /DRAFT, not in effect\./);
   assert.match(text, /not legal advice/);
+  assert.match(text, /does not make this draft effective or constitute acceptance of it/);
+  assert.doesNotMatch(text, /By using Prompt Lab or buying Prompt Lab Pro you agree/);
   assert.doesNotMatch(sitemap, /terms\.html/, 'do not list a draft in the sitemap');
   assert.doesNotMatch(landing, /href="[^"]*terms(\.html)?"/, 'do not link a draft from the landing page');
 });
@@ -60,8 +62,10 @@ test('terms match the billing policy: refunds, disputes and device checks', () =
   assert.match(text, /A full refund ends Pro\./);
   assert.match(text, /Monthly renewals are not refundable/);
   assert.match(text, /we cancel your subscription immediately/);
-  assert.match(text, new RegExp(`once ${BILLING_REVALIDATE_AFTER_HOURS} hours have passed`));
-  assert.match(text, new RegExp(`up to ${BILLING_REVALIDATE_AFTER_HOURS} hours to appear`));
+  assert.match(text, new RegExp(`after ${BILLING_REVALIDATE_AFTER_HOURS} hours since its last check`));
+  assert.match(text, /not a guaranteed maximum delay/);
+  assert.match(text, /browser scheduling, network availability and server updates/);
+  assert.doesNotMatch(text, /up to 6 hours to appear|Refresh Status applies it immediately/);
   assert.match(text, new RegExp(`for up to ${BILLING_OFFLINE_GRACE_DAYS} days after its last successful check`));
 });
 

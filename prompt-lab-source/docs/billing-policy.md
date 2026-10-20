@@ -64,12 +64,17 @@ Revalidation window: `6 hours`
 
 Offline grace: `7 days`
 
-- A device re-checks your subscription once the revalidation window has passed,
-  including in a tab that stays open, and when you choose **Refresh Status**.
-- A cancellation that takes effect, a full refund or a dispute can therefore
-  take up to 6 hours to appear on a device that already shows Pro. **Refresh
-  Status** applies it immediately.
-- A new purchase appears as soon as you choose **Sync Purchase** or refresh.
+- A device becomes eligible for an automatic subscription re-check after
+  6 hours since its last check. An open tab checks periodically, subject to
+  browser scheduling and network availability. **Refresh Status** requests a
+  check without waiting for that window.
+- A cancellation that takes effect, a full refund or a dispute appears after a
+  successful check returns the updated billing status. The 6-hour window is not
+  a guaranteed maximum delay; browser scheduling, network availability and
+  server updates can delay the result.
+- After a new purchase, choose **Sync Purchase** or **Refresh Status** to request
+  the latest billing status. Pro appears when a successful check confirms the
+  purchase.
 - If the billing server cannot be reached, Pro stays available on that device
   for up to 7 days after the last successful check. After that Pro pauses on
   that device until a check succeeds; nothing is canceled or charged.
