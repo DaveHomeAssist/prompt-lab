@@ -552,10 +552,10 @@ export default function LibraryWorkspace({
             </button>
             <div className="pl-library-card-actions">
               {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>
-                <button type="button" aria-label={`Move ${entry.title} up`} disabled={index === 0} onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, entries)}><Ic n="ChevronUp" size={13} /></button>
-                <button type="button" aria-label={`Move ${entry.title} down`} disabled={index === entries.length - 1} onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, entries)}><Ic n="ChevronDown" size={13} /></button>
+                <button type="button" aria-label={`Move ${entry.title} up`} title="Move up" disabled={index === 0} onClick={() => lib.moveLibraryEntryByOffset(entry.id, -1, entries)}><Ic n="ChevronUp" size={13} /></button>
+                <button type="button" aria-label={`Move ${entry.title} down`} title="Move down" disabled={index === entries.length - 1} onClick={() => lib.moveLibraryEntryByOffset(entry.id, 1, entries)}><Ic n="ChevronDown" size={13} /></button>
               </>}
-              {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`}><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry))} aria-label={`Copy ${entry.title}`}><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`}><Ic n="Star" size={13} /></button></>}
+              {smartView === 'trash' ? <><button type="button" onClick={() => lib.restoreDeleted(entry.id)}>Restore</button><button type="button" onClick={() => lib.permanentlyDelete(entry.id)} aria-label={`Permanently delete ${entry.title}`} title="Delete forever"><Ic n="Trash2" size={13} /></button></> : <><button type="button" onClick={() => loadEntry(entry)}>Editor</button><button type="button" onClick={() => copy(entryText(entry))} aria-label={`Copy ${entry.title}`} title="Copy prompt"><Ic n="Copy" size={13} /></button><button type="button" onClick={() => lib.setFavorite(entry.id)} aria-label={`${entry.favorite ? 'Unfavorite' : 'Favorite'} ${entry.title}`} aria-pressed={Boolean(entry.favorite)} title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={13} /></button></>}
             </div>
           </article>)}
         </div>}
@@ -598,9 +598,9 @@ export default function LibraryWorkspace({
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
             <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>A/B test</button>
             <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
-            <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`}><Ic n="Star" size={14} /></button>
-            <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>
-            <button type="button" className="pl-icon-button" onClick={() => { const deleted = lib.del(selected.id); if (deleted !== false) setSelectedId(null); }} aria-label="Move prompt to Recently Deleted"><Ic n="Trash2" size={14} /></button>
+            <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
+            <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>
+            <button type="button" className="pl-icon-button" onClick={() => { const deleted = lib.del(selected.id); if (deleted !== false) setSelectedId(null); }} aria-label="Move prompt to Recently Deleted" title="Move to Recently Deleted"><Ic n="Trash2" size={14} /></button>
           </>}
         </footer>
       </>}

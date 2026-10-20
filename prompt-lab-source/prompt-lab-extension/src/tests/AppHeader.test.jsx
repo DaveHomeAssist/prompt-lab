@@ -47,6 +47,18 @@ function renderHeader(overrides = {}) {
 }
 
 describe('AppHeader', () => {
+  it('names every icon-only header control and gives each a visible tooltip', () => {
+    renderHeader();
+    for (const [name, title] of [
+      ['Command palette ⌘K', 'Command palette (⌘K)'],
+      ['Switch to light mode', 'Switch to light mode'],
+      ['Keyboard shortcuts', 'Keyboard shortcuts'],
+      ['Settings', 'Settings'],
+    ]) {
+      expect(screen.getByRole('button', { name })).toHaveAttribute('title', title);
+    }
+  });
+
   it('shows one unified set of workspace destinations', () => {
     renderHeader();
 

@@ -241,6 +241,18 @@ describe('LibraryWorkspace', () => {
     expect(callbacks.openBilling.mock.calls.map(([feature]) => feature)).toEqual(['export', 'packs', 'import', 'collections']);
   });
 
+  it('gives icon-only card and inspector actions tooltips and a pressed favorite state', () => {
+    renderLibrary();
+    expect(screen.getByRole('button', { name: 'Copy Favorite prompt' })).toHaveAttribute('title', 'Copy prompt');
+    const favorite = screen.getByRole('button', { name: 'Unfavorite Favorite prompt' });
+    expect(favorite).toHaveAttribute('aria-pressed', 'true');
+    expect(favorite).toHaveAttribute('title', 'Remove from favorites');
+    expect(screen.getByRole('button', { name: 'Favorite Incomplete prompt' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    expect(screen.getByRole('button', { name: 'Duplicate prompt' })).toHaveAttribute('title', 'Duplicate prompt');
+    expect(screen.getByRole('button', { name: 'Move prompt to Recently Deleted' })).toHaveAttribute('title', 'Move to Recently Deleted');
+  });
+
   it('filters prompts whose status is not set', () => {
     renderLibrary();
     fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: '__not_set__' } });

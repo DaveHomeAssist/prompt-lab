@@ -293,7 +293,7 @@ test('hosted wide shell preserves tab and modal keyboard behavior', async ({ pag
   await expect(shortcuts).toBeHidden();
   await expect(shortcutTrigger).toBeFocused();
 
-  const paletteTrigger = page.getByRole('button', { name: '⌘K', exact: true });
+  const paletteTrigger = page.getByRole('button', { name: 'Command palette ⌘K', exact: true });
   await paletteTrigger.focus();
   await paletteTrigger.click();
   const palette = page.getByRole('dialog', { name: 'Command palette' });
