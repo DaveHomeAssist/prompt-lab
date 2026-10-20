@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-19T10:18:02.134Z",
+  "snapshotAt": "2026-10-20T02:28:15.005Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f9e6f60f783eced1ba5f6fb55bb4b347966c2726",
+  "mainSha": "0b426b532dbd5522c4b0e38c8c96958e8c241976",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Draft terms and privacy wording corrections",
+      "state": "Open",
+      "detail": "2026-10-19: direct owner instruction authorizes factual wording/disclosure corrections only (Focus=None exception). Privacy now discloses Stripe customer lookup/creation for signed-in Free accounts, email/Clerk ID sharing, user-provided versus operator-managed keys, separate server records and source-available licensing. Draft terms no longer imply acceptance through use; billing cache language describes eligibility, periodic checks and network/server delays rather than a guaranteed six-hour maximum or immediate refresh. All existing legal flags retained; retention/deletion/operator/contact facts explicitly require confirmation. No effective date, consent design, jurisdiction, tax choice or Stripe change. Walter Node22 passed all 44 landing tests, docs lint, four consistency contracts and landing generation. CI/merge/deployment/live readback pending. Complete Notion46-row query has_more=false;14plan identities preserved. No matching terms/privacy issue row exists; unrelated issue dispositions preserved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/draft-terms-disclosures"
+    },
     {
       "label": "Pricing rollout verified in production",
       "state": "Verified",
