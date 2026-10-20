@@ -360,9 +360,13 @@ export default function LibraryWorkspace({
   };
   const selectEntry = (entry) => { if (entry.id !== selectedId && !confirmDiscardDetails()) return; if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
   const toggleChecked = (id) => setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  // Clearing filters only widens the visible set, so a Library selection stays
+  // valid and is kept. A Recently Deleted selection does not exist in All
+  // prompts and is dropped.
   const clearFilters = () => {
     setSmartView('all'); setSearchDraft(''); setStatusFilter(''); lib.setSearch('');
-    lib.setActiveTag(null); lib.setActiveCollection(null); setCheckedIds([]);
+    lib.setActiveTag(null); lib.setActiveCollection(null);
+    if (smartView === 'trash') setCheckedIds([]);
   };
   const saveDetails = async () => {
     if (!selected || smartView === 'trash' || !detailsDraft.title.trim()) return;

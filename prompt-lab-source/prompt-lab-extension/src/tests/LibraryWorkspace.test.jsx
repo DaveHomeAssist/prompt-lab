@@ -253,6 +253,16 @@ describe('LibraryWorkspace', () => {
     expect(screen.getByRole('button', { name: 'Move prompt to Recently Deleted' })).toHaveAttribute('title', 'Move to Recently Deleted');
   });
 
+  it('keeps the bulk selection when Clear all widens the filters', () => {
+    renderLibrary();
+    fireEvent.change(screen.getByTestId('library-search'), { target: { value: 'Draft content' } });
+    fireEvent.click(screen.getByLabelText('Select Incomplete prompt'));
+    expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toHaveTextContent('1 selected');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+    expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toHaveTextContent('1 selected');
+    expect(screen.getByLabelText('Select Incomplete prompt')).toBeChecked();
+  });
+
   it('filters prompts whose status is not set', () => {
     renderLibrary();
     fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: '__not_set__' } });
