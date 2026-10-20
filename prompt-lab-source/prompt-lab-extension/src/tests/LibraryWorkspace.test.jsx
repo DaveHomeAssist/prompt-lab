@@ -81,9 +81,12 @@ describe('LibraryWorkspace', () => {
   it('provides every smart view, tile/list density, and non-nested keyboard-selectable cards', () => {
     renderLibrary();
 
-    for (const name of ['All prompts', 'Recent', 'Frequently used', 'Favorites', 'Templates', 'Incomplete']) {
+    for (const name of ['All prompts', 'Favorites', 'Templates', 'Incomplete']) {
       expect(screen.getByRole('button', { name: new RegExp(`^${name}\\d+$`) })).toBeInTheDocument();
     }
+    // Reordering views describe their order instead of repeating the total.
+    expect(screen.getByRole('button', { name: 'Recent, last opened first' })).toHaveAttribute('title', 'Last opened first');
+    expect(screen.getByRole('button', { name: 'Frequently used, most used first' })).toHaveAttribute('title', 'Most used first');
     fireEvent.click(screen.getByRole('button', { name: /Favorites/ }));
     expect(screen.getByText('Favorite prompt')).toBeInTheDocument();
     expect(screen.queryByText('Incomplete prompt')).not.toBeInTheDocument();
@@ -236,6 +239,56 @@ describe('LibraryWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import Pro' }));
     fireEvent.click(screen.getByRole('button', { name: 'Unlock collections' }));
     expect(callbacks.openBilling.mock.calls.map(([feature]) => feature)).toEqual(['export', 'packs', 'import', 'collections']);
+  });
+
+  it('filters prompts whose status is not set', () => {
+    renderLibrary();
+    fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: '__not_set__' } });
+    expect(screen.getByText('Status: not set')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete prompt')).toBeInTheDocument();
+    expect(screen.queryByText('Favorite prompt')).not.toBeInTheDocument();
+  });
+
+  it('asks before discarding unsaved Details edits when another prompt is opened', () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'Unsaved owner' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
+    expect(confirm).toHaveBeenCalledWith('Discard unsaved changes to "Favorite prompt"?');
+    expect(screen.getByLabelText('Owner')).toHaveValue('Unsaved owner');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close prompt inspector' }));
+    expect(screen.getByLabelText('Owner')).toHaveValue('Unsaved owner');
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
+    expect(screen.getByLabelText('Title')).toHaveValue('Incomplete prompt');
+    confirm.mockRestore();
+  });
+
+  it('does not ask when switching prompts without unsaved edits', () => {
+    const confirm = vi.spyOn(window, 'confirm');
+    renderLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
+    expect(confirm).not.toHaveBeenCalled();
+    confirm.mockRestore();
+  });
+
+  it('deletes a trash selection forever through one bulk call and keeps the selection if nothing changed', () => {
+    const permanentlyDeleteEntries = vi.fn().mockReturnValueOnce(0).mockReturnValueOnce(1);
+    renderLibrary({ lib: makeLib({ permanentlyDeleteEntries }) });
+    fireEvent.click(screen.getByRole('button', { name: /Recently Deleted/ }));
+    fireEvent.click(screen.getByLabelText('Select Deleted prompt'));
+    const toolbar = screen.getByRole('toolbar', { name: 'Bulk actions' });
+    fireEvent.click(within(toolbar).getByRole('button', { name: 'Delete forever' }));
+    expect(permanentlyDeleteEntries).toHaveBeenCalledWith(['trash']);
+    expect(screen.getByText('No prompts were changed. Your selection is still active.')).toBeInTheDocument();
+    fireEvent.click(within(screen.getByRole('toolbar', { name: 'Bulk actions' })).getByRole('button', { name: 'Delete forever' }));
+    expect(screen.getByText('Permanently deleted 1 prompt.')).toBeInTheDocument();
+    expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
   });
 
   it('keeps Recently Deleted recoverable and shows the 30-day retention contract', () => {
