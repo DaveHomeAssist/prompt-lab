@@ -122,3 +122,12 @@ it('keeps every selected prompt recoverable when bulk permanent deletion is canc
   expect(window.confirm).toHaveBeenCalledTimes(1);
   expect(hook.result.current.trash.map((item) => item.id)).toEqual(['a', 'b']);
 });
+
+it('opening a prompt records the access without changing updatedAt', () => {
+  localStorage.setItem(storageKeys.library, JSON.stringify([entry('opened', { updatedAt: '2025-12-02T12:00:00.000Z' })]));
+  const { result } = renderHook(() => usePromptLibrary(vi.fn()));
+  act(() => result.current.trackRecentAccess('opened'));
+  const opened = result.current.library.find(item => item.id === 'opened');
+  expect(opened.updatedAt).toBe('2025-12-02T12:00:00.000Z');
+  expect(opened.lastAccessedAt).toBeTruthy();
+});

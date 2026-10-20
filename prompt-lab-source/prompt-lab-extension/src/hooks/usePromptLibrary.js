@@ -365,14 +365,16 @@ export default function usePromptLibrary(notify) {
     return () => window.removeEventListener('storage', handleStorage);
   }, [libReady]);
 
-  const updateLibraryEntry = (entryId, updater) => {
+  // `stamp: false` is for bookkeeping that is not an edit (opening a prompt).
+  // Those writes keep updatedAt, so the Updated date and Newest order stay true.
+  const updateLibraryEntry = (entryId, updater, { stamp = true } = {}) => {
     let changed = false;
     const nextLibrary = libraryRef.current.map(entry => {
       if (entry.id !== entryId) return entry;
       const next = updater(entry);
       if (!next || next === entry) return entry;
       changed = true;
-      return stampRecordMutation(entry, next);
+      return stamp ? stampRecordMutation(entry, next) : next;
     });
     if (changed) {
       libraryRef.current = nextLibrary;
@@ -1329,7 +1331,7 @@ export default function usePromptLibrary(notify) {
     updateLibraryEntry(id, entry => ({
       ...entry,
       lastAccessedAt: new Date().toISOString(),
-    }));
+    }), { stamp: false });
     const ant = getAnticipation();
     const recent = (ant.lastAccessOrder || []).filter(rid => rid !== id);
     recent.unshift(id);
