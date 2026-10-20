@@ -17,10 +17,11 @@ import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
-  // Recent and Frequently used reorder the whole library rather than filter
-  // it, so they show a sort hint instead of a count that equals All prompts.
+  // Recent and Frequently used reorder the whole library rather than filter it.
+  // Recent shows a sort hint instead of a count that equals All prompts;
+  // Frequently used counts the prompts that have actually been used.
   { id: 'recent', icon: 'Clock', label: 'Recent', reorderHint: 'Last opened first' },
-  { id: 'frequent', icon: 'Zap', label: 'Frequently used', reorderHint: 'Most used first' },
+  { id: 'frequent', icon: 'Zap', label: 'Frequently used', reorderHint: 'Most used first', counted: true },
   { id: 'favorites', icon: 'Star', label: 'Favorites' },
   { id: 'templates', icon: 'Braces', label: 'Templates' },
   { id: 'incomplete', icon: 'CircleAlert', label: 'Incomplete' },
@@ -110,6 +111,7 @@ function smartViewCount(library, id) {
   if (id === 'favorites') return library.filter((entry) => entry.favorite).length;
   if (id === 'templates') return library.filter(isTemplate).length;
   if (id === 'incomplete') return library.filter(isIncomplete).length;
+  if (id === 'frequent') return library.filter((entry) => Number(entry.useCount) > 0).length;
   return library.length;
 }
 
@@ -165,7 +167,7 @@ function VersionComparison({ entry, onRestore }) {
 
 const GOLDEN_RESPONSE_HINT = 'Pin a golden response from a Create run, or promote one from Evaluate → Compare.';
 
-function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
+function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
   const content = entryText(selected);
   const variableNames = uniqueStrings([
     ...extractVars(selected.original || ''), ...extractVars(selected.enhanced || ''),
@@ -188,6 +190,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
       <label>Collection<select value={detailsDraft.collection} onChange={(event) => setDetailsDraft((current) => ({ ...current, collection: event.target.value }))} disabled={smartView === 'trash' || !canUseCollections}><option value="">None</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label>
       {!canUseCollections && smartView !== 'trash' && <button type="button" className="pl-inline-upgrade" onClick={() => openBilling?.('collections')}>Unlock collections</button>}
       {smartView !== 'trash' && <button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button>}
+      {smartView !== 'trash' && detailsDirty && <button type="button" className="pl-secondary-button" onClick={discardDetails}>Discard changes</button>}
       <dl className="pl-inspector-audit-metadata">
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
         <div><dt>Updated</dt><dd>{new Date(selected.updatedAt || selected.updated_at || selected.createdAt).toLocaleString()}</dd></div>
@@ -294,7 +297,7 @@ export default function LibraryWorkspace({
   const [bulkTag, setBulkTag] = useState('');
   const [bulkCollection, setBulkCollection] = useState('');
   const [inspectorTab, setInspectorTab] = useState('details');
-  const [detailsDraft, setDetailsDraft] = useState({ ...EMPTY_DETAILS });
+  const [, setDetailsRevision] = useState(0);
   const [showPackStudio, setShowPackStudio] = useState(false);
   const [showCollectionManager, setShowCollectionManager] = useState(false);
   const [collectionDraft, setCollectionDraft] = useState('');
@@ -319,9 +322,29 @@ export default function LibraryWorkspace({
     }
   }, [smartView, lib.activeCollection, lib.activeTag, lib.collections, lib.allLibTags]);
   const selected = useMemo(() => (smartView === 'trash' ? lib.trash : lib.library).find((entry) => entry.id === selectedId) || null, [lib.library, lib.trash, selectedId, smartView]);
-  useEffect(() => setDetailsDraft(detailsForEntry(selected)), [selected?.id, selected?.updatedAt, selected?.updated_at]);
+  // Unsaved Details edits are kept per prompt for this session, so switching
+  // prompts or views, closing the inspector, or a background change to the
+  // entry (Favorite, use count) never drops what the user typed. Save details
+  // or Discard changes clears the kept draft.
+  // The draft is derived during render (never copied in an effect), so the
+  // inspector can't show one prompt's fields under another prompt's title.
+  const pendingDetailsRef = useRef(new Map());
   const expectedDetails = useMemo(() => detailsForEntry(selected), [selected]);
+  const detailsDraft = (selected && pendingDetailsRef.current.get(selected.id)) || expectedDetails;
   const detailsDirty = selected ? JSON.stringify(detailsDraft) !== JSON.stringify(expectedDetails) : false;
+  const editDetails = (updater) => {
+    if (!selected) return;
+    const current = pendingDetailsRef.current.get(selected.id) || expectedDetails;
+    const next = typeof updater === 'function' ? updater(current) : updater;
+    if (JSON.stringify(next) === JSON.stringify(expectedDetails)) pendingDetailsRef.current.delete(selected.id);
+    else pendingDetailsRef.current.set(selected.id, next);
+    setDetailsRevision(revision => revision + 1);
+  };
+  const discardDetails = () => {
+    if (!selected) return;
+    pendingDetailsRef.current.delete(selected.id);
+    setDetailsRevision(revision => revision + 1);
+  };
 
   const entries = useMemo(() => {
     let source = smartView === 'trash' ? [...lib.trash] : [...lib.library];
@@ -346,19 +369,14 @@ export default function LibraryWorkspace({
   const allVisibleChecked = entries.length > 0 && entries.every((entry) => checkedIds.includes(entry.id));
   const hasFilters = smartView !== 'all' || Boolean(searchDraft.trim() || statusFilter || lib.activeCollection || lib.activeTag);
 
-  // Switching prompts or views resets the inspector draft. Ask first so
-  // unsaved Details edits are never dropped silently.
-  const confirmDiscardDetails = () => !detailsDirty
-    || window.confirm(`Discard unsaved changes to "${selected?.title || 'this prompt'}"?`);
-  const closeInspector = () => { if (confirmDiscardDetails()) setSelectedId(null); };
+  const closeInspector = () => setSelectedId(null);
   const chooseView = (nextView) => {
-    if (!confirmDiscardDetails()) return;
     setSmartView(nextView); setCheckedIds([]); setSelectedId(null); setInspectorTab('details');
     if (nextView !== 'collection') lib.setActiveCollection(null);
     if (nextView !== 'tag') lib.setActiveTag(null);
     if (compact) setDrawerOpen(false);
   };
-  const selectEntry = (entry) => { if (entry.id !== selectedId && !confirmDiscardDetails()) return; if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
+  const selectEntry = (entry) => { if (compact) setDrawerOpen(false); setSelectedId(entry.id); setInspectorTab('details'); lib.trackRecentAccess?.(entry.id); };
   const toggleChecked = (id) => setCheckedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   // Clearing filters only widens the visible set, so a Library selection stays
   // valid and is kept. A Recently Deleted selection does not exist in All
@@ -382,11 +400,15 @@ export default function LibraryWorkspace({
       },
       updatedAt: new Date().toISOString(),
     });
-    const result = lib.saveEntryDetails ? await lib.saveEntryDetails(selected.id, update) : lib.updateEntries([selected.id], update);
+    const savedId = selected.id;
+    const result = lib.saveEntryDetails ? await lib.saveEntryDetails(savedId, update) : lib.updateEntries([savedId], update);
     if (result === false || result === 0 || result === null) {
       setAnnouncement('Details were not saved. Your edits remain in the inspector.');
       return;
     }
+    // Saved: drop the kept draft so the inspector shows the stored entry.
+    pendingDetailsRef.current.delete(savedId);
+    setDetailsRevision(revision => revision + 1);
     setAnnouncement(`Saved details for ${detailsDraft.title.trim()}.`);
   };
   const runBulk = (action, message) => {
@@ -466,14 +488,14 @@ export default function LibraryWorkspace({
       <div className="pl-library-rail-title"><div><p className="pl-eyebrow">Prompt index</p><h2>Library</h2></div><span>{lib.library.length}</span></div>
       <button type="button" className="pl-library-new-button" onClick={handleNewPrompt}><Ic n="Plus" size={14} /> New Prompt</button>
       <nav aria-label="Smart views">
-        {SMART_VIEWS.map(({ id, icon, label, reorderHint }) => <button key={id} type="button" title={reorderHint} aria-current={smartView === id ? 'page' : undefined} onClick={() => chooseView(id)}><Ic n={icon} size={14} /><span>{label}</span>{reorderHint ? <small className="sr-only">{`, ${reorderHint.toLowerCase()}`}</small> : <small>{smartViewCount(lib.library, id)}</small>}</button>)}
+        {SMART_VIEWS.map(({ id, icon, label, reorderHint, counted }) => <button key={id} type="button" title={reorderHint} aria-current={smartView === id ? 'page' : undefined} onClick={() => chooseView(id)}><Ic n={icon} size={14} /><span>{label}</span>{reorderHint && !counted ? <small className="sr-only">{`, ${reorderHint.toLowerCase()}`}</small> : <small>{smartViewCount(lib.library, id)}</small>}</button>)}
       </nav>
 
       <section className="pl-library-collections">
         <div className="pl-library-section-heading"><p className="pl-eyebrow">Collections</p><button type="button" onClick={() => { if (!canUseCollections) openBilling?.('collections'); else setShowCollectionManager((value) => !value); }} aria-expanded={canUseCollections ? showCollectionManager : undefined} aria-label={canUseCollections ? 'Manage collections' : 'Unlock collections'}><Ic n="Plus" size={12} /></button></div>
         {canUseCollections ? folderRows.filter(folder => !collapsedFolders.some(id => folderDescendants(folderRecords, id).has(folder.id) && id !== folder.id)).map(folder => <div key={folder.id} className="pl-library-folder" style={{ paddingLeft: `${Math.min(folder.depth, 6) * 10}px` }}>
           {folder.hasChildren && <button type="button" aria-label={`${collapsedFolders.includes(folder.id) ? 'Expand' : 'Collapse'} folder ${folder.name}`} aria-expanded={!collapsedFolders.includes(folder.id)} onClick={() => setCollapsedFolders(current => current.includes(folder.id) ? current.filter(item => item !== folder.id) : [...current, folder.id])}><Ic n={collapsedFolders.includes(folder.id) ? 'ArrowRight' : 'ChevronDown'} size={12} /></button>}
-          <button type="button" className="pl-folder-select" title={folder.collection} aria-current={smartView === 'collection' && lib.activeCollection === folder.collection ? 'page' : undefined} onClick={() => { if (!confirmDiscardDetails()) return; setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(folder.collection); if (compact) setDrawerOpen(false); }}><Artwork value={folder.artwork} fallback="Folder" /><span>{folder.name}</span><small>{lib.library.filter(entry => folderRecords.some(item => item.collection === entry.collection && folderDescendants(folderRecords, folder.id).has(item.id))).length}</small></button>
+          <button type="button" className="pl-folder-select" title={folder.collection} aria-current={smartView === 'collection' && lib.activeCollection === folder.collection ? 'page' : undefined} onClick={() => { setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(folder.collection); if (compact) setDrawerOpen(false); }}><Artwork value={folder.artwork} fallback="Folder" /><span>{folder.name}</span><small>{lib.library.filter(entry => folderRecords.some(item => item.collection === entry.collection && folderDescendants(folderRecords, folder.id).has(item.id))).length}</small></button>
         </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections · Pro</button>}
         {showCollectionManager && canUseCollections && <div className="pl-collection-manager">
           <label>Parent folder<select aria-label="Parent folder" value={collectionParent} onChange={event => setCollectionParent(event.target.value)}><option value="">Library root</option>{folderRows.map(folder => <option key={folder.id} value={folder.id}>{folder.collection}</option>)}</select></label>
@@ -488,7 +510,7 @@ export default function LibraryWorkspace({
       </section>
 
       <section><p className="pl-eyebrow">Tags</p><div className="pl-library-tag-cloud">
-        {lib.allLibTags.map((tag) => <button key={tag} type="button" aria-pressed={smartView === 'tag' && lib.activeTag === tag} onClick={() => { if (!confirmDiscardDetails()) return; setSmartView('tag'); setCheckedIds([]); setSelectedId(null); lib.setActiveCollection(null); lib.setActiveTag(tag); if (compact) setDrawerOpen(false); }}>#{tag}</button>)}
+        {lib.allLibTags.map((tag) => <button key={tag} type="button" aria-pressed={smartView === 'tag' && lib.activeTag === tag} onClick={() => { setSmartView('tag'); setCheckedIds([]); setSelectedId(null); lib.setActiveCollection(null); lib.setActiveTag(tag); if (compact) setDrawerOpen(false); }}>#{tag}</button>)}
       </div></section>
       <button type="button" className="pl-trash-link" aria-current={smartView === 'trash' ? 'page' : undefined} onClick={() => chooseView('trash')}><Ic n="Trash2" size={14} /><span>Recently Deleted</span><small>{lib.trash.length}</small></button>
       <small className="pl-trash-retention-note">Items are permanently removed after 30 days.</small>
@@ -594,7 +616,7 @@ export default function LibraryWorkspace({
             <h3>Follow-up prompts</h3>
             {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
           </section>}
-          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={setDetailsDraft} detailsDirty={detailsDirty} saveDetails={saveDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
+          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
         </div>
         <footer>
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>

@@ -84,9 +84,12 @@ describe('LibraryWorkspace', () => {
     for (const name of ['All prompts', 'Favorites', 'Templates', 'Incomplete']) {
       expect(screen.getByRole('button', { name: new RegExp(`^${name}\\d+$`) })).toBeInTheDocument();
     }
-    // Reordering views describe their order instead of repeating the total.
+    // Recent describes its order instead of repeating the total; Frequently
+    // used counts only the prompts that have uses (1 of the 2 fixtures).
     expect(screen.getByRole('button', { name: 'Recent, last opened first' })).toHaveAttribute('title', 'Last opened first');
-    expect(screen.getByRole('button', { name: 'Frequently used, most used first' })).toHaveAttribute('title', 'Most used first');
+    const frequent = screen.getByRole('button', { name: 'Frequently used1' });
+    expect(frequent).toHaveAttribute('title', 'Most used first');
+    expect(frequent.querySelector('small')).toHaveTextContent('1');
     fireEvent.click(screen.getByRole('button', { name: /Favorites/ }));
     expect(screen.getByText('Favorite prompt')).toBeInTheDocument();
     expect(screen.queryByText('Incomplete prompt')).not.toBeInTheDocument();
@@ -271,32 +274,45 @@ describe('LibraryWorkspace', () => {
     expect(screen.queryByText('Favorite prompt')).not.toBeInTheDocument();
   });
 
-  it('asks before discarding unsaved Details edits when another prompt is opened', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    renderLibrary();
+  it('keeps unsaved Details edits per prompt across switching, closing and entry updates, without a dialog', () => {
+    const confirm = vi.spyOn(window, 'confirm');
+    const { rerender, lib, callbacks } = renderLibrary();
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
     fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'Unsaved owner' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
-    expect(confirm).toHaveBeenCalledWith('Discard unsaved changes to "Favorite prompt"?');
+    expect(screen.getByLabelText('Title')).toHaveValue('Incomplete prompt');
+    expect(screen.getByLabelText('Owner')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
     expect(screen.getByLabelText('Owner')).toHaveValue('Unsaved owner');
 
     fireEvent.click(screen.getByRole('button', { name: 'Close prompt inspector' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
     expect(screen.getByLabelText('Owner')).toHaveValue('Unsaved owner');
 
-    confirm.mockReturnValue(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
-    expect(screen.getByLabelText('Title')).toHaveValue('Incomplete prompt');
+    // A background change to the entry (Favorite toggle bumps updatedAt) keeps the draft.
+    const toggled = { ...lib, library: lib.library.map(entry => entry.id === 'favorite' ? { ...entry, favorite: false, updatedAt: '2026-09-01T00:00:00Z' } : entry) };
+    rerender(<LibraryWorkspace lib={toggled} {...callbacks} />);
+    expect(screen.getByLabelText('Owner')).toHaveValue('Unsaved owner');
+    expect(confirm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
+    expect(screen.getByLabelText('Owner')).toHaveValue('Dave');
+    expect(screen.queryByRole('button', { name: 'Discard changes' })).not.toBeInTheDocument();
     confirm.mockRestore();
   });
 
-  it('does not ask when switching prompts without unsaved edits', () => {
-    const confirm = vi.spyOn(window, 'confirm');
-    renderLibrary();
+  it('Save details clears the kept draft so the saved entry shows afterwards', async () => {
+    const saveEntryDetails = vi.fn().mockResolvedValue(true);
+    renderLibrary({ lib: makeLib({ saveEntryDetails }) });
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'New owner' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save details' }));
+    await waitFor(() => expect(saveEntryDetails).toHaveBeenCalledWith('favorite', expect.any(Function)));
+    // The mock library did not change, so a reopened prompt shows the stored entry, not the old draft.
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Incomplete prompt' }));
-    expect(confirm).not.toHaveBeenCalled();
-    confirm.mockRestore();
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    expect(screen.getByLabelText('Owner')).toHaveValue('Dave');
   });
 
   it('deletes a trash selection forever through one bulk call and keeps the selection if nothing changed', () => {
