@@ -197,3 +197,18 @@ test('uncoded 429s keep the provider rate-limit behavior', () => {
   assert.equal(unknownCode.source, 'openai');
   assert.equal(unknownCode.retryable, false);
 });
+
+test('a full browser storage is a storage failure, not a provider rate limit', () => {
+  const quota = Object.assign(new Error("Failed to execute 'setItem' on 'Storage': Setting the value of 'pl2-library' exceeded the quota."), { name: 'QuotaExceededError' });
+  assert.equal(normalizeError(quota, 'library').category, ErrorCategory.STORAGE);
+  const firefox = Object.assign(new Error('Persistent storage maximum size reached'), { name: 'NS_ERROR_DOM_QUOTA_REACHED' });
+  assert.equal(normalizeError(firefox, 'library').category, ErrorCategory.STORAGE);
+});
+
+test('words that merely contain "rate" are not classified as rate limits', () => {
+  for (const message of ['Could not generate variants', 'Failed to separate sections', 'Content flagged by moderate filter']) {
+    assert.notEqual(normalizeError(new Error(message)).category, ErrorCategory.RATE_LIMIT, message);
+  }
+  assert.equal(normalizeError(new Error('Rate limit exceeded')).category, ErrorCategory.RATE_LIMIT);
+  assert.equal(normalizeError(new Error('You exceeded your current quota')).category, ErrorCategory.RATE_LIMIT);
+});

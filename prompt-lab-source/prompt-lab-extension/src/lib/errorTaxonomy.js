@@ -278,6 +278,14 @@ export function unknownError(source, detail) {
  * Wrap a raw error into an AppError if it isn't one already.
  * Classifies by message heuristics to stay backward-compatible.
  */
+function isStorageFailure(err, msg) {
+  return err?.name === 'QuotaExceededError'
+    || err?.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || msg.includes('storage')
+    || msg.includes('indexeddb')
+    || msg.includes('setitem');
+}
+
 export function normalizeError(err, source = 'unknown') {
   if (err instanceof AppError) return err;
 
@@ -296,8 +304,16 @@ export function normalizeError(err, source = 'unknown') {
     return authError(source, err?.message);
   }
 
-  // Rate limit
-  if (msg.includes('429') || msg.includes('rate') || msg.includes('quota')) {
+  // Browser storage quota (QuotaExceededError: "...exceeded the quota") must
+  // be classified before the provider quota heuristic below, or a full
+  // localStorage is reported as a provider rate limit with wrong advice.
+  if (isStorageFailure(err, msg)) {
+    return storageError(source, rawMessage);
+  }
+
+  // Rate limit. Match "rate" as a word so "generate", "separate" or
+  // "moderate" in an unrelated message never read as a rate limit.
+  if (msg.includes('429') || /\brate\b|ratelimit|rate[-_]limit/.test(msg) || msg.includes('quota')) {
     return rateLimitError(source, err?.message);
   }
 
@@ -311,10 +327,6 @@ export function normalizeError(err, source = 'unknown') {
     || (msg.includes('stream') && (msg.includes('aborted') || msg.includes('terminated')))
   ) {
     return networkError(source, rawMessage);
-  }
-
-  if (msg.includes('storage') || msg.includes('indexeddb') || (msg.includes('quota') && msg.includes('local'))) {
-    return storageError(source, rawMessage);
   }
 
   if (msg.includes('extension mode') || msg.includes('options page') || msg.includes('desktop api')) {
