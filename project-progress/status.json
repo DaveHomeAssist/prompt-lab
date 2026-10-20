@@ -16,7 +16,7 @@
     {
       "label": "Draft terms and privacy wording corrections",
       "state": "Open",
-      "detail": "2026-10-19: direct owner instruction authorizes factual wording/disclosure corrections only (Focus=None exception). Privacy now discloses Stripe customer lookup/creation for signed-in Free accounts, email/Clerk ID sharing, user-provided versus operator-managed keys, separate server records and source-available licensing. Draft terms no longer imply acceptance through use; billing cache language describes eligibility, periodic checks and network/server delays rather than a guaranteed six-hour maximum or immediate refresh. All existing legal flags retained; retention/deletion/operator/contact facts explicitly require confirmation. No effective date, consent design, jurisdiction, tax choice or Stripe change. Walter Node22 passed 11 focused tests, docs lint, four consistency contracts and landing generation. CI/merge/deployment/live readback pending. Complete Notion46-row query has_more=false;14plan identities preserved. No matching terms/privacy issue row exists; unrelated issue dispositions preserved.",
+      "detail": "2026-10-19: direct owner instruction authorizes factual wording/disclosure corrections only (Focus=None exception). Privacy now discloses Stripe customer lookup/creation for signed-in Free accounts, email/Clerk ID sharing, user-provided versus operator-managed keys, separate server records and source-available licensing. Draft terms no longer imply acceptance through use; billing cache language describes eligibility, periodic checks and network/server delays rather than a guaranteed six-hour maximum or immediate refresh. All existing legal flags retained; retention/deletion/operator/contact facts explicitly require confirmation. No effective date, consent design, jurisdiction, tax choice or Stripe change. Walter Node22 passed all 44 landing tests, docs lint, four consistency contracts and landing generation. CI/merge/deployment/live readback pending. Complete Notion46-row query has_more=false;14plan identities preserved. No matching terms/privacy issue row exists; unrelated issue dispositions preserved.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/draft-terms-disclosures"
     },
     {
@@ -46,11 +46,11 @@
     {
       "label": "Create graphite visual increment verified on runner",
       "state": "Verified",
-      "detail": "2026-10-18: D-014 original human choice and hold until L4 verified; Library owner released its claim after PR171/174 delivery. Scoped CreateEditorPane/CSS only; all four palettes and both modes preserved, flag off by default. Dominic Node22: two Chromium scenarios passed in1.4min at1440\u00d7900/375\u00d7812 plus768\u00d71024,812\u00d7375,3200\u00d7900; source/result/empty/error contrast,44px targets, focus, reload and flag-off isolation passed. Thirteen existing Create tests and extension build passed; screenshots inspected. Initial muted-label contrast and hidden-label mobile overflow failures corrected and retained. CI/merge/deploy/live visual proof pending. Prior production save/recovery/native proof reused. UX/RUN/Hub written/read back;46rows/14plan IDs preserved. Private board mapping remains absent.",
+      "detail": "2026-10-18: D-014 original human choice and hold until L4 verified; Library owner released its claim after PR171/174 delivery. Scoped CreateEditorPane/CSS only; all four palettes and both modes preserved, flag off by default. Dominic Node22: two Chromium scenarios passed in1.4min at1440×900/375×812 plus768×1024,812×375,3200×900; source/result/empty/error contrast,44px targets, focus, reload and flag-off isolation passed. Thirteen existing Create tests and extension build passed; screenshots inspected. Initial muted-label contrast and hidden-label mobile overflow failures corrected and retained. CI/merge/deploy/live visual proof pending. Prior production save/recovery/native proof reused. UX/RUN/Hub written/read back;46rows/14plan IDs preserved. Private board mapping remains absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/create-graphite"
     },
     {
-      "label": "Library L1\u2013L8 automated delivery verified",
+      "label": "Library L1–L8 automated delivery verified",
       "state": "Verified",
       "detail": "2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/171"
@@ -58,7 +58,7 @@
     {
       "label": "Hosted Create Slice 1 automated acceptance passed",
       "state": "Verified",
-      "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes\u00d72themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
+      "detail": "2026-10-18: PR169 merged081b9b5 and PR172 merged1f60dcc repair44px Create buttons, fields, disclosures and choice labels. Production dpl_xBKECQ9ULXrGQszmeqPNqbWMEDo8 READY at1f60dcc. Explicit production39179972239 passed both scenarios12.0s at test9d5509f: all4sizes×2themes,16target scans, no document overflow, one Save, edits/candidates/tabs/focus, assumptions/reversal, stable IDs/version/reload, visible streaming/real Cancel/partial failure/retry/Save. Scheduled39178875628 activation375/1440 history/comparison/reload/reuse passed but its Library restart failed; no overall pass inferred. Retained39178130735 target/selector failures and39179095194 active-session guard then reload-locator timeout. PR173 readiness fix confirmed by0mountedworkspaces before wait; persistence assertions intact. Both QA sessions revoked/read back; no paid calls. Dominic local2scenario matrix passed; screenshots inspected; owned container/claims released. UX/RUN/Hub written/read back; complete46rows/14plan IDs retained. Main Desktop39178986364/Landing39178986318 failures remain ownerPR171 scope; its corrected003397e Desktop39179694257 passes shared/macOS but Windows/Linux fail. Full parent UX, physical touch, screen-reader listening and native/human acceptance remain open; private board mapping absent.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39179972239"
     },
     {
@@ -244,7 +244,7 @@
     {
       "label": "Product fixes",
       "state": "Verified",
-      "detail": "PRs #82\u2013#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
+      "detail": "PRs #82–#90 merged. Historical candidate 916c267 recorded 957 Vitest + 212 Node tests; not a fresh suite run in this snapshot.",
       "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
     },
     {
@@ -298,7 +298,7 @@
     {
       "label": "Pilot companion",
       "state": "Verified",
-      "detail": "PRs #100\u2013#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
+      "detail": "PRs #100–#102 merged through 0451f07. The Vercel-backed /companion and /companion/ routes, local assets, noindex directives, restrictive CSP, sandboxed reference, desktop/mobile rendering and Billing interaction are verified live.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/102"
     },
     {
@@ -449,7 +449,7 @@
     },
     {
       "id": "32d255fc8f448169844bf43faa73ace4",
-      "title": "UI layout inconsistency \u2014 create mode renders triple-wide plus extra library pane",
+      "title": "UI layout inconsistency — create mode renders triple-wide plus extra library pane",
       "status": "Done",
       "severity": "Medium",
       "area": "Layout",
@@ -882,7 +882,7 @@
     {
       "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
       "inPlan": false,
-      "title": "Library workspace controls L1\u2013L8",
+      "title": "Library workspace controls L1–L8",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
