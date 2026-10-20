@@ -15,6 +15,11 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
   });
 
   if (!pendingTemplate) return null;
+  // Inputs the template marks as required must have a value before Apply, so
+  // an empty placeholder is never sent to the provider by accident. Skip
+  // still loads the template with its {{placeholders}} untouched.
+  const missingRequired = Object.keys(varVals).filter((k) => pendingTemplateInputMap?.[k]?.required && !String(varVals[k] ?? '').trim());
+  const missingLabels = missingRequired.map((k) => pendingTemplateInputMap[k]?.label || k);
   return (
     <div className={`fixed inset-0 ${m.modalBg} flex items-center justify-center z-[90] p-4`}>
       <div
@@ -40,6 +45,7 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
             <div key={k}>
               <label htmlFor={fieldId} className="text-xs font-mono font-semibold text-orange-400 block mb-1">
                 {inputDef?.label || `{{${k}}}`}
+                {inputDef?.required && <span className="ml-1 text-red-400" aria-hidden="true">*</span>}
                 {isGhostVar(k) && (
                   <span className="ml-2 inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-emerald-300">
                     auto
@@ -52,6 +58,7 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
                   ref={index === 0 ? firstInputRef : undefined}
                   className={`min-h-11 w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
                   value={varVals[k]}
+                  aria-required={inputDef?.required ? 'true' : undefined}
                   onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))}
                 >
                   <option value="">{inputDef.placeholder || `Select ${inputDef.label || k}…`}</option>
@@ -64,14 +71,16 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
               ) : (
                 <input id={fieldId} ref={index === 0 ? firstInputRef : undefined} className={`min-h-11 w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
                   placeholder={inputDef?.placeholder || (isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`)}
+                  aria-required={inputDef?.required ? 'true' : undefined}
                   value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
               )}
             </div>
             );
           })}
         </div>
+        {missingRequired.length > 0 && <p id="modal-vars-required" className={`text-xs ${m.textAlt}`}>Required: {missingLabels.join(', ')}</p>}
         <div className="flex flex-col gap-2 sm:flex-row">
-          <button type="button" onClick={applyTemplate} className="min-h-11 flex-1 bg-orange-600 hover:bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
+          <button type="button" onClick={applyTemplate} disabled={missingRequired.length > 0} aria-describedby={missingRequired.length > 0 ? 'modal-vars-required' : undefined} className="min-h-11 flex-1 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg py-2 text-sm font-semibold transition-colors">Apply Template</button>
           <button type="button" onClick={skipTemplate} className={`min-h-11 px-4 ${m.btn} rounded-lg text-sm ${m.textBody} transition-colors`}>Skip</button>
         </div>
       </div>
