@@ -637,6 +637,30 @@ export default function usePromptLibrary(notify) {
     return true;
   };
 
+  // Bulk counterpart of permanentlyDelete: one confirmation that names the
+  // count, instead of one browser dialog per selected prompt. Returns the
+  // number of prompts removed (0 when cancelled or nothing matched).
+  const permanentlyDeleteEntries = (ids) => {
+    const selected = new Set((Array.isArray(ids) ? ids : []).filter((id) => trashRef.current.some((item) => item.id === id)));
+    if (selected.size === 0) return 0;
+    const noun = selected.size === 1 ? 'prompt' : 'prompts';
+    if (!window.confirm(`Permanently delete ${selected.size} ${noun}? This cannot be undone.`)) return 0;
+    try { markLibraryDeleted([...selected]); } catch {
+      notify('Permanent deletion failed. The prompts remain recoverable.');
+      return 0;
+    }
+    const nextTrash = trashRef.current.filter((item) => !selected.has(item.id));
+    const nextLibrary = filterDeletedLibraryRecords(libraryRef.current);
+    const cleaned = persistRecords(storageKeys.trash, nextTrash) && persistRecords(storageKeys.library, nextLibrary);
+    trashRef.current = nextTrash;
+    setTrash(nextTrash);
+    setLibrary(nextLibrary);
+    notify(cleaned
+      ? `${selected.size} ${noun} permanently deleted.`
+      : 'Deletion recorded, but stored content cleanup failed. Free browser storage and retry.');
+    return selected.size;
+  };
+
   const setFavorite = (id, favorite) => updateLibraryEntry(id, (entry) => ({
     ...entry,
     favorite: typeof favorite === 'boolean' ? favorite : !entry.favorite,
@@ -1326,7 +1350,7 @@ export default function usePromptLibrary(notify) {
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, saving, saveError, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
+    doSave, saving, saveError, del, restoreDeleted, permanentlyDelete, permanentlyDeleteEntries, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
     bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
     exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport, getShareUrl,

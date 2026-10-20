@@ -94,3 +94,31 @@ it('orders clear generations monotonically without relying on wall-clock time', 
   expect(readLibraryDeletionState().generation).toBe(second);
   expect(Object.keys(localStorage).filter((key) => key.startsWith(LIBRARY_CLEAR_PREFIX))).toHaveLength(2);
 });
+
+it('permanently deletes several Recently Deleted prompts behind one counted confirmation', () => {
+  const now = new Date().toISOString();
+  localStorage.setItem(storageKeys.trash, JSON.stringify([
+    entry('gone-1', { deletedAt: now, tombstoneVersion: 1 }),
+    entry('gone-2', { deletedAt: now, tombstoneVersion: 1 }),
+    entry('kept', { deletedAt: now, tombstoneVersion: 1 }),
+  ]));
+  const notify = vi.fn();
+  const hook = renderHook(() => usePromptLibrary(notify));
+  act(() => expect(hook.result.current.permanentlyDeleteEntries(['gone-1', 'gone-2', 'missing'])).toBe(2));
+  expect(window.confirm).toHaveBeenCalledTimes(1);
+  expect(window.confirm).toHaveBeenCalledWith('Permanently delete 2 prompts? This cannot be undone.');
+  expect(hook.result.current.trash.map((item) => item.id)).toEqual(['kept']);
+  expect(notify).toHaveBeenLastCalledWith('2 prompts permanently deleted.');
+});
+
+it('keeps every selected prompt recoverable when bulk permanent deletion is cancelled', () => {
+  const now = new Date().toISOString();
+  localStorage.setItem(storageKeys.trash, JSON.stringify([
+    entry('a', { deletedAt: now }), entry('b', { deletedAt: now }),
+  ]));
+  window.confirm.mockReturnValue(false);
+  const hook = renderHook(() => usePromptLibrary(vi.fn()));
+  act(() => expect(hook.result.current.permanentlyDeleteEntries(['a', 'b'])).toBe(0));
+  expect(window.confirm).toHaveBeenCalledTimes(1);
+  expect(hook.result.current.trash.map((item) => item.id)).toEqual(['a', 'b']);
+});
