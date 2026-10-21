@@ -79,3 +79,13 @@ test('hashed build assets are cached immutably, pages are not (AUD-024)', () => 
   for (const path of PAGES) assert.equal(headersFor(path)['cache-control'], undefined, path);
   assert.ok(!config.headers.some((rule) => /immutable/.test(JSON.stringify(rule)) && rule.source !== '/assets/(.*)'));
 });
+
+test('/pricing and /privacy redirect to real content (AUD-023)', () => {
+  for (const path of ['/pricing', '/pricing/']) {
+    assert.deepEqual(redirectFor(path), { source: path, destination: '/#pricing', permanent: false });
+  }
+  for (const path of ['/privacy', '/privacy/', '/privatepolicy']) {
+    assert.deepEqual(redirectFor(path), { source: path, destination: '/privacy.html', permanent: true });
+  }
+  assert.ok(!config.rewrites.some((rule) => rule.source.startsWith('/privacy')), 'privacy must redirect, not rewrite to the stub');
+});
