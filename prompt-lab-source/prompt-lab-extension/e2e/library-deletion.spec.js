@@ -86,3 +86,92 @@ test('permanent deletion survives stale writes from another extension tab and re
     fs.rmSync(profile, { recursive: true, force: true });
   }
 });
+
+test('bulk deletion at real storage quota preserves all prompts, then succeeds after freeing space', async () => {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'prompt-lab-bulk-quota-'));
+  const context = await chromium.launchPersistentContext(profile, {
+    channel: 'chromium', headless: true,
+    args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+  });
+  try {
+    const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
+    const url = `chrome-extension://${new URL(worker.url()).host}/panel.html#/library`;
+    const page = await context.newPage();
+    await page.addInitScript(() => {
+      if (localStorage.getItem('bulk-quota-seeded')) return;
+      localStorage.setItem('bulk-quota-seeded', '1');
+      localStorage.setItem('pl_telemetry_consent', 'denied');
+      localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
+      localStorage.setItem('pl2-library', '[]');
+      localStorage.setItem('pl2-library-trash', JSON.stringify(['quota-a', 'quota-b', 'kept'].map(id => ({
+        id, title: id, original: 'Disposable quota fixture', enhanced: 'Disposable quota fixture',
+        deletedAt: new Date().toISOString(), tombstoneVersion: 1,
+      }))));
+    });
+    page.on('dialog', dialog => dialog.accept());
+    await page.goto(url);
+    await page.getByRole('button', { name: /Recently Deleted/ }).click();
+    const selectBatch = async () => {
+      await page.getByLabel('Select quota-a', { exact: true }).check();
+      await page.getByLabel('Select quota-b', { exact: true }).check();
+    };
+    await selectBatch();
+    // Let initial normalization finish before filling actual browser storage.
+    await page.waitForTimeout(250);
+    const quota = await page.evaluate(() => {
+      let low = 0;
+      let high = 16 * 1024 * 1024;
+      let quotaErrors = 0;
+      while (low < high) {
+        const middle = Math.ceil((low + high) / 2);
+        try { localStorage.setItem('quota-filler', 'x'.repeat(middle)); low = middle; }
+        catch (error) {
+          if (error.name !== 'QuotaExceededError') throw error;
+          quotaErrors += 1;
+          high = middle - 1;
+        }
+      }
+      // Exactly one old per-ID marker can fit; the second would throw.
+      const headroom = 'pl2-library-deleted:quota-a'.length + 1;
+      localStorage.setItem('quota-filler', 'x'.repeat(low - headroom));
+      return { quotaErrors, headroom };
+    });
+    expect(quota.quotaErrors).toBeGreaterThan(0);
+    await page.getByRole('toolbar', { name: 'Bulk actions' }).getByRole('button', { name: 'Delete forever' }).click();
+    await expect(page.getByText('Permanent deletion failed. The prompts remain recoverable.', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('pl2-library-deleted')))).toEqual([]);
+    // Real storage events in a second tab exercise reconciliation at full quota.
+    const second = await context.newPage();
+    await second.goto(url);
+    await second.getByRole('button', { name: /Recently Deleted/ }).click();
+    await second.evaluate(() => {
+      const trash = JSON.parse(localStorage.getItem('pl2-library-trash'));
+      localStorage.setItem('pl2-library-trash', JSON.stringify(trash.reverse()));
+    });
+    for (const tab of [page, second]) {
+      await expect(tab.getByLabel('Select quota-a', { exact: true })).toBeVisible();
+      await expect(tab.getByLabel('Select quota-b', { exact: true })).toBeVisible();
+      await tab.reload();
+      await tab.getByRole('button', { name: /Recently Deleted/ }).click();
+      await expect(tab.getByLabel('Select quota-a', { exact: true })).toBeVisible();
+      await expect(tab.getByLabel('Select quota-b', { exact: true })).toBeVisible();
+    }
+    await page.evaluate(() => localStorage.removeItem('quota-filler'));
+    await selectBatch();
+    const stale = await page.evaluate(() => localStorage.getItem('pl2-library-trash'));
+    await page.getByRole('toolbar', { name: 'Bulk actions' }).getByRole('button', { name: 'Delete forever' }).click();
+    await expect(page.getByLabel('Select quota-a', { exact: true })).toHaveCount(0);
+    await expect(second.getByLabel('Select quota-b', { exact: true })).toHaveCount(0);
+    await second.evaluate(snapshot => localStorage.setItem('pl2-library-trash', snapshot), stale);
+    for (const tab of [page, second]) {
+      await tab.reload();
+      await tab.getByRole('button', { name: /Recently Deleted/ }).click();
+      await expect(tab.getByLabel('Select quota-a', { exact: true })).toHaveCount(0);
+      await expect(tab.getByLabel('Select quota-b', { exact: true })).toHaveCount(0);
+      await expect(tab.getByLabel('Select kept', { exact: true })).toBeVisible();
+    }
+  } finally {
+    await context.close();
+    fs.rmSync(profile, { recursive: true, force: true });
+  }
+});

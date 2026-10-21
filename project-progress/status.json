@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-20T02:28:15.005Z",
+  "snapshotAt": "2026-10-21T14:16:25.132799+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "ca531e9b479d4d243d39897c57b69b5d7b37137e",
+  "mainSha": "f6fa3b6a4081b57e03ee29b9bb2adffaeaaba8ca",
   "overall": "Acceptance incomplete",
-  "nextAction": "Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Review PR190 atomic bulk deletion repair and obtain Dave approval before merge. CI and release remain separate gates. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 bulk permanent deletion quota repair",
+      "state": "Verified",
+      "detail": "2026-10-21: Direct owner repair instruction (Focus=None exception). At PR190 base 83ae3e2, controlled capacity for one/two of three tombstones reproduces partial writes despite a zero result. Packaged Chromium at real localStorage quota reproduces the same persisted quota-a marker after recoverability feedback. Repair writes each multi-ID batch atomically under a unique append-only key and notifies observers only after success; existing per-ID markers remain readable. Dominic Node22.22.1 passed 55 focused tests, full shared1245 Vitest+231 Node, extension/web builds,2 packaged deletion tests including real quota/two tabs/reload/retry,34 Library routes+2 persistence recovery tests, and hosted38 pass/1 credential-dependent sign-in skip (including Free/Pro gates). Initial hosted attempt used the wrong browser image and failed launch; corrected lockfile-matched image passed. No real user data or provider calls. Not merged/deployed; Dave approval required. Old app tabs need reload to understand batch markers; pre-existing partial markers cannot be safely distinguished from intentional deletions. Native packaged lifecycle not rerun. Private Next Steps Board registry still has no PromptLab mapping.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/190"
+    },
     {
       "label": "Draft terms and privacy wording corrections",
       "state": "Verified",
@@ -630,14 +636,14 @@
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
       "title": "Cross-tab reconciliation resurrects permanent deletions",
-      "status": "Done",
+      "status": "In progress",
       "severity": "High",
       "area": "Library",
       "type": "Bug",
       "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
       "inPlan": true,
       "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "verification": "PR190 quota follow-up fixed and tested; approval and release pending. Original cross-tab repair preserved."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
