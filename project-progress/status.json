@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-21T19:05:39.302359+00:00",
+  "snapshotAt": "2026-10-21T20:52:04.495109+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "86ba38aaf9c827b8fd7ae0b90e0560575b6910e7",
+  "mainSha": "6627041359a77b433554c53080c0d24ce52641c2",
   "overall": "Acceptance incomplete",
   "nextAction": "PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Braces unpatched; existing exception retained by decision",
+      "state": "Open",
+      "detail": "2026-10-21 braces patch availability check — Direct Dave instruction (Focus=None exception). GitHub GHSA-vfj7-8cjw-p6xm still lists affected<=3.0.3 and patched=None; npm latest and all published versions end at3.0.3. Latest micromatch4.0.8 depends on braces^3.0.3; latest markdownlint-cli2 0.24.0 still depends on micromatch4.0.8, so no compatible parent bump removes it. Installed paths verified on Dominic Node22.22.1: root markdownlint-cli2 0.23.3→micromatch4.0.8→braces3.0.3; extension/web Tailwind3.4.17 and desktop3.4.19 via micromatch4.0.8 and chokidar3.6.0→braces3.0.3. All4 lockfile hashes match main6627041. Fresh audit4/4 policy-qualified passes, totals0critical/20high/9moderate/3low; advisory remains absent from production audit. Tooling21/21 passes. Dave selected keep current exception and document blocker; no Tailwind4/lint replacement authorized. Exception and expiry2026-11-05 unchanged; after that UTC date audit fails if advisory remains. No dependency, application or policy change. Next: recheck upstream fix before expiry; broader removal requires separate scope decision. Source https://github.com/advisories/GHSA-vfj7-8cjw-p6xm and npm registry.",
+      "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+    },
     {
       "label": "PR190 post-merge CI all green",
       "state": "Verified",
@@ -846,8 +852,8 @@
     {
       "id": "3f0255fc8f4481629234d824e518447d",
       "inPlan": false,
-      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
-      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed.",
+      "nextAction": "Recheck patched braces before2026-11-05; separate approval needed for broader tooling migration.",
+      "verification": "2026-10-21 GitHub/npm confirm no patched braces; latest parents retain dependency. Fresh audit4/4 under existing exception; tooling21/21. Dave chose to retain exception.",
       "title": "Dependency audit gate fails on every branch because braces has no patched release",
       "status": "In progress",
       "severity": "Medium",
