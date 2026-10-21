@@ -15,7 +15,7 @@
     "docs:consistency": "npm run check:node && node scripts/docs-consistency.mjs",
     "docs:check": "npm run docs:lint && npm run docs:consistency",
     "test:notion-agent": "npm run check:node && node --test scripts/notion-docs-agent.test.mjs",
-    "test:landing": "npm run check:node && node --test tests/landing*.test.mjs scripts/landing-funnel-report.test.mjs",
+    "test:landing": "npm run check:node && node --test tests/landing*.test.mjs tests/pricing-copy.test.mjs tests/check-stripe-prices.test.mjs scripts/landing-funnel-report.test.mjs",
     "test:api": "npm run check:node && node --test tests/api-safety.test.mjs tests/nodeFunctionAdapter.test.mjs tests/hosted-budget.test.mjs tests/production-config.test.mjs tests/proxy.test.mjs tests/telemetry-safety.test.mjs tests/stripeBilling.test.mjs tests/stripe-test-lifecycle.test.mjs tests/billing-auth.test.mjs tests/billing-policy.test.mjs tests/billing-cors.test.mjs tests/web-production-env.test.mjs tests/vercel-deploy.test.mjs",
     "test:e2e:landing": "npm run check:node && npm run test:e2e:landing --prefix prompt-lab-web",
     "build:landing": "npm run check:node && node scripts/publish-landing.mjs",

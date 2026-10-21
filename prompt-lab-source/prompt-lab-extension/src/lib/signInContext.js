@@ -5,10 +5,11 @@
 // redirect (sign-in, sign-up, extra verification steps) must come back to
 // that same URL so App reopens the upgrade dialog with the plan selected.
 import { buildLandingIntentRedirectUrl, normalizeLandingIntent } from './landingAttribution.js';
+import { PRICE_COPY } from '../../../shared/pricing.js';
 
 const PLAN_COPY = {
-  monthly: 'the monthly plan ($9/month)',
-  annual: 'the annual plan ($79/year)',
+  monthly: `the monthly plan (${PRICE_COPY.monthlyPerPeriod})`,
+  annual: `the annual plan (${PRICE_COPY.annualPerPeriod})`,
 };
 
 export function buildSignInContext(intent) {

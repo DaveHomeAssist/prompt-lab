@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from '../icons';
+import { PRICE_COPY } from '../../../shared/pricing.js';
 import {
   BILLING_FEATURES,
   getFeatureMeta,
@@ -306,7 +307,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl bg-orange-600 px-4 py-3 text-left text-white transition-colors hover:bg-orange-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-orange-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-orange-100">$9/month via Stripe</div>
+            <div className="mt-1 text-xs text-orange-100">{PRICE_COPY.monthlyPerPeriod} via Stripe</div>
             {safeRequestedPeriod === 'monthly' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-white">Selected on pricing page</div>
             )}
@@ -319,7 +320,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">$79/year, save $29</div>
+            <div className="mt-1 text-xs text-emerald-200">{PRICE_COPY.annualPerPeriod}, save {PRICE_COPY.annualSavings}</div>
             {safeRequestedPeriod === 'annual' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
             )}
@@ -329,7 +330,7 @@ export default function BillingModal({
 
         {showPurchase && (
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
-            New Pro subscriptions renew automatically at $9/month or $79/year until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
+            New Pro subscriptions renew automatically at {PRICE_COPY.monthlyPerPeriod} or {PRICE_COPY.annualPerPeriod} until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
             your first payment or an annual renewal, and a refund ends Pro.
           </p>
