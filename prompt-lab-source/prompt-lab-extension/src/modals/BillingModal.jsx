@@ -255,6 +255,24 @@ export default function BillingModal({
           </div>
         )}
 
+        {billing.blockedExternal?.url && (
+          <div data-testid="billing-blocked-tab" className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4" role="alert">
+            <p className="text-sm font-semibold text-amber-200">Your browser blocked the new tab</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/90">
+              Open Stripe with the link below. It opens in a new tab and Prompt Lab stays open here.
+            </p>
+            <a
+              href={billing.blockedExternal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => billing.clearBlockedExternal?.()}
+              className="ui-control mt-3 inline-flex rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+            >
+              {billing.blockedExternal.kind === 'portal' ? 'Open billing portal' : 'Continue to Stripe Checkout'}
+            </a>
+          </div>
+        )}
+
         {isPro && !billing.billingDisabled && (
           <div data-testid="billing-pro-manage" className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
             <p className="text-sm font-semibold text-emerald-200">You already have Prompt Lab Pro</p>
