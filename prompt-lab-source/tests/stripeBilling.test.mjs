@@ -112,6 +112,9 @@ test('billing checkout uses verified Clerk identity and ignores posted identity 
         id: 'cus_existing', email: 'user@example.com', metadata: { clerkUserId: 'user_123' },
       }] }), { status: 200 });
     }
+    if (String(url).includes('/subscriptions?')) {
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    }
     assert.match(String(url), /\/checkout\/sessions$/);
     captured.push(new URLSearchParams(init.body));
     return new Response(JSON.stringify({
@@ -524,3 +527,76 @@ for (const metadata of [{}, { clerkUserId: 'user_123' }, { clerk_user_id: 'user_
     if (updates.length) assert.equal(updates[0].get('metadata[clerkUserId]'), 'user_123');
   });
 }
+
+async function runCheckoutWithSubscriptions(subscriptions) {
+  const jwks = await createJwksHarness();
+  process.env.STRIPE_SECRET_KEY = 'sk_test_123';
+  process.env.STRIPE_MONTHLY_PRICE_ID = 'price_monthly';
+  process.env.STRIPE_YEARLY_PRICE_ID = 'price_yearly';
+  process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS = 'price_legacy_99';
+  const sessionPosts = [];
+  globalThis.fetch = async (url, init) => {
+    if (String(url) === process.env.CLERK_JWKS_URL) return ORIGINAL_FETCH(url, init);
+    if (String(url).includes('/customers/search')) {
+      return new Response(JSON.stringify({ data: [{
+        id: 'cus_existing', email: 'user@example.com', metadata: { clerkUserId: 'user_123' },
+      }] }), { status: 200 });
+    }
+    if (String(url).includes('/subscriptions?')) {
+      assert.match(String(url), /customer=cus_existing/);
+      return new Response(JSON.stringify({ data: subscriptions }), { status: 200 });
+    }
+    assert.match(String(url), /\/checkout\/sessions$/);
+    sessionPosts.push(new URLSearchParams(init.body));
+    return new Response(JSON.stringify({ id: 'cs_test_new', url: 'https://checkout.stripe.com/c/pay/cs_test_new' }), { status: 200 });
+  };
+  try {
+    const handler = await loadHandler(checkoutUrl);
+    const response = await handler(new Request('https://promptlab.tools/api/billing/checkout', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${jwks.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ period: 'annual', source: 'billing-modal' }),
+    }));
+    return { response, payload: await response.json(), sessionPosts };
+  } finally {
+    delete process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS;
+    await jwks.close();
+  }
+}
+
+function subscriptionFixture(status, priceId) {
+  return { id: `sub_${status}`, status, items: { data: [{ price: { id: priceId } }] } };
+}
+
+for (const [status, priceId] of [
+  ['active', 'price_monthly'],
+  ['trialing', 'price_yearly'],
+  ['past_due', 'price_monthly'],
+  ['active', 'price_legacy_99'],
+]) {
+  test(`checkout refuses with 409 when the customer already has a ${status} Prompt Lab subscription (${priceId})`, async () => {
+    const { response, payload, sessionPosts } = await runCheckoutWithSubscriptions([
+      subscriptionFixture('canceled', 'price_monthly'),
+      subscriptionFixture(status, priceId),
+    ]);
+    assert.equal(response.status, 409);
+    assert.equal(payload.code, 'already_subscribed');
+    assert.equal(payload.portalAvailable, true);
+    assert.equal(payload.retryable, false);
+    assert.equal(payload.subscriptionStatus, status);
+    assert.match(payload.error, /Manage Purchases/);
+    assert.equal(sessionPosts.length, 0, 'no Checkout Session may be created');
+  });
+}
+
+test('checkout proceeds when only canceled, incomplete or non-Prompt Lab subscriptions exist', async () => {
+  const { response, payload, sessionPosts } = await runCheckoutWithSubscriptions([
+    subscriptionFixture('canceled', 'price_yearly'),
+    subscriptionFixture('incomplete_expired', 'price_monthly'),
+    subscriptionFixture('incomplete', 'price_monthly'),
+    subscriptionFixture('active', 'price_some_other_product'),
+  ]);
+  assert.equal(response.status, 200);
+  assert.equal(payload.url, 'https://checkout.stripe.com/c/pay/cs_test_new');
+  assert.equal(sessionPosts.length, 1);
+});

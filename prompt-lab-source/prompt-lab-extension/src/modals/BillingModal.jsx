@@ -29,6 +29,9 @@ export default function BillingModal({
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
   const prelaunchOpenAccess = isPrelaunchOpenAccess(billing);
+  // AUD-001: a Pro account never sees purchase CTAs; it manages billing instead.
+  const isPro = billing.plan === 'pro';
+  const showPurchase = !isPro && !billing.billingDisabled && !billing.checkoutDisabled;
   const overlayRef = useRef(null);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -190,11 +193,15 @@ export default function BillingModal({
             <h2 id="billing-modal-title" className={`mt-1 text-lg font-semibold ${m.text}`}>
               {prelaunchOpenAccess
                 ? 'All workflow features are open'
-                : (requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro')}
+                : (isPro
+                  ? 'Prompt Lab Pro is active'
+                  : (requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro'))}
             </h2>
             <p id="billing-modal-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {prelaunchOpenAccess
                 ? 'Billing is unavailable on this deployment, but every Prompt Lab workflow remains available during prelaunch.'
+                : isPro
+                ? 'Your account already has Prompt Lab Pro. Use Manage billing to change plan, update payment details, or cancel.'
                 : (requestedFeature
                 ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
                 : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.')}
@@ -248,13 +255,30 @@ export default function BillingModal({
           </div>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && safeRequestedPeriod && (
+        {isPro && !billing.billingDisabled && (
+          <div data-testid="billing-pro-manage" className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+            <p className="text-sm font-semibold text-emerald-200">You already have Prompt Lab Pro</p>
+            <p className="mt-1 text-xs leading-relaxed text-emerald-100/90">
+              There is nothing more to buy. Change plan, update payment details or cancel in the Stripe billing portal.
+            </p>
+            <button
+              type="button"
+              onClick={handleManagePurchases}
+              disabled={billing.busyAction === 'portal'}
+              className="ui-control mt-3 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-40"
+            >
+              Manage billing
+            </button>
+          </div>
+        )}
+
+        {showPurchase && safeRequestedPeriod && (
           <p className={`mt-4 text-xs leading-relaxed ${m.textMuted}`} role="status">
             Your {safeRequestedPeriod} choice from the pricing page is highlighted. Checkout starts only when you choose it below.
           </p>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && (
+        {showPurchase && (
         <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
           <button
             type="button"
@@ -285,7 +309,7 @@ export default function BillingModal({
         </div>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && (
+        {showPurchase && (
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
             New Pro subscriptions renew automatically at $9/month or $79/year until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of

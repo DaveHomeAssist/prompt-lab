@@ -215,6 +215,32 @@ async function stripeRequest(config, path, { method = 'GET', body = null, idempo
   return payload;
 }
 
+// Statuses in which a second checkout would double-bill the customer: the
+// existing subscription still grants Pro and keeps charging.
+const CHECKOUT_BLOCKING_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
+export class BillingConflictError extends Error {
+  constructor(message, { code = 'already_subscribed', subscriptionStatus = '' } = {}) {
+    super(message);
+    this.name = 'BillingConflictError';
+    this.status = 409;
+    this.code = code;
+    this.subscriptionStatus = subscriptionStatus;
+  }
+}
+
+// Returns the customer's Prompt Lab subscription that must block a new
+// checkout (active, trialing or past_due on a configured Prompt Lab price,
+// legacy prices included), or null.
+export function findCheckoutBlockingSubscription(subscriptions, config) {
+  const allowedPriceMap = getAllowedPriceMap(config);
+  return (Array.isArray(subscriptions) ? subscriptions : [])
+    .map((subscription) => buildSubscriptionCandidate(subscription, allowedPriceMap))
+    .filter(Boolean)
+    .sort((left, right) => rankSubscriptionStatus(left.status) - rankSubscriptionStatus(right.status))
+    .find((candidate) => CHECKOUT_BLOCKING_STATUSES.has(candidate.status)) || null;
+}
+
 export async function createCheckout(config, {
   period = 'monthly',
   email = '',
@@ -243,6 +269,17 @@ export async function createCheckout(config, {
   // License refresh and the portal resolve this same Clerk-bound customer.
   // customer_email alone lets Checkout create a second, unbound customer.
   const customer = await getOrCreateStripeCustomer(config, { clerkUserId, clerkEmail: email });
+
+  // AUD-001: one Prompt Lab subscription per customer. A Pro user who reaches
+  // checkout (stale tab, second device) gets a 409 and the portal instead of
+  // a second subscription.
+  const blocking = findCheckoutBlockingSubscription(await listSubscriptions(config, customer.id), config);
+  if (blocking) {
+    throw new BillingConflictError(
+      'This account already has a Prompt Lab Pro subscription. Use Manage Purchases to change or cancel it.',
+      { subscriptionStatus: blocking.status },
+    );
+  }
   params.set('customer', customer.id);
 
   const metadata = {

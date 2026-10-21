@@ -147,6 +147,7 @@ async function buildResponseError(response, fallback) {
     : fallback;
   const error = new Error(message);
   error.status = response.status;
+  if (typeof payload?.code === 'string') error.code = payload.code;
   error.retryable = typeof payload?.retryable === 'boolean'
     ? payload.retryable
     : response.status === 429 || response.status >= 500;
@@ -462,10 +463,17 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
         surface: telemetry?.surface || '',
       });
       return true;
+    } catch (error) {
+      if (error?.status === 409 && error?.code === 'already_subscribed') {
+        // The server found an existing Prompt Lab subscription. Refresh so the
+        // UI switches to Pro (Manage billing) instead of offering checkout.
+        void refreshLicense({ silent: true });
+      }
+      throw error;
     } finally {
       setBusyAction('');
     }
-  }, [notify, requestBilling, telemetry]);
+  }, [notify, refreshLicense, requestBilling, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
     if (isOwnerProState(state)) {
