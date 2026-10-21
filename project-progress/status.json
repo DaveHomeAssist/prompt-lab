@@ -11,8 +11,14 @@
   },
   "mainSha": "f6fa3b6a4081b57e03ee29b9bb2adffaeaaba8ca",
   "overall": "Acceptance incomplete",
-  "nextAction": "Review PR190 atomic bulk deletion repair and obtain Dave approval before merge. CI and release remain separate gates. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Resolve the pre-existing dependency audit blockers recorded by PR190 CI, then review the tested atomic deletion repair and obtain Dave approval before merge. Review PR190 atomic bulk deletion repair and obtain Dave approval before merge. CI and release remain separate gates. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 CI blocked by unchanged dependencies",
+      "state": "Failed",
+      "detail": "2026-10-21: Landing CI39615454727 on repair d5cefb4 failed audit:all before hosted browser/build gates. Re-running audit-workspaces.mjs on original83ae3e2 with Node22.22.1 on Dominic reproduces the identical blockers: root GHSA-r7fv-28h4-cvq7 and GHSA-gfr2-rv44-r23c; extension/web/desktop GHSA-587h-7wmj-h5pm. All four roots fail with zero invocation errors. Manifests, lockfiles and audit policy are byte-unchanged by the repair. Existing braces exception is accepted and does not cover these advisories. API101, tooling21 and static landing gates passed in the failing run; separate Dominic hosted38/1skip and deletion regression proof remain valid. Merge Gate, Version, Docs, Progress and API workflows passed on d5cefb4; Extension/Desktop were still running. No dependency updates or audit weakening added to the bounded data-loss fix. No merge/deployment.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39615454727"
+    },
     {
       "label": "PR190 bulk permanent deletion quota repair",
       "state": "Verified",
