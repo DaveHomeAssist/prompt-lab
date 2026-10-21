@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-21T18:36:37.174129+00:00",
+  "snapshotAt": "2026-10-21T19:05:39.302359+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "5ab64c550e5a11067822bcbfb1a1fce74105a00e",
+  "mainSha": "86ba38aaf9c827b8fd7ae0b90e0560575b6910e7",
   "overall": "Acceptance incomplete",
   "nextAction": "PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 post-merge CI all green",
+      "state": "Verified",
+      "detail": "2026-10-21 final post-merge CI — Direct Dave instruction (Focus=None exception). Desktop Build39653865350 completed SUCCESS on exact PR190 merge5ab64c550e5a11067822bcbfb1a1fce74105a00e. All6 jobs passed: shared extension tests, Windows MSI, macOS universal build, Linux DEB, Windows NSIS and Linux AppImage acceptance. All11 workflows recorded on5ab64c5 are successful; all5 recorded on records merge86ba38a are successful, including signed-in Production Smoke39654665291. No failing checks, no repair or rerun needed; application and deletion repair unchanged. This supersedes the earlier pending Desktop note. Next: retain existing braces remediation before2026-11-05 and separate macOS interactive/signing/human acceptance; no remaining PR190 CI blocker.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39653865350"
+    },
     {
       "label": "PR190 merged and production verified",
       "state": "Verified",
