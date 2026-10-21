@@ -555,11 +555,11 @@ code {
   <div class="top-bar-inner">
     <a href="./" class="logo">&#x1F9EA; Prompt <span>Lab</span></a>
     <nav aria-label="Guide sections">
-      <a href="#editor">Editor</a>
+      <a href="#editor">Write</a>
       <a href="#library">Library</a>
-      <a href="#ab-test">A/B Test</a>
+      <a href="#ab-test">Compare</a>
       <a href="#compose">Compose</a>
-      <a href="#scratchpad">Scratchpad</a>
+      <a href="#scratchpad">Scratch</a>
       <a href="#variables">Variables</a>
       <a href="#settings">Settings</a>
       <a href="#shortcuts">Shortcuts</a>
@@ -612,8 +612,8 @@ code {
 <!-- EDITOR -->
 <!-- ═══════════════════════════════════════ -->
 <section id="editor">
-  <h2>Editor <span class="badge">Core</span></h2>
-  <p class="section-intro">The main workspace. Write or paste a prompt, enhance it with AI, and save it to your library.</p>
+  <h2>Write <span class="badge">Core</span></h2>
+  <p class="section-intro">The main workspace, under <strong>Create &rarr; Write</strong>. Write or paste a prompt, refine it with AI, and save it to your library.</p>
 
   <div class="card">
     <h3 id="quick-start">Quick start</h3>
@@ -662,13 +662,17 @@ code {
   <div class="tip"><strong>Tip:</strong> The editor also shows <strong>Variants</strong> — alternative phrasings generated alongside the main enhancement. Click <strong>Use</strong> on any variant to promote it.</div>
 
   <div class="card">
-    <h3>Layout modes</h3>
-    <p>Toggle between three editor layouts using the tabs below the header:</p>
+    <h3>Workspaces</h3>
+    <p>The header tabs switch between the Create views and the other workspaces:</p>
     <ul>
-      <li><strong>Editor</strong> — full-width prompt editing</li>
-      <li><strong>Library</strong> — browse your saved prompts</li>
-      <li><strong>Split</strong> — editor on the left, library on the right</li>
+      <li><strong>Write</strong> — full-width prompt editing</li>
+      <li><strong>Library</strong> — browse, inspect, and organize saved prompts</li>
+      <li><strong>Compose</strong> — build a prompt from saved blocks</li>
+      <li><strong>Dual Pane</strong> — Write and Library side by side (wide screens)</li>
+      <li><strong>Evaluate</strong> — run history and, with Pro, Compare</li>
+      <li><strong>Scratch</strong> — freeform notes</li>
     </ul>
+    <p>On small screens the same destinations appear in the bottom navigation bar.</p>
   </div>
 </section>
 
@@ -683,40 +687,40 @@ code {
   <div class="card">
     <h3>Browsing &amp; filtering</h3>
     <ul>
-      <li><strong>Search</strong> — filters by title and tags in real time</li>
+      <li><strong>Search</strong> — matches title, text, tags, and metadata in real time</li>
+      <li><strong>Views</strong> — All prompts, Recent, Frequently used, Favorites, Templates, Incomplete, and Recently Deleted (kept for 30 days)</li>
+      <li><strong>Status</strong> — filter by Draft, Active, Deprecated, or Not set</li>
       <li><strong>Tags</strong> — click a tag chip to filter (Writing, Code, Research, Analysis, Creative, System, Role-play, Other)</li>
-      <li><strong>Collections</strong> — custom folders you create; click a collection name to filter</li>
-      <li><strong>Sort</strong> — Newest, Oldest, Most Used, or Manual (drag to reorder)</li>
+      <li><strong>Collections</strong> <span class="badge">Pro</span> — custom folders you create; click a collection name to filter</li>
+      <li><strong>Sort</strong> — Newest, Oldest, Most used, A–Z, Z–A, Collection, or Manual (move up / move down buttons)</li>
     </ul>
   </div>
 
   <div class="card">
     <h3>Per-entry actions</h3>
     <ul>
-      <li><strong>Load</strong> — sends the prompt back into the editor</li>
-      <li><strong>Copy</strong> — copies the enhanced version to clipboard</li>
-      <li><strong>Expand</strong> — shows full content, version history, test cases, golden response, notes, and metadata</li>
-      <li><strong>Share</strong> — generates a URL with the prompt encoded in it (no server needed)</li>
-      <li><strong>Add to Composer</strong> — inserts as a block in the Compose tab</li>
-      <li><strong>Rename / Edit / Delete</strong> — manage entries</li>
+      <li><strong>Select a card</strong> — opens the inspector with Details, Content, Variables, Variants, Notes, Tests, and Version history tabs</li>
+      <li><strong>Editor / Open in Editor</strong> — sends the prompt back into Write</li>
+      <li><strong>Copy</strong>, <strong>Favorite</strong>, <strong>Duplicate</strong> — quick actions on each card and in the inspector footer</li>
+      <li><strong>Composer</strong> — inserts the prompt as a block in Compose</li>
+      <li><strong>Checkboxes</strong> — select several prompts for bulk tag, favorite, duplicate, copy, export, or move to Recently Deleted</li>
     </ul>
   </div>
 
   <div class="card">
     <h3>Version history</h3>
-    <p>Every time you save changes to an existing prompt, the previous version is preserved. Expand any entry to see its timeline:</p>
+    <p>Every time you save changes to an existing prompt, the previous version is preserved. Open the inspector's <strong>Version history</strong> tab:</p>
     <ul>
-      <li>Browse prior versions with timestamps and change notes</li>
-      <li>Toggle <strong>Show Diff</strong> for inline word-level comparison</li>
-      <li>Click <strong>Restore</strong> to revert to any previous version</li>
+      <li>Pick any two versions in <strong>Compare from</strong> / <strong>Compare to</strong> for a word-level comparison</li>
+      <li>Click <strong>Restore as current</strong> to bring back an earlier version; the current content stays in history</li>
     </ul>
   </div>
 
   <div class="card">
     <h3 id="import-export">Import &amp; Export</h3>
-    <p>At the bottom of the library panel:</p>
+    <p>In the Library toolbar (free on every plan):</p>
     <ul>
-      <li><strong>Export</strong> — downloads your entire library as a <code>.json</code> file</li>
+      <li><strong>Export</strong> — downloads your entire library as a <code>.json</code> file; <strong>Export selected</strong> in the bulk bar exports just the checked prompts</li>
       <li><strong>Import</strong> — loads prompts from a JSON file. Supports both Prompt Lab's native format and external schemas (fields like <code>prompt</code>, <code>description</code>, <code>category</code> are auto-mapped)</li>
     </ul>
   </div>
@@ -728,38 +732,34 @@ code {
 <!-- A/B TEST -->
 <!-- ═══════════════════════════════════════ -->
 <section id="ab-test">
-  <h2>A/B Test</h2>
-  <p class="section-intro">Compare two prompt variants side-by-side — same model or different models.</p>
+  <h2>Compare <span class="badge">Pro</span></h2>
+  <p class="section-intro">Run 2–5 prompt or model variants side by side under <strong>Evaluate &rarr; Compare</strong>. Compare is part of Prompt Lab Pro on the hosted web app.</p>
 
   <div class="card">
     <h3>How to run a test</h3>
     <div class="steps">
       <div class="step">
-        <h4>Switch to the A/B Test tab</h4>
-        <p>Click <strong>A/B Test</strong> in the top navigation bar (between Compose and Scratchpad).</p>
+        <h4>Open Evaluate &rarr; Compare</h4>
+        <p>Click <strong>Evaluate</strong> in the header, then <strong>Compare</strong>. From the Library you can also choose <strong>A/B test</strong> in the inspector footer.</p>
       </div>
       <div class="step">
         <h4>Enter your variants</h4>
-        <p>Paste or type Variant A and Variant B in their respective text areas. These can be different phrasings, different system prompts, or entirely different approaches.</p>
+        <p>Fill in each variant's prompt and model. Use <strong>+ Variant</strong> to add up to five.</p>
       </div>
       <div class="step">
-        <h4>Click Run Both</h4>
-        <p>Both variants execute simultaneously against your active provider. Results appear side-by-side with token count estimates.</p>
+        <h4>Run the variants</h4>
+        <p>All variants run concurrently. Results appear side by side; the diff view compares the baseline with another completed output.</p>
       </div>
       <div class="step">
         <h4>Pick a winner</h4>
-        <p>After reviewing the outputs, click <strong>Pick A</strong> or <strong>Pick B</strong> to record which variant performed better. This is saved to your experiment history.</p>
+        <p>After reviewing the outputs, click <strong>Pick</strong> on the best variant to record the winner, or <strong>Promote to Golden</strong> to keep it as a benchmark. Runs are saved to Evaluate &rarr; History.</p>
       </div>
     </div>
   </div>
 
   <div class="card">
     <h3>History &amp; recent runs</h3>
-    <p>The A/B Test tab keeps two collapsible sections:</p>
-    <ul>
-      <li><strong>Recent Runs</strong> — individual test executions with provider, model, and latency</li>
-      <li><strong>History</strong> — full experiments with variant labels, dates, and the winning variant</li>
-    </ul>
+    <p><strong>Evaluate &rarr; History</strong> is free and lists every run with filters for model, provider, status, date, and verdict.</p>
   </div>
 
   <div class="tip"><strong>Tip:</strong> To test the same prompt across two different models (e.g., Claude vs. GPT-4), change your provider in Settings between runs, or use the <strong>Run A</strong> / <strong>Run B</strong> buttons individually after switching providers.</div>
@@ -787,7 +787,7 @@ code {
     <h3>Output actions</h3>
     <ul>
       <li><strong>Copy All</strong> — copies the entire composed prompt</li>
-      <li><strong>Send to Editor</strong> — loads the composition into the Editor tab for enhancement</li>
+      <li><strong>Send to Editor</strong> — loads the composition into Write for refinement</li>
       <li><strong>Clear</strong> — removes all blocks from the canvas</li>
     </ul>
   </div>
@@ -798,7 +798,7 @@ code {
 <!-- SCRATCHPAD -->
 <!-- ═══════════════════════════════════════ -->
 <section id="scratchpad">
-  <h2>Scratchpad</h2>
+  <h2>Scratch</h2>
   <p class="section-intro">A freeform notepad for ideas, snippets, and working notes. Supports multiple named pads.</p>
 
   <div class="card">
@@ -923,8 +923,8 @@ code {
   </div>
 
   <div class="card">
-    <h3>Scratchpad</h3>
-    <p style="margin-bottom:0.85rem; color:var(--surface-400);">Scratchpad shortcuts are limited to local text actions. Browser-reserved shortcuts like <kbd>&#8984;T</kbd>, <kbd>&#8984;W</kbd>, <kbd>&#8984;[</kbd>, and <kbd>&#8984;]</kbd> are intentionally not overridden.</p>
+    <h3>Scratch</h3>
+    <p style="margin-bottom:0.85rem; color:var(--surface-400);">Scratch shortcuts are limited to local text actions. Browser-reserved shortcuts like <kbd>&#8984;T</kbd>, <kbd>&#8984;W</kbd>, <kbd>&#8984;[</kbd>, and <kbd>&#8984;]</kbd> are intentionally not overridden.</p>
     <table class="shortcut-table">
       <thead><tr><th>Shortcut</th><th>Action</th></tr></thead>
       <tbody>
@@ -941,7 +941,7 @@ code {
     <p>Press <kbd>&#8984;K</kbd> to open the palette. Type to filter, then select:</p>
     <ul>
       <li>Enhance Prompt, Save Prompt, Clear Editor</li>
-      <li>Go to Editor / Composer / A/B Test / Pad</li>
+      <li>Go to Write / Library / Compose / Evaluate / Scratch</li>
       <li>Toggle Light / Dark mode</li>
       <li>Export Library, Open Settings</li>
       <li>Show Keyboard Shortcuts</li>
@@ -956,7 +956,7 @@ code {
 <div style="text-align:center; margin-top:4rem;">
   <a href="#top" class="back-top">&uarr; Back to top</a>
   <p class="guide-footer">
-    Prompt Lab v1.7.1 &mdash; <a href="./">Home</a> &middot; <a href="#quick-start">Quick start</a> &middot; <a href="./setup.html#provider-setup">Provider setup</a> &middot; <a href="#import-export">Import / export</a> &middot; <a href="#variables">Variables</a> &middot; <a href="#keyboard-shortcuts">Shortcuts</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a>
+    Prompt Lab v1.8.0 &mdash; <a href="./">Home</a> &middot; <a href="#quick-start">Quick start</a> &middot; <a href="./setup.html#provider-setup">Provider setup</a> &middot; <a href="#import-export">Import / export</a> &middot; <a href="#variables">Variables</a> &middot; <a href="#keyboard-shortcuts">Shortcuts</a> &middot; <a href="./privacy.html">Privacy</a> &middot; <a href="https://github.com/DaveHomeAssist/prompt-lab">Source</a>
   </p>
 </div>
 

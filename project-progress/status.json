@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-20T02:28:15.005Z",
+  "snapshotAt": "2026-10-21T15:11:30.444Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,34 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "ca531e9b479d4d243d39897c57b69b5d7b37137e",
+  "mainSha": "f6fa3b6a4081b57e03ee29b9bb2adffaeaaba8ca",
   "overall": "Acceptance incomplete",
-  "nextAction": "Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Obtain Dave approval before merging PR190; all nine workflows pass on5c8dc4d, dependency audit blockers are fixed and the atomic deletion repair is intact. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 Landing and Desktop CI completed",
+      "state": "Verified",
+      "detail": "2026-10-21: Direct Dave instruction (Focus=None exception). Exact5c8dc4d38245539168e6b779b0b83983b687733a: all nine GitHub workflows completed success. Landing39620594915 confirms audit4/4,1245 shared+231 Node,API101,tooling21,landing44,landing-browser25 and hosted38pass/1credential skip. Desktop39620594890: shared browser33 passed; Windows MSI and NSIS installed exercise/uninstall-reinstall retention and Linux DEB/AppImage launch/replacement retention passed. macOS universal build and artifact upload passed; individual job metadata lagged despite all steps and complete-job logs succeeding, while workflow API independently confirmed success. No failures found and no application/test/dependency fixes or reruns needed. Deletion repair is byte-identical. Only verification records changed in this follow-up. PR remains open/unmerged; no auto-merge or production deploy. Next: obtain Dave approval before merge. Existing dev-only braces exception expires2026-11-05; macOS interactive/signing and broader human/release acceptance remain separate. Existing Notion issue/RUN/Hub writes read back;46row/14plan snapshot retained. Private Next Steps Board mapping remains absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39620594890"
+    },
+    {
+      "label": "PR190 dependency repair and deterministic artifact lifecycle test",
+      "state": "Verified",
+      "detail": "2026-10-21: Direct Dave instruction (Focus=None exception). Commits3fc0e73 and733b877 patch markdown-it15.0.3 under markdownlint-cli2 and Vite8.2.4 in extension/web/desktop; required Rolldown/native bindings resolve1.2.15. GHSA-r7fv-28h4-cvq7, GHSA-gfr2-rv44-r23c and GHSA-587h-7wmj-h5pm cleared. All deletion repair files and audit policy are byte-unchanged. Dominic Node22.22.1 passed clean npm ci in4 roots; audit4/4 with only the existing dev-only braces exception through2026-11-05; shared1245 Vitest+231 Node; API101, landing44, tooling21; docs27files/4contracts, version consistency and extension/web/desktop frontend builds. Library routes34, deletion2 and persistence recovery2 pass; hosted38pass/1credential skip. Pre-existing Desktop CI39616467004 failed two artifact tests because the Sep20 fixture trash expired after30days; reproduced before test change. An advancing clock at fixture export time preserves real retention behavior, with12/12 repeated artifact cases passing. Initial frozen-clock attempt produced one timestamp-order failure; corrected to advancing clock. Other29 Desktop scenario cases pass. Current pushed CI pending at this snapshot; no merge/deploy. Existing Notion dependency issue/RUN/Hub updates read back; complete46row/14plan snapshot retained. Private Next Steps Board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/733b877b03bb832fb08e60ba93fdbde127ca268b"
+    },
+    {
+      "label": "Historical PR190 dependency audit failure (superseded)",
+      "state": "Failed",
+      "detail": "Superseded by the verified dependency repair below. Historical failure retained: 2026-10-21: Landing CI39615454727 on repair d5cefb4 failed audit:all before hosted browser/build gates. Re-running audit-workspaces.mjs on original83ae3e2 with Node22.22.1 on Dominic reproduces the identical blockers: root GHSA-r7fv-28h4-cvq7 and GHSA-gfr2-rv44-r23c; extension/web/desktop GHSA-587h-7wmj-h5pm. All four roots fail with zero invocation errors. Manifests, lockfiles and audit policy are byte-unchanged by the repair. Existing braces exception is accepted and does not cover these advisories. API101, tooling21 and static landing gates passed in the failing run; separate Dominic hosted38/1skip and deletion regression proof remain valid. Merge Gate, Version, Docs, Progress and API workflows passed on d5cefb4; Extension/Desktop were still running. No dependency updates or audit weakening added to the bounded data-loss fix. No merge/deployment.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39615454727"
+    },
+    {
+      "label": "PR190 bulk permanent deletion quota repair",
+      "state": "Verified",
+      "detail": "2026-10-21: Direct owner repair instruction (Focus=None exception). At PR190 base 83ae3e2, controlled capacity for one/two of three tombstones reproduces partial writes despite a zero result. Packaged Chromium at real localStorage quota reproduces the same persisted quota-a marker after recoverability feedback. Repair writes each multi-ID batch atomically under a unique append-only key and notifies observers only after success; existing per-ID markers remain readable. Dominic Node22.22.1 passed 55 focused tests, full shared1245 Vitest+231 Node, extension/web builds,2 packaged deletion tests including real quota/two tabs/reload/retry,34 Library routes+2 persistence recovery tests, and hosted38 pass/1 credential-dependent sign-in skip (including Free/Pro gates). Initial hosted attempt used the wrong browser image and failed launch; corrected lockfile-matched image passed. No real user data or provider calls. Not merged/deployed; Dave approval required. Old app tabs need reload to understand batch markers; pre-existing partial markers cannot be safely distinguished from intentional deletions. Native packaged lifecycle not rerun. Private Next Steps Board registry still has no PromptLab mapping.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/190"
+    },
     {
       "label": "Draft terms and privacy wording corrections",
       "state": "Verified",
@@ -630,14 +654,14 @@
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
       "title": "Cross-tab reconciliation resurrects permanent deletions",
-      "status": "Done",
+      "status": "In progress",
       "severity": "High",
       "area": "Library",
       "type": "Bug",
       "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
       "inPlan": true,
-      "nextAction": null,
-      "verification": "Implementation RUN contains scoped evidence; status is the current Notion disposition."
+      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
+      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
@@ -810,8 +834,8 @@
     {
       "id": "3f0255fc8f4481629234d824e518447d",
       "inPlan": false,
-      "nextAction": "Replace or remove the affected dev tooling chain before the existing exception expires on 2026-11-05.",
-      "verification": "2026-10-07 PR132 integration: reviewed head b4c2ea8 against main e984b6b and Windows MSI/NSIS exercise and reinstall receipts from run 37590951429 (merge ref 539e4a0; parents verified). Existing journal and focused tests retained. Found the pre-close IndexedDB diagnostic could wait behind pending journal writes; moved it to startup so final native acceptance cannot gain that extra commit wait. Save/close/relaunch assertions unchanged. Resolved source-map-js GHSA-68fv-2mgg-jv7q by updating only its 1.2.1 lock entries to patched 1.2.2 in extension/web/desktop. Walter Node22: journal/Library tests 27/27, tooling21/21 and extension build pass. Audits4/4 pass through unchanged audit evaluator with npm JS entry point; ordinary Windows audit:all fails npm.cmd EINVAL, retained as a tooling gap. No exception broadened; dev-only braces exception still expires 2026-11-05. Fresh final-head hosted/native CI pending; no merge or production claim. UI save feedback still precedes journal completion, so an in-flight commit remains at risk. Next: require current corrected-harness installed Windows receipts and all final checks before merging; retain older native/human acceptance gaps. Prior evidence: PR #129 is merged; PR #127 inherits its policy unchanged. Dominic Node 22.22.1: tooling 21/21, audits 4/4 pass. Report retains 20 high package occurrences covered only by GHSA-vfj7-8cjw-p6xm on dev-only braces, plus 2 moderate. The exception expires after 2026-11-05 UTC; no extension or broader allowance added. Notion update read back.",
+      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
+      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed.",
       "title": "Dependency audit gate fails on every branch because braces has no patched release",
       "status": "In progress",
       "severity": "Medium",

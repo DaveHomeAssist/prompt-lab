@@ -63,8 +63,11 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
             const text = document.createRange();
             text.selectNodeContents(button.querySelector('span'));
             const label = text.getBoundingClientRect();
-            const count = button.querySelector('small').getBoundingClientRect();
             const bounds = button.getBoundingClientRect();
+            // Reorder-only views (Recent, Frequently used) carry a screen-reader hint instead of a visible count.
+            const countNode = button.querySelector('small:not(.sr-only)');
+            if (!countNode) return label.left >= bounds.left && label.right <= bounds.right;
+            const count = countNode.getBoundingClientRect();
             return label.left >= bounds.left && label.right <= count.left && count.right <= bounds.right;
           }));
         expect(labelsFit, 'smart-view labels and counts must fit without overlapping').toBe(true);

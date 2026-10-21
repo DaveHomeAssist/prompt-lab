@@ -8,7 +8,7 @@ vi.mock('../lib/platform.js', () => ({
   sessionSet: vi.fn(),
 }));
 
-const { useSessionRestore } = await import('../hooks/useSessionState.js');
+const { useSessionRestore, hasExplicitRoute } = await import('../hooks/useSessionState.js');
 
 function restore(session) {
   saved.current = session;
@@ -32,5 +32,27 @@ describe('session restore of the enhancement mode', () => {
   it('keeps an explicit modern strategy or destination mode', () => {
     expect(restore({ enhMode: 'refined' }).setEnhMode).toHaveBeenCalledWith('refined');
     expect(restore({ enhMode: 'claude' }).setEnhMode).toHaveBeenCalledWith('claude');
+  });
+});
+
+describe('session restore of the workspace tab', () => {
+  afterEach(() => window.history.replaceState(null, '', window.location.pathname));
+
+  it('restores the saved tab when the panel opens without a route', () => {
+    window.history.replaceState(null, '', `${window.location.pathname}#/`);
+    expect(restore({ tab: 'pad' }).setTab).toHaveBeenCalledWith('pad');
+  });
+
+  it('lets a deep-linked or reloaded route win over the saved tab', () => {
+    window.history.replaceState(null, '', `${window.location.pathname}#/library`);
+    expect(restore({ tab: 'editor', raw: 'Draft' }).setTab).not.toHaveBeenCalled();
+  });
+
+  it('treats only non-root hash paths as explicit routes', () => {
+    expect(hasExplicitRoute('')).toBe(false);
+    expect(hasExplicitRoute('#/')).toBe(false);
+    expect(hasExplicitRoute('#share=abc')).toBe(false);
+    expect(hasExplicitRoute('#/library')).toBe(true);
+    expect(hasExplicitRoute('#/split/library')).toBe(true);
   });
 });

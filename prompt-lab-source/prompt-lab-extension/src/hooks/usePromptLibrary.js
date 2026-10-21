@@ -365,14 +365,16 @@ export default function usePromptLibrary(notify) {
     return () => window.removeEventListener('storage', handleStorage);
   }, [libReady]);
 
-  const updateLibraryEntry = (entryId, updater) => {
+  // `stamp: false` is for bookkeeping that is not an edit (opening a prompt).
+  // Those writes keep updatedAt, so the Updated date and Newest order stay true.
+  const updateLibraryEntry = (entryId, updater, { stamp = true } = {}) => {
     let changed = false;
     const nextLibrary = libraryRef.current.map(entry => {
       if (entry.id !== entryId) return entry;
       const next = updater(entry);
       if (!next || next === entry) return entry;
       changed = true;
-      return stampRecordMutation(entry, next);
+      return stamp ? stampRecordMutation(entry, next) : next;
     });
     if (changed) {
       libraryRef.current = nextLibrary;
@@ -635,6 +637,30 @@ export default function usePromptLibrary(notify) {
     setLibrary(nextLibrary);
     notify(cleaned ? 'Prompt permanently deleted.' : 'Prompt deletion recorded, but stored content cleanup failed. Free browser storage and retry.');
     return true;
+  };
+
+  // Bulk counterpart of permanentlyDelete: one confirmation that names the
+  // count, instead of one browser dialog per selected prompt. Returns the
+  // number of prompts removed (0 when cancelled or nothing matched).
+  const permanentlyDeleteEntries = (ids) => {
+    const selected = new Set((Array.isArray(ids) ? ids : []).filter((id) => trashRef.current.some((item) => item.id === id)));
+    if (selected.size === 0) return 0;
+    const noun = selected.size === 1 ? 'prompt' : 'prompts';
+    if (!window.confirm(`Permanently delete ${selected.size} ${noun}? This cannot be undone.`)) return 0;
+    try { markLibraryDeleted([...selected]); } catch {
+      notify('Permanent deletion failed. The prompts remain recoverable.');
+      return 0;
+    }
+    const nextTrash = trashRef.current.filter((item) => !selected.has(item.id));
+    const nextLibrary = filterDeletedLibraryRecords(libraryRef.current);
+    const cleaned = persistRecords(storageKeys.trash, nextTrash) && persistRecords(storageKeys.library, nextLibrary);
+    trashRef.current = nextTrash;
+    setTrash(nextTrash);
+    setLibrary(nextLibrary);
+    notify(cleaned
+      ? `${selected.size} ${noun} permanently deleted.`
+      : 'Deletion recorded, but stored content cleanup failed. Free browser storage and retry.');
+    return selected.size;
   };
 
   const setFavorite = (id, favorite) => updateLibraryEntry(id, (entry) => ({
@@ -1305,7 +1331,7 @@ export default function usePromptLibrary(notify) {
     updateLibraryEntry(id, entry => ({
       ...entry,
       lastAccessedAt: new Date().toISOString(),
-    }));
+    }), { stamp: false });
     const ant = getAnticipation();
     const recent = (ant.lastAccessOrder || []).filter(rid => rid !== id);
     recent.unshift(id);
@@ -1326,7 +1352,7 @@ export default function usePromptLibrary(notify) {
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,
-    doSave, saving, saveError, del, restoreDeleted, permanentlyDelete, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
+    doSave, saving, saveError, del, restoreDeleted, permanentlyDelete, permanentlyDeleteEntries, setFavorite, duplicateEntry, updateEntries, moveEntriesToCollection, addTagToEntries, deleteEntries,
     bumpUse, moveLibraryEntry, moveLibraryEntryByOffset, deleteCollection, clearLibrary, renameEntry, restoreVersion, openVersionHistory, closeVersionHistory,
     pinGoldenResponse, clearGoldenResponse, setGoldenThreshold, recordSuiteResult, removeEntriesByPackId, assignEntriesToPack,
     exportLib, importLib, pendingImport: Boolean(pendingImport), retryImport, getShareUrl,
