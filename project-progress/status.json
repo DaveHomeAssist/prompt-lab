@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-21T14:49:53.977Z",
+  "snapshotAt": "2026-10-21T15:11:30.444Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "f6fa3b6a4081b57e03ee29b9bb2adffaeaaba8ca",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify current PR190 CI and obtain Dave approval before merge; dependency audit blockers are fixed and the atomic deletion repair is intact. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Obtain Dave approval before merging PR190; all nine workflows pass on5c8dc4d, dependency audit blockers are fixed and the atomic deletion repair is intact. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 Landing and Desktop CI completed",
+      "state": "Verified",
+      "detail": "2026-10-21: Direct Dave instruction (Focus=None exception). Exact5c8dc4d38245539168e6b779b0b83983b687733a: all nine GitHub workflows completed success. Landing39620594915 confirms audit4/4,1245 shared+231 Node,API101,tooling21,landing44,landing-browser25 and hosted38pass/1credential skip. Desktop39620594890: shared browser33 passed; Windows MSI and NSIS installed exercise/uninstall-reinstall retention and Linux DEB/AppImage launch/replacement retention passed. macOS universal build and artifact upload passed; individual job metadata lagged despite all steps and complete-job logs succeeding, while workflow API independently confirmed success. No failures found and no application/test/dependency fixes or reruns needed. Deletion repair is byte-identical. Only verification records changed in this follow-up. PR remains open/unmerged; no auto-merge or production deploy. Next: obtain Dave approval before merge. Existing dev-only braces exception expires2026-11-05; macOS interactive/signing and broader human/release acceptance remain separate. Existing Notion issue/RUN/Hub writes read back;46row/14plan snapshot retained. Private Next Steps Board mapping remains absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39620594890"
+    },
     {
       "label": "PR190 dependency repair and deterministic artifact lifecycle test",
       "state": "Verified",
@@ -654,8 +660,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
       "inPlan": true,
-      "nextAction": null,
-      "verification": "PR190 quota follow-up fixed and tested; approval and release pending. Original cross-tab repair preserved."
+      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
+      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
@@ -828,8 +834,8 @@
     {
       "id": "3f0255fc8f4481629234d824e518447d",
       "inPlan": false,
-      "nextAction": "Review PR190 CI and obtain Dave approval before merge; remediate braces before the existing exception expires on 2026-11-05.",
-      "verification": "PR190 commits3fc0e73/733b877: all four audit gates pass on Dominic; existing braces exception remains. Current CI pending. Not merged/deployed.",
+      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
+      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed.",
       "title": "Dependency audit gate fails on every branch because braces has no patched release",
       "status": "In progress",
       "severity": "Medium",
