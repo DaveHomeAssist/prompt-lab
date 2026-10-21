@@ -73,3 +73,9 @@ test('the legacy library bridge stays frameable by the Prompt Lab app only', () 
     "frame-ancestors https://promptlab.tools https://www.promptlab.tools; base-uri 'self'; object-src 'none'",
   );
 });
+
+test('hashed build assets are cached immutably, pages are not (AUD-024)', () => {
+  assert.equal(headersFor('/assets/index-Ab12Cd34.js')['cache-control'], 'public, max-age=31536000, immutable');
+  for (const path of PAGES) assert.equal(headersFor(path)['cache-control'], undefined, path);
+  assert.ok(!config.headers.some((rule) => /immutable/.test(JSON.stringify(rule)) && rule.source !== '/assets/(.*)'));
+});
