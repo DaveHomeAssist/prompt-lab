@@ -42,5 +42,10 @@
     "jose": "6.2.3",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.0.1"
+  },
+  "overrides": {
+    "markdownlint-cli2": {
+      "markdown-it": "15.0.3"
+    }
   }
 }
