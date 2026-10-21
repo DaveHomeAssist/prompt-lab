@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-21T15:11:30.444Z",
+  "snapshotAt": "2026-10-21T18:36:37.174129+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f6fa3b6a4081b57e03ee29b9bb2adffaeaaba8ca",
+  "mainSha": "5ab64c550e5a11067822bcbfb1a1fce74105a00e",
   "overall": "Acceptance incomplete",
-  "nextAction": "Obtain Dave approval before merging PR190; all nine workflows pass on5c8dc4d, dependency audit blockers are fixed and the atomic deletion repair is intact. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "PR190 merged and production verified",
+      "state": "Verified",
+      "detail": "2026-10-21 PR190 release — Dave explicitly approved merge. Refreshed stale PR metadata by closing/reopening; exact head64fb1dcea14ddf09c90a28d16dddbb4e195fd121 then passed all9 workflows, including Landing39650849006 and Desktop39650851264 (MSI/NSIS/DEB/AppImage acceptance and macOS universal packaging). Merged with SHA guard as5ab64c550e5a11067822bcbfb1a1fce74105a00e; source tree equals tested head. Production dpl_8b4vWFcUeBsu6xdSf6YgY22u9Tbh READY and promptlab.tools alias verified at this merge. Live app bundle contains atomic batch marker; landing/app/guide HTTP checks pass. Signed-in production39653937501 at exact merge passed4/4 in24.4s, covering375/1440 Library navigation/import/export/reload, starter/stale deletion and browser process restart. Synthetic QA data only, disposable sessions revoked, no paid inference or purchases. No application edits in this merge turn. Old tabs must reload for batch markers; pre-existing partial tombstones cannot be safely inferred/recovered. Main post-merge CI remains separately running. Next: preserve deletion markers; retain broader human/macOS interaction/signing/tagged-release gates separately. Existing braces exception remains due2026-11-05. Private Next Steps Board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39653937501"
+    },
     {
       "label": "PR190 Landing and Desktop CI completed",
       "state": "Verified",
@@ -654,14 +660,14 @@
     {
       "id": "3d2255fc8f4481e1bceffa1db1ee67cb",
       "title": "Cross-tab reconciliation resurrects permanent deletions",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Library",
       "type": "Bug",
       "url": "https://app.notion.com/3d2255fc8f4481e1bceffa1db1ee67cb",
       "inPlan": true,
-      "nextAction": "Obtain Dave approval before merging PR190. Preserve the existing braces exception expiry and broader acceptance gaps.",
-      "verification": "PR190 head5c8dc4d: all nine workflows passed, including Landing and Desktop native package acceptance; not merged/deployed."
+      "nextAction": "Preserve deletion markers; reload old tabs to adopt atomic batch handling.",
+      "verification": "PR190 merged5ab64c5; exact64fb1dc all9 CI workflows pass; production39653937501 Library/restart4/4 pass; atomic batch marker verified live."
     },
     {
       "id": "3d5255fc8f4481afbf7ed26ad3432781",
