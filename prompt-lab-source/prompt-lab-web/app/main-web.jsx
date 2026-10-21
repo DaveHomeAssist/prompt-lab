@@ -7,12 +7,12 @@ import App from '../../prompt-lab-extension/src/App';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
 import ReportProblemHost from '../../prompt-lab-extension/src/ReportProblemHost.jsx';
 import {
-  buildLandingIntentRedirectUrl,
   clearLandingAttribution,
   parseLandingIntent,
   readLandingAttribution,
   stripLandingIntentParams,
 } from '../../prompt-lab-extension/src/lib/landingAttribution.js';
+import { buildAuthRedirectUrls, buildSignInContext } from '../../prompt-lab-extension/src/lib/signInContext.js';
 import '../../prompt-lab-extension/src/index.css';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -35,9 +35,12 @@ const initialLandingIntent = typeof window !== 'undefined'
   ? parseLandingIntent(window.location.search)
   : null;
 const initialLandingAttribution = readLandingAttribution(landingStorage);
-const landingIntentRedirectUrl = typeof window !== 'undefined' && initialLandingIntent
-  ? buildLandingIntentRedirectUrl(window.location.href, initialLandingIntent)
-  : '';
+// AUD-006: every Clerk exit (sign-in, sign-up, extra verification) returns to
+// /app/, carrying the upgrade intent when there is one.
+const authRedirectUrls = typeof window !== 'undefined'
+  ? buildAuthRedirectUrls(window.location.href, initialLandingIntent)
+  : {};
+const signInContext = buildSignInContext(initialLandingIntent);
 
 function consumeLandingIntent() {
   if (typeof window === 'undefined' || !initialLandingIntent) return;
@@ -85,15 +88,39 @@ function AuthGate() {
   return (
     <>
       <SignedOut>
-        <div style={{
+        <main style={{
           minHeight: '100vh',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: '20px',
+          padding: '24px 16px',
+          boxSizing: 'border-box',
           background: '#0f172a',
+          fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
         }}>
+          <section
+            data-testid="signin-context"
+            data-upgrade={signInContext.upgrade ? 'true' : 'false'}
+            aria-labelledby="signin-context-heading"
+            style={{ maxWidth: '400px', width: '100%', color: '#f0ede6', textAlign: 'center' }}
+          >
+            <a href="/" style={{ color: '#fdba74', fontSize: '13px', textDecoration: 'underline' }}>
+              &larr; Back to promptlab.tools
+            </a>
+            <h1 id="signin-context-heading" style={{ margin: '14px 0 8px', fontSize: '22px', lineHeight: 1.25 }}>
+              {signInContext.heading}
+            </h1>
+            <p style={{ margin: 0, fontSize: '14px', lineHeight: 1.5, color: '#cbd5e1' }}>
+              {signInContext.body}
+            </p>
+          </section>
           <SignIn
-            forceRedirectUrl={landingIntentRedirectUrl || undefined}
+            forceRedirectUrl={authRedirectUrls.forceRedirectUrl}
+            fallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
+            signUpForceRedirectUrl={authRedirectUrls.signUpForceRedirectUrl}
+            signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
             appearance={{
               layout: { socialButtonsVariant: 'blockButton' },
               variables: {
@@ -119,7 +146,7 @@ function AuthGate() {
               },
             }}
           />
-        </div>
+        </main>
       </SignedOut>
       <SignedIn>
         <HashRouter>
@@ -158,7 +185,11 @@ if (!CLERK_KEY) {
 } else {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
-      <ClerkProvider publishableKey={CLERK_KEY}>
+      <ClerkProvider
+        publishableKey={CLERK_KEY}
+        signInFallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
+        signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
+      >
         <AuthGate />
       </ClerkProvider>
     </ErrorBoundary>
