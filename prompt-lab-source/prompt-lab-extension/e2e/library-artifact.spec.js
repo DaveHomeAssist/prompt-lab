@@ -55,6 +55,8 @@ for (const artifact of artifacts) for (const surface of surfaces) for (const wid
       }
       const page = await context.newPage();
       page.setDefaultTimeout(10_000);
+      // Test persistence at export time so the fixture's trash does not age out.
+      if (artifact.exportedAt) await page.clock.setSystemTime(new Date(artifact.exportedAt));
       await page.goto(url);
       if (libraryView) await openLibrary(page);
       return page;
