@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-21T20:52:04.495109+00:00",
+  "snapshotAt": "2026-10-23T04:27:20.174341+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6627041359a77b433554c53080c0d24ce52641c2",
+  "mainSha": "d33ac1b997aea5c960255df7f9903d30b68884a5",
   "overall": "Acceptance incomplete",
-  "nextAction": "PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Verify hosted API credit balance, prior cycle spend, auto-reload and production key expiry in Claude Console; retain 10/200 request limits until account proof is available. Complete PR194 Landing/Desktop CI verification. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Hosted dollar budget deployed; account verification pending",
+      "state": "Open",
+      "detail": "2026-10-23: Direct Dave request (Focus exception). PR194 merged d33ac1b; atomic Redis reservation and settlement fix3613822. Both review threads resolved. Dominic Node22.22.1 passed121 API tests; disposable Valkey passed settlement, cycle/day/IP no-write refusals, corrupt-counter rejection and30 concurrent reservations (10 accepted/20 refused). Vercel dpl_5XBTWcWdY2jCmEZCq4pdqqtUQtiT READY exactd33ac1b. Public GET405, malformed POST400 and one shared-key Sonnet4.6 request200/OK/KV/standard;9 input+4output tokens=$0.000087. Config readback:$180/cycle,day14UTC,$0.50/IP/day,10/IP and200global requests/day; no env changes this session. Runtime log query returned no records. GitHub merged immediately on auto-merge request before broader CI finished; current Landing/Desktop CI remain running separately. Subscription receipt confirms Oct14–Nov14; an older credit email expiresOct17 and does not prove current balance. Console sign-in required for remaining balance, prior spend, auto-reload and production key identification; org key expiry warning Oct24UTC is confirmed. No request-limit increase or credential rotation. Existing Notion quota row and implementation RUN appended/read back; all51rows/14plan preserved. Private Next Steps Board has no PromptLab mapping. Mac ENOSPC prevented local commit; published GitHub tree equals isolated Dominic commit tree. Original source and untracked.claude preserved.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/194"
+    },
     {
       "label": "Braces unpatched; existing exception retained by decision",
       "state": "Open",
@@ -742,6 +748,30 @@
       "verification": "PR #119 merged as 08f5b7f after all 13 checks; production dpl_ENAv5NCb4wyzeNKYTC2tX6azTv9f READY. Live: malformed shared-key body returns 400 from an IP over the cap (old code returned 429 first); 429 carries x-demo-limit 3; /app bundle ships HostedQuotaBadge. Rendered badge not observed live (sign-in required)."
     },
     {
+      "id": "3f0255fc8f44811d8794c092ba1bb88f",
+      "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Library",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
+      "inPlan": false,
+      "nextAction": "Complete Tauri deletion, provider-backed verdict and signed-in human acceptance; resolve the existing TC-A/B/C runner-semantics decision.",
+      "verification": "2026-10-05 merge closeout: PR #127 merged as 09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99 after all 15 current PR check/status entries passed on abceb881f5a9c71f84b2f97fe2e38e7fcf1e5073. Required approvals: zero; review threads: none; mergeable/CLEAN rechecked immediately before SHA-pinned normal merge. Production dpl_CZVB48KnTJ3VgTCGUp3AEGb5MCko is READY at the merge SHA and assigned promptlab.tools. The first NSIS native cancellation run timed out waiting for a slow provider request; one isolated retry passed against unchanged source and installer. Original failure artifact and unconfirmed cause remain tracked on the desktop acceptance issue. Dominic validation: 1103 Vitest, 222 legacy Node, 21 tooling, four audits, build and two browser cases passed. Existing dev-only braces exception through 2026-11-05 was inherited unchanged from #129. Main post-merge CI is still running as of this update. Remaining: Tauri webview deletion, provider-backed verdict, signed-in live/human acceptance and TC-A/B/C decision. Keep In progress. Next: complete the Library Tests acceptance in supported shells and resolve the existing semantics decision; retire the dependency exception before expiry. Public /app/ and app-DSpBAESb.js returned HTTP 200; the production bundle contains Add Case. This is asset verification, not signed-in UI acceptance."
+    },
+    {
+      "id": "3f0255fc8f4481629234d824e518447d",
+      "inPlan": false,
+      "nextAction": "Recheck patched braces before2026-11-05; separate approval needed for broader tooling migration.",
+      "verification": "2026-10-21 GitHub/npm confirm no patched braces; latest parents retain dependency. Fresh audit4/4 under existing exception; tooling21/21. Dave chose to retain exception.",
+      "title": "Dependency audit gate fails on every branch because braces has no patched release",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/3f0255fc8f4481629234d824e518447d"
+    },
+    {
       "id": "3f0255fc8f4481ed9dacfe608a61e14e",
       "title": "Send-time PII redaction leaks secret tails, misses bare Bearer tokens, and splits parenthesized phones",
       "status": "In progress",
@@ -752,6 +782,78 @@
       "inPlan": false,
       "nextAction": "Complete the remaining PII acceptance recorded on its Notion row; PR #126 is already merged.",
       "verification": "2026-10-05 integration correction: PR #126 merged as 3a3d723; its code and regression tests are preserved in this merge. The Notion row remains In progress. Earlier local/CI evidence is historical; no new PII acceptance claim in this refresh."
+    },
+    {
+      "id": "3f9255fc8f44816c8181c05b933b13c6",
+      "title": "Checkout webhook/KV fail-closed switches off all billing controls",
+      "status": "In progress",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f9255fc8f44816c8181c05b933b13c6",
+      "inPlan": false,
+      "nextAction": "On a preview deployment with STRIPE_WEBHOOK_SECRET unset, confirm Go Pro pauses while Manage Purchases, Sync and Refresh stay enabled.",
+      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Checkout returns checkoutDisabled when webhook signing or KV is missing; server and hook tests fail without the fix. Path not live in production."
+    },
+    {
+      "id": "3f9255fc8f448193bab6eb5582b6597e",
+      "title": "Concurrent first billing requests create duplicate Stripe customers",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/3f9255fc8f448193bab6eb5582b6597e",
+      "inPlan": false,
+      "nextAction": "Run concurrent first license and checkout requests for a fresh Stripe test-mode account and confirm exactly one customer.",
+      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Idempotent customer create with 409 backoff; race, retry and slow-winner tests fail without the fix. Not exercised against live or test-mode Stripe."
+    },
+    {
+      "id": "3fa255fc8f44811d9c59f511c58ef9a0",
+      "title": "Library inspector is see-through when it floats over the list (701-1100px)",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/3fa255fc8f44811d9c59f511c58ef9a0",
+      "inPlan": false,
+      "nextAction": "Open a prompt in the signed-in production Library at about 900 px and confirm the inspector is solid in both themes.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS gives the floating inspector var(--pl-brand-ink). The spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Signed-in production view not checked."
+    },
+    {
+      "id": "3fa255fc8f4481b38f48d336ef3d4a89",
+      "title": "Library tile cards draw their date and use count under the Editor/Copy/Favorite buttons",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
+      "inPlan": false,
+      "nextAction": "Hard-refresh the signed-in production Library in tile view and confirm card details no longer sit under Editor/Copy/Favorite.",
+      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS keeps tile actions in their own grid column. e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Signed-in production view not checked."
+    },
+    {
+      "id": "3fc255fc8f44810594d3d3ee3ab722fe",
+      "title": "Library import review hides which page holds pending conflict choices",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Import",
+      "type": "UX",
+      "url": "https://app.notion.com/3fc255fc8f44810594d3d3ee3ab722fe",
+      "inPlan": false,
+      "nextAction": "Import a library with a pending conflict beyond page 1 in the signed-in production app and confirm Jump to unresolved reaches and focuses it.",
+      "verification": "2026-10-17: PR #154 merged as d2dc37a after all 13 checks passed; the Vercel deployment succeeded and the production bundle contains the Jump to unresolved control. New WorkspaceImportModal test passes; CI's full extension suite passes workspaceImportRecovery 9/9 under Node 22. Signed-in production import not checked."
+    },
+    {
+      "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
+      "inPlan": false,
+      "title": "Library workspace controls L1–L8",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
+      "nextAction": "Obtain the remaining human/physical-touch and macOS interaction acceptance; keep In progress until the full contract passes.",
+      "verification": "Pricing PR183 f9e6f60: Free JSON downloads/content and association checks passed at375/1440px in production39235873168; Pro collection gate retained. Parent stays In progress for existing human/physical/macOS acceptance. Earlier evidence retained: 2026-10-19: PR185/160176f fixture aligns with current Free gates. Four Library39212882244 cases and full Production39213547604 (9pass/5skip) passed; sessions revoked/read back. Current Free export/collection gates verified without fake entitlement; gated file export and folder removal not exercised. Search/reorder/import/restart associations pass. Independent pricing PR183 unchanged; later free-export policy reactivates file assertions. 2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
     },
     {
       "id": "48d82c475b0448649ff2372a00bb6e33",
@@ -838,100 +940,64 @@
       "verification": "2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
     },
     {
-      "id": "3f0255fc8f44811d8794c092ba1bb88f",
-      "title": "Batch test-case runs have no reachable way to create a case (Library Tests tab read-only; Run Cases never enabled)",
-      "status": "In progress",
-      "severity": "High",
-      "area": "Library",
-      "type": "Bug",
-      "url": "https://app.notion.com/3f0255fc8f44811d8794c092ba1bb88f",
+      "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Complete Tauri deletion, provider-backed verdict and signed-in human acceptance; resolve the existing TC-A/B/C runner-semantics decision.",
-      "verification": "2026-10-05 merge closeout: PR #127 merged as 09a52b0bea841c0ba81e4d2a2a5a9bcf0b248c99 after all 15 current PR check/status entries passed on abceb881f5a9c71f84b2f97fe2e38e7fcf1e5073. Required approvals: zero; review threads: none; mergeable/CLEAN rechecked immediately before SHA-pinned normal merge. Production dpl_CZVB48KnTJ3VgTCGUp3AEGb5MCko is READY at the merge SHA and assigned promptlab.tools. The first NSIS native cancellation run timed out waiting for a slow provider request; one isolated retry passed against unchanged source and installer. Original failure artifact and unconfirmed cause remain tracked on the desktop acceptance issue. Dominic validation: 1103 Vitest, 222 legacy Node, 21 tooling, four audits, build and two browser cases passed. Existing dev-only braces exception through 2026-11-05 was inherited unchanged from #129. Main post-merge CI is still running as of this update. Remaining: Tauri webview deletion, provider-backed verdict, signed-in live/human acceptance and TC-A/B/C decision. Keep In progress. Next: complete the Library Tests acceptance in supported shells and resolve the existing semantics decision; retire the dependency exception before expiry. Public /app/ and app-DSpBAESb.js returned HTTP 200; the production bundle contains Add Case. This is asset verification, not signed-in UI acceptance."
-    },
-    {
-      "id": "3f0255fc8f4481629234d824e518447d",
-      "inPlan": false,
-      "nextAction": "Recheck patched braces before2026-11-05; separate approval needed for broader tooling migration.",
-      "verification": "2026-10-21 GitHub/npm confirm no patched braces; latest parents retain dependency. Fresh audit4/4 under existing exception; tooling21/21. Dave chose to retain exception.",
-      "title": "Dependency audit gate fails on every branch because braces has no patched release",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/3f0255fc8f4481629234d824e518447d"
-    },
-    {
-      "id": "3f9255fc8f44816c8181c05b933b13c6",
-      "title": "Checkout webhook/KV fail-closed switches off all billing controls",
-      "status": "In progress",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3f9255fc8f44816c8181c05b933b13c6",
-      "inPlan": false,
-      "nextAction": "On a preview deployment with STRIPE_WEBHOOK_SECRET unset, confirm Go Pro pauses while Manage Purchases, Sync and Refresh stay enabled.",
-      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Checkout returns checkoutDisabled when webhook signing or KV is missing; server and hook tests fail without the fix. Path not live in production."
-    },
-    {
-      "id": "3f9255fc8f448193bab6eb5582b6597e",
-      "title": "Concurrent first billing requests create duplicate Stripe customers",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Background",
-      "type": "Bug",
-      "url": "https://app.notion.com/3f9255fc8f448193bab6eb5582b6597e",
-      "inPlan": false,
-      "nextAction": "Run concurrent first license and checkout requests for a fresh Stripe test-mode account and confirm exactly one customer.",
-      "verification": "2026-10-14: PR #148 merged as b913eb7 and READY in production. Idempotent customer create with 409 backoff; race, retry and slow-winner tests fail without the fix. Not exercised against live or test-mode Stripe."
-    },
-    {
-      "id": "3fa255fc8f44811d9c59f511c58ef9a0",
-      "title": "Library inspector is see-through when it floats over the list (701-1100px)",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/3fa255fc8f44811d9c59f511c58ef9a0",
-      "inPlan": false,
-      "nextAction": "Open a prompt in the signed-in production Library at about 900 px and confirm the inspector is solid in both themes.",
-      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS gives the floating inspector var(--pl-brand-ink). The spec measured alpha 5/255 before the fix and 255 after in dark and light mode. Signed-in production view not checked."
-    },
-    {
-      "id": "3fa255fc8f4481b38f48d336ef3d4a89",
-      "title": "Library tile cards draw their date and use count under the Editor/Copy/Favorite buttons",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/3fa255fc8f4481b38f48d336ef3d4a89",
-      "inPlan": false,
-      "nextAction": "Hard-refresh the signed-in production Library in tile view and confirm card details no longer sit under Editor/Copy/Favorite.",
-      "verification": "2026-10-15: PR #151 merged as 8eceda5 and READY in production (dpl_4EVmtiYCjKrWrsrhG9Bxet2vVw7o); the live CSS keeps tile actions in their own grid column. e2e/library-layout-overlap.spec.js fails before the fix at 400/768/1180/1440 px and passes after, including 2000 px with the inspector open. Signed-in production view not checked."
-    },
-    {
-      "id": "3fc255fc8f44810594d3d3ee3ab722fe",
-      "title": "Library import review hides which page holds pending conflict choices",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Import",
-      "type": "UX",
-      "url": "https://app.notion.com/3fc255fc8f44810594d3d3ee3ab722fe",
-      "inPlan": false,
-      "nextAction": "Import a library with a pending conflict beyond page 1 in the signed-in production app and confirm Jump to unresolved reaches and focuses it.",
-      "verification": "2026-10-17: PR #154 merged as d2dc37a after all 13 checks passed; the Vercel deployment succeeded and the production bundle contains the Jump to unresolved control. New WorkspaceImportModal test passes; CI's full extension suite passes workspaceImportRecovery 9/9 under Node 22. Signed-in production import not checked."
-    },
-    {
-      "id": "3fd255fc8f4481b9bdbecd92b99fd64b",
-      "inPlan": false,
-      "title": "Library workspace controls L1–L8",
-      "status": "In progress",
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Add the shared library sync engine, unmounted (sync slice 3)",
+      "status": "Not started",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
-      "url": "https://app.notion.com/3fd255fc8f4481b9bdbecd92b99fd64b",
-      "nextAction": "Obtain the remaining human/physical-touch and macOS interaction acceptance; keep In progress until the full contract passes.",
-      "verification": "Pricing PR183 f9e6f60: Free JSON downloads/content and association checks passed at375/1440px in production39235873168; Pro collection gate retained. Parent stays In progress for existing human/physical/macOS acceptance. Earlier evidence retained: 2026-10-19: PR185/160176f fixture aligns with current Free gates. Four Library39212882244 cases and full Production39213547604 (9pass/5skip) passed; sessions revoked/read back. Current Free export/collection gates verified without fake entitlement; gated file export and folder removal not exercised. Search/reorder/import/restart associations pass. Independent pricing PR183 unchanged; later free-export policy reactivates file assertions. 2026-10-18: PR170 merged eda7142 and PR171 merged 4b9319b after all 16 checks passed on 934ad07. Candidate/merge source tree 42d5672a458e9b32a0e71df25635ab8cfb24c53d matches. All 10 returned exact-main runs passed, including Desktop 39182308915: MSI/NSIS/DEB/AppImage installed retention and macOS universal packaging. Extension 39182309041 passed 1195 shared, 223 legacy and 13 evaluator tests; six version regressions cover Windows CRLF. Scoped Production 39182361884 passed all four Library cases at 375/1440px with synthetic profiles and session cleanup. Vercel dpl_44KhvNRpp9Cj3qr5JGTxUisvstc1 READY exact 4b9319b; signed-in Library visibly reports 1.8.0-dev (4b9319b) and retains 15 personal prompts. All 32 Library browser, nine hosted and four desktop-shell checks passed on Dominic. Earlier failed runs 39178388110, 39178388142 and 39179694257 remain retained. Human/physical/macOS interaction and tagged-release acceptance remain open. No delegated subagents, real model calls, purchases or personal prompt edits."
+      "url": "https://app.notion.com/402255fc8f4481819654d33c8453c6d7"
+    },
+    {
+      "id": "402255fc8f4481c5a7d5fbe429ff03c9",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Record account library sync decision and draft policy text (sync slice 1)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481c5a7d5fbe429ff03c9"
+    },
+    {
+      "id": "402255fc8f4481d5a67febbb7b34f26a",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Add account library sync to the web shell (sync slice 4)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
+    },
+    {
+      "id": "402255fc8f4481f1840fd1440a7dcb35",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Launch account library sync on production web (sync slice 5)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
+    },
+    {
+      "id": "402255fc8f4481f494ced6b248f38c8c",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Add account library sync schema and API behind LIBRARY_SYNC_ENABLED (sync slice 2)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
     }
   ]
 }
