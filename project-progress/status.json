@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T10:01:06.495Z",
+  "snapshotAt": "2026-10-23T10:10:43.828Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,21 +9,21 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b405d3cf0ed0e03e7996e63410ce364d93e28cff",
+  "mainSha": "df6cfa98c912961f0389658c8d3fdcb64e5f99f1",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish PR200 CI, merge/deploy and no-charge signed-in account/billing acceptance. Deliver the approved October 23 prompt lifecycle slice through CI, merge and production verification. Other October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Finish PR200 CI, merge/deploy and no-charge signed-in account/billing acceptance. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
     {
       "label": "Account and Stripe ownership hardening candidate",
       "state": "Running",
-      "detail": "2026-10-23: Dave directly requested login/paywall/Stripe/Clerk hardening. PR200/cb026d5 on main b405d3c rejects cross-account Stripe rebinding and conflicting metadata, drops inherited owner/paid cache and stale billing responses, aligns JWT authorized-party/configured issuer/audience checks. New regressions reproduced six server/four client failures against original source. Dominic Node22: initial API129, final focused billing48, shared1252, legacy231, hosted build and docs checks pass. Current-main CI, merge/deployment and no-charge signed-in production acceptance remain pending. Five negative webhook signature cases return401 before persistence or Stripe requests. Prices, legacy annual support, offline grace,180USD spending cap,25/1000 public ceilings and auto-reload-off remain unchanged. Complete Notion58-row snapshot;14plan identities preserved. Private Next Steps Board mapping remains absent.",
+      "detail": "2026-10-23: Dave directly requested login/paywall/Stripe/Clerk hardening. PR200 with verified-email follow-up, integrated with main df6cfa9 rejects cross-account Stripe rebinding and conflicting metadata, drops inherited owner/paid cache and stale billing responses, aligns JWT authorized-party/configured issuer/audience checks. New regressions reproduced six server/four client failures against original source. Dominic Node22: full API141, focused billing48, shared1252, legacy231, hosted build and docs checks pass. Current-main CI, merge/deployment and no-charge signed-in production acceptance remain pending. Five negative webhook signature cases return401 before persistence or Stripe requests. Prices, legacy annual support, offline grace,180USD spending cap,25/1000 public ceilings and auto-reload-off remain unchanged. Complete Notion58-row snapshot;14plan identities preserved. Private Next Steps Board mapping remains absent. Verified profile emails or explicitly verified signed email claims now required for legacy email linking; existing Clerk-ID binding works without email. Concurrent PR201 lifecycle acceptance records preserved.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/200"
     },
     {
-      "label": "October 23 intake and prompt lifecycle",
-      "state": "Running",
-      "detail": "Six requests created and read back in existing backlog; Dual Pane linked to existing Enhance umbrella. Dominic Node22.22.1: 14/14 browser checks plus strengthened 9/9 intercepted refinement/lifecycle checks; targeted component regressions, extension/web builds and docs contracts pass. Exact-head CI, merge, production and installed desktop/human acceptance pending. All 57 issue identities and existing 14-item plan preserved; six intake rows are outside that plan. Private Next Steps Board has no PromptLab mapping. Short-display follow-up: 9/9 browser checks pass again with at least 80px of active editor height, and 42 targeted component checks pass; both builds pass.",
-      "url": "https://app.notion.com/p/402255fc8f44812cabebf92f0e4f9104"
+      "label": "October 23 prompt lifecycle delivered",
+      "state": "Verified",
+      "detail": "PR199 merged b405d3c after all candidate checks passed; exact production READY and signed-in Create39935950303 passed2/2 with both session revocations verified. Dominic lifecycle9/9 and hosted47pass/1authskip; native39933693461 all6jobs pass. Main CI still running at snapshot. Broader human/signing/upgrade acceptance remains open. One global header action; shared Write/Dual Pane prompt identity, same-record versions, independent copy and reset/Undo verified. Vercel dpl_5MZaJ5vzTVCUpAFsN8yqaBDhspbX READY exactb405d3c. Full live backlog58 rows/14 original plan identities preserved, including concurrent addition. Five other intake rows remain Not started. No private-board mapping. This bounded delivery does not close parent acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/199"
     },
     {
       "label": "Prior-version upgrade and snapshot environment unresolved",
@@ -1056,14 +1056,14 @@
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
       "title": "Clarify prompt lifecycle and keep New Prompt in one place",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "UX",
       "url": "https://app.notion.com/402255fc8f44812cabebf92f0e4f9104",
       "inPlan": false,
-      "nextAction": "Complete exact-head CI, merge and deployed browser verification; retain installed desktop/human acceptance separately.",
-      "verification": "Implemented in isolated lifecycle branch. Dominic Node22.22.1: 14 browser lifecycle/cancellation/reload checks passed, then 9/9 strengthened lifecycle checks including actual intercepted refinement passed. Both layouts at desktop/mobile verify same ID for version saves, independent copies, reset and Undo; all five viewport sizes and both themes passed header/no-document-overflow checks. Targeted component regressions and extension/web builds pass. Exact-head CI, merge, production and installed desktop/human acceptance remain separate pending gates."
+      "nextAction": "Retain delivered lifecycle; select the next October 23 backlog slice only when authorized.",
+      "verification": "PR199 merged b405d3c after all candidate checks passed; exact production READY and signed-in Create39935950303 passed2/2 with both session revocations verified. Dominic lifecycle9/9 and hosted47pass/1authskip; native39933693461 all6jobs pass. Main CI still running at snapshot. Broader human/signing/upgrade acceptance remains open."
     },
     {
       "id": "402255fc8f448140b0b8f0bfcee2b929",
@@ -1104,8 +1104,8 @@
     {
       "id": "402255fc8f44813faf3ae58a8b002426",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Review the existing issue acceptance before implementation.",
+      "verification": "Not evaluated by this lifecycle delivery.",
       "title": "Harden account ownership across Clerk sessions and Stripe billing",
       "status": "In progress",
       "severity": "High",
