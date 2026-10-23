@@ -180,7 +180,7 @@ describe('LibraryWorkspace', () => {
     expect(lib.restoreVersion).toHaveBeenCalledWith('favorite', expect.objectContaining({ id: 'v1' }));
   });
 
-  it('routes all item destinations, source links, compact back, and New Prompt', () => {
+  it('routes item destinations and leaves New Prompt to the shared header', () => {
     const { callbacks, container, lib } = renderLibrary();
     fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
     expect(container.firstChild).toHaveClass('has-inspector-selection');
@@ -200,8 +200,7 @@ describe('LibraryWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to prompts' }));
     expect(container.firstChild).not.toHaveClass('has-inspector-selection');
-    fireEvent.click(screen.getAllByRole('button', { name: 'New Prompt' })[0]);
-    expect(callbacks.onNewPrompt).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'New Prompt' })).not.toBeInTheDocument();
   });
 
   it('manages collections without prompt dialogs and keeps import, export, and packs connected', async () => {

@@ -77,10 +77,19 @@ describe('CreateContextBar', () => {
     expect(within(bar).getByText('Folder: Ops')).toBeInTheDocument();
     expect(within(bar).getByText('Unsaved changes')).toBeInTheDocument();
     expect(within(bar).getByText('Save adds a new version')).toBeInTheDocument();
-    fireEvent.click(within(bar).getByRole('button', { name: 'Start new prompt' }));
-    expect(onStartNew).toHaveBeenCalledTimes(1);
+    expect(within(bar).queryByRole('button', { name: /new prompt/i })).not.toBeInTheDocument();
+    expect(within(bar).getByTestId('refinement-identity')).toHaveTextContent('Refine keeps this prompt');
     fireEvent.click(within(bar).getByRole('button', { name: 'View in Library' }));
     expect(openSection).toHaveBeenCalledWith('library');
+  });
+  it('collapses the explanation on short screens while keeping prompt identity visible', () => {
+    const { container } = render(<CreateContextBar {...baseProps} compact currentEntry={savedEntry}
+      raw="Draft prompt body" enhanced="Refined prompt output" />);
+    const details = container.querySelector('details');
+    expect(details.open).toBe(false);
+    expect(details.querySelector('summary')).toHaveTextContent('Voice Memo Cleanup');
+    fireEvent.click(details.querySelector('summary'));
+    expect(details.open).toBe(true);
   });
   it('shows the pending title and folder from Library details', () => {
     render(<CreateContextBar {...baseProps} currentEntry={savedEntry} raw="Draft prompt body" enhanced="Refined prompt output"
@@ -172,6 +181,12 @@ function renderPane(overrides = {}) {
     onUnlockDiff={noop} runCasesLocked={false} newPrompt={noop} {...overrides} />);
 }
 
+function renderContext(overrides = {}) {
+  return render(<CreateContextBar m={m} raw="Draft prompt body" enhanced="Refined prompt output"
+    currentEntry={savedEntry} accentTextClass="" accentHoverTextClass="" accentBadgeClass=""
+    openSection={vi.fn()} {...overrides} />);
+}
+
 describe('CreateEditorPane slice 2A wiring', () => {
   const entryWithResults = () => normalizeEntry({
     ...savedEntry, notes: 'Saved notes', variants: [{ label: 'Refined', content: 'Alternate output' }],
@@ -185,13 +200,13 @@ describe('CreateEditorPane slice 2A wiring', () => {
     const resultMeta = { ...entry.resultMeta, candidates: entry.resultMeta.candidates.map(candidate => (
       candidate.id === 'refined' ? { ...candidate, content: 'Edited alternate output' } : candidate
     )) };
-    const { unmount } = renderPane({ contextControls: true, currentEntry: entry,
+    const { unmount } = renderContext({ currentEntry: entry,
       resultMeta, variants: entry.variants, notes: entry.notes });
     expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Unsaved changes');
     const saved = updatePromptEntry(entry, { resultMeta });
     expect(saved.currentVersionId).not.toBe(entry.currentVersionId);
     unmount();
-    renderPane({ contextControls: true, currentEntry: saved,
+    renderContext({ currentEntry: saved,
       resultMeta: saved.resultMeta, variants: saved.variants, notes: saved.notes });
     expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('No unsaved changes');
   });
@@ -200,27 +215,27 @@ describe('CreateEditorPane slice 2A wiring', () => {
     ['variants', { variants: [{ label: 'Refined', content: 'Edited variant' }] }],
   ])('counts changed %s as unsaved even when the selected output is unchanged', (_field, changes) => {
     const entry = entryWithResults();
-    renderPane({ contextControls: true, currentEntry: entry,
+    renderContext({ currentEntry: entry,
       resultMeta: entry.resultMeta, variants: entry.variants, notes: entry.notes, ...changes });
     expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Unsaved changes');
   });
-  it('keeps the existing context row and chip strips when the controls are off', () => {
+  it('leaves context to the shell and keeps chip strips when controls are off', () => {
     renderPane();
     expect(screen.queryByRole('region', { name: 'Editing context' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Prompt shortcuts' })).not.toBeInTheDocument();
-    expect(screen.getByText('Editing')).toBeInTheDocument();
+    expect(screen.queryByText('Editing')).not.toBeInTheDocument();
     expect(screen.getByText('Recent')).toBeInTheDocument();
     expect(screen.getByText('Quick')).toBeInTheDocument();
   });
-  it('replaces them with the context bar and prompt shortcuts when the controls are on', () => {
+  it('shows prompt shortcuts without duplicating the shell context when controls are on', () => {
     stubViewport(false);
     renderPane({ contextControls: true });
-    expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Editing saved prompt:');
+    expect(screen.queryByRole('region', { name: 'Editing context' })).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Prompt shortcuts' })).toBeInTheDocument();
     expect(screen.queryByText('Quick')).not.toBeInTheDocument();
   });
   it('shows the context bar even before anything is typed', () => {
-    renderPane({ contextControls: true, showCreateContext: false, currentEntry: null, editingId: null, raw: '', enhanced: '' });
+    renderContext({ currentEntry: null, raw: '', enhanced: '' });
     expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('New unsaved prompt');
   });
 });

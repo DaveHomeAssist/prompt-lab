@@ -253,7 +253,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
 export default function LibraryWorkspace({
   m, lib, loadEntry, copy, addToComposer, sendToABTest, openSavePanel,
-  onNewPrompt, onOpenScratchSource, onExportEntries,
+  onOpenScratchSource, onExportEntries,
   canUseCollections = true, canExportLibrary = true,
   canImportLibrary = canExportLibrary, canUsePacks = true, openBilling,
   compact = false,
@@ -478,7 +478,6 @@ export default function LibraryWorkspace({
       setAnnouncement('Folder removed; its prompts remain in All prompts.');
     }
   };
-  const handleNewPrompt = () => { setSelectedId(null); if (onNewPrompt) onNewPrompt(); else openSavePanel?.({ mode: 'new' }); };
 
   return <div ref={workspaceRef} style={{ '--pl-inspector-width': `${inspectorWidth}px` }} className={`pl-library-workspace${drawerOpen ? ' is-drawer-open' : ' is-drawer-collapsed'}${selected ? ' has-inspector-selection' : ''}${smartView === 'trash' ? ' is-trash-view' : ''}`}>
     <p className="sr-only" aria-live="polite">{announcement}</p>
@@ -486,7 +485,6 @@ export default function LibraryWorkspace({
     <aside ref={drawerRef} role={compact && drawerOpen ? 'dialog' : undefined} aria-modal={compact && drawerOpen ? 'true' : undefined} tabIndex={compact && drawerOpen ? -1 : undefined} id="library-drawer" className="pl-library-rail" aria-label="Library views" hidden={!drawerOpen}>
       <button type="button" className="pl-drawer-close" aria-label="Close Library drawer" onClick={() => setDrawerOpen(false)}>Hide Library drawer <Ic n="X" size={14} /></button>
       <div className="pl-library-rail-title"><div><p className="pl-eyebrow">Prompt index</p><h2>Library</h2></div><span>{lib.library.length}</span></div>
-      <button type="button" className="pl-library-new-button" onClick={handleNewPrompt}><Ic n="Plus" size={14} /> New Prompt</button>
       <nav aria-label="Smart views">
         {SMART_VIEWS.map(({ id, icon, label, reorderHint, counted }) => <button key={id} type="button" title={reorderHint} aria-current={smartView === id ? 'page' : undefined} onClick={() => chooseView(id)}><Ic n={icon} size={14} /><span>{label}</span>{reorderHint && !counted ? <small className="sr-only">{`, ${reorderHint.toLowerCase()}`}</small> : <small>{smartViewCount(lib.library, id)}</small>}</button>)}
       </nav>
@@ -564,11 +562,11 @@ export default function LibraryWorkspace({
 
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
-        <div className="pl-library-index-actions">{entries.length > 0 && <label><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}<button type="button" className="pl-primary-button" onClick={handleNewPrompt}><Ic n="Plus" size={13} /> New Prompt</button></div>
+        <div className="pl-library-index-actions">{entries.length > 0 && <label><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
       </div>
 
       {entries.length === 0
-        ? <div className="pl-library-empty"><Ic n={smartView === 'trash' ? 'Trash2' : 'Search'} size={22} /><h3>Nothing here yet</h3><p>{hasFilters ? 'Change or clear the active filters.' : 'Save a prompt from the Editor to start your reusable library.'}</p>{hasFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : <button type="button" onClick={handleNewPrompt}>Create a prompt</button>}</div>
+        ? <div className="pl-library-empty"><Ic n={smartView === 'trash' ? 'Trash2' : 'Search'} size={22} /><h3>Nothing here yet</h3><p>{hasFilters ? 'Change or clear the active filters.' : 'Save a prompt from the Editor to start your reusable library.'}</p>{hasFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : <p>Use New Prompt in the app header to start one.</p>}</div>
         : <div className={`pl-library-results is-${layout}`} role="list" aria-label="Saved prompts">
           {entries.map((entry, index) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>

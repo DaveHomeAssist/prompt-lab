@@ -9,7 +9,6 @@ import { describeFollowUpSource } from './lib/followUpProvenance.js';
 import PostEnhanceResults from './PostEnhanceResults.jsx';
 import HostedQuotaBadge from './HostedQuotaBadge.jsx';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
-import CreateContextBar from './CreateContextBar.jsx';
 import PromptShortcuts from './PromptShortcuts.jsx';
 import './CreateGraphite.css';
 
@@ -104,7 +103,6 @@ export default function CreateEditorPane({
   quickSave,
   quickSaveAsNew,
   dismissResult,
-  newPrompt,
   onCandidateSelection,
   // Golden
   editingId,
@@ -257,54 +255,6 @@ export default function CreateEditorPane({
 
   const sourceSections = (
     <>
-      {/* ── Context breadcrumb ── */}
-      {contextControls && (
-        <CreateContextBar
-          m={m} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
-          resultMeta={resultMeta} variants={variants} notes={notes}
-          suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle} saveCollection={saveCollection}
-          saveTags={saveTags} canSavePanel={canSavePanel}
-          openSavePanel={openSavePanel} openSection={openSection} onStartNew={newPrompt}
-          accentTextClass={accentTextClass} accentHoverTextClass={accentHoverTextClass}
-          accentBadgeClass={accentBadgeClass}
-        />
-      )}
-      {!contextControls && showCreateContext && (
-        <div className={`flex items-center gap-2 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-2`}>
-          <span className={`text-[10px] uppercase tracking-widest font-bold ${accentTextClass}`}>
-            {currentEntry ? 'Editing' : 'Draft'}
-          </span>
-          {currentEntry?.collection && (
-            <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${m.codeBlock} ${m.textSub}`}>
-              {currentEntry.collection}
-            </span>
-          )}
-          <span className={`text-xs font-semibold ${m.text} truncate min-w-0 flex-1`}>
-            {currentEntry?.title || suggestedSaveTitle}
-          </span>
-          <div className="flex items-center gap-2 shrink-0">
-            {currentEntry && (
-              <button
-                type="button"
-                onClick={() => openSection('library')}
-                className={`text-[10px] font-semibold transition-colors ${m.textAlt} ${accentHoverTextClass}`}
-              >
-                View in Library
-              </button>
-            )}
-            {canSavePanel && (
-              <button
-                type="button"
-                onClick={() => openSavePanel()}
-                className={`text-[10px] font-semibold transition-colors ${accentTextClass} ${accentHoverTextClass}`}
-              >
-                Library Details
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {contextControls && (
         <PromptShortcuts
           m={m} recentPrompts={recentPrompts} quickInject={quickInject}
@@ -466,7 +416,6 @@ export default function CreateEditorPane({
           onRunCases={runAllCases}
           onSave={quickSave}
           saveLabel={getPrimarySaveLabel(editingId)}
-          onNewPrompt={newPrompt}
           onClear={clearEditor}
           onCancelEnhance={cancelEnhance}
           loading={loading}

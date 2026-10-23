@@ -39,7 +39,7 @@ function renderPane(overrides = {}) {
 describe('CreateEditorPane', () => {
   it('uses the shared ember and gold accents across the workbench body', () => {
     renderPane();
-    expect(screen.getByText('Editing')).toHaveClass('text-orange-400');
+    expect(screen.queryByText('Editing')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Write' })).toHaveClass('bg-orange-500/90', 'text-white');
     expect(screen.getByRole('tab', { name: 'Prompt' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('button', { name: 'Try Again' })).toHaveClass('bg-orange-500/90', 'hover:bg-orange-400');
