@@ -602,3 +602,31 @@ D-ENH-1 to D-ENH-4 were resolved on 2026-10-15: Dave chose the recommended optio
 | D-ENH-6 | Does slice 2 keep two panes? | A. Yes; the conditions live in the control row above both panes · B. Add a third conditions column at 1440px and up | **A** (Dave, 2026-10-18): matches slice 1 as shipped and avoids the width pressure noted under Risks | Slice 2 layout |
 | D-ENH-7 | Which Create annotation slice comes first? | A. Slice 2A (prompt shortcuts and editing context, C6 and C7) · B. Slice 3 (output tabs and single-candidate mode, C1 and C3 to C5) · C. Slice 2 (refinement settings, C2), after D-ENH-5 and D-ENH-6 | **A** (Dave, 2026-10-18): smallest, independent of the visual and layout choices, and the largest mobile gain in M1 | Start of Create annotation work |
 | D-ENH-8 | Where do C6 and C7 ship? | A. Only inside the two-pane flag · B. Hosted web in both the stacked and two-pane layouts · C. Every shell at once | **B** (Dave, 2026-10-18): the two-pane flag is off by default and works at every width (narrow screens get its Source / Result switch), so A reaches only users who turn the flag on, while B also reaches the default stacked layout; C skips the flagged hosted-web stage that D-ENH-3 set | Slice 2A rollout |
+
+
+## October 23 prompt lifecycle slice
+
+Dave approved this bounded change on 2026-10-23. New Prompt is difficult to
+find because its location changes between the source toolbar, overflow menu,
+context bar, Library and save receipt. Refinement must identify its current
+prompt and explain whether Save creates a record or adds a version.
+
+- Put one always-visible New Prompt action in the shared app header across
+  workspaces, desktop/mobile sizes and existing Create layouts. Disable it
+  during an active run. Keep command palette/keyboard access.
+- Put the editing context above both Write and Dual Pane. Name the current
+  saved prompt or unsaved draft; explain that refinement keeps that identity,
+  Save adds a version for a saved prompt, and Save as new prompt creates a
+  separate record and continues editing it.
+- Use existing acknowledged save, candidate selection, reset confirmation and
+  recovery/undo paths. No storage schema, provider/API, billing, generation,
+  native iOS or unrelated layout changes. No new dependencies.
+- Acceptance: one visible header New Prompt across navigation/layout/theme
+  changes; a version save retains identity; a separate save uses a new identity;
+  New Prompt confirms/recoverably clears the current target; undo restores it;
+  failures keep the draft. Verify desktop/mobile browser flows, overflow and
+  targeted regressions. Installed desktop/human acceptance remains separate.
+
+Other October 23 items are backlog only. Local branch inventory is a dated
+status answer, not a feature. The private board has no registered PromptLab
+mapping; do not create a competing tracker.

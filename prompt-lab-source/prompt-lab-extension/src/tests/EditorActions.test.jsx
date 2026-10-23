@@ -79,7 +79,7 @@ describe('EditorActions', () => {
     expect(screen.queryByRole('button', { name: 'Save as new prompt' })).toBeNull();
     expect(screen.getByTestId('refine-action')).toHaveTextContent('Refine again Cmd+Enter');
     expect(more).toContainElement(screen.getByRole('button', { name: 'Test Enhancer' }));
-    expect(more).toContainElement(screen.getByRole('button', { name: /New prompt/ }));
+    expect(screen.queryByRole('button', { name: /New prompt/ })).not.toBeInTheDocument();
     more.open = true;
     fireEvent.click(screen.getByRole('button', { name: /Reset Draft/ }));
     expect(onClear).toHaveBeenCalledTimes(1);

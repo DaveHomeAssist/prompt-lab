@@ -17,6 +17,7 @@ export default function AppHeader({
   clerkUserButton,
   settingsButtonRef,
   renderMobileNavigation = true,
+  onNewPrompt, newPromptDisabled = false,
 }) {
   const { palette, setPalette } = useThemeTokens();
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
@@ -73,6 +74,11 @@ export default function AppHeader({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1">
+          <button type="button" data-testid="global-new-prompt" onClick={onNewPrompt}
+            disabled={newPromptDisabled} title="Start a separate prompt. Current work can be restored with Undo."
+            className="pl-primary-button ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">
+            <Ic n="Plus" size={13} /> New Prompt
+          </button>
           <button type="button" aria-label="Command palette ⌘K" title="Command palette (⌘K)" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-orange-300 transition-colors`}>⌘K</button>
           <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}>
             {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}

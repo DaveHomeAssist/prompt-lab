@@ -537,7 +537,7 @@ describe('App', () => {
 
     render(<MemoryRouter><App /></MemoryRouter>);
 
-    expect(screen.getByText('Draft')).toBeInTheDocument();
+    expect(screen.getByText('New unsaved prompt')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Draft a support reply for a delayed shipment.')).toBeInTheDocument();
     expect(screen.getByTestId('editor-actions')).toBeInTheDocument();
     expect(screen.queryByText('Results')).not.toBeInTheDocument();

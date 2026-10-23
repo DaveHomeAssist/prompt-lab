@@ -10,7 +10,6 @@ export default function EditorActions({
   onRunCases,
   onSave,
   saveLabel = 'Save as new prompt',
-  onNewPrompt,
   onClear,
   loading,
   hasInput,
@@ -75,16 +74,6 @@ export default function EditorActions({
       className="pl-primary-button ui-control min-w-[9rem] flex-[0_1_10rem] px-2.5 py-2 text-xs"
     >
       {saveLabel}
-    </button>
-  );
-  const newPromptButton = typeof onNewPrompt === 'function' && (
-    <button
-      type="button"
-      onClick={fromMenu(onNewPrompt)}
-      disabled={loading}
-      className={`ui-control min-w-[7rem] flex-[0_0_auto] inline-flex items-center justify-center gap-1.5 px-2.5 ${m.btn} ${m.textAlt} disabled:opacity-40 rounded-lg text-xs font-semibold transition-colors py-2`}
-    >
-      <Ic n="Plus" size={11} /> New prompt
     </button>
   );
   const captureButton = typeof onCaptureContext === 'function' && (
@@ -158,7 +147,6 @@ export default function EditorActions({
             </summary>
             <div className={`pl-more-menu-panel ${m.surface} border ${m.border}`}>
               {runCasesButton}
-              {newPromptButton}
               {captureButton}
               {resetButton}
             </div>
@@ -168,7 +156,6 @@ export default function EditorActions({
         <>
           {runCasesButton}
           {saveButton}
-          {newPromptButton}
           {captureButton}
           {resetButton}
         </>

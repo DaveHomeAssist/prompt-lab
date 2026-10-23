@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AppHeader from '../AppHeader.jsx';
 
@@ -113,4 +113,17 @@ describe('AppHeader', () => {
       'hover:bg-orange-400'
     );
   });
+});
+
+
+it.each([false, true])('keeps New Prompt in the shared header (compact %s)', compact => {
+  const onNewPrompt = vi.fn();
+  const view = renderHeader({ compact, onNewPrompt });
+  const button = screen.getByRole('button', { name: 'New Prompt', exact: true });
+  expect(button.closest('header')).not.toBeNull();
+  fireEvent.click(button);
+  expect(onNewPrompt).toHaveBeenCalledTimes(1);
+  view.unmount();
+  renderHeader({ compact, onNewPrompt, newPromptDisabled: true });
+  expect(screen.getByRole('button', { name: 'New Prompt', exact: true })).toBeDisabled();
 });

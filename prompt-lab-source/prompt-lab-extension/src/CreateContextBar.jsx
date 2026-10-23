@@ -59,14 +59,14 @@ export function describeEditingContext({
  * Editing context bar — slice 2A (C7) of docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md.
  *
  * Always says whether Create holds a new draft or a saved prompt, which folder
- * it belongs to, whether anything is unsaved, and what Save will do. "Start new
- * prompt" uses the existing draft reset, which moves current work to session
- * recovery before clearing.
+ * it belongs to, whether anything is unsaved, and what Save will do. New Prompt
+ * lives in the shared header so this context
+ * stays consistent in Write and Dual Pane without another reset control.
  */
 export default function CreateContextBar({
   m, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
   resultMeta, variants, notes,
-  openSavePanel, openSection, onStartNew, accentTextClass, accentHoverTextClass, accentBadgeClass,
+  openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
@@ -79,7 +79,7 @@ export default function CreateContextBar({
       data-editing-mode={context.mode}
       className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
     >
-      <p className="flex items-center gap-2 min-w-0 flex-1 text-xs">
+      <p className="flex items-center gap-2 min-w-0 basis-full text-xs">
         <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
         {context.title && <span className={`font-semibold ${m.text} truncate min-w-0`} title={context.title}>{context.title}</span>}
         {context.folder && (
@@ -92,8 +92,12 @@ export default function CreateContextBar({
         <span aria-live="polite" className={context.unsaved ? `rounded px-1.5 py-0.5 font-semibold ${accentBadgeClass}` : m.textMuted}>
           {context.saveState}
         </span>
-        {/* Phones rely on the Save buttons' own labels to keep this bar short. */}
-        <span className={`hidden sm:inline ${m.textSub}`}>{context.saveBehavior}</span>
+        <span className={m.textSub}>{context.saveBehavior}</span>
+      </p>
+      <p className={`w-full text-[11px] ${m.textSub}`} data-testid="refinement-identity">
+        {currentEntry
+          ? 'Refine keeps this prompt. Save new version adds to its history; Save as new prompt creates a separate prompt and continues there.'
+          : 'Refine keeps this draft. Save as new prompt creates its first Library version.'}
       </p>
       <div className="flex items-center gap-1 shrink-0">
         {currentEntry && (
@@ -104,11 +108,6 @@ export default function CreateContextBar({
         {canSavePanel && (currentEntry || context.unsaved) && (
           <button type="button" onClick={() => openSavePanel()} className={`${linkClass} hidden sm:inline-flex ${accentTextClass}`}>
             Library Details
-          </button>
-        )}
-        {context.canStartNew && typeof onStartNew === 'function' && (
-          <button type="button" onClick={onStartNew} className={`${linkClass} inline-flex ${m.textAlt}`}>
-            Start new prompt
           </button>
         )}
       </div>

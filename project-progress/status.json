@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T06:21:23.552876+00:00",
+  "snapshotAt": "2026-10-23T08:43:38.772128+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "70f2c12a91475eba024cd21b15a2d6ca8011b3f0",
+  "mainSha": "899e5325ffa2f220ed42860ce3bb5e71e323397f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Deliver the approved October 23 prompt lifecycle slice through CI, merge and production verification. Other October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "October 23 intake and prompt lifecycle",
+      "state": "Running",
+      "detail": "Six requests created and read back in existing backlog; Dual Pane linked to existing Enhance umbrella. Dominic Node22.22.1: 14/14 browser checks plus strengthened 9/9 intercepted refinement/lifecycle checks; targeted component regressions, extension/web builds and docs contracts pass. Exact-head CI, merge, production and installed desktop/human acceptance pending. All 57 issue identities and existing 14-item plan preserved; six intake rows are outside that plan. Private Next Steps Board has no PromptLab mapping.",
+      "url": "https://app.notion.com/p/402255fc8f44812cabebf92f0e4f9104"
+    },
     {
       "label": "Prior-version upgrade and snapshot environment unresolved",
       "state": "Open",
@@ -994,6 +1000,18 @@
       "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
     },
     {
+      "id": "402255fc8f4481f494ced6b248f38c8c",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Add account library sync schema and API behind LIBRARY_SYNC_ENABLED (sync slice 2)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
+    },
+    {
       "id": "402255fc8f4481f1840fd1440a7dcb35",
       "inPlan": false,
       "nextAction": null,
@@ -1006,16 +1024,76 @@
       "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
     },
     {
-      "id": "402255fc8f4481f494ced6b248f38c8c",
+      "id": "402255fc8f44812cabebf92f0e4f9104",
+      "title": "Clarify prompt lifecycle and keep New Prompt in one place",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f44812cabebf92f0e4f9104",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
-      "title": "Add account library sync schema and API behind LIBRARY_SYNC_ENABLED (sync slice 2)",
+      "nextAction": "Complete exact-head CI, merge and deployed browser verification; retain installed desktop/human acceptance separately.",
+      "verification": "Implemented in isolated lifecycle branch. Dominic Node22.22.1: 14 browser lifecycle/cancellation/reload checks passed, then 9/9 strengthened lifecycle checks including actual intercepted refinement passed. Both layouts at desktop/mobile verify same ID for version saves, independent copies, reset and Undo; all five viewport sizes and both themes passed header/no-document-overflow checks. Targeted component regressions and extension/web builds pass. Exact-head CI, merge, production and installed desktop/human acceptance remain separate pending gates."
+    },
+    {
+      "id": "402255fc8f448140b0b8f0bfcee2b929",
+      "title": "Give the active Scratch pad more of the available screen",
       "status": "Not started",
       "severity": "Medium",
-      "area": "Library",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f448140b0b8f0bfcee2b929",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f44814f9d34d38ae16b6e04",
+      "title": "Verify hosted API credit grant balance and renewal",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/402255fc8f44814f9d34d38ae16b6e04",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481778c27fbf01684fe2e",
+      "title": "Clarify and verify generic prompt mode",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481778c27fbf01684fe2e",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f448100b411f4a4a101b4a9",
+      "title": "Make bug reports and feature requests easy to find",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
       "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
+      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
+      "title": "Review prompt naming upgrades and remaining title quality gaps",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
     }
   ]
 }

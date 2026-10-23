@@ -41,6 +41,7 @@ import MainWorkspace from './MainWorkspace';
 import CreateEditorPane from './CreateEditorPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
+import CreateContextBar from './CreateContextBar.jsx';
 import MobileNavigation from './MobileNavigation.jsx';
 import useRouteSync from './hooks/useRouteSync.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
@@ -419,6 +420,7 @@ export default function App({
       || editingId,
     );
     if (!hasDraftContent) {
+      dismissSaveReceipt();
       clearEditor();
       openCreateView('editor');
       return;
@@ -429,6 +431,7 @@ export default function App({
 
   const confirmDraftReset = () => {
     preserveDraftForUndo(pendingResetIntent);
+    dismissSaveReceipt();
     clearEditor();
     openCreateView('editor');
     setEnhMdPreview(false);
@@ -1018,13 +1021,15 @@ export default function App({
       <div
         ref={appShellRef}
         data-theme={colorMode}
-        className={`pl-app-shell ${compact ? 'is-compact' : ''} ${isExtension ? 'h-screen overflow-y-auto' : contained ? 'pl-shell-contained' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
+        className={`pl-app-shell relative ${compact ? 'is-compact' : ''} ${isExtension ? 'h-screen overflow-y-auto' : contained ? 'pl-shell-contained' : 'min-h-screen'} ${m.bg} ${m.text} flex flex-col pl-density-${density}`}
         style={{ fontFamily: 'system-ui,sans-serif' }}
       >
       <h1 className="sr-only">Prompt Lab</h1>
       <a className="pl-skip-link" href="#prompt-lab-main">Skip to workspace</a>
 
       <AppHeader
+        onNewPrompt={() => requestDraftReset('new')}
+        newPromptDisabled={loading || runningCases}
         m={m} compact={compact} libraryCount={lib.library.length}
         colorMode={colorMode} setColorMode={setColorMode}
         activeSection={activeSection} openSection={openSection}
@@ -1072,6 +1077,17 @@ export default function App({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {primaryView === 'create' && (workspaceView === 'editor' || workspaceView === 'split') && (
+        <div className="px-3 py-1 shrink-0">
+          <CreateContextBar m={m} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+            resultMeta={resultMeta} variants={variants} notes={notes}
+            suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle}
+            saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
+            openSavePanel={openSavePanel} openSection={openSection}
+            accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn} />
         </div>
       )}
 
@@ -1145,7 +1161,6 @@ export default function App({
               showInlineSaveBar={showInlineSaveBar}
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
-              newPrompt={() => requestDraftReset('new')}
               onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
@@ -1191,7 +1206,6 @@ export default function App({
               addToComposer={handleAddToComposer}
               sendToABTest={(entry) => handleSendToABTest(entry, 'a')}
               openSavePanel={openSavePanel}
-              onNewPrompt={() => requestDraftReset('new')}
               onOpenScratchSource={(noteId) => {
                 setScratchOpenNoteId(noteId);
                 setPrimaryView('notebook');
@@ -1372,16 +1386,6 @@ export default function App({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => openCreateView('library')} className="pl-secondary-button">View in Library</button>
-            <button
-              type="button"
-              onClick={() => {
-                dismissSaveReceipt();
-                requestDraftReset('new');
-              }}
-              className="pl-primary-button"
-            >
-              New prompt
-            </button>
             <button type="button" onClick={dismissSaveReceipt} className="pl-icon-button" aria-label="Dismiss save receipt"><Ic n="X" size={14} /></button>
           </div>
         </section>
