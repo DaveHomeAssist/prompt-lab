@@ -274,8 +274,8 @@ async function click(selector, using) {
     return stable && hit.uncovered;
   }, `${selector} position stable and unobscured`);
   await command('POST', `/session/${session}/element/${id}/click`, {});
-  if (selector.includes(' option[')) {
-    // WebView2 may keep its native select popup open after WebDriver option-click.
+  if (selector.startsWith('[aria-label="Sort prompts"] option[')) {
+    // Dismiss only the Library sort popup: Escape in an import select can close its dialog.
     const selectId = await element(selector.slice(0, selector.indexOf(' option[')));
     await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
   }
