@@ -1,0 +1,88 @@
+skill: installed-app-acceptance
+scope: October 23 lifecycle delivery and bounded native regression acceptance
+project: PromptLab
+target:
+  revision: b405d3cf0ed0e03e7996e63410ce364d93e28cff
+  branch: main
+  environment: GitHub hosted runners and production promptlab.tools
+  artifact:
+    tested_revision: abac0cf181571ede06db20f557c84d82f589d2c5
+    candidate_revision: 3e88b03a0b07aea5e60f0833cfa430140ddedfde
+    identical_tree: 916cd95f6eec9e94f0271f5316b8895d73fb848e
+    run: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461
+    packages:
+      - platform: Windows MSI and NSIS
+        artifact: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12493350750
+        archive_sha256: 1eb7cc728dd3df53787957b0d6799e6ccc2a5b07530235143ff4d803e3c19cc3
+        msi_sha256: 255771D3931C022E4D27F6CF9FAD01D6EE1B5C7856755DB7526108062C4A3A0A
+        nsis_sha256: A502DC52B5F7C388C27C28386D0CBBB3ABC8546B0C4D5F725EA62ECE688B7F17
+      - platform: Linux DEB and AppImage
+        artifact: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12492563431
+        archive_sha256: d028f737df5a1dfaf91e9ac4df1777783ef3e2b12c443ef0066043f27b4d7234
+      - platform: macOS universal package
+        artifact: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12493077889
+        archive_sha256: 70a1c8f715de965ca99703e8d481524092f480b43173f44eca90d546e6225e25
+  platform: Windows, Linux, macOS packaging, hosted Chromium
+
+requirements:
+  - id: lifecycle
+    acceptance_criterion: Persistent header action, same prompt refinement/version identity, separate copy, reset confirmation and Undo in both layouts at desktop/mobile sizes.
+    required: true
+  - id: native-regression
+    acceptance_criterion: Existing installed Windows and Linux exercise, restart, export/import and same-version retention checks pass.
+    required: true
+  - id: hosted-release
+    acceptance_criterion: Exact production revision is READY and signed-in Create acceptance passes with session cleanup.
+    required: true
+  - id: broader-desktop
+    acceptance_criterion: Human acceptance, macOS installed interaction/signing and prior-version upgrade with snapshot restore.
+    required: false
+
+evidence:
+  - requirement_id: lifecycle
+    kind: ci
+    reference: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693486
+    observed_at: 2026-10-23T10:00:00Z
+    result: pass
+    limitations: Synthetic responses; no provider quality or billing acceptance. Dominic independently passed lifecycle9/9 and full hosted47pass with one credential-dependent skip. CI shared1249, legacy231 and evaluator13 pass.
+  - requirement_id: native-regression
+    kind: runtime
+    reference:
+      - https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12492539584
+      - https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12494010744
+      - https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12493317621
+      - https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39933693461/artifacts/12494115565
+    observed_at: 2026-10-23T10:00:00Z
+    result: pass
+    limitations: Eight exercise/retention receipts inspected for MSI, NSIS, DEB and AppImage. Loopback provider and synthetic data. Same-version retention does not prove prior-version upgrade, whole-VM restore, signing or human acceptance. macOS packaging alone does not prove installed interaction.
+  - requirement_id: hosted-release
+    kind: deployment
+    reference: dpl_5MZaJ5vzTVCUpAFsN8yqaBDhspbX
+    observed_at: 2026-10-23T10:00:16Z
+    result: pass
+    limitations: Vercel READY and production alias match b405d3cf0ed0e03e7996e63410ce364d93e28cff.
+  - requirement_id: hosted-release
+    kind: runtime
+    reference: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39935950303
+    observed_at: 2026-10-23T10:01:03Z
+    result: pass
+    limitations: Two signed-in Create tests passed; two disposable session revocations verified. Responses intercepted; no paid inference or purchases. Exact-main CI was still running when this record was collected.
+  - requirement_id: broader-desktop
+    kind: human_acceptance
+    reference: prompt-lab-source/docs/DESKTOP_ACCEPTANCE_CHECKLIST.md
+    observed_at: 2026-10-23T10:00:00Z
+    result: unknown
+    limitations: Outside this bounded lifecycle delivery; existing parent acceptance remains open. Current MSI signature receipt reports unsigned. No new macOS installed, prior-version upgrade, snapshot restore or human acceptance was executed.
+
+changes_performed:
+  - PR199 merged b405d3cf0ed0e03e7996e63410ce364d93e28cff after every candidate check passed.
+  - Native helper reveals sticky-toolbar-covered targets and dismisses only the Library Sort popup with Escape; unobscured-hit and import assertions retained.
+  - Earlier Windows failure run39928864498/artifact12491525647 retained.
+  - Executor-introduced broad-Escape Linux failure run39930755116/artifact12492078057 retained; correction narrowed to Sort.
+  - Lifecycle backlog row402255fc8f44812cabebf92f0e4f9104 marked Done after deployed browser acceptance; parent Enhance row and implementation RUN appended without closing broader gates.
+  - Production smoke39935950303 dispatched with create-workspace scope; both temporary sessions revoked and verified.
+unresolved_decisions:
+  - Five remaining October23 intake requests remain backlog only.
+  - Private Next Steps Board has no PromptLab registry mapping.
+blockers: []
+next_action: Observe exact-main CI and retain the existing broader desktop acceptance gates; select another backlog slice only when authorized.
