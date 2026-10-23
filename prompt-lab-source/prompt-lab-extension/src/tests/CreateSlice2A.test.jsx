@@ -82,6 +82,15 @@ describe('CreateContextBar', () => {
     fireEvent.click(within(bar).getByRole('button', { name: 'View in Library' }));
     expect(openSection).toHaveBeenCalledWith('library');
   });
+  it('collapses the explanation on short screens while keeping prompt identity visible', () => {
+    const { container } = render(<CreateContextBar {...baseProps} compact currentEntry={savedEntry}
+      raw="Draft prompt body" enhanced="Refined prompt output" />);
+    const details = container.querySelector('details');
+    expect(details.open).toBe(false);
+    expect(details.querySelector('summary')).toHaveTextContent('Voice Memo Cleanup');
+    fireEvent.click(details.querySelector('summary'));
+    expect(details.open).toBe(true);
+  });
   it('shows the pending title and folder from Library details', () => {
     render(<CreateContextBar {...baseProps} currentEntry={savedEntry} raw="Draft prompt body" enhanced="Refined prompt output"
       saveTitle="Voice memo tidy-up" saveCollection="Archive" saveTags={[]} openSection={vi.fn()} onStartNew={vi.fn()} />);

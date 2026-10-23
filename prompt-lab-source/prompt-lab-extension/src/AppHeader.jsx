@@ -47,7 +47,7 @@ export default function AppHeader({
     <>
       <header className={`pl-app-header px-4 py-2 ${m.header} border-b shrink-0`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2.5">
+        <div className="pl-header-identity flex min-w-0 items-center gap-2.5">
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 shrink-0">
               <Ic n="Wand2" size={15} className="text-orange-400" />

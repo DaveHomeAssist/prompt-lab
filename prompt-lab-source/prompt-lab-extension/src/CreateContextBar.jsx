@@ -64,7 +64,7 @@ export function describeEditingContext({
  * stays consistent in Write and Dual Pane without another reset control.
  */
 export default function CreateContextBar({
-  m, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
+  m, compact = false, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
   resultMeta, variants, notes,
   openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
 }) {
@@ -79,7 +79,9 @@ export default function CreateContextBar({
       data-editing-mode={context.mode}
       className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
     >
-      <p className="flex items-center gap-2 min-w-0 basis-full text-xs">
+      <details className="w-full min-w-0" open={!compact}>
+      <summary className="flex cursor-pointer items-center gap-2 min-w-0 text-xs">
+        <span aria-hidden="true">▸</span>
         <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
         {context.title && <span className={`font-semibold ${m.text} truncate min-w-0`} title={context.title}>{context.title}</span>}
         {context.folder && (
@@ -87,7 +89,8 @@ export default function CreateContextBar({
             Folder: {context.folder}
           </span>
         )}
-      </p>
+      </summary>
+      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap pt-1">
       <p className="flex items-center gap-2 text-[11px] flex-wrap">
         <span aria-live="polite" className={context.unsaved ? `rounded px-1.5 py-0.5 font-semibold ${accentBadgeClass}` : m.textMuted}>
           {context.saveState}
@@ -111,6 +114,8 @@ export default function CreateContextBar({
           </button>
         )}
       </div>
+      </div>
+      </details>
     </section>
   );
 }

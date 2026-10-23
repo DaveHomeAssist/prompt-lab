@@ -113,6 +113,7 @@ for (const [width, height] of [[1440, 900], [375, 812], [844, 390], [320, 256], 
         expect(await button.evaluate(el => Boolean(el.closest('header')))).toBe(true);
         if (route === '/split') await expect(page.getByRole('region', { name: 'Editing context' })).toBeVisible();
         await fits(page);
+        if (route === '/' || route === '/split') expect(await page.locator('#prompt-lab-main').evaluate(el => el.clientHeight)).toBeGreaterThan(80);
       }
     }
     await page.screenshot({ path: testInfo.outputPath(`header-${width}.png`) });
