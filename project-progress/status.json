@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T11:19:03.399Z",
+  "snapshotAt": "2026-10-23T11:28:18.339Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6630cb1b1c2432881b5ddcca71572b4e7ab75155",
+  "mainSha": "b0c90e0174298e79946fb339cdf88ef87640d6d4",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete Clerk MFA, session and recovery production audit after Dashboard sign-in. Release pending-session authorization guards and verify active-session compatibility. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
     {
-      "label": "Clerk MFA, session and recovery pass",
+      "label": "Clerk production hardening; MFA plan decision open",
       "state": "Open",
-      "detail": "2026-10-23 direct Dave instruction (MUT-7 exception). Dashboard sign-in required in Vivaldi and Chrome. No live MFA/session/recovery policy changed. Five signed-pending-token regressions reproduced on exact main6630cb1; billing and hosted-owner guards under Dominic Node22 verification. Recovery runbook preserves factors, credentials and existing access. Actual enrollment, backup-code, expiry and recovery acceptance remains open.",
-      "url": "https://app.notion.com/p/402255fc8f448180ba6aebfcf47cabdb"
+      "detail": "2026-10-23 direct Dave instruction (MUT-7 exception). PR204 mergedb0c90e0; Vercel dpl_AqEuLPJTAc4NtoBuU5WShDJc1Aeh READY exactmerge. Candidate API149/149, shared1255, landing25 and hosted47 with1 credential skip pass. Saved and read back strict enumeration (previous Bulk), lockout10 failed attempts/15minutes (previous100/60), sensitive-action reverification5minutes (previous10). Seven-day maximum lifetime retained; inactivity off, single-session mode on. Device Trust, breached-password protection, password reverification and same-client email links active. MFA/authenticator, backup codes, passkeys off; enabling authenticator is blocked by current Hobby plan. Pro quote25USD/month or240USD/year; no purchase. Actual MFA enrollment, backup-code/recovery and session expiry acceptance remain open. Signed-in production smoke39946131751 passed9 with5 opt-in skips; disposable QA sessions revoked/read back. This uses agent-created sessions and does not prove interactive MFA/recovery acceptance. No credentials or real-user factors/sessions changed.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/204"
     },
     {
       "label": "Account and Stripe ownership hardening released",
@@ -1122,8 +1122,8 @@
     {
       "id": "402255fc8f448180ba6aebfcf47cabdb",
       "inPlan": false,
-      "nextAction": "Sign into Clerk Dashboard and inspect production MFA, session and recovery controls.",
-      "verification": "Five pending-session regressions reproduced; fix and production configuration acceptance in progress.",
+      "nextAction": "Choose Clerk Pro purchase before enabling MFA and backup codes, then run disposable account recovery acceptance.",
+      "verification": "PR204 deployed; production strict enumeration,10-attempt/15-minute lockout and5-minute reverification saved/read back. MFA blocked by Hobby plan; production smoke9 pass/5 opt-in skips; disposable QA sessions revoked.",
       "title": "Harden Clerk MFA, session policies and account recovery",
       "status": "In progress",
       "severity": "High",
