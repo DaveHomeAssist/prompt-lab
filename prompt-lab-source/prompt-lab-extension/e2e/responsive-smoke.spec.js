@@ -259,7 +259,8 @@ for (const viewport of viewports) {
         const receipt = page.getByRole('region', { name: /Saved “.+” · version 1/ });
         await expect(receipt.getByRole('status')).toHaveText(/Saved “.+” · version 1/);
         await expect(receipt.getByRole('button', { name: 'View in Library' })).toBeVisible();
-        await expect(receipt.getByRole('button', { name: 'New prompt' })).toBeVisible();
+        await expect(receipt.getByRole('button', { name: /new prompt/i })).toHaveCount(0);
+        await expect(page.getByTestId('global-new-prompt')).toBeVisible();
         await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').length)).toBe(2);
 
         await receipt.getByRole('button', { name: 'View in Library' }).click();

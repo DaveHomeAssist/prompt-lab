@@ -153,7 +153,7 @@ for (const width of [375, 1440]) {
       await page.goto(`${appUrl.href}#/`);
       // Make the discard-confirmation precondition explicit on both viewports.
       await page.getByTestId('prompt-input').fill('Synthetic draft to discard before reusing the selected run.');
-      await page.getByRole('button', { name: 'New prompt', exact: true }).click();
+      await page.getByTestId('global-new-prompt').click();
       await page.getByRole('dialog', { name: 'Start a new prompt?' }).getByRole('button', { name: 'Start new prompt', exact: true }).click();
       await page.getByTestId('prompt-input').fill(reused);
       await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
