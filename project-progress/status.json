@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T08:43:38.772128+00:00",
+  "snapshotAt": "2026-10-23T10:01:06.495Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "899e5325ffa2f220ed42860ce3bb5e71e323397f",
+  "mainSha": "b405d3cf0ed0e03e7996e63410ce364d93e28cff",
   "overall": "Acceptance incomplete",
-  "nextAction": "Deliver the approved October 23 prompt lifecycle slice through CI, merge and production verification. Other October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Finish PR200 CI, merge/deploy and no-charge signed-in account/billing acceptance. Deliver the approved October 23 prompt lifecycle slice through CI, merge and production verification. Other October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Account and Stripe ownership hardening candidate",
+      "state": "Running",
+      "detail": "2026-10-23: Dave directly requested login/paywall/Stripe/Clerk hardening. PR200/cb026d5 on main b405d3c rejects cross-account Stripe rebinding and conflicting metadata, drops inherited owner/paid cache and stale billing responses, aligns JWT authorized-party/configured issuer/audience checks. New regressions reproduced six server/four client failures against original source. Dominic Node22: initial API129, final focused billing48, shared1252, legacy231, hosted build and docs checks pass. Current-main CI, merge/deployment and no-charge signed-in production acceptance remain pending. Five negative webhook signature cases return401 before persistence or Stripe requests. Prices, legacy annual support, offline grace,180USD spending cap,25/1000 public ceilings and auto-reload-off remain unchanged. Complete Notion58-row snapshot;14plan identities preserved. Private Next Steps Board mapping remains absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/200"
+    },
     {
       "label": "October 23 intake and prompt lifecycle",
       "state": "Running",
@@ -1000,6 +1006,18 @@
       "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
     },
     {
+      "id": "402255fc8f4481f1840fd1440a7dcb35",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Launch account library sync on production web (sync slice 5)",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
+    },
+    {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
       "nextAction": null,
@@ -1012,16 +1030,28 @@
       "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
     },
     {
-      "id": "402255fc8f4481f1840fd1440a7dcb35",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
-      "title": "Launch account library sync on production web (sync slice 5)",
+      "id": "402255fc8f448100b411f4a4a101b4a9",
+      "title": "Make bug reports and feature requests easy to find",
       "status": "Not started",
       "severity": "Medium",
-      "area": "Library",
+      "area": "Layout",
       "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
+      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
+      "title": "Review prompt naming upgrades and remaining title quality gaps",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
@@ -1072,28 +1102,16 @@
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
     },
     {
-      "id": "402255fc8f448100b411f4a4a101b4a9",
-      "title": "Make bug reports and feature requests easy to find",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Layout",
-      "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "id": "402255fc8f44813faf3ae58a8b002426",
       "inPlan": false,
       "nextAction": null,
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
-    },
-    {
-      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
-      "title": "Review prompt naming upgrades and remaining title quality gaps",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "UX",
-      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "title": "Harden account ownership across Clerk sessions and Stripe billing",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Security",
+      "url": "https://app.notion.com/402255fc8f44813faf3ae58a8b002426"
     }
   ]
 }
