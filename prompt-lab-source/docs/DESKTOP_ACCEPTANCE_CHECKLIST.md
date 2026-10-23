@@ -2,6 +2,31 @@
 
 ## Scope and current gaps
 
+### Upgrade and snapshot capability discovery — 2026-10-23
+
+The bounded follow-up inspected main `70f2c12a91475eba024cd21b15a2d6ca8011b3f0`
+and existing runner capability without installing or changing infrastructure.
+Two reachable runners did not expose a qualified existing disposable VM with
+whole-VM checkpoint/restore control in the inspected tools and standard inventory
+locations. A third runner's access timed out; its capability remains Unknown.
+This is bounded discovery, not proof that no capable machine exists anywhere.
+
+The prior `v1.5.0-desktop-preview` release still exposes MSI, NSIS, DEB and
+AppImage assets at `284ff09401d5521b2a546fe70324c7b72a2345c3`, with published
+SHA-256 metadata. No prior macOS asset is present. Candidate artifacts in
+[Desktop 39900076918](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39900076918)
+at `d33ac1b997aea5c960255df7f9903d30b68884a5` remain available; desktop source
+and shared frontend are unchanged through the inspected main revision. No
+package was installed and neither upgrade nor snapshot restore was exercised.
+
+The precise missing prerequisite is a named, existing disposable VM with a
+known owner, supported guest OS, synthetic profile, guest access and usable
+whole-VM snapshot control. Qualify that environment before the sequence below.
+No job, reservation, VM, container or remote claim was created by this check.
+Plan J's completed Library Phase 8 acceptance remains closed; these broader
+upgrade/restore gaps belong to Plan I. Mac signing/profile, physical-device
+and human acceptance remain separate gates.
+
 ### Current Windows and Linux package acceptance — 2026-10-19
 
 [Desktop 39211387600](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39211387600)
