@@ -131,7 +131,7 @@ async function createJwksHarness() {
   };
 }
 
-function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId = 'user_a' } = {}) {
+function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId = 'user_a', conflictingBinding = false } = {}) {
   globalThis.fetch = async (url, init = {}) => {
     const urlText = String(url);
     if (isJwksHarnessRequest(urlText)) return ORIGINAL_FETCH(url, init);
@@ -146,7 +146,7 @@ function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId 
             id: 'cus_a',
             email: 'user-a@example.com',
             name: 'User A',
-            metadata: { clerkUserId: 'user_a' },
+            metadata: { clerkUserId: 'user_a', ...(conflictingBinding ? { clerk_user_id: 'user_b' } : {}) },
           }],
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
@@ -163,7 +163,7 @@ function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId 
             id: 'cus_a',
             email: 'user-a@example.com',
             name: 'User A',
-            metadata: { clerkUserId: fallbackUserId },
+            metadata: { clerkUserId: fallbackUserId, ...(conflictingBinding ? { clerk_user_id: 'user_b' } : {}) },
           }],
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
@@ -184,7 +184,7 @@ function installStripeFetchMock(calls = [], { searchLag = false, fallbackUserId 
         id: 'cus_a',
         email: 'user-a@example.com',
         name: 'User A',
-        metadata: { clerkUserId: 'user_a' },
+        metadata: { clerkUserId: 'user_a', ...(conflictingBinding ? { clerk_user_id: 'user_b' } : {}) },
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
@@ -486,3 +486,54 @@ test('portal search fallback rejects a customer bound to another Clerk user', as
     await jwks.close();
   }
 });
+
+for (const [name, options] of [
+  ['another account in email fallback', { searchLag: true, fallbackUserId: 'user_b' }],
+  ['conflicting metadata aliases', { conflictingBinding: true }],
+]) {
+  for (const endpoint of ['license', 'portal', 'checkout']) {
+    test(`${endpoint} rejects ${name} without transferring ownership or granting access`, async () => {
+      const jwks = await createJwksHarness();
+      const calls = [];
+      installStripeFetchMock(calls, options);
+      process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test';
+      process.env.KV_REST_API_URL = 'https://redis.example.test';
+      process.env.KV_REST_API_TOKEN = 'test-token';
+      try {
+        const handler = await loadHandler(billingModuleUrl(`${endpoint}.js`));
+        const response = await handler(new Request(`https://promptlab.tools/api/billing/${endpoint}`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${jwks.tokenFor()}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'validate', period: 'monthly' }),
+        }));
+        assert.equal(response.status, endpoint === 'checkout' ? 500 : 400);
+        assert.equal(calls.some(({ url, init }) => init.method === 'POST'), false);
+        assert.equal(calls.some(({ url }) => url.includes('/subscriptions?')), false);
+        if (options.conflictingBinding) assert.equal(calls.some(({ url }) => url.includes('/customers?')), false);
+      } finally {
+        await jwks.close();
+      }
+    });
+  }
+}
+
+for (const azp of ['https://promptlab.tools', 'https://untrusted.example']) {
+  test(`billing validates the signed token authorized party: ${azp}`, async () => {
+    const jwks = await createJwksHarness();
+    const calls = [];
+    installStripeFetchMock(calls);
+    try {
+      const handler = await loadHandler(licenseUrl);
+      const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { azp } })}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'validate' }),
+      }));
+      const allowed = azp === 'https://promptlab.tools';
+      assert.equal(response.status, allowed ? 200 : 401);
+      if (!allowed) assert.equal(calls.length, 0);
+    } finally {
+      await jwks.close();
+    }
+  });
+}

@@ -74,7 +74,7 @@ async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`JWKS request failed with ${response.status}.`);
-    return response.json();
+    return await response.json();
   } finally {
     clearTimeout(timeout);
   }
@@ -131,7 +131,7 @@ function assertValidClaims(claims) {
   }
 }
 
-async function verifyClerkJwt(token) {
+async function verifyClerkJwt(token, request) {
   const parts = String(token || '').split('.');
   if (parts.length !== 3) throw new Error('Malformed Clerk token.');
 
@@ -145,12 +145,15 @@ async function verifyClerkJwt(token) {
   const valid = verifier.verify(publicKey, base64UrlToBuffer(encodedSignature));
   if (!valid) throw new Error('Invalid Clerk token signature.');
   assertValidClaims(claims);
+  if (claims.azp && !buildAuthorizedParties(request).includes(claims.azp)) {
+    throw new Error('Clerk token authorized party is invalid.');
+  }
   return claims;
 }
 
 async function verifyClerkToken(token, request) {
   if (readStringEnv('CLERK_JWKS_URL') || !readStringEnv('CLERK_SECRET_KEY')) {
-    return verifyClerkJwt(token);
+    return verifyClerkJwt(token, request);
   }
 
   const { verifyToken } = await import('@clerk/backend');
@@ -158,6 +161,8 @@ async function verifyClerkToken(token, request) {
     secretKey: readStringEnv('CLERK_SECRET_KEY'),
     ...(readStringEnv('CLERK_JWT_KEY') ? { jwtKey: readStringEnv('CLERK_JWT_KEY') } : {}),
     authorizedParties: buildAuthorizedParties(request),
+    ...(readStringEnv('CLERK_JWT_ISSUER') ? { issuer: readStringEnv('CLERK_JWT_ISSUER') } : {}),
+    ...(readStringEnv('CLERK_JWT_AUDIENCE') ? { audience: readStringEnv('CLERK_JWT_AUDIENCE') } : {}),
   });
 }
 
