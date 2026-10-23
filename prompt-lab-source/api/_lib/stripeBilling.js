@@ -291,7 +291,8 @@ function customerMatchesClerkUser(customer, clerkUserId) {
   const id = String(clerkUserId || '').trim();
   if (!id) return false;
   const metadata = customer?.metadata || {};
-  return metadata.clerkUserId === id || metadata.clerk_user_id === id;
+  const bindings = [metadata.clerkUserId, metadata.clerk_user_id].filter(Boolean);
+  return bindings.length > 0 && bindings.every((value) => value === id);
 }
 
 export async function findCustomerByClerkUserId(config, clerkUserId) {
@@ -299,11 +300,19 @@ export async function findCustomerByClerkUserId(config, clerkUserId) {
   if (!id) return null;
   const query = `metadata['clerkUserId']:'${escapeStripeSearchValue(id)}' OR metadata['clerk_user_id']:'${escapeStripeSearchValue(id)}'`;
   const payload = await stripeRequest(config, `customers/search?limit=1&query=${encodeURIComponent(query)}`);
-  return payload?.data?.find((customer) => !customer?.deleted && customerMatchesClerkUser(customer, id)) || null;
+  const customer = payload?.data?.find((entry) => !entry?.deleted) || null;
+  if (customer && !customerMatchesClerkUser(customer, id)) {
+    throw new Error('This Stripe customer has conflicting account ownership. Contact support to resolve billing access.');
+  }
+  return customer;
 }
 
 async function updateCustomerClerkMetadata(config, customer, clerkUserId) {
   if (!customer?.id || !clerkUserId || customerMatchesClerkUser(customer, clerkUserId)) return customer;
+  // Email is a legacy discovery path, never permission to transfer ownership.
+  if (customer.metadata?.clerkUserId || customer.metadata?.clerk_user_id) {
+    throw new Error('This Stripe customer is bound to another account. Contact support to resolve billing access.');
+  }
   const params = new URLSearchParams();
   params.set('metadata[clerkUserId]', clerkUserId);
   params.set('metadata[clerk_user_id]', clerkUserId);

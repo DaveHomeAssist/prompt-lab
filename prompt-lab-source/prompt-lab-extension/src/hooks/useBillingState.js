@@ -167,10 +167,22 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   const stateRef = useRef(state);
   stateRef.current = state;
   const apiBase = getBillingApiBase();
+  const clerkId = typeof clerkUser?.id === 'string' ? clerkUser.id.trim() : '';
+  const accountRef = useRef({ id: clerkId, generation: 0 });
+  if (accountRef.current.id !== clerkId) {
+    accountRef.current = { id: clerkId, generation: accountRef.current.generation + 1 };
+  }
+  useEffect(() => () => {
+    // Invalidate in-flight work when sign-out unmounts the hosted app, too.
+    accountRef.current = { ...accountRef.current, generation: accountRef.current.generation + 1 };
+  }, []);
 
   // Sync Clerk identity into billing state when available
   useEffect(() => {
-    if (!clerkUser) return;
+    if (!clerkUser) {
+      if (clerkUser === null) setState(createDefaultBillingState());
+      return;
+    }
     const email = readClerkEmail(clerkUser);
     const clerkId = typeof clerkUser.id === 'string' ? clerkUser.id.trim() : '';
     if (!clerkId) return;
@@ -179,7 +191,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     setState((prev) => {
       // A different Clerk account signed in on this device: drop the previous
       // account's entitlements instead of merging them into the new identity.
-      const base = prev.clerkUserId && prev.clerkUserId !== clerkId && prev.status !== 'owner'
+      const base = prev.clerkUserId !== clerkId
         ? createDefaultBillingState()
         : prev;
       return normalizeBillingState({
@@ -195,6 +207,14 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
   }, [state]);
 
   const requestBilling = useCallback(async (path, init) => {
+    const account = accountRef.current;
+    const assertCurrentAccount = () => {
+      if (accountRef.current !== account) {
+        const error = new Error('The signed-in account changed. Retry from the current account.');
+        error.code = 'BILLING_ACCOUNT_CHANGED';
+        throw error;
+      }
+    };
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000);
     try {
@@ -208,6 +228,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
           token = await clerkGetToken();
         } catch { /* Surface a consistent auth error below. */ }
       }
+      assertCurrentAccount();
       if (token) {
         headers.Authorization = `Bearer ${token}`;
       } else if (requiresAuth) {
@@ -221,8 +242,11 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       if (!response.ok) {
         throw await buildResponseError(response, 'Billing request failed.');
       }
-      return response.json();
+      const payload = await response.json();
+      assertCurrentAccount();
+      return payload;
     } catch (err) {
+      assertCurrentAccount();
       if (err?.name === 'AbortError') {
         throw new Error('Billing request timed out. Please try again.');
       }
@@ -305,6 +329,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       }
       return nextState.plan === 'pro';
     } catch (error) {
+      if (error?.code === 'BILLING_ACCOUNT_CHANGED') return false;
       const failedAt = Date.now();
       const nextState = applyFailedValidation(stateRef.current, error, failedAt);
       setState((prev) => applyFailedValidation(prev, error, failedAt));
@@ -470,14 +495,18 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     }
   }, [notify, requestBilling, state.billingPeriod, state.customerEmail, state.customerId, state.plan, state.status, telemetry]);
 
+  // Do not expose another account's cache during the render before effects run.
+  const visibleState = clerkUser !== undefined && (!clerkId || state.clerkUserId !== clerkId)
+    ? createDefaultBillingState()
+    : state;
   const billing = useMemo(() => ({
-    ...state,
+    ...visibleState,
     busyAction,
-    isPro: state.plan === 'pro',
-    planLabel: getPlanLabel(state),
-    statusCopy: describeBillingStatus(state),
-    hasFeature: (featureId) => canAccessFeature(state, featureId),
-    featureGatesActive: areFeatureGatesActive(state),
+    isPro: visibleState.plan === 'pro',
+    planLabel: getPlanLabel(visibleState),
+    statusCopy: describeBillingStatus(visibleState),
+    hasFeature: (featureId) => canAccessFeature(visibleState, featureId),
+    featureGatesActive: areFeatureGatesActive(visibleState),
     ownerAccessAvailable: isOwnerAccessAvailable(),
     activateOwnerAccess,
     refreshLicense,
@@ -485,7 +514,7 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     deactivateLicense,
     startCheckout,
     openManagePurchases,
-  }), [activateLicense, activateOwnerAccess, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, state]);
+  }), [activateLicense, activateOwnerAccess, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, visibleState]);
 
   return billing;
 }

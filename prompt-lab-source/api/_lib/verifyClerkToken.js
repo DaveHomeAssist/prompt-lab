@@ -74,7 +74,7 @@ async function fetchJson(url, { headers = {}, timeoutMs = 5000 } = {}) {
       signal: controller.signal,
     });
     if (!response.ok) throw new Error(`JWKS request failed with ${response.status}.`);
-    return response.json();
+    return await response.json();
   } finally {
     clearTimeout(timeout);
   }
@@ -131,7 +131,7 @@ function assertValidClaims(claims) {
   }
 }
 
-async function verifyClerkJwt(token) {
+async function verifyClerkJwt(token, request) {
   const parts = String(token || '').split('.');
   if (parts.length !== 3) throw new Error('Malformed Clerk token.');
 
@@ -145,12 +145,15 @@ async function verifyClerkJwt(token) {
   const valid = verifier.verify(publicKey, base64UrlToBuffer(encodedSignature));
   if (!valid) throw new Error('Invalid Clerk token signature.');
   assertValidClaims(claims);
+  if (claims.azp && !buildAuthorizedParties(request).includes(claims.azp)) {
+    throw new Error('Clerk token authorized party is invalid.');
+  }
   return claims;
 }
 
 async function verifyClerkToken(token, request) {
   if (readStringEnv('CLERK_JWKS_URL') || !readStringEnv('CLERK_SECRET_KEY')) {
-    return verifyClerkJwt(token);
+    return verifyClerkJwt(token, request);
   }
 
   const { verifyToken } = await import('@clerk/backend');
@@ -158,6 +161,8 @@ async function verifyClerkToken(token, request) {
     secretKey: readStringEnv('CLERK_SECRET_KEY'),
     ...(readStringEnv('CLERK_JWT_KEY') ? { jwtKey: readStringEnv('CLERK_JWT_KEY') } : {}),
     authorizedParties: buildAuthorizedParties(request),
+    ...(readStringEnv('CLERK_JWT_ISSUER') ? { issuer: readStringEnv('CLERK_JWT_ISSUER') } : {}),
+    ...(readStringEnv('CLERK_JWT_AUDIENCE') ? { audience: readStringEnv('CLERK_JWT_AUDIENCE') } : {}),
   });
 }
 
@@ -177,7 +182,8 @@ function extractEmailFromClaims(claims = {}) {
 
 function buildClaimsFromClerkProfile(payload) {
   const primaryEmailId = String(payload?.primary_email_address_id || '');
-  const addresses = Array.isArray(payload?.email_addresses) ? payload.email_addresses : [];
+  const addresses = (Array.isArray(payload?.email_addresses) ? payload.email_addresses : [])
+    .filter((entry) => entry?.verification?.status === 'verified');
   const emailValues = addresses
     .map((entry) => String(entry?.email_address || '').trim().toLowerCase())
     .filter(Boolean);
@@ -190,6 +196,7 @@ function buildClaimsFromClerkProfile(payload) {
 
   return {
     ...(primaryEmail ? {
+      email_verified: true,
       email: primaryEmail,
       email_address: primaryEmail,
       primary_email_address: primaryEmail,
@@ -263,7 +270,15 @@ export async function verifyClerkRequest(request) {
       ...(Array.isArray(claims.usernames) ? claims.usernames : []),
     ],
   };
-  const clerkEmail = extractEmailFromClaims(clerkClaims);
+  // A signed session may include unverified/custom email fields. Never use
+  // those to claim an unbound legacy Stripe customer by email. Prefer the
+  // current verified backend profile over potentially stale token claims.
+  const clerkEmail = extractEmailFromClaims(profileClaims)
+    || (claims.email_verified === true ? extractEmailFromClaims({
+      email: claims.email,
+      email_address: claims.email_address,
+      primary_email_address: claims.primary_email_address,
+    }) : '');
   return {
     clerkUserId,
     clerkEmail,

@@ -79,6 +79,7 @@ async function createJwksHarness() {
       sub: 'user_123',
       email: 'user@example.com',
       email_address: 'user@example.com',
+      email_verified: true,
       iss: issuer,
     }, privateKey, {
       algorithm: 'RS256',
@@ -505,3 +506,21 @@ test('STRIPE_LEGACY_YEARLY_PRICE_IDS is parsed as a comma-separated list', async
     else process.env.STRIPE_LEGACY_YEARLY_PRICE_IDS = previous;
   }
 });
+
+for (const metadata of [{}, { clerkUserId: 'user_123' }, { clerk_user_id: 'user_123' }, { clerkUserId: 'user_123', clerk_user_id: 'user_123' }]) {
+  test(`same-account and unbound legacy customers remain usable: ${JSON.stringify(metadata)}`, async () => {
+    const { getOrCreateStripeCustomer } = await import('../api/_lib/stripeBilling.js');
+    const updates = [];
+    globalThis.fetch = async (url, init = {}) => {
+      if (String(url).includes('/customers/search')) return stripeJson({ data: [] });
+      if (String(url).includes('/customers?')) return stripeJson({ data: [{ id: 'cus_legacy', email: 'user@example.com', metadata }] });
+      assert.equal(String(url), 'https://api.stripe.com/v1/customers/cus_legacy');
+      updates.push(new URLSearchParams(init.body));
+      return stripeJson({ id: 'cus_legacy', metadata: { clerkUserId: 'user_123', clerk_user_id: 'user_123' } });
+    };
+    const customer = await getOrCreateStripeCustomer({ secretKey: 'sk_test_fixture' }, { clerkUserId: 'user_123', clerkEmail: 'user@example.com' });
+    assert.equal(customer.id, 'cus_legacy');
+    assert.equal(updates.length, Object.keys(metadata).length === 0 ? 1 : 0);
+    if (updates.length) assert.equal(updates[0].get('metadata[clerkUserId]'), 'user_123');
+  });
+}

@@ -52,6 +52,71 @@ describe('useBillingState', () => {
     expect(notify).toHaveBeenCalledWith('Prompt Lab Pro synced to this device.');
   });
 
+  for (const cached of [
+    { plan: 'pro', status: 'owner', billingPeriod: 'owner', clerkUserId: 'user_owner' },
+    { plan: 'pro', status: 'active', billingPeriod: 'owner', clerkUserId: 'user_owner' },
+    { plan: 'pro', status: 'active', billingPeriod: 'monthly', clerkUserId: 'user_paid' },
+    { plan: 'pro', status: 'owner', billingPeriod: 'owner' },
+  ]) {
+    it(`discards ${cached.billingPeriod} access from a different or unbound account`, async () => {
+      localStorage.setItem('pl2-billing', JSON.stringify(cached));
+      global.fetch = vi.fn(async () => new Response(JSON.stringify({ plan: 'free', clerkUserId: 'user_free' })));
+      const clerkGetToken = vi.fn(async () => 'token-free');
+      const { result } = renderHook(() => useBillingState({ clerkUser: { id: 'user_free' }, clerkGetToken }));
+      expect(result.current.isPro).toBe(false);
+      await waitFor(() => expect(result.current.clerkUserId).toBe('user_free'));
+      expect(result.current.plan).toBe('free');
+      expect(result.current.billingPeriod).toBe('');
+    });
+  }
+
+  it('ignores an in-flight Pro refresh after switching accounts, including switching back', async () => {
+    let resolveRefresh;
+    let calls = 0;
+    global.fetch = vi.fn(async () => {
+      calls += 1;
+      if (calls === 2) return new Promise((resolve) => { resolveRefresh = resolve; });
+      return new Response(JSON.stringify({ plan: 'free' }));
+    });
+    const clerkGetToken = vi.fn(async () => 'token');
+    const { result, rerender } = renderHook(({ id }) => useBillingState({ clerkUser: { id }, clerkGetToken }), { initialProps: { id: 'user_a' } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    let refresh;
+    act(() => { refresh = result.current.refreshLicense(); });
+    await waitFor(() => expect(resolveRefresh).toBeTypeOf('function'));
+    rerender({ id: 'user_b' });
+    await waitFor(() => expect(result.current.clerkUserId).toBe('user_b'));
+    rerender({ id: 'user_a' });
+    await waitFor(() => expect(result.current.clerkUserId).toBe('user_a'));
+    await act(async () => {
+      resolveRefresh(new Response(JSON.stringify({ plan: 'pro', status: 'owner', billingPeriod: 'owner', clerkUserId: 'user_a' })));
+      expect(await refresh).toBe(false);
+    });
+    expect(result.current.isPro).toBe(false);
+    expect(result.current.status).not.toBe('offline');
+    expect(JSON.parse(localStorage.getItem('pl2-billing')).plan).toBe('free');
+  });
+
+  it('does not open a portal response delivered after sign-out', async () => {
+    let resolvePortal;
+    global.fetch = vi.fn(async (url) => url.endsWith('/billing/portal')
+      ? new Promise((resolve) => { resolvePortal = resolve; })
+      : new Response(JSON.stringify({ plan: 'free' })));
+    const clerkGetToken = vi.fn(async () => 'token');
+    const { result, rerender } = renderHook(({ user }) => useBillingState({ clerkUser: user, clerkGetToken }), { initialProps: { user: { id: 'user_a' } } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(1));
+    let portal;
+    act(() => { portal = result.current.openManagePurchases().catch((error) => error); });
+    await waitFor(() => expect(resolvePortal).toBeTypeOf('function'));
+    rerender({ user: null });
+    await act(async () => {
+      resolvePortal(new Response(JSON.stringify({ url: 'https://billing.stripe.com/previous-account' })));
+      expect((await portal).code).toBe('BILLING_ACCOUNT_CHANGED');
+    });
+    expect(window.open).not.toHaveBeenCalled();
+    expect(result.current.plan).toBe('free');
+  });
+
   it('retries the silent account sync after a transient failure so paid accounts unlock', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

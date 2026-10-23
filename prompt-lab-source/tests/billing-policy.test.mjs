@@ -260,3 +260,27 @@ test('refunds and other lifecycle events are recorded without changing access', 
     assert.deepEqual(await response.json(), { ok: true, mode: 'noop', access: 'none' }, event.type);
   }
 });
+
+for (const scenario of ['missing signature', 'wrong secret', 'tampered body', 'expired signature', 'future signature']) {
+  test(`webhook rejects ${scenario} before persistence or Stripe access`, async () => {
+    configureEnv();
+    process.env.NODE_ENV = 'production';
+    process.env.KV_REST_API_URL = 'https://redis.example.test';
+    process.env.KV_REST_API_TOKEN = 'test-token';
+    const calls = [];
+    globalThis.fetch = async (...args) => { calls.push(args); throw new Error('Unexpected external request'); };
+    const body = JSON.stringify(disputeEvent());
+    const offset = scenario === 'expired signature' ? -600 : scenario === 'future signature' ? 600 : 0;
+    const timestamp = Math.floor(Date.now() / 1000) + offset;
+    const digest = createHmac('sha256', scenario === 'wrong secret' ? 'wrong-secret' : SECRET)
+      .update(`${timestamp}.${body}`).digest('hex');
+    const request = new Request('https://promptlab.tools/api/billing/webhook', {
+      method: 'POST',
+      headers: scenario === 'missing signature' ? {} : { 'stripe-signature': `t=${timestamp},v1=${digest}` },
+      body: scenario === 'tampered body' ? body.replace('ch_disputed', 'ch_other') : body,
+    });
+    const response = await (await loadWebhook())(request);
+    assert.equal(response.status, 401);
+    assert.equal(calls.length, 0);
+  });
+}
