@@ -25,6 +25,8 @@ const BILLING_STATUS = enumField(
   'error',
   'owner',
 );
+// 'diffView' is retired (AUD-008: diff is free) and kept so older clients'
+// events still validate.
 const FEATURE = enumField('general', 'export', 'collections', 'batchRuns', 'diffView', 'abTesting');
 const CHECKOUT_SOURCE = enumField(
   'billing-modal',

@@ -14,6 +14,7 @@ import {
   PRICE_COPY,
   PRO_FEATURE_LIST,
   PRO_PRICES,
+  FREE_DIFF_LANDING_LABEL,
   formatUsd,
 } from '../shared/pricing.js';
 
@@ -54,6 +55,11 @@ for (const page of LANDING_PAGES) {
     assert.ok(card, 'Pro pricing card not found');
     const items = [...card[1].matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1].trim());
     assert.deepEqual(items, ['Everything in Free', ...PRO_FEATURE_LIST.map((feature) => feature.landingLabel)]);
+    // AUD-008: diff is free, so it is on the Free card and nowhere in Pro.
+    const freeCard = html.match(/<div class="pricing-tier">Free<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
+    assert.ok(freeCard.includes(`<li>${FREE_DIFF_LANDING_LABEL}</li>`), 'Free card must list the diff viewer');
+    assert.doesNotMatch(card[1], /diff/i);
+    assert.doesNotMatch(html, /diff available in Pro/i);
   });
 }
 
@@ -61,6 +67,7 @@ test('terms and billing policy state the configured prices', () => {
   const terms = flatten(read('prompt-lab-web/public/terms.html'));
   assert.ok(terms.includes(PRICE_COPY.termsSentence), `terms must say "${PRICE_COPY.termsSentence}"`);
   assert.ok(terms.includes(PRICE_COPY.legacyAnnualWords), 'terms must name the legacy annual price');
+  assert.doesNotMatch(terms, /Pro adds[^.]*diff/i, 'terms must not sell the diff viewer as Pro');
   const policy = read('docs/billing-policy.md').replace(/\s+/g, ' ');
   assert.ok(policy.includes(PRICE_COPY.termsSentence), `billing policy must say "${PRICE_COPY.termsSentence}"`);
 });

@@ -48,21 +48,12 @@ export const PRICE_COPY = Object.freeze({
 
 // Pro features, in landing-page order. `label`/`description` are the in-app
 // copy; `landingLabel` is the line on the landing pricing card.
-// OPEN DECISION (AUD-008, Dave): whether the diff viewer stays Pro. This list
-// records the current behaviour only; do not move features without that call.
 export const PRO_FEATURE_LIST = Object.freeze([
   Object.freeze({
     id: 'abTesting',
     label: 'A/B testing',
     description: 'Run prompt variants head-to-head inside Evaluate.',
     landingLabel: 'A/B Compare in Evaluate',
-  }),
-  Object.freeze({
-    id: 'diffView',
-    label: 'Diff viewer',
-    description: 'Compare generated outputs side-by-side.',
-    landingLabel: 'Side-by-side diff viewer',
-    pendingDecision: 'AUD-008',
   }),
   Object.freeze({
     id: 'batchRuns',
@@ -77,3 +68,11 @@ export const PRO_FEATURE_LIST = Object.freeze([
     landingLabel: 'Collections for grouped libraries',
   }),
 ]);
+
+// AUD-008: the diff viewer is free on every plan. 'diffView' used to be a Pro
+// feature id; it is kept here only so old telemetry and stored billing
+// sources still validate. Nothing gates on it.
+export const RETIRED_PRO_FEATURE_IDS = Object.freeze(['diffView']);
+
+// Free-card line for the landing page (checked by tests/pricing-copy.test.mjs).
+export const FREE_DIFF_LANDING_LABEL = 'Diff of every improvement';

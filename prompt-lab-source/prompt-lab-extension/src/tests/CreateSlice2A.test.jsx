@@ -177,8 +177,8 @@ function renderPane(overrides = {}) {
     quickSave={noop} editingId="entry-1" goldenResponse={null} goldenSimilarity={null} goldenThreshold={0.8}
     goldenVerdict={null} comparisonText="" comparisonSourceLabel="" lib={lib} variants={[]} showNotes={false}
     notes="" evalRuns={[]} libraryCount={1} evalRunCount={0} onLoadQuickStartPrompt={noop} onOpenEvaluate={noop}
-    showEvalHistory={false} setShowEvalHistory={noop} streamPreview="" showDiffUpgradeHint={false}
-    onUnlockDiff={noop} runCasesLocked={false} newPrompt={noop} {...overrides} />);
+    showEvalHistory={false} setShowEvalHistory={noop} streamPreview=""
+    runCasesLocked={false} newPrompt={noop} {...overrides} />);
 }
 
 function renderContext(overrides = {}) {
