@@ -29,7 +29,7 @@ gate failed. The script asserts verified facts, not guesses:
 | G3 | `createDefaultTelemetryState()` sets `telemetryEnabled: false` | Telemetry is strictly opt-in; a flipped default contradicts the privacy policy |
 | G4 | `PRIVACY_POLICY.md` keeps its Telemetry section | The policy must disclose telemetry for as long as the feature exists |
 | G5 | `normalizeLibrary` round-trips `metadata.chain` and `isChainEntry` accepts the result | Chain Lab stores chains on library entries; a schema whitelist change could silently strip them |
-| W1 | Warns while `docs/CNAME` still exists | Open decision below |
+| W1 | Warns if `docs/CNAME` reappears | The Pages mirror must not claim `promptlab.tools`, which Vercel serves (2026-08-05 decision, executed 2026-10-18) |
 
 Maintenance rule: a gate greps or imports the real identifiers in the tree.
 When a feature renames something a gate checks, update the gate in the same
@@ -46,11 +46,6 @@ PR. Never add a gate for an identifier you have not confirmed exists.
 
 ## Open decisions carried forward
 
-- **Pages custom domain** — approved 2026-08-05, still unexecuted: delete
-  `docs/CNAME` (`promptlab.tools`) from `main` so the Pages mirror stops
-  claiming the domain served by Vercel. Do not disable Pages itself. W1
-  warns until this lands; if the decision is reversed instead, remove W1
-  and this entry together.
 - **Desktop version track** — desktop currently shares the repo-wide version
   while its signing status is unverified. Either keep the shared number and
   gate releases on signing, or document an independent desktop version track
