@@ -50,6 +50,7 @@ export const HostedLimitCode = Object.freeze({
   BURST:  'hosted_burst_limit',   // per-IP requests per minute
   DEMO:   'hosted_demo_limit',    // per-IP shared-key requests per day
   GLOBAL: 'hosted_global_limit',  // service-wide shared-key requests per day
+  BUDGET: 'hosted_budget_limit',  // service-wide shared-key dollars, paced per day and capped per billing cycle
 });
 
 const HOSTED_LIMIT_CODES = new Set(Object.values(HostedLimitCode));
@@ -161,7 +162,9 @@ export function formatResetHint(resetAt, now = Date.now()) {
   const minutes = Math.ceil(diffMs / 60_000);
   if (minutes < 60) return `in about ${minutes} minute${minutes === 1 ? '' : 's'}`;
   const hours = Math.round(minutes / 60);
-  return `in about ${hours} hour${hours === 1 ? '' : 's'}`;
+  if (hours < 48) return `in about ${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.round(hours / 24);
+  return `in about ${days} days`;
 }
 
 const NOT_PROVIDER = 'This is a Prompt Lab limit, not an Anthropic one.';
@@ -182,6 +185,12 @@ export function hostedLimitError(code, { detail, limit, resetAt, now = Date.now(
     userMessage = `Prompt Lab's free hosted demo limit is used up${cap}. ${NOT_PROVIDER}${hint ? ` It resets ${hint}.` : ''}`;
     recovery = {
       suggestions: [ADD_OWN_KEY, hint ? `Or wait until it resets ${hint}.` : 'Or wait for the daily reset.'],
+      actions: ['open_provider_settings'],
+    };
+  } else if (code === HostedLimitCode.BUDGET) {
+    userMessage = `Prompt Lab's shared hosted budget is used up for now. ${NOT_PROVIDER}${hint ? ` It resets ${hint}.` : ''}`;
+    recovery = {
+      suggestions: [ADD_OWN_KEY, hint ? `Or wait until it resets ${hint}.` : 'Or wait for the reset.'],
       actions: ['open_provider_settings'],
     };
   } else if (code === HostedLimitCode.GLOBAL) {

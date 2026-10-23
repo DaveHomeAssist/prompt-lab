@@ -33,6 +33,9 @@ const ENV_KEYS = [
   'HOSTED_DEMO_DAILY_LIMIT',
   'HOSTED_GLOBAL_DAILY_LIMIT',
   'HOSTED_BURST_LIMIT',
+  'HOSTED_CYCLE_BUDGET_USD',
+  'HOSTED_BUDGET_CYCLE_DAY',
+  'HOSTED_IP_DAILY_BUDGET_USD',
   'KV_REST_API_URL',
   'KV_REST_API_TOKEN',
   'UPSTASH_REDIS_REST_URL',
@@ -159,12 +162,13 @@ test('production shared-key mode requires both hosted feature flags', async () =
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_PROXY_ENABLED = 'true';
   process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.HOSTED_CYCLE_BUDGET_USD = '180';
   process.env.KV_REST_API_URL = 'https://redis.example.test';
   process.env.KV_REST_API_TOKEN = 'redis-token';
 
   globalThis.fetch = async (url, init) => {
     if (String(url).startsWith('https://redis.example.test/')) {
-      const result = String(url).includes('/pttl/') ? 60_000 : 1;
+      const result = init?.method === 'POST' ? [0] : String(url).includes('/pttl/') ? 60_000 : 1;
       return new Response(JSON.stringify({ result }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -575,16 +579,30 @@ test('proxy 429s carry a code, limit, and reset time the client attributes to Pr
   }
 });
 
+// A store that serves the dollar budget but fails the request-count windows,
+// so the count windows' own fail-closed paths stay covered.
+function budgetOnlyStore(fallback = assert.fail) {
+  process.env.HOSTED_CYCLE_BUDGET_USD = '180';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
+  return async (url, init) => {
+    const target = String(url);
+    if (!target.startsWith('https://redis.example.test/')) return fallback(url, init);
+    if (init?.method !== 'POST') return new Response('down', { status: 500 });
+    const command = JSON.parse(init.body);
+    assert.equal(command[0], 'EVAL');
+    return new Response(JSON.stringify({ result: [0] }), { status: 200 });
+  };
+}
+
 test('production shared-key requests fail closed when durable rate limiting is unavailable', async () => {
   process.env.NODE_ENV = 'production';
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_PROXY_ENABLED = 'true';
   process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
-  delete process.env.KV_REST_API_URL;
-  delete process.env.KV_REST_API_TOKEN;
   delete process.env.UPSTASH_REDIS_REST_URL;
   delete process.env.UPSTASH_REDIS_REST_TOKEN;
-  globalThis.fetch = assert.fail;
+  globalThis.fetch = budgetOnlyStore();
 
   const handler = await loadHandler();
   const response = await handler(makeRequest({
@@ -818,6 +836,7 @@ test('verified owners remain subject to the shared service budget', async () => 
 test('owner access fails closed when the production global budget store is unavailable', async () => {
   const calls = setupOwnerProxy();
   process.env.NODE_ENV = 'production';
+  globalThis.fetch = budgetOnlyStore(globalThis.fetch);
   const handler = await loadHandler();
   const response = await handler(makeRequest({ outerHeaders: { cookie: `__session=${ownerToken()}` } }));
   assert.equal(response.status, 503);
@@ -877,4 +896,235 @@ test('Clerk key lookup failure preserves visitor limits without an upstream call
   };
   const response = await handler(makeRequest({ outerHeaders: { cookie: `__session=${ownerToken()}` } }));
   assert.equal(response.status, 429);
+});
+
+// ── Shared-key dollar budget ──────────────────────────────────────────
+
+const sseResponse = (usage = { input_tokens: 10, output_tokens: 5 }) => new Response([
+  `event: message_start\ndata: ${JSON.stringify({ type: 'message_start', message: { id: 'msg_1', usage: { input_tokens: usage.input_tokens, output_tokens: 1 } } })}\n\n`,
+  `event: content_block_delta\ndata: ${JSON.stringify({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'hi' } })}\n\n`,
+  `event: message_delta\ndata: ${JSON.stringify({ type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: usage.output_tokens } })}\n\n`,
+  'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+].join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+
+function budgetEnv({ cycle = '180', ipDaily } = {}) {
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '0';
+  process.env.HOSTED_GLOBAL_DAILY_LIMIT = '0';
+  process.env.HOSTED_BURST_LIMIT = '0';
+  process.env.HOSTED_CYCLE_BUDGET_USD = cycle;
+  process.env.HOSTED_BUDGET_CYCLE_DAY = '14';
+  if (ipDaily) process.env.HOSTED_IP_DAILY_BUDGET_USD = ipDaily;
+}
+const shared = (extra = {}) => makeRequest({ headers: { 'x-api-key': '__plb_hosted_shared_key__' }, ...extra });
+
+test('a streamed shared-key response settles its reservation to the reported cost', async () => {
+  // Default body reserves 87 bytes x $3 + 800 x $15 per MTok = 12,261 micro-dollars.
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => sseResponse();
+  const handler = await loadHandler();
+  for (let i = 0; i < 3; i++) {
+    const response = await handler(shared());
+    assert.equal(response.status, 200, `request ${i + 1}`);
+    assert.match(await response.text(), /message_stop/);
+  }
+});
+
+test('a cancelled stream keeps its reservation, so spend is never understated', async () => {
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => sseResponse();
+  const handler = await loadHandler();
+  const first = await handler(shared());
+  assert.equal(first.status, 200);
+  await first.body.cancel();
+  const second = await handler(shared());
+  assert.equal(second.status, 429);
+  const body = await second.json();
+  assert.equal(body.code, HostedLimitCode.DEMO);
+  assert.equal(second.headers.get('X-Demo-Remaining'), '0');
+});
+
+test('a stream that ends without its closing usage keeps its reservation', async () => {
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => new Response([
+    `event: message_start\ndata: ${JSON.stringify({ type: 'message_start', message: { id: 'msg_1', usage: { input_tokens: 10, output_tokens: 1 } } })}\n\n`,
+    `event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })}\n\n`,
+  ].join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  const handler = await loadHandler();
+  const first = await handler(shared());
+  assert.equal(first.status, 200);
+  await first.text();
+  const second = await handler(shared());
+  assert.equal(second.status, 429);
+  assert.equal((await second.json()).code, HostedLimitCode.DEMO);
+});
+
+test('a non-streamed shared-key response settles from its JSON usage', async () => {
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => new Response(JSON.stringify({ content: [], usage: { input_tokens: 10, output_tokens: 5 } }), {
+    status: 200, headers: { 'Content-Type': 'application/json' },
+  });
+  const handler = await loadHandler();
+  for (let i = 0; i < 3; i++) assert.equal((await handler(shared())).status, 200);
+});
+
+test('a refused upstream request releases its reservation', async () => {
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'overloaded' } }), { status: 529 });
+  const handler = await loadHandler();
+  for (let i = 0; i < 3; i++) assert.equal((await handler(shared())).status, 529);
+});
+
+test('an exhausted cycle budget refuses with a Prompt Lab budget code and the cycle reset', async () => {
+  budgetEnv({ cycle: '0.01' });
+  globalThis.fetch = assert.fail;
+  const handler = await loadHandler();
+  const response = await handler(shared());
+  assert.equal(response.status, 429);
+  const body = await response.json();
+  assert.equal(body.code, HostedLimitCode.BUDGET);
+  assert.equal(body.scope, 'cycle');
+  assert.equal(new Date(body.reset_at).getUTCDate(), 14);
+  const error = normalizeError({ message: body.error, code: body.code, resetAt: body.reset_at });
+  assert.equal(error.category, ErrorCategory.RATE_LIMIT);
+  assert.match(error.userMessage, /not an Anthropic one/);
+});
+
+test('shared-key bodies are rebuilt as text only; other content is refused before spending', async () => {
+  budgetEnv();
+  const sent = [];
+  globalThis.fetch = async (_url, init) => { sent.push(JSON.parse(init.body)); return sseResponse(); };
+  const handler = await loadHandler();
+  const ok = await handler(shared({ body: {
+    model: 'claude-sonnet-4-6', max_tokens: 100, stream: true,
+    system: [{ type: 'text', text: 'sys', cache_control: { type: 'ephemeral', ttl: '1h' } }],
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'hi', cache_control: { type: 'ephemeral' } }] }],
+    tools: [{ type: 'web_search_20260209', name: 'web_search' }],
+    cache_control: { type: 'ephemeral' }, inference_geo: 'us',
+  } }));
+  assert.equal(ok.status, 200);
+  await ok.text();
+  assert.deepEqual(sent[0], {
+    model: 'claude-sonnet-4-6', max_tokens: 100, stream: true,
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+    system: [{ type: 'text', text: 'sys' }],
+  });
+
+  const image = await handler(shared({ body: {
+    model: 'claude-sonnet-4-6', max_tokens: 100,
+    messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AA==' } }] }],
+  } }));
+  assert.equal(image.status, 400);
+  assert.match(await image.text(), /text content only/);
+  assert.equal(sent.length, 1);
+});
+
+test('your own key is neither metered nor rebuilt', async () => {
+  budgetEnv({ cycle: '0.000001' });
+  const sent = [];
+  globalThis.fetch = async (_url, init) => { sent.push(JSON.parse(init.body)); return sseResponse(); };
+  const handler = await loadHandler();
+  const response = await handler(makeRequest({
+    headers: { 'x-api-key': 'user-key', 'anthropic-version': '2023-06-01' },
+    body: { model: 'claude-sonnet-4-6', max_tokens: 100, messages: [{ role: 'user', content: 'hi' }], tools: [{ name: 'custom' }] },
+  }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(sent[0].tools, [{ name: 'custom' }]);
+});
+
+test('production refuses the shared key when no budget is configured', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
+  globalThis.fetch = async (url) => {
+    if (String(url).startsWith('https://redis.example.test/')) {
+      return new Response(JSON.stringify({ result: String(url).includes('/pttl/') ? 60_000 : 1 }), { status: 200 });
+    }
+    return assert.fail('must not reach Anthropic');
+  };
+  const handler = await loadHandler();
+  const response = await handler(shared());
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /budget is not configured/);
+});
+
+test('production budget metering fails closed when its store is unavailable', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.HOSTED_CYCLE_BUDGET_USD = '180';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
+  globalThis.fetch = async (url, init) => {
+    if (init?.method === 'POST' && String(url).startsWith('https://redis.example.test')) return new Response('down', { status: 500 });
+    if (String(url).startsWith('https://redis.example.test/')) {
+      return new Response(JSON.stringify({ result: String(url).includes('/pttl/') ? 60_000 : 1 }), { status: 200 });
+    }
+    return assert.fail('must not reach Anthropic');
+  };
+  const handler = await loadHandler();
+  const response = await handler(shared());
+  assert.equal(response.status, 503);
+  assert.match(await response.text(), /budget protection is unavailable/);
+});
+
+test('production budget errors in successful Redis HTTP responses fail closed', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.HOSTED_CYCLE_BUDGET_USD = '180';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
+  let transactions = 0;
+  globalThis.fetch = async (url, init) => {
+    assert.ok(String(url).startsWith('https://redis.example.test'));
+    if (init?.method === 'POST') {
+      transactions += 1;
+      const [command, script, keyCount, ...args] = JSON.parse(init.body);
+      assert.equal(command, 'EVAL');
+      assert.match(script, /Invalid budget counter/);
+      assert.equal(keyCount, 2);
+      assert.ok(args.slice(0, keyCount).every((key) => key.startsWith('plb:budget:')));
+      return new Response(JSON.stringify({ error: 'ERR invalid counter' }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ result: String(url).includes('/pttl/') ? 60_000 : 1 }));
+  };
+  const handler = await loadHandler();
+  const response = await handler(shared());
+  assert.equal(response.status, 503);
+  assert.equal(transactions, 1);
+  assert.match(await response.text(), /budget protection is unavailable/);
+});
+
+test('a count refusal releases its budget reservation, and a budget refusal spends no daily count', async (t) => {
+  // One day left in the cycle, so today's pace is the whole remaining budget.
+  t.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 10, 13, 12) });
+  budgetEnv({ cycle: '0.015' });
+  process.env.HOSTED_DEMO_DAILY_LIMIT = '1';
+  globalThis.fetch = async () => sseResponse();
+  const handler = await loadHandler();
+  const visitor = (clientIp) => handler(shared({ clientIp }));
+
+  const first = await visitor('198.51.100.1');
+  assert.equal(first.status, 200);
+  await first.text();
+  const counted = await visitor('198.51.100.1');
+  assert.equal(counted.status, 429);
+  assert.equal((await counted.json()).code, HostedLimitCode.DEMO);
+  // Without the release, a second 12,261 reservation would pass $0.015.
+  const other = await visitor('198.51.100.2');
+  assert.equal(other.status, 200);
+  await other.text();
+
+  process.env.HOSTED_CYCLE_BUDGET_USD = '0.0001';
+  const broke = await visitor('198.51.100.3');
+  assert.equal(broke.status, 429);
+  assert.equal((await broke.json()).code, HostedLimitCode.BUDGET);
+  process.env.HOSTED_CYCLE_BUDGET_USD = '1';
+  assert.equal((await visitor('198.51.100.3')).status, 200);
 });
