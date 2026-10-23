@@ -178,8 +178,10 @@ unspent days roll forward. `HOSTED_IP_DAILY_BUDGET_USD` optionally caps one
 visitor IP's spend per UTC day. Each shared-key request reserves its worst case
 (every body byte as an input token plus the full `max_tokens`) and settles to
 the cost Anthropic reports in the stream's `message_start`/`message_delta` usage
-or the JSON `usage`. A refused upstream request is released; a cancelled stream
-keeps its reservation, so the meter only errs high. Prices live in
+or the JSON `usage`. A refused upstream request is released; a cancelled stream,
+or one that ends without its closing `message_delta` usage, keeps its
+reservation, so the meter only errs high. A reservation that updates only some
+counters before a store failure is undone before the 503. Prices live in
 `BUDGET_PRICING`; an allowed model without a price is refused. Shared-key bodies
 are rebuilt from the fields the client sends with text content only, so cache
 writes, server tools and media cannot ride on the shared key. A cycle or pace

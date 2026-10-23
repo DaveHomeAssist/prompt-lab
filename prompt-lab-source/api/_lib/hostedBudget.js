@@ -134,7 +134,17 @@ export async function reserveBudget({ config, reserve, ip, owner, now = Date.now
   ];
   const adjust = (amount) => Promise.all(keys.map(({ key, ttlMs }) => incrementBy(key, amount, ttlMs)));
 
-  const [cycleTotal, dayTotal, ipTotal] = (await adjust(reserve)).map(Number);
+  // A partly applied reservation is undone before the failure surfaces, so a
+  // store outage cannot leave charges on the counters that did update.
+  const applied = await Promise.allSettled(keys.map(({ key, ttlMs }) => incrementBy(key, reserve, ttlMs)));
+  const failure = applied.find((result) => result.status === 'rejected');
+  if (failure) {
+    await Promise.allSettled(keys.map(({ key, ttlMs }, index) => (
+      applied[index].status === 'fulfilled' ? incrementBy(key, -reserve, ttlMs) : null
+    )));
+    throw failure.reason;
+  }
+  const [cycleTotal, dayTotal, ipTotal] = applied.map((result) => Number(result.value));
   // Unspent days roll forward: today's pace is what remains of the cycle
   // before today, spread over the days left including today.
   const dayAllowance = Math.floor((config.cycleBudgetMicros - (cycleTotal - dayTotal)) / window.daysRemaining);
@@ -161,16 +171,24 @@ export async function reserveBudget({ config, reserve, ip, owner, now = Date.now
   };
 }
 
-/** Collects the final usage from Anthropic Messages SSE text, chunk by chunk. */
+/**
+ * Collects usage from Anthropic Messages SSE text, chunk by chunk. `finish`
+ * returns it only once the closing `message_delta` usage arrived: a stream cut
+ * short after `message_start` reports too few output tokens to settle on.
+ */
 export function createSseUsageReader() {
   let buffer = '';
   let usage = null;
+  let final = false;
   const readLine = (line) => {
     if (!line.startsWith('data:')) return;
     let event;
     try { event = JSON.parse(line.slice(5).trim()); } catch { return; }
     if (event?.type === 'message_start' && event.message?.usage) usage = { ...event.message.usage };
-    else if (event?.type === 'message_delta' && event.usage) usage = { ...(usage || {}), ...event.usage };
+    else if (event?.type === 'message_delta' && event.usage) {
+      usage = { ...(usage || {}), ...event.usage };
+      final = true;
+    }
   };
   return {
     push(text) {
@@ -182,7 +200,7 @@ export function createSseUsageReader() {
     finish() {
       if (buffer) readLine(buffer.replace(/\r$/, ''));
       buffer = '';
-      return usage;
+      return final ? usage : null;
     },
   };
 }

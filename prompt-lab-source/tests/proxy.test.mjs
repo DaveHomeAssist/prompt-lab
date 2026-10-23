@@ -942,6 +942,21 @@ test('a cancelled stream keeps its reservation, so spend is never understated', 
   assert.equal(second.headers.get('X-Demo-Remaining'), '0');
 });
 
+test('a stream that ends without its closing usage keeps its reservation', async () => {
+  budgetEnv({ ipDaily: '0.02' });
+  globalThis.fetch = async () => new Response([
+    `event: message_start\ndata: ${JSON.stringify({ type: 'message_start', message: { id: 'msg_1', usage: { input_tokens: 10, output_tokens: 1 } } })}\n\n`,
+    `event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: 'overloaded_error', message: 'Overloaded' } })}\n\n`,
+  ].join(''), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  const handler = await loadHandler();
+  const first = await handler(shared());
+  assert.equal(first.status, 200);
+  await first.text();
+  const second = await handler(shared());
+  assert.equal(second.status, 429);
+  assert.equal((await second.json()).code, HostedLimitCode.DEMO);
+});
+
 test('a non-streamed shared-key response settles from its JSON usage', async () => {
   budgetEnv({ ipDaily: '0.02' });
   globalThis.fetch = async () => new Response(JSON.stringify({ content: [], usage: { input_tokens: 10, output_tokens: 5 } }), {

@@ -114,4 +114,23 @@ test('SSE usage survives events split across chunks', () => {
   for (let i = 0; i < text.length; i += 7) reader.push(text.slice(i, i + 7));
   assert.deepEqual(reader.finish(), { input_tokens: 12, cache_read_input_tokens: 3, output_tokens: 40 });
   assert.equal(createSseUsageReader().finish(), null);
+  // Cut short after message_start: the output count is not final, so nothing settles.
+  const cut = createSseUsageReader();
+  cut.push(start + `event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: 'overloaded_error' } })}\n\n`);
+  assert.equal(cut.finish(), null);
+});
+
+test('a store failure on one counter undoes the counters that did update', async () => {
+  const store = memoryStore();
+  const config = { cycleBudgetMicros: 180_000_000, cycleDay: 14, ipDailyMicros: 500_000 };
+  const flaky = async (key, amount, ttl) => {
+    if (key.startsWith('day:')) throw new Error('store timeout');
+    return store.incrementBy(key, amount, ttl);
+  };
+  await assert.rejects(
+    reserveBudget({ config, reserve: 300_000, ip: 'a', owner: false, now: OCT_22, incrementBy: flaky }),
+    /store timeout/,
+  );
+  assert.equal(store.totals.get('cycle:2026-10-14'), 0);
+  assert.equal(store.totals.get('ip:2026-10-22:a'), 0);
 });

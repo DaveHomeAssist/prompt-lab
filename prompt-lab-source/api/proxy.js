@@ -217,9 +217,14 @@ async function incrementBudgetTotal(key, amount, ttlMs) {
     try {
       const redisKey = `plb:budget:${key}`;
       const total = Number(await redisCommand('incrby', redisKey, amount));
-      const remainingTtl = Number(await redisCommand('pttl', redisKey));
-      if (!Number.isFinite(remainingTtl) || remainingTtl < 0) await redisCommand('pexpire', redisKey, ttlMs);
       if (!Number.isFinite(total)) throw new Error('Budget store returned a non-numeric total');
+      try {
+        const remainingTtl = Number(await redisCommand('pttl', redisKey));
+        if (!Number.isFinite(remainingTtl) || remainingTtl < 0) await redisCommand('pexpire', redisKey, ttlMs);
+      } catch (error) {
+        // The increment applied; a missing expiry only keeps a dated key longer.
+        console.warn(`[proxy] budget key expiry not set: ${error.message}`);
+      }
       return total;
     } catch (error) {
       console.warn(`[proxy] persistent budget unavailable: ${error.message}`);
@@ -474,7 +479,8 @@ async function settleQuietly(hold, actualMicros) {
 
 // Passes the stream through untouched and settles the reservation from the
 // final reported usage before the response closes. A cancelled stream never
-// reaches flush, so its reservation stands.
+// reaches flush, and a stream that ends without its closing usage settles
+// nothing, so in both cases the reservation stands.
 function meteredBody(body, hold, rates) {
   const reader = createSseUsageReader();
   const decoder = new TextDecoder();
@@ -485,6 +491,7 @@ function meteredBody(body, hold, rates) {
     },
     async flush() {
       reader.push(decoder.decode());
+      // Only a complete final usage settles; otherwise the reservation stands.
       const usage = reader.finish();
       if (usage) await settleQuietly(hold, usageCostMicros(rates, usage));
     },
