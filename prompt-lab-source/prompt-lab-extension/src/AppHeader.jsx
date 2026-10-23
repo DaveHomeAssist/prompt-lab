@@ -2,7 +2,7 @@ import Ic from './icons';
 import { APP_VERSION } from './constants';
 import { BUILD_IDENTITY } from './buildIdentity.js';
 import { PALETTES, useThemeTokens } from './theme/ThemeProvider.jsx';
-import { isPrelaunchOpenAccess } from './lib/billing.js';
+import { DESKTOP_PLAN_LINK_TEXT, DESKTOP_PLAN_URL, isPrelaunchOpenAccess } from './lib/billing.js';
 import { SUBVIEWS } from './lib/navigationRegistry.js';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import MobileNavigation from './MobileNavigation.jsx';
@@ -16,6 +16,8 @@ export default function AppHeader({
   effectiveEditorLayout, setEditorLayout, createLayoutOptions,
   setShowCmdPalette, setCmdQuery, setShowShortcuts, setShowSettings,
   billingPlan, billingLabel, billingDisabled, openBilling, billingUiEnabled = true,
+  // Desktop: plan chip plus a link to the web app instead of Upgrade.
+  desktopPlanLink = false,
   clerkUserButton,
   settingsButtonRef,
   renderMobileNavigation = true,
@@ -66,7 +68,18 @@ export default function AppHeader({
           {billingUiEnabled && <span data-testid="billing-plan-chip" className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${billingPlan === 'pro' ? 'pl-brand-chip' : `${m.btn} ${m.textAlt}`}`}>
             {billingLabel}
           </span>}
-          {billingUiEnabled && billingPlan !== 'pro' && (
+          {billingUiEnabled && desktopPlanLink && (
+            <a
+              data-testid="desktop-plan-link"
+              href={DESKTOP_PLAN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-[10px] font-semibold underline underline-offset-2 ${m.textAlt}`}
+            >
+              {DESKTOP_PLAN_LINK_TEXT}
+            </a>
+          )}
+          {billingUiEnabled && !desktopPlanLink && billingPlan !== 'pro' && (
             <button
               type="button"
               data-testid="billing-trigger"

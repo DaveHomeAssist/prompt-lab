@@ -60,7 +60,7 @@ import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import WorkspaceImportModal from './modals/WorkspaceImportModal.jsx';
 import BillingModal from './modals/BillingModal.jsx';
-import { isBillingUiEnabled } from './lib/billing.js';
+import { isBillingUiEnabled, isDesktopAppSurface } from './lib/billing.js';
 import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
@@ -172,6 +172,9 @@ export default function App({
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   // Extension builds hide Upgrade/Pro UI (no sign-in, so checkout cannot complete).
   const billingUiEnabled = isBillingUiEnabled();
+  // Desktop shows the plan and a link to promptlab.tools instead of billing
+  // screens that cannot complete a purchase there (product call 7).
+  const desktopPlanLink = billingUiEnabled && isDesktopAppSurface();
   // Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
   //
   // 'contained' locks the shell to the viewport and scrolls inside it.
@@ -305,7 +308,7 @@ export default function App({
   } = ed;
 
   const openBilling = (featureId = null) => {
-    if (!billingUiEnabled) return;
+    if (!billingUiEnabled || desktopPlanLink) return;
     trackTelemetry('billing.modal_opened', {
       featureId: featureId || 'general',
       plan: billing.plan,
@@ -1125,6 +1128,7 @@ export default function App({
         billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
         billingUiEnabled={billingUiEnabled}
+        desktopPlanLink={desktopPlanLink}
         clerkUserButton={clerkUser ? clerkUserButton : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
@@ -1600,6 +1604,7 @@ export default function App({
           pendingImport={lib.pendingImport} retryImport={lib.retryImport}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billingUiEnabled ? billing : null}
+          desktopPlanLink={desktopPlanLink}
           openBilling={(featureId) => {
             setBillingReturnToSettings(true);
             setShowSettings(false);
@@ -1623,7 +1628,7 @@ export default function App({
         <ShortcutsModal m={m} primaryModKey={primaryModKey} saveLabel={primarySaveLabel} onClose={() => setShowShortcuts(false)} />
       )}
 
-      {billingUiEnabled && showBillingModal && (
+      {billingUiEnabled && !desktopPlanLink && showBillingModal && (
         <BillingModal
           m={m}
           billing={billing}

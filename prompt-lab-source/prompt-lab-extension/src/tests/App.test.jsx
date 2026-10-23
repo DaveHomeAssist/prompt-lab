@@ -221,7 +221,7 @@ vi.mock('../icons.jsx', () => ({
 }));
 
 vi.mock('../AppHeader.jsx', () => ({
-  default: ({ billingUiEnabled }) => <div data-testid="app-header" data-billing-ui={String(billingUiEnabled)} />,
+  default: ({ billingUiEnabled, desktopPlanLink }) => <div data-testid="app-header" data-billing-ui={String(billingUiEnabled)} data-desktop-plan-link={String(Boolean(desktopPlanLink))} />,
 }));
 
 vi.mock('../MainWorkspace.jsx', () => ({
@@ -452,6 +452,30 @@ describe('App', () => {
     expect(screen.queryByRole('dialog', { name: 'Billing handoff' })).not.toBeInTheDocument();
     expect(onLandingIntentConsumed).not.toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('uses the desktop plan link instead of billing screens in the desktop app', () => {
+    vi.stubEnv('VITE_WEB_MODE', 'false');
+    vi.stubEnv('VITE_PROMPTLAB_SURFACE', 'desktop');
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    const header = screen.getByTestId('app-header');
+    expect(header).toHaveAttribute('data-billing-ui', 'true');
+    expect(header).toHaveAttribute('data-desktop-plan-link', 'true');
+    expect(screen.queryByRole('dialog', { name: /Prompt Lab Pro|Pro feature/ })).not.toBeInTheDocument();
+  });
+
+  it('does not use the desktop plan link on the web app', () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('app-header')).toHaveAttribute('data-desktop-plan-link', 'false');
   });
 
   it('does not apply landing handoff props outside web mode', () => {
