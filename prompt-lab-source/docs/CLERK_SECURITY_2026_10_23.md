@@ -15,12 +15,33 @@ Pending visitors retain ordinary public demo limits on the public provider proxy
 
 ## Production configuration acceptance remains open
 
-Dashboard access requires an operator sign-in. No production MFA, session,
-password or recovery setting was changed or confirmed in this pass. Do not infer
-configuration from the SDK, defaults, source tests or an agent-created QA session.
+Production environment selection was verified in Clerk Dashboard. Existing
+GitHub sign-in provided access without new credentials. These changes were saved:
 
-After sign-in, select PromptLab's production instance and record the before and
-after values of the following controls without recording secrets or user data:
+| Control | Before | After | Evidence |
+| --- | --- | --- | --- |
+| Sensitive-action reverification | 10 minutes | 5 minutes | Dashboard reloaded |
+| Enumeration protection | Bulk | Strict | Dashboard and fresh public API GET |
+| Failed sign-in lockout | 100 attempts, 60 minutes | 10 attempts, 15 minutes | Fresh public API GET |
+
+Seven-day maximum session lifetime remains enabled. Inactivity timeout is off;
+custom durations require Pro. Single-session mode remains enabled. Device Trust,
+legacy bot sign-up protection, compromised-password checking and enforcement,
+password reverification, and same-browser email links remain active. Email must
+be verified at sign-up.
+
+Authenticator MFA, backup codes and passkeys remain disabled. Attempting to enable
+an authenticator produced an explicit production-plan restriction; the upgrade
+prompt was cancelled and the method remained off. Current plan is Hobby. The
+Dashboard quotes Pro at USD25/month or USD240/year, including MFA and custom
+session lifetime. No plan purchase was made. Dave's plan decision remains Open.
+The existing USD180 provider spending cap does not authorize a Clerk charge.
+
+Rollback values are in the Before column. Use the same Dashboard controls to
+restore them if needed; do not disable password/recovery protections as a shortcut.
+No real-user password, MFA enrollment, recovery code or session was changed.
+
+Remaining acceptance (MFA controls also require an authorized plan purchase):
 
 - Authenticator MFA and backup codes. Enable backup codes before requiring MFA;
   verify enrollment and a single-use backup-code sign-in with a disposable user.
@@ -84,3 +105,17 @@ contains 59 distinct Notion issues; renderer generation and check pass.
 - [MFA recovery](https://clerk.com/docs/guides/secure/mfa-recovery)
 - [Session options](https://clerk.com/docs/guides/secure/session-options)
 - [Reverification](https://clerk.com/docs/guides/secure/reverification)
+
+## Release and production receipt
+
+PR204 merged as `b0c90e0174298e79946fb339cdf88ef87640d6d4` after all
+candidate checks passed. CI passed 149 API tests, 1,255 shared tests, 25 landing
+browser cases and 47 hosted app cases with one credential-dependent skip.
+Vercel production `dpl_AqEuLPJTAc4NtoBuU5WShDJc1Aeh` is READY on that exact
+merge. The application returns HTTP200. Production Smoke run39946131751 passed
+nine signed-in checks, with five opt-in scenarios skipped; disposable QA sessions
+were revoked and cleanup read back. Agent-created sessions verify active account
+compatibility; they do not test interactive password/MFA or account recovery.
+
+The plan-gated MFA rollout, backup-code sign-in, recovery and actual session-expiry
+acceptance remain open. No charge, credential change or legal activation occurred.
