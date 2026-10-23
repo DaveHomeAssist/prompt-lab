@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T04:27:20.174341+00:00",
+  "snapshotAt": "2026-10-23T06:21:23.552876+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "0832410453b5c9b5e7ec3f28060499ecea5b66e7",
+  "mainSha": "70f2c12a91475eba024cd21b15a2d6ca8011b3f0",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Prior-version upgrade and snapshot environment unresolved",
+      "state": "Open",
+      "detail": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/blob/70f2c12a91475eba024cd21b15a2d6ca8011b3f0/prompt-lab-source/docs/DESKTOP_ACCEPTANCE_CHECKLIST.md"
+    },
     {
       "label": "Public request ceilings25/1000 live;180USD cap retained",
       "state": "Verified",
@@ -948,8 +954,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Establish disposable macOS acceptance environment and required signing identity; finish installed interaction, prior-version upgrade/snapshot restore and human/tagged-release proof.",
-      "verification": "2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+      "nextAction": "Qualify a named existing disposable VM with owner, guest access and whole-VM snapshot control before prior-version upgrade/restore. Recover the inaccessible runner route for qualification if appropriate. Keep Mac signing/profile and human/physical gates separate.",
+      "verification": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent. Earlier record: 2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
     },
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
