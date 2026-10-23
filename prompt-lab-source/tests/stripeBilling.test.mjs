@@ -79,6 +79,7 @@ async function createJwksHarness() {
       sub: 'user_123',
       email: 'user@example.com',
       email_address: 'user@example.com',
+      email_verified: true,
       iss: issuer,
     }, privateKey, {
       algorithm: 'RS256',

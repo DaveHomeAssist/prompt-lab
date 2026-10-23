@@ -182,7 +182,8 @@ function extractEmailFromClaims(claims = {}) {
 
 function buildClaimsFromClerkProfile(payload) {
   const primaryEmailId = String(payload?.primary_email_address_id || '');
-  const addresses = Array.isArray(payload?.email_addresses) ? payload.email_addresses : [];
+  const addresses = (Array.isArray(payload?.email_addresses) ? payload.email_addresses : [])
+    .filter((entry) => entry?.verification?.status === 'verified');
   const emailValues = addresses
     .map((entry) => String(entry?.email_address || '').trim().toLowerCase())
     .filter(Boolean);
@@ -195,6 +196,7 @@ function buildClaimsFromClerkProfile(payload) {
 
   return {
     ...(primaryEmail ? {
+      email_verified: true,
       email: primaryEmail,
       email_address: primaryEmail,
       primary_email_address: primaryEmail,
@@ -268,7 +270,15 @@ export async function verifyClerkRequest(request) {
       ...(Array.isArray(claims.usernames) ? claims.usernames : []),
     ],
   };
-  const clerkEmail = extractEmailFromClaims(clerkClaims);
+  // A signed session may include unverified/custom email fields. Never use
+  // those to claim an unbound legacy Stripe customer by email. Prefer the
+  // current verified backend profile over potentially stale token claims.
+  const clerkEmail = extractEmailFromClaims(profileClaims)
+    || (claims.email_verified === true ? extractEmailFromClaims({
+      email: claims.email,
+      email_address: claims.email_address,
+      primary_email_address: claims.primary_email_address,
+    }) : '');
   return {
     clerkUserId,
     clerkEmail,

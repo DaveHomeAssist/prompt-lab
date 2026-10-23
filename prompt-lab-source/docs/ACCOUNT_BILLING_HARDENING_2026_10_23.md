@@ -10,7 +10,9 @@ legacy annual subscriptions, offline grace, public API budgets or legal terms.
   Either metadata spelling is supported, but all populated bindings must agree.
   Conflicting search results fail closed before email fallback. Existing unbound
   legacy customer linking remains supported; it is not permission to overwrite
-  a populated binding.
+  a populated binding. Email discovery requires a verified Clerk profile email
+  or an explicitly verified signed email claim. Unverified addresses and custom
+  public metadata email fields cannot claim a legacy customer.
 - A hosted account must not inherit another account's cached Pro or owner state,
   including old caches without an account ID. Same-account caches retain the
   documented offline policy. Local desktop/dev owner activation is unchanged.
