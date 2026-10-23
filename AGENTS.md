@@ -189,3 +189,5 @@ This is an operator-maintained snapshot, not a background sync service. Never pu
 [2026-10-18] [PLB] [feature] Implement Library L1 to L8: drawer, inspector resizing, unified navigation, palettes, portable artwork and stable folders, compact/gallery views, and synchronized 1.8.0 development identity
 
 [2026-10-18] [PLB] [release] Deliver Library L1–L8 through PR170/171: drawer, inspector sizing, unified navigation, palettes, portable artwork and nested folder IDs, four views and version guards. All 16 PR171 checks and four production Library scenarios pass; MSI/NSIS/DEB/AppImage acceptance and macOS packaging pass. Retain physical/human/macOS-interaction and tagged-release gates.
+
+[2026-10-23] [PLB] [docs] Open D-016 (account library sync backend, mirrors DEC-87) and add docs/account-library-sync.md plus docs/account-library-sync-slices.md: Neon Postgres behind /api/library, opt-in, client-side merge, five Codex slices. No runtime change; nothing ships until D-016 is made
