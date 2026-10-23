@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
@@ -233,7 +234,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 }
 
 export default function LibraryWorkspace({
-  m, lib, loadEntry, copy, addToComposer, sendToABTest, openSavePanel,
+  m, lib, loadEntry, copy, addToComposer, sendToABTest, compareLocked = false, openSavePanel,
   onOpenScratchSource, onExportEntries,
   canUseCollections = true, canExportLibrary = true,
   canImportLibrary = canExportLibrary, canUsePacks = true, openBilling,
@@ -502,7 +503,7 @@ export default function LibraryWorkspace({
         {canUseCollections ? folderRows.filter(folder => !collapsedFolders.some(id => folderDescendants(folderRecords, id).has(folder.id) && id !== folder.id)).map(folder => <div key={folder.id} className="pl-library-folder" style={{ paddingLeft: `${Math.min(folder.depth, 6) * 10}px` }}>
           {folder.hasChildren && <button type="button" aria-label={`${collapsedFolders.includes(folder.id) ? 'Expand' : 'Collapse'} folder ${folder.name}`} aria-expanded={!collapsedFolders.includes(folder.id)} onClick={() => setCollapsedFolders(current => current.includes(folder.id) ? current.filter(item => item !== folder.id) : [...current, folder.id])}><Ic n={collapsedFolders.includes(folder.id) ? 'ArrowRight' : 'ChevronDown'} size={12} /></button>}
           <button type="button" className="pl-folder-select" title={folder.collection} aria-current={smartView === 'collection' && lib.activeCollection === folder.collection ? 'page' : undefined} onClick={() => { setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(folder.collection); if (compact) setDrawerOpen(false); }}><Artwork value={folder.artwork} fallback="Folder" /><span>{folder.name}</span><small>{lib.library.filter(entry => folderRecords.some(item => item.collection === entry.collection && folderDescendants(folderRecords, folder.id).has(item.id))).length}</small></button>
-        </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections · Pro</button>}
+        </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
         {showCollectionManager && canUseCollections && <div className="pl-collection-manager">
           <label>Parent folder<select aria-label="Parent folder" value={collectionParent} onChange={event => setCollectionParent(event.target.value)}><option value="">Library root</option>{folderRows.map(folder => <option key={folder.id} value={folder.id}>{folder.collection}</option>)}</select></label>
           <div className="pl-collection-create"><input value={collectionDraft} onChange={(event) => setCollectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createCollection(); }} placeholder="New collection" aria-label="New collection name" /><button type="button" onClick={createCollection} disabled={!collectionDraft.trim() || folderSaving}>Add</button></div>
@@ -569,7 +570,7 @@ export default function LibraryWorkspace({
           <button type="button" onClick={() => runBulk(() => checkedEntries.forEach((entry) => lib.restoreDeleted(entry.id)), `Restored ${checkedEntries.length} prompts.`)}>Restore</button>
           <button type="button" onClick={() => runBulk(() => lib.permanentlyDeleteEntries?.(checkedIds) ?? 0, `Permanently deleted ${checkedEntries.length} ${checkedEntries.length === 1 ? 'prompt' : 'prompts'}.`)}><Ic n="Trash2" size={13} /> Delete forever</button>
         </> : <>
-          {canUseCollections ? <label>Move to<select aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" onClick={() => openBilling?.('collections')}>Collections Pro</button>}
+          {canUseCollections ? <label>Move to<select aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
           <label>Add tag<input value={bulkTag} onChange={(event) => setBulkTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && bulkTag.trim()) { const tag = bulkTag.trim(); runBulk(() => lib.addTagToEntries(checkedIds, tag), `Added #${tag} to ${checkedIds.length} prompts.`); setBulkTag(''); } }} placeholder="Type + Enter" /></label>
           <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: true })), `Favorited ${checkedIds.length} prompts.`)}><Ic n="Star" size={13} /> Favorite</button>
           <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: false })), `Unfavorited ${checkedIds.length} prompts.`)}>Unfavorite</button>
@@ -647,7 +648,7 @@ export default function LibraryWorkspace({
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>
             <button type="button" className="pl-primary-button" onClick={() => loadEntry(selected)}>Open in Editor</button>
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
-            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare</button>
+            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare{compareLocked && <ProBadge />}</button>
             <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
             <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>

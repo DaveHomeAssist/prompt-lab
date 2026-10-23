@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
 import GenerationControls from './GenerationControls.jsx';
 
@@ -55,7 +56,7 @@ export default function EditorActions({
       onClick={fromMenu(onRunCases)}
       disabled={loading || runningCases || testCaseCount === 0}
       aria-busy={runningCases}
-      aria-label={runCasesLocked ? `${batchLabel} Pro` : batchLabel}
+      aria-label={runCasesLocked ? `${batchLabel} Pro feature` : batchLabel}
       title={runCasesLocked ? 'Batch runs are part of Prompt Lab Pro.' : 'Test how the enhancer rewrites case inputs, not the downstream answers.'}
       className={`ui-control min-w-[8rem] flex-[0_1_9rem] flex items-center justify-center gap-1 px-3 rounded-lg py-2 text-xs font-semibold transition-colors ${runCasesButtonClass}`}
     >
@@ -63,7 +64,7 @@ export default function EditorActions({
         ? <span className={`w-3.5 h-3.5 border-2 ${runCasesLocked ? 'border-orange-100' : 'border-amber-100'} border-t-transparent rounded-full animate-spin`} />
         : <Ic n="FlaskConical" size={12} />}
       <span className="truncate">{batchLabel}</span>
-      {runCasesLocked && <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-orange-50">Pro</span>}
+      {runCasesLocked && <ProBadge className="bg-orange-500/20 text-orange-50" />}
     </button>
   );
   const saveButton = (

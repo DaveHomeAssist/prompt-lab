@@ -1128,6 +1128,7 @@ export default function App({
         clerkUserButton={clerkUser ? clerkUserButton : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
+        lockedRunsViews={{ compare: !canUseAbTesting }}
       />
 
       <PendingWritesNotice m={m} />
@@ -1324,6 +1325,7 @@ export default function App({
               copy={copy}
               addToComposer={handleAddToComposer}
               sendToABTest={(entry) => handleSendToABTest(entry, 'a')}
+              compareLocked={!canUseAbTesting}
               openSavePanel={openSavePanel}
               onOpenScratchSource={(noteId) => {
                 setScratchOpenNoteId(noteId);
@@ -1364,6 +1366,7 @@ export default function App({
               runSingleCase={runSingleCase} removeCase={removeCase}
               loadEntry={handleLoadEntry} deleteEntry={deleteEntry} addToComposer={handleAddToComposer}
               openSavePanel={openSavePanel} sendToABTest={handleSendToABTest} copy={copy}
+              compareLocked={!canUseAbTesting}
               canUseCollections={canUseCollections}
               canExportLibrary={canExportLibrary}
               openBilling={openBilling}
@@ -1427,6 +1430,7 @@ export default function App({
                   pageScroll={pageScroll}
                   onQuickStart={handleEvaluateQuickStart}
                   onOpenCompare={handleEvaluateOpenCompare}
+                  compareLocked={!canUseAbTesting}
                 />
               )}
           </div>
@@ -1451,6 +1455,7 @@ export default function App({
             onSendToEditor={sendScratchToEditor}
             onSendToComposer={sendScratchToComposer}
             onSendToABTest={sendScratchToABTest}
+            compareLocked={!canUseAbTesting}
           />
         </div>
       )}

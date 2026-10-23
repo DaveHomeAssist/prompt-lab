@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
 import useEvalRuns from './hooks/useEvalRuns.js';
 import usePersistedState from './usePersistedState.js';
@@ -394,6 +395,7 @@ export default function RunTimelinePanel({
   pageScroll,
   onQuickStart,
   onOpenCompare,
+  compareLocked = false,
 }) {
   const [timelineFilters, setTimelineFilters] = usePersistedState(
     EVALUATE_TIMELINE_FILTERS_KEY,
@@ -547,6 +549,7 @@ export default function RunTimelinePanel({
                 >
                   <Ic n="GitBranch" size={11} />
                   Compare View
+                  {compareLocked && <ProBadge />}
                 </button>
               )}
             </div>

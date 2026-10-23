@@ -7,6 +7,7 @@ import { SUBVIEWS } from './lib/navigationRegistry.js';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import MobileNavigation from './MobileNavigation.jsx';
 import { openProblemReport } from './lib/diagnostics.js';
+import ProBadge from './ProBadge.jsx';
 
 export default function AppHeader({
   m, compact, libraryCount, colorMode, setColorMode,
@@ -19,6 +20,8 @@ export default function AppHeader({
   settingsButtonRef,
   renderMobileNavigation = true,
   onNewPrompt, newPromptDisabled = false,
+  // Evaluate subviews locked for this user, e.g. { compare: true }.
+  lockedRunsViews = {},
 }) {
   const { palette, setPalette } = useThemeTokens();
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
@@ -95,7 +98,7 @@ export default function AppHeader({
         <div role="tablist" aria-label="Workspaces" className="pl-workspace-tabs" onKeyDown={event => handleTabArrowKeys(event, primaryView === 'create' ? workspaceView : primaryView, id => id === 'runs' ? openSection('evaluate') : id === 'notebook' ? setPrimaryView('notebook') : openCreateView(id))}>
           {[...createModeButtons, { id: 'runs', label: 'Evaluate', action: () => openSection('evaluate'), active: primaryView === 'runs' }, { id: 'notebook', label: 'Scratch', action: () => setPrimaryView('notebook'), active: primaryView === 'notebook' }].map(({ id, label, action, active }) => <button key={id} type="button" data-tab-id={id} data-testid={`nav-${id === 'editor' ? 'create' : id === 'runs' ? 'evaluate' : id === 'notebook' ? 'scratch' : id}`} tabIndex={active ? 0 : -1} role="tab" aria-selected={active} onClick={action} className={`pl-tab-btn ui-control px-3 py-1.5 text-xs font-semibold rounded-lg ${active ? activeTabClass : inactiveTabClass}`}>{label}</button>)}
         </div>
-        {primaryView === 'runs' && <div role="tablist" aria-label="Evaluate views" className="pl-scroll-row" onKeyDown={event => handleTabArrowKeys(event, runsView, openRunsView)}>{SUBVIEWS.runs.map(({ id, label }) => <button key={id} type="button" data-tab-id={id} tabIndex={runsView === id ? 0 : -1} role="tab" aria-selected={runsView === id} onClick={() => openRunsView(id)} className={`pl-tab-btn ui-control px-2.5 py-1 text-xs rounded-lg ${runsView === id ? activeTabClass : inactiveTabClass}`}>{label}</button>)}</div>}
+        {primaryView === 'runs' && <div role="tablist" aria-label="Evaluate views" className="pl-scroll-row" onKeyDown={event => handleTabArrowKeys(event, runsView, openRunsView)}>{SUBVIEWS.runs.map(({ id, label }) => <button key={id} type="button" data-tab-id={id} tabIndex={runsView === id ? 0 : -1} role="tab" aria-selected={runsView === id} onClick={() => openRunsView(id)} className={`pl-tab-btn ui-control px-2.5 py-1 text-xs rounded-lg ${runsView === id ? activeTabClass : inactiveTabClass}`}>{label}{lockedRunsViews?.[id] && <ProBadge />}</button>)}</div>}
       </div>}
       </header>
       {compact && renderMobileNavigation && (

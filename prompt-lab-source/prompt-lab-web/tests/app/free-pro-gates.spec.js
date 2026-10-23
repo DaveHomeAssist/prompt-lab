@@ -35,7 +35,7 @@ test('Free accounts export the Library without a paywall', async ({ page }) => {
 
 test('Free accounts see Collections behind a named Pro dialog', async ({ page }) => {
   await page.goto('/app/#/library');
-  await page.getByRole('button', { name: 'Collections · Pro', exact: true }).click();
+  await page.getByRole('button', { name: 'Collections Pro feature', exact: true }).click();
   const gate = page.getByRole('dialog', { name: 'Collections is a Pro feature', exact: true });
   await expect(gate).toBeVisible();
   await gate.getByRole('button', { name: 'Close billing modal', exact: true }).click();
@@ -54,10 +54,31 @@ test('Free accounts can save test cases but batch runs open the Pro dialog', asy
   await expect(cases).toContainText('Test Cases (1)');
 
   await page.getByRole('button', { name: 'Open in Editor' }).click();
-  const runCases = page.getByRole('button', { name: 'Test Enhancer Pro', exact: true });
+  const runCases = page.getByRole('button', { name: 'Test Enhancer Pro feature', exact: true });
   await expect(runCases).toBeEnabled();
   await runCases.click();
   const gate = page.getByRole('dialog', { name: 'Batch runs is a Pro feature', exact: true });
   await expect(gate).toBeVisible();
   await expect(page.getByText(/Ran \d+\/1 test cases/)).toHaveCount(0);
+});
+
+test('Free accounts see a Pro badge on locked navigation, not on free views', async ({ page }) => {
+  await page.goto('/app/#/evaluate');
+  const views = page.getByRole('tablist', { name: 'Evaluate views' });
+  const compareTab = views.getByRole('tab', { name: 'Compare Pro feature', exact: true });
+  await expect(compareTab).toBeVisible();
+  await expect(compareTab.getByTestId('pro-badge')).toHaveAttribute('title', 'Pro feature');
+  await expect(compareTab.getByTestId('pro-badge')).toContainText('Pro');
+  await expect(views.getByRole('tab', { name: 'History', exact: true })).toBeVisible();
+  await expect(views.getByRole('tab', { name: 'History', exact: true }).getByTestId('pro-badge')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Compare View Pro feature', exact: true })).toBeVisible();
+
+  await page.goto('/app/#/library');
+  await page.getByRole('button', { name: 'Inspect Alpha prompt' }).click();
+  const compare = page.getByRole('button', { name: 'Compare Pro feature', exact: true });
+  await expect(compare).toBeVisible();
+  await compare.click();
+  const gate = page.getByRole('dialog', { name: 'Compare is a Pro feature', exact: true });
+  await expect(gate).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open in Editor', exact: true }).getByTestId('pro-badge')).toHaveCount(0);
 });

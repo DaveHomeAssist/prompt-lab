@@ -573,3 +573,24 @@ describe('LibraryWorkspace test cases', () => {
     expect(screen.getByText('Restore this prompt to add test cases.')).toBeInTheDocument();
   });
 });
+
+describe('LibraryWorkspace Pro badges (product call 3)', () => {
+  it('marks locked Compare and Collections with a Pro feature badge', () => {
+    const { callbacks } = renderLibrary({ props: { compareLocked: true, canUseCollections: false } });
+    const collections = screen.getByRole('button', { name: 'Collections Pro feature' });
+    fireEvent.click(collections);
+    expect(callbacks.openBilling).toHaveBeenCalledWith('collections');
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    const compare = screen.getByRole('button', { name: 'Compare Pro feature' });
+    fireEvent.click(compare);
+    expect(callbacks.sendToABTest).toHaveBeenCalledWith(entries[0]);
+    expect(screen.getByRole('button', { name: 'Open in Editor' }).querySelector('[data-testid="pro-badge"]')).toBeNull();
+  });
+
+  it('shows no Pro badges when Compare and Collections are available', () => {
+    renderLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+    expect(screen.getByRole('button', { name: 'Compare' })).toBeInTheDocument();
+    expect(screen.queryByTestId('pro-badge')).not.toBeInTheDocument();
+  });
+});
