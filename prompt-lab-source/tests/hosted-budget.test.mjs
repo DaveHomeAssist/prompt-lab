@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  budgetRefusalScope,
   budgetWindow,
   createSseUsageReader,
   pricingFor,
@@ -17,10 +18,12 @@ function memoryStore() {
   const totals = new Map();
   return {
     totals,
-    incrementBy: async (key, amount) => {
-      const next = (totals.get(key) ?? 0) + amount;
-      totals.set(key, next);
-      return next;
+    transact: async ({ keys, amount, limits }) => {
+      const next = keys.map(({ key }) => (totals.get(key) ?? 0) + amount);
+      const scope = budgetRefusalScope(next, limits);
+      if (scope) return scope;
+      keys.forEach(({ key }, index) => totals.set(key, next[index]));
+      return 0;
     },
   };
 }
@@ -65,7 +68,7 @@ test('the cycle follows the billing day across months and years', () => {
 test('daily pace spreads the remaining cycle budget and refunds a refusal', async () => {
   const store = memoryStore();
   const config = { cycleBudgetMicros: 23_000_000, cycleDay: 14, ipDailyMicros: null };
-  const reserve = (amount, extra = {}) => reserveBudget({ config, reserve: amount, ip: '1', owner: false, now: OCT_22, incrementBy: store.incrementBy, ...extra });
+  const reserve = (amount, extra = {}) => reserveBudget({ config, reserve: amount, ip: '1', owner: false, now: OCT_22, transact: store.transact, ...extra });
   // 23 days left: $1.00 a day.
   const ok = await reserve(600_000);
   assert.equal(ok.refused, false);
@@ -87,11 +90,11 @@ test('unspent days roll forward and past spend shrinks today\'s pace', async () 
   // Two days left with nothing spent: half the cycle is available today.
   const quiet = memoryStore();
   const nov12 = Date.UTC(2026, 10, 12, 9);
-  assert.equal((await reserveBudget({ config, reserve: 11_000_000, ip: '1', owner: false, now: nov12, incrementBy: quiet.incrementBy })).refused, false);
+  assert.equal((await reserveBudget({ config, reserve: 11_000_000, ip: '1', owner: false, now: nov12, transact: quiet.transact })).refused, false);
   // $20 already spent before today: $3 over 23 days is about 13 cents.
   const busy = memoryStore();
   busy.totals.set('cycle:2026-10-14', 20_000_000);
-  const late = await reserveBudget({ config, reserve: 200_000, ip: '1', owner: false, now: OCT_22, incrementBy: busy.incrementBy });
+  const late = await reserveBudget({ config, reserve: 200_000, ip: '1', owner: false, now: OCT_22, transact: busy.transact });
   assert.equal(late.scope, 'day');
   assert.equal(busy.totals.get('cycle:2026-10-14'), 20_000_000);
 });
@@ -99,7 +102,7 @@ test('unspent days roll forward and past spend shrinks today\'s pace', async () 
 test('the per-IP cap applies to visitors only', async () => {
   const store = memoryStore();
   const config = { cycleBudgetMicros: 180_000_000, cycleDay: 14, ipDailyMicros: 500_000 };
-  const call = (ip, owner = false) => reserveBudget({ config, reserve: 300_000, ip, owner, now: OCT_22, incrementBy: store.incrementBy });
+  const call = (ip, owner = false) => reserveBudget({ config, reserve: 300_000, ip, owner, now: OCT_22, transact: store.transact });
   assert.equal((await call('a')).refused, false);
   assert.equal((await call('a')).scope, 'ip');
   assert.equal((await call('b')).refused, false);
@@ -120,17 +123,14 @@ test('SSE usage survives events split across chunks', () => {
   assert.equal(cut.finish(), null);
 });
 
-test('a store failure on one counter undoes the counters that did update', async () => {
+test('a failed transaction leaves all counters untouched', async () => {
   const store = memoryStore();
   const config = { cycleBudgetMicros: 180_000_000, cycleDay: 14, ipDailyMicros: 500_000 };
-  const flaky = async (key, amount, ttl) => {
-    if (key.startsWith('day:')) throw new Error('store timeout');
-    return store.incrementBy(key, amount, ttl);
-  };
+  const flaky = async () => { throw new Error('store timeout'); };
   await assert.rejects(
-    reserveBudget({ config, reserve: 300_000, ip: 'a', owner: false, now: OCT_22, incrementBy: flaky }),
+    reserveBudget({ config, reserve: 300_000, ip: 'a', owner: false, now: OCT_22, transact: flaky }),
     /store timeout/,
   );
-  assert.equal(store.totals.get('cycle:2026-10-14'), 0);
-  assert.equal(store.totals.get('ip:2026-10-22:a'), 0);
+  assert.equal(store.totals.has('cycle:2026-10-14'), false);
+  assert.equal(store.totals.has('ip:2026-10-22:a'), false);
 });

@@ -10,6 +10,8 @@ import {
 import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
 import { isHostedOwner } from './_lib/hostedOwner.js';
 import {
+  BUDGET_TRANSACTION_SCRIPT,
+  budgetRefusalScope,
   createSseUsageReader,
   pricingFor,
   readBudgetConfig,
@@ -211,37 +213,48 @@ async function incrementWindow(namespace, key, windowMs, memoryMap, { requirePer
   return incrementMemoryWindow(memoryMap, key, windowMs);
 }
 
-async function incrementBudgetTotal(key, amount, ttlMs) {
+async function transactBudget({ keys, amount, limits }) {
   const requirePersistent = process.env.NODE_ENV === 'production';
-  if (getRedisConfig()) {
-    try {
-      const redisKey = `plb:budget:${key}`;
-      const total = Number(await redisCommand('incrby', redisKey, amount));
-      if (!Number.isFinite(total)) throw new Error('Budget store returned a non-numeric total');
-      try {
-        const remainingTtl = Number(await redisCommand('pttl', redisKey));
-        if (!Number.isFinite(remainingTtl) || remainingTtl < 0) await redisCommand('pexpire', redisKey, ttlMs);
-      } catch (error) {
-        // The increment applied; a missing expiry only keeps a dated key longer.
-        console.warn(`[proxy] budget key expiry not set: ${error.message}`);
-      }
-      return total;
-    } catch (error) {
-      console.warn(`[proxy] persistent budget unavailable: ${error.message}`);
-      if (requirePersistent) throw error;
+  const config = getRedisConfig();
+  if (config) {
+    // POST keeps the script and counter keys out of URL logs. One EVAL checks
+    // limits and writes all counters, with no refund/rollback round trip.
+    const response = await fetchWithTimeout(`${config.url}/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([
+        'EVAL', BUDGET_TRANSACTION_SCRIPT, keys.length,
+        ...keys.map(({ key }) => `plb:budget:${key}`),
+        amount, limits ? 'reserve' : 'settle', limits?.cycle ?? 0,
+        limits?.days ?? 1, limits?.owner ? 1 : 0, limits?.ip ?? 0,
+        ...keys.map(({ ttlMs }) => ttlMs),
+      ]),
+    }, {
+      service: 'Redis',
+      timeoutMs: readBoundedIntEnv('PROMPTLAB_REDIS_TIMEOUT_MS', REDIS_TIMEOUT_MS, { max: 5000 }),
+    });
+    if (!response.ok) throw new Error(`Budget store returned ${response.status}`);
+    const data = await response.json();
+    if (data.error || !Array.isArray(data.result) || data.result.length !== 1
+      || ![0, 1, 2, 3].includes(data.result[0])) {
+      throw new Error('Budget store returned an invalid transaction result');
     }
+    return data.result[0];
   }
   if (requirePersistent) throw new Error('Persistent budget metering is required.');
 
   const now = Date.now();
-  let entry = budgetTotals.get(key);
-  if (!entry || now >= entry.resetAt) {
-    entry = { count: 0, resetAt: now + ttlMs };
-    budgetTotals.set(key, entry);
-  }
-  entry.count += amount;
+  const totals = keys.map(({ key }) => {
+    const entry = budgetTotals.get(key);
+    return (entry && now < entry.resetAt ? entry.count : 0) + amount;
+  });
+  const scope = budgetRefusalScope(totals, limits);
+  if (scope) return scope;
+  keys.forEach(({ key, ttlMs }, index) => {
+    budgetTotals.set(key, { count: totals[index], resetAt: now + ttlMs });
+  });
   pruneMap(budgetTotals, now);
-  return entry.count;
+  return 0;
 }
 
 async function getBurstState(ip) {
@@ -603,7 +616,7 @@ export default async function handler(request) {
           reserve: reservationMicros(budgetRates, sanitizedBody),
           ip: clientIp,
           owner,
-          incrementBy: incrementBudgetTotal,
+          transact: transactBudget,
         });
       } catch {
         return jsonResponse({

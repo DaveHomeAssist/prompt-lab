@@ -100,6 +100,50 @@ export function reservationMicros(rates, { bodyBytes, maxTokens }) {
 
 const count = (value) => (Number.isFinite(value) && value > 0 ? value : 0);
 
+// Validate every counter before writing: Redis scripts isolate commands but
+// do not roll back writes if a later command fails. Refusals write nothing.
+export const BUDGET_TRANSACTION_SCRIPT = `
+local amount = tonumber(ARGV[1])
+local totals = {}
+for i, key in ipairs(KEYS) do
+  local raw = redis.call('GET', key)
+  local current = 0
+  if raw then current = tonumber(raw) end
+  if raw and (not current or current < 0 or current ~= math.floor(current)) then
+    return redis.error_reply('Invalid budget counter')
+  end
+  totals[i] = current + amount
+  if totals[i] < 0 or totals[i] > 9007199254740991 then
+    return redis.error_reply('Invalid budget adjustment')
+  end
+end
+if ARGV[2] == 'reserve' then
+  local cycle = tonumber(ARGV[3])
+  local days = tonumber(ARGV[4])
+  local owner = ARGV[5] == '1'
+  local ip = tonumber(ARGV[6])
+  if totals[1] > cycle then return {1} end
+  local allowance = math.floor((cycle - (totals[1] - totals[2])) / days)
+  if not owner and totals[2] > allowance then return {2} end
+  if not owner and ip > 0 and totals[3] > ip then return {3} end
+end
+for i, key in ipairs(KEYS) do
+  redis.call('SET', key, string.format('%.0f', totals[i]), 'PX', ARGV[6 + i])
+end
+return {0}
+`;
+
+// The local development store applies the same check before any writes.
+export function budgetRefusalScope(totals, limits) {
+  if (!limits) return 0;
+  const { cycle, days, owner, ip } = limits;
+  if (totals[0] > cycle) return 1;
+  const allowance = Math.floor((cycle - (totals[0] - totals[1])) / days);
+  if (!owner && totals[1] > allowance) return 2;
+  if (!owner && ip && totals[2] > ip) return 3;
+  return 0;
+}
+
 /** Cost of one response from the usage Anthropic reports. */
 export function usageCostMicros(rates, usage) {
   const input = count(usage?.input_tokens);
@@ -121,10 +165,11 @@ export function usageCostMicros(rates, usage) {
 
 /**
  * Reserve `reserve` against the cycle, today's pace and (for non-owners) the
- * caller's IP. `incrementBy(key, amount, ttlMs)` must return the new total.
+ * caller's IP. `transact({ keys, amount, limits })` checks limits and adjusts
+ * every counter atomically, returning 0 or the refused cycle/day/IP scope.
  * Owners count toward spend but are held only by the cycle ceiling.
  */
-export async function reserveBudget({ config, reserve, ip, owner, now = Date.now(), incrementBy }) {
+export async function reserveBudget({ config, reserve, ip, owner, now = Date.now(), transact }) {
   const window = budgetWindow(now, config.cycleDay);
   const ttl = (end) => Math.max(DAY_MS, end - now + 2 * DAY_MS);
   const keys = [
@@ -132,30 +177,13 @@ export async function reserveBudget({ config, reserve, ip, owner, now = Date.now
     { key: `day:${window.dayId}`, ttlMs: ttl(window.dayEnd) },
     ...(!owner && config.ipDailyMicros ? [{ key: `ip:${window.dayId}:${ip}`, ttlMs: ttl(window.dayEnd) }] : []),
   ];
-  const adjust = (amount) => Promise.all(keys.map(({ key, ttlMs }) => incrementBy(key, amount, ttlMs)));
-
-  // A partly applied reservation is undone before the failure surfaces, so a
-  // store outage cannot leave charges on the counters that did update.
-  const applied = await Promise.allSettled(keys.map(({ key, ttlMs }) => incrementBy(key, reserve, ttlMs)));
-  const failure = applied.find((result) => result.status === 'rejected');
-  if (failure) {
-    await Promise.allSettled(keys.map(({ key, ttlMs }, index) => (
-      applied[index].status === 'fulfilled' ? incrementBy(key, -reserve, ttlMs) : null
-    )));
-    throw failure.reason;
-  }
-  const [cycleTotal, dayTotal, ipTotal] = applied.map((result) => Number(result.value));
-  // Unspent days roll forward: today's pace is what remains of the cycle
-  // before today, spread over the days left including today.
-  const dayAllowance = Math.floor((config.cycleBudgetMicros - (cycleTotal - dayTotal)) / window.daysRemaining);
-  let refusal = null;
-  if (cycleTotal > config.cycleBudgetMicros) refusal = { scope: 'cycle', resetAt: window.cycleEnd };
-  else if (!owner && dayTotal > dayAllowance) refusal = { scope: 'day', resetAt: window.dayEnd };
-  else if (!owner && config.ipDailyMicros && ipTotal > config.ipDailyMicros) refusal = { scope: 'ip', resetAt: window.dayEnd };
-
-  if (refusal) {
-    await adjust(-reserve);
-    return { refused: true, ...refusal };
+  const scope = await transact({ keys, amount: reserve, limits: {
+    cycle: config.cycleBudgetMicros, days: window.daysRemaining,
+    owner, ip: config.ipDailyMicros,
+  } });
+  if (scope !== 0) {
+    if (![1, 2, 3].includes(scope)) throw new Error('Invalid budget transaction result');
+    return { refused: true, scope: ['cycle', 'day', 'ip'][scope - 1], resetAt: scope === 1 ? window.cycleEnd : window.dayEnd };
   }
   let settled = false;
   return {
@@ -166,7 +194,7 @@ export async function reserveBudget({ config, reserve, ip, owner, now = Date.now
       if (settled) return;
       settled = true;
       const delta = Math.ceil(actualMicros) - reserve;
-      if (delta !== 0) await adjust(delta);
+      if (delta !== 0) await transact({ keys, amount: delta });
     },
   };
 }

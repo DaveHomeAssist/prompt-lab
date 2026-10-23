@@ -168,7 +168,7 @@ test('production shared-key mode requires both hosted feature flags', async () =
 
   globalThis.fetch = async (url, init) => {
     if (String(url).startsWith('https://redis.example.test/')) {
-      const result = String(url).includes('/pttl/') ? 60_000 : 1;
+      const result = init?.method === 'POST' ? [0] : String(url).includes('/pttl/') ? 60_000 : 1;
       return new Response(JSON.stringify({ result }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -588,8 +588,10 @@ function budgetOnlyStore(fallback = assert.fail) {
   return async (url, init) => {
     const target = String(url);
     if (!target.startsWith('https://redis.example.test/')) return fallback(url, init);
-    if (!target.includes('plb%3Abudget')) return new Response('down', { status: 500 });
-    return new Response(JSON.stringify({ result: target.includes('/pttl/') ? 60_000 : 1 }), { status: 200 });
+    if (init?.method !== 'POST') return new Response('down', { status: 500 });
+    const command = JSON.parse(init.body);
+    assert.equal(command[0], 'EVAL');
+    return new Response(JSON.stringify({ result: [0] }), { status: 200 });
   };
 }
 
@@ -1057,8 +1059,8 @@ test('production budget metering fails closed when its store is unavailable', as
   process.env.HOSTED_CYCLE_BUDGET_USD = '180';
   process.env.KV_REST_API_URL = 'https://redis.example.test';
   process.env.KV_REST_API_TOKEN = 'redis-token';
-  globalThis.fetch = async (url) => {
-    if (String(url).includes('/incrby/')) return new Response('down', { status: 500 });
+  globalThis.fetch = async (url, init) => {
+    if (init?.method === 'POST' && String(url).startsWith('https://redis.example.test')) return new Response('down', { status: 500 });
     if (String(url).startsWith('https://redis.example.test/')) {
       return new Response(JSON.stringify({ result: String(url).includes('/pttl/') ? 60_000 : 1 }), { status: 200 });
     }
@@ -1067,6 +1069,35 @@ test('production budget metering fails closed when its store is unavailable', as
   const handler = await loadHandler();
   const response = await handler(shared());
   assert.equal(response.status, 503);
+  assert.match(await response.text(), /budget protection is unavailable/);
+});
+
+test('production budget errors in successful Redis HTTP responses fail closed', async () => {
+  process.env.NODE_ENV = 'production';
+  process.env.ANTHROPIC_API_KEY = 'server-key';
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+  process.env.HOSTED_CYCLE_BUDGET_USD = '180';
+  process.env.KV_REST_API_URL = 'https://redis.example.test';
+  process.env.KV_REST_API_TOKEN = 'redis-token';
+  let transactions = 0;
+  globalThis.fetch = async (url, init) => {
+    assert.ok(String(url).startsWith('https://redis.example.test'));
+    if (init?.method === 'POST') {
+      transactions += 1;
+      const [command, script, keyCount, ...args] = JSON.parse(init.body);
+      assert.equal(command, 'EVAL');
+      assert.match(script, /Invalid budget counter/);
+      assert.equal(keyCount, 2);
+      assert.ok(args.slice(0, keyCount).every((key) => key.startsWith('plb:budget:')));
+      return new Response(JSON.stringify({ error: 'ERR invalid counter' }), { status: 200 });
+    }
+    return new Response(JSON.stringify({ result: String(url).includes('/pttl/') ? 60_000 : 1 }));
+  };
+  const handler = await loadHandler();
+  const response = await handler(shared());
+  assert.equal(response.status, 503);
+  assert.equal(transactions, 1);
   assert.match(await response.text(), /budget protection is unavailable/);
 });
 
