@@ -16,8 +16,8 @@
     {
       "label": "Folder first library plan reconciled",
       "state": "Open",
-      "detail": "2026-10-23 direct Dave instruction: update plan before implementation. Existing proposal, slices and D-016 revised. Complete 59-row Notion snapshot and all 14 original plan identities retained. Decision direction and existing five slice scope updates read back; runtime Not started. DEC-87 Revisit covers remaining hosted details. No library migration, runtime code, provisioning or public policy changes. Documentation validation and delivery pending. Private board configured path absent and PromptLab registry mapping absent.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/blob/codex/library-storage-plan-1023/prompt-lab-source/docs/account-library-sync.md"
+      "detail": "2026-10-23 direct Dave instruction: update plan before implementation. Existing proposal, slices and D-016 revised. Complete 59-row Notion snapshot and all 14 original plan identities retained. Decision direction and existing five slice scope updates read back; runtime Not started. DEC-87 Revisit covers remaining hosted details. No library migration, runtime code, provisioning or public policy changes. Dominic Node 22 docs:check passes (29 files, four consistency contracts); progress render/check and diff/punctuation checks pass. Candidate 61a8b20 pushed and PR210 opened; merge/deployment not yet verified at this snapshot. Private board configured path absent and PromptLab registry mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/210"
     },
     {
       "label": "Account library sync proposal recovered; decision pending",
