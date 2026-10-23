@@ -98,7 +98,11 @@ test('pricing uses two plans with accurate monthly and annual math', () => {
   expectLandingToMatch(/Start free\. Upgrade when useful\./);
   expectLandingToMatch(/\bFree\b/);
   expectLandingToMatch(/\bPro\b/);
-  expectLandingToMatch(/\$\s*9(?:\.00)?/);
+  // Proposal 1: the card shows the annual plan by default; the monthly $9 is
+  // one toggle away (set by the toggle script).
+  expectLandingToMatch(/\$\s*79\b/);
+  expectLandingToMatch(/\$6\.58 effective monthly/);
+  expectSourceToMatch(/proPrice\.textContent\s*=\s*["']9["']/);
   expectSourceToMatch(/proPrice\.textContent\s*=\s*["']79["']/);
   // $79/12 = $6.58; 12 x $9 - $79 = $29 saved.
   expectSourceToMatch(/\$6\.58 effective monthly/i);

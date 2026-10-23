@@ -39,7 +39,17 @@ for (const page of LANDING_PAGES) {
     const html = read(page);
     const monthly = String(PRO_PRICES.monthly.amountCents / 100);
     const annual = String(PRO_PRICES.annual.amountCents / 100);
-    assert.match(html, new RegExp(`<span id="proPrice">${escape(monthly)}</span>`));
+    // Proposal 1: the card renders the annual plan before any script runs, so
+    // the static default must be the annual amount and its derived copy.
+    assert.match(html, new RegExp(`<span id="proPrice">${escape(annual)}</span>`));
+    assert.match(
+      html,
+      new RegExp(escape(`<div class="pricing-period" id="proPeriod">per year · ${PRICE_COPY.annualEffectiveMonthly} effective monthly · save ${PRICE_COPY.annualSavings}/year</div>`)),
+    );
+    assert.match(html, /id="billingAnnual" value="annual" checked/);
+    assert.doesNotMatch(html, /id="billingMonthly"[^>]*\schecked/);
+    assert.match(html, /period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta"/);
+    assert.match(html, /selected \? selected\.value : 'annual'/);
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(annual)}'`));
     assert.match(html, new RegExp(`proPrice\\.textContent\\s*=\\s*'${escape(monthly)}'`));
     assert.match(html, new RegExp(escape(`${PRICE_COPY.annualEffectiveMonthly} effective monthly`)));

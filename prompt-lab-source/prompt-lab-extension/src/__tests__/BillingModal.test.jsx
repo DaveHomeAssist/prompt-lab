@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import BillingModal from '../modals/BillingModal.jsx';
 
@@ -190,6 +190,97 @@ describe('BillingModal landing period handoff', () => {
     expect(trigger).not.toHaveAttribute('inert');
     expect(trigger).not.toHaveAttribute('aria-hidden');
     expect(document.body.style.overflow).toBe('');
+  });
+});
+
+describe('BillingModal plan order (conversion proposal 1)', () => {
+  function planButtons() {
+    return within(screen.getByTestId('billing-plan-options')).getAllByRole('button');
+  }
+
+  it('lists Annual first as the primary choice with a Best value tag', () => {
+    const billing = createBilling();
+    render(<BillingModal m={theme} billing={billing} onClose={vi.fn()} />);
+
+    const [first, second] = planButtons();
+    expect(planButtons()).toHaveLength(2);
+    expect(first).toHaveAttribute('data-period', 'annual');
+    expect(first).toHaveAccessibleName(/Go Pro Annual/);
+    expect(first).toHaveAttribute('data-primary', 'true');
+    expect(first.className).toContain('bg-orange-600');
+    expect(within(first).getByTestId('billing-best-value')).toHaveTextContent('Best value');
+    expect(first).toHaveTextContent('$79/year ($6.58/month), save $29');
+
+    expect(second).toHaveAttribute('data-period', 'monthly');
+    expect(second).toHaveAccessibleName(/Go Pro Monthly/);
+    expect(second).not.toHaveAttribute('data-primary');
+    expect(second.className).not.toContain('bg-orange-600');
+    expect(within(second).queryByTestId('billing-best-value')).toBeNull();
+    expect(second).toHaveTextContent('$9/month, cancel anytime');
+    expect(screen.getAllByTestId('billing-best-value')).toHaveLength(1);
+
+    // No plan is marked as chosen on the pricing page without an explicit choice.
+    expect(document.querySelector('[data-requested="true"]')).toBeNull();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['annual', 'billing-modal', undefined],
+    ['monthly', 'billing-modal', undefined],
+    ['annual', 'collections', 'collections'],
+    ['monthly', 'collections', 'collections'],
+  ])('starts %s checkout with source %s when that button is clicked', (period, source, requestedFeature) => {
+    const billing = createBilling();
+    render(<BillingModal m={theme} billing={billing} requestedFeature={requestedFeature} onClose={vi.fn()} />);
+    expect(billing.startCheckout).not.toHaveBeenCalled();
+    fireEvent.click(planButtons().find((button) => button.dataset.period === period));
+    expect(billing.startCheckout).toHaveBeenCalledTimes(1);
+    expect(billing.startCheckout).toHaveBeenCalledWith(period, source);
+  });
+
+  it('keeps an explicit monthly choice selected and primary, with Annual still first', () => {
+    const billing = createBilling();
+    render(
+      <BillingModal
+        m={theme}
+        billing={billing}
+        requestedPeriod="monthly"
+        requestedSource="landing-pricing"
+        onClose={vi.fn()}
+      />,
+    );
+
+    const [annual, monthly] = planButtons();
+    expect(annual).toHaveAttribute('data-period', 'annual');
+    expect(monthly).toHaveAttribute('data-period', 'monthly');
+    expect(monthly).toHaveAttribute('data-requested', 'true');
+    expect(monthly).toHaveAttribute('data-primary', 'true');
+    expect(monthly.className).toContain('bg-orange-600');
+    expect(monthly).toHaveTextContent('Selected on pricing page');
+    expect(annual).not.toHaveAttribute('data-primary');
+    expect(annual).not.toHaveAttribute('data-requested');
+    expect(annual).not.toHaveTextContent('Selected on pricing page');
+    expect(within(annual).getByTestId('billing-best-value')).toHaveTextContent('Best value');
+    expect(screen.getByRole('status')).toHaveTextContent('Your monthly choice from the pricing page is highlighted');
+
+    fireEvent.click(monthly);
+    expect(billing.startCheckout).toHaveBeenCalledWith('monthly', 'landing-pricing');
+  });
+
+  it('keeps an explicit annual choice selected and primary', () => {
+    render(
+      <BillingModal
+        m={theme}
+        billing={createBilling()}
+        requestedPeriod="annual"
+        requestedSource="landing-pricing"
+        onClose={vi.fn()}
+      />,
+    );
+    const [annual, monthly] = planButtons();
+    expect(annual).toHaveAttribute('data-requested', 'true');
+    expect(annual).toHaveAttribute('data-primary', 'true');
+    expect(monthly).not.toHaveAttribute('data-primary');
   });
 });
 
