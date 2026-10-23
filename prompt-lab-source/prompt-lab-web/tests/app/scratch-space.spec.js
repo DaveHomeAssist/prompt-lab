@@ -58,13 +58,13 @@ for (const size of [{ width: 1440, height: 900 }, { width: 375, height: 812 }, {
         };
       });
       await editor.fill(note + '\nA saved focus edit.\nRecover this draft.');
-      await expect(page.getByText('Save failed — draft kept.', { exact: true })).toBeVisible();
+      await expect(page.getByText('Save failed. Draft kept.', { exact: true })).toBeVisible();
       const retry = page.getByRole('button', { name: 'Retry saving', exact: true });
       expect(await retry.evaluate(el => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })).toBe(true);
       await page.evaluate(() => { Storage.prototype.setItem = window.__scratchOriginalSet; });
       await retry.click();
       await expect.poll(async () => (await readPads(page)).pads.find(p => p.id === 'active').content).toContain('Recover this draft.');
-      await expect(page.getByText('Save failed — draft kept.', { exact: true })).toBeHidden();
+      await expect(page.getByText('Save failed. Draft kept.', { exact: true })).toBeHidden();
       await editor.fill(note + '\nA saved focus edit.');
       await expect.poll(async () => (await readPads(page)).pads.find(p => p.id === 'active').content).not.toContain('Recover this draft.');
     }

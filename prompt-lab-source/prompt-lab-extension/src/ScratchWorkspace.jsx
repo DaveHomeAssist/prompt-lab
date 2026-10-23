@@ -273,7 +273,7 @@ export default function ScratchWorkspace({
 
   const reportSaveFailure = () => {
     setSaveState('error');
-    setSaveError('Save failed — storage may be full. Your draft remains in this editor for retry.');
+    setSaveError('Save failed. Storage may be full. Your draft remains in this editor for retry.');
   };
 
   const commitActiveContent = (value) => {
@@ -528,7 +528,7 @@ export default function ScratchWorkspace({
     };
     const result = persistPads(nextState, { preferLocalIds: [padId] });
     if (!result.ok) {
-      notify?.('Could not update scratch metadata — storage may be full.');
+      notify?.('Could not update scratch metadata. Storage may be full.');
       return false;
     }
     if (padId === padsStateRef.current.activePadId) {
@@ -985,7 +985,7 @@ export default function ScratchWorkspace({
               else commitActiveContent(textRef.current);
             }}>{migrationReadFailedRef.current ? 'Retry loading' : 'Retry saving'}</button>}
             <div aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
-              {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed — stored data kept.' : 'Save failed — draft kept.') : saveError}</span>
+              {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed. Stored data kept.' : 'Save failed. Draft kept.') : saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>
                   : saveState === 'saving' ? <span className={m.textMuted || ''}>Saving…</span>
                     : saveState === 'saved' ? <span className="flex items-center gap-1 text-green-500"><Ic n="Check" size={11} />Saved</span>
