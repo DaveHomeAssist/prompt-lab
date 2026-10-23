@@ -7,6 +7,8 @@
     "./DOCS_INVENTORY.md",
     "./ROADMAP.md",
     "./NOTION_DOCS_AGENT.md",
+    "./docs/account-library-sync.md",
+    "./docs/account-library-sync-slices.md",
     "./docs/billing-policy.md",
     "./docs/docs-map.md",
     "./docs/docs-style-guide.md",

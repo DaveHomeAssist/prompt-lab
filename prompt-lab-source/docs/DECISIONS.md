@@ -22,6 +22,29 @@ Consequences: what this unlocks or closes off
 
 ---
 
+### [D-016] PromptLab account library sync — storage backend
+
+Status: open
+Owner: Dave
+Date opened: 2026-10-23
+
+Context: the prompt library lives in browser storage, so it belongs to one browser on one machine. Dave asked for a library that follows the account. The local model already carries stable ids, `updatedAt`, tombstones and append-only deletion markers, and the web shell already verifies Clerk session JWTs server-side, so the missing pieces are a server copy and a transport. Mirrors DEC-87 in DB | Decisions. Full proposal: [`account-library-sync.md`](account-library-sync.md).
+
+Options:
+1. Neon Postgres behind new `/api/library` routes keyed by Clerk user id, opt-in, client-side merge (recommended)
+2. Supabase with Clerk third-party auth and RLS
+3. Upstash Redis hash per user (already provisioned for billing and telemetry)
+4. A sync engine (Zero 1.0 or PowerSync) on Postgres
+5. User-owned cloud storage (Drive appData, Gist, Notion)
+6. Vercel Blob whole-library snapshot (ruled out: concurrent edits lose data)
+7. Clerk user metadata (ruled out: 8 KB cap against a 53 KB library)
+
+Recommendation: option 1. It reuses the existing auth path and data model, leaves room for sharing and server search without a migration, and stays inside the Vercel console. Tradeoff: prompts leave the device once a user opts in, which supersedes the export/import-only rule in [`LIBRARY_COMPATIBILITY_CONTRACT.md`](LIBRARY_COMPATIBILITY_CONTRACT.md) and needs privacy and terms updates before launch.
+
+Consequences: once made, unblocks the slices in [`account-library-sync-slices.md`](account-library-sync-slices.md). Pro gating of sync rides on D-010.
+
+---
+
 ### [D-001] PLB nav strategy — hash mode vs state router
 
 Status: resolved

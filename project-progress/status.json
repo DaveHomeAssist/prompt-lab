@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T11:28:18.339Z",
+  "snapshotAt": "2026-10-23T12:08:50.617Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b0c90e0174298e79946fb339cdf88ef87640d6d4",
+  "mainSha": "7931c58d9104bde54c33f2cb7e295e649eae8b21",
   "overall": "Acceptance incomplete",
-  "nextAction": "Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Decide D-016 / DEC-87 before account library sync slice 1; documentation recovery alone does not approve Neon or implementation. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Account library sync proposal recovered; decision pending",
+      "state": "Open",
+      "detail": "2026-10-23: documentation patch from Claude 8ff1922 recovered on current main as 35cf79c, PR207. Node22 docs:check passes: 29 Markdown files and four consistency contracts. D-016 stays open and DEC-87 Pending. All five sync slices remain Not started; no implementation, provisioning, migration or policy publication authorized. Proposal retains original f6fa3b6 baseline and needs implementation-time revalidation. Private Next Steps Board still lacks PromptLab mapping. Candidate CI and merge pending at snapshot.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/207"
+    },
     {
       "label": "Clerk production hardening; MFA plan decision open",
       "state": "Open",
@@ -978,8 +984,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Resolve DEC-87 / D-016 before starting the gated slice sequence.",
+      "verification": "Proposal documentation recovered in PR207; implementation not started. DEC-87 remains Pending.",
       "title": "Add the shared library sync engine, unmounted (sync slice 3)",
       "status": "Not started",
       "severity": "Medium",
@@ -990,8 +996,8 @@
     {
       "id": "402255fc8f4481c5a7d5fbe429ff03c9",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Resolve DEC-87 / D-016 before starting the gated slice sequence.",
+      "verification": "Proposal documentation recovered in PR207; implementation not started. DEC-87 remains Pending.",
       "title": "Record account library sync decision and draft policy text (sync slice 1)",
       "status": "Not started",
       "severity": "Medium",
@@ -1002,8 +1008,8 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Resolve DEC-87 / D-016 before starting the gated slice sequence.",
+      "verification": "Proposal documentation recovered in PR207; implementation not started. DEC-87 remains Pending.",
       "title": "Add account library sync to the web shell (sync slice 4)",
       "status": "Not started",
       "severity": "Medium",
@@ -1014,8 +1020,8 @@
     {
       "id": "402255fc8f4481f1840fd1440a7dcb35",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Resolve DEC-87 / D-016 before starting the gated slice sequence.",
+      "verification": "Proposal documentation recovered in PR207; implementation not started. DEC-87 remains Pending.",
       "title": "Launch account library sync on production web (sync slice 5)",
       "status": "Not started",
       "severity": "Medium",
@@ -1026,8 +1032,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Resolve DEC-87 / D-016 before starting the gated slice sequence.",
+      "verification": "Proposal documentation recovered in PR207; implementation not started. DEC-87 remains Pending.",
       "title": "Add account library sync schema and API behind LIBRARY_SYNC_ENABLED (sync slice 2)",
       "status": "Not started",
       "severity": "Medium",

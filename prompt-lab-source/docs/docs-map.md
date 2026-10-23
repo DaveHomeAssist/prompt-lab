@@ -33,6 +33,8 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 - `create-evaluate-restructure-plan.md`
 - `CURRENT_MENU_SYSTEM.md`
 - `LIBRARY_COMPATIBILITY_CONTRACT.md`
+- `account-library-sync.md`
+- `account-library-sync-slices.md`
 - `DAVELLM_EVAL.md`
 - `glossary.md`
 
