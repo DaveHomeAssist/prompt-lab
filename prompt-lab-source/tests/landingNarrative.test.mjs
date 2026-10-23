@@ -121,7 +121,7 @@ test('pricing card lists library export under Free and keeps it out of Pro', () 
   const proCard = landingHtml.match(/<div class="pricing-tier">Pro<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
   assert.match(freeCard, /JSON library export/);
   assert.doesNotMatch(proCard, /export/i);
-  for (const feature of ['A/B Compare', 'Batch test-case runs', 'Collections']) {
+  for (const feature of ['Compare in Evaluate', 'Batch test-case runs', 'Collections']) {
     assert.ok(proCard.includes(feature), `Pro card should list ${feature}`);
   }
   // AUD-008: the diff viewer is free.

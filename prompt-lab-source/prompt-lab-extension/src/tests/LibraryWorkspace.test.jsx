@@ -189,7 +189,7 @@ describe('LibraryWorkspace', () => {
     expect(callbacks.onOpenScratchSource).toHaveBeenCalledWith('note-7', entries[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Open in Editor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Composer' }));
-    fireEvent.click(screen.getByRole('button', { name: 'A/B test' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
     expect(callbacks.loadEntry).toHaveBeenCalledWith(entries[0]);
     expect(callbacks.addToComposer).toHaveBeenCalledWith(entries[0]);
     expect(callbacks.sendToABTest).toHaveBeenCalledWith(entries[0]);

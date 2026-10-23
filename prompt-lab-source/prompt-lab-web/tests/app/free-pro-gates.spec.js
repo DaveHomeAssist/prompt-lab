@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 // The hosted dev build runs with Pro gates on and a Free plan, which is what a
 // signed-in Free account sees in production after pricing v2 (#183):
-// Library export is free; Collections, batch test-case runs and A/B Compare
+// Library export is free; Collections, batch test-case runs and Compare
 // (which hosts the diff viewer) are Pro and route to a named billing dialog.
 // Nothing here opens checkout or calls a provider.
 

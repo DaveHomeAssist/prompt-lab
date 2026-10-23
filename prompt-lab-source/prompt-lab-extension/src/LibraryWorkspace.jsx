@@ -647,7 +647,7 @@ export default function LibraryWorkspace({
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>
             <button type="button" className="pl-primary-button" onClick={() => loadEntry(selected)}>Open in Editor</button>
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
-            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>A/B test</button>
+            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare</button>
             <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
             <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>

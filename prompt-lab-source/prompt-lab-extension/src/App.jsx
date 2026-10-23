@@ -977,7 +977,7 @@ export default function App({
       title: payload.title,
     });
     openRunsViewWithBilling('compare');
-    notify('Scratch content loaded into A/B Variant A.');
+    notify('Scratch content loaded into Compare Variant A.');
   };
   const promoteScratchToLibrary = (title, content, options = {}) => lib.doSave({
     raw: content,
@@ -1072,7 +1072,7 @@ export default function App({
     }
     trackTelemetry('evaluate.compare_opened', { plan: billing.plan });
     openRunsViewWithBilling('compare');
-    notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
+    notify('Opened Compare. Paste two variants or send prompts from the library to start a Compare run.');
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
@@ -1391,10 +1391,10 @@ export default function App({
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
             <p className={`mt-1 text-xs ${m.textMuted}`}>
               {runsView === 'compare'
-                ? 'Compare prompt variants, capture winners, and keep recent A/B runs in one place.'
+                ? 'Compare prompt variants, capture winners, and keep recent Compare runs in one place.'
                 : (currentEntry
-                    ? 'Review enhance, test-case, and A/B runs for the selected prompt.'
-                    : 'Review enhance, test-case, and A/B runs across your saved workbench.')}
+                    ? 'Review enhance, test-case, and Compare runs for the selected prompt.'
+                    : 'Review enhance, test-case, and Compare runs across your saved workbench.')}
             </p>
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
@@ -1404,7 +1404,7 @@ export default function App({
                 ? (
                   <div className="flex h-full items-center justify-center p-6">
                     <div className={`${m.surface} ${m.border} max-w-md rounded-2xl border p-5 text-center`}>
-                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is part of Prompt Lab Pro.</p>
+                      <p className={`text-sm font-semibold ${m.text}`}>Compare is part of Prompt Lab Pro.</p>
                       <p className={`mt-2 text-xs leading-relaxed ${m.textMuted}`}>
                         Unlock head-to-head prompt runs, saved winners, and compare history with a Prompt Lab Pro plan.
                       </p>

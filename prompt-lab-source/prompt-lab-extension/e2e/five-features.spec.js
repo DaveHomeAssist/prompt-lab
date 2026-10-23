@@ -111,9 +111,9 @@ for (const viewport of viewports) {
       } else {
         await page.getByRole('tablist', { name: 'Evaluate views' }).getByRole('tab', { name: 'Compare' }).click();
       }
-      await expect(page.getByText(/Model Arena · 2 variants/)).toBeVisible();
+      await expect(page.getByText(/Compare · 2 variants/)).toBeVisible();
       await page.getByRole('button', { name: '+ Variant' }).click();
-      await expect(page.getByText(/Model Arena · 3 variants/)).toBeVisible();
+      await expect(page.getByText(/Compare · 3 variants/)).toBeVisible();
 
       // Chain Lab can be built and opened from the existing composer workflow.
       await openWorkspace(page, viewport, 'Compose');

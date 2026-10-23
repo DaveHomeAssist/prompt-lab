@@ -111,7 +111,7 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('latency');
     expect(screen.getByText('Model Comparison (latest per model)')).toBeInTheDocument();
     expect(screen.getByText('Filtered view')).toBeInTheDocument();
-    expect(screen.getByText('Mode: A/B')).toBeInTheDocument();
+    expect(screen.getByText('Mode: Compare')).toBeInTheDocument();
   });
 
   it('persists filter edits and supports resetting them', async () => {

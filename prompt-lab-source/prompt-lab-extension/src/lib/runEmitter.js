@@ -3,7 +3,7 @@
  *
  * Trace boundary (v1): one user-triggered send/run action = one trace.
  *   - editor Enhance = one trace
- *   - A/B Run A / Run B = one trace each
+ *   - Compare Run A / Run B = one trace each
  *   - Run Both = two sibling traces
  *   - test case run = one trace
  *   - retry = new trace with retry_of

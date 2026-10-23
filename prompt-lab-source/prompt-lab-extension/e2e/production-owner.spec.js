@@ -94,11 +94,11 @@ test('@production owner retains full Pro access without a paid subscription', as
     await expect(output.getByRole('tab', { name: 'Side-by-side', exact: true })).toHaveAttribute('aria-selected', 'true');
     await expect(output.getByRole('tabpanel')).toContainText('Summarize the synthetic incident report');
     await page.goto(`${appUrl.href}#/compare`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByText(/Model Arena/)).toBeVisible();
-    await expect(page.getByText('A/B testing is part of Prompt Lab Pro.', { exact: true })).toHaveCount(0);
+    await expect(page.getByText(/Model Arena|Compare · \d+ variants/)).toBeVisible();
+    await expect(page.getByText(/^(A\/B testing|Compare) is part of Prompt Lab Pro\.$/)).toHaveCount(0);
     await expect(page.getByRole('dialog', { name: /is a Pro feature/ })).toHaveCount(0);
     expect(blocked, 'Owner check must not attempt purchases, provider calls or telemetry').toEqual([]);
-    console.info('[owner-smoke] Owner Pro and reload verified; production collection editor, export download, ungated batch control, Diff view and Model Arena accessible');
+    console.info('[owner-smoke] Owner Pro and reload verified; production collection editor, export download, ungated batch control, Diff view and Compare accessible');
   } finally {
     if (sessionId) await clerk.sessions.revokeSession(sessionId);
     else if (task) await clerk.agentTasks.revoke(task.agentTaskId);

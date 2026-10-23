@@ -782,7 +782,7 @@ export default function ScratchWorkspace({
     };
     try {
       await Promise.resolve(handler(payload));
-      notify?.(`${selectionOnly ? 'Selection' : 'Note'} sent to ${destination === 'ab' ? 'A/B' : destination}.`);
+      notify?.(`${selectionOnly ? 'Selection' : 'Note'} sent to ${destination === 'ab' ? 'Compare' : destination}.`);
     } catch (error) {
       logWarn(`send scratch to ${destination}`, error);
       notify?.(`Could not send this ${selectionOnly ? 'selection' : 'note'} to ${destination}.`);
@@ -980,7 +980,7 @@ export default function ScratchWorkspace({
               <select id="scratch-send-scope" value={sendScope} onChange={(event) => setSendScope(event.target.value)} className={`ui-control min-h-9 rounded-lg border px-2 text-xs ${m.input || ''}`}><option value="whole">Send note</option><option value="selection" disabled={!hasSelection}>Send selection</option></select>
               <button type="button" onClick={() => sendToSurface('editor')} disabled={!onSendToEditor || !text.trim() || (sendScope === 'selection' && !hasSelection)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''} disabled:opacity-40`}>Editor</button>
               <button type="button" onClick={() => sendToSurface('composer')} disabled={!onSendToComposer || !text.trim() || (sendScope === 'selection' && !hasSelection)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''} disabled:opacity-40`}>Composer</button>
-              <button type="button" onClick={() => sendToSurface('ab')} disabled={!onSendToABTest || !text.trim() || (sendScope === 'selection' && !hasSelection)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''} disabled:opacity-40`}>A/B</button>
+              <button type="button" onClick={() => sendToSurface('ab')} disabled={!onSendToABTest || !text.trim() || (sendScope === 'selection' && !hasSelection)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''} disabled:opacity-40`}>Compare</button>
               <button type="button" onClick={() => copyText(hasSelection ? selection.text : text, hasSelection ? 'Selection' : 'Note')} disabled={!text.trim()} className={`ui-control flex items-center gap-1 rounded-lg px-2.5 py-2 text-xs font-semibold ${copyButtonClass} disabled:opacity-40`}><Ic n="Copy" size={11} />Copy {hasSelection ? 'selection' : 'note'}</button>
               <button type="button" onClick={exportPad} disabled={!text.trim()} className={`ui-control rounded-lg p-2.5 ${m.btn || ''} disabled:opacity-40`} aria-label="Download note"><Ic n="Download" size={12} /></button>
               <button type="button" onClick={() => setConfirmDialog({ action: 'clear', title: 'Clear this note?', description: 'This removes all content but keeps the note, tags, links, and metadata.', confirmLabel: 'Clear note' })} disabled={!text} className="ui-control rounded-lg px-2.5 py-2 text-xs text-red-400 hover:bg-red-950/30 disabled:opacity-40">Clear</button>
