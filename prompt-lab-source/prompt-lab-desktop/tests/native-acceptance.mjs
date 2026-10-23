@@ -256,6 +256,13 @@ async function click(selector, using) {
       const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
       const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
       const cover = document.elementFromPoint(x, y);
+      const toolbar = cover?.closest('.pl-library-toolbar');
+      const scroller = target.closest('.pl-library-index');
+      if (toolbar && scroller && !target.contains(cover)) {
+        // Sort selection can scroll a pack summary behind the sticky toolbar.
+        // Scroll it back into the usable area; the next poll still requires a hit.
+        scroller.scrollTop -= toolbar.getBoundingClientRect().bottom - box.top + 8;
+      }
       // Native option popups do not participate in the document's hit test.
       return { uncovered: target.tagName === 'OPTION' || target.contains(cover),
         x, y, cover: cover?.tagName + '.' + cover?.className };
@@ -267,6 +274,11 @@ async function click(selector, using) {
     return stable && hit.uncovered;
   }, `${selector} position stable and unobscured`);
   await command('POST', `/session/${session}/element/${id}/click`, {});
+  if (selector.includes(' option[')) {
+    // WebView2 may keep its native select popup open after WebDriver option-click.
+    const selectId = await element(selector.slice(0, selector.indexOf(' option[')));
+    await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
+  }
 }
 async function fill(selector, text) {
   const id = await element(selector);
