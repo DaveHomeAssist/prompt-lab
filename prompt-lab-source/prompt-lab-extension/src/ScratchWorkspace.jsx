@@ -914,7 +914,10 @@ export default function ScratchWorkspace({
               {!noteFocused && <span className="pl-scratch-status">{activePad?.status || 'idea'}</span>}
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <button type="button" aria-pressed={noteFocused} onClick={() => setNoteFocused((current) => !current)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>{noteFocused ? 'Exit focus' : 'Focus note'}</button>
+              <button type="button" aria-pressed={noteFocused} onClick={() => {
+                setCompactPane('editor');
+                setNoteFocused((current) => !current);
+              }} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>{noteFocused ? 'Exit focus' : 'Focus note'}</button>
               <div hidden={noteFocused} className="pl-scratch-note-actions flex flex-wrap items-center gap-1">
                 <button type="button" title="Rename note" onClick={() => setNameDialog({ mode: 'rename', value: activePad?.name || '' })} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Rename</button>
                 <button type="button" onClick={duplicatePad} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Duplicate</button>

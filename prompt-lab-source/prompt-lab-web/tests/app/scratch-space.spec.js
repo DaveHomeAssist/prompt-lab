@@ -33,6 +33,17 @@ for (const size of [{ width: 1440, height: 900 }, { width: 375, height: 812 }, {
     const after = await editor.boundingBox();
     expect(after.width * after.height).toBeGreaterThan(before.width * before.height);
     expect(after.height).toBeGreaterThanOrEqual(size.height <= 256 ? 48 : 80);
+    if (size.width === 1440) {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await expect(editor).toBeVisible();
+      await expect(exit).toBeVisible();
+      await exit.click();
+      await expect(editor).toBeVisible();
+      await page.getByRole('button', { name: 'Focus note', exact: true }).click();
+      await page.setViewportSize(size);
+      await expect(editor).toBeVisible();
+      await expect(exit).toHaveAttribute('aria-pressed', 'true');
+    }
     await expect(page.getByRole('complementary', { name: 'Scratch note index' })).toBeHidden();
     await expect(page.getByRole('toolbar', { name: 'Markdown formatting toolbar' })).toBeHidden();
     await editor.fill(note + '\nA saved focus edit.');

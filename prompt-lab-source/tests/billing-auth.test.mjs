@@ -585,7 +585,7 @@ for (const verified of [true, false]) {
   });
 }
 
-for (const scenario of ['valid', 'wrong issuer', 'wrong audience']) {
+for (const scenario of ['valid', 'active session', 'wrong issuer', 'wrong audience', 'pending session']) {
   test(`pinned Clerk SDK verification honors configured claims: ${scenario}`, async () => {
     const jwks = await createJwksHarness();
     process.env.CLERK_SECRET_KEY = 'sk_test_sdk_fixture';
@@ -597,15 +597,44 @@ for (const scenario of ['valid', 'wrong issuer', 'wrong audience']) {
     try {
       const { verifyClerkRequest } = await import('../api/_lib/verifyClerkToken.js');
       const request = new Request('https://promptlab.tools/api/billing/license', {
-        headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { azp: 'https://promptlab.tools', aud: 'other-api' } })}` },
+        headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: {
+          azp: 'https://promptlab.tools', aud: 'other-api',
+          ...(scenario === 'pending session' ? { sts: 'pending' } : {}),
+          ...(scenario === 'active session' ? { sts: 'active' } : {}),
+        } })}` },
       });
-      if (scenario === 'valid') {
+      if (scenario === 'valid' || scenario === 'active session') {
         const identity = await verifyClerkRequest(request);
         assert.equal(identity.clerkUserId, 'user_a');
         assert.equal(identity.clerkEmail, 'user-a@example.com');
       } else {
         await assert.rejects(() => verifyClerkRequest(request), { name: 'ClerkAuthError', status: 401 });
       }
+    } finally {
+      await jwks.close();
+    }
+  });
+}
+
+for (const moduleUrl of [licenseUrl, portalUrl, billingModuleUrl('checkout.js')]) {
+  test(`pending Clerk session cannot reach billing: ${moduleUrl.split('/').pop()}`, async () => {
+    const jwks = await createJwksHarness();
+    process.env.BILLING_ENABLED = 'true';
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+      if (isJwksHarnessRequest(url)) return ORIGINAL_FETCH(url, init);
+      calls.push(String(url));
+      throw new Error('Pending sessions must be rejected before profile or Stripe access.');
+    };
+    try {
+      const handler = await loadHandler(moduleUrl);
+      const response = await callNodeHandler(handler, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { sts: 'pending' } })}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'validate', interval: 'month' }),
+      });
+      assert.equal(response.status, 401);
+      assert.deepEqual(calls, []);
     } finally {
       await jwks.close();
     }

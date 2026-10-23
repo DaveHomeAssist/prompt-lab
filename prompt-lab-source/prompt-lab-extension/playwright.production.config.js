@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './e2e',
   // The authenticated shell uses disposable QA sessions. Follow-up coverage
   // intercepts provider responses and never performs real inference.
-  testMatch: ['production-free-account.spec.js', 'production-core-loop.spec.js', 'production-follow-up.spec.js', 'production-library.spec.js', 'production-library-restart.spec.js', 'production-activation.spec.js', 'production-create-workspace.spec.js', 'production-billing.spec.js', 'production-owner.spec.js', 'production-billing-lifecycle.spec.js'],
+  testMatch: ['production-free-account.spec.js', 'production-core-loop.spec.js', 'production-follow-up.spec.js', 'production-library.spec.js', 'production-library-restart.spec.js', 'production-activation.spec.js', 'production-create-workspace.spec.js', 'production-scratch.spec.js', 'production-billing.spec.js', 'production-owner.spec.js', 'production-billing-lifecycle.spec.js'],
   fullyParallel: false,
   workers: 1,
   timeout: 90_000,
