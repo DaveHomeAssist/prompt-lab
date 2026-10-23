@@ -29,6 +29,8 @@ const ENV_KEYS = [
   'UPSTASH_REDIS_REST_TOKEN',
   'CLERK_JWKS_URL',
   'CLERK_JWT_ISSUER',
+  'CLERK_JWT_AUDIENCE',
+  'CLERK_JWT_KEY',
   'PROMPTLAB_PRO_OWNER_CLERK_USER_IDS',
   'PROMPTLAB_OWNER_CLERK_USER_IDS',
   'STRIPE_SECRET_KEY',
@@ -127,6 +129,7 @@ async function createJwksHarness() {
   }
 
   return {
+    publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }),
     tokenFor,
     close: () => new Promise((resolve) => server.close(resolve)),
   };
@@ -576,6 +579,33 @@ for (const verified of [true, false]) {
       }));
       assert.equal(auth.clerkUserId, id);
       assert.equal(auth.clerkEmail, verified ? 'profile@example.com' : '');
+    } finally {
+      await jwks.close();
+    }
+  });
+}
+
+for (const scenario of ['valid', 'wrong issuer', 'wrong audience']) {
+  test(`pinned Clerk SDK verification honors configured claims: ${scenario}`, async () => {
+    const jwks = await createJwksHarness();
+    process.env.CLERK_SECRET_KEY = 'sk_test_sdk_fixture';
+    process.env.CLERK_JWT_KEY = jwks.publicKeyPem;
+    delete process.env.CLERK_JWKS_URL;
+    if (scenario === 'wrong issuer') process.env.CLERK_JWT_ISSUER = 'https://another-instance.clerk.accounts.dev';
+    if (scenario === 'wrong audience') process.env.CLERK_JWT_AUDIENCE = 'expected-billing-api';
+    globalThis.fetch = async () => { throw new Error('Profile unavailable; use verified signed email.'); };
+    try {
+      const { verifyClerkRequest } = await import('../api/_lib/verifyClerkToken.js');
+      const request = new Request('https://promptlab.tools/api/billing/license', {
+        headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { azp: 'https://promptlab.tools', aud: 'other-api' } })}` },
+      });
+      if (scenario === 'valid') {
+        const identity = await verifyClerkRequest(request);
+        assert.equal(identity.clerkUserId, 'user_a');
+        assert.equal(identity.clerkEmail, 'user-a@example.com');
+      } else {
+        await assert.rejects(() => verifyClerkRequest(request), { name: 'ClerkAuthError', status: 401 });
+      }
     } finally {
       await jwks.close();
     }

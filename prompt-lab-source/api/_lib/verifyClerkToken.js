@@ -157,13 +157,16 @@ async function verifyClerkToken(token, request) {
   }
 
   const { verifyToken } = await import('@clerk/backend');
-  return verifyToken(token, {
+  const claims = await verifyToken(token, {
     secretKey: readStringEnv('CLERK_SECRET_KEY'),
     ...(readStringEnv('CLERK_JWT_KEY') ? { jwtKey: readStringEnv('CLERK_JWT_KEY') } : {}),
     authorizedParties: buildAuthorizedParties(request),
-    ...(readStringEnv('CLERK_JWT_ISSUER') ? { issuer: readStringEnv('CLERK_JWT_ISSUER') } : {}),
     ...(readStringEnv('CLERK_JWT_AUDIENCE') ? { audience: readStringEnv('CLERK_JWT_AUDIENCE') } : {}),
   });
+  // The pinned SDK has no issuer option. Apply the configured claim rules to
+  // its verified payload as well as to the custom JWKS verification path.
+  assertValidClaims(claims);
+  return claims;
 }
 
 function extractEmailFromClaims(claims = {}) {
