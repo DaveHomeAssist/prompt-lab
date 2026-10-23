@@ -206,8 +206,10 @@ export default function ScratchWorkspace({
   const [promotionError, setPromotionError] = useState('');
   const [isCompact, setIsCompact] = useState(() => typeof window !== 'undefined' && window.innerWidth <= COMPACT_BREAKPOINT);
   const [compactPane, setCompactPane] = useState('index');
+  const [noteFocused, setNoteFocused] = useState(false);
 
   const textareaRef = useRef(null);
+  const noteSearchRef = useRef(null);
   const timerRef = useRef(null);
   const savedStateTimerRef = useRef(null);
   const migrationCheckedRef = useRef(false);
@@ -849,7 +851,7 @@ export default function ScratchWorkspace({
     </section>
   );
 
-  const showSidebar = !isCompact || compactPane === 'index';
+  const showSidebar = !noteFocused && (!isCompact || compactPane === 'index');
   const showEditor = !isCompact || compactPane === 'editor';
   const copyButtonClass = isDark
     ? 'border border-orange-400/30 bg-orange-500/15 text-orange-100 hover:bg-orange-500/25'
@@ -872,7 +874,7 @@ export default function ScratchWorkspace({
   );
 
   return (
-    <div className={`${shellMinHeightClass} pl-scratch-workspace ${isCompact ? 'pl-scratch-is-compact' : ''} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`} data-compact-pane={compactPane}>
+    <div className={`${shellMinHeightClass} pl-scratch-workspace ${isCompact ? 'pl-scratch-is-compact' : ''} ${noteFocused ? 'pl-scratch-focused' : ''} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`} data-compact-pane={compactPane} data-note-focused={noteFocused}>
       <aside className={`pl-scratch-sidebar ${showSidebar ? 'flex' : 'hidden'} ${isCompact ? 'w-full' : 'w-[240px]'} shrink-0 flex-col border-r ${m.border || ''} ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note index">
         <div className={`shrink-0 border-b p-3 ${m.border || ''}`}>
           <div className="flex items-center justify-between gap-2">
@@ -885,7 +887,7 @@ export default function ScratchWorkspace({
           <label className="relative mt-3 block">
             <span className="sr-only">Search scratch notes</span>
             <Ic n="Search" size={13} className={`pointer-events-none absolute left-3 top-3 ${m.textMuted || ''}`} />
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes, text, tags" className={`min-h-10 w-full rounded-lg border py-2 pl-9 pr-3 text-xs ${m.input || ''}`} />
+            <input ref={noteSearchRef} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes, text, tags" className={`min-h-10 w-full rounded-lg border py-2 pl-9 pr-3 text-xs ${m.input || ''}`} />
           </label>
         </div>
         <div className={`flex-1 overflow-y-auto pb-3 ${pageScroll ? 'max-h-[65vh]' : ''}`}>
@@ -899,24 +901,31 @@ export default function ScratchWorkspace({
         <header className={`shrink-0 border-b px-3 py-2.5 sm:px-4 ${m.border || ''}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-2">
-              {isCompact && <button type="button" onClick={() => setCompactPane('index')} className={`ui-control rounded-lg px-2 py-2 text-xs ${m.btn || ''}`} aria-label="Back to scratch notes">← Notes</button>}
+              {(isCompact || noteFocused) && <button type="button" onClick={() => {
+                setNoteFocused(false);
+                setCompactPane('index');
+                requestAnimationFrame(() => noteSearchRef.current?.focus());
+              }} className={`ui-control rounded-lg px-2 py-2 text-xs ${m.btn || ''}`} aria-label="Back to scratch notes">← Notes</button>}
               <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: COLOR_SWATCHES[activePad?.color] || COLOR_SWATCHES.orange }} />
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-semibold">{activePad?.name || 'Scratchpad'}</h2>
-                <p className={`text-[10px] font-mono ${m.textMuted || ''}`}>{words} words · {text.length} chars · {readingMinutes || '<1'} min read</p>
+                {!noteFocused && <p className={`text-[10px] font-mono ${m.textMuted || ''}`}>{words} words · {text.length} chars · {readingMinutes || '<1'} min read</p>}
               </div>
-              <span className="pl-scratch-status">{activePad?.status || 'idea'}</span>
+              {!noteFocused && <span className="pl-scratch-status">{activePad?.status || 'idea'}</span>}
             </div>
             <div className="flex flex-wrap items-center gap-1">
-              <button type="button" title="Rename note" onClick={() => setNameDialog({ mode: 'rename', value: activePad?.name || '' })} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Rename</button>
-              <button type="button" onClick={duplicatePad} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Duplicate</button>
-              <button type="button" aria-pressed={Boolean(activePad?.pinned)} onClick={() => updatePadMetadata({ pinned: !activePad?.pinned })} className={`ui-control rounded-lg p-2.5 ${m.btn || ''}`} aria-label={activePad?.pinned ? 'Unpin note' : 'Pin note'}><Ic n="Pin" size={12} /></button>
-              <button type="button" onClick={() => openPromotionDialog(hasSelection ? 'selection' : 'whole')} disabled={!text.trim() || !onPromoteToLibrary} className="ui-control pl-primary-button flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-40"><Ic n="BookmarkPlus" size={12} /> Promote</button>
+              <button type="button" aria-pressed={noteFocused} onClick={() => setNoteFocused((current) => !current)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>{noteFocused ? 'Exit focus' : 'Focus note'}</button>
+              <div hidden={noteFocused} className="pl-scratch-note-actions flex flex-wrap items-center gap-1">
+                <button type="button" title="Rename note" onClick={() => setNameDialog({ mode: 'rename', value: activePad?.name || '' })} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Rename</button>
+                <button type="button" onClick={duplicatePad} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''}`}>Duplicate</button>
+                <button type="button" aria-pressed={Boolean(activePad?.pinned)} onClick={() => updatePadMetadata({ pinned: !activePad?.pinned })} className={`ui-control rounded-lg p-2.5 ${m.btn || ''}`} aria-label={activePad?.pinned ? 'Unpin note' : 'Pin note'}><Ic n="Pin" size={12} /></button>
+                <button type="button" onClick={() => openPromotionDialog(hasSelection ? 'selection' : 'whole')} disabled={!text.trim() || !onPromoteToLibrary} className="ui-control pl-primary-button flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold disabled:opacity-40"><Ic n="BookmarkPlus" size={12} /> Promote</button>
+              </div>
             </div>
           </div>
         </header>
 
-        <div className={`pl-scratch-toolbar shrink-0 border-b px-3 py-2 ${m.border || ''}`}>
+        <div hidden={noteFocused} className={`pl-scratch-toolbar shrink-0 border-b px-3 py-2 ${m.border || ''}`}>
           <div className="flex flex-wrap items-center gap-1" role="toolbar" aria-label="Markdown formatting toolbar">
             <button type="button" onClick={() => replaceSelection('**', '**', 'bold text')} className={`ui-control rounded px-2 py-1.5 text-xs font-bold ${m.btn || ''}`} title="Bold (Command or Control B)" aria-label="Bold">B</button>
             <button type="button" onClick={() => replaceSelection('_', '_', 'italic text')} className={`ui-control rounded px-2 py-1.5 text-xs italic ${m.btn || ''}`} title="Italic (Command or Control I)" aria-label="Italic">I</button>
@@ -951,14 +960,14 @@ export default function ScratchWorkspace({
           </div>
         </div>
 
-        <div className={`flex min-h-0 flex-1 flex-col gap-2 p-3 sm:p-4 ${pageScroll ? '' : 'overflow-hidden'}`}>
+        <div className={`pl-scratch-body flex min-h-0 flex-1 flex-col gap-2 p-3 sm:p-4 ${pageScroll ? '' : 'overflow-hidden'}`}>
           <div className="pl-scratch-editor-grid">
             <div className="pl-scratch-editor-surface">
               {editorView === 'write' && editor}
               {editorView === 'split' && <div className="pl-scratch-split w-full"><div className="min-w-0">{editor}</div><div className={`pl-scratch-preview min-w-0 overflow-auto rounded-xl border p-4 ${editorMinHeightClass} ${m.input || ''}`} aria-label="Live Markdown preview"><MarkdownPreview text={text} /></div></div>}
               {editorView === 'preview' && <div className={`pl-scratch-preview w-full overflow-auto rounded-xl border p-4 ${editorMinHeightClass} ${m.input || ''}`} aria-label="Markdown preview"><MarkdownPreview text={text} /></div>}
             </div>
-            <aside className="pl-scratch-outline" aria-label="Document outline and metadata">
+            <aside hidden={noteFocused} className="pl-scratch-outline" aria-label="Document outline and metadata">
               <p className="pl-eyebrow">Outline</p>
               {outline.length > 0 ? outline.map((item) => <button key={`${item.line}-${item.offset}`} type="button" style={{ paddingLeft: `${0.45 + (item.level - 1) * 0.55}rem` }} onClick={() => jumpToHeading(item)}>{item.label}</button>) : <p>No headings yet. Add headings to navigate longer notes.</p>}
               {(activePad?.tags || []).length > 0 && <div className="pl-scratch-tags" aria-label="Note tags">{activePad.tags.map((tag) => <button key={tag} type="button" onClick={() => updatePadMetadata({ tags: activePad.tags.filter((item) => item !== tag) })} aria-label={`Remove tag ${tag}`}>#{tag} ×</button>)}</div>}
@@ -967,19 +976,19 @@ export default function ScratchWorkspace({
             </aside>
           </div>
 
-          <footer className="flex flex-wrap items-center justify-between gap-2">
+          <footer className="pl-scratch-footer shrink-0 flex flex-wrap items-center justify-between gap-2">
             {saveError && <button type="button" className={`ui-control rounded-lg px-3 py-2 text-xs ${m.btn || ''}`} onClick={() => {
               if (migrationReadFailedRef.current) loadScratchState();
               else commitActiveContent(textRef.current);
             }}>{migrationReadFailedRef.current ? 'Retry loading' : 'Retry saving'}</button>}
             <div aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
-              {saveError ? <span className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{saveError}</span>
+              {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed — stored data kept.' : 'Save failed — draft kept.') : saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>
                   : saveState === 'saving' ? <span className={m.textMuted || ''}>Saving…</span>
                     : saveState === 'saved' ? <span className="flex items-center gap-1 text-green-500"><Ic n="Check" size={11} />Saved</span>
                       : lastSavedAt ? <span className={m.textMuted || ''}>Last saved {relativeSavedAt}</span> : <span className={m.textMuted || ''}>Local draft</span>}
             </div>
-            <div className="flex flex-wrap items-center gap-1">
+            <div hidden={noteFocused} className="pl-scratch-footer-actions flex flex-wrap items-center gap-1">
               <label className="sr-only" htmlFor="scratch-send-scope">Send scope</label>
               <select id="scratch-send-scope" value={sendScope} onChange={(event) => setSendScope(event.target.value)} className={`ui-control min-h-9 rounded-lg border px-2 text-xs ${m.input || ''}`}><option value="whole">Send note</option><option value="selection" disabled={!hasSelection}>Send selection</option></select>
               <button type="button" onClick={() => sendToSurface('editor')} disabled={!onSendToEditor || !text.trim() || (sendScope === 'selection' && !hasSelection)} className={`ui-control rounded-lg px-2.5 py-2 text-xs ${m.btn || ''} disabled:opacity-40`}>Editor</button>

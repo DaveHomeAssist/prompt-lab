@@ -14,6 +14,7 @@ it('keeps the readable note visible during failed migration and retries saving i
   localStorage.setItem(SCRATCH_SCHEMA_VERSION_KEY, '3');
   const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota'); });
   render(<ScratchWorkspace m={{}} notify={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Focus note' }));
   expect(screen.getByRole('textbox', { name: 'Scratchpad' })).toHaveValue('Recover this note');
   expect(screen.getByText(/Save failed/)).toBeInTheDocument();
   spy.mockRestore();

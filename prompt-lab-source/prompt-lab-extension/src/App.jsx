@@ -1315,7 +1315,7 @@ export default function App({
 
       {/* ══ SCRATCH TAB ══ */}
       {tab === 'pad' && (
-        <div className="pl-tab-panel">
+        <div className={`pl-tab-panel flex min-h-0 flex-1 flex-col ${contained ? 'overflow-hidden' : ''}`}>
           <PadTab
             m={m}
             colorMode={colorMode}
