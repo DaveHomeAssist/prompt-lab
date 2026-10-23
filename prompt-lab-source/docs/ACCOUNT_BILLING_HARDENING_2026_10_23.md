@@ -42,6 +42,28 @@ unavailable as an incidental security fix.
 
 ## Delivery record
 
-Pending candidate verification, CI, merge, production deployment and signed-in
-acceptance. Follow the canonical Issue Backlog security record and implementation
-RUN for current evidence; do not infer completion from this repair brief.
+PR200 merged as `3d1437b` after all 16 candidate checks passed. Exact production
+`dpl_9snwb9keLDf6nXWnDVKudM4UfX4R` is READY on promptlab.tools. Candidate CI
+passed 141 API, 1255 shared, 231 legacy, 25 landing browser and 47 hosted browser
+cases (one credential-dependent skip), plus all six native matrix jobs.
+
+Stripe test-mode run 39938236867 passed 13 lifecycle checks, monthly purchased
+browser transitions/reload, real signed webhook delivery and stale replay, with
+fixture and Clerk-session cleanup. Annual paid lifecycle coverage is API-only.
+Production billing run 39940016974 passed: Free account, stable customer, portal,
+USD9/month and USD79/year hosted Checkout quotes. Both owned quotes were expired;
+independent GET readbacks confirmed unpaid status and no subscription. All 13
+live negative authentication/origin/method/signature checks passed. A complete
+read-only audit found 34 bound Stripe customers and zero conflicting aliases.
+The broader production Free-account smoke is still running at this snapshot.
+
+A final compatibility check found that pinned `@clerk/backend` 3.8.4 does not
+expose the issuer option documented by newer versions. The SDK follow-up applies
+configured claim validation directly to the SDK's verified payload. A regression
+using the actual pinned SDK reproduces acceptance of a wrong configured issuer
+on PR200's source and rejects it with the follow-up. Valid issuer and audience
+negative coverage pass too. Follow-up API validation and release are pending.
+
+Follow the canonical Issue Backlog security record and implementation RUN for
+subsequent release evidence. Existing offline, refund and webhook arrival-log
+policies remain unchanged.
