@@ -373,4 +373,6 @@ so large files do not mount an unbounded list of conflict controls.
 
 ### Library compatibility and synchronization
 
+Planned, not implemented: the [reconciled storage proposal](docs/account-library-sync.md) starts with a user-chosen iCloud Drive folder, then optional hosted storage. Both use one library identity, complete history/backups and the same command service for app and API. Browser storage remains current shipped behavior; no backend, migration or sync activation is introduced by the planning update.
+
 [Library compatibility contract](docs/LIBRARY_COMPATIBILITY_CONTRACT.md) defines canonical navigation, shared search/sort behavior, local persistence, explicit export/import synchronization, field preservation across shells, and the separate runtime acceptance gates.
