@@ -9,6 +9,14 @@ import {
 } from './_lib/runtimeSafety.js';
 import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
 import { isHostedOwner } from './_lib/hostedOwner.js';
+import {
+  createSseUsageReader,
+  pricingFor,
+  readBudgetConfig,
+  reservationMicros,
+  reserveBudget,
+  usageCostMicros,
+} from './_lib/hostedBudget.js';
 
 const SHARED_KEY_PLACEHOLDER = '__plb_hosted_shared_key__';
 const SUPPORTED_HOST = 'api.anthropic.com';
@@ -39,11 +47,20 @@ const LIMIT_CODES = Object.freeze({
   burst: 'hosted_burst_limit',
   demo: 'hosted_demo_limit',
   global: 'hosted_global_limit',
+  budget: 'hosted_budget_limit',
 });
+
+// Shared-key requests may only carry what the Prompt Lab client sends, so the
+// meter's text-only worst case holds and paid server features stay off.
+const SHARED_KEY_BODY_FIELDS = new Set([
+  'model', 'max_tokens', 'messages', 'system', 'stream',
+  'temperature', 'top_p', 'top_k', 'stop_sequences',
+]);
 
 const burstHits = new Map();
 const demoHits = new Map();
 const globalDemoHits = new Map();
+const budgetTotals = new Map();
 
 function readIntEnv(name, fallback) {
   const raw = process.env[name];
@@ -194,6 +211,34 @@ async function incrementWindow(namespace, key, windowMs, memoryMap, { requirePer
   return incrementMemoryWindow(memoryMap, key, windowMs);
 }
 
+async function incrementBudgetTotal(key, amount, ttlMs) {
+  const requirePersistent = process.env.NODE_ENV === 'production';
+  if (getRedisConfig()) {
+    try {
+      const redisKey = `plb:budget:${key}`;
+      const total = Number(await redisCommand('incrby', redisKey, amount));
+      const remainingTtl = Number(await redisCommand('pttl', redisKey));
+      if (!Number.isFinite(remainingTtl) || remainingTtl < 0) await redisCommand('pexpire', redisKey, ttlMs);
+      if (!Number.isFinite(total)) throw new Error('Budget store returned a non-numeric total');
+      return total;
+    } catch (error) {
+      console.warn(`[proxy] persistent budget unavailable: ${error.message}`);
+      if (requirePersistent) throw error;
+    }
+  }
+  if (requirePersistent) throw new Error('Persistent budget metering is required.');
+
+  const now = Date.now();
+  let entry = budgetTotals.get(key);
+  if (!entry || now >= entry.resetAt) {
+    entry = { count: 0, resetAt: now + ttlMs };
+    budgetTotals.set(key, entry);
+  }
+  entry.count += amount;
+  pruneMap(budgetTotals, now);
+  return entry.count;
+}
+
 async function getBurstState(ip) {
   const limit = getBurstLimit();
   if (limit <= 0) {
@@ -288,7 +333,38 @@ function validateTargetUrl(targetUrl) {
   return parsed;
 }
 
-function sanitizeAnthropicBody(rawBody) {
+function textBlocks(content, label) {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) throw new Error(`Hosted demo ${label} must be text.`);
+  return content.map((block) => {
+    if (block?.type !== 'text' || typeof block.text !== 'string') {
+      throw new Error('Hosted demo requests support text content only. Add your own Anthropic key for other content.');
+    }
+    return { type: 'text', text: block.text };
+  });
+}
+
+// Rebuilds a shared-key request from the fields the client sends, so cache
+// writes, server tools and other paid extras cannot ride on the shared key.
+function sharedKeyPayload(payload) {
+  const next = {};
+  for (const field of SHARED_KEY_BODY_FIELDS) {
+    if (Object.hasOwn(payload, field)) next[field] = payload[field];
+  }
+  if (!Array.isArray(next.messages) || next.messages.length === 0) {
+    throw new Error('Hosted demo requests need at least one message.');
+  }
+  next.messages = next.messages.map((message) => {
+    if (message?.role !== 'user' && message?.role !== 'assistant') {
+      throw new Error('Hosted demo messages must be user or assistant turns.');
+    }
+    return { role: message.role, content: textBlocks(message.content, 'messages') };
+  });
+  if (Object.hasOwn(next, 'system')) next.system = textBlocks(next.system, 'system prompts');
+  return next;
+}
+
+function sanitizeAnthropicBody(rawBody, { sharedKey = false } = {}) {
   const serializedBody = typeof rawBody === 'string' ? rawBody : JSON.stringify(rawBody);
   const maxInputChars = Math.max(1, getHostedMaxInputChars());
   if (typeof serializedBody !== 'string' || serializedBody.length > maxInputChars) {
@@ -306,6 +382,7 @@ function sanitizeAnthropicBody(rawBody) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
     throw new Error('Invalid provider request body');
   }
+  if (sharedKey) payload = sharedKeyPayload(payload);
 
   const allowedModels = getAllowedModels();
   const defaultModel = allowedModels[0];
@@ -318,8 +395,10 @@ function sanitizeAnthropicBody(rawBody) {
     ? Math.min(Math.floor(requestedMaxTokens), hostedMaxTokens)
     : hostedMaxTokens;
 
+  const body = JSON.stringify(payload);
   return {
-    body: JSON.stringify(payload),
+    body,
+    bodyBytes: new TextEncoder().encode(body).length,
     model: payload.model,
     maxTokens: payload.max_tokens,
   };
@@ -350,6 +429,66 @@ function injectServerKey(url, headers, usingSharedKey) {
       'x-api-key': serverKey,
     },
   };
+}
+
+function budgetRefusalResponse(refusal, request) {
+  const resetAt = new Date(refusal.resetAt).toISOString();
+  if (refusal.scope === 'ip') {
+    // The caller's own share of today's budget: reported as the per-IP demo window.
+    return jsonResponse(
+      {
+        error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
+        code: LIMIT_CODES.demo,
+        reset_at: resetAt,
+        demo_remaining: 0,
+        demo_reset_at: resetAt,
+      },
+      429,
+      { 'X-Demo-Remaining': '0', 'X-Demo-Reset': resetAt },
+      request,
+    );
+  }
+  return jsonResponse(
+    {
+      error: refusal.scope === 'cycle'
+        ? 'Hosted service budget for this billing cycle is used up. Add your own Anthropic key to keep going.'
+        : 'Hosted service budget for today is used up. Try again after the reset.',
+      code: LIMIT_CODES.budget,
+      scope: refusal.scope,
+      reset_at: resetAt,
+    },
+    429,
+    refusal.scope === 'day' ? { 'X-Global-Remaining': '0', 'X-Global-Reset': resetAt } : {},
+    request,
+  );
+}
+
+async function settleQuietly(hold, actualMicros) {
+  try {
+    await hold.settle(actualMicros);
+  } catch (error) {
+    // The reservation stands, so a failed settle can only overstate spend.
+    console.warn(`[proxy] budget settle failed: ${error.message}`);
+  }
+}
+
+// Passes the stream through untouched and settles the reservation from the
+// final reported usage before the response closes. A cancelled stream never
+// reaches flush, so its reservation stands.
+function meteredBody(body, hold, rates) {
+  const reader = createSseUsageReader();
+  const decoder = new TextDecoder();
+  return body.pipeThrough(new TransformStream({
+    transform(chunk, controller) {
+      controller.enqueue(chunk);
+      reader.push(decoder.decode(chunk, { stream: true }));
+    },
+    async flush() {
+      reader.push(decoder.decode());
+      const usage = reader.finish();
+      if (usage) await settleQuietly(hold, usageCostMicros(rates, usage));
+    },
+  }));
 }
 
 export default async function handler(request) {
@@ -428,7 +567,7 @@ export default async function handler(request) {
 
   let sanitizedBody;
   try {
-    sanitizedBody = sanitizeAnthropicBody(body);
+    sanitizedBody = sanitizeAnthropicBody(body, { sharedKey: auth.usingSharedKey });
   } catch (error) {
     return jsonResponse({ error: error.message || 'Invalid provider request body' }, 400, {}, request);
   }
@@ -440,9 +579,40 @@ export default async function handler(request) {
     return jsonResponse({ error: error.message || 'Hosted provider key is unavailable.' }, 503, {}, request);
   }
 
+  // Dollar budget for the shared key. Owners are metered too, so the cycle
+  // total is every shared-key dollar, but only the cycle ceiling holds them.
+  let budgetHold = null;
+  let budgetRates = null;
+  if (auth.usingSharedKey) {
+    const budgetConfig = readBudgetConfig();
+    if (budgetConfig) {
+      budgetRates = pricingFor(sanitizedBody.model);
+      if (!budgetRates) {
+        return jsonResponse({ error: 'Hosted model has no budget pricing.' }, 503, {}, request);
+      }
+      try {
+        budgetHold = await reserveBudget({
+          config: budgetConfig,
+          reserve: reservationMicros(budgetRates, sanitizedBody),
+          ip: clientIp,
+          owner,
+          incrementBy: incrementBudgetTotal,
+        });
+      } catch {
+        return jsonResponse({
+          error: 'Hosted budget protection is unavailable. Try again shortly.',
+        }, 503, {}, request);
+      }
+      if (budgetHold.refused) return budgetRefusalResponse(budgetHold, request);
+    } else if (process.env.NODE_ENV === 'production') {
+      return jsonResponse({ error: 'Hosted budget is not configured.' }, 503, {}, request);
+    }
+  }
+
   // The daily counters only move for a request that will actually be sent
-  // upstream: an oversized or malformed body, or a missing server key, must
-  // not spend one of the caller's few daily demo requests. (The burst counter
+  // upstream: an oversized or malformed body, a missing server key or a budget
+  // refusal must not spend one of the caller's few daily demo requests. A
+  // count refusal below releases the budget reservation made above. (The burst counter
   // above still counts every attempt; it is the flood guard.)
   let demoState = null;
   let globalDemoState = null;
@@ -450,11 +620,13 @@ export default async function handler(request) {
     try {
       demoState = await getDemoState(clientIp);
     } catch {
+      if (budgetHold) await settleQuietly(budgetHold, 0);
       return jsonResponse({
         error: 'Hosted usage protection is unavailable. Try again shortly.',
       }, 503, {}, request);
     }
     if (demoState.limited) {
+      if (budgetHold) await settleQuietly(budgetHold, 0);
       return jsonResponse(
         {
           error: 'Daily hosted demo limit reached. Add your own Anthropic key to keep going.',
@@ -480,11 +652,13 @@ export default async function handler(request) {
     try {
       globalDemoState = await getGlobalDemoState();
     } catch {
+      if (budgetHold) await settleQuietly(budgetHold, 0);
       return jsonResponse({
         error: 'Hosted global usage protection is unavailable. Try again shortly.',
       }, 503, {}, request);
     }
     if (globalDemoState.limited) {
+      if (budgetHold) await settleQuietly(budgetHold, 0);
       return jsonResponse(
         {
           error: 'Hosted service daily budget reached. Try again after the reset window.',
@@ -547,6 +721,24 @@ export default async function handler(request) {
       if (globalDemoState.resetAt) {
         responseHeaders['X-Global-Reset'] = new Date(globalDemoState.resetAt).toISOString();
       }
+    }
+
+    if (budgetHold && !upstream.ok) {
+      // Anthropic does not bill a refused request.
+      await settleQuietly(budgetHold, 0);
+    } else if (budgetHold) {
+      const streamed = (upstream.headers.get('Content-Type') || '').includes('text/event-stream');
+      if (streamed && upstream.body) {
+        return new Response(meteredBody(upstream.body, budgetHold, budgetRates), {
+          status: upstream.status,
+          headers: responseHeaders,
+        });
+      }
+      const text = await upstream.text();
+      let usage = null;
+      try { usage = JSON.parse(text)?.usage ?? null; } catch { usage = null; }
+      if (usage) await settleQuietly(budgetHold, usageCostMicros(budgetRates, usage));
+      return new Response(text, { status: upstream.status, headers: responseHeaders });
     }
 
     if (upstream.body) {

@@ -169,13 +169,35 @@ settings clears it, since a personal key changes which windows apply), and
 actions and in Provider Settings. The badge is hidden for personal keys and
 outside hosted web mode.
 
+Shared-key spend is also metered in dollars, because the shared key draws on a
+monthly API credit grant (`api/_lib/hostedBudget.js`). `HOSTED_CYCLE_BUDGET_USD`
+caps shared-key spend per billing cycle, and `HOSTED_BUDGET_CYCLE_DAY` (UTC, 1
+to 28) sets the day the cycle starts, matching the plan's billing date. Today's
+pace is the cycle budget left before today divided by the days remaining, so
+unspent days roll forward. `HOSTED_IP_DAILY_BUDGET_USD` optionally caps one
+visitor IP's spend per UTC day. Each shared-key request reserves its worst case
+(every body byte as an input token plus the full `max_tokens`) and settles to
+the cost Anthropic reports in the stream's `message_start`/`message_delta` usage
+or the JSON `usage`. A refused upstream request is released; a cancelled stream
+keeps its reservation, so the meter only errs high. Prices live in
+`BUDGET_PRICING`; an allowed model without a price is refused. Shared-key bodies
+are rebuilt from the fields the client sends with text content only, so cache
+writes, server tools and media cannot ride on the shared key. A cycle or pace
+refusal returns `hosted_budget_limit` with `scope` (`cycle` or `day`) and
+`reset_at`; a pace refusal also sets `X-Global-Remaining: 0`. A per-IP spend
+refusal returns `hosted_demo_limit` with `X-Demo-Remaining: 0`. In production
+the shared key is refused when no cycle budget is configured or the store is
+unavailable.
+
 Verified owner accounts skip the proxy's per-IP burst and daily demo limits.
 `api/_lib/hostedOwner.js` verifies the Clerk `__session` cookie (or outer Bearer
 header) against the configured Clerk issuer's signing keys and then checks the
 existing server-side owner user-ID allowlist. Email, client settings, and Pro
 billing state cannot grant this exemption. It works while billing is disabled.
-The service-wide shared-key daily budget, persistent usage store, input/output
-ceilings, provider limits, and feature flags still apply to owners. Missing,
+The service-wide shared-key daily budget, the cycle dollar ceiling (owner spend
+is metered but skips the daily pace and per-IP spend cap), persistent usage
+store, input/output ceilings, provider limits, and feature flags still apply to
+owners. Missing,
 expired, forged, or unverifiable sessions retain the ordinary limits.
 
 Provider-specific request behavior is routed through shared provider abstraction modules rather than being inlined in the app surface.

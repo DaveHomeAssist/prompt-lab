@@ -63,3 +63,26 @@ describe('hosted proxy limit errors', () => {
     expect(error.userMessage).toBe('anthropic rate limit hit — wait a moment and retry.');
   });
 });
+
+describe('hosted budget limit', () => {
+  it('reports the dollar budget as a Prompt Lab limit with a day-scale reset hint', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(limitResponse({
+      error: 'Hosted service budget for this billing cycle is used up. Add your own Anthropic key to keep going.',
+      code: HostedLimitCode.BUDGET,
+      scope: 'cycle',
+      reset_at: new Date(Date.now() + 9 * 24 * 60 * 60_000 + 60_000).toISOString(),
+    }));
+
+    const error = await rejectionOf(callProvider({
+      provider: 'anthropic', payload: PAYLOAD, settings: SETTINGS, fetchImpl,
+    }));
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error.code).toBe(HostedLimitCode.BUDGET);
+    expect(error.retryable).toBe(false);
+    expect(error.userMessage).toMatch(/shared hosted budget is used up/);
+    expect(error.userMessage).toMatch(/not an Anthropic one/);
+    expect(error.userMessage).toMatch(/in about 9 days/);
+    expect(error.recovery.actions).toContain('open_provider_settings');
+  });
+});
