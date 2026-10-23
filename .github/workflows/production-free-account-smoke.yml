@@ -17,6 +17,7 @@ on:
           - library
           - activation
           - create-workspace
+          - scratch
           - billing
           - owner
           - billing-lifecycle
@@ -99,6 +100,8 @@ jobs:
             npm run test:e2e:production-free -- production-activation.spec.js
           elif [ "$SMOKE_SCOPE" = "create-workspace" ]; then
             PROMPTLAB_CREATE_WORKSPACE_SMOKE=true npm run test:e2e:production-free -- production-create-workspace.spec.js
+          elif [ "$SMOKE_SCOPE" = "scratch" ]; then
+            PROMPTLAB_SCRATCH_SMOKE=true npm run test:e2e:production-free -- production-scratch.spec.js
           elif [ "$SMOKE_SCOPE" = "billing" ]; then
             PROMPTLAB_BILLING_CHECKOUT_SMOKE=true npm run test:e2e:production-free -- production-billing.spec.js
           elif [ "$SMOKE_SCOPE" = "owner" ]; then
