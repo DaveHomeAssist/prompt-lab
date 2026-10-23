@@ -26,8 +26,8 @@ Updated: 2026-09-05
 | `ROADMAP.md` | Product and release priorities | Active | Current shipped state and near-term priorities. |
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
 | `docs/LIBRARY_COMPATIBILITY_CONTRACT.md` | Library shell and transfer contract | Active | Canonical search/sort, local storage, explicit export/import synchronization, field compatibility, and runtime proof boundaries. |
-| `docs/account-library-sync.md` | Account library sync proposal | Draft | Opt-in, account-backed library sync on Neon Postgres: data model, API contract, merge rules, client loop, policy changes, rollout and acceptance. Pending D-016. |
-| `docs/account-library-sync-slices.md` | Account library sync build plan | Draft | Per-slice files, acceptance checks and Codex prompts for the sync proposal, plus Dave's Neon and launch steps. |
+| `docs/account-library-sync.md` | Account library sync proposal | Draft | Reconciled plan: chosen iCloud Drive folder first, hosted second; complete history/backups and shared app/API library. Runtime and hosted provider pending. |
+| `docs/account-library-sync-slices.md` | Account library sync build plan | Draft | Revised gated stages A1 to A4 for folder storage, then B1 to B3 for hosted storage. Supersedes web-first execution prompts; no implementation authorized. |
 | `docs/DESKTOP_ACCEPTANCE_CHECKLIST.md` | Desktop operator acceptance | Active | Candidate/artifact provenance, local fixture, native lifecycle checks, rollback, and explicit unresolved platform gates. |
 | `docs/release-versioning.md` | Release versioning contract | Canonical | Defines the next release, version source of truth, required bump/check tooling, release tag guard, and development build identity. |
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the manual-only, dry-run-first workflow and the credentials required for an explicit live sync. |

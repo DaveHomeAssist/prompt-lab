@@ -1,366 +1,145 @@
-# Account library sync
+# Library storage and account sync
 
-Status: `draft`. Proposal recorded as D-016 in [DECISIONS.md](DECISIONS.md) and as DEC-87 in DB | Decisions. Nothing here ships until that decision is made. Written 2026-10-23 against `main` commit `f6fa3b6`.
+Status: revised plan, implementation not started. Reconciled October 23, 2026 against `main` `faea576`. Dave selected both storage modes: a folder he chooses in iCloud Drive first, hosted storage second. This update records the plan before implementation; it authorizes no provisioning, migration, production activation or policy publication.
 
-PromptLab will sync each signed-in user's library to a Postgres copy keyed by their Clerk user ID, so the same prompts appear on every device. The device copy stays the working copy: localStorage and the IndexedDB journal keep serving reads and offline edits, while a background loop pushes and pulls changes one record at a time.
+This remains the canonical proposal at its existing path. [D-016](DECISIONS.md) records the selected sequence and remaining hosted decisions. [Build slices](account-library-sync-slices.md) replace the earlier web-first instructions. The [original proposal](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync.md) and [original slices](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical evidence, not executable instructions.
 
-The server is a store with optimistic concurrency and no merge logic of its own. Conflicts resolve in the shared client code that already reconciles browser tabs, so one rule decides every case. Sync is opt-in, off by default, and ships behind a server kill switch, `LIBRARY_SYNC_ENABLED`.
+## Problem and outcome
 
-Stack: Neon Postgres from the Vercel Marketplace, new Vercel functions under `api/library/`, and Clerk session JWTs checked by the existing `verifyClerkRequest`.
+The library currently belongs to a browser profile. An export can transfer it but cannot serve as its live storage. Users need a durable location they own, automatic saves and recovery, and supported access for the app and agents without controlling a browser or editing its private storage.
 
-The build plan with per-slice Codex prompts is in [account-library-sync-slices.md](account-library-sync-slices.md).
+Deliver one logical library with a stable `libraryId`, one revision graph and one command service. Storage adapters persist that library. The app and supported API must use the same service, validation, conflict checks, history and commit receipts. A local cache, offline pending edits and a hosted replica are never independently presented as a second authoritative library.
 
-## Goals and non-goals
+## Scope and preservation contract
 
-v1 makes one library follow one account on the web shell, with no lost edits.
+Both phases preserve the complete workspace, not only current prompt text:
 
-Goals:
+| Data | Required preservation |
+| --- | --- |
+| Prompts and trash | Stable IDs, original/enhanced text, variants, notes, status, tags, timestamps, usage, favorites, provenance and custom metadata |
+| Version history | Every available snapshot, change note and source record; no migration or merge through the current 25-version truncation path |
+| Structure and assets | Collections, stable folder IDs, packs, loaded-pack state, ordering and portable artwork or attachment references and bytes where available |
+| Experiments | Runs, test cases, evaluation results and their prompt/version associations |
+| Scratch | All pads, content, names and existing recovery information |
+| Deletion state | Library generation, record tombstones and append-only permanent-deletion markers, including batch markers |
+| Recovery | Existing backups and archives, unavailable-reference evidence, migration manifests and commit receipts |
 
-- A signed-in user sees the same library, trash, collections and folders in every browser signed in to that account.
-- Offline edits land on the next connection without overwriting a newer edit from another device.
-- When two devices change the same prompt, the losing text survives as a version of the winner.
-- Signed-out use works exactly as today, with zero requests to the sync API.
-- One action turns sync off and deletes every server copy.
+Preserve unknown fields losslessly in the archive even when the current UI cannot render them. Missing referenced objects remain explicit gaps; never invent results or citations. Existing credentials, provider settings, billing/session tokens and telemetry state remain outside the library. Prompt content may itself be sensitive: warn and review before hosted upload, without silently rewriting it.
 
-Non-goals for v1:
+The current UI may show only recent versions, but the durable store retains all versions. Normal saves, imports, deduplication, restore and sync must not silently prune history or backups. Preserve pre-existing source backups in place; catalog their provenance rather than copying arbitrary neighboring files. User-requested permanent erasure is a separate confirmed operation with an honest disclosure of backup retention, not a side effect of sync or disconnect.
 
-- Notebook pads (`pl2-pads`), experiment history, run logs and eval data. The `kind` column leaves room for them.
-- Provider settings and API keys. These never leave the device.
-- Sharing, team libraries and server search. The schema supports them; no routes ship.
-- Live co-editing. Sync runs on events and a timer, not a socket.
-- Sign-in for the extension, desktop and iOS shells. They follow the web rollout.
-- Per-account namespacing of every local storage key.
+## Current implementation boundary
 
-## Current state
+Inspected shared source still uses `pl2-library`, trash, collections and folders in browser storage; the desktop adds the IndexedDB durability journal. Runs and test cases have their own store. Import preview and application already handle conflict choices, associations and retryable stages. Reuse their semantics through a storage service rather than adding a competing raw-storage writer.
 
-The local data model is already sync-shaped, so this work adds a transport and a server copy, not a new persistence layer. The shared frontend lives in `prompt-lab-extension/src` and ships to every shell.
+No external-folder adapter, local library service or account library routes exist on the inspected main. All names, routes and package layout below are proposed. The existing [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) continues to describe shipped behavior until each phase is implemented and verified.
 
-| Area | What exists | File |
-|---|---|---|
-| Library storage | `pl2-library` (live) and `pl2-library-trash` (soft-deleted, 30-day retention) in localStorage | `prompt-lab-extension/src/lib/storage.js` |
-| Collections and folders | `pl2-collections` holds names; `pl2-collection-folders` holds folders with ids | `prompt-lab-extension/src/lib/collectionFolders.js` |
-| Record shape | Stable `id`, `updatedAt`, `deletedAt`, `tombstoneVersion`, up to 25 `versions` | `prompt-lab-extension/src/lib/promptSchema.js` |
-| Merge rule | `reconcileLibraryRecords`: higher `tombstoneVersion` wins, then the newer clock. `stampRecordMutation` keeps clocks monotonic | `prompt-lab-extension/src/hooks/usePromptLibrary.js` |
-| Permanent deletion | Append-only markers `pl2-library-deleted:<id>`; clear-all writes `pl2-library-clear:<generation>` | `prompt-lab-extension/src/lib/libraryDeletion.js` |
-| Durability | Desktop journals the library to IndexedDB with strict commits | `prompt-lab-extension/src/lib/libraryJournal.js` |
-| Starter packs | Seeded records get a random `id` per device, plus `metadata.packId` and `metadata.seedPromptId` | `prompt-lab-extension/src/lib/seedTransform.js` |
-| Server auth | `verifyClerkRequest` returns `clerkUserId` from the JWT `sub` | `api/_lib/verifyClerkToken.js` |
-| Route pattern | Web handler wrapped by `createNodeCompatibleHandler`, kill switch through `isFeatureEnabled`, shared CORS helpers | `api/billing/license.js` |
-| Web token | The web shell passes Clerk's `getToken` into the shared app as `clerkGetToken` | `prompt-lab-web/app/main-web.jsx` |
-| Policy | Sync between devices is export and import only; the privacy page says the library stays on the device | [LIBRARY_COMPATIBILITY_CONTRACT.md](LIBRARY_COMPATIBILITY_CONTRACT.md), `prompt-lab-web/public/privacy.html` |
+## Phase A: chosen iCloud Drive folder
 
-Random starter IDs mean two devices that load the same pack hold different records for the same prompt. Sync must dedupe them (see Merge rules).
+### User flow and shell support
 
-## Data model
+1. In Settings, choose Library location, then select a folder through an explicit user file picker. Do not assume a private path or choose it for Dave.
+2. Inspect that folder before writing. Offer Open existing library or Create from this device. Never overwrite an existing library or auto-merge different library IDs.
+3. Create an untouched source export and migration manifest, preview the full workspace transfer and any conflicts, then apply only the reviewed plan.
+4. Verify object counts, IDs, history, references and content hashes after durable write and reopen. Switch the app's active library only after that readback succeeds. Keep the original browser data and source backup for rollback.
+5. Display location, library identity, saved revision, pending changes, backup health and recovery actions. Distinguish Saved to folder from iCloud propagation, whose completion remains Unknown without direct evidence.
 
-Two tables. One row per account holds its revision counter; one row per synced record holds that record's latest state.
+The smallest supported slice is the macOS desktop plus an opt-in local library service. The web app may connect to that service using explicit pairing and browser local-network permission. A browser cannot be assumed to retain arbitrary iCloud folder access. Unsupported browsers and shells retain current local behavior and explicit import/export; show capability limits. Qualify Windows iCloud folders and native iOS document access separately before claiming support.
 
-```sql
-create table library_accounts (
-  user_id     text primary key,            -- Clerk user id (JWT sub)
-  rev         bigint not null default 0,   -- per-account monotonic counter
-  enabled_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
-);
+### Store layout, saves and concurrency
 
-create table library_records (
-  user_id           text not null references library_accounts(user_id) on delete cascade,
-  kind              text not null check (kind in ('prompt', 'folder', 'collection', 'marker')),
-  id                text not null,
-  rev               bigint not null,
-  body              jsonb,
-  deleted_at        timestamptz,
-  tombstone_version integer not null default 0,
-  client_clock      timestamptz,
-  device_id         text,
-  updated_at        timestamptz not null default now(),
-  primary key (user_id, kind, id)
-);
+Use a portable, versioned package of immutable content-addressed objects, commit manifests and recoverable snapshots. Keep the schema version separate from the existing workspace export version. Each commit identifies its library, parents, operation ID, complete state manifest and hashes. A mutable current-head hint is rebuildable, never the only recovery source. Avoid placing a live database with write-ahead files in an iCloud-synced folder.
 
-create index library_records_user_rev on library_records (user_id, rev);
-```
+One local service serializes app/API writes to the selected library. Write new objects and manifests to temporary files, flush and publish them atomically where supported, then verify readable hashes before acknowledging. Interrupted or partial writes must leave the prior commit readable. On restart, validate reachable commits and quarantine incomplete objects without deleting them. Migrations preserve the original package and write a new schema generation with rollback evidence.
 
-| kind | id | body | Local source |
-|---|---|---|---|
-| `prompt` | Prompt `id` | Full normalized entry, live or in trash | `pl2-library`, `pl2-library-trash` |
-| `folder` | Folder `id` | Folder object | `pl2-collection-folders` |
-| `collection` | Collection name | `{ "name": "..." }`; removal sets `deleted_at` | `pl2-collections` |
-| `marker` | `deleted:<promptId>` or `clear:<generation>` | `null` | `pl2-library-deleted:*`, `pl2-library-clear:*` |
+A local lock does not coordinate multiple Macs through iCloud. Detect competing commit heads, divergent ancestry, iCloud conflict copies, stale file listings and missing cloud placeholders. Never use last-write-wins on the whole workspace. Preserve both branches, stop automatic reconciliation when data is unavailable, and offer a preview that retains both edits. Reconcile per record with causal revisions; clocks alone do not prove ordering. Same-ID divergent content keeps both snapshots, with explicit resolution when the intended winner is ambiguous. Trash and permanent-deletion markers prevent resurrection; recovery archives remain separate from active data.
 
-Rules:
+If the folder is unavailable, permission is revoked or storage is full, show changes as Pending or Save failed. Preserve pending edits in a durable device outbox, scoped by `libraryId`, and replay against the latest revision after reconnect. Do not silently switch to a new browser library or show Saved for cache-only acknowledgement. With no acknowledged outbox, keep the draft and report failure. Reconnection and disconnect never discard pending changes.
 
-- `user_id` comes only from the verified token. No request field sets it.
-- Each accepted write takes the account's next `rev`. Pull returns rows with `rev` above the client's cursor, in order.
-- A `deleted:<id>` marker also nulls that prompt row's `body` in the same transaction, so permanently deleted text leaves the server.
-- A `clear:<generation>` marker nulls the body of every prompt row whose `metadata.libraryGeneration` is older, compared as strings the way `readLibraryDeletionState` does.
-- Markers are never removed, matching the local append-only rule.
-- One record body is capped at 256 KB.
-- Migrations live in `db/migrations/`, starting with `0001_library_sync.sql`, applied by `npm run db:migrate` over `DATABASE_URL_UNPOOLED`. Functions connect over the pooled `DATABASE_URL` with `@neondatabase/serverless`.
+### History and backups
 
-## API contract
+Retain an append-only commit history and all available imported versions. Before migration, import, reconciliation, restore or backend switch, create a named recovery checkpoint with hashes, IDs, counts and provenance. Preserve existing backup artifacts unchanged. No automatic pruning ships in the first slice; capacity exhaustion pauses new commits honestly instead of deleting recovery data.
 
-Three routes, all JSON, all behind `Authorization: Bearer <Clerk session JWT>` and the shared CORS helpers. `api/library/*.js` is registered in `vercel.json` with `maxDuration: 10`.
+Restore previews a selected checkpoint and creates a new commit; it does not rewrite history. Back up before restoring. Ordinary restore respects permanent-deletion markers and reports suppressed entries. Recovery that intentionally reintroduces erased content requires a separate explicit choice. Disconnect leaves the library and backups intact. Offer a verified independent recovery export outside the live sync folder: iCloud replication alone is not an independent backup, and device-local durability does not establish cloud replication.
 
-| File | Purpose |
-|---|---|
-| `api/library/pull.js` | `GET /api/library/pull` |
-| `api/library/push.js` | `POST /api/library/push` |
-| `api/library/index.js` | `DELETE /api/library` |
-| `api/_lib/libraryStore.js` | SQL and transactions |
-| `api/_lib/librarySync.js` | Validation, limits, `canUseLibrarySync` |
+## Shared app and API contract
 
-When `LIBRARY_SYNC_ENABLED` is off, every route returns `200 { "ok": true, "syncDisabled": true, "retryable": false }` and the client stops, mirroring `billingDisabledResponse`. `canUseLibrarySync(identity)` returns `true` for every signed-in account in v1; a later plan gate changes only that function.
+Both interfaces call the same library command service and selected adapter. There is no API-only import database, background browser-storage patching, provider execution or arbitrary filesystem/shell access. The local service remains available to API consumers while the app window is closed, if the user has enabled it. If it is stopped, return unavailable; never impersonate success from an export file.
 
-### GET /api/library/pull
+Proposed versioned JSON surface, served only for the bound library:
 
-Query: `since` (default `0`), `limit` (default `500`, max `1000`). Returns records with `rev > since`, ascending. An account with no row gets `records: []` and `serverRev: 0`; pull never creates a row.
+| Method and route | Request | Success and evidence |
+| --- | --- | --- |
+| `GET /v1/library` | Authenticated read | `200`: libraryId, revision, backend, pending/conflict state, backup health; ETag |
+| `GET /v1/library/snapshot` | Optional immutable revision | `200`: complete workspace manifest and paginated object references with hashes; bounded object reads |
+| `POST /v1/library/previews` | Source manifest/objects, expectedRevision, explicit conflict resolutions | `201`: previewId, bound revision, source hash, counts, unresolved choices and preservation report; no active-data mutation |
+| `POST /v1/library/commits` | previewId, expectedRevision; Idempotency-Key | `201`: durable receipt with operationId, libraryId, parent/result revision, backup checkpoint, counts and hashes |
+| `GET /v1/library/operations/{operationId}` | Authorized operation ID | `200`: pending, failed or committed receipt, for safe retry/readback |
+| `GET /v1/library/backups` | Cursor and bounded limit | `200`: checkpoint metadata and nextCursor, no unbounded bodies |
+| `POST /v1/library/restores` | checkpointId and expectedRevision | `201`: restore preview; apply through the normal commit route |
+
+Example preview request and successful commit receipt:
 
 ```json
-{
-  "ok": true,
-  "records": [
-    { "kind": "prompt", "id": "p_123", "rev": 41, "body": {}, "deletedAt": null, "tombstoneVersion": 0, "clientClock": "2026-10-21T13:02:11.000Z" }
-  ],
-  "nextSince": 41,
-  "hasMore": false,
-  "serverRev": 41
-}
+{"sourceManifest":"sha256:source","expectedRevision":"r41","resolutions":{}}
 ```
-
-### POST /api/library/push
-
-Up to 100 records and 1 MB per request. The first push upserts the `library_accounts` row.
 
 ```json
-{
-  "deviceId": "d_7f3c",
-  "records": [
-    { "kind": "prompt", "id": "p_123", "baseRev": 40, "body": {}, "deletedAt": null, "tombstoneVersion": 0, "clientClock": "2026-10-21T13:02:11.000Z" }
-  ]
-}
+{"operationId":"op42","libraryId":"lib1","parentRevision":"r41","revision":"r42","state":"committed","checkpointId":"before-op42","verified":true}
 ```
 
-One transaction per request:
+Errors use a stable code and a readable message, for example `409 {"ok":false,"code":"REVISION_CONFLICT","error":"Library changed; preview again.","retryable":false}`. No partial import is a committed receipt. Persist operation identity with the commit so response loss/restart cannot duplicate it. Reusing a key with different input returns conflict. Exact duplicates return the original receipt. Bind previews to library identity, source hash, expected revision and resolutions; a change invalidates the preview.
 
-1. Lock the account row with `select ... for update`.
-2. For each record, compare `baseRev` with the stored `rev`. A missing row expects `baseRev: 0`.
-3. On a match, write the record with the next `rev`. On a mismatch, write nothing for it and return the server copy as a conflict.
-4. Markers skip the check: insert if absent, always accepted, idempotent.
+| Status | Meaning |
+| --- | --- |
+| 400 / 422 | Malformed or unsupported input; retain the source and report fields, never drop records |
+| 401 / 403 | Missing identity or denied library/scope |
+| 404 | Unknown bound resource |
+| 409 | Stale revision, conflicting heads, mismatched idempotency input or unresolved choices |
+| 413 | Payload exceeds published limits; chunk by validated manifest without truncation |
+| 429 | Limit exceeded; Retry-After |
+| 503 | Disconnected, locked, unavailable store, incomplete cloud files or failed durability |
 
-```json
-{
-  "ok": true,
-  "accepted": [ { "kind": "prompt", "id": "p_123", "rev": 42 } ],
-  "conflicts": [
-    { "kind": "prompt", "id": "p_456", "server": { "rev": 39, "body": {}, "deletedAt": null, "tombstoneVersion": 1, "clientClock": "2026-10-21T12:58:40.000Z" } }
-  ],
-  "serverRev": 42
-}
-```
+Before coding, publish OpenAPI schemas including bounded upload/object reads, limits, scopes, pagination, preview lifetime, crash recovery and error examples. A hashed complete-state revision replaces raw serialized workspace content as an external revision token.
 
-### DELETE /api/library
+Local access is opt-in, loopback only, with exact Host/Origin checks, narrow CORS, expiring revocable pairing and distinct scoped browser/agent credentials. Never put tokens in URLs, logs, library files or backups. Store credentials in the platform's secure credential facility. An HTTPS web app to loopback connection must pass supported-browser local-network/security testing before web support is claimed. A local API must reject LAN access and DNS rebinding attempts. No browser cookie extraction or desktop control is permitted.
 
-Deletes the account row; the cascade removes every record. Returns `{ "ok": true, "deleted": true }`. Local data is untouched.
+## Phase B: optional hosted storage
 
-### Errors and limits
+Begin only after Phase A's folder/recovery/API acceptance passes. Add a hosted adapter using the same `libraryId`, object/history format, revisions, validation and command semantics. Provider selection, provisioning cost, region, encryption/key recovery and retention/deletion policy remain explicit decisions. Neon with existing Clerk identity is a candidate retained from the original proposal, not a selected or provisioned service.
 
-Error bodies are `{ "ok": false, "error": "<message>", "retryable": <bool> }`. Rate limit: 120 requests per minute per account across all library routes, counted in Upstash Redis with the `incr` and `expire` pattern from `telemetryStore.js`. Preview has no Redis variables, so the limit is skipped when they are absent outside Production and fails closed with 503 when they are absent in Production.
+Hosted mode remains opt-in. Preview upload of the complete workspace, history and backup inventory, apply with revision checks, read back object/hash parity, then switch active backend. Preserve the folder package as a recovery checkpoint. The app and API must select the same backend for that library; never leave API writes pointed at the old folder while the UI edits a hosted fork. Backend switching requires a write barrier, flush or preservation of the outbox, verified transfer and one recorded activation commit. Failure keeps the previous backend active.
 
-| Status | When | Client action |
-|---|---|---|
-| 400 | Bad JSON, unknown `kind`, missing `id`, record over 256 KB | Drop the record, log it, show a sync error |
-| 401 | Missing or invalid token | Refresh the token once, then pause sync and prompt sign-in |
-| 403 | `canUseLibrarySync` is false | Turn the toggle off and explain why |
-| 413 | Over 100 records or 1 MB | Split the batch and retry |
-| 429 | Over the rate limit | Wait for `Retry-After` |
-| 500, 503 | Database or server failure | Exponential backoff |
+The first hosted slice uses hosted authority plus durable offline cache/outbox. Continuing automatic bidirectional folder mirroring is deferred until separately specified; both storage choices remain supported and explicit switches preserve identity/history. Offline records are pending descendants of the same library, not a new library. Returning to folder mode uses the same verified switch protocol and preserves hosted history.
 
-## Merge rules
+Adapt the previous pull/push concept to complete objects, commits, backup manifests and association graphs. The former four-kind schema, 25-version merge cap, implicit first-sign-in union and immediate delete cascade cannot satisfy this plan unchanged. Server writes and external agent writes use the same command validator and optimistic concurrency. Hosted auth derives account identity server-side and checks library membership on every operation. External agents need revocable library-scoped authorization, not copied browser session tokens. Unpaired or signed-out clients issue no hosted library requests.
 
-The client merges; the server only refuses stale writes. Every conflict runs through one shared function, `mergeSyncedRecord(local, server)`, built on the ordering `reconcileLibraryRecords` already uses between tabs.
+Retain server kill switch, strict origin checks, payload/rate limits, account isolation, bounded retries and metadata-only logging from the earlier design. Pause rather than discard rejected objects. Disable stops transport without deleting local, hosted or backup data. Account switching never auto-uploads the previous account's cache. Hosted deletion and erasure from recovery copies need a separate confirmed workflow with verified provider retention disclosures. Do not promise instant removal from provider backups.
 
-Prompts:
+Draft and review privacy/terms before public activation, with factual provider, region, encryption and backup details reverified then. No assumed counsel approval, paid smoke tests, production flags or provisioning is authorized by this planning update.
 
-1. Higher `tombstoneVersion` wins, so a delete or restore beats an older edit.
-2. Equal tombstones: the newer clock wins, where clock is `deletedAt || updatedAt || createdAt` (the existing `recordClock`).
-3. Equal clocks: the server copy wins, so every device picks the same result.
-4. If winner and loser content differ (`arePromptSnapshotsEqual` is false) and the loser is not already in the winner's `versions`, append the loser with `appendVersionSnapshot`, then stamp with `stampRecordMutation`. The existing 25-version cap applies.
-5. If the merged record differs from the server copy, push it with `baseRev` set to the server `rev`. If it matches, adopt it locally and push nothing.
-6. Retry conflicts at most 3 rounds per sync pass, then surface a sync error.
+## Acceptance and delivery gates
 
-A trashed winner keeps the losing edit in its versions, so restoring from trash recovers it.
+| Gate | Required proof |
+| --- | --- |
+| A1: contracts | Lossless fixture with more than 25 versions, runs, cases, Scratch, packs, assets, trash, markers and unknown metadata; all IDs/references preserved; precise API schema |
+| A2: folder durability | Save/reopen, interrupted writes, corrupt head, permission loss, full disk, missing cloud objects and schema rollback using disposable data |
+| A3: shared API | App create appears in API read; API preview/apply appears in app after reopen; same libraryId/revision; stale writes rejected; response-loss/restart retry commits once |
+| A4: iCloud concurrency | Two actual clients produce divergent heads; both edits and histories survive propagation/conflict copies; no stale overwrite or deletion resurrection |
+| A5: recovery | Independent backup restores complete object graph; restore creates a new commit; disconnect/reconnect and pending outbox retain data; credentials never exported |
+| B1: hosted parity | Complete folder-to-hosted-to-folder round trip, history/backups and references included, with atomic backend activation and offline conflict recovery |
+| B2: security and release | Account/library isolation, revoked access, limits, kill switch, approved policy text, preview then production checks, separate native and human acceptance |
 
-Folders and collections:
+Use synthetic fixtures, isolated profiles and supported background tooling. Linux/Windows runner evidence cannot prove macOS file permissions or actual iCloud propagation. Record source, host and exact runtime separately. Builds and HTTP success do not establish data survival. Do not migrate Dave's real library until a fresh backup and reviewed transfer preview pass. The earlier repaired import remains a separate pending data reconciliation, to be revalidated against then-current live content.
 
-- Folders: the newer `clientClock` wins; a tie goes to the server. Removing a folder pushes it with `deletedAt`.
-- Collections: one record per name. Removal sets `deletedAt`; adding the name again clears it with a newer clock.
+## Next action and open decisions
 
-Markers:
+Next action: review this reconciled contract, then authorize slice A1 before runtime work. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
 
-- Markers union and never conflict.
-- A pulled `deleted:<id>` applies through the existing `markLibraryDeleted`; a pulled `clear:<generation>` applies through `filterDeletedLibraryRecords`.
+Decided: folder first, hosted second; complete history/backups; shared app/API library. Proposed defaults: desktop/local-service first, immutable file package, no automatic history pruning and explicit backend switching. Hosted provider/cost, encryption/key recovery and backup erasure policy remain open before Phase B. This document does not mark those choices approved.
 
-Starter pack duplicates:
+## Sources and prior design
 
-- Change `seedToEntry` to give starter records a fixed id, `starter:<packId>:<seedPromptId>`, whenever `seedPromptId` exists. Loads on two devices then land on one record.
-- Before a record's first push, collapse untouched random-id starter copies into the fixed id. Untouched means no `versions`, `useCount` 0, and title and text equal to the seed.
-- Only never-pushed copies collapse, so a dedupe can never purge a record another device has seen. Edited copies keep their own ids.
-- When a pulled starter record's `packId` is missing from `pl2-loaded-packs`, add it so the Starter Packs card stops offering that pack.
-
-## Client sync loop
-
-A new shared module, `lib/librarySync.js`, and a `useLibrarySync` hook own the loop. They change the library only through the existing acknowledged writers, never raw localStorage, so the journal, storage events and save receipts keep working.
-
-| Key | Holds |
-|---|---|
-| `pl2-sync:<userId>:state` | `{ enabled, cursor, deviceId, lastSyncAt, lastError }` |
-| `pl2-sync:<userId>:shadow` | `kind:id` mapped to `{ rev, hash }` for the last copy the server confirmed |
-
-A record is dirty when its hash differs from its shadow entry or it has no entry. The hash is SHA-256 over stable JSON of the normalized record, excluding derived fields such as `completeness`. Dirtiness comes from the shadow, not a queue, so an offline edit cannot be dropped.
-
-One pass:
-
-```mermaid
-flowchart LR
-  pull[Pull since cursor<br/>until hasMore is false] --> merge[Merge and persist<br/>acknowledged writes only]
-  merge --> push[Push dirty records<br/>baseRev from the shadow]
-  push --> conflicts{Conflicts?}
-  conflicts -- "yes: merge again, at most 3 rounds" --> merge
-  conflicts -- no --> synced[Synced<br/>cursor and shadow advance]
-```
-
-1. Take the Web Lock `pl2-library-sync`, so one tab per browser syncs. Other tabs adopt its writes through the existing storage-event listener. Without Web Locks, only a visible tab syncs.
-2. Pull from the cursor until `hasMore` is false. Merge each record, persist it, then advance the shadow and cursor.
-3. Push dirty records in batches of 100, with `baseRev` from the shadow (`0` when absent).
-4. Accepted records update the shadow. Conflicts merge, persist, and queue again.
-5. Repeat steps 2 to 4 until nothing is dirty, at most 3 rounds.
-
-The cursor and shadow move only after the local write is acknowledged. Each request calls `clerkGetToken()` for a fresh session token.
-
-| Trigger | Delay |
-|---|---|
-| Local library write (`onLocalWrite`) | 2 s debounce |
-| Tab becomes visible, window focus, `online` event | Immediate |
-| Timer while the tab is visible | Every 60 s |
-| Sign-in, or the toggle turned on | Immediate |
-
-Failures back off 5 s, 15 s, 60 s, then every 5 min, and reset on success. The Library header shows one state: Synced, Syncing, Offline, or Sync paused with a Retry action.
-
-## Opt-in and first sign-in
-
-Sync stays off until the user turns it on, so nobody sees a change on deploy day. The control lives in a new Account sync section of `prompt-lab-extension/src/modals/SettingsModal.jsx`, shown only when signed in and the server is not `syncDisabled`.
-
-- Toggle: "Sync library to my account", off by default for every account.
-- One line under it: what syncs (prompts, trash, collections, folders) and what never does (API keys, provider settings).
-- Button: "Delete synced data".
-
-First enable on a device:
-
-1. Pull everything from `since=0`.
-2. Collapse never-pushed starter duplicates.
-3. Union by id. Server-only records land locally, local-only records queue for push, shared ids merge by the Merge rules.
-4. Push the result.
-5. Show a one-time summary, for example "Added 12 from your account, uploaded 30, merged 2."
-
-No dialog is needed for collisions. Every one resolves by rule, and the losing text stays in versions.
-
-Account switching: sync state is keyed by user id. If a browser already holds an enabled `pl2-sync:<otherId>:state` for a different account, first enable stops and asks: "This browser's library is synced to another account. Merge it into this account?" Merge continues the steps above; Cancel leaves sync off.
-
-Turning it off:
-
-- Signing out stops the loop. The local library and sync keys stay for that account's return.
-- Turning the toggle off stops the loop and keeps the server copy.
-- Delete synced data confirms first ("Your prompts stay on this device"), calls `DELETE /api/library`, then removes that account's sync keys.
-
-## Security, privacy and policy
-
-The token decides whose data a request touches, nothing secret enters a payload, and the policy pages change before the toggle appears in production.
-
-Trust boundary:
-
-- Every route calls `verifyClerkRequest`; `user_id` is its `clerkUserId`. No request can name another account.
-- `CLERK_AUTHORIZED_PARTIES` stays enforced. Add each extension origin when the extension ships.
-- The server accepts only the four kinds, ids up to 200 characters, and bodies up to 256 KB.
-- Logs carry counts, status codes and timings, never record bodies.
-- Database credentials live only in Vercel env vars (`DATABASE_URL`, `DATABASE_URL_UNPOOLED`), marked sensitive. Neon region: US East (N. Virginia).
-
-Never syncs: the push builder reads only library, trash, folders, collections and markers. A test asserts no payload carries `pl2-provider-settings`, billing or telemetry data, or a string shaped like a provider key (for example `sk-`).
-
-Policy changes, shipped before the toggle is visible:
-
-| Document | Change |
-|---|---|
-| `prompt-lab-web/public/privacy.html` and `../docs/privacy.html` | Add an Account sync section: what is stored, where, that it starts only after opt-in, and how Delete synced data works |
-| `prompt-lab-web/public/terms.html` | Name account sync storage under data handling |
-| [LIBRARY_COMPATIBILITY_CONTRACT.md](LIBRARY_COMPATIBILITY_CONTRACT.md) | Replace export/import-only sync with opt-in account sync on signed-in web. Export and import stay for cross-account moves |
-| [DECISIONS.md](DECISIONS.md) | D-016 resolved: account library sync on Neon Postgres, superseding the export/import-only rule |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | Persistence section: server copy, routes, kill switch |
-
-Retention and deletion wording goes to counsel review before deploy, like the current privacy drafts. Neon keeps a 6-hour restore history on the Free plan, so deleted rows can persist in backups for that window.
-
-## Rollout by shell
-
-Web ships v1. Each later shell joins only after the gate above it passes, and every shell talks to the same three routes.
-
-```mermaid
-flowchart TB
-  web[1. Web v1<br/>Clerk sign-in already ships. Add the Settings toggle, header status and sync loop.<br/>LIBRARY_SYNC_ENABLED decides when production turns on.]
-  g1{Gate: every v1 acceptance check passes in production}
-  ext[2. Chrome extension<br/>Clerk Chrome Extension SDK with syncHost set to promptlab.tools.<br/>Add promptlab.tools and clerk.promptlab.tools to host_permissions.<br/>Add the chrome-extension origin to Clerk allowed origins and CLERK_AUTHORIZED_PARTIES.]
-  g2{Gate: web and extension converge in a two-profile test}
-  desk[3. Desktop Tauri<br/>Needs its own Clerk sign-in path, then reuses the shared sync module unchanged.<br/>The IndexedDB library journal stays the durability layer under sync.]
-  g3{Gate: sync survives a full desktop restart}
-  ios[4. iPhone and iPad SwiftUI<br/>Needs native Clerk sign-in and a Swift client for the same pull and push contract.<br/>Port the mergeSyncedRecord rules to Swift; extend the library contract CI to prove parity.]
-  web --> g1 --> ext --> g2 --> desk --> g3 --> ios
-```
-
-The extension side panel picks up a sign-in change only after it is closed and reopened, a current limit of Clerk's syncHost.
-
-## Acceptance criteria and test plan
-
-v1 is done when every item below passes on a deployed preview and again in production with the QA account.
-
-- [ ] Two fresh browser profiles on one account converge after a create, an edit, a trash, a restore and a permanent delete on each.
-- [ ] A concurrent edit to one prompt on both profiles leaves one winner, with the other text in its versions.
-- [ ] An edit made with the network blocked syncs on reconnect without overwriting a newer remote edit.
-- [ ] First enable with 30 local prompts against an account holding 12 different ones ends with 42 on both profiles and no duplicate ids.
-- [ ] Loading the same starter pack on both profiles yields one record per seed prompt.
-- [ ] A signed-out session makes zero requests to `/api/library/*`.
-- [ ] No request body carries provider settings or a key-shaped string.
-- [ ] `LIBRARY_SYNC_ENABLED=false` stops sync on the next pass and hides the toggle.
-- [ ] Delete synced data leaves zero rows for the account and the local library intact.
-- [ ] A permanent delete removes the prompt text from its server row.
-
-| Layer | Location | Covers |
-|---|---|---|
-| Unit (Vitest) | `prompt-lab-extension/src/tests/librarySync.test.js` | Merge order, version preservation, starter collapse, dirty detection, cursor moving only after acknowledgement |
-| API (Node) | `tests/library-sync.test.mjs` | 401 without a token, CORS, kill switch, `baseRev` conflicts, marker idempotence, purge nulling the body, 400 and 413 limits, 429, delete cascade. Runs on an in-memory `libraryStore` double, plus a Neon branch when `DATABASE_URL` is set |
-| Browser e2e | `prompt-lab-extension/e2e/library-sync.spec.js` | Two browser contexts against a preview deployment on its own Neon preview branch, provider calls intercepted |
-| Production smoke | Existing Production Smoke workflow, new `scope: sync` | Dedicated Free QA account, two disposable profiles, sessions revoked after each run |
-
-## Build order
-
-Six slices, each shippable with production sync still off. Codex owns code; Dave owns the two dashboard steps. Per-slice files, checks and prompts: [account-library-sync-slices.md](account-library-sync-slices.md).
-
-1. Policy docs (Codex). Add D-016 as resolved, update the contract and ARCHITECTURE.md, and draft the privacy and terms changes for counsel. Unblocks the build.
-2. Provision Neon (Dave). Unblocks migrations and the API integration suite.
-3. Migration and API (Codex). Ship `0001_library_sync.sql`, the `db:migrate` script, the three routes and `library-sync.test.mjs`. Unblocks the client.
-4. Shared client (Codex). Ship `librarySync.js`, `useLibrarySync`, `mergeSyncedRecord`, fixed starter ids and their unit tests. Unblocks the UI.
-5. Web UI (Codex). Ship the Settings section, header status, first-enable summary, account-switch prompt, and the preview e2e suite. Unblocks launch.
-6. Launch (Dave, then Codex). Deploy the counsel-reviewed privacy and terms pages first, then turn sync on.
-
-## What would change the pick
-
-- Server cannot read prompts (end-to-end encryption): still Postgres, storing ciphertext; lose server search and sharing.
-- Live team co-editing becomes core: add Zero or PowerSync on the same Postgres; this path keeps that open.
-- "We hold none of your data" becomes the brand: user-owned cloud storage.
-
-## Sources
-
-- [Clerk user metadata limits](https://clerk.com/docs/guides/users/extending.md)
-- [Neon pricing](https://neon.com/pricing)
-- [Neon Vercel managed integration](https://neon.com/docs/guides/vercel-managed-integration)
-- [Upstash Redis pricing](https://upstash.com/pricing/redis.md)
-- [Supabase + Clerk third-party auth](https://supabase.com/docs/guides/auth/third-party/clerk.md)
-- [Clerk Chrome extension syncHost](https://clerk.com/docs/guides/sessions/sync-host.md)
-- [Zero 1.0 (InfoQ)](https://infoq.com/news/2026/06/zero-version-1)
+- [Original proposal and source links](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync.md#sources): historical provider comparisons, to reverify before implementation.
+- [Existing import preview](../prompt-lab-extension/src/lib/workspaceImportPreview.js), [workspace import](../prompt-lab-extension/src/lib/workspaceImport.js) and [journal](../prompt-lab-extension/src/lib/libraryJournal.js): inspected implementation boundaries.
+- [Compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md): shipped behavior, not changed by this plan.

@@ -22,26 +22,22 @@ Consequences: what this unlocks or closes off
 
 ---
 
-### [D-016] PromptLab account library sync — storage backend
+### [D-016] PromptLab library storage sequence
 
-Status: open
+Status: direction decided; implementation and hosted provider pending
 Owner: Dave
 Date opened: 2026-10-23
+Date direction decided: 2026-10-23
 
-Context: the prompt library lives in browser storage, so it belongs to one browser on one machine. Dave asked for a library that follows the account. The local model already carries stable ids, `updatedAt`, tombstones and append-only deletion markers, and the web shell already verifies Clerk session JWTs server-side, so the missing pieces are a server copy and a transport. Mirrors DEC-87 in DB | Decisions. Full proposal: [`account-library-sync.md`](account-library-sync.md).
+Decision: Support both storage modes. Start with a folder Dave chooses in iCloud Drive, then add optional hosted storage. Preserve all history and backups. The app and API use the same logical library, identity, revisions and command service.
 
-Options:
-1. Neon Postgres behind new `/api/library` routes keyed by Clerk user id, opt-in, client-side merge (recommended)
-2. Supabase with Clerk third-party auth and RLS
-3. Upstash Redis hash per user (already provisioned for billing and telemetry)
-4. A sync engine (Zero 1.0 or PowerSync) on Postgres
-5. User-owned cloud storage (Drive appData, Gist, Notion)
-6. Vercel Blob whole-library snapshot (ruled out: concurrent edits lose data)
-7. Clerk user metadata (ruled out: 8 KB cap against a 53 KB library)
+Scope: Dave requested reconciliation of the existing proposal and plan before implementation. No runtime work, personal-data migration, provider provisioning or public policy activation is authorized by this documentation change. The actual folder is selected through the delivered picker later.
 
-Recommendation: option 1. It reuses the existing auth path and data model, leaves room for sharing and server search without a migration, and stays inside the Vercel console. Tradeoff: prompts leave the device once a user opts in, which supersedes the export/import-only rule in [`LIBRARY_COMPATIBILITY_CONTRACT.md`](LIBRARY_COMPATIBILITY_CONTRACT.md) and needs privacy and terms updates before launch.
+Rationale: A user-owned durable library and supported API remove dependence on a browser profile and mouse automation while retaining complete recovery and portability.
 
-Consequences: once made, unblocks the slices in [`account-library-sync-slices.md`](account-library-sync-slices.md). Pro gating of sync rides on D-010.
+Consequences: The previous web-first Neon recommendation is superseded as the execution sequence. The former four-kind schema, 25-version cap and omission of runs/evaluations/Scratch cannot meet the preservation requirement. The revised [proposal](account-library-sync.md) and [build slices](account-library-sync-slices.md) define folder acceptance before hosted work. Existing runtime policy remains unchanged until implemented and verified.
+
+Open before hosted work: provider/cost, region, encryption/key recovery and history/backup erasure policy. Neon/Clerk is a candidate, not a selected service. Desktop/local-service first, immutable package and explicit backend switches are proposed implementation defaults for review. Mirrors DEC-87 in DB | Decisions; prior options and recommendation remain in [Git history](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/DECISIONS.md).
 
 ---
 
