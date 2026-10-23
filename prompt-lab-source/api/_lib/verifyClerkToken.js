@@ -112,6 +112,11 @@ function audienceMatches(claimAudience, expectedAudience) {
 }
 
 function assertValidClaims(claims) {
+  // A valid signature can still represent unfinished MFA or recovery tasks.
+  // Legacy active session tokens omit sts; an explicit status must be active.
+  if (claims?.sts !== undefined && claims.sts !== 'active') {
+    throw new Error('Clerk session has unfinished authentication tasks.');
+  }
   const now = Math.floor(Date.now() / 1000);
   if (!Number.isFinite(Number(claims?.exp)) || Number(claims.exp) <= now) {
     throw new Error('Clerk token is expired.');

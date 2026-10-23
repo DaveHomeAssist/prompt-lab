@@ -52,7 +52,8 @@ export async function isHostedOwner(request) {
       MOBILE_WEB_ORIGIN,
       ...readListEnv('CLERK_AUTHORIZED_PARTIES', []),
     ];
-    return authorizedParties.includes(payload.azp)
+    return (payload.sts === undefined || payload.sts === 'active')
+      && authorizedParties.includes(payload.azp)
       && Boolean(lookupOwnerEntitlement({ clerkUserId: payload.sub }));
   } catch {
     // Missing, expired or unverifiable sessions retain ordinary usage protection.

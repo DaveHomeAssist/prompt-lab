@@ -867,6 +867,7 @@ test('invalid, non-owner and spoofed identities cannot escape the daily demo lim
     { cookie: `__session=${ownerToken({ iss: 'https://attacker.example' })}` },
     { cookie: `__session=${ownerToken({ azp: 'https://attacker.example' })}` },
     { cookie: `__session=${ownerToken({ sid: '' })}` },
+    { cookie: `__session=${ownerToken({ sts: 'pending' })}` },
     { cookie: `__session=${ownerToken({}, forgedKey)}` },
     { cookie: '__session=malformed' },
     { cookie: '__session=%invalid' },
