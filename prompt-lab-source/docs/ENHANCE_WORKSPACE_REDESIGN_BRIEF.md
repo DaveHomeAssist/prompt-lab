@@ -614,7 +614,7 @@ prompt and explain whether Save creates a record or adds a version.
 - Put one always-visible New Prompt action in the shared app header across
   workspaces, desktop/mobile sizes and existing Create layouts. Disable it
   during an active run. Keep command palette/keyboard access.
-- Keep short displays usable: collapse the context explanation below 500px
+- Keep short displays usable: collapse the context explanation below 1100px wide or 500px
   high and omit the decorative identity row while keeping header actions.
 - Put the editing context above both Write and Dual Pane. Name the current
   saved prompt or unsaved draft; explain that refinement keeps that identity,
