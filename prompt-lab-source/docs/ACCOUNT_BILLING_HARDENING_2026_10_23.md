@@ -55,14 +55,27 @@ USD9/month and USD79/year hosted Checkout quotes. Both owned quotes were expired
 independent GET readbacks confirmed unpaid status and no subscription. All 13
 live negative authentication/origin/method/signature checks passed. A complete
 read-only audit found 34 bound Stripe customers and zero conflicting aliases.
-The broader production Free-account smoke is still running at this snapshot.
+Production Free-account run39940019584 passed nine cases with five opt-in
+scenarios skipped, including session revocation.
 
 A final compatibility check found that pinned `@clerk/backend` 3.8.4 does not
 expose the issuer option documented by newer versions. The SDK follow-up applies
 configured claim validation directly to the SDK's verified payload. A regression
 using the actual pinned SDK reproduces acceptance of a wrong configured issuer
-on PR200's source and rejects it with the follow-up. Valid issuer and audience
-negative coverage pass too. Follow-up API validation and release are pending.
+on PR200's source and rejects it with the follow-up. Valid-token and wrong-audience cases pass too. PR202 merged as `e264e3b` after
+all eight checks passed, including API144/shared1255/legacy231/landing25/hosted47.
+Exact production `dpl_4SJs6mK7fv6uXWLJ8Do1b831yrDh` is READY on promptlab.tools.
+Final SDK production billing run39942179675 passed authenticated license,
+portal, both hosted quotes and Free state after reload; both new quotes were
+expired and independently read back unpaid without subscriptions. All thirteen
+negative production checks passed again. The core Free-account browser source
+is unchanged across the SDK follow-up; its nine-case production acceptance is
+retained. Repeated core-main native run39939912598 passed all six jobs.
+
+The security issue is Done and the implementation RUN was read back. The complete
+58-row dashboard snapshot retains the original 14 plan identities. See the
+[structured evidence](evidence/ACCOUNT_BILLING_HARDENING_2026_10_23.json) for run IDs,
+cleanup, source parity and verification limits.
 
 Follow the canonical Issue Backlog security record and implementation RUN for
 subsequent release evidence. Existing offline, refund and webhook arrival-log

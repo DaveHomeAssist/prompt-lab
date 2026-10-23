@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T10:10:43.828Z",
+  "snapshotAt": "2026-10-23T10:56:03.723Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "df6cfa98c912961f0389658c8d3fdcb64e5f99f1",
+  "mainSha": "e264e3bdf2fddda231cb68f715109878286aeca9",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish PR200 CI, merge/deploy and no-charge signed-in account/billing acceptance. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
     {
-      "label": "Account and Stripe ownership hardening candidate",
-      "state": "Running",
-      "detail": "2026-10-23: Dave directly requested login/paywall/Stripe/Clerk hardening. PR200 with verified-email follow-up, integrated with main df6cfa9 rejects cross-account Stripe rebinding and conflicting metadata, drops inherited owner/paid cache and stale billing responses, aligns JWT authorized-party/configured issuer/audience checks. New regressions reproduced six server/four client failures against original source. Dominic Node22: full API141, focused billing48, shared1252, legacy231, hosted build and docs checks pass. Current-main CI, merge/deployment and no-charge signed-in production acceptance remain pending. Five negative webhook signature cases return401 before persistence or Stripe requests. Prices, legacy annual support, offline grace,180USD spending cap,25/1000 public ceilings and auto-reload-off remain unchanged. Complete Notion58-row snapshot;14plan identities preserved. Private Next Steps Board mapping remains absent. Verified profile emails or explicitly verified signed email claims now required for legacy email linking; existing Clerk-ID binding works without email. Concurrent PR201 lifecycle acceptance records preserved.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/200"
+      "label": "Account and Stripe ownership hardening released",
+      "state": "Verified",
+      "detail": "2026-10-23: PR200 merged3d1437b after16checks; pinned Clerk SDK issuer compatibility PR202 mergede264e3b after8checks. Exacte264 Vercel dpl_4SJs6mK7fv6uXWLJ8Do1b831yrDh READY onpromptlab.tools. Customer ownership/alias conflicts fail closed; legacy email linking requires verified email; account changes discard inherited paid/owner cache and stale responses. Actual installed-SDK issuer regression fails before fix and passes after. API144/shared1255/legacy231/landing25/hosted47 pass with1credential skip. Core candidate39937289932 and main39939912598 native matrices each pass6jobs; SDK follow-up UI/native source identical. Stripe test-mode39938236867 passes13lifecycle steps and signed/stale webhook replay with fixture/store/session cleanup; monthly browser, annual API coverage. Production Free39940019584 passes9/5opt-in skips; final SDK billing39942179675 passes authenticated license/portal,9USD monthly/79USD annual quotes and Free reload with stable customer. All4owned quotes expired/unpaid/no subscriptions on independent GET readback; sessions revoked.13final live negative auth/origin/method/signature checks pass. Complete read-only Stripe audit34bound customers/0alias conflicts. Error/fatal log query returned no groups, with completeness unknown. Security issue Done and RUN read back. Complete58rows/14plan identities retained. Prices, legacy support, offline/refund/arrival-log policies,25/1000 ceilings,180USD cap, auto-reload-off and draft terms unchanged. Private Next Steps Board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/202"
     },
     {
       "label": "October 23 prompt lifecycle delivered",
@@ -1104,10 +1104,10 @@
     {
       "id": "402255fc8f44813faf3ae58a8b002426",
       "inPlan": false,
-      "nextAction": "Review the existing issue acceptance before implementation.",
-      "verification": "Not evaluated by this lifecycle delivery.",
+      "nextAction": "Retain regressions; review intentional customer ownership transfers through support.",
+      "verification": "Scoped account/billing acceptance verified: PR200/202, API144, shared1255, native matrix6jobs, test-mode lifecycle13, live Free9 and billing/negative checks; all owned quotes and sessions cleaned.",
       "title": "Harden account ownership across Clerk sessions and Stripe billing",
-      "status": "In progress",
+      "status": "Done",
       "severity": "High",
       "area": "Background",
       "type": "Security",

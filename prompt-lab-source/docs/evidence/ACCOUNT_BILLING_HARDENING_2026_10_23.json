@@ -1,0 +1,198 @@
+{
+  "date": "2026-10-23",
+  "scope": "Clerk identity, account-scoped billing state and Stripe customer ownership",
+  "pullRequest": "https://github.com/DaveHomeAssist/prompt-lab/pull/200",
+  "candidate": "02e08c1b64c2bdce08d4e032e5784ca48bee9b34",
+  "merge": "3d1437b8c686203cced32a79792840881e9d5479",
+  "deployment": {
+    "id": "dpl_9snwb9keLDf6nXWnDVKudM4UfX4R",
+    "state": "READY",
+    "alias": "promptlab.tools",
+    "exactMerge": true
+  },
+  "candidateChecks": {
+    "all16Passed": true,
+    "api": 141,
+    "shared": 1255,
+    "legacy": 231,
+    "landingBrowser": 25,
+    "hostedBrowser": 47,
+    "hostedCredentialSkip": 1,
+    "nativeMatrixRun": 39937289932,
+    "nativeJobsPassed": 6
+  },
+  "regressionBeforeFix": {
+    "serverFailures": 6,
+    "clientFailures": 4
+  },
+  "stripeAudit": {
+    "customers": 34,
+    "complete": true,
+    "bound": 34,
+    "unbound": 0,
+    "conflictingAliases": 0,
+    "customerWrites": 0
+  },
+  "testModeLifecycle": {
+    "run": 39938236867,
+    "passed": true,
+    "checks": 13,
+    "monthlyBrowser": "transitions, refresh and reload passed",
+    "annual": "Stripe API lifecycle passed",
+    "webhook": "genuine signed delivery persisted; invalid signature rejected; duplicate/stale active replay leaves current entitlement Free",
+    "cleanup": "test clocks/customers deleted, prices/product deactivated, Redis removed, Clerk session revoked; zero active QA sessions"
+  },
+  "productionNegative": {
+    "passed": 13,
+    "results": [
+      {
+        "path": "/api/billing/license",
+        "method": "POST",
+        "case": "anonymous",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/license",
+        "method": "POST",
+        "case": "forged bearer",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/license",
+        "method": "POST",
+        "case": "foreign origin",
+        "status": 403
+      },
+      {
+        "path": "/api/billing/license",
+        "method": "GET",
+        "case": "anonymous",
+        "status": 405
+      },
+      {
+        "path": "/api/billing/checkout",
+        "method": "POST",
+        "case": "anonymous",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/checkout",
+        "method": "POST",
+        "case": "forged bearer",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/checkout",
+        "method": "POST",
+        "case": "foreign origin",
+        "status": 403
+      },
+      {
+        "path": "/api/billing/checkout",
+        "method": "GET",
+        "case": "anonymous",
+        "status": 405
+      },
+      {
+        "path": "/api/billing/portal",
+        "method": "POST",
+        "case": "anonymous",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/portal",
+        "method": "POST",
+        "case": "forged bearer",
+        "status": 401
+      },
+      {
+        "path": "/api/billing/portal",
+        "method": "POST",
+        "case": "foreign origin",
+        "status": 403
+      },
+      {
+        "path": "/api/billing/portal",
+        "method": "GET",
+        "case": "anonymous",
+        "status": 405
+      },
+      {
+        "path": "/api/billing/webhook",
+        "method": "POST",
+        "case": "anonymous",
+        "status": 401
+      }
+    ]
+  },
+  "productionBilling": {
+    "run": 39940016974,
+    "passed": true,
+    "checkout": [
+      {
+        "period": "monthly",
+        "usd": 9,
+        "interval": "month"
+      },
+      {
+        "period": "annual",
+        "usd": 79,
+        "interval": "year"
+      }
+    ],
+    "portal": "passed",
+    "postCheckoutPlan": "free",
+    "customerStable": true,
+    "ownedQuotes": "both expired; independent GET confirmed unpaid and no subscriptions",
+    "sessionCleanup": "revoked; zero active QA sessions"
+  },
+  "productionFree": {
+    "run": 39940019584,
+    "passed": 9,
+    "optInSkipped": 5,
+    "merge": "3d1437b8c686203cced32a79792840881e9d5479",
+    "finalSdkUiSourceParity": true,
+    "sessionCleanup": "verified"
+  },
+  "limits": {
+    "spendingCapUsd": 180,
+    "perPersonIpRequests": 25,
+    "sitewideRequests": 1000,
+    "autoReload": "off; unchanged"
+  },
+  "preserved": [
+    "legacy annual price recognition",
+    "six-hour revalidation/seven-day offline grace",
+    "existing refund/dispute policy",
+    "draft and non-effective legal terms",
+    "production credentials and prices"
+  ],
+  "limitations": [
+    "Workflow feature gates use a client cache; users controlling their browser can modify local feature controls.",
+    "Annual purchased access was exercised through Stripe test APIs; monthly purchased access was exercised through browser refresh/reload.",
+    "Webhook persistence is an arrival log without deduplication or event ordering; entitlements resolve current Stripe subscription state.",
+    "Private Next Steps Board has no PromptLab mapping."
+  ],
+  "sdkFollowup": {
+    "pullRequest": "https://github.com/DaveHomeAssist/prompt-lab/pull/202",
+    "candidate": "b57309f10d19d3f1b5ea68e6c9bff8207939d653",
+    "merge": "e264e3bdf2fddda231cb68f715109878286aeca9",
+    "candidateChecksPassed": 8,
+    "apiTests": 144,
+    "billingAuthTests": 25,
+    "issuerRegressionFailedBeforeFix": true,
+    "deployment": "dpl_4SJs6mK7fv6uXWLJ8Do1b831yrDh",
+    "deploymentState": "READY",
+    "productionAlias": "promptlab.tools",
+    "productionBillingRun": 39942179675,
+    "productionBillingPassed": true,
+    "ownedQuotes": "both expired/unpaid/no subscriptions; independent GET readback",
+    "sessionCleanup": "revoked; zero active QA sessions",
+    "negativeChecks": 13
+  },
+  "coreMainNative": {
+    "run": 39939912598,
+    "jobsPassed": 6
+  },
+  "snapshotAt": "2026-10-23T10:56:03.723Z"
+}
