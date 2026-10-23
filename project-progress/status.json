@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "d33ac1b997aea5c960255df7f9903d30b68884a5",
+  "mainSha": "0832410453b5c9b5e7ec3f28060499ecea5b66e7",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify hosted API credit balance, prior cycle spend, auto-reload and production key expiry in Claude Console; retain 10/200 request limits until account proof is available. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Public request ceilings25/1000 live;180USD cap retained",
+      "state": "Verified",
+      "detail": "2026-10-23: Dave explicitly approved25 requests/person-IP and1000sitewide. Vercel production HOSTED_DEMO_DAILY_LIMIT25 and HOSTED_GLOBAL_DAILY_LIMIT1000 written/read back; HOSTED_CYCLE_BUDGET_USD180 unchanged. Redeploy dpl_EUSCc24gJBigzkdz1MXu3uF9UFbS READY exact0832410. Live shared-key Sonnet4.6 request200/OK with X-Demo-Limit25, X-Global-Limit1000, standard access and persistentKV. Counters retained across deploy (remaining23/998); no reset. Reported9input+4output tokens=$0.000087. Runtime-log query returned no records. Claude Console billing confirms auto-reload off; no billing/key changes. Promotional balance199.37USD of200USD, issuedOct14, expiresNov17UTC; regular balance3.45USD. Production secret created/last-updatedMar31 excludes dave key createdSep24/expiringOct24; prompt-lab-public createdMar31/usedtoday/noexpiry is a high-confidence identity match, not a direct secret-value comparison. Existing0.50USD/IP/UTCday cap and cycle day14 preserved. Actual next grant renewal time remains unverified. Existing51-row/14-plan issue snapshot and original collection time retained. No application-source changes. Private Next Steps Board still lacks PromptLab mapping.",
+      "url": "https://app.notion.com/p/3e4255fc8f4481b9a8f6e68577009108"
+    },
     {
       "label": "Hosted budget CI complete; account proof pending",
       "state": "Open",
