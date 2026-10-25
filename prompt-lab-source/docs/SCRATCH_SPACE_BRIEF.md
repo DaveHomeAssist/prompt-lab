@@ -19,3 +19,15 @@ This uses the existing Scratch editing, selection, autosave, failure/retry, swit
 ## Risks and decisions
 
 The existing contained-shell flex chain and mobile minimum-height rule need correction; hiding controls must not leave invisible focus targets. Native HTML hiding is used for tools in focus. Default workspace keeps the index/tools; focus is explicitly selected and resets on workspace remount. No unresolved product decision blocks this bounded slice.
+
+## Release receipt
+
+Closeout verified 2026-10-25. [PR205](https://github.com/DaveHomeAssist/prompt-lab/pull/205) merged as `33016c7fa2427352870635bdfaaa49cc089c59d6`; [PR209](https://github.com/DaveHomeAssist/prompt-lab/pull/209) applied four plain-punctuation status strings as `faea576f73182c5860cd204cddb89807532afd37`.
+
+All seven final release workflows passed. [Native39957992574](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39957992574) passed all six jobs, including MSI, NSIS, DEB and AppImage acceptance and macOS universal packaging. The original feature [native39956447538](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39956447538) also finished with all six jobs successful. No additional campaign was launched for closeout. Earlier NSIS renderer attachment and hosted browser-install failures remain in the historical runs; scoped retries passed without assertion bypass.
+
+[Production39958146860](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39958146860) passed both signed-in 375px and 1440px cases on faea576: focus area, editing/saving, Exit focus and reload. Both disposable sessions were revoked and verified. No model or billing requests. That deployment was READY; current main47b4b12 and its READY production deployment retain byte-identical application source, with later documentation/progress changes only. This parity does not assert a new signed-in runtime test on the later revision.
+
+Dominic passed 25 affected component checks and six viewport scenarios in both themes, including quota failure/retry, keyboard return to Notes, switching/reload, resize and short/ultrawide layouts. The copy-only patch passed 12 affected checks and the same six scenarios. Full hosted verification passed 53 with one credential-dependent skip; final exact-main CI passed afterward.
+
+[Scratch issue](https://app.notion.com/p/402255fc8f448140b0b8f0bfcee2b929) is Done with readback. Broader physical/human, macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance remain separate project gates. Four other October 23 intake items remain backlog only. Next: retain the bounded release and await Dave's next selection.
