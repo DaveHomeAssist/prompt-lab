@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-23T17:30:45.783Z",
+  "snapshotAt": "2026-10-25T23:08:10.794Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "faea576f73182c5860cd204cddb89807532afd37",
+  "mainSha": "47b4b12c6223c1cd40099c8c633ea10db3568171",
   "overall": "Acceptance incomplete",
-  "nextAction": "Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Other five October 23 requests remain backlog only. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Four remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Active Scratch note space released",
+      "state": "Verified",
+      "detail": "2026-10-25 closeout: PR205 merged33016c7 and punctuation PR209 mergedfaea576. All seven faea576 workflows success: native39957992574 (all six jobs), hosted39957992498, Extension39957992551, API39957992491, Version39957992560, Pages39957992518 and production39958146860. Production375px/1440px focus/edit/save/exit/reload2/2; both disposable sessions revoked. No model/billing requests. Original feature native39956447538 also success across six jobs. Dominic25 affected component tests and six viewport scenarios in both themes; copy patch12 tests and six scenarios passed. Earlier renderer-attachment failure and browser-install timeout retained; scoped retries passed without source/assertion bypass. Main47b4b12 and READY deployment dpl_7yozD33E4HTp4UxuRFrkDAkhA1U3 retain byte-identical app source to testedfaea576; later changes documentation/progress only. Scratch issue Done and RUN/Hub appended with readback. Broader macOS installed/signing/upgrade/human gates remain separate. Private board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/205"
+    },
     {
       "label": "Folder first library plan reconciled",
       "state": "Open",
@@ -1086,14 +1092,14 @@
     {
       "id": "402255fc8f448140b0b8f0bfcee2b929",
       "title": "Give the active Scratch pad more of the available screen",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Layout",
       "type": "UX",
       "url": "https://app.notion.com/402255fc8f448140b0b8f0bfcee2b929",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+      "nextAction": "Retain scoped Scratch release; await selection of another backlog item.",
+      "verification": "PR205/209 merged and deployed; all final release workflows and production2/2 passed. See Scratch release evidence."
     },
     {
       "id": "402255fc8f44814f9d34d38ae16b6e04",
