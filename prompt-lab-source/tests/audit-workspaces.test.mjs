@@ -238,3 +238,35 @@ test('an exception for the same GHSA ID under another package name does not appl
   assert.deepEqual(result.blocking, ['GHSA-vfj7-8cjw-p6xm']);
   assert.equal(calls.length, 1);
 });
+
+// Exercise the shipped policy, not the injected historical exception fixture.
+for (const now of ['2026-10-26T00:00:00Z', '2026-11-06T00:00:00Z']) {
+  test(`the default policy does not waive the withdrawn braces advisory at ${now}`, () => {
+    const report = reportWith([bracesAdvisory, otherHighAdvisory]);
+    const result = auditWorkspace(AUDIT_WORKSPACES[0], {
+      now: new Date(now),
+      spawn() {
+        return { status: 1, stdout: JSON.stringify(report), stderr: '' };
+      },
+    });
+
+    assert.equal(result.gatePassed, false);
+    assert.deepEqual(result.accepted, []);
+    assert.deepEqual(result.blocking, ['GHSA-vfj7-8cjw-p6xm', 'GHSA-aaaa-bbbb-cccc']);
+    assert.deepEqual(result.notes, []);
+  });
+
+  test(`a clean report passes the default policy without an expiry dependency at ${now}`, () => {
+    const result = auditWorkspace(AUDIT_WORKSPACES[0], {
+      now: new Date(now),
+      spawn() {
+        return { status: 0, stdout: JSON.stringify(cleanReport), stderr: '' };
+      },
+    });
+
+    assert.equal(result.gatePassed, true);
+    assert.deepEqual(result.accepted, []);
+    assert.deepEqual(result.blocking, []);
+    assert.deepEqual(result.notes, []);
+  });
+}
