@@ -2,6 +2,30 @@
 
 Date: 2026-10-26
 
+## Scratch notes sit beside Write (unreleased)
+
+- Write now has a Scratch button in the editing bar above the prompt, and
+  Cmd or Ctrl plus backslash does the same. It opens your Scratch notes next
+  to the prompt, so you can read and edit a note while you write. Notes save
+  as you type, in the same place as the Scratch view.
+- Insert note into prompt puts the note, or just the text you selected, where
+  your cursor is in the prompt. At the end of the prompt it starts a new
+  paragraph. Open in Scratch takes the note to the full Scratch view in Focus.
+- Drag the edge of the panel, or use the arrow keys on it, to change its
+  width; double-click the edge to reset it. On narrower screens and phones the
+  panel floats over the prompt instead, above the phone navigation bar, and
+  Escape closes it.
+- Scratch note lists now show one line per note: its color, title and how
+  long ago it changed. Choose Detailed above the list for the previous rows
+  with a preview. The note list in Scratch can also be resized.
+
+## New prompts keep their own titles (unreleased)
+
+- A new, unsaved prompt could be given a title taken from a different prompt
+  you had just improved. Its comparison text could come from that other
+  prompt too. Titles and comparisons now come only from the prompt you are
+  working on.
+
 ## Chains pass text between steps exactly as written (unreleased)
 
 - When a chain filled `{{input}}`, `{{prev}}` or a mapped variable, some dollar
