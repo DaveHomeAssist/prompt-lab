@@ -14,7 +14,8 @@ Date: 2026-10-26
 - Drag the edge of the panel, or use the arrow keys on it, to change its
   width; double-click the edge to reset it. On narrower screens and phones the
   panel floats over the prompt instead, above the phone navigation bar, and
-  Escape closes it.
+  Escape closes it. On very short phone screens, where the panel has no room,
+  the Scratch button is hidden; use Scratch in the bottom bar or the shortcut.
 - If a note cannot be saved when the panel closes, for example because
   storage is full, its text is kept and comes back when you reopen the panel.
 - Scratch note lists now show one line per note: its color, title and how
