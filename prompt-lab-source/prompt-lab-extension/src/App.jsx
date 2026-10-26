@@ -38,8 +38,10 @@ import {
   filterCommands,
 } from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
-import { SIDE_PANE_WIDTH } from './lib/sidePane.js';
+import { SIDE_PANE_WIDTH, WRITE_SIDE_VIEWS } from './lib/sidePane.js';
 import ScratchSidePanel from './ScratchSidePanel.jsx';
+import PromptsSidePanel from './PromptsSidePanel.jsx';
+import WriteSidePanel from './WriteSidePanel.jsx';
 import usePersistedState from './usePersistedState.js';
 import { insertAtCursor } from './lib/insertAtCursor.js';
 import CreateEditorPane from './CreateEditorPane';
@@ -149,7 +151,15 @@ export default function App({
   const [writeScratchWidth, setWriteScratchWidth] = usePersistedState('pl2-write-scratch-width', SIDE_PANE_WIDTH.default, {
     validate: (value) => (Number.isFinite(value) ? Math.max(SIDE_PANE_WIDTH.min, Math.min(SIDE_PANE_WIDTH.max, value)) : SIDE_PANE_WIDTH.default),
   });
+  // The panel's view: Scratch, or the All, Recent or Favorites prompt list.
+  const [writeSideView, setWriteSideView] = usePersistedState('pl2-write-side-view', 'scratch', {
+    validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
+  });
+  const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
+  // The prompt list last shown, so Prompts reopens where it was left.
+  const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
   const scratchToggleRef = useRef(null);
+  const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
@@ -545,9 +555,29 @@ export default function App({
   const writeScratchMode = viewportWidth >= 1100 ? 'column' : 'overlay';
   const closeWriteScratch = () => {
     setWriteScratchOpen(false);
-    setTimeout(() => scratchToggleRef.current?.focus(), 0);
+    const toggle = writeSideTab === 'prompts' ? promptsToggleRef : scratchToggleRef;
+    setTimeout(() => toggle.current?.focus(), 0);
   };
-  const insertScratchIntoPrompt = (value) => {
+  const showWriteSideTab = (nextTab) => {
+    if (nextTab === 'prompts') setWriteSideView(writePromptsView);
+    else setWriteSideView('scratch');
+  };
+  // A context-bar toggle opens the panel on its tab, switches an open panel
+  // to it, or closes the panel when that tab is already showing.
+  const toggleWriteSideTab = (nextTab) => {
+    if (writeScratchOpen && writeSideTab === nextTab) { closeWriteScratch(); return; }
+    showWriteSideTab(nextTab);
+    setWriteScratchOpen(true);
+  };
+  const chooseWritePromptsView = (view) => {
+    setWritePromptsView(view);
+    setWriteSideView(view);
+  };
+  const openPromptFromSide = (entry) => {
+    lib.trackRecentAccess?.(entry.id);
+    handleLoadEntry(entry, 'create');
+  };
+  const insertIntoPrompt = (value) => {
     const next = insertAtCursor(raw, cursor, value, { separateAtEnd: true });
     setRaw(next.value);
     updateCursor(next.caret);
@@ -1139,7 +1169,8 @@ export default function App({
             saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
             openSavePanel={openSavePanel} openSection={openSection}
             accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn}
-            scratchPanel={writeScratchAvailable ? { open: writeScratchOpen, onToggle: () => (writeScratchOpen ? closeWriteScratch() : setWriteScratchOpen(true)), buttonRef: scratchToggleRef } : null} />
+            scratchPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'scratch', onToggle: () => toggleWriteSideTab('scratch'), buttonRef: scratchToggleRef } : null}
+            promptsPanel={writeScratchAvailable ? { open: writeScratchOpen && writeSideTab === 'prompts', onToggle: () => toggleWriteSideTab('prompts'), buttonRef: promptsToggleRef } : null} />
         </div>
       )}
 
@@ -1158,18 +1189,40 @@ export default function App({
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
           sidePane={writeScratchAvailable && writeScratchOpen ? (
-            <ScratchSidePanel
+            <WriteSidePanel
               m={m}
-              colorMode={colorMode}
-              notify={notify}
+              tab={writeSideTab}
+              onTabChange={showWriteSideTab}
+              onClose={closeWriteScratch}
               overlay={writeScratchMode === 'overlay'}
               aboveMobileNav={compact}
-              autoFocus={writeScratchMode === 'overlay'}
               width={writeScratchWidth}
-              onInsert={insertScratchIntoPrompt}
-              onOpenInScratch={openScratchNoteInFocus}
-              onClose={closeWriteScratch}
-            />
+            >
+              {writeSideTab === 'scratch' ? (
+                <ScratchSidePanel
+                  m={m}
+                  colorMode={colorMode}
+                  notify={notify}
+                  width={writeScratchWidth}
+                  onInsert={insertIntoPrompt}
+                  onOpenInScratch={openScratchNoteInFocus}
+                />
+              ) : (
+                <PromptsSidePanel
+                  m={m}
+                  library={lib.library}
+                  sortBy={lib.sortBy}
+                  view={writeSideView}
+                  onViewChange={chooseWritePromptsView}
+                  onOpen={openPromptFromSide}
+                  onInsert={(text, entry) => {
+                    insertIntoPrompt(text);
+                    notify(`Inserted ${entry?.title || 'the prompt'} into the prompt.`);
+                  }}
+                  onToggleFavorite={(entry) => lib.setFavorite?.(entry.id)}
+                />
+              )}
+            </WriteSidePanel>
           ) : null}
           sidePaneMode={writeScratchMode}
           sidePaneWidth={writeScratchWidth}

@@ -17,6 +17,9 @@ export default function PanelResizer({
   onResize,
   side = 'start',
   getEdge,
+  // Optional. Double-click calls this instead of resizing to defaultWidth, for
+  // panels whose default comes from the layout rather than a fixed number.
+  onReset,
   step = 24,
   className = '',
 }) {
@@ -57,7 +60,7 @@ export default function PanelResizer({
         resize(widthAt(event.clientX));
       }}
       onPointerUp={(event) => event.currentTarget.releasePointerCapture?.(event.pointerId)}
-      onDoubleClick={() => resize(defaultWidth)}
+      onDoubleClick={() => (onReset ? onReset() : resize(defaultWidth))}
     >
       <span aria-hidden="true" />
     </div>

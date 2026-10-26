@@ -135,7 +135,7 @@ describe('Scratch beside Write', () => {
     expect(button).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(button);
     expect(panel()).toBeInTheDocument();
-    expect(screen.getByRole('separator', { name: 'Resize Scratch panel' })).toBeInTheDocument();
+    expect(screen.getByRole('separator', { name: 'Resize side panel' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Scratch note text' })).toHaveValue(' plus my notes');
 
     fireEvent.click(screen.getByRole('button', { name: 'Insert note into prompt' }));
@@ -166,13 +166,83 @@ describe('Scratch beside Write', () => {
     const narrow = mocks.defaults.useUiState();
     arrange({ useUiState: { ...narrow, viewportWidth: 900 } });
     expect(panel()).toHaveClass('is-overlay');
-    expect(screen.queryByRole('separator', { name: 'Resize Scratch panel' })).toBeNull();
+    expect(screen.queryByRole('separator', { name: 'Resize side panel' })).toBeNull();
+  });
+
+  it('shows saved prompts in a Prompts tab and remembers the chosen list', async () => {
+    const library = [
+      { id: 'p1', title: 'Older favorite', original: 'Older text', enhanced: '', favorite: true, updatedAt: '2026-10-01T00:00:00Z', createdAt: '2026-10-01T00:00:00Z' },
+      { id: 'p2', title: 'Newer prompt', original: 'Newer text', enhanced: 'Improved newer text', favorite: false, updatedAt: '2026-10-05T00:00:00Z', createdAt: '2026-10-05T00:00:00Z' },
+    ];
+    const setFavorite = vi.fn();
+    const trackRecentAccess = vi.fn();
+    const loadEntry = vi.fn();
+    const setRaw = vi.fn();
+    arrange({
+      useLibrary: { library, sortBy: 'newest', setFavorite, trackRecentAccess },
+      usePersistenceFlow: { loadEntry },
+      useEditorState: { raw: 'Draft', setRaw, cursor: { start: 5, end: 5 }, updateCursor: vi.fn() },
+    });
+
+    const toggle = screen.getByRole('button', { name: 'Prompts' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(toggle);
+    expect(screen.getByRole('complementary', { name: 'Prompts beside Write' })).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Scratch' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('tab', { name: 'Prompts' })).toHaveAttribute('aria-selected', 'true');
+    const titles = () => screen.getAllByRole('button', { name: /^Open .* in Write$/ }).map((button) => button.getAttribute('aria-label').slice(5, -9));
+    expect(titles()).toEqual(['Newer prompt', 'Older favorite']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Favorites' }));
+    expect(titles()).toEqual(['Older favorite']);
+    expect(JSON.parse(localStorage.getItem('pl2-write-side-view'))).toBe('favorites');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Unfavorite Older favorite' }));
+    expect(setFavorite).toHaveBeenCalledWith('p1');
+    fireEvent.click(screen.getByRole('button', { name: 'Insert Older favorite into prompt' }));
+    expect(setRaw).toHaveBeenCalledWith('Draft\n\nOlder text');
+    fireEvent.click(screen.getByRole('button', { name: 'Open Older favorite in Write' }));
+    expect(trackRecentAccess).toHaveBeenCalledWith('p1');
+    await act(async () => {});
+    expect(loadEntry).toHaveBeenCalledWith(library[0]);
+
+    // The Scratch tab saves notes as before, and Prompts comes back on Favorites.
+    fireEvent.click(screen.getByRole('tab', { name: 'Scratch' }));
+    expect(screen.getByRole('textbox', { name: 'Scratch note text' })).toHaveValue(' plus my notes');
+    expect(JSON.parse(localStorage.getItem('pl2-write-side-view'))).toBe('scratch');
+    fireEvent.click(screen.getByRole('tab', { name: 'Prompts' }));
+    expect(screen.getByRole('button', { name: 'Favorites' })).toHaveAttribute('aria-pressed', 'true');
+
+    // The pressed toggle closes the panel and keeps focus on itself.
+    fireEvent.click(toggle);
+    expect(screen.queryByRole('complementary', { name: 'Prompts beside Write' })).toBeNull();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(toggle).toHaveFocus();
+  });
+
+  it('switches an open panel to the other tab from the context bar instead of closing it', () => {
+    localStorage.setItem('pl2-write-scratch-open', 'true');
+    localStorage.setItem('pl2-write-side-view', JSON.stringify('recent'));
+    arrange();
+    expect(screen.getByRole('complementary', { name: 'Prompts beside Write' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Recent' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Scratch' }));
+    expect(panel()).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Scratch' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('ignores an unknown stored view', () => {
+    localStorage.setItem('pl2-write-scratch-open', 'true');
+    localStorage.setItem('pl2-write-side-view', JSON.stringify('trash'));
+    arrange();
+    expect(panel()).toBeInTheDocument();
   });
 
   it('returns to the toggle when the panel closes', async () => {
     localStorage.setItem('pl2-write-scratch-open', 'true');
     arrange();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Scratch panel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close side panel' }));
     expect(panel()).toBeNull();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(screen.getByRole('button', { name: 'Scratch' })).toHaveFocus();

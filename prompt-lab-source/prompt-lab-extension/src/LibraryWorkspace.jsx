@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
-import { sortLibraryEntries } from './hooks/usePromptLibrary.js';
+import { entryTimestamp as timestamp, filterSmartView, orderSmartView } from './lib/librarySmartViews.js';
 import { reconcileFolders, folderTree, folderDescendants, changeFolder } from './lib/collectionFolders.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
 import StarterPackCard from './StarterPackCard.jsx';
@@ -13,6 +13,8 @@ import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { extractVars, wordDiff } from './promptUtils.js';
 import usePersistedState from './usePersistedState.js';
+import PanelResizer, { clampWidth } from './PanelResizer.jsx';
+import { INSPECTOR_WIDTH, LIBRARY_DRAWER_WIDTH, inspectorMaxWidth } from './lib/sidePane.js';
 import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
 
 const SMART_VIEWS = Object.freeze([
@@ -57,24 +59,6 @@ function uniqueStrings(value) {
   return [...new Set(stringList(value))];
 }
 
-function isIncomplete(entry) {
-  return !entry?.title?.trim()
-    || !(entry?.tags || []).length
-    || !entry?.metadata?.purpose?.trim()
-    || !entry?.metadata?.status?.trim();
-}
-
-function isTemplate(entry) {
-  return (entry?.inputs || []).length > 0
-    || (entry?.tags || []).some((tag) => tag.toLowerCase() === 'template')
-    || entry?.metadata?.type === 'template';
-}
-
-function timestamp(value) {
-  const parsed = new Date(value || 0).getTime();
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 function formatEntryDate(entry) {
   const value = entry?.updatedAt || entry?.updated_at || entry?.createdAt;
   if (!value) return 'Starter';
@@ -108,11 +92,8 @@ function detailsForEntry(entry) {
 }
 
 function smartViewCount(library, id) {
-  if (id === 'favorites') return library.filter((entry) => entry.favorite).length;
-  if (id === 'templates') return library.filter(isTemplate).length;
-  if (id === 'incomplete') return library.filter(isIncomplete).length;
   if (id === 'frequent') return library.filter((entry) => Number(entry.useCount) > 0).length;
-  return library.length;
+  return filterSmartView(library, id).length;
 }
 
 function FilterChip({ label, onRemove }) {
@@ -273,7 +254,11 @@ export default function LibraryWorkspace({
   const [mobileDrawerOpen, setMobileDrawerOpen] = usePersistedState('pl2-library-mobile-drawer', false, { validate: value => typeof value === 'boolean' ? value : false });
   const drawerOpen = compact ? mobileDrawerOpen : desktopDrawerOpen;
   const setDrawerOpen = compact ? setMobileDrawerOpen : setDesktopDrawerOpen;
-  const [inspectorWidth, setInspectorWidth] = usePersistedState('pl2-inspector-width', 336, { validate: value => Number.isFinite(value) ? Math.max(260, Math.min(640, value)) : 336 });
+  const [inspectorWidth, setInspectorWidth] = usePersistedState('pl2-inspector-width', INSPECTOR_WIDTH.default, { validate: value => Number.isFinite(value) ? clampWidth(value, INSPECTOR_WIDTH.min, INSPECTOR_WIDTH.max) : INSPECTOR_WIDTH.default });
+  // Null keeps the drawer at the width the layout gives it at each breakpoint;
+  // dragging stores a width, and double-click on the handle clears it again.
+  const [drawerWidth, setDrawerWidth] = usePersistedState('pl2-library-drawer-width', null, { validate: value => Number.isFinite(value) ? clampWidth(value, LIBRARY_DRAWER_WIDTH.min, LIBRARY_DRAWER_WIDTH.max) : null });
+  const [layoutSize, setLayoutSize] = useState({ drawer: LIBRARY_DRAWER_WIDTH.default, inspectorMax: INSPECTOR_WIDTH.max });
   const [collapsedFolders, setCollapsedFolders] = useState([]);
   const [collectionParent, setCollectionParent] = useState('');
   const [artworkCollection, setArtworkCollection] = useState('');
@@ -286,10 +271,31 @@ export default function LibraryWorkspace({
   const activeFolderIds = activeFolder ? folderDescendants(folderRecords, activeFolder.id) : new Set();
   const folderMatches = collection => activeFolder ? folderRecords.some(folder => folder.collection === collection && activeFolderIds.has(folder.id)) : collection === lib.activeCollection;
   const drawerRef = useDialogA11y({ open: compact && drawerOpen, onClose: () => setDrawerOpen(false) });
-  const resizeInspector = width => {
-    const available = workspaceRef.current?.clientWidth || window.innerWidth;
-    setInspectorWidth(Math.max(260, Math.min(640, available * 0.55, width)));
-  };
+  const drawerResizable = drawerOpen && !compact;
+  // Measures the drawer and the room left for the inspector, so the inspector
+  // handle reports and stops at the width the layout can actually give it.
+  const measureLayout = useCallback(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const drawer = drawerOpen && drawerRef.current ? drawerRef.current.getBoundingClientRect().width : 0;
+    const next = {
+      drawer: drawer || LIBRARY_DRAWER_WIDTH.default,
+      inspectorMax: inspectorMaxWidth(workspace.clientWidth, drawer),
+    };
+    setLayoutSize(current => (current.drawer === next.drawer && current.inspectorMax === next.inspectorMax ? current : next));
+  }, [drawerOpen]);
+  useLayoutEffect(() => { measureLayout(); }, [measureLayout, drawerWidth, compact]);
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measureLayout);
+      return () => window.removeEventListener('resize', measureLayout);
+    }
+    const observer = new ResizeObserver(() => measureLayout());
+    if (workspaceRef.current) observer.observe(workspaceRef.current);
+    return () => observer.disconnect();
+  }, [measureLayout]);
+  const inspectorShown = Math.min(inspectorWidth, layoutSize.inspectorMax);
+  const resizeInspector = width => setInspectorWidth(clampWidth(width, INSPECTOR_WIDTH.min, layoutSize.inspectorMax));
   const [selectedId, setSelectedId] = useState(null);
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
@@ -351,15 +357,11 @@ export default function LibraryWorkspace({
     source = source.filter((entry) => matchesLibrarySearch(entry, searchDraft));
     if (statusFilter === STATUS_NOT_SET) source = source.filter((entry) => !entry.metadata?.status?.trim());
     else if (statusFilter) source = source.filter((entry) => entry.metadata?.status === statusFilter);
-    if (smartView === 'favorites') source = source.filter((entry) => entry.favorite);
-    if (smartView === 'templates') source = source.filter(isTemplate);
-    if (smartView === 'incomplete') source = source.filter(isIncomplete);
+    source = filterSmartView(source, smartView);
     if (smartView === 'collection') source = source.filter((entry) => folderMatches(entry.collection));
     if (smartView === 'tag') source = source.filter((entry) => (entry.tags || []).includes(lib.activeTag));
-    if (smartView === 'recent') return source.sort((left, right) => timestamp(right.lastAccessedAt || right.updatedAt) - timestamp(left.lastAccessedAt || left.updatedAt));
-    if (smartView === 'frequent') return source.sort((left, right) => (right.useCount || 0) - (left.useCount || 0));
     if (smartView === 'trash') return source.sort((left, right) => timestamp(right.deletedAt) - timestamp(left.deletedAt));
-    return sortLibraryEntries(source, lib.sortBy);
+    return orderSmartView(source, smartView, lib.sortBy);
   }, [lib.activeCollection, lib.activeTag, lib.library, lib.sortBy, lib.trash, searchDraft, smartView, statusFilter, folderRecords]);
 
   const checkedEntries = useMemo(() => {
@@ -479,7 +481,10 @@ export default function LibraryWorkspace({
     }
   };
 
-  return <div ref={workspaceRef} style={{ '--pl-inspector-width': `${inspectorWidth}px` }} className={`pl-library-workspace${drawerOpen ? ' is-drawer-open' : ' is-drawer-collapsed'}${selected ? ' has-inspector-selection' : ''}${smartView === 'trash' ? ' is-trash-view' : ''}`}>
+  const workspaceStyle = { '--pl-inspector-width': `${inspectorShown}px` };
+  if (drawerWidth !== null) workspaceStyle['--pl-library-drawer-width'] = `${drawerWidth}px`;
+
+  return <div ref={workspaceRef} style={workspaceStyle} className={`pl-library-workspace${drawerOpen ? ' is-drawer-open' : ' is-drawer-collapsed'}${drawerResizable ? ' has-drawer-resizer' : ''}${selected ? ' has-inspector-selection' : ''}${smartView === 'trash' ? ' is-trash-view' : ''}`}>
     <p className="sr-only" aria-live="polite">{announcement}</p>
     {compact && drawerOpen && <button type="button" className="pl-drawer-backdrop" aria-label="Close Library drawer" onClick={() => setDrawerOpen(false)} />}
     <aside ref={drawerRef} role={compact && drawerOpen ? 'dialog' : undefined} aria-modal={compact && drawerOpen ? 'true' : undefined} tabIndex={compact && drawerOpen ? -1 : undefined} id="library-drawer" className="pl-library-rail" aria-label="Library views" hidden={!drawerOpen}>
@@ -513,6 +518,19 @@ export default function LibraryWorkspace({
       <button type="button" className="pl-trash-link" aria-current={smartView === 'trash' ? 'page' : undefined} onClick={() => chooseView('trash')}><Ic n="Trash2" size={14} /><span>Recently Deleted</span><small>{lib.trash.length}</small></button>
       <small className="pl-trash-retention-note">Items are permanently removed after 30 days.</small>
     </aside>
+
+    {drawerResizable && <PanelResizer
+      label="Resize Library drawer"
+      className="pl-library-drawer-resizer"
+      width={drawerWidth ?? layoutSize.drawer}
+      min={LIBRARY_DRAWER_WIDTH.min}
+      max={LIBRARY_DRAWER_WIDTH.max}
+      defaultWidth={LIBRARY_DRAWER_WIDTH.default}
+      onResize={setDrawerWidth}
+      onReset={() => setDrawerWidth(null)}
+      side="start"
+      getEdge={() => drawerRef.current?.getBoundingClientRect().left}
+    />}
 
     <section className="pl-library-index" aria-label="Prompt index">
       <header className="pl-library-toolbar">
@@ -585,11 +603,17 @@ export default function LibraryWorkspace({
         </div>}
     </section>
 
-    <div className="pl-inspector-resizer" role="separator" tabIndex={0} aria-label="Resize prompt inspector" aria-orientation="vertical" aria-valuemin={260} aria-valuemax={640} aria-valuenow={Math.round(inspectorWidth)}
-      onKeyDown={event => { if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) { event.preventDefault(); resizeInspector(event.key === 'Home' ? 260 : event.key === 'End' ? 640 : inspectorWidth + (event.key === 'ArrowLeft' ? 24 : -24)); } }}
-      onPointerDown={event => { event.currentTarget.setPointerCapture(event.pointerId); }}
-      onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) resizeInspector(workspaceRef.current.getBoundingClientRect().right - event.clientX); }}
-      onDoubleClick={() => setInspectorWidth(336)} />
+    <PanelResizer
+      label="Resize prompt inspector"
+      className="pl-inspector-resizer"
+      width={inspectorShown}
+      min={INSPECTOR_WIDTH.min}
+      max={layoutSize.inspectorMax}
+      defaultWidth={INSPECTOR_WIDTH.default}
+      onResize={resizeInspector}
+      side="end"
+      getEdge={() => workspaceRef.current?.getBoundingClientRect().right}
+    />
     <aside
       ref={inspectorDialogRef}
       className="pl-library-inspector"

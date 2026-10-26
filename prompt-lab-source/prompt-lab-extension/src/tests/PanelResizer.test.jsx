@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import PanelResizer, { clampWidth } from '../PanelResizer.jsx';
 
 function Harness({ side = 'start', initial = 240 }) {
@@ -45,6 +45,36 @@ describe('PanelResizer', () => {
     expect(handle()).toHaveAttribute('aria-valuenow', '480');
     fireEvent.doubleClick(handle());
     expect(handle()).toHaveAttribute('aria-valuenow', '240');
+  });
+
+  it('hands double-click to onReset when given, instead of resizing', () => {
+    const onResize = vi.fn();
+    const onReset = vi.fn();
+    render(<PanelResizer label="Resize panel" width={300} min={180} max={480} defaultWidth={240} onResize={onResize} onReset={onReset} />);
+    fireEvent.doubleClick(handle());
+    expect(onReset).toHaveBeenCalledTimes(1);
+    expect(onResize).not.toHaveBeenCalled();
+  });
+
+  it('follows the pointer while captured, measured from the panel edge', () => {
+    const onResize = vi.fn();
+    render(<PanelResizer label="Resize panel" width={300} min={180} max={480} defaultWidth={240} onResize={onResize} side="end" getEdge={() => 1000} />);
+    const captured = new Set();
+    Object.assign(handle(), {
+      setPointerCapture: (id) => captured.add(id),
+      hasPointerCapture: (id) => captured.has(id),
+      releasePointerCapture: (id) => captured.delete(id),
+    });
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 600 });
+    expect(onResize).not.toHaveBeenCalled();
+    fireEvent.pointerDown(handle(), { pointerId: 1, clientX: 700 });
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 600 });
+    expect(onResize).toHaveBeenLastCalledWith(400);
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 100 });
+    expect(onResize).toHaveBeenLastCalledWith(480);
+    fireEvent.pointerUp(handle(), { pointerId: 1 });
+    fireEvent.pointerMove(handle(), { pointerId: 1, clientX: 900 });
+    expect(onResize).toHaveBeenCalledTimes(2);
   });
 
   it('clamps invalid widths to the minimum', () => {
