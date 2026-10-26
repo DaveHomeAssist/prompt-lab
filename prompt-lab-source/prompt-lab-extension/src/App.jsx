@@ -80,6 +80,15 @@ function isSuccessfulRun(run) {
   return typeof run?.output === 'string' && run.output.trim() !== '' && (!run.status || run.status === 'success');
 }
 
+// The run history for a new, unsaved draft lists recent runs from every prompt,
+// so a draft may only stand in its own latest run (resultMeta.runId). A saved
+// prompt may only use runs tagged with its id, which also drops a stale list
+// left over from the previous prompt.
+function isCurrentPromptRun(run, editingId, ownRunId) {
+  if (editingId) return run?.promptId === editingId;
+  return Boolean(ownRunId) && run?.id === ownRunId;
+}
+
 const DRAFT_RECOVERY_STORAGE_KEY = 'pl2-draft-reset-recovery-v1';
 
 function loadDraftRecovery() {
@@ -498,7 +507,7 @@ export default function App({
     ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
     : null;
   const goldenResponse = currentEntry?.goldenResponse || null;
-  const latestSuccessfulRun = evalRuns.find(isSuccessfulRun) || null;
+  const latestSuccessfulRun = evalRuns.find(run => isCurrentPromptRun(run, editingId, resultMeta?.runId) && isSuccessfulRun(run)) || null;
   const comparisonText = typeof enhanced === 'string' && enhanced.trim()
     ? enhanced
     : (latestSuccessfulRun?.output || '');

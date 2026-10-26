@@ -233,6 +233,21 @@ Consequences: Billing integration unblocked. Implementation path: (1) add `plan`
 
 ---
 
+### [D-017] October intake triage and slice order
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-10-26
+Date resolved: 2026-10-26
+
+Context: Dave's Scratch intake list (October 21 to 26) was rated and specified in [`OCTOBER_INTAKE_BRIEF.md`](OCTOBER_INTAKE_BRIEF.md).
+
+Decision: Dave approved the go with every recommended option. D-INT-1: a live-preview Markdown editor for Scratch, storage stays Markdown, spike first. D-INT-2: retire Dual Pane as a destination once Scratch beside Write ships; its routes open Write. D-INT-3: feedback stays local (append to a feedback note, copy as Markdown). D-INT-4: generic prompt mode means a General enhance mode with no coding or agent assumptions; verify the existing General task and General target options first. D-INT-5: slice order 0, 1, 2, 3, 6, 4, 5, 7. D-INT-6: show build date and revision now; tag 1.8.0 when the release gates pass, then move source to 1.9.0-dev.
+
+Consequences: Slice 0 and Slice 1 start now. Each slice still ships through its own pull request, checks and production verification. Issue Backlog rows were created for the new slices on 2026-10-26.
+
+---
+
 ### [D-015] Create annotations — first slice and rollout
 
 Status: resolved
