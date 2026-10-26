@@ -12,6 +12,44 @@
 
 Date: 2026-10-26
 
+## Scratch notes sit beside Write (unreleased)
+
+- Write now has a Scratch button in the editing bar above the prompt, and
+  Cmd or Ctrl plus backslash does the same. It opens your Scratch notes next
+  to the prompt, so you can read and edit a note while you write. Notes save
+  as you type, in the same place as the Scratch view.
+- Insert note into prompt puts the note, or just the text you selected, where
+  your cursor is in the prompt. At the end of the prompt it starts a new
+  paragraph. Open in Scratch takes the note to the full Scratch view in Focus.
+- Drag the edge of the panel, or use the arrow keys on it, to change its
+  width; double-click the edge to reset it. On narrower screens and phones the
+  panel floats over the prompt instead, above the phone navigation bar, and
+  Escape closes it. On very short phone screens, where the panel has no room,
+  the Scratch button is hidden; use Scratch in the bottom bar or the shortcut.
+- If a note cannot be saved when the panel closes, for example because
+  storage is full, its text is kept and comes back when you reopen the panel.
+- Scratch note lists now show one line per note: its color, title and how
+  long ago it changed. Choose Detailed above the list for the previous rows
+  with a preview. The note list in Scratch can also be resized.
+
+## New prompts keep their own titles (unreleased)
+
+- A new, unsaved prompt could be given a title taken from a different prompt
+  you had just improved. Its comparison text could come from that other
+  prompt too. Titles and comparisons now come only from the prompt you are
+  working on.
+
+## Library template values arrive exactly as typed or copied (unreleased)
+
+- Loading a Library prompt with `{{variables}}` filled them in a way that read
+  some dollar signs as special codes, the same problem chains had. `$$` became
+  `$`, `$&` turned back into the placeholder, and `` $` `` or `$'` pasted in
+  prompt text around it. This hit `{{clipboard}}` hardest, because copied code
+  and shell commands often contain these. Values now arrive exactly as typed or
+  copied, in the editor and in A/B variants.
+- A value that contains another variable's name in braces, such as
+  `see {{date}}`, is no longer filled in a second time.
+
 ## Chains pass text between steps exactly as written (unreleased)
 
 - When a chain filled `{{input}}`, `{{prev}}` or a mapped variable, some dollar
