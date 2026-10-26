@@ -95,6 +95,11 @@ vi.mock('../modals/BillingModal.jsx', () => ({ default: () => null }));
 
 import App from '../App.jsx';
 
+function seedNoteText(content) {
+  localStorage.setItem(SCRATCH_KEY, JSON.stringify({ pads: [{ id: 'note', name: 'Research', content, timestamp: Date.now() }], activePadId: 'note' }));
+  localStorage.setItem(SCRATCH_SCHEMA_VERSION_KEY, '4');
+}
+
 function seedNote() {
   localStorage.setItem(SCRATCH_KEY, JSON.stringify({
     pads: [{ id: 'note', name: 'Research', content: ' plus my notes', timestamp: Date.now() }],
@@ -136,6 +141,15 @@ describe('Scratch beside Write', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Insert note into prompt' }));
     expect(setRaw).toHaveBeenCalledWith('Draft plus my notes prompt');
     expect(updateCursor).toHaveBeenCalledWith(19);
+  });
+
+  it('starts the note on a new paragraph when inserting at the end of the prompt', () => {
+    seedNoteText('Three bullets.');
+    const setRaw = vi.fn();
+    arrange({ useEditorState: { raw: 'Summarize the report.', setRaw, cursor: { start: 21, end: 21 }, updateCursor: vi.fn() } });
+    fireEvent.click(screen.getByRole('button', { name: 'Scratch' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Insert note into prompt' }));
+    expect(setRaw).toHaveBeenCalledWith('Summarize the report.\n\nThree bullets.');
   });
 
   it('toggles with Cmd or Ctrl plus backslash and remembers that it is open', () => {

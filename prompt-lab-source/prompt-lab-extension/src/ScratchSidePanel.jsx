@@ -33,6 +33,8 @@ export default function ScratchSidePanel({
   onOpenInScratch,
   onClose,
   overlay = false,
+  // Leave room for the phone navigation bar at the bottom of the screen.
+  aboveMobileNav = false,
   autoFocus = false,
   width = 360,
 }) {
@@ -205,7 +207,7 @@ export default function ScratchSidePanel({
   return (
     <aside
       ref={panelRef}
-      className={`pl-write-scratch ${overlay ? 'is-overlay' : ''} ${m.surface || ''} ${m.border || ''}`}
+      className={`pl-write-scratch ${overlay ? 'is-overlay' : ''} ${overlay && aboveMobileNav ? 'is-above-mobile-nav' : ''} ${m.surface || ''} ${m.border || ''}`}
       style={overlay ? { width: `min(${width}px, 92vw)` } : undefined}
       aria-label="Scratch notes beside Write"
       onKeyDown={(event) => { if (overlay && event.key === 'Escape') { event.stopPropagation(); close(); } }}

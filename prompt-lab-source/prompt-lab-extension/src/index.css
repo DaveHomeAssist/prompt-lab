@@ -1279,6 +1279,7 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 /* Scratch beside Write. */
 .pl-write-scratch { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border-left-width: 1px; }
 .pl-write-scratch.is-overlay { position: fixed; right: 0.75rem; bottom: 0.75rem; z-index: 40; height: min(36rem, calc(100dvh - 1.5rem)); border-width: 1px; border-radius: 0.9rem; background: var(--pl-brand-ink); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
+.pl-write-scratch.is-overlay.is-above-mobile-nav { bottom: calc(4.75rem + env(safe-area-inset-bottom)); height: min(36rem, calc(100dvh - 11rem - env(safe-area-inset-bottom))); }
 .pl-write-scratch-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
 .pl-write-scratch-header button { display: inline-flex; min-width: 2rem; min-height: 2rem; align-items: center; justify-content: center; }
 .pl-write-scratch-list { flex: 0 1 auto; max-height: 38%; overflow-y: auto; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }

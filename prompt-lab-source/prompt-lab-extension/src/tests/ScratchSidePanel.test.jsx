@@ -135,3 +135,16 @@ describe('ScratchSidePanel', () => {
     expect(editor()).toHaveValue('From the other tab');
   });
 });
+
+describe('ScratchSidePanel placement', () => {
+  beforeEach(() => { localStorage.clear(); seed(); });
+  afterEach(() => cleanup());
+
+  it('sits above the phone navigation bar only when it floats', () => {
+    const { rerender } = render(<ScratchSidePanel m={{}} overlay aboveMobileNav />);
+    const panel = screen.getByRole('complementary', { name: 'Scratch notes beside Write' });
+    expect(panel).toHaveClass('is-overlay', 'is-above-mobile-nav');
+    rerender(<ScratchSidePanel m={{}} aboveMobileNav />);
+    expect(panel).not.toHaveClass('is-above-mobile-nav');
+  });
+});

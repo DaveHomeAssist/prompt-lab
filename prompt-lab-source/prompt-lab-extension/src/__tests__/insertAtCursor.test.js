@@ -22,6 +22,13 @@ describe('insertAtCursor', () => {
     expect(insertAtCursor('Prompt', undefined, ' note')).toEqual({ value: 'Prompt note', caret: 11 });
   });
 
+  it('starts a new paragraph when appending after text, if asked', () => {
+    expect(insertAtCursor('Prompt.', { start: 7, end: 7 }, 'Note', { separateAtEnd: true })).toEqual({ value: 'Prompt.\n\nNote', caret: 13 });
+    expect(insertAtCursor('Prompt.\n', { start: 8, end: 8 }, 'Note', { separateAtEnd: true }).value).toBe('Prompt.\nNote');
+    expect(insertAtCursor('Prompt.', { start: 3, end: 3 }, 'X', { separateAtEnd: true }).value).toBe('ProXmpt.');
+    expect(insertAtCursor('', { start: 0, end: 0 }, 'Note', { separateAtEnd: true }).value).toBe('Note');
+  });
+
   it('keeps special replacement characters literal', () => {
     expect(insertAtCursor('', { start: 0, end: 0 }, "$& $' $$").value).toBe("$& $' $$");
   });

@@ -539,7 +539,7 @@ export default function App({
     setTimeout(() => scratchToggleRef.current?.focus(), 0);
   };
   const insertScratchIntoPrompt = (value) => {
-    const next = insertAtCursor(raw, cursor, value);
+    const next = insertAtCursor(raw, cursor, value, { separateAtEnd: true });
     setRaw(next.value);
     updateCursor(next.caret);
   };
@@ -1154,6 +1154,7 @@ export default function App({
               colorMode={colorMode}
               notify={notify}
               overlay={writeScratchMode === 'overlay'}
+              aboveMobileNav={compact}
               autoFocus={writeScratchMode === 'overlay'}
               width={writeScratchWidth}
               onInsert={insertScratchIntoPrompt}
