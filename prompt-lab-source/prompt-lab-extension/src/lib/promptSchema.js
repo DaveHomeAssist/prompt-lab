@@ -147,29 +147,43 @@ export function suggestTitleFromText(value) {
   const rawText = ensureString(value).trim();
   if (!rawText) return 'Untitled Prompt';
 
-  // Use the first non-empty line before collapsing whitespace, so markdown
-  // prompts keep their line structure for title extraction.
-  const firstLine = rawText.split(/\n/).map((line) => line.trim()).find(Boolean) || '';
-
-  // A markdown heading on the first line is an author-supplied title.
-  const headingMatch = firstLine.match(/^#{1,6}\s+(.+)$/);
-  let candidate = headingMatch ? headingMatch[1] : firstLine;
-
-  // Drop wrapping markup (fences, blockquotes, emphasis) and collapse spaces.
-  candidate = candidate
-    .replace(/^```[\w-]*/, '')
-    .replace(/^[>\-*\s]+/, '')
-    .replace(/[*_`]+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!candidate) candidate = rawText.replace(/\s+/g, ' ').trim();
-
-  // Strip conversational filler so titles start with the actual task.
-  candidate = candidate.replace(/^(?:please|kindly)[,\s]+/i, '');
-
-  // Reduce role preambles to the role itself: "You are a helpful pirate…" → "Helpful pirate…".
-  const roleMatch = candidate.match(/^(?:you are|you're|act as|acting as|imagine you(?:'re| are))\s+(?:an?\s+|the\s+)?(.+)$/i);
-  if (roleMatch) candidate = roleMatch[1];
+  const cleanLine = line => line.trim()
+    .replace(/^#{1,6}\s+/, '').replace(/\s+#+$/, '')
+    .replace(/^[>\-*\s]+/, '').replace(/[*_`]+/g, '')
+    .replace(/\s+/g, ' ').trim();
+  const lines = rawText.split(/\r?\n/)
+    .filter(line => !/^\s*(?:`{3,}|~{3,})/.test(line))
+    .map(cleanLine).filter(Boolean);
+  const wrapper = /^(?:instructions?|system(?: prompt)?|user(?: prompt)?|prompt|role|task|objective|request|goal|context)(?:\s*:\s*|$)/i;
+  const role = /^(?:you are|you're|act as|acting as|imagine you(?:'re| are))\s+(?:an?\s+|the\s+)?(.+)$/i;
+  const polite = /^(?:(?:can|could|would) you\s+(?:please\s+)?|(?:please|kindly)[,\s]+)/i;
+  const heading = rawText.split(/\r?\n/).find(line => /^\s*#{1,6}\s+/.test(line)
+    && !wrapper.test(cleanLine(line)));
+  const explicitTitle = lines.find(line => /^title\s*:\s*\S/i.test(line));
+  const labeledTask = lines.find(line => /^(?:task|objective|request|goal)\s*:\s*\S/i.test(line));
+  let candidate = explicitTitle?.replace(/^title\s*:\s*/i, '')
+    || (heading ? cleanLine(heading) : '')
+    || labeledTask?.replace(wrapper, '').replace(polite, '') || '';
+  let roleFallback = '';
+  for (const line of candidate ? [] : lines) {
+    // An explicit title wins before role/task extraction.
+    if (/^title\s*:/i.test(line)) {
+      candidate = line.replace(/^title\s*:\s*/i, '');
+      if (candidate) break;
+      continue;
+    }
+    let text = line.replace(wrapper, '').replace(polite, '').trim();
+    if (!text) continue;
+    const match = text.match(role);
+    if (match) {
+      const sentence = match[1].match(/^(.+?[.!?])\s+(.+)$/);
+      roleFallback ||= sentence ? sentence[1] : match[1];
+      if (!sentence) continue;
+      text = sentence[2].replace(wrapper, '').replace(polite, '').trim();
+    }
+    if (text) { candidate = text; break; }
+  }
+  candidate ||= roleFallback;
 
   // Prefer the first sentence when it is reasonably short.
   const sentenceMatch = candidate.match(/^(.+?[.!?])(?:\s|$)/);

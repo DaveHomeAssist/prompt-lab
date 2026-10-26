@@ -469,7 +469,7 @@ describe('suggestTitleFromText', () => {
   });
 
   it('reduces role preambles to the role itself', () => {
-    expect(suggestTitleFromText('You are a senior technical writer. Rewrite the passage.')).toBe('Senior technical writer');
+    expect(suggestTitleFromText('You are a senior technical writer. Rewrite the passage.')).toBe('Rewrite the passage');
     expect(suggestTitleFromText('Act as a travel guide for Tokyo')).toBe('Travel guide for Tokyo');
   });
 
@@ -486,6 +486,21 @@ describe('suggestTitleFromText', () => {
     const result = suggestTitleFromText(long);
     expect(result.length).toBeLessThanOrEqual(61); // 60 + ellipsis
     expect(result.endsWith('…')).toBe(true);
+  });
+
+  it.each([
+    ['You are a senior technical writer. Rewrite this incident report for executives.', 'Rewrite this incident report for executives'],
+    ['You are a senior technical writer. Turn this API reference into a tutorial.', 'Turn this API reference into a tutorial'],
+    ['Role: You are a technical writer.\nTask: Summarize the outage.', 'Summarize the outage'],
+    ['```text\n# **Incident Report Summary** ###\nSummarize the incident.\n```', 'Incident Report Summary'],
+    ['Instructions:\nCompare two AV system designs and flag power risks.', 'Compare two AV system designs and flag power risks'],
+    ['Title: Incident Report Summary\nSummarize the incident.', 'Incident Report Summary'],
+    ['# Incident Report Summary\nTask: Summarize the outage.', 'Incident Report Summary'],
+    ['Can you please compare the two contracts?', 'Compare the two contracts?'],
+    ['Instructions:\nRole:\n```\n```', 'Untitled Prompt'],
+    ['# Instructions\nContext: A server outage.\nTask: Summarize the incident.', 'Summarize the incident'],
+  ])('extracts a task or explicit title from %s', (input, expected) => {
+    expect(suggestTitleFromText(input)).toBe(expected);
   });
 
   it('handles non-string input gracefully', () => {

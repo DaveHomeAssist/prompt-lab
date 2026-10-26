@@ -152,6 +152,7 @@ function renderExecutionFlow({
       variants,
       notes: notesState,
       saveTitle: saveTitleState,
+      setSaveTitle,
       saveTags,
       showSave,
       showDiff,
@@ -205,6 +206,20 @@ describe('useExecutionFlow', () => {
       text: 'Enhanced output',
     });
     scanSensitiveData.mockReturnValue({ matches: [], settings: {} });
+  });
+
+  it.each(['Custom name', ''])('preserves the latest title when refinement completes (initial=%s)', async initialTitle => {
+    const pending = createDeferred();
+    callModel.mockReturnValueOnce(pending.promise);
+    const { result } = renderExecutionFlow({ saveTitle: initialTitle });
+    let request;
+    act(() => { request = result.current.enhance(); });
+    act(() => result.current.setSaveTitle('Name entered during refinement'));
+    await act(async () => {
+      pending.resolve({ provider: 'anthropic', model: 'synthetic', text: 'Enhanced output' });
+      await request;
+    });
+    expect(result.current.saveTitle).toBe('Name entered during refinement');
   });
 
   it('enhance_success_creates_eval_run', async () => {

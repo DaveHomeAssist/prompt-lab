@@ -53,6 +53,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const sharedHashHandledRef = useRef(false);
   const pendingSaveRef = useRef(null);
   const saveContextRef = useRef(0);
+  const editorTitleBeforeDetailsRef = useRef(null);
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -153,8 +154,16 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setPendingTemplateTarget('editor');
   };
 
+  const restoreEditorTitle = () => {
+    if (editorTitleBeforeDetailsRef.current !== null) {
+      setSaveTitle(editorTitleBeforeDetailsRef.current);
+      editorTitleBeforeDetailsRef.current = null;
+    }
+  };
+
   const closeSavePanel = () => {
     saveContextRef.current += 1;
+    restoreEditorTitle();
     setShowSave(false);
     setSaveTargetId(null);
     setSaveSourceEntry(null);
@@ -169,7 +178,12 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const loadedEntry = editingId ? lib.library.find((item) => item.id === editingId) || null : null;
     const activeEntry = explicitEntry || loadedEntry || activeEntryRef.current;
     const source = activeEntry?.enhanced || enhanced || raw;
-    setSaveTitle(activeEntry?.title || suggestTitleFromText(source));
+    const samePrompt = !explicitEntry || explicitEntry.id === editingId;
+    if (!samePrompt && editorTitleBeforeDetailsRef.current === null) {
+      editorTitleBeforeDetailsRef.current = saveTitle;
+    }
+    setSaveTitle(current => samePrompt && ensureString(current).trim()
+      ? current : activeEntry?.title || suggestTitleFromText(source));
     setSaveTargetId(activeEntry?.id || null);
     setSaveSourceEntry(explicitEntry);
     if (activeEntry) {
@@ -193,6 +207,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
     if (target === 'editor') {
       saveContextRef.current += 1;
+      editorTitleBeforeDetailsRef.current = null;
       activeEntryRef.current = normalized;
       setEditingId(normalized.id);
       setFollowUpOrigin(normalized.metadata?.followUpOrigin);
@@ -454,6 +469,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
           onSaved(saved.id);
         }
       }
+      restoreEditorTitle();
       setSaveTargetId(null);
       setSaveSourceEntry(null);
       setChangeNote('');
@@ -485,6 +501,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     saveContextRef.current += 1;
     templateLoadReqRef.current += 1;
     activeEntryRef.current = null;
+    editorTitleBeforeDetailsRef.current = null;
     setFollowUpOrigin(null);
     setSourceNoteId('');
     setShowSave(false);
