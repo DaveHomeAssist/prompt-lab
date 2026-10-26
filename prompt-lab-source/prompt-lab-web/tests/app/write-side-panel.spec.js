@@ -60,7 +60,7 @@ test('Prompts beside Write list the same prompts as the Library smart views', as
     await expect(panel).toBeVisible();
     for (const [view, label] of [['all', 'All'], ['recent', 'Recent'], ['favorites', 'Favorites']]) {
       await panel.getByRole('group', { name: 'Prompt list' }).getByRole('button', { name: label, exact: true }).click();
-      expect(await sideTitles(page), `${view} in ${theme}`).toEqual(expected[view]);
+      await expect.poll(() => sideTitles(page), { message: `${view} in ${theme}` }).toEqual(expected[view]);
     }
     await fits(page);
     await page.screenshot({ path: testInfo.outputPath(`write-prompts-${theme}.png`) });
