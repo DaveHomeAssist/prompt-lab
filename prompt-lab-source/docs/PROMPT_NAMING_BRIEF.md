@@ -22,3 +22,9 @@ No bulk rename, saved-data migration, schema, provider, billing or dependency ch
 ## Risks and next action
 
 Heuristics cannot infer every task from arbitrary prose. Prefer preserving explicit/user titles over aggressive rewriting. Verify overlapping Save contexts and asynchronous title changes. Next: implement and validate this bounded slice.
+
+## Delivery gate follow-up
+
+Initial candidate Landing CI40262436714 failed the dependency audit on GHSA-xjj6-f33q-929c. The extension's development path is jsdom28.1.0 to undici7.30.0 (range ^7.21.0). GitHub identifies7.30.1 as patched; its Node>=20.18.1 requirement fits the project Node22 runtime. No overlapping update PR exists at inspection. The lockfile repair changes only undici version, URL and integrity to7.30.1, preserving cross-platform optional entries and all manifests. Clean installation,119 targeted tests, extension build and all4 audit roots pass on Dominic. No audit policy change.
+
+The first full hosted run passed49, skipped1 credential-dependent case, and failed4 responsive cases solely because their expected preview title was the former role title. Those checks now assert the actual task title; rerun and exact-head CI are tracked separately. All9 lifecycle scenarios passed on final application source.

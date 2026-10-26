@@ -255,7 +255,7 @@ test.describe('responsive hosted workspaces', () => {
         const promptList = page.getByRole('listbox', { name: 'Library prompts' });
         await expect(promptList).toBeVisible();
         await expect(promptList.getByRole('option', { name: /Release verification checklist/ })).toBeVisible();
-        await expect(page.getByTestId('dual-selected-preview')).toContainText('Release verification assistant');
+        await expect(page.getByTestId('dual-selected-preview').getByRole('heading')).toHaveText('Verify every required surface and report pass or fail with…');
         if (compact) {
           await page.getByRole('tablist', { name: 'Dual pane mobile view' }).getByRole('tab', { name: 'Write' }).click();
           await expect(page.getByRole('textbox', { name: 'Dual pane prompt editor' })).toBeVisible();
