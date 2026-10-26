@@ -1,3 +1,4 @@
+import Ic from './icons.jsx';
 import { arePromptSnapshotsEqual } from './lib/promptSchema.js';
 
 const sameTags = (left, right) => {
@@ -67,6 +68,7 @@ export default function CreateContextBar({
   m, compact = false, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
   resultMeta, variants, notes,
   openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
+  scratchPanel = null,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
@@ -79,7 +81,7 @@ export default function CreateContextBar({
       data-editing-mode={context.mode}
       className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
     >
-      <details className="w-full min-w-0" open={!compact}>
+      <details className="min-w-0 flex-1" open={!compact}>
       <summary className="flex cursor-pointer items-center gap-2 min-w-0 text-xs">
         <span aria-hidden="true">▸</span>
         <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
@@ -116,6 +118,18 @@ export default function CreateContextBar({
       </div>
       </div>
       </details>
+      {scratchPanel && (
+        <button
+          ref={scratchPanel.buttonRef}
+          type="button"
+          aria-pressed={scratchPanel.open}
+          onClick={scratchPanel.onToggle}
+          title={`${scratchPanel.open ? 'Hide' : 'Show'} Scratch beside Write (Cmd or Ctrl + \\)`}
+          className={`pl-write-scratch-toggle ui-control inline-flex shrink-0 self-start items-center gap-1 rounded-md border px-2 min-h-8 [@media(pointer:coarse)]:min-h-11 text-[11px] font-semibold ${m.border} ${scratchPanel.open ? accentBadgeClass : m.textSub}`}
+        >
+          <Ic n="PanelRight" size={12} /> Scratch
+        </button>
+      )}
     </section>
   );
 }

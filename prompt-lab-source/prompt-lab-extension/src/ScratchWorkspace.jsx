@@ -4,6 +4,9 @@ import MarkdownPreview from './MarkdownPreview.jsx';
 import useDialogA11y, { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import { logWarn } from './lib/logger.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
+import usePersistedState from './usePersistedState.js';
+import PanelResizer from './PanelResizer.jsx';
+import ScratchNoteRow, { SCRATCH_COLOR_SWATCHES, SCRATCH_LIST_DENSITIES, formatRelativeTime } from './ScratchNoteRow.jsx';
 import {
   SCRATCH_KEY,
   buildDefaultScratchPayload,
@@ -16,35 +19,12 @@ import {
 } from './lib/scratchSchema.js';
 
 const COMPACT_BREAKPOINT = 560;
-const COLOR_SWATCHES = {
-  orange: '#c2410c',
-  violet: '#8b5cf6',
-  blue: '#3b82f6',
-  green: '#22c55e',
-  amber: '#f59e0b',
-  rose: '#f43f5e',
-  slate: '#64748b',
-};
+const COLOR_SWATCHES = SCRATCH_COLOR_SWATCHES;
+const INDEX_WIDTH = { min: 180, max: 480, default: 240 };
 
 function buildPadId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
   return `pad-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-}
-
-function formatRelativeTime(value) {
-  if (!value) return '';
-  const timestamp = typeof value === 'number' ? value : new Date(value).getTime();
-  const diffMs = Date.now() - timestamp;
-  if (Number.isNaN(diffMs) || diffMs < 0) return 'just now';
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 10) return 'just now';
-  if (seconds < 60) return `${seconds} sec ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 
 function formatDateTime(timestamp) {
@@ -182,6 +162,7 @@ export default function ScratchWorkspace({
   collections = [],
   onOpenLibraryEntry,
   openNoteId = '',
+  focusOpenedNote = false,
   onSendToEditor,
   onSendToComposer,
   onSendToABTest,
@@ -207,6 +188,13 @@ export default function ScratchWorkspace({
   const [isCompact, setIsCompact] = useState(() => typeof window !== 'undefined' && window.innerWidth <= COMPACT_BREAKPOINT);
   const [compactPane, setCompactPane] = useState('index');
   const [noteFocused, setNoteFocused] = useState(false);
+  const [indexWidth, setIndexWidth] = usePersistedState('pl2-scratch-index-width', INDEX_WIDTH.default, {
+    validate: (value) => (Number.isFinite(value) ? Math.max(INDEX_WIDTH.min, Math.min(INDEX_WIDTH.max, value)) : INDEX_WIDTH.default),
+  });
+  const [listDensity, setListDensity] = usePersistedState('pl2-scratch-list-density', 'compact', {
+    validate: (value) => (SCRATCH_LIST_DENSITIES.includes(value) ? value : 'compact'),
+  });
+  const sidebarRef = useRef(null);
 
   const textareaRef = useRef(null);
   const noteSearchRef = useRef(null);
@@ -568,6 +556,7 @@ export default function ScratchWorkspace({
     lastOpenNoteIdRef.current = openNoteId;
     selectPad(openNoteId);
     setCompactPane('editor');
+    if (focusOpenedNote) setNoteFocused(true);
   // `openNoteId` is an imperative navigation signal; state changes should not
   // re-trigger it or overwrite the selected note's content.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -834,20 +823,10 @@ export default function ScratchWorkspace({
   const renderPadGroup = (label, pads) => (
     <section aria-labelledby={`scratch-group-${label.toLowerCase()}`}>
       <h2 id={`scratch-group-${label.toLowerCase()}`} className={`px-3 pb-1 pt-3 text-[10px] font-bold uppercase tracking-[0.16em] ${m.textMuted || ''}`}>{label} <span className="font-mono">{pads.length}</span></h2>
-      {pads.map((pad) => {
-        const active = pad.id === padsState.activePadId;
-        return (
-          <button key={pad.id} type="button" onClick={() => selectPad(pad.id)} aria-current={active ? 'page' : undefined} className={`ui-control w-full border-r-2 px-3 py-2.5 text-left transition-colors ${active ? 'border-orange-600 bg-orange-600/15' : `border-transparent ${m.btn || ''}`}`}>
-            <span className="flex min-w-0 items-center gap-2">
-              <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: COLOR_SWATCHES[pad.color] || COLOR_SWATCHES.orange }} />
-              <span className={`truncate text-xs font-semibold ${active ? (isDark ? 'text-orange-200' : 'text-orange-800') : m.text || ''}`}>{pad.name}</span>
-              {pad.pinned && <Ic n="Pin" size={10} className="ml-auto shrink-0" />}
-            </span>
-            <span className={`mt-1 block truncate text-[10px] ${m.textMuted || ''}`}>{pad.content.trim().replace(/\s+/g, ' ').slice(0, 72) || 'Empty note'}</span>
-            <span className={`mt-1 block text-[10px] ${m.textMuted || ''}`}>{formatRelativeTime(pad.updatedAt)} · {pad.status}</span>
-          </button>
-        );
-      })}
+      {pads.map((pad) => (
+        <ScratchNoteRow key={pad.id} m={m} pad={pad} active={pad.id === padsState.activePadId} isDark={isDark}
+          density={listDensity} showDate={isCompact || indexWidth >= 220} onSelect={selectPad} />
+      ))}
     </section>
   );
 
@@ -875,7 +854,7 @@ export default function ScratchWorkspace({
 
   return (
     <div className={`${shellMinHeightClass} pl-scratch-workspace ${isCompact ? 'pl-scratch-is-compact' : ''} ${noteFocused ? 'pl-scratch-focused' : ''} flex ${pageScroll ? '' : 'flex-1 overflow-hidden'}`} data-compact-pane={compactPane} data-note-focused={noteFocused}>
-      <aside className={`pl-scratch-sidebar ${showSidebar ? 'flex' : 'hidden'} ${isCompact ? 'w-full' : 'w-[240px]'} shrink-0 flex-col border-r ${m.border || ''} ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note index">
+      <aside ref={sidebarRef} style={isCompact ? undefined : { width: indexWidth }} className={`pl-scratch-sidebar ${showSidebar ? 'flex' : 'hidden'} ${isCompact ? 'w-full' : ''} shrink-0 flex-col border-r ${m.border || ''} ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note index">
         <div className={`shrink-0 border-b p-3 ${m.border || ''}`}>
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -889,6 +868,9 @@ export default function ScratchWorkspace({
             <Ic n="Search" size={13} className={`pointer-events-none absolute left-3 top-3 ${m.textMuted || ''}`} />
             <input ref={noteSearchRef} type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search notes, text, tags" className={`min-h-10 w-full rounded-lg border py-2 pl-9 pr-3 text-xs ${m.input || ''}`} />
           </label>
+          <div role="group" aria-label="Note list layout" className="pl-segmented mt-2 w-full">
+            {SCRATCH_LIST_DENSITIES.map((value) => <button key={value} type="button" aria-pressed={listDensity === value} onClick={() => setListDensity(value)}>{value === 'compact' ? 'Compact' : 'Detailed'}</button>)}
+          </div>
         </div>
         <div className={`flex-1 overflow-y-auto pb-3 ${pageScroll ? 'max-h-[65vh]' : ''}`}>
           {renderPadGroup('Pinned', visiblePads.pinned)}
@@ -896,6 +878,8 @@ export default function ScratchWorkspace({
           {visiblePads.pinned.length + visiblePads.recent.length === 0 && <div className="px-3 py-8 text-center"><p className={`text-xs ${m.textMuted || ''}`}>No notes match “{search}”.</p><button type="button" className="pl-text-button mt-2" onClick={() => setSearch('')}>Clear search</button></div>}
         </div>
       </aside>
+      {showSidebar && !isCompact && <PanelResizer label="Resize note list" width={indexWidth} min={INDEX_WIDTH.min} max={INDEX_WIDTH.max}
+        defaultWidth={INDEX_WIDTH.default} onResize={setIndexWidth} side="start" getEdge={() => sidebarRef.current?.getBoundingClientRect().left} />}
 
       <section className={`${showEditor ? 'flex' : 'hidden'} min-w-0 flex-1 flex-col ${pageScroll ? '' : 'overflow-hidden'}`} aria-label="Scratch note workspace">
         <header className={`shrink-0 border-b px-3 py-2.5 sm:px-4 ${m.border || ''}`}>

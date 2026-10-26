@@ -265,3 +265,21 @@ describe('PostEnhanceResults candidate toolbar Save label', () => {
     expect(within(screen.getByRole('toolbar', { name: 'Improved actions' })).getByRole('button', { name: 'Save new version' })).toBeInTheDocument();
   });
 });
+
+describe('CreateContextBar Scratch toggle', () => {
+  const baseProps = { m, canSavePanel: true, openSavePanel: vi.fn(), openSection: vi.fn(), accentTextClass: '', accentHoverTextClass: '', accentBadgeClass: 'is-on' };
+
+  it('shows no Scratch toggle unless the panel is available', () => {
+    render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced="" />);
+    expect(screen.queryByRole('button', { name: /Scratch/ })).toBeNull();
+  });
+
+  it('reports and toggles the Scratch panel state', () => {
+    const onToggle = vi.fn();
+    render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced="" scratchPanel={{ open: true, onToggle }} />);
+    const toggle = screen.getByRole('button', { name: /Scratch/ });
+    expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(toggle);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+  });
+});
