@@ -9,6 +9,11 @@ import { suggestTitleFromText } from '../lib/promptSchema.js';
 // App.jsx falls back to the newest eval run for the golden comparison and the
 // suggested draft title, so that fallback must skip runs that did not succeed.
 //
+// The fallback must also use only the current prompt's runs. For a new, unsaved
+// draft the run history lists recent runs from every prompt, so the draft may
+// use only its own latest run (resultMeta.runId); a saved prompt may use only
+// runs tagged with its id. Otherwise another prompt's output becomes the title.
+//
 // This mounts the real App and the real CreateContextBar (the Create
 // breadcrumb that showed "New unsaved prompt <error message>"). Hook mocks follow
 // App.shellLayout.test.jsx.
@@ -144,7 +149,7 @@ describe('App comparison fallback after a failed enhance', () => {
 
   it('skips a newer failed run and uses the latest successful run', () => {
     const props = arrange({
-      useEditorState: { raw: RAW },
+      useEditorState: { raw: RAW, resultMeta: { runId: runs.success.id } },
       useExecutionFlow: { evalRuns: [runs.error, runs.canceled, runs.blocked, runs.success] },
     });
 
@@ -184,10 +189,47 @@ describe('App comparison fallback after a failed enhance', () => {
   });
 
   it('still treats legacy runs without a status as successful', () => {
-    const legacy = { id: 'run-legacy', mode: 'enhance', output: SUCCESS_TEXT, createdAt: '2026-09-01T00:00:00Z' };
+    const legacy = { id: 'run-legacy', promptId: 'alpha', mode: 'enhance', output: SUCCESS_TEXT, createdAt: '2026-09-01T00:00:00Z' };
+    const entry = { id: 'alpha', title: 'Outage summary', original: RAW, enhanced: '', tags: [], collection: '' };
     const props = arrange({
       useEditorState: { raw: RAW },
-      useExecutionFlow: { evalRuns: [runs.error, legacy] },
+      useLibrary: { library: [entry] },
+      usePersistenceFlow: { editingId: 'alpha' },
+      useExecutionFlow: { evalRuns: [{ ...runs.error, promptId: 'alpha' }, legacy] },
+    });
+
+    expect(props.comparisonText).toBe(SUCCESS_TEXT);
+  });
+});
+
+describe('App comparison fallback uses only the current prompt runs', () => {
+  const OTHER_TEXT = 'You are a web design specialist.\n\nAn image has been provided. Work through it step by step.';
+  const otherRun = { id: 'run-other', promptId: null, mode: 'enhance', status: 'success', output: OTHER_TEXT, createdAt: '2026-10-26T08:22:50Z' };
+
+  beforeEach(() => {
+    state.editorPaneProps = null;
+    for (const [name, factory] of Object.entries(mocks.defaults)) mocks[name].mockImplementation(factory);
+  });
+
+  it('does not give a new draft the title or comparison of another prompt run', () => {
+    const props = arrange({
+      useEditorState: { raw: RAW },
+      useExecutionFlow: { evalRuns: [otherRun, { ...otherRun, id: 'run-saved-other', promptId: 'other' }] },
+    });
+
+    expect(props.comparisonText).toBe('');
+    expect(props.suggestedSaveTitle).toBe(suggestTitleFromText(RAW));
+    expect(breadcrumbText()).toContain(suggestTitleFromText(RAW));
+    expect(breadcrumbText()).not.toContain(suggestTitleFromText(OTHER_TEXT));
+  });
+
+  it('ignores a stale run from the previous prompt after switching to a saved prompt', () => {
+    const entry = { id: 'alpha', title: 'Outage summary', original: RAW, enhanced: '', tags: [], collection: '' };
+    const props = arrange({
+      useEditorState: { raw: RAW },
+      useLibrary: { library: [entry] },
+      usePersistenceFlow: { editingId: 'alpha' },
+      useExecutionFlow: { evalRuns: [{ ...otherRun, promptId: 'other' }, { ...runs.success, promptId: 'alpha' }] },
     });
 
     expect(props.comparisonText).toBe(SUCCESS_TEXT);
