@@ -1269,6 +1269,12 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 @media (max-height: 500px) {
   .pl-app-header .pl-header-identity { display: none; }
 }
+/* On short phone-width windows the floating Scratch panel has no room, and its
+   44 px toggle would take the editor's last lines. Scratch stays in the bottom
+   navigation, and Cmd or Ctrl + \ still opens the panel. */
+@media (max-height: 500px) and (max-width: 719px) {
+  .pl-write-scratch-toggle { display: none; }
+}
 
 /* Shared panel resizer (Scratch note index, Scratch beside Write). */
 .pl-panel-resizer { position: relative; z-index: 2; width: 0.6rem; flex: 0 0 auto; cursor: col-resize; touch-action: none; background: color-mix(in srgb, currentColor 5%, transparent); }

@@ -125,7 +125,7 @@ export default function CreateContextBar({
           aria-pressed={scratchPanel.open}
           onClick={scratchPanel.onToggle}
           title={`${scratchPanel.open ? 'Hide' : 'Show'} Scratch beside Write (Cmd or Ctrl + \\)`}
-          className={`ui-control inline-flex shrink-0 self-start items-center gap-1 rounded-md border px-2 min-h-8 [@media(pointer:coarse)]:min-h-11 text-[11px] font-semibold ${m.border} ${scratchPanel.open ? accentBadgeClass : m.textSub}`}
+          className={`pl-write-scratch-toggle ui-control inline-flex shrink-0 self-start items-center gap-1 rounded-md border px-2 min-h-8 [@media(pointer:coarse)]:min-h-11 text-[11px] font-semibold ${m.border} ${scratchPanel.open ? accentBadgeClass : m.textSub}`}
         >
           <Ic n="PanelRight" size={12} /> Scratch
         </button>
