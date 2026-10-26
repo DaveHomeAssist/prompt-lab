@@ -22,6 +22,20 @@ Consequences: what this unlocks or closes off
 
 ---
 
+### [D-017] October intake triage and slice order
+
+Status: open
+Owner: Dave
+Date opened: 2026-10-26
+
+Context: Dave's Scratch intake list (October 21 to 26) was rated and specified in [`OCTOBER_INTAKE_BRIEF.md`](OCTOBER_INTAKE_BRIEF.md). Implementation waits for Dave's go.
+
+Options and recommendations: D-INT-1 live Scratch formatting (recommended: live-preview Markdown editor, storage stays Markdown); D-INT-2 Dual Pane after Scratch beside Write (recommended: retire it as a destination, routes open Write); D-INT-3 feedback destination (recommended: local append and copy only); D-INT-4 meaning of generic prompt mode (recommended: a General enhance mode); D-INT-5 slice order (recommended: 0, 1, 2, 3, 6, 4, 5, 7); D-INT-6 release cut (recommended: show build date and revision now, tag 1.8.0 when release gates pass, then 1.9.0-dev).
+
+Consequences: Slice 0 is a routine bug fix and needs no decision. The other slices start in the chosen order after the go. Unanswered recommendations stay open.
+
+---
+
 ### [D-016] PromptLab library storage sequence
 
 Status: direction decided; implementation and hosted provider pending
