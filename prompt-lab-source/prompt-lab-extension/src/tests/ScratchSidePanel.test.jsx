@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScratchSidePanel from '../ScratchSidePanel.jsx';
 import { SCRATCH_KEY, SCRATCH_SCHEMA_VERSION_KEY } from '../lib/scratchSchema.js';
+import { clearUnsavedScratchDraft } from '../lib/scratchUnsavedDraft.js';
 
 const NOW = Date.now();
 
@@ -28,7 +29,20 @@ function renderPanel(props = {}) {
   return { ...handlers, ...view };
 }
 
-beforeEach(() => { localStorage.clear(); seed(); });
+// Another tab writes Scratch storage, then this tab hears about it.
+function writeFromOtherTab(next) {
+  localStorage.setItem(SCRATCH_KEY, JSON.stringify(next));
+  act(() => {
+    window.dispatchEvent(new StorageEvent('storage', { key: SCRATCH_KEY, newValue: JSON.stringify(next) }));
+  });
+}
+
+// Every storage write fails, as when localStorage is full.
+const failWrites = () => vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+  throw new Error('QuotaExceededError');
+});
+
+beforeEach(() => { localStorage.clear(); seed(); clearUnsavedScratchDraft(); });
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('ScratchSidePanel', () => {
@@ -133,6 +147,62 @@ describe('ScratchSidePanel', () => {
       window.dispatchEvent(new StorageEvent('storage', { key: SCRATCH_KEY, newValue: JSON.stringify(next) }));
     });
     expect(editor()).toHaveValue('From the other tab');
+  });
+
+  it('keeps its own note when another tab selects a different one', () => {
+    renderPanel();
+    writeFromOtherTab({ ...stored(), revision: 5, activePadId: 'b' });
+    expect(editor()).toHaveValue('First idea');
+    fireEvent.blur(editor());
+    expect(storedPad('b').content).toBe('Plan text');
+
+    fireEvent.change(editor(), { target: { value: 'Still my note' } });
+    fireEvent.blur(editor());
+    expect(storedPad('a').content).toBe('Still my note');
+    expect(storedPad('b').content).toBe('Plan text');
+  });
+
+  it('moves to the other tab\'s note when its own note was removed there', () => {
+    renderPanel();
+    writeFromOtherTab({ ...stored(), revision: 5, activePadId: 'b', pads: stored().pads.filter((pad) => pad.id !== 'a') });
+    expect(editor()).toHaveValue('Plan text');
+    fireEvent.change(editor(), { target: { value: 'Plan, revised' } });
+    fireEvent.blur(editor());
+    expect(storedPad('b').content).toBe('Plan, revised');
+  });
+
+  it('keeps text that fails to save on close and brings it back on reopen', () => {
+    const first = renderPanel();
+    fireEvent.change(editor(), { target: { value: 'Unsaved while full' } });
+    const writes = failWrites();
+    fireEvent.click(screen.getByRole('button', { name: 'Close Scratch panel' }));
+    expect(first.onClose).toHaveBeenCalled();
+    first.unmount();
+    expect(first.notify).toHaveBeenCalledTimes(1);
+    expect(first.notify).toHaveBeenCalledWith(expect.stringContaining('comes back when you reopen'));
+    expect(storedPad('a').content).toBe('First idea');
+
+    writes.mockRestore();
+    renderPanel();
+    expect(editor()).toHaveValue('Unsaved while full');
+    expect(storedPad('a').content).toBe('Unsaved while full');
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+  });
+
+  it('keeps unsaved text when something outside the panel closes it', () => {
+    const first = renderPanel();
+    fireEvent.change(editor(), { target: { value: 'Closed from the context bar' } });
+    const writes = failWrites();
+    first.unmount();
+    expect(first.notify).toHaveBeenCalledWith(expect.stringContaining('comes back when you reopen'));
+    writes.mockRestore();
+
+    // Another tab removes the note meanwhile; reopening restores it with the text.
+    localStorage.setItem(SCRATCH_KEY, JSON.stringify({ ...stored(), revision: 7, activePadId: 'b', pads: stored().pads.filter((pad) => pad.id !== 'a') }));
+    renderPanel();
+    expect(editor()).toHaveValue('Closed from the context bar');
+    expect(storedPad('a').content).toBe('Closed from the context bar');
+    expect(storedPad('b').content).toBe('Plan text');
   });
 });
 

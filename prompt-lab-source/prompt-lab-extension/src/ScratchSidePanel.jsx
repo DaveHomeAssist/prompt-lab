@@ -9,8 +9,10 @@ import {
   normalizeScratchPayload,
   persistScratchState,
 } from './lib/scratchSchema.js';
+import { clearUnsavedScratchDraft, keepUnsavedScratchDraft, readUnsavedScratchDraft } from './lib/scratchUnsavedDraft.js';
 
 const AUTOSAVE_MS = 600;
+const KEPT_UNSAVED_MESSAGE = 'Could not save this Scratch note. Its text comes back when you reopen the panel.';
 
 function buildPadId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
@@ -44,6 +46,7 @@ export default function ScratchSidePanel({
   const [saveState, setSaveState] = useState('idle');
   const [readFailed, setReadFailed] = useState(false);
   const padsRef = useRef(padsState);
+  const readFailedRef = useRef(false);
   const revisionRef = useRef(0);
   const textRef = useRef('');
   const timerRef = useRef(null);
@@ -60,15 +63,14 @@ export default function ScratchSidePanel({
     setPadsState(state);
   };
 
-  const showPad = (pad) => {
-    const value = pad?.content || '';
+  const showPad = (pad, value = pad?.content || '') => {
     textRef.current = value;
     setText(value);
     setSelection({ start: 0, end: 0 });
   };
 
   const persist = (nextState, preferLocalIds = []) => {
-    if (readFailed) return { ok: false };
+    if (readFailedRef.current) return { ok: false };
     const result = persistScratchState(nextState, { lastKnownRevision: revisionRef.current, preferLocalIds });
     if (result.ok) applyState(result.state);
     return result;
@@ -78,7 +80,11 @@ export default function ScratchSidePanel({
     const current = padsRef.current;
     const activeId = current.activePadId;
     const stored = current.pads.find((pad) => pad.id === activeId);
-    if (!stored || stored.content === value) return true;
+    if (!stored) return true;
+    if (stored.content === value) {
+      clearUnsavedScratchDraft(activeId);
+      return true;
+    }
     const updatedAt = Date.now();
     setSaveState('saving');
     const result = persist({
@@ -87,6 +93,7 @@ export default function ScratchSidePanel({
         ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
         : pad),
     }, [activeId]);
+    if (result.ok) clearUnsavedScratchDraft(activeId);
     setSaveState(result.ok ? 'saved' : 'error');
     return result.ok;
   };
@@ -96,14 +103,34 @@ export default function ScratchSidePanel({
     return commit(textRef.current);
   };
 
+  // Save before the panel goes away. If that fails, keep the text outside the
+  // panel so reopening it brings the text back instead of the older note.
+  const saveOrKeep = () => {
+    if (flush()) return true;
+    const current = padsRef.current;
+    const pad = current.pads.find((item) => item.id === current.activePadId);
+    if (pad && keepUnsavedScratchDraft(pad, textRef.current)) notify?.(KEPT_UNSAVED_MESSAGE);
+    return false;
+  };
+
   const load = () => {
     const { payload, error, errorStage } = migrateScratchStorage();
-    if (error && errorStage === 'read') {
-      setReadFailed(true);
+    readFailedRef.current = Boolean(error && errorStage === 'read');
+    setReadFailed(readFailedRef.current);
+    if (readFailedRef.current) {
       setSaveState('error');
       return;
     }
-    setReadFailed(false);
+    const unsaved = readUnsavedScratchDraft();
+    if (unsaved) {
+      // Bring back text that could not be saved when the panel last closed,
+      // on its own note (restored if another tab removed it), and retry.
+      const pads = payload.pads.some((pad) => pad.id === unsaved.pad.id) ? payload.pads : [...payload.pads, unsaved.pad];
+      applyState({ ...payload, pads, activePadId: unsaved.pad.id });
+      showPad(pads.find((pad) => pad.id === unsaved.pad.id), unsaved.text);
+      commit(unsaved.text);
+      return;
+    }
     applyState(payload);
     showPad(payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0]);
     setSaveState(error ? 'error' : 'idle');
@@ -116,10 +143,11 @@ export default function ScratchSidePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the latest flush for unmount without re-subscribing every render.
-  const flushRef = useRef(flush);
-  useEffect(() => { flushRef.current = flush; });
-  useEffect(() => () => { flushRef.current(); }, []);
+  // Keep the latest save for unmount without re-subscribing every render.
+  // Unmounting covers the closes that happen outside this panel.
+  const saveOrKeepRef = useRef(saveOrKeep);
+  useEffect(() => { saveOrKeepRef.current = saveOrKeep; });
+  useEffect(() => () => { saveOrKeepRef.current(); }, []);
 
   useEffect(() => {
     const onStorage = (event) => {
@@ -131,10 +159,13 @@ export default function ScratchSidePanel({
       const stored = current.pads.find((pad) => pad.id === current.activePadId);
       const pendingEdits = stored ? textRef.current !== stored.content : Boolean(textRef.current);
       if (pendingEdits) return; // the next save merges through the revision check
-      applyState(incoming);
-      const nextActive = incoming.pads.find((pad) => pad.id === current.activePadId)
-        || incoming.pads.find((pad) => pad.id === incoming.activePadId) || incoming.pads[0];
-      if (nextActive && nextActive.content !== textRef.current) showPad(nextActive);
+      // Keep this panel's note selected while it still exists, as the full
+      // Scratch page does, so the text shown always belongs to the active note.
+      const keepId = incoming.pads.some((pad) => pad.id === current.activePadId) ? current.activePadId : incoming.activePadId;
+      const nextActive = incoming.pads.find((pad) => pad.id === keepId) || incoming.pads[0];
+      if (!nextActive) return;
+      applyState({ ...incoming, activePadId: nextActive.id });
+      if (nextActive.content !== textRef.current) showPad(nextActive);
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -188,7 +219,7 @@ export default function ScratchSidePanel({
   };
 
   const close = () => {
-    flush();
+    saveOrKeep();
     onClose?.();
   };
 
