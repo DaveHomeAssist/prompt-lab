@@ -38,6 +38,28 @@ export function extractVars(text) {
   return [...new Set([...text.matchAll(/\{\{(\w[\w ]*)\}\}/g)].map(m => m[1]))];
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Fills each exact `{{name}}` placeholder from `values` in one pass, with the
+ * value coming from a callback. A string replacement would read `$&`, `$$`,
+ * `` $` `` and `$'` inside a value as replacement syntax, and filling one name
+ * at a time would expand any `{{...}}` text that a value happens to contain.
+ * Placeholders without a value are left as written.
+ */
+export function fillTemplateVars(text, values) {
+  const source = ensureString(text);
+  const tokens = new Map(Object.entries(values || {}).map(([name, value]) => [
+    `{{${name}}}`,
+    ensureString(value),
+  ]));
+  if (tokens.size === 0) return source;
+  const pattern = [...tokens.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp).join('|');
+  return source.replace(new RegExp(pattern, 'g'), (token) => tokens.get(token));
+}
+
 function pad2(value) {
   return String(value).padStart(2, '0');
 }
