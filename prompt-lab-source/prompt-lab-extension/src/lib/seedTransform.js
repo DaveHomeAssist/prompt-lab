@@ -15,6 +15,7 @@ function seedToEntry(prompt, library, loadedAt) {
     title: prompt.title || 'Untitled',
     original: prompt.prompt || '',
     enhanced: prompt.prompt || '',
+    inputs: Array.isArray(prompt.inputs) ? prompt.inputs : [],
     variants: [],
     notes: `Starter prompt from ${library.name}.`,
     tags: Array.isArray(prompt.tags) && prompt.tags.length > 0 ? prompt.tags : ['Other'],

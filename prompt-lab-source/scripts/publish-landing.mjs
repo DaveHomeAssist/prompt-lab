@@ -41,6 +41,8 @@ const privacyRedirectMeta = `  <meta http-equiv="Content-Security-Policy" conten
   <meta name="twitter:image" content="https://promptlab.tools/og-image.png">`;
 
 const copyTargets = [
+  ['packs/image-generation.json', 'packs/image-generation.json'],
+  ['packs/prompt-engineering.json', 'packs/prompt-engineering.json'],
   ['google-analytics.js', 'google-analytics.js'],
   ['favicon.svg', 'favicon.svg'],
   ['hero-logo.png', 'hero-logo.png'],
@@ -84,6 +86,7 @@ async function copyLandingIndex() {
 }
 
 async function copyTarget(fromName, toName) {
+  await mkdir(dirname(join(docsDir, toName)), { recursive: true });
   await cp(join(webPublicDir, fromName), join(docsDir, toName));
 }
 

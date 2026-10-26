@@ -95,6 +95,10 @@ Dated audit reports are point-in-time snapshots, not status. See below.
 
 ### Internal audits and technical notes
 
+- `LEGACY_RECOVERY_BRIEF.md`
+- `VERCEL_RESPONSE_INCIDENT_2026_04_29.md`
+- `RECOVERED_QA_ACCEPTANCE.md`
+
 - `guardrails-guide.md`
 - `tokens-and-secrets.md`
 - `VIEWPORT_SHELL_OVERHAUL_PLAN.md`
