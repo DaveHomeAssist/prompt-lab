@@ -15,14 +15,14 @@ Ratings: **Accepted As Is**, **Keep and Change** (accepted with a stated change)
 
 | ID | Request | Rating | Disposition |
 | --- | --- | --- | --- |
-| T01 | Resizable left-hand panel | Accepted As Is | Scratch note index (fixed 240 px) and Library folder drawer (fixed 12rem) become resizable. Slice 1. |
+| T01 | Resizable left-hand panel | Accepted As Is | Scratch note index (fixed 240 px) becomes resizable in Slice 1; the Library folder drawer (fixed 12rem) follows in Slice 2. |
 | T02 | Remove Write/Split/Preview; show formatting live with no exposed Markdown | Cautious | Needs a live-formatting editor in all three shells while notes stay Markdown. Decision D-INT-1, then a spike. |
 | T03 | Expandable text area in Scratch | Keep and Change | Shipped 2026-10-25 as the fill-the-pane editor and Focus mode (PR205, PR209). Remaining: an Expand control on the new Write-side Scratch panel. Slice 1. |
 | T04 | Compact Scratch list: one-line title, no metadata, grey date if it fits | Accepted As Is | Compact becomes the default; the current three-line rows stay as Detailed. Slice 1. |
 | T05 | More icons; allow icon uploads | Keep and Change | Image upload already exists (PNG, JPEG or WebP up to 64 KB) but is hidden in a collapsed inspector section. Grow the 10 built-in choices from icons the app already bundles, add emoji, no new icon library. Slice 3. |
 | T06 | Gallery view looks broken with no way to add a picture | Keep and Change | Upload exists but cannot be found from the gallery. Cards without artwork get a clear placeholder and an Add image action. Slice 3. |
 | T07 | Clicking a prompt's icon in Library opens an icon or emoji picker | Accepted As Is | Popover picker on the card artwork in all four Library layouts. Slice 3. |
-| T08 | See Scratch notes while in Write view | Accepted As Is | Highest priority. Write's side column switches between Library and Scratch. Dual Pane disposition is decision D-INT-2. Slice 1. |
+| T08 | See Scratch notes while in Write view | Accepted As Is | Highest priority. Write gets a Scratch panel beside the editor. Dual Pane disposition is decision D-INT-2. Slice 1. |
 | T09 | Menu manifest, then reorganize, consolidate and restyle menus | Keep and Change | Split into a code-grounded manifest, then a reorganization proposal for approval, then the visual redesign. Only the first two are planned here. Slice 7. |
 | T10 | Shortcuts to send or append bug reports and feature requests from the app | Keep and Change | Tracked and not started. No bug-report API route exists on `main`. Start with a local Feedback dialog that appends to a Scratch note; any sending destination is decision D-INT-3. Slice 4. |
 | T11 | "Dual Pane / 200 credit" | Cautious | Read as two notes: Dual Pane (D-INT-2) and the open issue to verify the hosted API credit grant, which needs the provider console. Confirm the reading. |
@@ -37,7 +37,7 @@ Ratings: **Accepted As Is**, **Keep and Change** (accepted with a stated change)
 | T20 | Desktop or browser notification when a prompt finishes | Keep and Change | Opt-in, only when the window is not focused and the run was long. Hosted web first plus a tab-title marker on every shell; extension and desktop need permission and plugin work later. Slice 5. |
 | T21 | Version has not changed with recent updates | Keep and Change | Correct: shared source has been `1.8.0` since 2026-10-18 across 50 merged pull requests, and untagged builds only add `-dev (revision)`. Make each deployed build visibly distinct now; the release cut is decision D-INT-6. Slice 6. |
 | T22 | Inspector panel could stretch wider | Keep and Change | Already drag-resizable since 2026-10-18 but capped at 640 px or 55 percent of the workspace. Raise the cap and make the handle visible. Slice 2. |
-| T23 | Favorites and Recent in the sidebar from Write | Accepted As Is | The Write-view Library sidebar gets All, Recent and Favorites views. Slice 2. |
+| T23 | Favorites and Recent in the sidebar from Write | Accepted As Is | The panel beside Write gets a Prompts view with All, Recent and Favorites. Slice 2. |
 
 ## Slice 0: New drafts borrow another prompt's title
 
@@ -74,15 +74,18 @@ prompt, and the Scratch list is compact enough to scan at a glance.
 
 Flow:
 
-1. Write's side column shows a Library or Scratch switch. The choice persists
-   per installation; Library remains the default until Scratch is chosen.
-2. Scratch mode shows the compact note list and the active note in a plain
-   editor with the existing autosave, save status and retry.
+1. Write currently shows the editor alone (the Library sidebar is hidden in
+   Create). A Scratch toggle in the editing context bar, or Cmd or Ctrl plus
+   backslash, opens a Scratch panel beside the editor. Whether it is open, and
+   its width, persist per installation.
+2. The panel shows the compact note list and the active note in a plain
+   editor with autosave, save status and a read-failure retry.
 3. Note actions: Insert into prompt (at the cursor), Open in Scratch (opens the
    full Scratch destination in Focus, covering T03), and New note.
-4. The side column, the Scratch note index and the Library folder drawer use
-   one shared resizer: pointer drag, arrow keys, double-click to reset, width
-   persisted and clamped to the viewport (T01).
+4. The panel and the Scratch note index use one shared resizer: pointer drag,
+   arrow keys, Home and End, double-click to reset, width persisted and
+   clamped (T01). The Library folder drawer adopts it in Slice 2, where the
+   Library grid is already being changed.
 5. Below the two-column breakpoint, Scratch opens as a slide-over drawer from a
    header button and a keyboard shortcut, so the editor keeps its full width.
 6. The Scratch list defaults to compact rows: color dot, title, pin, and a grey
@@ -124,8 +127,9 @@ Acceptance:
 Problem: Favorites and Recent exist only in the full Library destination. The
 inspector is resizable but stops at 640 px.
 
-Change: the Write-view Library sidebar gets All, Recent and Favorites views
-using the Library's existing smart-view rules (T23). The inspector cap rises to
+Change: the panel beside Write gains a Prompts view with All, Recent and
+Favorites, using the Library's existing smart-view rules (T23). The Library
+folder drawer becomes resizable with the shared resizer from Slice 1 (T01). The inspector cap rises to
 960 px or 70 percent of the workspace, whichever is smaller, and the resize
 handle shows on hover and focus (T22).
 

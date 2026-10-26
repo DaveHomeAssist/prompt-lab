@@ -213,3 +213,11 @@ describe('navigationRegistry', () => {
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
+
+describe('Scratch beside Write shortcut', () => {
+  it('toggles the Write Scratch panel with Cmd or Ctrl plus backslash, even while typing', () => {
+    expect(matchShortcut(fakeKeyEvent('\\', { meta: true }))?.id).toBe('toggleScratchPanel');
+    expect(matchShortcut(fakeKeyEvent('\\', { ctrl: true, target: 'TEXTAREA' }))?.id).toBe('toggleScratchPanel');
+    expect(matchShortcut(fakeKeyEvent('\\'))).toBe(null);
+  });
+});

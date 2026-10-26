@@ -38,6 +38,10 @@ import {
   filterCommands,
 } from './lib/navigationRegistry.js';
 import MainWorkspace from './MainWorkspace';
+import { SIDE_PANE_WIDTH } from './lib/sidePane.js';
+import ScratchSidePanel from './ScratchSidePanel.jsx';
+import usePersistedState from './usePersistedState.js';
+import { insertAtCursor } from './lib/insertAtCursor.js';
 import CreateEditorPane from './CreateEditorPane';
 import { ThemeProvider } from './theme/ThemeProvider.jsx';
 import AppHeader from './AppHeader';
@@ -128,6 +132,15 @@ export default function App({
   const [pendingResetIntent, setPendingResetIntent] = useState('reset');
   const [splitMobilePane, setSplitMobilePane] = useState('library');
   const [scratchOpenNoteId, setScratchOpenNoteId] = useState('');
+  // Open the next Scratch visit straight into Focus (set by Open in Scratch).
+  const [scratchOpenFocus, setScratchOpenFocus] = useState(false);
+  const [writeScratchOpen, setWriteScratchOpen] = usePersistedState('pl2-write-scratch-open', false, {
+    validate: (value) => value === true,
+  });
+  const [writeScratchWidth, setWriteScratchWidth] = usePersistedState('pl2-write-scratch-width', SIDE_PANE_WIDTH.default, {
+    validate: (value) => (Number.isFinite(value) ? Math.max(SIDE_PANE_WIDTH.min, Math.min(SIDE_PANE_WIDTH.max, value)) : SIDE_PANE_WIDTH.default),
+  });
+  const scratchToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
@@ -517,6 +530,25 @@ export default function App({
   const studioCreateMode = tab === 'editor' && activeSection === 'create';
   const showEditorPane = tab !== 'editor' || (!libraryOnlyMode && effectiveEditorLayout !== 'library');
   const showLibraryPane = tab !== 'editor' || libraryOnlyMode || (!studioCreateMode && effectiveEditorLayout !== 'editor');
+  // Scratch beside Write: a resizable column on wide screens, a floating
+  // panel below 1100 px so the editor keeps its full width.
+  const writeScratchAvailable = tab === 'editor' && studioCreateMode && workspaceView === 'editor' && showEditorPane;
+  const writeScratchMode = viewportWidth >= 1100 ? 'column' : 'overlay';
+  const closeWriteScratch = () => {
+    setWriteScratchOpen(false);
+    setTimeout(() => scratchToggleRef.current?.focus(), 0);
+  };
+  const insertScratchIntoPrompt = (value) => {
+    const next = insertAtCursor(raw, cursor, value);
+    setRaw(next.value);
+    updateCursor(next.caret);
+  };
+  useEffect(() => { if (primaryView !== 'notebook') setScratchOpenFocus(false); }, [primaryView]);
+  const openScratchNoteInFocus = (noteId) => {
+    setScratchOpenNoteId(noteId);
+    setScratchOpenFocus(true);
+    setPrimaryView('notebook');
+  };
   const createLayoutOptions = [];
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
@@ -628,6 +660,10 @@ export default function App({
         case 'navSplit': openCreateView('split'); break;
         case 'navEvaluate': openSection('evaluate'); break;
         case 'navScratch': setPrimaryView('notebook'); break;
+        case 'toggleScratchPanel':
+          if (writeScratchAvailable) setWriteScratchOpen(open => !open);
+          else { openCreateView('editor'); setWriteScratchOpen(true); }
+          break;
         case 'cmdPalette': setShowCmdPalette(p => !p); setCmdQuery(''); break;
         case 'shortcuts': setShowShortcuts(p => !p); break;
         case 'escape':
@@ -642,7 +678,7 @@ export default function App({
     };
     window.addEventListener('keydown', h);
     return () => window.removeEventListener('keydown', h);
-  }, [canSavePanel, loading, raw, showSave, openCreateView, openSection, setPrimaryView]);
+  }, [canSavePanel, loading, raw, showSave, openCreateView, openSection, setPrimaryView, writeScratchAvailable, setWriteScratchOpen]);
 
   useEffect(() => {
     if (isExtension) return;
@@ -1093,7 +1129,8 @@ export default function App({
             suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle}
             saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
             openSavePanel={openSavePanel} openSection={openSection}
-            accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn} />
+            accentTextClass={m.textAlt} accentHoverTextClass="hover:underline" accentBadgeClass={m.btn}
+            scratchPanel={writeScratchAvailable ? { open: writeScratchOpen, onToggle: () => (writeScratchOpen ? closeWriteScratch() : setWriteScratchOpen(true)), buttonRef: scratchToggleRef } : null} />
         </div>
       )}
 
@@ -1111,6 +1148,22 @@ export default function App({
           libraryIsWorkspace={libraryOnlyMode}
           showEditorPane={showEditorPane}
           showLibraryPane={showLibraryPane}
+          sidePane={writeScratchAvailable && writeScratchOpen ? (
+            <ScratchSidePanel
+              m={m}
+              colorMode={colorMode}
+              notify={notify}
+              overlay={writeScratchMode === 'overlay'}
+              autoFocus={writeScratchMode === 'overlay'}
+              width={writeScratchWidth}
+              onInsert={insertScratchIntoPrompt}
+              onOpenInScratch={openScratchNoteInFocus}
+              onClose={closeWriteScratch}
+            />
+          ) : null}
+          sidePaneMode={writeScratchMode}
+          sidePaneWidth={writeScratchWidth}
+          onSidePaneResize={setWriteScratchWidth}
           editorPane={(
             workspaceView === 'split' ? <DualPaneWorkspace
               library={lib.library}
@@ -1214,6 +1267,7 @@ export default function App({
               openSavePanel={openSavePanel}
               onOpenScratchSource={(noteId) => {
                 setScratchOpenNoteId(noteId);
+                setScratchOpenFocus(false);
                 setPrimaryView('notebook');
               }}
               canUseCollections={canUseCollections}
@@ -1331,6 +1385,7 @@ export default function App({
             library={lib.library}
             collections={lib.collections}
             openNoteId={scratchOpenNoteId}
+            focusOpenedNote={scratchOpenFocus}
             onOpenLibraryEntry={(entry) => entry && handleLoadEntry(entry, 'scratch')}
             onPromoteToLibrary={promoteScratchToLibrary}
             onSendToEditor={sendScratchToEditor}

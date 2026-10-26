@@ -206,7 +206,7 @@ describe('Scratch workspace v4', () => {
     expect(index).toHaveClass('flex');
     expect(workspace).toHaveClass('hidden');
 
-    fireEvent.click(screen.getByRole('button', { name: /Scratchpad.*Empty note/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^Scratchpad/ }));
     expect(index).toHaveClass('hidden');
     expect(workspace).toHaveClass('flex');
     fireEvent.click(screen.getByLabelText('Back to scratch notes'));
