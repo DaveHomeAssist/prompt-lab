@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T03:33:31.819Z",
+  "snapshotAt": "2026-10-26T06:16:22.595248+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "4006ab38916818d12bc8b876db223dbc20b9f814",
+  "mainSha": "80a107021460ea06625f568fc616211baf289d10",
   "overall": "Acceptance incomplete",
-  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Three remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Three remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
+    {
+      "label": "Withdrawn braces exception removed",
+      "state": "Verified",
+      "detail": "2026-10-26: PR214 merged80a1070 after Dave approved retiring the withdrawn advisory exception. Dominic tooling25/25 and audit4/4 pass; main Dependency Health40271834607 confirms zero high/critical,13moderate,3low with no accepted exception. Candidate and main Landing pass; all7 returned main workflows succeed. undici7.30.1 preserved. Vercel dpl_CoTXgj3Fcbnku6SKfYoR8MiiEDj6 READY exactmerge. Auto-merge completed before CI finished; final checks verified afterward. November1 reminder retained; its November5 deadline is obsolete.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/214"
+    },
     {
       "label": "Local task naming released",
       "state": "Verified",
@@ -80,9 +86,9 @@
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/194"
     },
     {
-      "label": "Braces unpatched; existing exception retained by decision",
-      "state": "Open",
-      "detail": "2026-10-21 braces patch availability check — Direct Dave instruction (Focus=None exception). GitHub GHSA-vfj7-8cjw-p6xm still lists affected<=3.0.3 and patched=None; npm latest and all published versions end at3.0.3. Latest micromatch4.0.8 depends on braces^3.0.3; latest markdownlint-cli2 0.24.0 still depends on micromatch4.0.8, so no compatible parent bump removes it. Installed paths verified on Dominic Node22.22.1: root markdownlint-cli2 0.23.3→micromatch4.0.8→braces3.0.3; extension/web Tailwind3.4.17 and desktop3.4.19 via micromatch4.0.8 and chokidar3.6.0→braces3.0.3. All4 lockfile hashes match main6627041. Fresh audit4/4 policy-qualified passes, totals0critical/20high/9moderate/3low; advisory remains absent from production audit. Tooling21/21 passes. Dave selected keep current exception and document blocker; no Tailwind4/lint replacement authorized. Exception and expiry2026-11-05 unchanged; after that UTC date audit fails if advisory remains. No dependency, application or policy change. Next: recheck upstream fix before expiry; broader removal requires separate scope decision. Source https://github.com/advisories/GHSA-vfj7-8cjw-p6xm and npm registry.",
+      "label": "Historical braces exception decision, superseded October 26",
+      "state": "Verified",
+      "detail": "Historical record only. PR214 now removes this exception after the advisory withdrawal and Dave approval. 2026-10-21 braces patch availability check — Direct Dave instruction (Focus=None exception). GitHub GHSA-vfj7-8cjw-p6xm still lists affected<=3.0.3 and patched=None; npm latest and all published versions end at3.0.3. Latest micromatch4.0.8 depends on braces^3.0.3; latest markdownlint-cli2 0.24.0 still depends on micromatch4.0.8, so no compatible parent bump removes it. Installed paths verified on Dominic Node22.22.1: root markdownlint-cli2 0.23.3→micromatch4.0.8→braces3.0.3; extension/web Tailwind3.4.17 and desktop3.4.19 via micromatch4.0.8 and chokidar3.6.0→braces3.0.3. All4 lockfile hashes match main6627041. Fresh audit4/4 policy-qualified passes, totals0critical/20high/9moderate/3low; advisory remains absent from production audit. Tooling21/21 passes. Dave selected keep current exception and document blocker; no Tailwind4/lint replacement authorized. Exception and expiry2026-11-05 unchanged; after that UTC date audit fails if advisory remains. No dependency, application or policy change. Next: recheck upstream fix before expiry; broader removal requires separate scope decision. Source https://github.com/advisories/GHSA-vfj7-8cjw-p6xm and npm registry.",
       "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
     },
     {
@@ -822,10 +828,10 @@
     {
       "id": "3f0255fc8f4481629234d824e518447d",
       "inPlan": false,
-      "nextAction": "Recheck patched braces before2026-11-05; separate approval needed for broader tooling migration.",
-      "verification": "2026-10-21 GitHub/npm confirm no patched braces; latest parents retain dependency. Fresh audit4/4 under existing exception; tooling21/21. Dave chose to retain exception.",
+      "nextAction": "Retain strict high/critical audit enforcement; no remaining braces exception deadline.",
+      "verification": "2026-10-26: PR214 merged80a1070 after Dave approved retiring the withdrawn advisory exception. Dominic tooling25/25 and audit4/4 pass; main Dependency Health40271834607 confirms zero high/critical,13moderate,3low with no accepted exception. Candidate and main Landing pass; all7 returned main workflows succeed. undici7.30.1 preserved. Vercel dpl_CoTXgj3Fcbnku6SKfYoR8MiiEDj6 READY exactmerge. Auto-merge completed before CI finished; final checks verified afterward. November1 reminder retained; its November5 deadline is obsolete.",
       "title": "Dependency audit gate fails on every branch because braces has no patched release",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Background",
       "type": "Tech Debt",
