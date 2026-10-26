@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T12:21:23.132019Z",
+  "snapshotAt": "2026-10-26T13:41:29.992444Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "8ad4c22003889143716c13d1a1aa7f5c01910e04",
+  "mainSha": "6a1a2c43e09b5368a0e0bf067682dbe88f9d5957",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
     {
       "label": "Selected legacy recovery",
-      "state": "Running",
-      "detail": "Approved scope implemented in an isolated branch. Node completion coverage, optional 34 image prompts and 12 engineering templates, preserved input metadata, sanitized incident and QA map. Focused tests passed on Dominic. Full CI, browser acceptance, merge and published-download checks remain open. Archive and existing saved user data remain unchanged.",
-      "url": "https://github.com/DaveHomeAssist/prompt-lab/tree/codex/legacy-recovery-20261026"
+      "state": "Verified",
+      "detail": "PR227 merged as 6a1a2c4 after all 17 checks passed on 54318d1; merge tree matches. GitHub Node 22: API157; frontend1337/116 files plus231 Node tests; landing25 and hosted browser56 passed/1 existing authenticated skip; desktop builds and MSI/NSIS/DEB/AppImage automated acceptance pass. Vercel dpl_5rwhFpULVZL4Xvf17PSQ5cHUtBCw READY at the merge. Production guide and both JSON downloads verified against source:34 image prompts and12 engineering templates. Recovery row Done and read back. Signed-in production use, paid-provider and physical/human acceptance were not performed. Archive and existing user data remain unchanged.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/227"
     },
     {
       "label": "Scratch beside Write (October intake Slice 1)",
@@ -1257,7 +1257,7 @@
       "nextAction": "Slice 2 next: Recent and Favorites in the Write panel, a wider inspector cap and the Library drawer resizer.",
       "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Add Recent and Favorites to the Write sidebar and raise the inspector width cap",
-      "status": "Not started",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
@@ -1314,10 +1314,10 @@
     {
       "id": "405255fc8f44814e998fdf193173cfe8",
       "inPlan": false,
-      "nextAction": "Pass CI and browser acceptance, then merge and verify published downloads.",
-      "verification": "2026-10-26: scoped recovery candidate. Dominic Node 22: 8 focused Node tests and 23 focused frontend tests passed. Initial full run had 1284 passing tests plus a transferred macOS metadata loading error. Metadata removed; retry stopped on Discharging battery state. Existing GitHub CI remains the final validation gate; no provider requests or automatic migration.",
+      "nextAction": "None for the scoped recovery. Optional signed-in and physical acceptance remains in broader QA.",
+      "verification": "2026-10-26 release: PR227 merged as 6a1a2c43e09b5368a0e0bf067682dbe88f9d5957 after all 17 checks passed on 54318d1; merge tree exactly matches the candidate. GitHub Node 22: API157, frontend1337/116 files plus231 Node tests, tooling25, landing44, four package audits, landing browser25 and hosted browser56 passed/1 existing authenticated case skipped. Desktop builds and MSI/NSIS/DEB/AppImage automated acceptance pass. Production dpl_5rwhFpULVZL4Xvf17PSQ5cHUtBCw READY at the merge; live guide links and both JSON bodies verified against source (34 image prompts, 12 engineering templates). Browser recovery cases verify required multiline inputs, Apply, Skip, original text preservation and explicit image import. Scoped acceptance complete; no automatic migration or archive changes. Retained earlier metadata transfer, link contrast, dependency-install timeout and incorrect original-field test failures, each diagnosed. No signed-in production form run, paid provider call or human/physical acceptance. These broader gates remain separate. Next: optional manual acceptance in the existing broader QA record.",
       "title": "Recover selected legacy tests, optional image pack and template inputs",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Library",
       "type": "Tech Debt",
