@@ -257,7 +257,7 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
       setNotes(notesText + assumptionBlock);
       setSaveTags(parsed.tags || []);
       const nextTitle = suggestTitleFromText(parsed.enhanced || raw);
-      if (!ensureString(saveTitle).trim()) setSaveTitle(nextTitle);
+      setSaveTitle(current => ensureString(current).trim() ? current : nextTitle);
       const goldenEntry = editingId ? lib.library.find(entry => entry.id === editingId) : null;
       const goldenText = goldenEntry?.goldenResponse?.text || '';
       const goldenScore = goldenText && (parsed.enhanced || txt) ? ngramSimilarity(goldenText, parsed.enhanced || txt) : null;

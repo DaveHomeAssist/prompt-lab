@@ -437,7 +437,6 @@ describe('usePersistenceFlow', () => {
 
     act(() => {
       result.current.applyEntry(entry);
-      result.current.setSaveTitle('Wrong Title');
       result.current.setSaveTags([]);
       result.current.setSaveCollection('');
       result.current.openSavePanel();
@@ -447,6 +446,32 @@ describe('usePersistenceFlow', () => {
     expect(result.current.saveTags).toEqual(['prod', 'safe']);
     expect(result.current.saveCollection).toBe('Launch');
     expect(result.current.editingId).toBe(entry.id);
+  });
+
+  it.each([false, true])('preserves a custom title on Save reopen (existing=%s)', existing => {
+    const entry = existing ? makeEntry() : null;
+    const { result } = renderPersistenceFlow({ entry });
+    if (entry) act(() => result.current.applyEntry(entry));
+    act(() => result.current.openSavePanel());
+    act(() => result.current.setSaveTitle('My carefully chosen title'));
+    act(() => result.current.closeSavePanel());
+    act(() => result.current.openSavePanel());
+    expect(result.current.saveTitle).toBe('My carefully chosen title');
+  });
+
+  it('adopts a different explicit prompt title and clears names for a new draft', () => {
+    const entry = makeEntry();
+    const other = makeEntry({ id: 'entry-2', title: 'Other saved prompt' });
+    const { result } = renderPersistenceFlow({ entry });
+    act(() => result.current.applyEntry(entry));
+    act(() => result.current.setSaveTitle('Unsaved rename'));
+    act(() => result.current.openSavePanel(other));
+    expect(result.current.saveTitle).toBe(other.title);
+    act(() => result.current.closeSavePanel());
+    act(() => result.current.openSavePanel());
+    expect(result.current.saveTitle).toBe('Unsaved rename');
+    act(() => result.current.clearPersistenceState());
+    expect(result.current.saveTitle).toBe('');
   });
 
   it('metadata_only_edit_preserves_saved_prompt_content', () => {
