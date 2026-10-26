@@ -1,5 +1,15 @@
 # Prompt Lab Changelog (Plain English)
 
+## Selected legacy recoveries (unreleased)
+
+- An optional Image Generation pack contains 34 prompts. Download it from the
+  guide, then review and import it through Library. It is never installed automatically.
+- The 12 existing prompt engineering starter prompts now offer required input
+  fields instead of literal paste instructions. Multiline fields preserve line
+  breaks. Existing saved prompts are left unchanged.
+- Added response completion and content integrity regression coverage, plus a
+  sanitized historical incident note and a reconciled acceptance checklist.
+
 Date: 2026-10-26
 
 ## Chains pass text between steps exactly as written (unreleased)

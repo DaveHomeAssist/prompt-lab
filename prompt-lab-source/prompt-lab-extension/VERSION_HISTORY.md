@@ -1,5 +1,12 @@
 # Prompt Lab — Version History
 
+## Selected legacy recoveries (unreleased)
+
+- Add an optional 34-prompt image JSON pack through the current public guide and Library import path.
+- Preserve required multiline input metadata while loading the 12 engineering starter templates; do not migrate existing user records.
+- Extend Node response completion and starter/import regression coverage.
+- Recover a sanitized April incident lesson and current acceptance mappings without restoring the old runtime or feedback service.
+
 ## Unreleased — current source 1.7.1; next feature release 1.8.0
 
 The shared package manifests and desktop metadata use `1.7.1`, but this source line is not tagged or published as a GitHub Release. The latest source tag is `v1.7.0`; the latest GitHub Release is the `v1.5.0-desktop-preview` prerelease.
