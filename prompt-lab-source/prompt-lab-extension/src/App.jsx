@@ -74,6 +74,12 @@ Constraints:
 - keep it under 140 words
 - sound precise, not hypey`;
 
+// Failed, canceled and blocked runs store their error message as `output`, so
+// only successful runs (and legacy rows with no status) may stand in for a result.
+function isSuccessfulRun(run) {
+  return typeof run?.output === 'string' && run.output.trim() !== '' && (!run.status || run.status === 'success');
+}
+
 const DRAFT_RECOVERY_STORAGE_KEY = 'pl2-draft-reset-recovery-v1';
 
 function loadDraftRecovery() {
@@ -216,7 +222,7 @@ export default function App({
   const [followUpSourceRunId, setFollowUpSourceRunId] = useState('');
   const [savedFollowUps, setSavedFollowUps] = useState({});
   const savedFollowUpsRef = useRef(new Map());
-  const followUpRuns = executionFlow.evalRuns.filter(run => run.output?.trim() && (!run.status || run.status === 'success'));
+  const followUpRuns = executionFlow.evalRuns.filter(isSuccessfulRun);
   const selectedFollowUpRun = followUpRuns.find(run => run.id === followUpSourceRunId) || null;
   const followUpSource = resolveFollowUpSource({
     raw: editorState.raw, enhanced: editorState.enhanced, resultMeta: editorState.resultMeta,
@@ -492,10 +498,10 @@ export default function App({
     ? lib.library.find((entry) => entry.id === lib.expandedVersionId) || null
     : null;
   const goldenResponse = currentEntry?.goldenResponse || null;
-  const latestEvalRun = evalRuns[0] || null;
+  const latestSuccessfulRun = evalRuns.find(isSuccessfulRun) || null;
   const comparisonText = typeof enhanced === 'string' && enhanced.trim()
     ? enhanced
-    : (typeof latestEvalRun?.output === 'string' ? latestEvalRun.output : '');
+    : (latestSuccessfulRun?.output || '');
   const saveSourceText = comparisonText || raw;
   const suggestedSaveTitle = (saveTitle || '').trim() || currentEntry?.title || suggestTitleFromText(saveSourceText);
   const comparisonSourceLabel = typeof enhanced === 'string' && enhanced.trim() ? 'Current enhanced output' : 'Latest eval run';
