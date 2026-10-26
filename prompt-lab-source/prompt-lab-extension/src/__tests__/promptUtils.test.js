@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeShare, decodeShare, extractVars, isGhostVar, looksSensitive, ngramSimilarity,
+import { encodeShare, decodeShare, extractVars, fillTemplateVars, isGhostVar, looksSensitive, ngramSimilarity,
   parseEnhancedPayload, resolveGhostVars, scorePrompt, wordDiff } from '../promptUtils.js';
 
 describe('extractVars', () => {
@@ -12,6 +12,32 @@ describe('extractVars', () => {
     expect(extractVars(null)).toEqual([]); expect(extractVars(42)).toEqual([]); expect(extractVars(undefined)).toEqual([]);
   });
   it('handles variables with spaces', () => { expect(extractVars('{{first name}} and {{last name}}')).toEqual(['first name', 'last name']); });
+});
+describe('fillTemplateVars', () => {
+  const DOLLARS = "cost $$5 | match $& | before $` | after $' | group $1 | named $<x>";
+  it('fills every occurrence of each variable', () => {
+    expect(fillTemplateVars('Hi {{name}}, bye {{name}} at {{place}}', { name: 'Dana', place: 'HQ' }))
+      .toBe('Hi Dana, bye Dana at HQ');
+  });
+  it('inserts dollar sequences literally', () => {
+    expect(fillTemplateVars('<{{name}}>', { name: DOLLARS })).toBe(`<${DOLLARS}>`);
+  });
+  it('never fills placeholders that arrive inside a value', () => {
+    expect(fillTemplateVars('{{a}} / {{b}}', { a: 'has {{b}}', b: 'B' })).toBe('has {{b}} / B');
+    expect(fillTemplateVars('{{a}} / {{b}}', { b: 'has {{a}}', a: 'A' })).toBe('A / has {{a}}');
+  });
+  it('leaves placeholders without a value and lookalike text untouched', () => {
+    expect(fillTemplateVars('{{name}} {{other}} {{ name }} {name}', { name: 'X' })).toBe('X {{other}} {{ name }} {name}');
+  });
+  it('handles names with spaces and regex characters', () => {
+    expect(fillTemplateVars('{{first name}} {{a.b}} {{a+b}}', { 'first name': 'Dana', 'a.b': 'dot', 'a+b': 'plus' }))
+      .toBe('Dana dot plus');
+  });
+  it('treats missing values and non-string input as empty', () => {
+    expect(fillTemplateVars('[{{name}}]', { name: undefined })).toBe('[]');
+    expect(fillTemplateVars(null, { name: 'X' })).toBe('');
+    expect(fillTemplateVars('same', null)).toBe('same');
+  });
 });
 describe('isGhostVar', () => {
   it('recognizes built-in ghost variables', () => {
