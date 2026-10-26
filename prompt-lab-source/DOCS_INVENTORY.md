@@ -33,6 +33,13 @@ Updated: 2026-09-05
 | `NOTION_DOCS_AGENT.md` | Notion automation setup | Active | Documents the manual-only, dry-run-first workflow and the credentials required for an explicit live sync. |
 | `IPAD_NATIVE_APP_PLAN.md` | Native implementation and release plan | Active | Tracks implemented M0-M3 scope and the blocked M4 distribution inputs. |
 
+## Recovered engineering references
+
+- `docs/LEGACY_RECOVERY_BRIEF.md`: approved recovery scope, exclusions and acceptance.
+- `docs/VERCEL_RESPONSE_INCIDENT_2026_04_29.md`: sanitized historical response-completion postmortem.
+- `docs/RECOVERED_QA_ACCEPTANCE.md`: current test mappings and explicitly open runtime checks.
+- `prompt-lab-web/public/packs/image-generation.json`: optional image prompt pack, downloaded and imported through the existing Library workflow.
+
 ## Surface Docs
 
 | Path | Scope | Status | Notes |

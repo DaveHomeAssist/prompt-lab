@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T12:15:00.000Z",
+  "snapshotAt": "2026-10-26T13:41:29.992444Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "ee9916cfc3e124d59ac523b82cce3ce2223fb5bd",
+  "mainSha": "6a1a2c43e09b5368a0e0bf067682dbe88f9d5957",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Selected legacy recovery",
+      "state": "Verified",
+      "detail": "PR227 merged as 6a1a2c4 after all 17 checks passed on 54318d1; merge tree matches. GitHub Node 22: API157; frontend1337/116 files plus231 Node tests; landing25 and hosted browser56 passed/1 existing authenticated skip; desktop builds and MSI/NSIS/DEB/AppImage automated acceptance pass. Vercel dpl_5rwhFpULVZL4Xvf17PSQ5cHUtBCw READY at the merge. Production guide and both JSON downloads verified against source:34 image prompts and12 engineering templates. Recovery row Done and read back. Signed-in production use, paid-provider and physical/human acceptance were not performed. Archive and existing user data remain unchanged.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/227"
+    },
     {
       "label": "Scratch beside Write (October intake Slice 1)",
       "state": "Verified",
@@ -1198,40 +1204,16 @@
       "url": "https://app.notion.com/402255fc8f448180ba6aebfcf47cabdb"
     },
     {
-      "id": "405255fc8f44811484f8ee5609015405",
+      "id": "405255fc8f4481f7aa25cc44232d94df",
       "inPlan": false,
-      "nextAction": "Enhance two different prompts in a row in the signed-in production app and confirm the second keeps its own title.",
-      "verification": "2026-10-26: PR #222 merged as 6ea5f6f after all 15 checks passed. A saved prompt uses only runs tagged with its id and an unsaved draft only its own resultMeta.runId. Two new App tests fail on e6a880f and pass; full extension suite 111 files/1,280 tests on Dominic (Node 22). Production deployment succeeded; the live /app bundle carries revision 6ea5f6f and the fix. No signed-in production run.",
-      "title": "New drafts borrow another prompt's run for their title and comparison",
-      "status": "In progress",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "Bug",
-      "url": "https://app.notion.com/405255fc8f44811484f8ee5609015405"
-    },
-    {
-      "id": "405255fc8f44814e998fdf193173cfe8",
-      "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
-      "title": "Recover selected legacy tests, optional image pack and template inputs",
-      "status": "In progress",
+      "nextAction": "None for this issue.",
+      "verification": "2026-10-26: PR220 merged e9e6fa3 (fillTemplateVars: one-pass replacement callback for Library template values). Three hook tests (typed value, value containing a placeholder, clipboard paste) fail on base 5572cf3 and pass; six helper unit tests. All 15 PR checks pass on tree-identical 267b8a5 after one Landing rerun for the known Chromium timeout; all 7 exact-main workflows succeed. Vercel dpl_CsSXFzW8QPhmTsDpGXKrei9h7cDF READY; live /app bundle carries the fix. No manual browser run of the variable form.",
+      "title": "Library template fill interprets variable values as replacement syntax",
+      "status": "Done",
       "severity": "Medium",
       "area": "Library",
-      "type": "Tech Debt",
-      "url": "https://app.notion.com/405255fc8f44814e998fdf193173cfe8"
-    },
-    {
-      "id": "405255fc8f44815689b6d0ade1bda5eb",
-      "inPlan": false,
-      "nextAction": "Slice 7: write the code-grounded menu manifest, then a reorganization proposal for approval.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Write the current menu manifest and a reorganization proposal",
-      "status": "Not started",
-      "severity": "Low",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/405255fc8f44815689b6d0ade1bda5eb"
+      "type": "Bug",
+      "url": "https://app.notion.com/405255fc8f4481f7aa25cc44232d94df"
     },
     {
       "id": "405255fc8f4481aeb2bce32e01f19771",
@@ -1258,6 +1240,54 @@
       "url": "https://app.notion.com/405255fc8f4481c78d80ce2e49b6fab8"
     },
     {
+      "id": "405255fc8f4481e0998dcf99824e8bd2",
+      "inPlan": false,
+      "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Retire Dual Pane as a destination after Scratch beside Write ships",
+      "status": "Not started",
+      "severity": "Low",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/405255fc8f4481e0998dcf99824e8bd2"
+    },
+    {
+      "id": "405255fc8f4481f5b8eecd4511bfa50e",
+      "inPlan": false,
+      "nextAction": "Slice 2 next: Recent and Favorites in the Write panel, a wider inspector cap and the Library drawer resizer.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Add Recent and Favorites to the Write sidebar and raise the inspector width cap",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481f5b8eecd4511bfa50e"
+    },
+    {
+      "id": "405255fc8f44811484f8ee5609015405",
+      "inPlan": false,
+      "nextAction": "Enhance two different prompts in a row in the signed-in production app and confirm the second keeps its own title.",
+      "verification": "2026-10-26: PR #222 merged as 6ea5f6f after all 15 checks passed. A saved prompt uses only runs tagged with its id and an unsaved draft only its own resultMeta.runId. Two new App tests fail on e6a880f and pass; full extension suite 111 files/1,280 tests on Dominic (Node 22). Production deployment succeeded; the live /app bundle carries revision 6ea5f6f and the fix. No signed-in production run.",
+      "title": "New drafts borrow another prompt's run for their title and comparison",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/405255fc8f44811484f8ee5609015405"
+    },
+    {
+      "id": "405255fc8f44815689b6d0ade1bda5eb",
+      "inPlan": false,
+      "nextAction": "Slice 7: write the code-grounded menu manifest, then a reorganization proposal for approval.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Write the current menu manifest and a reorganization proposal",
+      "status": "Not started",
+      "severity": "Low",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/405255fc8f44815689b6d0ade1bda5eb"
+    },
+    {
       "id": "405255fc8f4481d1bc61f4f8984c5840",
       "inPlan": false,
       "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
@@ -1282,40 +1312,16 @@
       "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
     },
     {
-      "id": "405255fc8f4481e0998dcf99824e8bd2",
+      "id": "405255fc8f44814e998fdf193173cfe8",
       "inPlan": false,
-      "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Retire Dual Pane as a destination after Scratch beside Write ships",
-      "status": "Not started",
-      "severity": "Low",
-      "area": "Layout",
-      "type": "UX",
-      "url": "https://app.notion.com/405255fc8f4481e0998dcf99824e8bd2"
-    },
-    {
-      "id": "405255fc8f4481f5b8eecd4511bfa50e",
-      "inPlan": false,
-      "nextAction": "Slice 2 next: Recent and Favorites in the Write panel, a wider inspector cap and the Library drawer resizer.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Add Recent and Favorites to the Write sidebar and raise the inspector width cap",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481f5b8eecd4511bfa50e"
-    },
-    {
-      "id": "405255fc8f4481f7aa25cc44232d94df",
-      "inPlan": false,
-      "nextAction": "None for this issue.",
-      "verification": "2026-10-26: PR220 merged e9e6fa3 (fillTemplateVars: one-pass replacement callback for Library template values). Three hook tests (typed value, value containing a placeholder, clipboard paste) fail on base 5572cf3 and pass; six helper unit tests. All 15 PR checks pass on tree-identical 267b8a5 after one Landing rerun for the known Chromium timeout; all 7 exact-main workflows succeed. Vercel dpl_CsSXFzW8QPhmTsDpGXKrei9h7cDF READY; live /app bundle carries the fix. No manual browser run of the variable form.",
-      "title": "Library template fill interprets variable values as replacement syntax",
+      "nextAction": "None for the scoped recovery. Optional signed-in and physical acceptance remains in broader QA.",
+      "verification": "2026-10-26 release: PR227 merged as 6a1a2c43e09b5368a0e0bf067682dbe88f9d5957 after all 17 checks passed on 54318d1; merge tree exactly matches the candidate. GitHub Node 22: API157, frontend1337/116 files plus231 Node tests, tooling25, landing44, four package audits, landing browser25 and hosted browser56 passed/1 existing authenticated case skipped. Desktop builds and MSI/NSIS/DEB/AppImage automated acceptance pass. Production dpl_5rwhFpULVZL4Xvf17PSQ5cHUtBCw READY at the merge; live guide links and both JSON bodies verified against source (34 image prompts, 12 engineering templates). Browser recovery cases verify required multiline inputs, Apply, Skip, original text preservation and explicit image import. Scoped acceptance complete; no automatic migration or archive changes. Retained earlier metadata transfer, link contrast, dependency-install timeout and incorrect original-field test failures, each diagnosed. No signed-in production form run, paid provider call or human/physical acceptance. These broader gates remain separate. Next: optional manual acceptance in the existing broader QA record.",
+      "title": "Recover selected legacy tests, optional image pack and template inputs",
       "status": "Done",
       "severity": "Medium",
       "area": "Library",
-      "type": "Bug",
-      "url": "https://app.notion.com/405255fc8f4481f7aa25cc44232d94df"
+      "type": "Tech Debt",
+      "url": "https://app.notion.com/405255fc8f44814e998fdf193173cfe8"
     }
   ]
 }

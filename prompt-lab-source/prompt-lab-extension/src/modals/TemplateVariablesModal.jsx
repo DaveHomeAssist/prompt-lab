@@ -40,6 +40,7 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
           {Object.keys(varVals).map((k, index) => {
             const inputDef = pendingTemplateInputMap[k];
             const isSelect = inputDef?.type === 'select' && Array.isArray(inputDef.options) && inputDef.options.length > 0;
+            const TextField = inputDef?.type === 'textarea' ? 'textarea' : 'input';
             const fieldId = `template-variable-${index}`;
             return (
             <div key={k}>
@@ -69,7 +70,7 @@ export default function TemplateVariablesModal({ m, varVals, setVarVals, pending
                   ))}
                 </select>
               ) : (
-                <input id={fieldId} ref={index === 0 ? firstInputRef : undefined} className={`min-h-11 w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
+                <TextField id={fieldId} rows={inputDef?.type === 'textarea' ? 4 : undefined} ref={index === 0 ? firstInputRef : undefined} className={`min-h-11 w-full ${m.input} border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 ${m.text}`}
                   placeholder={inputDef?.placeholder || (isGhostVar(k) ? 'Auto-filled · editable' : `Value for ${k}…`)}
                   aria-required={inputDef?.required ? 'true' : undefined}
                   value={varVals[k]} onChange={e => setVarVals(p => ({ ...p, [k]: e.target.value }))} />
