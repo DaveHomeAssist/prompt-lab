@@ -1,0 +1,141 @@
+{
+  "skill": "dependency-repair and release-closure",
+  "scope": "Retire withdrawn braces exception without dependency or application changes",
+  "project": "PromptLab",
+  "target": {
+    "revision": "80a107021460ea06625f568fc616211baf289d10",
+    "branch": "main",
+    "environment": "GitHub CI; Dominic Node22.22.1; automatic Vercel production",
+    "artifact": "dpl_CoTXgj3Fcbnku6SKfYoR8MiiEDj6",
+    "platform": "Audit tooling"
+  },
+  "requirements": [
+    {
+      "id": "POLICY",
+      "acceptance_criterion": "Withdrawn advisory is not waived; generic safeguards preserved",
+      "required": true
+    },
+    {
+      "id": "TEST",
+      "acceptance_criterion": "Focused regressions and full tooling pass",
+      "required": true
+    },
+    {
+      "id": "AUDIT",
+      "acceptance_criterion": "Four workspace audits pass without exceptions",
+      "required": true
+    },
+    {
+      "id": "CI",
+      "acceptance_criterion": "Candidate and merged checks pass",
+      "required": true
+    },
+    {
+      "id": "MERGE",
+      "acceptance_criterion": "Approved change reaches main",
+      "required": true
+    },
+    {
+      "id": "DEPLOY",
+      "acceptance_criterion": "Automatic deployment matches merge",
+      "required": true
+    },
+    {
+      "id": "RUNTIME",
+      "acceptance_criterion": "Validate changed runtime behavior",
+      "required": true
+    },
+    {
+      "id": "VERSION",
+      "acceptance_criterion": "New application version or tag",
+      "required": true
+    },
+    {
+      "id": "AUTH",
+      "acceptance_criterion": "Dave authorizes exception removal and normal delivery",
+      "required": true
+    }
+  ],
+  "evidence": [
+    {
+      "requirement_id": "POLICY",
+      "kind": "source",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/commit/cdd4f24100c844f98decb1bece7ac6dcbaffbf42",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "Only audit policy and tests changed. All manifests, locks and application sources unchanged from9e45e3e; undici7.30.1 and deletion repair preserved."
+    },
+    {
+      "requirement_id": "TEST",
+      "kind": "runtime",
+      "reference": "Dominic Node22.22.1: npm run test:tooling",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "25/25. Corrected baseline with full source snapshot fails the two vulnerable-report cases under old policy; final all pass. First incomplete snapshot lacked manifests and is not regression evidence."
+    },
+    {
+      "requirement_id": "AUDIT",
+      "kind": "ci",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40271834607",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "25 tooling tests and4audit roots pass;0critical,0high,13moderate,3low. Not zero vulnerabilities."
+    },
+    {
+      "requirement_id": "CI",
+      "kind": "ci",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40271834620",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "Candidate Landing40271810885 and all7returned merge workflows pass. Main1270shared+231legacy tests; landing25,hosted53 with1credential skip."
+    },
+    {
+      "requirement_id": "MERGE",
+      "kind": "merge",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/pull/214",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "Merged80a1070. Process deviation: auto-merge command completed immediately while checks were pending. Final checks verified afterward; no pre-merge-all-green claim."
+    },
+    {
+      "requirement_id": "DEPLOY",
+      "kind": "deployment",
+      "reference": "https://vercel.com/daves-projects-7059ba1c/prompt-lab/CoTXgj3Fcbnku6SKfYoR8MiiEDj6",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "READY exact80a1070; promptlab.tools alias. No application/runtime change or manual deploy."
+    },
+    {
+      "requirement_id": "RUNTIME",
+      "kind": "runtime",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/pull/214/files",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "not_applicable",
+      "limitations": "Changed behavior is the build-time audit gate, exercised on Dominic and CI. No application source changes; no new provider or signed-in live tests required for this slice."
+    },
+    {
+      "requirement_id": "VERSION",
+      "kind": "source",
+      "reference": "https://github.com/DaveHomeAssist/prompt-lab/pull/214/files",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "not_applicable",
+      "limitations": "Build-time policy/test change only; existing application version and locks unchanged."
+    },
+    {
+      "requirement_id": "AUTH",
+      "kind": "human_acceptance",
+      "reference": "Direct Dave approval in controller chat, October26,2026",
+      "observed_at": "2026-10-26T06:16:42.083978+00:00",
+      "result": "pass",
+      "limitations": "Approve both: remove withdrawn braces exception, focused checks, update records and normal delivery. This supersedes prior keep decision for this exact exception; no broader acceptance inferred."
+    }
+  ],
+  "changes_performed": [
+    "PR214 removed the exact braces exception and added four default-policy regressions.",
+    "Updated existing dependency issue to Done and appended the implementation RUN; both read back.",
+    "Refreshed the complete59-row snapshot, preserving14plan identities and other58rows."
+  ],
+  "unresolved_decisions": [],
+  "blockers": [],
+  "next_action": "Retain strict audit enforcement. November1 reminder retained; its former November5 exception deadline is obsolete."
+}
