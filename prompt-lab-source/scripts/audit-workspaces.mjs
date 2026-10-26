@@ -20,15 +20,8 @@ const GATED_SEVERITIES = new Set(['high', 'critical']);
 // High/critical advisories accepted for a bounded time. An exception holds only
 // while the advisory stays out of the production (--omit=dev) audit, and only
 // through its `expires` date (UTC). Add one only when no fixed release exists.
-export const AUDIT_EXCEPTIONS = Object.freeze([
-  Object.freeze({
-    id: 'GHSA-vfj7-8cjw-p6xm',
-    package: 'braces',
-    expires: '2026-11-05',
-    reason: 'No fixed braces release exists (3.0.3 is the latest and is affected). It reaches '
-      + 'only dev tooling: markdownlint-cli2 in root and Tailwind 3 in extension, web and desktop.',
-  }),
-]);
+// GHSA-vfj7-8cjw-p6xm was withdrawn on 2026-10-23; no waiver remains.
+export const AUDIT_EXCEPTIONS = Object.freeze([]);
 
 /** Distinct advisories behind a report's vulnerable packages, keyed by GHSA ID. */
 export function listAdvisories(report) {
