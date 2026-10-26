@@ -24,7 +24,7 @@ const editor = () => screen.getByRole('textbox', { name: 'Scratch note text' });
 const list = () => screen.getByRole('navigation', { name: 'Scratch notes' });
 
 function renderPanel(props = {}) {
-  const handlers = { onInsert: vi.fn(), onOpenInScratch: vi.fn(), onClose: vi.fn(), notify: vi.fn() };
+  const handlers = { onInsert: vi.fn(), onOpenInScratch: vi.fn(), notify: vi.fn() };
   const view = render(<ScratchSidePanel m={{}} {...handlers} {...props} />);
   return { ...handlers, ...view };
 }
@@ -103,13 +103,9 @@ describe('ScratchSidePanel', () => {
     expect(onOpenInScratch).toHaveBeenCalledWith('a');
   });
 
-  it('saves pending text when it closes or unmounts', () => {
-    const { onClose, unmount } = renderPanel();
-    fireEvent.change(editor(), { target: { value: 'Closing edit' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Close Scratch panel' }));
-    expect(onClose).toHaveBeenCalled();
-    expect(storedPad('a').content).toBe('Closing edit');
-
+  // Closing the panel or switching to its Prompts tab unmounts this content.
+  it('saves pending text when it unmounts', () => {
+    const { unmount } = renderPanel();
     fireEvent.change(editor(), { target: { value: 'Unmount edit' } });
     unmount();
     expect(storedPad('a').content).toBe('Unmount edit');
@@ -127,17 +123,6 @@ describe('ScratchSidePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry loading notes' }));
     expect(editor()).toHaveValue('First idea');
     expect(editor()).not.toHaveAttribute('readonly');
-  });
-
-  it('closes on Escape only when it floats over the editor', () => {
-    const first = renderPanel();
-    fireEvent.keyDown(editor(), { key: 'Escape' });
-    expect(first.onClose).not.toHaveBeenCalled();
-    cleanup();
-
-    const overlay = renderPanel({ overlay: true });
-    fireEvent.keyDown(editor(), { key: 'Escape' });
-    expect(overlay.onClose).toHaveBeenCalled();
   });
 
   it('shows a change made in another tab when nothing is pending here', () => {
@@ -175,8 +160,6 @@ describe('ScratchSidePanel', () => {
     const first = renderPanel();
     fireEvent.change(editor(), { target: { value: 'Unsaved while full' } });
     const writes = failWrites();
-    fireEvent.click(screen.getByRole('button', { name: 'Close Scratch panel' }));
-    expect(first.onClose).toHaveBeenCalled();
     first.unmount();
     expect(first.notify).toHaveBeenCalledTimes(1);
     expect(first.notify).toHaveBeenCalledWith(expect.stringContaining('comes back when you reopen'));
@@ -203,18 +186,5 @@ describe('ScratchSidePanel', () => {
     expect(editor()).toHaveValue('Closed from the context bar');
     expect(storedPad('a').content).toBe('Closed from the context bar');
     expect(storedPad('b').content).toBe('Plan text');
-  });
-});
-
-describe('ScratchSidePanel placement', () => {
-  beforeEach(() => { localStorage.clear(); seed(); });
-  afterEach(() => cleanup());
-
-  it('sits above the phone navigation bar only when it floats', () => {
-    const { rerender } = render(<ScratchSidePanel m={{}} overlay aboveMobileNav />);
-    const panel = screen.getByRole('complementary', { name: 'Scratch notes beside Write' });
-    expect(panel).toHaveClass('is-overlay', 'is-above-mobile-nav');
-    rerender(<ScratchSidePanel m={{}} aboveMobileNav />);
-    expect(panel).not.toHaveClass('is-above-mobile-nav');
   });
 });

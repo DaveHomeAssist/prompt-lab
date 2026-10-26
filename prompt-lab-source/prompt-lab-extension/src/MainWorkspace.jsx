@@ -11,8 +11,9 @@ export default function MainWorkspace({
   editorPane,
   libraryPane,
   libraryIsWorkspace = false,
-  // Optional panel beside the editor (Scratch in Write). 'column' places it in
-  // a resizable column; 'overlay' slides it over the editor on narrow screens.
+  // Optional panel beside the editor (Scratch or Prompts in Write). 'column'
+  // places it in a resizable column; 'overlay' floats it over the editor on
+  // narrow screens.
   sidePane = null,
   sidePaneMode = 'column',
   sidePaneWidth = SIDE_PANE_WIDTH.default,
@@ -48,7 +49,7 @@ export default function MainWorkspace({
       {sideColumn && (
         <>
           <PanelResizer
-            label="Resize Scratch panel"
+            label="Resize side panel"
             width={sidePaneWidth}
             min={SIDE_PANE_WIDTH.min}
             max={SIDE_PANE_WIDTH.max}

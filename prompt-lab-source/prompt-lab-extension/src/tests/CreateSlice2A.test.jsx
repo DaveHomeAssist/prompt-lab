@@ -274,6 +274,20 @@ describe('CreateContextBar Scratch toggle', () => {
     expect(screen.queryByRole('button', { name: /Scratch/ })).toBeNull();
   });
 
+  it('offers a Prompts toggle beside the Scratch toggle, each with its own state', () => {
+    const scratchToggle = vi.fn();
+    const promptsToggle = vi.fn();
+    render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced=""
+      scratchPanel={{ open: false, onToggle: scratchToggle }} promptsPanel={{ open: true, onToggle: promptsToggle }} />);
+    expect(screen.getByRole('button', { name: 'Scratch' })).toHaveAttribute('aria-pressed', 'false');
+    const prompts = screen.getByRole('button', { name: 'Prompts' });
+    expect(prompts).toHaveAttribute('aria-pressed', 'true');
+    expect(prompts).toHaveClass('pl-write-side-toggle', 'is-on');
+    fireEvent.click(prompts);
+    expect(promptsToggle).toHaveBeenCalledTimes(1);
+    expect(scratchToggle).not.toHaveBeenCalled();
+  });
+
   it('reports and toggles the Scratch panel state', () => {
     const onToggle = vi.fn();
     render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced="" scratchPanel={{ open: true, onToggle }} />);

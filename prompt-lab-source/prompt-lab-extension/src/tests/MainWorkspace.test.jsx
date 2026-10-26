@@ -44,14 +44,14 @@ describe('MainWorkspace side pane', () => {
     const { container } = renderWorkspace({ sidePane: <div>Side notes</div>, sidePaneMode: 'column', sidePaneWidth: 400 });
     expect(container.firstChild).toHaveAttribute('data-side-pane', 'column');
     expect(container.firstChild.style.gridTemplateColumns).toBe('minmax(0, 1fr) auto 400px');
-    expect(screen.getByRole('separator', { name: 'Resize Scratch panel' })).toHaveAttribute('aria-valuenow', '400');
+    expect(screen.getByRole('separator', { name: 'Resize side panel' })).toHaveAttribute('aria-valuenow', '400');
     expect(screen.getByText('Side notes')).toBeInTheDocument();
   });
 
   it('reports keyboard resizing through onSidePaneResize', () => {
     const onSidePaneResize = vi.fn();
     renderWorkspace({ sidePane: <div>Side notes</div>, sidePaneWidth: 360, onSidePaneResize });
-    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize Scratch panel' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize side panel' }), { key: 'ArrowLeft' });
     expect(onSidePaneResize).toHaveBeenCalledWith(384);
   });
 

@@ -64,11 +64,28 @@ export function describeEditingContext({
  * lives in the shared header so this context
  * stays consistent in Write and Dual Pane without another reset control.
  */
+// Opens the panel beside Write on one of its tabs (Scratch or Prompts).
+function SidePanelToggle({ m, panel, label, icon, accentBadgeClass }) {
+  return (
+    <button
+      ref={panel.buttonRef}
+      type="button"
+      aria-pressed={panel.open}
+      onClick={panel.onToggle}
+      title={`${panel.open ? 'Hide' : 'Show'} ${label} beside Write. Cmd or Ctrl + \\ toggles the panel.`}
+      className={`pl-write-side-toggle ui-control inline-flex shrink-0 self-start items-center gap-1 rounded-md border px-2 min-h-8 [@media(pointer:coarse)]:min-h-11 text-[11px] font-semibold ${m.border} ${panel.open ? accentBadgeClass : m.textSub}`}
+    >
+      <Ic n={icon} size={12} /> {label}
+    </button>
+  );
+}
+
 export default function CreateContextBar({
   m, compact = false, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
   resultMeta, variants, notes,
   openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
   scratchPanel = null,
+  promptsPanel = null,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
@@ -118,18 +135,8 @@ export default function CreateContextBar({
       </div>
       </div>
       </details>
-      {scratchPanel && (
-        <button
-          ref={scratchPanel.buttonRef}
-          type="button"
-          aria-pressed={scratchPanel.open}
-          onClick={scratchPanel.onToggle}
-          title={`${scratchPanel.open ? 'Hide' : 'Show'} Scratch beside Write (Cmd or Ctrl + \\)`}
-          className={`pl-write-scratch-toggle ui-control inline-flex shrink-0 self-start items-center gap-1 rounded-md border px-2 min-h-8 [@media(pointer:coarse)]:min-h-11 text-[11px] font-semibold ${m.border} ${scratchPanel.open ? accentBadgeClass : m.textSub}`}
-        >
-          <Ic n="PanelRight" size={12} /> Scratch
-        </button>
-      )}
+      {scratchPanel && <SidePanelToggle m={m} panel={scratchPanel} label="Scratch" icon="PanelRight" accentBadgeClass={accentBadgeClass} />}
+      {promptsPanel && <SidePanelToggle m={m} panel={promptsPanel} label="Prompts" icon="Star" accentBadgeClass={accentBadgeClass} />}
     </section>
   );
 }

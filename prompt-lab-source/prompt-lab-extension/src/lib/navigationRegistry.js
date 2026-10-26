@@ -151,7 +151,7 @@ export const SHORTCUTS = Object.freeze([
   { id: 'navSplit', key: '4', alt: true, label: 'Go to Dual Pane', hint: 'Alt 4' },
   { id: 'navEvaluate', key: '5', alt: true, label: 'Go to Evaluate', hint: 'Alt 5' },
   { id: 'navScratch', key: '6', alt: true, label: 'Go to Scratch', hint: 'Alt 6' },
-  { id: 'toggleScratchPanel', key: '\\', mod: true, label: 'Toggle Scratch beside Write', hint: '⌘\\' },
+  { id: 'toggleScratchPanel', key: '\\', mod: true, label: 'Toggle the panel beside Write (Scratch and Prompts)', hint: '⌘\\' },
 ]);
 
 /**

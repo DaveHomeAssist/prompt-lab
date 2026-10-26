@@ -134,11 +134,29 @@ folder drawer becomes resizable with the shared resizer from Slice 1 (T01). The 
 960 px or 70 percent of the workspace, whichever is smaller, and the resize
 handle shows on hover and focus (T22).
 
+Flow as built:
+
+1. The editing context bar gets a Prompts toggle beside Scratch. Each opens the
+   panel on its tab, or closes it when that tab is already showing; the panel
+   also has Scratch and Prompts tabs, and Cmd or Ctrl plus backslash still
+   toggles it on the last tab.
+2. Prompts lists All, Recent or Favorites with the Library's filters and sort
+   order. Each row opens the prompt in Write (which counts as opening it for
+   Recent), inserts its text at the cursor, or toggles Favorite.
+3. The folder drawer handle works by pointer and keyboard from 160 to 384 px;
+   double-click returns it to the width the layout gives it.
+4. The inspector stops at 960 px, 70 percent of the workspace, or the width
+   that keeps the results list at 416 px (where result cards still show a
+   readable title), whichever is smallest. The handle's grip brightens on
+   hover and focus.
+
 Acceptance: each view lists the same prompts as its Library counterpart; the
 inspector reaches the new cap by pointer and keyboard without hiding the
 results list below its minimum width.
 
-Effects: one persisted key for the selected sidebar view. No schema change.
+Effects: one persisted key for the selected sidebar view
+(`pl2-write-side-view`) and the Library drawer width from Slice 1's list
+(`pl2-library-drawer-width`). No schema change.
 
 ## Slice 3: Prompt artwork that can be found
 

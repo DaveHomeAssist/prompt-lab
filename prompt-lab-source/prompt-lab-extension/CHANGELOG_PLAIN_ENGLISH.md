@@ -12,6 +12,23 @@
 
 Date: 2026-10-26
 
+## Your saved prompts sit beside Write too (unreleased)
+
+- The editing bar above the prompt now has a Prompts button next to Scratch.
+  It opens your saved prompts beside Write, with All, Recent and Favorites,
+  listed the same way and in the same order as in the Library. The panel's
+  Scratch and Prompts tabs switch between the two, and it remembers which
+  list you chose.
+- Select a prompt to open it in Write; it then moves to the top of Recent.
+  The insert button puts its text where your cursor is in the prompt, and the
+  star adds it to or removes it from Favorites.
+- In the Library, drag the edge of the folder list, or use the arrow keys on
+  it, to make it wider or narrower; double-click the edge to reset it.
+- The prompt inspector in the Library can now be dragged much wider: up to
+  960 pixels or 70 percent of the Library, while the prompt list keeps enough
+  room to read. Its resize handle lights up when you point at it or move to
+  it with the keyboard.
+
 ## Scratch notes sit beside Write (unreleased)
 
 - Write now has a Scratch button in the editing bar above the prompt, and

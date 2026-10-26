@@ -34,6 +34,7 @@ import { filterDeletedLibraryRecords, isLibraryDeletionKey, markLibraryCleared, 
 import { buildWorkspaceImportPreview, normalizeWorkspaceImportSource, workspaceImportRevision } from '../lib/workspaceImportPreview.js';
 import { loadPackRegistry, stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
+import { getNewestSortTimestamp, sortLibraryEntries } from '../lib/librarySort.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -81,45 +82,9 @@ function reconcileLibraryRecords(localLibrary, localTrash, storedLibrary, stored
   };
 }
 
-function parseLibraryTimestamp(value) {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  if (typeof value !== 'string' || !value.trim()) return null;
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-export function getNewestSortTimestamp(entry) {
-  const candidates = [
-    entry?.metadata?.packLoadedAt,
-    entry?.updatedAt,
-    entry?.updated_at,
-    entry?.createdAt,
-  ]
-    .map(parseLibraryTimestamp)
-    .filter((value) => value !== null);
-  return candidates.length ? Math.max(...candidates) : 0;
-}
-
-export function sortLibraryEntries(entries, sortBy) {
-  return [...(Array.isArray(entries) ? entries : [])].sort((left, right) => {
-    if (sortBy === 'manual') return 0;
-    if (sortBy === 'oldest') return new Date(left.createdAt) - new Date(right.createdAt);
-    if (sortBy === 'most-used') return right.useCount - left.useCount;
-    if (sortBy === 'a-z') return (left.title || '').localeCompare(right.title || '', undefined, { sensitivity: 'base' });
-    if (sortBy === 'z-a') return (right.title || '').localeCompare(left.title || '', undefined, { sensitivity: 'base' });
-    if (sortBy === 'group') {
-      const leftCollection = left.collection || '';
-      const rightCollection = right.collection || '';
-      if (leftCollection && !rightCollection) return -1;
-      if (!leftCollection && rightCollection) return 1;
-      const cmp = leftCollection.localeCompare(rightCollection, undefined, { sensitivity: 'base' });
-      return cmp !== 0 ? cmp : (left.title || '').localeCompare(right.title || '', undefined, { sensitivity: 'base' });
-    }
-    const newestDelta = getNewestSortTimestamp(right) - getNewestSortTimestamp(left);
-    if (newestDelta !== 0) return newestDelta;
-    return String(left?.id || '').localeCompare(String(right?.id || ''));
-  });
-}
+// Sorting lives in lib/librarySort.js so the Library and the Prompts view
+// beside Write share it; re-exported here for existing callers.
+export { getNewestSortTimestamp, sortLibraryEntries };
 
 function deriveCollectionsFromLibrary(entries) {
   if (!Array.isArray(entries)) return [];

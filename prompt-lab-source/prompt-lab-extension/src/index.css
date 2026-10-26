@@ -1181,13 +1181,22 @@ textarea:disabled {
 .pl-more-menu-panel > button { flex: 0 0 auto; width: 100%; min-height: 2.75rem; justify-content: flex-start; margin-left: 0; }
 [data-theme='light'] .pl-more-menu-panel { box-shadow: 0 18px 40px rgba(50, 28, 18, 0.14); }
 
-/* Library workspace controls: bounded panes, local artwork and alternate views. */
-.pl-library-workspace { position: relative; grid-template-columns: 12rem minmax(0, 1fr) 8px minmax(260px, min(var(--pl-inspector-width, 336px), 45%)); }
-.pl-library-workspace.is-drawer-collapsed { grid-template-columns: minmax(0, 1fr) 8px minmax(260px, min(var(--pl-inspector-width, 336px), 45%)); }
+/* Library workspace controls: bounded panes, local artwork and alternate views.
+   The drawer and the inspector each have a resize handle (PanelResizer). The
+   inspector stops at 960 px, 70 percent of the workspace, or the width that
+   keeps the results list at 26rem (28rem with both handles), whichever is
+   smallest; LibraryWorkspace.jsx applies the same limits to the handle. */
+.pl-library-workspace {
+  --pl-library-drawer-space: var(--pl-library-drawer-width, 12rem);
+  --pl-inspector-cap: min(var(--pl-inspector-width, 336px), 70%, 960px, calc(100% - var(--pl-library-drawer-space) - 28rem));
+  position: relative;
+  grid-template-columns: var(--pl-library-drawer-width, 12rem) minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap));
+}
+.pl-library-workspace.has-drawer-resizer { grid-template-columns: var(--pl-library-drawer-width, 12rem) auto minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap)); }
+.pl-library-workspace.is-drawer-collapsed { --pl-library-drawer-space: 0px; grid-template-columns: minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap)); }
 .pl-library-rail[hidden] { display: none; }
 .pl-drawer-close { display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; }
-.pl-inspector-resizer { cursor: col-resize; touch-action: none; border-inline: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
-.pl-inspector-resizer:hover, .pl-inspector-resizer:focus-visible { background: var(--pl-brand-ember); }
+.pl-inspector-resizer { border-inline: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
 .pl-library-toolbar { flex-wrap: wrap; }
 .pl-library-search { min-width: 10rem; }
 .pl-library-folder { display: flex; min-width: 0; align-items: center; gap: 2px; }
@@ -1228,13 +1237,15 @@ html[data-palette] .pl-app-shell { background: var(--pl-brand-ink); color: var(-
 html[data-palette] .pl-app-header { background: color-mix(in srgb, var(--pl-brand-ink) 94%, var(--pl-brand-ember)); }
 html[data-palette] .pl-tab-btn[aria-selected='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 15%, var(--pl-brand-ink)); border-color: var(--pl-brand-ember); color: var(--pl-brand-ember-bright); }
 @media (max-width: 1100px) {
-  .pl-library-workspace { grid-template-columns: 10.5rem minmax(0, 1fr); }
+  .pl-library-workspace { grid-template-columns: var(--pl-library-drawer-width, 10.5rem) minmax(0, 1fr); }
+  .pl-library-workspace.has-drawer-resizer { grid-template-columns: var(--pl-library-drawer-width, 10.5rem) auto minmax(0, 1fr); }
   .pl-library-workspace.is-drawer-collapsed { grid-template-columns: minmax(0, 1fr); }
   .pl-inspector-resizer { display: none; }
   .pl-library-inspector { width: min(var(--pl-inspector-width, 336px), 86vw); }
 }
 @media (max-width: 700px) {
-  .pl-library-workspace, .pl-library-workspace.is-drawer-collapsed { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+  .pl-library-workspace, .pl-library-workspace.is-drawer-collapsed, .pl-library-workspace.has-drawer-resizer { display: grid; grid-template-columns: minmax(0, 1fr); overflow: hidden; }
+  .pl-library-drawer-resizer { display: none; }
   .pl-library-workspace .pl-library-rail { position: absolute; inset: 0 auto 0 0; z-index: 8; width: min(19rem, 90%); overflow-y: auto; background: var(--pl-brand-ink); box-shadow: 10px 0 35px #0005; }
   .pl-library-workspace .pl-library-rail section { display: grid; }
   .pl-library-workspace .pl-library-rail nav { display: grid; overflow: visible; }
@@ -1246,8 +1257,9 @@ html[data-palette] .pl-tab-btn[aria-selected='true'] { background: color-mix(in 
   .pl-app-header { padding: 0.45rem 0.65rem; }
 }
 @media (min-width: 2400px) {
-  .pl-library-workspace { grid-template-columns: 15rem minmax(0, 1fr) 8px minmax(260px, var(--pl-inspector-width, 400px)); }
-  .pl-library-workspace.is-drawer-collapsed { grid-template-columns: minmax(0, 1fr) 8px minmax(260px, var(--pl-inspector-width, 400px)); }
+  .pl-library-workspace { --pl-library-drawer-space: var(--pl-library-drawer-width, 15rem); grid-template-columns: var(--pl-library-drawer-width, 15rem) minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap)); }
+  .pl-library-workspace.has-drawer-resizer { grid-template-columns: var(--pl-library-drawer-width, 15rem) auto minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap)); }
+  .pl-library-workspace.is-drawer-collapsed { --pl-library-drawer-space: 0px; grid-template-columns: minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap)); }
 }
 
 .pl-drawer-backdrop { position: absolute; inset: 0; z-index: 7; background: #0006; }
@@ -1269,30 +1281,49 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 @media (max-height: 500px) {
   .pl-app-header .pl-header-identity { display: none; }
 }
-/* On short phone-width windows the floating Scratch panel has no room, and its
-   44 px toggle would take the editor's last lines. Scratch stays in the bottom
-   navigation, and Cmd or Ctrl + \ still opens the panel. */
+/* On short phone-width windows the floating side panel has no room, and its
+   44 px toggles would take the editor's last lines. Scratch stays in the
+   bottom navigation, and Cmd or Ctrl + \ still opens the panel. */
 @media (max-height: 500px) and (max-width: 719px) {
-  .pl-write-scratch-toggle { display: none; }
+  .pl-write-side-toggle { display: none; }
 }
 
-/* Shared panel resizer (Scratch note index, Scratch beside Write). */
+/* Shared panel resizer (Scratch note index, the panel beside Write, the
+   Library drawer and inspector). The grip brightens on hover and focus. */
 .pl-panel-resizer { position: relative; z-index: 2; width: 0.6rem; flex: 0 0 auto; cursor: col-resize; touch-action: none; background: color-mix(in srgb, currentColor 5%, transparent); }
 .pl-panel-resizer:hover, .pl-panel-resizer:focus-visible { background: color-mix(in srgb, var(--pl-brand-ember) 22%, transparent); outline: none; }
 .pl-panel-resizer span { position: absolute; top: 50%; left: 50%; width: 2px; height: 2.5rem; border-radius: 999px; background: color-mix(in srgb, currentColor 24%, transparent); transform: translate(-50%, -50%); }
+.pl-panel-resizer:hover span, .pl-panel-resizer:focus-visible span { width: 3px; height: 3.5rem; background: var(--pl-brand-ember); }
 @media (pointer: coarse) { .pl-panel-resizer { width: 1rem; } }
 
-/* Scratch beside Write. */
-.pl-write-scratch { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border-left-width: 1px; }
-.pl-write-scratch.is-overlay { position: fixed; right: 0.75rem; bottom: 0.75rem; z-index: 40; height: min(36rem, calc(100dvh - 1.5rem)); border-width: 1px; border-radius: 0.9rem; background: var(--pl-brand-ink); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
-.pl-write-scratch.is-overlay.is-above-mobile-nav { bottom: calc(4.75rem + env(safe-area-inset-bottom)); height: min(36rem, calc(100dvh - 11rem - env(safe-area-inset-bottom))); }
-.pl-write-scratch-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
-.pl-write-scratch-header button { display: inline-flex; min-width: 2rem; min-height: 2rem; align-items: center; justify-content: center; }
+/* The panel beside Write (Scratch and Prompts tabs). */
+.pl-write-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100%; overflow: hidden; border-left-width: 1px; }
+.pl-write-side.is-overlay { position: fixed; right: 0.75rem; bottom: 0.75rem; z-index: 40; height: min(36rem, calc(100dvh - 1.5rem)); border-width: 1px; border-radius: 0.9rem; background: var(--pl-brand-ink); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35); }
+.pl-write-side.is-overlay.is-above-mobile-nav { bottom: calc(4.75rem + env(safe-area-inset-bottom)); height: min(36rem, calc(100dvh - 11rem - env(safe-area-inset-bottom))); }
+.pl-write-side-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.5rem 0.75rem; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.pl-write-side-tabs { flex: 1 1 auto; }
+.pl-write-side-tabs button { flex: 1 1 0; }
+.pl-write-side-body { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; }
+.pl-write-side-subheader { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 0.5rem; padding: 0.4rem 0.75rem; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
+.pl-write-side-header > button, .pl-write-side-subheader button { display: inline-flex; min-width: 2rem; min-height: 2rem; align-items: center; justify-content: center; }
+.pl-write-scratch, .pl-write-prompts { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; }
 .pl-write-scratch-list { flex: 0 1 auto; max-height: 38%; overflow-y: auto; border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent); }
 .pl-write-scratch-note { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; gap: 0.5rem; padding: 0.6rem 0.75rem 0.75rem; }
 .pl-write-scratch-editor { flex: 1 1 auto; width: 100%; min-height: 8rem; resize: none; border-width: 1px; border-radius: 0.6rem; padding: 0.6rem; font-size: 0.8rem; line-height: 1.5; }
+.pl-write-prompts-list { flex: 1 1 auto; min-height: 0; margin: 0; padding: 0.25rem 0; overflow-y: auto; list-style: none; }
+.pl-write-prompt-row { display: flex; align-items: center; gap: 0.15rem; padding-right: 0.5rem; }
+.pl-write-prompt-open { flex: 1 1 auto; min-width: 0; padding: 0.4rem 0.75rem; border-radius: 0.4rem; text-align: left; }
+.pl-write-prompt-action { display: inline-flex; flex: 0 0 auto; width: 2rem; height: 2rem; align-items: center; justify-content: center; border-radius: 0.4rem; opacity: 0.7; }
+.pl-write-prompt-action:hover, .pl-write-prompt-action:focus-visible { background: color-mix(in srgb, currentColor 8%, transparent); opacity: 1; }
+.pl-write-prompt-action.is-favorite { color: #f59e0b; opacity: 1; }
+[data-theme='light'] .pl-write-prompt-action.is-favorite { color: #b45309; }
+.pl-write-prompt-action:disabled { opacity: 0.3; }
+.pl-write-prompts-empty { padding: 0.75rem; }
 .pl-side-pane-sticky { position: sticky; top: 0; align-self: start; height: 100dvh; max-height: 100dvh; }
-@media (pointer: coarse) { .pl-write-scratch-header button { min-width: 2.75rem; min-height: 2.75rem; } }
+@media (pointer: coarse) {
+  .pl-write-side-header > button, .pl-write-side-subheader button { min-width: 2.75rem; min-height: 2.75rem; }
+  .pl-write-prompt-action { width: 2.75rem; height: 2.75rem; }
+}
 
 /* Scratch note list density toggle. */
 .pl-segmented[role='group'] button { flex: 1 1 0; }

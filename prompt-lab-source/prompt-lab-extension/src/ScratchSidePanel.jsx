@@ -24,20 +24,17 @@ function orderPads(pads) {
   return [...pads.filter((pad) => pad.pinned).sort(byRecent), ...pads.filter((pad) => !pad.pinned).sort(byRecent)];
 }
 
-// Scratch notes beside the Write editor. It reads and writes the same Scratch
-// storage as the full Scratch destination, through the same revision-checked
-// persistence, and is never mounted at the same time as that destination.
+// The Scratch tab of the panel beside the Write editor (WriteSidePanel). It
+// reads and writes the same Scratch storage as the full Scratch destination,
+// through the same revision-checked persistence, and is never mounted at the
+// same time as that destination. Closing the panel or switching tabs unmounts
+// it, which saves pending text first.
 export default function ScratchSidePanel({
   m = {},
   colorMode = 'dark',
   notify,
   onInsert,
   onOpenInScratch,
-  onClose,
-  overlay = false,
-  // Leave room for the phone navigation bar at the bottom of the screen.
-  aboveMobileNav = false,
-  autoFocus = false,
   width = 360,
 }) {
   const [padsState, setPadsState] = useState(() => buildDefaultScratchPayload('', Date.now()));
@@ -51,7 +48,6 @@ export default function ScratchSidePanel({
   const textRef = useRef('');
   const timerRef = useRef(null);
   const textareaRef = useRef(null);
-  const panelRef = useRef(null);
 
   const activePad = padsState.pads.find((pad) => pad.id === padsState.activePadId) || padsState.pads[0];
   const orderedPads = useMemo(() => orderPads(padsState.pads), [padsState.pads]);
@@ -103,8 +99,9 @@ export default function ScratchSidePanel({
     return commit(textRef.current);
   };
 
-  // Save before the panel goes away. If that fails, keep the text outside the
-  // panel so reopening it brings the text back instead of the older note.
+  // Save before the panel or this tab goes away. If that fails, keep the text
+  // outside the panel so reopening it brings the text back instead of the
+  // older note.
   const saveOrKeep = () => {
     if (flush()) return true;
     const current = padsRef.current;
@@ -138,13 +135,12 @@ export default function ScratchSidePanel({
 
   useEffect(() => {
     load();
-    if (autoFocus) setTimeout(() => textareaRef.current?.focus(), 0);
     // Mount-only read, matching the full Scratch destination.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep the latest save for unmount without re-subscribing every render.
-  // Unmounting covers the closes that happen outside this panel.
+  // Unmounting covers every close and tab switch.
   const saveOrKeepRef = useRef(saveOrKeep);
   useEffect(() => { saveOrKeepRef.current = saveOrKeep; });
   useEffect(() => () => { saveOrKeepRef.current(); }, []);
@@ -218,11 +214,6 @@ export default function ScratchSidePanel({
     onOpenInScratch?.(padsRef.current.activePadId);
   };
 
-  const close = () => {
-    saveOrKeep();
-    onClose?.();
-  };
-
   const trackSelection = (event) => {
     const { selectionStart = 0, selectionEnd = 0 } = event.currentTarget;
     setSelection({ start: selectionStart, end: selectionEnd });
@@ -236,24 +227,14 @@ export default function ScratchSidePanel({
           : 'Saved locally';
 
   return (
-    <aside
-      ref={panelRef}
-      className={`pl-write-scratch ${overlay ? 'is-overlay' : ''} ${overlay && aboveMobileNav ? 'is-above-mobile-nav' : ''} ${m.surface || ''} ${m.border || ''}`}
-      style={overlay ? { width: `min(${width}px, 92vw)` } : undefined}
-      aria-label="Scratch notes beside Write"
-      onKeyDown={(event) => { if (overlay && event.key === 'Escape') { event.stopPropagation(); close(); } }}
-    >
-      <header className="pl-write-scratch-header">
-        <div className="min-w-0">
-          <h2 className="text-xs font-semibold">Scratch</h2>
-          <p className={`text-[10px] ${m.textMuted || ''}`}>{padsState.pads.length} note{padsState.pads.length === 1 ? '' : 's'}</p>
-        </div>
+    <div className="pl-write-scratch">
+      <div className="pl-write-side-subheader">
+        <p className={`text-[10px] ${m.textMuted || ''}`}>{padsState.pads.length} note{padsState.pads.length === 1 ? '' : 's'}</p>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" className="ui-control pl-secondary-button" onClick={createPad} disabled={readFailed} aria-label="New Scratch note"><Ic n="Plus" size={12} /></button>
           <button type="button" className="ui-control pl-secondary-button" onClick={openInScratch} disabled={readFailed} aria-label="Open this note in Scratch"><Ic n="ArrowRight" size={12} /></button>
-          <button type="button" className="ui-control pl-secondary-button" onClick={close} aria-label="Close Scratch panel"><Ic n="X" size={12} /></button>
         </div>
-      </header>
+      </div>
       <nav className="pl-write-scratch-list" aria-label="Scratch notes">
         {orderedPads.map((pad) => (
           <ScratchNoteRow key={pad.id} m={m} pad={pad} active={pad.id === activePad?.id} isDark={isDark}
@@ -276,6 +257,7 @@ export default function ScratchSidePanel({
           onBlur={() => flush()}
           readOnly={readFailed}
           aria-label="Scratch note text"
+          data-side-autofocus
           spellCheck
           placeholder="Write a note. It saves automatically."
           className={`pl-write-scratch-editor ${m.input || ''}`}
@@ -284,6 +266,6 @@ export default function ScratchSidePanel({
           <Ic n="CopyPlus" size={12} /> {selectedText ? 'Insert selection into prompt' : 'Insert note into prompt'}
         </button>
       </div>
-    </aside>
+    </div>
   );
 }
