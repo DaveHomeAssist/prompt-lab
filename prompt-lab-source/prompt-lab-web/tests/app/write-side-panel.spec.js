@@ -126,7 +126,7 @@ const layout = page => page.evaluate(() => {
     inspector: document.querySelector('.pl-library-inspector').getBoundingClientRect().width,
   };
 });
-const expectedCap = ({ workspace, rail }) => Math.max(260, Math.floor(Math.min(960, workspace * 0.7, workspace - rail - 352)));
+const expectedCap = ({ workspace, rail }) => Math.max(260, Math.floor(Math.min(960, workspace * 0.7, workspace - rail - 448)));
 
 for (const size of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 }, { width: 3840, height: 1080 }]) {
   test(`the Library inspector reaches its wider cap by keyboard and pointer at ${size.width}x${size.height}`, async ({ page }, testInfo) => {
@@ -147,7 +147,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 },
     await expect(handle).toHaveAttribute('aria-valuenow', String(cap));
     measured = await layout(page);
     expect(Math.abs(measured.inspector - cap)).toBeLessThanOrEqual(1);
-    expect(measured.index).toBeGreaterThanOrEqual(319);
+    expect(measured.index).toBeGreaterThanOrEqual(415);
     await fits(page);
 
     await page.keyboard.press('Home');
@@ -160,7 +160,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 1920, height: 1080 },
     await expect(handle).toHaveAttribute('aria-valuenow', String(cap));
     measured = await layout(page);
     expect(Math.abs(measured.inspector - cap)).toBeLessThanOrEqual(1);
-    expect(measured.index).toBeGreaterThanOrEqual(319);
+    expect(measured.index).toBeGreaterThanOrEqual(415);
     await fits(page);
     await page.screenshot({ path: testInfo.outputPath(`library-inspector-${size.width}.png`) });
   });

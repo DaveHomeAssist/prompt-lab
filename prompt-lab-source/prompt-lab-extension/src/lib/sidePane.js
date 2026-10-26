@@ -15,11 +15,12 @@ export const WRITE_PROMPT_VIEWS = Object.freeze([
 export const LIBRARY_DRAWER_WIDTH = Object.freeze({ min: 160, max: 384, default: 192 });
 
 // Library inspector: at most 960 px or 70 percent of the workspace, and never
-// so wide that the results list drops below its minimum width.
+// so wide that the results list drops below its minimum width (26rem, where
+// result cards still show a readable title beside their actions).
 export const INSPECTOR_WIDTH = Object.freeze({ min: 260, max: 960, ratio: 0.7, default: 336 });
-export const LIBRARY_LIST_MIN_WIDTH = 320;
+export const LIBRARY_LIST_MIN_WIDTH = 416;
 // Room kept for the two resize handles (wider on touch screens). The CSS cap
-// in index.css subtracts the same 22rem (list minimum plus handles).
+// in index.css subtracts the same 28rem (list minimum plus handles).
 export const LIBRARY_HANDLE_ALLOWANCE = 32;
 
 export function inspectorMaxWidth(workspaceWidth, drawerWidth = 0) {

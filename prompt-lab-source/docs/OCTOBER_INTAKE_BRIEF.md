@@ -146,8 +146,9 @@ Flow as built:
 3. The folder drawer handle works by pointer and keyboard from 160 to 384 px;
    double-click returns it to the width the layout gives it.
 4. The inspector stops at 960 px, 70 percent of the workspace, or the width
-   that keeps the results list at 320 px, whichever is smallest. The handle's
-   grip brightens on hover and focus.
+   that keeps the results list at 416 px (where result cards still show a
+   readable title), whichever is smallest. The handle's grip brightens on
+   hover and focus.
 
 Acceptance: each view lists the same prompts as its Library counterpart; the
 inspector reaches the new cap by pointer and keyboard without hiding the

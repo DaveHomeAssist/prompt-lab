@@ -1184,11 +1184,11 @@ textarea:disabled {
 /* Library workspace controls: bounded panes, local artwork and alternate views.
    The drawer and the inspector each have a resize handle (PanelResizer). The
    inspector stops at 960 px, 70 percent of the workspace, or the width that
-   keeps the results list at 20rem (22rem with both handles), whichever is
+   keeps the results list at 26rem (28rem with both handles), whichever is
    smallest; LibraryWorkspace.jsx applies the same limits to the handle. */
 .pl-library-workspace {
   --pl-library-drawer-space: var(--pl-library-drawer-width, 12rem);
-  --pl-inspector-cap: min(var(--pl-inspector-width, 336px), 70%, 960px, calc(100% - var(--pl-library-drawer-space) - 22rem));
+  --pl-inspector-cap: min(var(--pl-inspector-width, 336px), 70%, 960px, calc(100% - var(--pl-library-drawer-space) - 28rem));
   position: relative;
   grid-template-columns: var(--pl-library-drawer-width, 12rem) minmax(0, 1fr) auto minmax(260px, var(--pl-inspector-cap));
 }

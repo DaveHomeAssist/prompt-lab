@@ -48,12 +48,12 @@ beforeEach(() => { localStorage.clear(); workspaceWidth = 1440; fakeLayout(); })
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('inspectorMaxWidth', () => {
-  it('stops at 960 px, 70 percent of the workspace, or the room beside a 320 px list', () => {
+  it('stops at 960 px, 70 percent of the workspace, or the room beside a 416 px list', () => {
     expect(inspectorMaxWidth(1920, 192)).toBe(960);
     expect(inspectorMaxWidth(1440, 0)).toBe(960);
-    expect(inspectorMaxWidth(1440, 192)).toBe(896);
-    expect(inspectorMaxWidth(1200, 0)).toBe(840);
-    expect(inspectorMaxWidth(900, 192)).toBe(356);
+    expect(inspectorMaxWidth(1440, 192)).toBe(800);
+    expect(inspectorMaxWidth(1200, 0)).toBe(752);
+    expect(inspectorMaxWidth(1000, 192)).toBe(360);
     expect(inspectorMaxWidth(600, 192)).toBe(260);
     expect(inspectorMaxWidth(0, 0)).toBe(960);
   });
@@ -62,12 +62,12 @@ describe('inspectorMaxWidth', () => {
 describe('Library inspector width', () => {
   it('reaches the new cap by keyboard, keeping the results list at its minimum', () => {
     renderLibrary();
-    expect(inspectorHandle()).toHaveAttribute('aria-valuemax', '896');
+    expect(inspectorHandle()).toHaveAttribute('aria-valuemax', '800');
     expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '336');
     fireEvent.keyDown(inspectorHandle(), { key: 'End' });
-    expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '896');
-    expect(workspace().style.getPropertyValue('--pl-inspector-width')).toBe('896px');
-    expect(JSON.parse(localStorage.getItem('pl2-inspector-width'))).toBe(896);
+    expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '800');
+    expect(workspace().style.getPropertyValue('--pl-inspector-width')).toBe('800px');
+    expect(JSON.parse(localStorage.getItem('pl2-inspector-width'))).toBe(800);
 
     // With the drawer hidden there is room for the full 960 px.
     fireEvent.click(screen.getByRole('button', { name: 'Hide Library drawer', expanded: true }));
@@ -84,7 +84,7 @@ describe('Library inspector width', () => {
     expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '336');
   });
 
-  it('reaches the cap by pointer and stops at 70 percent on a narrower workspace', () => {
+  it('reaches the cap by pointer on a narrower workspace', () => {
     workspaceWidth = 1200;
     localStorage.setItem('pl2-library-drawer', 'false');
     renderLibrary();
@@ -95,7 +95,7 @@ describe('Library inspector width', () => {
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 600 });
     expect(handle).toHaveAttribute('aria-valuenow', '600');
     fireEvent.pointerMove(handle, { pointerId: 1, clientX: 10 });
-    expect(handle).toHaveAttribute('aria-valuenow', '840');
+    expect(handle).toHaveAttribute('aria-valuenow', '752');
     fireEvent.pointerUp(handle, { pointerId: 1 });
   });
 
@@ -114,8 +114,8 @@ describe('Library inspector width', () => {
   it('keeps a stored width but shows no more than the layout allows', () => {
     localStorage.setItem('pl2-inspector-width', '5000');
     renderLibrary();
-    expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '896');
-    expect(workspace().style.getPropertyValue('--pl-inspector-width')).toBe('896px');
+    expect(inspectorHandle()).toHaveAttribute('aria-valuenow', '800');
+    expect(workspace().style.getPropertyValue('--pl-inspector-width')).toBe('800px');
   });
 });
 
@@ -132,7 +132,7 @@ describe('Library drawer width', () => {
     fireEvent.keyDown(drawerHandle(), { key: 'End' });
     expect(drawerHandle()).toHaveAttribute('aria-valuenow', '384');
     expect(JSON.parse(localStorage.getItem('pl2-library-drawer-width'))).toBe(384);
-    expect(inspectorHandle()).toHaveAttribute('aria-valuemax', '704');
+    expect(inspectorHandle()).toHaveAttribute('aria-valuemax', '608');
 
     unmount();
     renderLibrary();
