@@ -15,6 +15,8 @@ Date: 2026-10-26
   width; double-click the edge to reset it. On narrower screens and phones the
   panel floats over the prompt instead, above the phone navigation bar, and
   Escape closes it.
+- If a note cannot be saved when the panel closes, for example because
+  storage is full, its text is kept and comes back when you reopen the panel.
 - Scratch note lists now show one line per note: its color, title and how
   long ago it changed. Choose Detailed above the list for the previous rows
   with a preview. The note list in Scratch can also be resized.
