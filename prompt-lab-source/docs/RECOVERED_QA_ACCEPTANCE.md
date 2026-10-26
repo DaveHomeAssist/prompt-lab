@@ -1,6 +1,6 @@
 # Reconciled legacy acceptance scenarios
 
-Reviewed October 26, 2026 against `6ea5f6f`. Sources: the preserved April
+Reviewed October 26, 2026 against `6ea5f6f`, reconciled at `6a1a2c4`. Sources: the preserved April
 interaction inventory, QA matrix and automation backlog. Historical coverage
 labels are superseded by this source mapping. This is a focused acceptance list,
 not a competing product backlog or a claim that a test has run.
@@ -15,8 +15,8 @@ not a competing product backlog or a claim that a test has run.
 | A/B diff opens, copies and closes | `src/__tests__/ModalA11y.test.jsx` provides modal-level coverage | Verify both-success gating and clipboard content through the full A/B flow. |
 | Notebook create and rename work without browser prompt dialogs | `src/__tests__/plbAuditFixes.test.jsx` | Retain installed/platform and human acceptance separately. Do not restore the old window.prompt-based test design. |
 | Hosted layout and provider restrictions match the web surface | Hosted specs under `prompt-lab-web/tests/app/` and `src/tests/providerSettings.test.jsx` | Physical touch, actual account and paid-provider acceptance remain outside mocked browser checks. |
-| Image pack remains optional and imports cleanly | `src/tests/recoveredContent.test.jsx` uses the actual preset importer | Download the published JSON and import it through Library preview after deployment. |
-| Engineering templates retain multiline required inputs | `src/tests/recoveredContent.test.jsx`, `src/tests/TemplateVariablesModal.test.jsx` | Verify loaded template, focus, scrolling, Apply and Skip in the built app at desktop and mobile sizes. |
+| Image pack remains optional and imports cleanly | `src/tests/recoveredContent.test.jsx` uses the actual preset importer | CI browser import through review passes; the production download matches the tested source bytes. Signed-in production import remains unexecuted. |
+| Engineering templates retain multiline required inputs | `src/tests/recoveredContent.test.jsx`, `src/tests/TemplateVariablesModal.test.jsx` | Hosted browser cases pass for focus, required inputs, viewport fit, Apply, Skip and preserved original text at desktop and mobile sizes. Signed-in production form use and physical acceptance remain separate. |
 | Starter identities and declared counts remain consistent | `src/tests/recoveredContent.test.jsx` | No fixed historical total is retained; new library membership needs deliberate product approval. |
 
 Paths in the automated-source column are relative to `prompt-lab-extension/`,
