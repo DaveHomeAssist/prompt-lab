@@ -8,28 +8,39 @@ import { validateChain } from './chainSchema.js';
 import { ensureString } from './utils.js';
 
 const PREVIEW_LIMIT = 4000;
+const INLINE_PLACEHOLDER = /\{\{\s*(prev|input)\s*\}\}/gi;
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Placeholders are filled in one pass, and each value comes from a callback.
+// A string replacement would read `$&`, `$$`, `` $` `` and `$'` inside chain
+// input or model output as replacement syntax, and a second pass would expand
+// any `{{...}}` text a value happens to contain.
 function fillTemplate(template, { varMap = {}, prevOutput, chainInput, stepIndex, isInline }) {
   let text = ensureString(template);
   if (isInline) {
     const hadPrev = /\{\{\s*prev\s*\}\}/i.test(text);
-    text = text
-      .replace(/\{\{\s*prev\s*\}\}/gi, prevOutput)
-      .replace(/\{\{\s*input\s*\}\}/gi, chainInput);
+    text = text.replace(INLINE_PLACEHOLDER, (_token, name) => (
+      name.toLowerCase() === 'prev' ? prevOutput : chainInput
+    ));
     if (!hadPrev && stepIndex > 0 && prevOutput.trim()) {
       text = `${text}\n\nINPUT:\n${prevOutput}`;
     }
     return text;
   }
-  Object.entries(varMap).forEach(([name, spec]) => {
-    const value = spec.source === 'prevOutput'
+  const values = new Map(Object.entries(varMap).map(([name, spec]) => [
+    `{{${name}}}`,
+    spec.source === 'prevOutput'
       ? prevOutput
       : spec.source === 'chainInput'
         ? chainInput
-        : ensureString(spec.value);
-    text = text.replaceAll(`{{${name}}}`, value);
-  });
-  return text;
+        : ensureString(spec.value),
+  ]));
+  if (values.size === 0) return text;
+  const tokens = [...values.keys()].sort((a, b) => b.length - a.length).map(escapeRegExp);
+  return text.replace(new RegExp(tokens.join('|'), 'g'), (token) => values.get(token));
 }
 
 /**
