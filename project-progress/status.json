@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T10:48:34.000Z",
+  "snapshotAt": "2026-10-26T10:57:00.000Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,33 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "e9e6fa38962b9ea96d3684b296e657a359d832ea",
+  "mainSha": "4185aebab65c75b7b446f9dfbb9f5ec786c6f0cb",
   "overall": "Acceptance incomplete",
-  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Three remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
+  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) merged and deployed; Slice 1 (Scratch beside Write) in final CI; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for Slice 0 remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Scratch beside Write (October intake Slice 1)",
+      "state": "Running",
+      "detail": "2026-10-26: PR #223 adds a Scratch panel beside Write (context bar toggle or Cmd/Ctrl+backslash), a shared PanelResizer for it and the Scratch note index, and compact one-line Scratch rows with a Detailed option. Fixed before merge: the panel keeps its own note when another tab changes the selection and keeps text that fails to save on close (Codex P1 and P2, ff3b433; three tests fail before and pass after); the toggle hides below 720x500 px after Landing CI found the editor squeezed to 70 px at 320x256 (fdc80f4; reproduced locally in Chrome, then 21 browser tests pass). CI on fdc80f4: extension suite 115 files/1,332 tests, hosted browser gates 53 passed/1 skipped, Windows and macOS desktop builds pass; the Linux install test was still running at snapshot time. Not merged.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/223"
+    },
     {
       "label": "Library template values kept literal",
       "state": "Verified",
       "detail": "2026-10-26 direct Dave instruction: PR220 merged e9e6fa38962b9ea96d3684b296e657a359d832ea. buildResolvedEntry now uses fillTemplateVars, one pass over exact escaped placeholder tokens with a replacement callback, so dollar sequences in typed or clipboard values stay literal and inserted placeholder text is never filled again. Three hook tests fail on base 5572cf3 and pass, plus six helper unit tests; local Node 22 vitest related 37 files/550 tests pass. All 15 PR checks pass on tree-identical 267b8a5 (Landing attempt 1 hit the known Chromium-install timeout; the rerun passed). All 7 exact-main workflows succeed, including Desktop Build 40307854697 and Landing CI 40307854756. Vercel dpl_CsSXFzW8QPhmTsDpGXKrei9h7cDF READY; the live promptlab.tools/app bundle contains the fix. New Notion row Done and read back. Gap: no manual browser run of the variable form.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/220"
+    },
+    {
+      "label": "New drafts keep their own title and comparison (October intake Slice 0)",
+      "state": "Verified",
+      "detail": "2026-10-26: PR #222 merged as 6ea5f6f after all 15 checks passed. A saved prompt uses only runs tagged with its id and an unsaved draft only its own resultMeta.runId. Two new App tests fail on e6a880f and pass; full extension suite 111 files/1,280 tests on Dominic (Node 22). Production deployment succeeded; the live /app bundle carries revision 6ea5f6f and the fix. No signed-in production run.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/222"
+    },
+    {
+      "label": "October intake triaged and approved",
+      "state": "Verified",
+      "detail": "2026-10-26: PR #221 merged as e6a880f after all 7 checks passed: 23 Scratch-list requests rated and slices 0 to 7 specified in docs/OCTOBER_INTAKE_BRIEF.md. Dave approved every recommended option (D-017, D-INT-1 to D-INT-6). Eight Issue Backlog rows created and three updated; all writes read back.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/221"
     },
     {
       "label": "Failed enhance runs kept out of draft title and golden comparison",
@@ -492,7 +510,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/2cb0cb70403440e3bc223c225408b4e9",
       "inPlan": false,
-      "nextAction": null,
+      "nextAction": "Spike a live-preview Markdown editor for Scratch across the three shells (D-INT-1 A).",
       "verification": "Notion disposition only; not independently re-audited in this refresh."
     },
     {
@@ -1092,7 +1110,7 @@
       "type": "Feature",
       "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
       "inPlan": false,
-      "nextAction": null,
+      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
     },
     {
@@ -1152,7 +1170,7 @@
       "type": "UX",
       "url": "https://app.notion.com/402255fc8f4481778c27fbf01684fe2e",
       "inPlan": false,
-      "nextAction": null,
+      "nextAction": "Verify whether the General task and General target options already deliver a General enhance mode (D-INT-4 A).",
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
     },
     {
@@ -1182,8 +1200,8 @@
     {
       "id": "405255fc8f44811484f8ee5609015405",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Enhance two different prompts in a row in the signed-in production app and confirm the second keeps its own title.",
+      "verification": "2026-10-26: PR #222 merged as 6ea5f6f after all 15 checks passed. A saved prompt uses only runs tagged with its id and an unsaved draft only its own resultMeta.runId. Two new App tests fail on e6a880f and pass; full extension suite 111 files/1,280 tests on Dominic (Node 22). Production deployment succeeded; the live /app bundle carries revision 6ea5f6f and the fix. No signed-in production run.",
       "title": "New drafts borrow another prompt's run for their title and comparison",
       "status": "In progress",
       "severity": "Medium",
@@ -1206,8 +1224,8 @@
     {
       "id": "405255fc8f44815689b6d0ade1bda5eb",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Slice 7: write the code-grounded menu manifest, then a reorganization proposal for approval.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Write the current menu manifest and a reorganization proposal",
       "status": "Not started",
       "severity": "Low",
@@ -1218,8 +1236,8 @@
     {
       "id": "405255fc8f4481aeb2bce32e01f19771",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Slice 6: show build date and revision in the header and Settings (D-INT-6 A).",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Show build date and revision in the version label",
       "status": "Not started",
       "severity": "Low",
@@ -1230,8 +1248,8 @@
     {
       "id": "405255fc8f4481c78d80ce2e49b6fab8",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Open the Scratch panel beside Write in the signed-in production app at desktop and phone widths and confirm notes save and insert.",
+      "verification": "2026-10-26: PR #223 adds a Scratch panel beside Write (context bar toggle or Cmd/Ctrl+backslash), a shared PanelResizer for it and the Scratch note index, and compact one-line Scratch rows with a Detailed option. Fixed before merge: the panel keeps its own note when another tab changes the selection and keeps text that fails to save on close (Codex P1 and P2, ff3b433; three tests fail before and pass after); the toggle hides below 720x500 px after Landing CI found the editor squeezed to 70 px at 320x256 (fdc80f4; reproduced locally in Chrome, then 21 browser tests pass). CI on fdc80f4: extension suite 115 files/1,332 tests, hosted browser gates 53 passed/1 skipped, Windows and macOS desktop builds pass; the Linux install test was still running at snapshot time. Not merged.",
       "title": "Show Scratch notes beside Write, with a compact list and resizable panels",
       "status": "In progress",
       "severity": "High",
@@ -1242,8 +1260,8 @@
     {
       "id": "405255fc8f4481d1bc61f4f8984c5840",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
       "status": "Not started",
       "severity": "Medium",
@@ -1254,8 +1272,8 @@
     {
       "id": "405255fc8f4481d4824bfa1e91474ef0",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Notify when a long prompt run finishes",
       "status": "Not started",
       "severity": "Low",
@@ -1266,8 +1284,8 @@
     {
       "id": "405255fc8f4481e0998dcf99824e8bd2",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Retire Dual Pane as a destination after Scratch beside Write ships",
       "status": "Not started",
       "severity": "Low",
@@ -1278,8 +1296,8 @@
     {
       "id": "405255fc8f4481f5b8eecd4511bfa50e",
       "inPlan": false,
-      "nextAction": null,
-      "verification": "Notion disposition only; not independently re-audited in this refresh.",
+      "nextAction": "Slice 2 next: Recent and Favorites in the Write panel, a wider inspector cap and the Library drawer resizer.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Add Recent and Favorites to the Write sidebar and raise the inspector width cap",
       "status": "Not started",
       "severity": "Medium",
