@@ -4,9 +4,9 @@ Date: 2026-10-26. Source: Dave's PromptLab Scratch intake list (undated items,
 October 21, October 23 and later additions), triaged against `main` at
 `5572cf3` and the issue snapshot of 2026-10-26.
 
-Status: proposed. This brief rates every item, specifies the accepted ones and
-orders them into slices. It does not authorize implementation, deployment or
-tracker changes; those wait for Dave's go.
+Status: accepted 2026-10-26. Dave gave the go with every recommended option
+(D-017). Each slice still ships through its own pull request, checks and
+production verification. Issue Backlog rows track each slice.
 
 ## Triage
 
@@ -48,10 +48,11 @@ output. This is the likely cause of a 2026-10-26 observation: a "Rename the
 chat" prompt was saved with the title "An image has been provided", which
 matches the previous prompt's enhanced output. Reproduce before fixing.
 
-Fix: the fallback uses only runs that belong to the current draft. For an
-unsaved draft that means runs created during this draft's lifetime, keyed by a
-draft identity that New Prompt and loading an entry reset. Custom titles keep
-the PR212 behavior.
+Fix: the fallback uses only runs that belong to the current prompt. A saved
+prompt uses runs tagged with its id. An unsaved draft uses only its own latest
+successful run, recorded in `resultMeta.runId`, which New Prompt clears; saving
+already links that run to the new entry. Custom titles keep the PR212 behavior.
+No new stored field is needed.
 
 Acceptance:
 
@@ -268,5 +269,5 @@ three shells.
 
 Each slice ships as its own pull request with targeted tests, shared builds,
 CI and a production check of the hosted web app, in the repository's usual
-order. Tracker rows for accepted items are created when Dave gives the go.
+order. Issue Backlog rows for the accepted slices were created on 2026-10-26.
 Physical-device, signing and tagged-release acceptance stay separate gates.

@@ -22,20 +22,6 @@ Consequences: what this unlocks or closes off
 
 ---
 
-### [D-017] October intake triage and slice order
-
-Status: open
-Owner: Dave
-Date opened: 2026-10-26
-
-Context: Dave's Scratch intake list (October 21 to 26) was rated and specified in [`OCTOBER_INTAKE_BRIEF.md`](OCTOBER_INTAKE_BRIEF.md). Implementation waits for Dave's go.
-
-Options and recommendations: D-INT-1 live Scratch formatting (recommended: live-preview Markdown editor, storage stays Markdown); D-INT-2 Dual Pane after Scratch beside Write (recommended: retire it as a destination, routes open Write); D-INT-3 feedback destination (recommended: local append and copy only); D-INT-4 meaning of generic prompt mode (recommended: a General enhance mode); D-INT-5 slice order (recommended: 0, 1, 2, 3, 6, 4, 5, 7); D-INT-6 release cut (recommended: show build date and revision now, tag 1.8.0 when release gates pass, then 1.9.0-dev).
-
-Consequences: Slice 0 is a routine bug fix and needs no decision. The other slices start in the chosen order after the go. Unanswered recommendations stay open.
-
----
-
 ### [D-016] PromptLab library storage sequence
 
 Status: direction decided; implementation and hosted provider pending
@@ -244,6 +230,21 @@ Consequences: Billing integration unblocked. Implementation path: (1) add `plan`
 ---
 
 ## Resolved decisions
+
+---
+
+### [D-017] October intake triage and slice order
+
+Status: resolved
+Owner: Dave
+Date opened: 2026-10-26
+Date resolved: 2026-10-26
+
+Context: Dave's Scratch intake list (October 21 to 26) was rated and specified in [`OCTOBER_INTAKE_BRIEF.md`](OCTOBER_INTAKE_BRIEF.md).
+
+Decision: Dave approved the go with every recommended option. D-INT-1: a live-preview Markdown editor for Scratch, storage stays Markdown, spike first. D-INT-2: retire Dual Pane as a destination once Scratch beside Write ships; its routes open Write. D-INT-3: feedback stays local (append to a feedback note, copy as Markdown). D-INT-4: generic prompt mode means a General enhance mode with no coding or agent assumptions; verify the existing General task and General target options first. D-INT-5: slice order 0, 1, 2, 3, 6, 4, 5, 7. D-INT-6: show build date and revision now; tag 1.8.0 when the release gates pass, then move source to 1.9.0-dev.
+
+Consequences: Slice 0 and Slice 1 start now. Each slice still ships through its own pull request, checks and production verification. Issue Backlog rows were created for the new slices on 2026-10-26.
 
 ---
 
