@@ -99,6 +99,18 @@ describe('Library inspector width', () => {
     fireEvent.pointerUp(handle, { pointerId: 1 });
   });
 
+  it('does not hold a floating inspector to the list width at 1100 px and below', () => {
+    workspaceWidth = 1000;
+    localStorage.setItem('pl2-inspector-width', '600');
+    Object.defineProperty(window, 'matchMedia', { configurable: true, value: (query) => ({ matches: query === '(max-width: 1100px)', media: query }) });
+    try {
+      renderLibrary();
+      expect(workspace().style.getPropertyValue('--pl-inspector-width')).toBe('600px');
+    } finally {
+      delete window.matchMedia;
+    }
+  });
+
   it('keeps a stored width but shows no more than the layout allows', () => {
     localStorage.setItem('pl2-inspector-width', '5000');
     renderLibrary();

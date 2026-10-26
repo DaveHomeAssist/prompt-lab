@@ -278,9 +278,12 @@ export default function LibraryWorkspace({
     const workspace = workspaceRef.current;
     if (!workspace) return;
     const drawer = drawerOpen && drawerRef.current ? drawerRef.current.getBoundingClientRect().width : 0;
+    // At 1100 px and below the inspector floats over the list (index.css), so
+    // the list keeps its width whatever the inspector's.
+    const floating = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1100px)').matches;
     const next = {
       drawer: drawer || LIBRARY_DRAWER_WIDTH.default,
-      inspectorMax: inspectorMaxWidth(workspace.clientWidth, drawer),
+      inspectorMax: floating ? INSPECTOR_WIDTH.max : inspectorMaxWidth(workspace.clientWidth, drawer),
     };
     setLayoutSize(current => (current.drawer === next.drawer && current.inspectorMax === next.inspectorMax ? current : next));
   }, [drawerOpen]);
