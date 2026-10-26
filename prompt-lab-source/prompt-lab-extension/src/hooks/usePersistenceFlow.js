@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { decodeShare, extractVars, isGhostVar, resolveGhostVars, suggestTitleFromText } from '../promptUtils';
+import { decodeShare, extractVars, fillTemplateVars, isGhostVar, resolveGhostVars, suggestTitleFromText } from '../promptUtils';
 import { normalizeEntry } from '../lib/promptSchema.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 import { useSessionRestore, useSessionSave } from './useSessionState.js';
@@ -254,11 +254,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const buildResolvedEntry = (entry, values) => {
     const normalized = normalizeEntry(entry);
     if (!normalized) return null;
-    let text = ensureString(normalized.enhanced);
-    Object.entries(values || {}).forEach(([key, value]) => {
-      text = text.replaceAll(`{{${key}}}`, ensureString(value));
-    });
-    return { ...normalized, enhanced: text };
+    return { ...normalized, enhanced: fillTemplateVars(normalized.enhanced, values) };
   };
 
   const applyEntry = (entry) => {

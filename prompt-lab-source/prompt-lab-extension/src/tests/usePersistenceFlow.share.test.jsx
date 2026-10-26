@@ -192,4 +192,62 @@ describe('usePersistenceFlow share + template paths', () => {
     expect(result.current.editingId).toBe(null);
     expect(result.current.pendingTemplate).toBe(null);
   });
+
+  describe('template values stay literal', () => {
+    // Every sequence String.prototype.replace treats as special in a replacement string.
+    const DOLLARS = "cost $$5 | match $& | before $` | after $' | group $1 | named $<x>";
+
+    it('keeps dollar sequences in a typed variable value exactly as entered', async () => {
+      const entry = Object.freeze(makeEntry({ enhanced: 'Start [{{name}}] end' }));
+      const { result } = renderPersistenceFlow({ entry });
+
+      await act(async () => {
+        await result.current.loadEntry(entry);
+      });
+      act(() => {
+        result.current.setVarVals({ name: DOLLARS });
+        result.current.applyTemplate();
+      });
+
+      expect(result.current.enhanced).toBe(`Start [${DOLLARS}] end`);
+    });
+
+    it('does not fill placeholders that arrive inside another value', async () => {
+      const entry = Object.freeze(makeEntry({ enhanced: 'A={{name}}; B={{date}}' }));
+      const { result } = renderPersistenceFlow({ entry });
+
+      await act(async () => {
+        await result.current.loadEntry(entry);
+      });
+      act(() => {
+        result.current.setVarVals({ name: 'see {{date}}', date: '2026-03-19' });
+        result.current.applyTemplate();
+      });
+
+      expect(result.current.enhanced).toBe('A=see {{date}}; B=2026-03-19');
+    });
+
+    it('keeps a pasted {{clipboard}} value exactly as copied', async () => {
+      const clipboardText = 'sed -e "s/x/$&/" && echo "$$" "$1" | cost $$5';
+      const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { readText: vi.fn().mockResolvedValue(clipboardText) },
+      });
+      try {
+        const entry = Object.freeze(makeEntry({ enhanced: 'Explain: {{clipboard}}' }));
+        const { result } = renderPersistenceFlow({ entry });
+
+        await act(async () => {
+          await result.current.loadEntry(entry);
+        });
+
+        expect(result.current.showVarForm).toBe(false);
+        expect(result.current.enhanced).toBe(`Explain: ${clipboardText}`);
+      } finally {
+        if (original) Object.defineProperty(navigator, 'clipboard', original);
+        else delete navigator.clipboard;
+      }
+    });
+  });
 });

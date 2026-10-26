@@ -2,6 +2,17 @@
 
 Date: 2026-10-26
 
+## Library template values arrive exactly as typed or copied (unreleased)
+
+- Loading a Library prompt with `{{variables}}` filled them in a way that read
+  some dollar signs as special codes, the same problem chains had. `$$` became
+  `$`, `$&` turned back into the placeholder, and `` $` `` or `$'` pasted in
+  prompt text around it. This hit `{{clipboard}}` hardest, because copied code
+  and shell commands often contain these. Values now arrive exactly as typed or
+  copied, in the editor and in A/B variants.
+- A value that contains another variable's name in braces, such as
+  `see {{date}}`, is no longer filled in a second time.
+
 ## Chains pass text between steps exactly as written (unreleased)
 
 - When a chain filled `{{input}}`, `{{prev}}` or a mapped variable, some dollar
