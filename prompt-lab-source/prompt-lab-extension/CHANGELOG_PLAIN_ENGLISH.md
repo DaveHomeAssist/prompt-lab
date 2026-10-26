@@ -1,5 +1,18 @@
 # Prompt Lab Changelog (Plain English)
 
+Date: 2026-10-26
+
+## Chains pass text between steps exactly as written (unreleased)
+
+- When a chain filled `{{input}}`, `{{prev}}` or a mapped variable, some dollar
+  signs in that text were read as special codes. `$$` became `$`, `$&` became
+  the placeholder itself, and `` $` `` or `$'` pasted in the prompt text around
+  it. Prices, shell commands, regular expressions and code could reach the next
+  step changed. That text now arrives exactly as typed or returned.
+- Text a step inserts is no longer scanned for placeholders again. If a model's
+  answer contains `{{input}}`, or one mapped value contains another variable's
+  name in braces, the next prompt keeps it as written instead of filling it in.
+
 Date: 2026-10-15
 
 ## Library cards and inspector no longer draw over each other (unreleased)

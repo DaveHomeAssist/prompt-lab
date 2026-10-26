@@ -85,6 +85,88 @@ describe('runChain', () => {
     expect(execute.mock.calls[0][0].prompt).toBe('Use the-input and strict');
   });
 
+  describe('literal substitution', () => {
+    // Every sequence String.prototype.replace treats as special in a replacement string.
+    const DOLLARS = "cost $$5 | match $& | before $` | after $' | group $1 | named $<x>";
+
+    it('keeps dollar sequences in the chain input exactly as typed', async () => {
+      const execute = vi.fn().mockResolvedValue('ok');
+      await runChain({
+        chainEntry: chainEntry([{ label: 'One', template: 'start {{input}} end' }]),
+        resolveEntry: () => null,
+        input: DOLLARS,
+        execute,
+      });
+      expect(execute.mock.calls[0][0].prompt).toBe(`start ${DOLLARS} end`);
+    });
+
+    it('keeps dollar sequences in the previous output exactly as returned', async () => {
+      const execute = vi.fn().mockResolvedValueOnce(DOLLARS).mockResolvedValueOnce('ok');
+      await runChain({
+        chainEntry: chainEntry([
+          { label: 'One', template: 'produce' },
+          { label: 'Two', template: 'refine: {{ prev }} (done)' },
+        ]),
+        resolveEntry: () => null,
+        execute,
+      });
+      expect(execute.mock.calls[1][0].prompt).toBe(`refine: ${DOLLARS} (done)`);
+    });
+
+    it('keeps dollar sequences in every mapped variable source', async () => {
+      const execute = vi.fn().mockResolvedValueOnce(`prev ${DOLLARS}`).mockResolvedValueOnce('ok');
+      const library = {
+        mapper: { id: 'mapper', title: 'Mapper', enhanced: '[{{A}}] [{{B}}] [{{C}}]', original: '' },
+      };
+      await runChain({
+        chainEntry: chainEntry([
+          { label: 'One', template: 'produce' },
+          {
+            entryId: 'mapper',
+            varMap: {
+              A: { source: 'chainInput' },
+              B: { source: 'prevOutput' },
+              C: { source: 'literal', value: `lit ${DOLLARS}` },
+            },
+          },
+        ]),
+        resolveEntry: (id) => library[id] || null,
+        input: `in ${DOLLARS}`,
+        execute,
+      });
+      expect(execute.mock.calls[1][0].prompt)
+        .toBe(`[in ${DOLLARS}] [prev ${DOLLARS}] [lit ${DOLLARS}]`);
+    });
+
+    it('does not expand placeholders that arrive inside substituted text', async () => {
+      const execute = vi.fn()
+        .mockResolvedValueOnce('model wrote {{input}} and {{B}}')
+        .mockResolvedValueOnce('ok')
+        .mockResolvedValueOnce('ok');
+      const library = {
+        mapper: { id: 'mapper', title: 'Mapper', enhanced: '{{A}} / {{B}}', original: '' },
+      };
+      await runChain({
+        chainEntry: chainEntry([
+          { label: 'One', template: 'produce' },
+          { label: 'Two', template: '{{prev}} | {{input}}' },
+          {
+            entryId: 'mapper',
+            varMap: {
+              A: { source: 'literal', value: 'has {{B}}' },
+              B: { source: 'chainInput' },
+            },
+          },
+        ]),
+        resolveEntry: (id) => library[id] || null,
+        input: 'SEED',
+        execute,
+      });
+      expect(execute.mock.calls[1][0].prompt).toBe('model wrote {{input}} and {{B}} | SEED');
+      expect(execute.mock.calls[2][0].prompt).toBe('has {{B}} / SEED');
+    });
+  });
+
   it('stops with an error when a referenced entry is missing', async () => {
     const execute = vi.fn();
     const result = await runChain({
