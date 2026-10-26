@@ -37,15 +37,18 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
     }))).toEqual({ height: true, width: true });
     await dialog.getByRole('button', { name: 'Apply Template' }).click();
     await expect(dialog).toHaveCount(0);
-    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}').raw || ''))
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}').enhanced || ''))
       .toContain('Raw version\nSecond line');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).enhanced))
+      .toContain('Improved version\nSecond line');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session')).raw)).toBe(template.prompt);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))[0].original)).toBe(template.prompt);
     await page.goto('/app/#/library');
     await page.getByRole('button', { name: 'Editor', exact: true }).click();
     await expect(dialog).toBeVisible();
     await dialog.getByRole('button', { name: 'Skip', exact: true }).click();
     await expect(dialog).toHaveCount(0);
-    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}').raw || ''))
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}').enhanced || ''))
       .toBe(template.prompt);
   });
 }
