@@ -1,0 +1,55 @@
+skill: dependency-repair
+scope: Local prompt naming release and its bounded undici audit gate repair
+project: PromptLab
+target:
+  revision: 4006ab38916818d12bc8b876db223dbc20b9f814
+  branch: main
+  environment: Hosted production and GitHub CI
+  artifact: dpl_FjVQ1VaGsQuMdfLbVyAykhsecaSN
+  platform: Shared React web, extension and desktop source
+requirements:
+  - id: NAMING
+    acceptance_criterion: Custom names survive Save reopening and refinement; local suggestions identify tasks without AI naming requests.
+    required: true
+  - id: DEPENDENCY_PATH
+    acceptance_criterion: Trace GHSA-xjj6-f33q-929c to extension development tooling and resolve a compatible patched version without policy changes.
+    required: true
+  - id: AUDIT
+    acceptance_criterion: Current dependency audit passes with no high or critical advisories outside existing exceptions.
+    required: true
+  - id: DELIVERY
+    acceptance_criterion: Exact source is merged, deployed and production behavior is verified.
+    required: true
+evidence:
+  - requirement_id: NAMING
+    kind: runtime
+    reference: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40263126391
+    observed_at: '2026-10-26T03:15:56Z'
+    result: pass
+    limitations: Two signed-in synthetic scenarios passed; both sessions revoked. Dominic119 helper/hook/contract checks cover pending-refinement edits and task extraction. No actual provider or billing calls.
+  - requirement_id: DEPENDENCY_PATH
+    kind: source
+    reference: https://github.com/DaveHomeAssist/prompt-lab/commit/f08e7d3763df8c293b6389b92ec26feeea0402b3
+    observed_at: '2026-10-26T03:19:50.979063+00:00'
+    result: pass
+    limitations: Extension jsdom28.1.0 permits undici^7.21.0; lock changes only undici7.30.0 to7.30.1 version, URL and integrity. Node>=20.18.1 fits Node22. Existing open PR179 concerns CNAME; no overlapping update PR at inspection. Manifests and cross-platform optional entries preserved.
+  - requirement_id: AUDIT
+    kind: ci
+    reference: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40263077643
+    observed_at: '2026-10-26T03:19:50.979063+00:00'
+    result: pass
+    limitations: GitHub main Dependency Health and Dominic audit4/4 pass. Existing audit policy retained; moderate and low findings remain outside this repair. Advisory source identifies7.30.1 as patched at https://github.com/advisories/GHSA-xjj6-f33q-929c.
+  - requirement_id: DELIVERY
+    kind: merge
+    reference: https://github.com/DaveHomeAssist/prompt-lab/pull/212
+    observed_at: '2026-10-26T03:15:56Z'
+    result: pass
+    limitations: Vercel READY at exact merge and production2/2 passed. Broader native installed, signing, upgrade and human acceptance remain separate project gates.
+changes_performed:
+  - PR212 merged4006ab38916818d12bc8b876db223dbc20b9f814 from5f993604b33eef8eb548032b4ada58152ba3ec33 andf08e7d3763df8c293b6389b92ec26feeea0402b3.
+  - Updated local title extraction, latest-title refinement protection, Save title preservation and focused regression expectations.
+  - Patched extension dev-only undici lock entry to7.30.1; clean install,119 targeted tests and extension build passed on Dominic.
+  - Existing naming issue, implementation RUN and canonical Hub updated and read back; original59rows and14plan identities preserved.
+unresolved_decisions: []
+blockers: []
+next_action: Retain the bounded local naming release; AI naming remains unapproved.

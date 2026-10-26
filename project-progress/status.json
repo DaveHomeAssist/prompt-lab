@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T03:05:03.396Z",
+  "snapshotAt": "2026-10-26T03:33:31.819Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,15 +9,15 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "f338cbbc194c935331dad89e14de1c08c89c3462",
+  "mainSha": "4006ab38916818d12bc8b876db223dbc20b9f814",
   "overall": "Acceptance incomplete",
-  "nextAction": "Finish the approved local naming slice through CI and production acceptance. No AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Four remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
+  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. Scratch space PR205/209 is released and scoped production acceptance passed. Three remaining October 23 intake items stay backlog only; await Dave selection. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Resolve braces before the existing exception expires on 2026-11-05. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent.",
   "evidence": [
     {
-      "label": "Local task naming implemented; delivery pending",
-      "state": "Running",
-      "detail": "2026-10-25 Dave approved custom-title preservation through refinement and reopening Save plus task-based local suggestions. Latest-title functional update covers typing during pending refinement; Save retains current draft title and isolates another prompt details panel. Wrapper/fence cleanup, explicit titles/headings, labeled tasks and role/task extraction remain local. Dominic119 targeted helper/hook/contract tests pass; hosted lifecycle9/9 passed before final other-prompt context correction, final hosted regression follows. Extension/web builds and docs checks pass. Existing saved titles, schema, dependencies and native Swift contract unchanged. CI/merge/production pending; issue stays In progress. No AI or naming provider calls.",
-      "url": "https://app.notion.com/p/402255fc8f4481249cb0e9dd7aa1b4ac"
+      "label": "Local task naming released",
+      "state": "Verified",
+      "detail": "2026-10-25: PR212 merged4006ab38916818d12bc8b876db223dbc20b9f814. All11 exact-main workflows pass, including native40263077663 all6jobs and iOS40263077593 iPhone/iPad. Main Landing40263077636 passes1270shared, landing25 and hosted53/1credential skip. Vercel dpl_FjVQ1VaGsQuMdfLbVyAykhsecaSN READY exactmerge. Production40263126391 passes2/2 with custom-title Save close/reopen, acknowledged Save and both session revocations. Dominic119 focused checks, lifecycle9/9 and corrected responsive5/5 pass. Custom titles survive refinement including pending-response edits; Save preserves names and isolates another prompt details. Local task suggestions skip role/wrapper/fence clutter. No AI naming calls, bulk rename or schema changes. Compatible dev-only undici7.30.1 patch clears GHSA-xjj6-f33q-929c; clean install/build and audit4/4 pass with unchanged policy/manifests. Initial audit and4old-role-title failures retained and superseded. Naming issue Done, RUN/Hub read back. Native Swift naming and broader human/signing/upgrade gates unchanged. Private board mapping absent.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/212"
     },
     {
       "label": "Active Scratch note space released",
@@ -1074,14 +1074,14 @@
     {
       "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
       "title": "Review prompt naming upgrades and remaining title quality gaps",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Editor",
       "type": "UX",
       "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
       "inPlan": false,
-      "nextAction": "Complete CI and production naming acceptance; no AI naming calls.",
-      "verification": "Approved local naming implementation; targeted tests passed. Delivery and production acceptance pending."
+      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
+      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
