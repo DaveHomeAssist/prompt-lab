@@ -33,7 +33,9 @@ for (const item of data.evidence) {
 const template = await readFile(new URL('dashboard.template.html', root), 'utf8');
 assert.equal(template.split('<!-- SNAPSHOT -->').length, 2, 'Template must contain one snapshot marker');
 const json = JSON.stringify(data).replaceAll('<', '\\u003c').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
-const html = template.replace('<!-- SNAPSHOT -->', `<script id="snapshot" type="application/json">${json}</script>`);
+// Split/join inserts the snapshot literally. String.replace would read `$'`,
+// `$&` and similar sequences in issue text as replacement syntax.
+const html = template.split('<!-- SNAPSHOT -->').join(`<script id="snapshot" type="application/json">${json}</script>`);
 const output = new URL('index.html', root);
 if (process.argv.includes('--check')) {
   assert.equal(await readFile(output, 'utf8'), html, 'Dashboard is stale: run the renderer');
