@@ -411,6 +411,13 @@ export default function App({
     onUnknownRoute: (pathname) => {
       notify(`Page not found (${pathname}). Showing the Write workspace.`);
     },
+    onRouteModal: (modal) => {
+      if (modal === 'account' && clerkUser && clerkAccountActions?.manageAccount) {
+        clerkAccountActions.manageAccount();
+        return;
+      }
+      setShowSettings(true);
+    },
   });
 
   useEffect(() => {

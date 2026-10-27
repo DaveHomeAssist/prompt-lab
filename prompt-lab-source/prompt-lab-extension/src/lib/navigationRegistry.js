@@ -106,6 +106,10 @@ const ROUTE_TO_STATE = Object.freeze({
   '/scratch': { primaryView: 'notebook' },
   // Backward-compatible route for saved links from the Notebook-era UI.
   '/pad': { primaryView: 'notebook' },
+  // Dialog routes: open a modal over the current workspace instead of
+  // swapping views, then settle back on that workspace's canonical route.
+  '/settings': { modal: 'settings' },
+  '/account': { modal: 'account' },
 });
 
 /**

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://www.googletagmanager.com https://*.google-analytics.com; font-src 'self'; connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,follow">
+<title>Page not found | Prompt Lab</title>
+<script src="/google-analytics.js" defer></script>
+<link rel="icon" type="image/png" href="/hero-logo.png">
+<style>
+@font-face { font-family: 'Outfit'; src: url('/fonts/outfit.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 1.5rem; background: radial-gradient(circle at 70% 10%, rgba(194, 65, 12, 0.18), transparent 40%), #020617; color: #cbd5e1; font-family: 'Outfit', system-ui, sans-serif; }
+main { width: min(100%, 30rem); }
+.brand { display: inline-flex; align-items: center; gap: 0.5rem; color: #f1f5f9; font-weight: 700; text-decoration: none; }
+.brand img { border-radius: 6px; }
+.code { margin: 2rem 0 0.25rem; color: #fb923c; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; }
+h1 { margin: 0 0 0.75rem; color: #f8fafc; font-size: clamp(1.6rem, 6vw, 2.2rem); line-height: 1.1; }
+p { margin: 0 0 1.5rem; line-height: 1.6; }
+code { color: #f1f5f9; word-break: break-all; }
+nav { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+nav a { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0.6rem 1rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 0.75rem; color: #f1f5f9; font-weight: 600; text-decoration: none; }
+nav a.primary { border-color: #c2410c; background: #c2410c; color: #fff; }
+nav a:hover, nav a:focus-visible { border-color: #fb923c; outline: none; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="/"><img src="/hero-logo.png" alt="" width="28" height="28"> Prompt Lab</a>
+  <p class="code">404 · Page not found</p>
+  <h1>That page isn't here.</h1>
+  <p>The address <code id="missing-path">you followed</code> doesn't match a Prompt Lab page. It may have moved, or the link may have a typo.</p>
+  <nav aria-label="Where to go next">
+    <a class="primary" href="/app/">Open Prompt Lab</a>
+    <a href="/">Home</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/guide">Guide</a>
+  </nav>
+</main>
+<script>
+  // Show which address missed; textContent keeps it inert.
+  (function () { var el = document.getElementById('missing-path'); if (el && location.pathname) el.textContent = location.pathname; })();
+</script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import '../../prompt-lab-extension/src/lib/diagnosticsStart.js';
+import { redirectAppPathToHash } from '../../prompt-lab-extension/src/lib/appPathRoute.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
@@ -14,6 +15,9 @@ import {
 } from '../../prompt-lab-extension/src/lib/landingAttribution.js';
 import { buildAuthRedirectUrls, buildSignInContext } from '../../prompt-lab-extension/src/lib/signInContext.js';
 import '../../prompt-lab-extension/src/index.css';
+
+// /app/compare and friends -> /app/#/compare before the hash router mounts.
+redirectAppPathToHash();
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const reportRoot = document.createElement('div');

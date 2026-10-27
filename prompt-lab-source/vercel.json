@@ -19,7 +19,14 @@
     { "source": "/privacy", "destination": "/privacy.html", "permanent": true },
     { "source": "/privacy/", "destination": "/privacy.html", "permanent": true },
     { "source": "/pricing", "destination": "/#pricing", "permanent": false },
-    { "source": "/pricing/", "destination": "/#pricing", "permanent": false }
+    { "source": "/pricing/", "destination": "/#pricing", "permanent": false },
+    { "source": "/login", "destination": "/app/", "permanent": false },
+    { "source": "/signin", "destination": "/app/", "permanent": false },
+    { "source": "/sign-in", "destination": "/app/", "permanent": false },
+    { "source": "/signup", "destination": "/app/", "permanent": false },
+    { "source": "/sign-up", "destination": "/app/", "permanent": false },
+    { "source": "/settings", "destination": "/app/settings", "permanent": false },
+    { "source": "/account", "destination": "/app/account", "permanent": false }
   ],
   "headers": [
     {
