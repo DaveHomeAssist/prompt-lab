@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T16:12:25.545Z",
+  "snapshotAt": "2026-10-27T20:50:21.285Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "c36862c11a8e09b718dde37d6eeaceb6f022d66c",
+  "mainSha": "d782bde4b77ec0fab3fa41121b198c749d21d03d",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Social sign-in correction ready for release approval",
+      "state": "Open",
+      "detail": "2026-10-27: PR231 at fe78aa4 corrects unreadable GitHub and Google buttons on the dark Clerk card. Local builds and five CSP tests pass on Duncan Node22.23.4. All six PR checks pass, including 1359 shared tests, 231 legacy tests, 25 landing browser tests and 65 hosted browser tests with one existing authenticated skip. Preview READY. Automatic approval review rejected merging without explicit production-release approval. PR remains OPEN/CLEAN; production is still d782bde. Obtain approval, merge and verify the live signed-out page; no live-fix claim.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/231"
+    },
+    {
+      "label": "Current web, extension and desktop builds available",
+      "state": "Verified",
+      "detail": "2026-10-27: Fresh extension ZIP built from main d782bde on Duncan Node22.23.4. Downloaded version1.8.0 Windows MSI/NSIS, macOS universal DMG and Linux DEB/AppImage from latest successful main Desktop Build40356488179 at c36862c, all six jobs passing. GitHub compare confirms only tracking files differ from d782bde; application source matches. SHA256 hashes and source provenance saved in local builds folder. Vercel production READY at d782bde. No user installation, store submission or public release; published v1.5.0 preview is stale. Broader signing/manual acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40356488179"
+    },
     {
       "label": "Prompts beside Write and a wider inspector (October intake Slice 2)",
       "state": "Verified",
@@ -484,7 +496,7 @@
     {
       "label": "Live UX follow-up",
       "state": "Open",
-      "detail": "Production sign-in social-button text has low contrast. The companion measures 412px document width at a 400px viewport; both pre- and post-PR #105 screenshots have the same width. Retain these existing issues for the planned UX/accessibility phase; this test-only PR did not change application UI.",
+      "detail": "The production social-button contrast issue is reproduced and addressed in PR231, whose checks pass. Merge approval and live visual acceptance remain pending. The companion measures 412px document width at a 400px viewport; both pre- and post-PR #105 screenshots have the same width. Retain these existing issues for the planned UX/accessibility phase; this test-only PR did not change application UI.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
     },
     {
@@ -1051,7 +1063,7 @@
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
       "nextAction": "Qualify a named existing disposable VM with owner, guest access and whole-VM snapshot control before prior-version upgrade/restore. Recover the inaccessible runner route for qualification if appropriate. Keep Mac signing/profile and human/physical gates separate.",
-      "verification": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent. Earlier record: 2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+      "verification": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent. Earlier record: 2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened. 2026-10-27: Fresh extension ZIP built from main d782bde on Duncan Node22.23.4. Downloaded version1.8.0 Windows MSI/NSIS, macOS universal DMG and Linux DEB/AppImage from latest successful main Desktop Build40356488179 at c36862c, all six jobs passing. GitHub compare confirms only tracking files differ from d782bde; application source matches. SHA256 hashes and source provenance saved in local builds folder. Vercel production READY at d782bde. No user installation, store submission or public release; published v1.5.0 preview is stale. Broader signing/manual acceptance remains open."
     },
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
@@ -1090,18 +1102,6 @@
       "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
     },
     {
-      "id": "402255fc8f4481f1840fd1440a7dcb35",
-      "inPlan": false,
-      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
-      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Launch account library sync on production web (sync slice 5)",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
-    },
-    {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
@@ -1114,28 +1114,16 @@
       "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
     },
     {
-      "id": "402255fc8f448100b411f4a4a101b4a9",
-      "title": "Make bug reports and feature requests easy to find",
+      "id": "402255fc8f4481f1840fd1440a7dcb35",
+      "inPlan": false,
+      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
+      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
+      "title": "Launch account library sync on production web (sync slice 5)",
       "status": "Not started",
       "severity": "Medium",
-      "area": "Layout",
+      "area": "Library",
       "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
-      "inPlan": false,
-      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
-    },
-    {
-      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
-      "title": "Review prompt naming upgrades and remaining title quality gaps",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "UX",
-      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
-      "inPlan": false,
-      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
-      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
+      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
@@ -1184,6 +1172,30 @@
       "inPlan": false,
       "nextAction": "Verify whether the General task and General target options already deliver a General enhance mode (D-INT-4 A).",
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f448100b411f4a4a101b4a9",
+      "title": "Make bug reports and feature requests easy to find",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "inPlan": false,
+      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
+      "title": "Review prompt naming upgrades and remaining title quality gaps",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
+      "inPlan": false,
+      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
+      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
     },
     {
       "id": "402255fc8f44813faf3ae58a8b002426",
@@ -1246,6 +1258,30 @@
       "url": "https://app.notion.com/405255fc8f4481c78d80ce2e49b6fab8"
     },
     {
+      "id": "405255fc8f4481d1bc61f4f8984c5840",
+      "inPlan": false,
+      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
+    },
+    {
+      "id": "405255fc8f4481d4824bfa1e91474ef0",
+      "inPlan": false,
+      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Notify when a long prompt run finishes",
+      "status": "Not started",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
+    },
+    {
       "id": "405255fc8f4481e0998dcf99824e8bd2",
       "inPlan": false,
       "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
@@ -1294,30 +1330,6 @@
       "url": "https://app.notion.com/405255fc8f44815689b6d0ade1bda5eb"
     },
     {
-      "id": "405255fc8f4481d1bc61f4f8984c5840",
-      "inPlan": false,
-      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
-    },
-    {
-      "id": "405255fc8f4481d4824bfa1e91474ef0",
-      "inPlan": false,
-      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Notify when a long prompt run finishes",
-      "status": "Not started",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
-    },
-    {
       "id": "405255fc8f44814e998fdf193173cfe8",
       "inPlan": false,
       "nextAction": "None for the scoped recovery. Optional signed-in and physical acceptance remains in broader QA.",
@@ -1328,6 +1340,18 @@
       "area": "Library",
       "type": "Tech Debt",
       "url": "https://app.notion.com/405255fc8f44814e998fdf193173cfe8"
+    },
+    {
+      "id": "406255fc8f4481ee8b3afcc77c0938d7",
+      "title": "Restore readable GitHub and Google sign-in buttons",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Bug",
+      "url": "https://app.notion.com/406255fc8f4481ee8b3afcc77c0938d7",
+      "inPlan": false,
+      "nextAction": "Obtain explicit approval to merge PR231 and deploy, then verify both provider buttons in production.",
+      "verification": "2026-10-27: PR231 at fe78aa4 corrects unreadable GitHub and Google buttons on the dark Clerk card. Local builds and five CSP tests pass on Duncan Node22.23.4. All six PR checks pass, including 1359 shared tests, 231 legacy tests, 25 landing browser tests and 65 hosted browser tests with one existing authenticated skip. Preview READY. Automatic approval review rejected merging without explicit production-release approval. PR remains OPEN/CLEAN; production is still d782bde. Obtain approval, merge and verify the live signed-out page; no live-fix claim."
     }
   ]
 }
