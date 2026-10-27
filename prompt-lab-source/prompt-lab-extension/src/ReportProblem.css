@@ -13,4 +13,6 @@
 .pl-report-dialog[data-theme=dark] :is(button,a,textarea,pre):focus-visible { outline-color:#fb923c; }
 .pl-report-dialog pre { max-height:32dvh; overflow:auto; padding:12px; border:1px solid #78716c; border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
 .pl-report-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.pl-report-launcher { position:fixed; bottom:12px; right:12px; z-index:9000; padding:8px 12px; min-height:40px; border:1px solid #a8a29e; border-radius:6px; color:#24130d; background:#fffdfa; font:14px system-ui,sans-serif; }
+body:has(.pl-app-shell) .pl-report-launcher { display:none; }
 @media(pointer:coarse) { .pl-report-dialog button,.pl-report-dialog a { min-height:44px; } }

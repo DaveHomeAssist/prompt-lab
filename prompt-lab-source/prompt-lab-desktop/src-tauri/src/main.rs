@@ -29,6 +29,9 @@ fn main() {
             if event.id() == "export-diagnostics" {
                 let result = app.state::<diagnostics::Diagnostics>().export();
                 if let Ok(path) = &result { diagnostics::reveal_report(path); }
+                if let Some(MenuItemKind::MenuItem(item)) = app.menu().and_then(|menu| menu.get("export-diagnostics")) {
+                    let _ = item.set_text(if result.is_ok() { "Export diagnostics and open folder" } else { "Export failed — restart and try again" });
+                }
                 let _ = app.emit("promptlab:native-export", result);
             }
         })

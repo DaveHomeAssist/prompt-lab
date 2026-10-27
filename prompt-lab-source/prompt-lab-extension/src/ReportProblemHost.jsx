@@ -80,12 +80,15 @@ function ReportDialog({ onClose }) {
   </div>;
 }
 
-export default function ReportProblemHost() {
+export default function ReportProblemHost({ launcher = false }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
     const show = () => setOpen(true);
     window.addEventListener('promptlab:report-problem', show);
     return () => window.removeEventListener('promptlab:report-problem', show);
   }, []);
-  return open ? <ReportDialog onClose={() => setOpen(false)} /> : null;
+  return <>
+    {launcher && !open && <button type="button" className="pl-report-launcher" onClick={() => setOpen(true)}>Report a problem</button>}
+    {open && <ReportDialog onClose={() => setOpen(false)} />}
+  </>;
 }
