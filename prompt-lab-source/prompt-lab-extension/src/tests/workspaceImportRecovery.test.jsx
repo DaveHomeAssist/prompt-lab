@@ -122,6 +122,28 @@ it('requires refreshed confirmation when Clear Library changes the destination g
   expect(tab.result.current.library.map(row => row.id)).toEqual(['new']);
 });
 
+it('refreshes folder-only changes before Apply and retains new folders on renewed confirmation', async () => {
+  const folder = { id: 'work', name: 'Work', collection: 'Work', parentId: null, artwork: { icon: 'folder', image: '' } };
+  localStorage.setItem('pl2-collection-folders', JSON.stringify([folder]));
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, { library: [], folders: [folder] });
+  // A different tab wrote storage, but its storage event has not arrived yet.
+  const added = { ...folder, id: 'other', name: 'Other', collection: 'Other' };
+  const concurrent = [{ ...folder, artwork: { icon: 'star', image: '' } }, added];
+  localStorage.setItem('pl2-collection-folders', JSON.stringify(concurrent));
+  const writes = vi.spyOn(Storage.prototype, 'setItem');
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview?.notice).toContain('workspace changed');
+  expect(writes).not.toHaveBeenCalled();
+  expect(JSON.parse(localStorage.getItem('pl2-collection-folders'))).toEqual(concurrent);
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview).toBeNull();
+  expect(JSON.parse(localStorage.getItem('pl2-collection-folders'))).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'work' }), expect.objectContaining({ id: 'other' }),
+  ]));
+});
+
 it('retries only unfinished stages after a run write fails', async () => {
   const tab = renderHook(() => usePromptLibrary(vi.fn()));
   await waitFor(() => expect(tab.result.current.libReady).toBe(true));

@@ -1037,6 +1037,7 @@ export default function usePromptLibrary(notify) {
       library: filterDeletedLibraryRecords(reconciled.library),
       trash: filterDeletedLibraryRecords(reconciled.trash), runs, testCases,
       collections: read(storageKeys.collections, collectionsRef.current),
+      folders: reconcileFolders(read(storageKeys.folders, foldersRef.current)),
       packs: read(storageKeys.packs, []), scratch: read('pl2-pads', null),
       ...readLibraryDeletionState(),
     };
@@ -1125,7 +1126,7 @@ export default function usePromptLibrary(notify) {
         setCollections(next);
       });
       if (plan.parsed.folders) await stage('Folders', async () => {
-        const next = mergeFolders(foldersRef.current, plan.parsed.folders, collectionsRef.current);
+        const next = mergeFolders(context.folders, plan.parsed.folders, collectionsRef.current);
         if (!saveJson(storageKeys.folders, next)) throw new Error('Folder storage write failed.');
         const durable = commitLibrarySave(); if (durable) await durable;
         foldersRef.current = next; setFolderRecords(next);
