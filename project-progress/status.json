@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-27T22:45:49.721Z",
+  "snapshotAt": "2026-10-27T22:48:30.067Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -16,7 +16,7 @@
     {
       "label": "Diagnostics active on desktop and web",
       "state": "Verified",
-      "detail": "PR236 merged236f839 after all14 checks. Tested native da67196 installed on Duncan; backup15 files,14 saved prompts/draft/three candidates restored. Local logs/heap active; native stall/recovery/export acceptance passed. Web production236f839 READY; report preview works before sign-in. Vivaldi direct acceptance remains open.",
+      "detail": "PR236 merged236f839 after all14 checks. Tested native da67196 installed on Duncan; backup15 files,14 saved prompts/draft/three candidates restored. Local logs/heap active; native stall/recovery/export acceptance passed. Web production236f839 READY; report preview works before sign-in. Vivaldi direct acceptance remains open. Exact production web asset/map reproduced with public configuration and hash verified; all three surfaces have matching retained maps.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/236"
     },
     {
@@ -1393,7 +1393,7 @@
       "url": "https://app.notion.com/406255fc8f44814eb98bc974fd7863b5",
       "inPlan": false,
       "nextAction": "Complete Vivaldi update with its existing extension identity/data preserved, then verify its report flow.",
-      "verification": "2026-10-27: PR236 merged236f839 after all14 checks. CI40594193816 passed Windows MSI/NSIS and Linux DEB/AppImage stall, recovery, private-canary, reviewed-export and reinstall retention acceptance; macOS universal and five native release tests passed. Shared1371, legacy231, landing25 and hosted65 passed (one existing authenticated skip). Installed tested da67196 on Duncan;15-file private backup;14 saved prompts/draft/three candidates restored. Local JSONL events and heap sampling active. Production236f839 READY; pre-sign-in report preview and social controls verified. Vivaldi installation/direct acceptance remains open; CPU/RSS and old-freeze root cause unknown. Notion delivery notes read back."
+      "verification": "2026-10-27: PR236 merged236f839 after all14 checks. CI40594193816 passed Windows MSI/NSIS and Linux DEB/AppImage stall, recovery, private-canary, reviewed-export and reinstall retention acceptance; macOS universal and five native release tests passed. Shared1371, legacy231, landing25 and hosted65 passed (one existing authenticated skip). Installed tested da67196 on Duncan;15-file private backup;14 saved prompts/draft/three candidates restored. Local JSONL events and heap sampling active. Production236f839 READY; pre-sign-in report preview and social controls verified. Vivaldi installation/direct acceptance remains open; CPU/RSS and old-freeze root cause unknown. Notion delivery notes read back. Exact production236f839 web asset reproduced and SHA256 matched; private web maps retained. Native/extension maps also exact. Notion map receipt read back."
     }
   ]
 }
