@@ -32,8 +32,8 @@ function renderPane(overrides = {}) {
     goldenSimilarity={0.91} goldenThreshold={0.8} goldenVerdict="pass" comparisonText="Comparison sample"
     comparisonSourceLabel="Latest run" lib={lib} variants={[]} showNotes={false} notes="" evalRuns={[]}
     libraryCount={1} evalRunCount={0} onLoadQuickStartPrompt={noop} onOpenEvaluate={noop}
-    showEvalHistory={false} setShowEvalHistory={noop} streamPreview="" showDiffUpgradeHint
-    onUnlockDiff={noop} runCasesLocked={false} {...overrides} />);
+    showEvalHistory={false} setShowEvalHistory={noop} streamPreview=""
+    runCasesLocked={false} {...overrides} />);
 }
 
 describe('CreateEditorPane', () => {
@@ -47,7 +47,7 @@ describe('CreateEditorPane', () => {
   });
   it('shows an intentional workbench empty state before any output exists', () => {
     renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: '', wc: 0,
-      error: null, enhanced: '', editingId: null, goldenResponse: null, showDiffUpgradeHint: false });
+      error: null, enhanced: '', editingId: null, goldenResponse: null });
     expect(screen.getByText('Workbench flow')).toBeInTheDocument();
     expect(screen.getByText('Start with a draft or load a starter.')).toBeInTheDocument();
     expect(screen.getByText('Ctrl+Enter to refine')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('CreateEditorPane', () => {
     const onLoadQuickStartPrompt = vi.fn();
     renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: '', wc: 0, error: null,
       enhanced: '', editingId: null, goldenResponse: null, libraryCount: 0, evalRunCount: 0,
-      onLoadQuickStartPrompt, showDiffUpgradeHint: false });
+      onLoadQuickStartPrompt });
     expect(screen.getByText('Activation runway')).toBeInTheDocument();
     expect(screen.getByText('0/3 milestones')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Load Starter Draft' }));
@@ -80,7 +80,7 @@ describe('CreateEditorPane', () => {
     const onOpenEvaluate = vi.fn();
     renderPane({ currentEntry: null, suggestedSaveTitle: 'Untitled prompt', raw: 'Draft prompt body',
       error: null, enhanced: '', editingId: null, goldenResponse: null, libraryCount: 1,
-      evalRunCount: 0, onOpenEvaluate, showDiffUpgradeHint: false });
+      evalRunCount: 0, onOpenEvaluate });
     expect(screen.getByText('2/3 milestones')).toBeInTheDocument();
     expect(screen.getByText('Run available')).toBeInTheDocument();
     expect(screen.getByText('Open Evaluate to learn how to generate your first run.')).toBeInTheDocument();

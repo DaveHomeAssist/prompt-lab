@@ -127,8 +127,6 @@ export default function CreateEditorPane({
   setShowEvalHistory,
   // Stream
   streamPreview,
-  showDiffUpgradeHint = false,
-  onUnlockDiff,
   runCasesLocked = false,
   // Follow-up suggestions
   followUps = [],

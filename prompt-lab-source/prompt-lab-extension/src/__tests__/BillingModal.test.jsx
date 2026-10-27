@@ -209,3 +209,42 @@ describe('BillingModal billing policy disclosure', () => {
     expect(screen.queryByTestId('billing-terms')).toBeNull();
   });
 });
+
+describe('BillingModal for accounts that already have Pro (AUD-001)', () => {
+  it.each([
+    ['active', undefined],
+    ['trialing', 'annual'],
+    ['owner', 'monthly'],
+  ])('shows Manage billing instead of Go Pro for a %s Pro account', (status, requestedPeriod) => {
+    const billing = {
+      ...createBilling(),
+      plan: 'pro',
+      status,
+      planLabel: 'Prompt Lab Pro',
+      statusCopy: 'Pro is active.',
+    };
+    render(
+      <BillingModal
+        m={theme}
+        billing={billing}
+        requestedPeriod={requestedPeriod}
+        requestedSource={requestedPeriod ? 'landing-pricing' : undefined}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /Go Pro/ })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('billing-terms')).not.toBeInTheDocument();
+    expect(screen.queryByText(/choice from the pricing page/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Prompt Lab Pro is active' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Manage billing' }));
+    expect(billing.openManagePurchases).toHaveBeenCalledTimes(1);
+    expect(billing.startCheckout).not.toHaveBeenCalled();
+  });
+
+  it('still offers Go Pro to a Free account', () => {
+    render(<BillingModal m={theme} billing={createBilling()} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Go Pro Monthly/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Manage billing' })).not.toBeInTheDocument();
+  });
+});

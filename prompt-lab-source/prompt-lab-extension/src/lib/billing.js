@@ -1,5 +1,6 @@
 import { isExtension } from './platform.js';
 import { BILLING_OFFLINE_GRACE_DAYS } from './billingPolicy.js';
+import { PRO_FEATURE_LIST } from '../../../shared/pricing.js';
 
 export const PLAN_FREE = 'free';
 export const PLAN_PRO = 'pro';
@@ -8,28 +9,11 @@ export const BILLING_STATUS_OWNER = 'owner';
 export const BILLING_STATUS_VERIFICATION_EXPIRED = 'verification_expired';
 export const PRELAUNCH_OPEN_ACCESS_COPY = 'All workflow features are available during prelaunch. Purchases are temporarily unavailable.';
 
-export const BILLING_FEATURES = Object.freeze({
-  abTesting: {
-    id: 'abTesting',
-    label: 'A/B testing',
-    description: 'Run prompt variants head-to-head inside Evaluate.',
-  },
-  diffView: {
-    id: 'diffView',
-    label: 'Diff viewer',
-    description: 'Compare generated outputs side-by-side.',
-  },
-  batchRuns: {
-    id: 'batchRuns',
-    label: 'Batch runs',
-    description: 'Run saved test cases in one pass.',
-  },
-  collections: {
-    id: 'collections',
-    label: 'Collections',
-    description: 'Organize prompts into reusable groups.',
-  },
-});
+// The Pro feature list lives in shared/pricing.js (AUD-013) so the landing
+// page, billing dialog and gates cannot drift apart.
+export const BILLING_FEATURES = Object.freeze(Object.fromEntries(
+  PRO_FEATURE_LIST.map(({ id, label, description }) => [id, Object.freeze({ id, label, description })]),
+));
 // Library export is deliberately free on every plan (pricing v2, 2026-10-18):
 // users must always be able to take their data out. Import, packs and
 // enhance are free as well; anything not listed above is never gated.

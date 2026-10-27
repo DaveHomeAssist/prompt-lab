@@ -330,7 +330,6 @@ export default function App({
   const canImportLibrary = billing.hasFeature('import');
   const canUsePacks = billing.hasFeature('packs');
   const canRunBatchCases = billing.hasFeature('batchRuns');
-  const canUseDiffView = billing.hasFeature('diffView');
   const canUseAbTesting = billing.hasFeature('abTesting');
   const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '', preserveExistingCollection: true };
 
@@ -591,7 +590,7 @@ export default function App({
   const createLayoutOptions = [];
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
-    ...(canUseDiffView ? [{ id: 'diff', label: 'Diff' }] : []),
+    { id: 'diff', label: 'Diff' },
     ...(variants.length > 0 ? [{ id: 'variants', label: `Variants (${variants.length})` }] : []),
     ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
   ];
@@ -1295,8 +1294,6 @@ export default function App({
               onOpenEvaluate={handleWorkbenchOpenEvaluate}
               showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
               streamPreview={streamPreview}
-              showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
-              onUnlockDiff={() => openBilling('diffView')}
               runCasesLocked={!canRunBatchCases}
               followUps={followUpSuggestions.followUps}
               followUpsLoading={followUpSuggestions.followUpsLoading}

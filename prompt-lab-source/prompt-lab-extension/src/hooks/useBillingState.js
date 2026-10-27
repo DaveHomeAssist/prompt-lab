@@ -18,9 +18,36 @@ import {
   BILLING_REVALIDATE_CHECK_INTERVAL_MS,
 } from '../lib/billingPolicy.js';
 import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
+import {
+  BILLING_RETURN_POLL_DELAYS_MS,
+  closeExternalTab,
+  consumeBillingReturnFromLocation,
+  navigateExternalTab,
+  preopenExternalTab,
+  shouldPreopenExternalTab,
+} from '../lib/billingReturn.js';
 
 const CHECKOUT_UNAVAILABLE_MESSAGE = 'Purchases are temporarily unavailable. Existing purchase management is still available.';
 const AUTO_SYNC_RETRY_BASE_MS = 5000;
+const BLOCKED_TAB_MESSAGES = {
+  checkout: 'Your browser blocked the Stripe Checkout tab. Use "Continue to Stripe Checkout" in the billing dialog.',
+  portal: 'Your browser blocked the billing portal tab. Use "Open billing portal" in the billing dialog.',
+};
+
+// Opens a Stripe URL that arrived after an await. With a pre-opened tab (web
+// app) the tab is pointed at Stripe; otherwise a direct window.open is tried.
+// Returns true when a tab was opened, false when the browser blocked it.
+function openStripeUrl(preopenedTab, url, preopenAttempted) {
+  if (preopenedTab) return navigateExternalTab(preopenedTab, url);
+  // The click-time tab was blocked; a second window.open after the await
+  // would be blocked too, so go straight to the visible fallback link.
+  if (preopenAttempted) return false;
+  if (typeof window === 'undefined' || typeof window.open !== 'function') return false;
+  window.open(url, '_blank', 'noopener,noreferrer');
+  // With noopener the return value is always null, so a blocked tab cannot be
+  // detected on this path; only the web app (pre-opened tab) can tell.
+  return true;
+}
 
 function readClerkEmail(clerkUser) {
   const directEmail = clerkUser?.primaryEmailAddress?.emailAddress;
@@ -147,6 +174,7 @@ async function buildResponseError(response, fallback) {
     : fallback;
   const error = new Error(message);
   error.status = response.status;
+  if (typeof payload?.code === 'string') error.code = payload.code;
   error.retryable = typeof payload?.retryable === 'boolean'
     ? payload.retryable
     : response.status === 429 || response.status >= 500;
@@ -158,6 +186,19 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     loadJson(storageKeys.billing, createDefaultBillingState()),
   ));
   const [busyAction, setBusyAction] = useState('');
+  // AUD-009: Stripe URL to show as a visible link when the browser blocked
+  // the new tab. Kept out of persisted billing state on purpose.
+  const [blockedExternal, setBlockedExternal] = useState(null);
+  const billingReturnRef = useRef(undefined);
+  if (billingReturnRef.current === undefined) {
+    billingReturnRef.current = consumeBillingReturnFromLocation();
+  }
+  const billingReturnHandledRef = useRef(false);
+  const unmountedRef = useRef(false);
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => { unmountedRef.current = true; };
+  }, []);
   const autoSyncKeyRef = useRef('');
   const autoSyncAttemptsRef = useRef(0);
   const [autoSyncRetryTick, setAutoSyncRetryTick] = useState(0);
@@ -368,6 +409,38 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     refreshLicense({ silent: true });
   }, [clerkGetToken, refreshLicense, revalidateTick, state]);
 
+  // AUD-009: handle the return from Stripe Checkout once, after the signed-in
+  // identity is known, so the license refresh is authenticated.
+  const refreshLicenseRef = useRef(refreshLicense);
+  refreshLicenseRef.current = refreshLicense;
+  useEffect(() => {
+    const outcome = billingReturnRef.current;
+    if (!outcome || billingReturnHandledRef.current) return;
+    if (outcome === 'cancelled') {
+      billingReturnHandledRef.current = true;
+      notify?.('Checkout canceled. You have not been charged.');
+      telemetry?.track?.('billing.checkout_returned', { outcome });
+      return;
+    }
+    if (clerkGetToken && !state.clerkUserId) return;
+    billingReturnHandledRef.current = true;
+    (async () => {
+      for (const delay of BILLING_RETURN_POLL_DELAYS_MS) {
+        if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+        if (unmountedRef.current) return;
+        const isPro = await refreshLicenseRef.current({ silent: true });
+        if (unmountedRef.current) return;
+        if (isPro) {
+          notify?.('Welcome to Prompt Lab Pro. Your subscription is active.');
+          telemetry?.track?.('billing.checkout_returned', { outcome, plan: 'pro' });
+          return;
+        }
+      }
+      notify?.('Payment received. Pro access can take a minute to appear. Use Refresh Status in Billing if it does not.');
+      telemetry?.track?.('billing.checkout_returned', { outcome, plan: 'pending' });
+    })();
+  }, [clerkGetToken, notify, state.clerkUserId, telemetry]);
+
   const activateLicense = useCallback(async (customerEmailInput) => {
     const customerEmail = String(customerEmailInput || state.customerEmail || '').trim().toLowerCase();
     if (stateRef.current.billingDisabled) {
@@ -430,6 +503,12 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       throw new Error(CHECKOUT_UNAVAILABLE_MESSAGE);
     }
     setBusyAction(`checkout:${period}`);
+    setBlockedExternal(null);
+    // Must run before the first await: browsers only allow a new tab during
+    // the click that triggered it.
+    const preopenAttempted = shouldPreopenExternalTab();
+    const preopenedTab = preopenAttempted ? preopenExternalTab() : null;
+    let tabHandedOff = false;
     try {
       const payload = await requestBilling('/billing/checkout', {
         method: 'POST',
@@ -454,18 +533,33 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       if (!payload?.url) {
         throw new Error('Billing checkout did not return a URL.');
       }
-      window.open(payload.url, '_blank', 'noopener,noreferrer');
-      notify?.('Opened Stripe checkout.');
+      const opened = openStripeUrl(preopenedTab, payload.url, preopenAttempted);
+      tabHandedOff = opened;
+      if (opened) {
+        notify?.('Stripe Checkout opened in a new tab.');
+      } else {
+        setBlockedExternal({ kind: 'checkout', url: payload.url });
+        notify?.(BLOCKED_TAB_MESSAGES.checkout);
+      }
       telemetry?.track?.('billing.checkout_started', {
         period,
         source,
         surface: telemetry?.surface || '',
+        tabBlocked: !opened,
       });
-      return true;
+      return opened;
+    } catch (error) {
+      if (error?.status === 409 && error?.code === 'already_subscribed') {
+        // The server found an existing Prompt Lab subscription. Refresh so the
+        // UI switches to Pro (Manage billing) instead of offering checkout.
+        void refreshLicense({ silent: true });
+      }
+      throw error;
     } finally {
+      if (!tabHandedOff) closeExternalTab(preopenedTab);
       setBusyAction('');
     }
-  }, [notify, requestBilling, telemetry]);
+  }, [notify, refreshLicense, requestBilling, telemetry]);
 
   const openManagePurchases = useCallback(async (overrides = {}) => {
     if (isOwnerProState(state)) {
@@ -474,6 +568,10 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     }
 
     setBusyAction('portal');
+    setBlockedExternal(null);
+    const preopenAttempted = shouldPreopenExternalTab();
+    const preopenedTab = preopenAttempted ? preopenExternalTab() : null;
+    let tabHandedOff = false;
     try {
       const payload = await requestBilling('/billing/portal', {
         method: 'POST',
@@ -487,10 +585,16 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
       if (!payload?.url) {
         throw new Error('Billing portal is not configured.');
       }
-      window.open(payload.url, '_blank', 'noopener,noreferrer');
-      telemetry?.track?.('billing.portal_opened', { plan: state.plan });
-      return true;
+      const opened = openStripeUrl(preopenedTab, payload.url, preopenAttempted);
+      tabHandedOff = opened;
+      if (!opened) {
+        setBlockedExternal({ kind: 'portal', url: payload.url });
+        notify?.(BLOCKED_TAB_MESSAGES.portal);
+      }
+      telemetry?.track?.('billing.portal_opened', { plan: state.plan, tabBlocked: !opened });
+      return opened;
     } finally {
+      if (!tabHandedOff) closeExternalTab(preopenedTab);
       setBusyAction('');
     }
   }, [notify, requestBilling, state.billingPeriod, state.customerEmail, state.customerId, state.plan, state.status, telemetry]);
@@ -514,7 +618,9 @@ export default function useBillingState({ notify, telemetry, clerkUser, clerkGet
     deactivateLicense,
     startCheckout,
     openManagePurchases,
-  }), [activateLicense, activateOwnerAccess, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, visibleState]);
+    blockedExternal,
+    clearBlockedExternal: () => setBlockedExternal(null),
+  }), [activateLicense, activateOwnerAccess, blockedExternal, busyAction, deactivateLicense, openManagePurchases, refreshLicense, startCheckout, visibleState]);
 
   return billing;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from '../icons';
+import { PRICE_COPY } from '../../../shared/pricing.js';
 import {
   BILLING_FEATURES,
   getFeatureMeta,
@@ -29,6 +30,9 @@ export default function BillingModal({
   const [localError, setLocalError] = useState('');
   const feature = useMemo(() => getFeatureMeta(requestedFeature), [requestedFeature]);
   const prelaunchOpenAccess = isPrelaunchOpenAccess(billing);
+  // AUD-001: a Pro account never sees purchase CTAs; it manages billing instead.
+  const isPro = billing.plan === 'pro';
+  const showPurchase = !isPro && !billing.billingDisabled && !billing.checkoutDisabled;
   const overlayRef = useRef(null);
   const dialogRef = useRef(null);
   const closeButtonRef = useRef(null);
@@ -190,11 +194,15 @@ export default function BillingModal({
             <h2 id="billing-modal-title" className={`mt-1 text-lg font-semibold ${m.text}`}>
               {prelaunchOpenAccess
                 ? 'All workflow features are open'
-                : (requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro')}
+                : (isPro
+                  ? 'Prompt Lab Pro is active'
+                  : (requestedFeature ? `${feature.label} is a Pro feature` : 'Unlock Prompt Lab Pro'))}
             </h2>
             <p id="billing-modal-description" className={`mt-2 text-sm leading-relaxed ${m.textMuted}`}>
               {prelaunchOpenAccess
                 ? 'Billing is unavailable on this deployment, but every Prompt Lab workflow remains available during prelaunch.'
+                : isPro
+                ? 'Your account already has Prompt Lab Pro. Use Manage billing to change plan, update payment details, or cancel.'
                 : (requestedFeature
                 ? `${feature.description} Upgrade to Pro or sync an existing Stripe subscription to keep going.`
                 : 'Use Stripe checkout for Prompt Lab Pro, then sync access on this device using the same billing email.')}
@@ -248,13 +256,48 @@ export default function BillingModal({
           </div>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && safeRequestedPeriod && (
+        {billing.blockedExternal?.url && (
+          <div data-testid="billing-blocked-tab" className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4" role="alert">
+            <p className="text-sm font-semibold text-amber-200">Your browser blocked the new tab</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/90">
+              Open Stripe with the link below. It opens in a new tab and Prompt Lab stays open here.
+            </p>
+            <a
+              href={billing.blockedExternal.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => billing.clearBlockedExternal?.()}
+              className="ui-control mt-3 inline-flex rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-slate-950 transition-colors hover:bg-amber-400"
+            >
+              {billing.blockedExternal.kind === 'portal' ? 'Open billing portal' : 'Continue to Stripe Checkout'}
+            </a>
+          </div>
+        )}
+
+        {isPro && !billing.billingDisabled && (
+          <div data-testid="billing-pro-manage" className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+            <p className="text-sm font-semibold text-emerald-200">You already have Prompt Lab Pro</p>
+            <p className="mt-1 text-xs leading-relaxed text-emerald-100/90">
+              There is nothing more to buy. Change plan, update payment details or cancel in the Stripe billing portal.
+            </p>
+            <button
+              type="button"
+              onClick={handleManagePurchases}
+              disabled={billing.busyAction === 'portal'}
+              className="ui-control mt-3 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-40"
+            >
+              Manage billing
+            </button>
+          </div>
+        )}
+
+        {showPurchase && safeRequestedPeriod && (
           <p className={`mt-4 text-xs leading-relaxed ${m.textMuted}`} role="status">
             Your {safeRequestedPeriod} choice from the pricing page is highlighted. Checkout starts only when you choose it below.
           </p>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && (
+        {showPurchase && (
         <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
           <button
             type="button"
@@ -264,7 +307,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl bg-orange-600 px-4 py-3 text-left text-white transition-colors hover:bg-orange-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-orange-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-orange-100">$9/month via Stripe</div>
+            <div className="mt-1 text-xs text-orange-100">{PRICE_COPY.monthlyPerPeriod} via Stripe</div>
             {safeRequestedPeriod === 'monthly' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-white">Selected on pricing page</div>
             )}
@@ -277,7 +320,7 @@ export default function BillingModal({
             className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
           >
             <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">$79/year, save $29</div>
+            <div className="mt-1 text-xs text-emerald-200">{PRICE_COPY.annualPerPeriod}, save {PRICE_COPY.annualSavings}</div>
             {safeRequestedPeriod === 'annual' && (
               <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
             )}
@@ -285,9 +328,9 @@ export default function BillingModal({
         </div>
         )}
 
-        {!billing.billingDisabled && !billing.checkoutDisabled && (
+        {showPurchase && (
           <p data-testid="billing-terms" className={`mt-2 text-[11px] leading-relaxed ${m.textMuted}`}>
-            New Pro subscriptions renew automatically at $9/month or $79/year until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
+            New Pro subscriptions renew automatically at {PRICE_COPY.monthlyPerPeriod} or {PRICE_COPY.annualPerPeriod} until you cancel. Existing annual subscriptions retain their current price. Cancel anytime in Manage Purchases;
             Pro stays active until the end of the period you paid for. Full refunds are available within 14 days of
             your first payment or an annual renewal, and a refund ends Pro.
           </p>

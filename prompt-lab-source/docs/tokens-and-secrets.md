@@ -181,8 +181,9 @@ billing-off rollback, run that spec with
 
 This restoration covers purchasing and account management. Pro feature
 gates are a separate build setting: `prompt-lab-web/vite.config.js` sets
-`VITE_PROMPTLAB_PRO_GATES=on`, so the hosted web app locks A/B testing, the
-diff viewer, batch runs, collections and library export for Free accounts
+`VITE_PROMPTLAB_PRO_GATES=on`, so the hosted web app locks A/B testing,
+batch runs and collections for Free accounts (library export and the diff
+viewer are free on every plan)
 (`src/lib/billing.js` `areFeatureGatesActive`). Free accounts keep every
 feature while the server reports `billingDisabled` or `checkoutDisabled`.
 The extension and desktop builds have no sign-in or checkout, so they never

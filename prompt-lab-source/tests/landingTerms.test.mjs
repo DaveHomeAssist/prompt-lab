@@ -49,8 +49,10 @@ test('terms cover every required topic', () => {
 });
 
 test('terms state the same prices as checkout', () => {
-  assert.match(billingModal, /\$9\/month/);
-  assert.match(billingModal, /\$79\/year/);
+  // AUD-013: the dialog renders PRICE_COPY from shared/pricing.js;
+  // tests/pricing-copy.test.mjs checks those amounts against these terms.
+  assert.match(billingModal, /PRICE_COPY\.monthlyPerPeriod/);
+  assert.match(billingModal, /PRICE_COPY\.annualPerPeriod/);
   assert.doesNotMatch(billingModal, /\$99\/year/);
   assert.match(text, /USD 9 per month or USD 79 per year/);
 });
