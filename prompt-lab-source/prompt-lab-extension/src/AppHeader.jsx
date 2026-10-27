@@ -97,7 +97,7 @@ export default function AppHeader({
             <div className="flex items-center gap-1.5 shrink-0">
               <Ic n="Wand2" size={15} className="text-orange-400" />
               <span className="pl-brand-title font-bold text-sm">Prompt Lab</span>
-              <span className={`text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}{BUILD_IDENTITY}</span>
+              <span className={`pl-header-build text-[10px] font-mono ${m.textMuted}`}>v{APP_VERSION}{BUILD_IDENTITY}</span>
             </div>
             <span className={`text-[10px] font-semibold uppercase tracking-[0.22em] ${m.textMuted}`}>
               {utilityCopy}

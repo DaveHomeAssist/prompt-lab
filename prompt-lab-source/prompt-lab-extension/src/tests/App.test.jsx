@@ -397,6 +397,20 @@ describe('App', () => {
     });
   });
 
+  it('lets first-run telemetry consent be deferred for the session without recording a choice', async () => {
+    window.sessionStorage.removeItem('pl2-telemetry-prompt-deferred');
+    render(<MemoryRouter><App /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask me later' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Allow analytics' })).not.toBeInTheDocument();
+    });
+    expect(window.sessionStorage.getItem('pl2-telemetry-prompt-deferred')).toBe('1');
+    expect(global.fetch).not.toHaveBeenCalled();
+    window.sessionStorage.removeItem('pl2-telemetry-prompt-deferred');
+  });
+
   it('opens a valid web pricing handoff once without starting checkout', async () => {
     vi.stubEnv('VITE_WEB_MODE', 'true');
     const onLandingIntentConsumed = vi.fn();

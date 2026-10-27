@@ -119,6 +119,8 @@ function persistDraftRecovery(snapshot) {
   }
 }
 
+const TELEMETRY_PROMPT_DEFER_KEY = 'pl2-telemetry-prompt-deferred';
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App({
   clerkUser,
@@ -234,6 +236,15 @@ export default function App({
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
   const telemetryConsentPending = telemetry.consentGiven == null;
+  // "Ask me later" hides the consent bar for this browser session without
+  // recording a choice; nothing is sent while consent is still pending.
+  const [telemetryPromptDeferred, setTelemetryPromptDeferred] = useState(() => {
+    try { return typeof window !== 'undefined' && window.sessionStorage?.getItem(TELEMETRY_PROMPT_DEFER_KEY) === '1'; } catch { return false; }
+  });
+  const deferTelemetryPrompt = () => {
+    setTelemetryPromptDeferred(true);
+    try { window.sessionStorage?.setItem(TELEMETRY_PROMPT_DEFER_KEY, '1'); } catch { /* session-only either way */ }
+  };
   const trackTelemetry = (event, context = {}) => {
     if (telemetry.consentGiven !== 'granted') return false;
     void telemetry.track(event, context);
@@ -1148,20 +1159,22 @@ export default function App({
 
       <PendingWritesNotice m={m} />
 
-      {telemetryConsentPending && (
-        <div className={`${m.surface} ${m.border} border-b px-4 py-3`}>
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className={`text-sm ${m.text}`}>
-              Help improve Prompt Lab with lightweight usage analytics.
+      {telemetryConsentPending && !telemetryPromptDeferred && (
+        <div className={`pl-consent-bar ${m.surface} ${m.border} border-b px-4 py-3`} data-telemetry-consent role="region" aria-label="Usage analytics">
+          <div className="pl-consent-inner mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className={`pl-consent-copy text-sm ${m.text}`}>
+              <span className="pl-consent-long">Help improve Prompt Lab with lightweight usage analytics.</span>
+              <span className="pl-consent-short">Allow usage analytics?</span>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="pl-consent-actions flex flex-wrap gap-2">
               <button
                 type="button"
                 data-testid="telemetry-allow"
+                aria-label="Allow analytics"
                 onClick={telemetry.grantConsent}
                 className="ui-control rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
               >
-                Allow analytics
+                <span className="pl-consent-long">Allow analytics</span><span className="pl-consent-short">Allow</span>
               </button>
               <button
                 type="button"
@@ -1170,6 +1183,16 @@ export default function App({
                 className={`ui-control rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${m.border} ${m.textSub} hover:bg-white/[0.06]`}
               >
                 No thanks
+              </button>
+              <button
+                type="button"
+                data-testid="telemetry-later"
+                onClick={deferTelemetryPrompt}
+                aria-label="Ask me later"
+                title="Ask me later"
+                className={`ui-control rounded-lg px-2 py-2 text-sm ${m.textSub} hover:bg-white/[0.06]`}
+              >
+                <Ic n="X" size={14} />
               </button>
             </div>
           </div>

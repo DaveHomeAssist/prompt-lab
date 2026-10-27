@@ -120,7 +120,8 @@
         '#' + consentPromptId + ' button:focus-visible,#' + consentPromptId + ' a:focus-visible{outline:2px solid #f3b19f;outline-offset:3px}',
         '#' + consentPromptId + ' [data-action="allow"]{border:1px solid #cc4524;background:#cc4524;color:#fff}',
         '#' + consentPromptId + ' [data-action="deny"]{border:1px solid rgba(255,255,255,.28);background:transparent;color:inherit}',
-        '@media (max-width:480px){#' + consentPromptId + '{right:16px;bottom:16px}}',
+        // Small phones: a slim full-width bar instead of a 26%-of-screen card.
+        '@media (max-width:480px){#' + consentPromptId + '{left:8px;right:8px;bottom:8px;max-width:none;padding:10px 12px;font-size:13px;line-height:1.35}#' + consentPromptId + ' p{margin:0 0 8px}#' + consentPromptId + ' button{min-height:36px;padding:6px 10px}}',
       ].join('');
 
       var prompt = document.createElement('aside');
