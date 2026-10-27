@@ -1328,3 +1328,17 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 /* Scratch note list density toggle. */
 .pl-segmented[role='group'] button { flex: 1 1 0; }
 .pl-segmented button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 17%, transparent); color: var(--pl-brand-ember-bright); opacity: 1; }
+
+/* Phone header: the full control row (481 px) cannot fit at 430 px and below,
+   and .is-compact clips horizontal overflow, so Report and the account menu
+   used to sit unreachable past the right edge. Secondary controls fold into
+   the More menu; New Prompt, Settings, More and the account button stay. */
+.pl-header-more { display: none; }
+.pl-header-more-panel { position: absolute; z-index: 85; top: calc(100% + 0.35rem); right: 0; display: grid; gap: 0.15rem; width: max-content; min-width: 13rem; max-width: calc(100vw - 1.5rem); }
+.pl-header-more-panel .pl-palette-control select { max-width: 7rem; }
+@media (max-width: 520px) {
+  .pl-app-header .pl-header-secondary { display: none; }
+  .pl-app-header .pl-header-more { display: block; }
+  .pl-app-header .pl-header-actions { flex-wrap: nowrap; max-width: 100%; }
+  .pl-app-header .pl-header-actions > * { flex-shrink: 0; }
+}

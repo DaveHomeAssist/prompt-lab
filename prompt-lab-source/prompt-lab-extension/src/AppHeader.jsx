@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import Ic from './icons';
 import { APP_VERSION } from './constants';
 import { BUILD_IDENTITY } from './buildIdentity.js';
@@ -19,6 +20,7 @@ export default function AppHeader({
   // Desktop: plan chip plus a link to the web app instead of Upgrade.
   desktopPlanLink = false,
   clerkUserButton,
+  accountActions = null,
   settingsButtonRef,
   renderMobileNavigation = true,
   onNewPrompt, newPromptDisabled = false,
@@ -26,6 +28,26 @@ export default function AppHeader({
   lockedRunsViews = {},
 }) {
   const { palette, setPalette } = useThemeTokens();
+  // Phones (<=520 px) cannot fit the full control row, and the compact shell
+  // clips horizontal overflow, so the secondary controls fold into "More".
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreRef = useRef(null);
+  const moreButtonRef = useRef(null);
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const onPointer = (event) => { if (moreRef.current && !moreRef.current.contains(event.target)) setMoreOpen(false); };
+    const onKey = (event) => { if (event.key === 'Escape') { setMoreOpen(false); moreButtonRef.current?.focus(); } };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('touchstart', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('touchstart', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [moreOpen]);
+  const runMore = (action) => () => { setMoreOpen(false); action(); };
+  const moreItemClass = `pl-header-more-item ui-control flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${m.textAlt} hover:text-orange-300`;
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
     plan: billingPlan,
     billingDisabled,
@@ -90,21 +112,37 @@ export default function AppHeader({
             </button>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="pl-header-actions ml-auto flex items-center gap-1" data-header-actions>
           <button type="button" data-testid="global-new-prompt" onClick={onNewPrompt}
             disabled={newPromptDisabled} title="Start a separate prompt. Current work can be restored with Undo."
             className="pl-primary-button ui-control px-2.5 py-1.5 text-xs whitespace-nowrap disabled:opacity-40">
             <Ic n="Plus" size={13} /> New Prompt
           </button>
-          <button type="button" aria-label="Command palette ⌘K" title="Command palette (⌘K)" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-orange-300 transition-colors`}>⌘K</button>
-          <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}>
-            {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
-          </button>
-          <label className="pl-palette-control"><span className="sr-only">Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
-          <button type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+          <div className="pl-header-secondary flex items-center gap-1">
+            <button type="button" aria-label="Command palette ⌘K" title="Command palette (⌘K)" onClick={() => { setShowCmdPalette(true); setCmdQuery(''); }} className={`ui-control px-2 py-1 rounded-lg ${m.btn} ${m.textAlt} text-[11px] font-mono hover:text-orange-300 transition-colors`}>⌘K</button>
+            <button type="button" aria-label={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={colorMode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setColorMode(p => p === 'dark' ? 'light' : 'dark')} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}>
+              {colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />}
+            </button>
+            <label className="pl-palette-control"><span className="sr-only">Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
+            <button type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Keyboard" size={13} /></button>
+          </div>
           <button ref={settingsButtonRef} type="button" aria-label="Settings" title="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Settings" size={13} /></button>
-          <button type="button" onClick={openProblemReport} aria-label="Report a problem" title="Report a problem" className={`ui-control px-2 py-1.5 rounded-lg ${m.btn} ${m.textAlt} text-xs`}>Report</button>
-          {clerkUserButton && <div className="ml-1">{clerkUserButton}</div>}
+          <button type="button" onClick={openProblemReport} aria-label="Report a problem" title="Report a problem" className={`pl-header-secondary ui-control px-2 py-1.5 rounded-lg ${m.btn} ${m.textAlt} text-xs`}>Report</button>
+          <div ref={moreRef} className="pl-header-more relative">
+            <button ref={moreButtonRef} type="button" aria-label="More actions" title="More actions" aria-expanded={moreOpen} aria-controls="pl-header-more-panel" onClick={() => setMoreOpen(open => !open)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="MoreHorizontal" size={15} /></button>
+            {moreOpen && (
+              <div id="pl-header-more-panel" role="group" aria-label="More actions" className={`pl-header-more-panel ${m.modal} border rounded-xl p-1.5 shadow-2xl`}>
+                <button type="button" className={moreItemClass} onClick={runMore(() => { setShowCmdPalette(true); setCmdQuery(''); })}><span className="font-mono text-[11px]">⌘K</span> Command palette</button>
+                <button type="button" className={moreItemClass} onClick={runMore(() => setColorMode(p => p === 'dark' ? 'light' : 'dark'))}>{colorMode === 'dark' ? <Ic n="Sun" size={13} /> : <Ic n="Moon" size={13} />} {colorMode === 'dark' ? 'Light mode' : 'Dark mode'}</button>
+                <label className={`pl-palette-control flex items-center justify-between gap-2 px-3 py-1 text-sm ${m.textAlt}`}><span>Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
+                <button type="button" className={moreItemClass} onClick={runMore(() => setShowShortcuts(true))}><Ic n="Keyboard" size={13} /> Keyboard shortcuts</button>
+                <button type="button" className={moreItemClass} onClick={runMore(openProblemReport)}><Ic n="AlertTriangle" size={13} /> Report a problem</button>
+                {accountActions?.manageAccount && <button type="button" className={moreItemClass} onClick={runMore(accountActions.manageAccount)}><Ic n="User" size={13} /> Manage account</button>}
+                {accountActions?.signOut && <button type="button" className={moreItemClass} onClick={runMore(accountActions.signOut)}><Ic n="LogOut" size={13} /> Sign out</button>}
+              </div>
+            )}
+          </div>
+          {clerkUserButton && <div className="ml-1 shrink-0" data-account-slot>{clerkUserButton}</div>}
         </div>
       </div>
       {!compact && <div className="pl-unified-navigation">

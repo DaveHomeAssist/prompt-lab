@@ -124,6 +124,7 @@ export default function App({
   clerkUser,
   clerkGetToken,
   clerkUserButton,
+  clerkAccountActions = null,
   landingIntent,
   landingAttribution,
   onLandingIntentConsumed,
@@ -1095,6 +1096,8 @@ export default function App({
     openSettings: () => { setShowSettings(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
+    manageAccount: clerkUser && clerkAccountActions?.manageAccount ? () => { closePalette(); clerkAccountActions.manageAccount(); } : undefined,
+    signOut: clerkUser && clerkAccountActions?.signOut ? () => { closePalette(); clerkAccountActions.signOut(); } : undefined,
   });
   const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
 
@@ -1130,6 +1133,7 @@ export default function App({
         billingUiEnabled={billingUiEnabled}
         desktopPlanLink={desktopPlanLink}
         clerkUserButton={clerkUser ? clerkUserButton : null}
+        accountActions={clerkUser ? clerkAccountActions : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
         lockedRunsViews={{ compare: !canUseAbTesting }}
@@ -1613,6 +1617,7 @@ export default function App({
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
+          account={clerkUser ? clerkAccountActions : null}
           returnFocusRef={settingsButtonRef}
         />
       )}

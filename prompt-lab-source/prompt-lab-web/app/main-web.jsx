@@ -2,7 +2,7 @@ import '../../prompt-lab-extension/src/lib/diagnosticsStart.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
-import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser, useAuth } from '@clerk/clerk-react';
+import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser, useAuth, useClerk } from '@clerk/clerk-react';
 import App from '../../prompt-lab-extension/src/App';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
 import ReportProblemHost from '../../prompt-lab-extension/src/ReportProblemHost.jsx';
@@ -67,6 +67,13 @@ const landingProps = {
 function AuthGate() {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
+  const clerk = useClerk();
+  // Fallback account actions for Settings, the command palette and the phone
+  // header's More menu, so Sign out never depends on the avatar being visible.
+  const clerkAccountActions = React.useMemo(() => ({
+    manageAccount: () => clerk.openUserProfile(),
+    signOut: () => clerk.signOut({ redirectUrl: '/?splash=1' }),
+  }), [clerk]);
 
   if (!isLoaded) {
     return (
@@ -154,6 +161,7 @@ function AuthGate() {
             {...landingProps}
             clerkUser={user}
             clerkGetToken={getToken}
+            clerkAccountActions={clerkAccountActions}
             clerkUserButton={<UserButton afterSignOutUrl="/?splash=1" appearance={{ variables: { colorPrimary: '#c2410c' } }} />}
           />
         </HashRouter>
