@@ -31,10 +31,21 @@ describe('signed-out sign-in context (AUD-006)', () => {
   });
 
   it('returns a plain sign-in to /app/ instead of the marketing page', () => {
-    const urls = buildAuthRedirectUrls('https://promptlab.tools/app/?billing=success', null);
+    const urls = buildAuthRedirectUrls('https://promptlab.tools/app/?stale=1', null);
     expect(urls.forceRedirectUrl).toBeUndefined();
     expect(urls.signUpForceRedirectUrl).toBeUndefined();
     expect(urls.fallbackRedirectUrl).toBe('https://promptlab.tools/app/');
     expect(urls.signUpFallbackRedirectUrl).toBe('https://promptlab.tools/app/');
+  });
+
+  it('keeps a Stripe return outcome through the sign-in redirect', () => {
+    const success = buildAuthRedirectUrls('https://promptlab.tools/app/?billing=success&stale=1', null);
+    expect(success.forceRedirectUrl).toBeUndefined();
+    expect(success.fallbackRedirectUrl).toBe('https://promptlab.tools/app/?billing=success');
+    expect(success.signUpFallbackRedirectUrl).toBe('https://promptlab.tools/app/?billing=success');
+    const cancelled = buildAuthRedirectUrls('https://promptlab.tools/app/?billing=canceled', null);
+    expect(cancelled.fallbackRedirectUrl).toBe('https://promptlab.tools/app/?billing=cancelled');
+    const ignored = buildAuthRedirectUrls('https://promptlab.tools/app/?billing=evil', null);
+    expect(ignored.fallbackRedirectUrl).toBe('https://promptlab.tools/app/');
   });
 });

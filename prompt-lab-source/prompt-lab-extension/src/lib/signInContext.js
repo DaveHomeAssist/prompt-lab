@@ -6,6 +6,7 @@
 // that same URL so App reopens the upgrade dialog with the plan selected.
 import { buildLandingIntentRedirectUrl, normalizeLandingIntent } from './landingAttribution.js';
 import { PRICE_COPY } from '../../../shared/pricing.js';
+import { parseBillingReturn } from './billingReturn.js';
 
 const PLAN_COPY = {
   monthly: `the monthly plan (${PRICE_COPY.monthlyPerPeriod})`,
@@ -40,7 +41,28 @@ export function buildAuthRedirectUrls(href, intent) {
   } catch {
     appUrl = '';
   }
-  const intentUrl = buildLandingIntentRedirectUrl(href, intent);
+  let intentUrl = buildLandingIntentRedirectUrl(href, intent);
+  // A Stripe return (?billing=success|cancelled) can land on the sign-in card
+  // when the Clerk session expired during Checkout. Keep the recognized outcome
+  // through the sign-in redirect so useBillingState still confirms it.
+  let billingOutcome = null;
+  try {
+    billingOutcome = parseBillingReturn(new URL(String(href)).search);
+  } catch {
+    billingOutcome = null;
+  }
+  const withBilling = (value) => {
+    if (!value || !billingOutcome) return value;
+    try {
+      const url = new URL(value);
+      url.searchParams.set('billing', billingOutcome);
+      return url.toString();
+    } catch {
+      return value;
+    }
+  };
+  appUrl = withBilling(appUrl);
+  intentUrl = withBilling(intentUrl);
   const target = intentUrl || appUrl;
   return {
     forceRedirectUrl: intentUrl || undefined,

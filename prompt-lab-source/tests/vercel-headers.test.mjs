@@ -74,6 +74,15 @@ test('the legacy library bridge stays frameable by the Prompt Lab app only', () 
   );
 });
 
+test('the companion reference page stays frameable by the same site only', () => {
+  const headers = headersFor('/companion/pilot-overview.html');
+  assert.equal(headers['x-frame-options'], 'SAMEORIGIN');
+  assert.equal(headers['content-security-policy'], "frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
+  assert.equal(headers['x-content-type-options'], 'nosniff');
+  // The companion shell that embeds it keeps the blanket denial.
+  assert.equal(headersFor('/companion/index.html')['x-frame-options'], 'DENY');
+});
+
 test('hashed build assets are cached immutably, pages are not (AUD-024)', () => {
   assert.equal(headersFor('/assets/index-Ab12Cd34.js')['cache-control'], 'public, max-age=31536000, immutable');
   for (const path of PAGES) assert.equal(headersFor(path)['cache-control'], undefined, path);
