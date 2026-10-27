@@ -17,6 +17,7 @@ import usePersistedState from './usePersistedState.js';
 import PanelResizer, { clampWidth } from './PanelResizer.jsx';
 import { INSPECTOR_WIDTH, LIBRARY_DRAWER_WIDTH, inspectorMaxWidth } from './lib/sidePane.js';
 import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
+import { getVersionCount } from './lib/promptSchema.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -177,7 +178,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
         <div><dt>Updated</dt><dd>{new Date(selected.updatedAt || selected.updated_at || selected.createdAt).toLocaleString()}</dd></div>
         <div><dt>Uses</dt><dd>{selected.useCount || 0}</dd></div>
-        <div><dt>Saved versions</dt><dd>{selected.versions?.length || 0}</dd></div>
+        <div><dt>Versions</dt><dd>{getVersionCount(selected)}</dd></div>
       </dl>
     </div>;
   }
@@ -594,7 +595,7 @@ export default function LibraryWorkspace({
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
               <span className="pl-library-card-copy"><Artwork value={entry.metadata?.artwork} /><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
-              <span className="pl-library-card-meta"><span>{entry.versions?.length || 0} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
+              <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
               {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>

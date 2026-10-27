@@ -130,7 +130,8 @@ test('R15 overview lists every prompt with title, uses and date', async () => wi
   expect(await titles(page)).toEqual(['Charlie notes', 'Bravo checklist', 'Alpha handoff', 'Delta archive']);
   const alpha = results(page).getByRole('listitem').filter({ hasText: 'Alpha handoff' });
   await expect(alpha).toContainText('9 uses');
-  await expect(alpha).toContainText('1 ver');
+  // One earlier snapshot plus the current content = 2 versions (V-08).
+  await expect(alpha).toContainText('2 ver');
 }));
 
 // ── Row 16 · Smart views ──────────────────────────────────────────────────
