@@ -10,6 +10,7 @@ export const EVENT_CODES = new Set([
 const providers = new Set(['anthropic', 'openai', 'gemini', 'openrouter', 'ollama', 'unknown']);
 const operations = new Set(['model', 'enhance', 'test', 'storage', 'report', 'unknown']);
 const errorTypes = new Set(['Error', 'TypeError', 'RangeError', 'SyntaxError', 'AbortError', 'QuotaExceededError', 'SecurityError', 'UnknownError']);
+const sources = new Set(['library_journal', 'scratch_read', 'scratch_save', 'scratch_export', 'experiments_read', 'experiments_save', 'run_read', 'run_save', 'test_case_read', 'test_case_save', 'indexeddb', 'local_storage', 'unknown']);
 const revision = typeof __PL_BUILD_REVISION__ === 'string' ? __PL_BUILD_REVISION__ : 'unknown';
 const uuid = () => globalThis.crypto?.randomUUID?.() || `${Date.now().toString(16)}-${Math.random().toString(16).slice(2)}`;
 const bytes = value => new TextEncoder().encode(JSON.stringify(value)).length;
@@ -38,6 +39,7 @@ export function safeMetadata(input = {}) {
   if (providers.has(input?.provider)) output.provider = input.provider;
   if (operations.has(input?.operation)) output.operation = input.operation;
   if (errorTypes.has(input?.errorType)) output.errorType = input.errorType;
+  if (sources.has(input?.source)) output.source = input.source;
   return output;
 }
 
@@ -80,7 +82,7 @@ export function createDiagnostics({ storage, native, now = Date.now, maxEvents =
     catch { warnings.add('Native diagnostic write failed.'); }
     return event;
   };
-  const exception = (code, error) => record(code, { errorType: errorTypes.has(error?.name) ? error.name : 'UnknownError' }, undefined, safeFrames(error?.stack));
+  const exception = (code, error, metadata = {}) => record(code, { ...metadata, errorType: errorTypes.has(error?.name) ? error.name : 'UnknownError' }, undefined, safeFrames(error?.stack));
   const begin = (operation, metadata = {}) => {
     const id = uuid(); const started = now(); let finished = false;
     record('operation_start', { ...metadata, operation }, id);

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-27T20:54:40.950Z",
+  "snapshotAt": "2026-10-27T22:06:33.240Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "9548501bec3648492e108c33c58704fd5c21d5dc",
+  "mainSha": "4564c63291dd755fa6d90e8aa794c69628034625",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Local diagnostics and user reporting",
+      "state": "Running",
+      "detail": "Approved design implemented. Local focused tests, 1369 shared tests and four native tests pass. Follow-up PR236 required after premature GitHub auto-merge; full CI/native stall and installation pending. No automatic uploads; private payloads excluded.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/236"
+    },
+    {
+      "label": "Quick-row regression and desktop recovery",
+      "state": "Running",
+      "detail": "Quick-row PR233 merged after all 13 checks. Runaway renderer recovered; 14 saved prompts and draft retained. Cause unknown; corrected installed build pending.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/233"
+    },
     {
       "label": "Social sign-in correction verified in production",
       "state": "Verified",
@@ -1352,6 +1364,30 @@
       "inPlan": false,
       "nextAction": "Retain explicit provider-button contrast when changing Clerk appearance.",
       "verification": "2026-10-27: Dave explicitly approved merge and deployment. PR231 merged as 9548501 after all six checks passed, including 1359 shared tests, 231 legacy tests, 25 landing browser tests and 65 hosted browser tests with one existing authenticated skip. Vercel dpl_CA61j5y5tpkSeZR5modyWXRSKTFM READY at exact merge and aliases promptlab.tools. Visually verified the actual signed-out /app/ page: GitHub and Google icons and labels are readable; both images loaded; dark rgb(24,24,27) text on light rgb(240,237,230) buttons. Local screenshot evidence saved. Prior approval hold superseded. Scoped issue Done, Notion read back."
+    },
+    {
+      "id": "406255fc8f448132b0a6c622ee4c1753",
+      "title": "Remove legacy Quick suggestions from desktop Write",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Bug",
+      "url": "https://app.notion.com/406255fc8f448132b0a6c622ee4c1753",
+      "inPlan": false,
+      "nextAction": "Install accepted combined diagnostics build and verify editor without legacy Quick rows.",
+      "verification": "2026-10-27: PR233 passed all 13 checks including alternate Windows NSIS/Linux AppImage acceptance and merged as c30c847. Legacy Quick/Recent strips removed. Previous renderer hang recovered with saved prompts intact; no cause claim. Installed corrected build pending."
+    },
+    {
+      "id": "406255fc8f44814eb98bc974fd7863b5",
+      "title": "Persistent diagnostics, native freeze detection and user-reviewed problem reports",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/406255fc8f44814eb98bc974fd7863b5",
+      "inPlan": false,
+      "nextAction": "Pass every PR236 check explicitly, install accepted Windows artifact and verify report export.",
+      "verification": "2026-10-27: Dave approved the design. Local diagnostic recorder, native watchdog and user-reviewed report flow implemented in PR235. Focused tests, 1369 shared tests and four native unit tests passed on Duncan. PR235 auto-merge triggered before all checks completed; existing import/error-screen test contracts were corrected in PR236. Full follow-up CI, native stall/export acceptance and installation remain pending. CPU/RSS and old-freeze root cause remain unknown."
     }
   ]
 }

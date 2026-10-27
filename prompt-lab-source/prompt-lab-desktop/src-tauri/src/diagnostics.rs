@@ -25,6 +25,7 @@ fn metadata(value: &Value) -> Value {
         ("provider", &["anthropic", "openai", "gemini", "openrouter", "ollama", "unknown"][..]),
         ("operation", &["model", "enhance", "test", "storage", "report", "unknown"][..]),
         ("errorType", &["Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "QuotaExceededError", "SecurityError", "UnknownError"][..]),
+        ("source", &["library_journal", "scratch_read", "scratch_save", "scratch_export", "experiments_read", "experiments_save", "run_read", "run_save", "test_case_read", "test_case_save", "indexeddb", "local_storage", "unknown"][..]),
     ] { if let Some(text) = value.get(key).and_then(Value::as_str) { if allowed.contains(&text) { result.insert(key.into(), json!(text)); } } }
     Value::Object(result)
 }
