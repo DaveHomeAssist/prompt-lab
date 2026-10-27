@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
@@ -14,6 +15,7 @@ on:
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
@@ -98,6 +100,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
+      - name: Test native diagnostic contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
+        run: cargo test --bin prompt-lab-desktop
+
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -105,6 +111,15 @@ jobs:
         with:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
+
+      - name: Retain diagnostic source maps
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-maps-desktop-${{ matrix.platform }}-${{ github.sha }}
+          path: prompt-lab-source/prompt-lab-desktop/.diagnostic-source-maps
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Upload build artifacts
         if: always()

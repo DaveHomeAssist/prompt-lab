@@ -1,9 +1,40 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod diagnostics;
+mod diagnostics_store;
+use tauri::{Emitter, Manager};
+use tauri::menu::{Menu, MenuItem, MenuItemKind};
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .run(tauri::generate_context!())
-        .expect("error while running Prompt Lab");
+        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export])
+        .setup(|app| {
+            app.manage(diagnostics::initialize(app.handle()));
+            let menu = Menu::default(app.handle())?;
+            for item in menu.items()? {
+                if let MenuItemKind::Submenu(help) = item {
+                    if help.text()? == "Help" {
+                        help.append(&MenuItem::with_id(app, "report-problem", "Report a problem…", true, None::<&str>)?)?;
+                        help.append(&MenuItem::with_id(app, "export-diagnostics", "Export diagnostics and open folder", true, None::<&str>)?)?;
+                    }
+                }
+            }
+            app.set_menu(menu)?;
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            if event.id() == "report-problem" { let _ = app.emit("promptlab:report-problem", ()); }
+            if event.id() == "export-diagnostics" {
+                let result = app.state::<diagnostics::Diagnostics>().export();
+                if let Ok(path) = &result { diagnostics::reveal_report(path); }
+                let _ = app.emit("promptlab:native-export", result);
+            }
+        })
+        .build(tauri::generate_context!())
+        .expect("error while building Prompt Lab")
+        .run(|app, event| {
+            if let tauri::RunEvent::Exit = event { app.state::<diagnostics::Diagnostics>().finish(); }
+        });
 }

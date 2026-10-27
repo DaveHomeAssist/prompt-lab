@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - "docs/**"
       - "prompt-lab-source/package.json"
       - "prompt-lab-source/package-lock.json"
@@ -51,6 +52,7 @@ on:
       - ".github/workflows/pages.yml"
   pull_request:
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - "docs/**"
       - "prompt-lab-source/package.json"
       - "prompt-lab-source/package-lock.json"
@@ -149,6 +151,15 @@ jobs:
 
       - name: Build hosted web surface
         run: npm run build --prefix prompt-lab-web
+
+      - name: Retain diagnostic source maps
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-maps-web-${{ github.sha }}
+          path: prompt-lab-source/prompt-lab-web/.diagnostic-source-maps
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Verify generated Pages parity
         run: |

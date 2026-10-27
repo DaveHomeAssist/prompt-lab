@@ -6,6 +6,7 @@ import { isPrelaunchOpenAccess } from './lib/billing.js';
 import { SUBVIEWS } from './lib/navigationRegistry.js';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import MobileNavigation from './MobileNavigation.jsx';
+import { openProblemReport } from './lib/diagnostics.js';
 
 export default function AppHeader({
   m, compact, libraryCount, colorMode, setColorMode,
@@ -86,6 +87,7 @@ export default function AppHeader({
           <label className="pl-palette-control"><span className="sr-only">Color palette</span><select aria-label="Color palette" value={palette} onChange={event => setPalette(event.target.value)}>{PALETTES.map(name => <option key={name} value={name}>{name[0].toUpperCase() + name.slice(1)}</option>)}</select></label>
           <button type="button" aria-label="Keyboard shortcuts" title="Keyboard shortcuts" onClick={() => setShowShortcuts(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Keyboard" size={13} /></button>
           <button ref={settingsButtonRef} type="button" aria-label="Settings" title="Settings" onClick={() => setShowSettings(true)} className={`ui-control p-1.5 rounded-lg ${m.btn} ${m.textAlt} hover:text-orange-300 transition-colors`}><Ic n="Settings" size={13} /></button>
+          <button type="button" onClick={openProblemReport} aria-label="Report a problem" title="Report a problem" className={`ui-control px-2 py-1.5 rounded-lg ${m.btn} ${m.textAlt} text-xs`}>Report</button>
           {clerkUserButton && <div className="ml-1">{clerkUserButton}</div>}
         </div>
       </div>
