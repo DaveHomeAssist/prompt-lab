@@ -198,7 +198,14 @@ pub fn initialize(app: &tauri::AppHandle) -> Diagnostics {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         // Do not serialize panic payloads or filesystem paths.
-        panic_state.log("native_panic", &json!({})); previous(info);
+        // A panic may occur while diagnostics already holds its mutex. Never
+        // wait for that same lock from the panic hook and turn a crash into a hang.
+        if let Ok(mut inner) = panic_state.0.try_lock() {
+            let event = normalized(&json!({}), "native_panic", timestamp_ms(), &inner.session);
+            if let Some(store) = &inner.store { let _ = store.append(&event.to_string()); }
+            inner.memory.push(event);
+        }
+        previous(info);
     }));
     let watcher = state.clone(); let handle = app.clone();
     std::thread::spawn(move || loop {
