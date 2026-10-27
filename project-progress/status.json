@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-26T16:12:25.545Z",
+  "snapshotAt": "2026-10-27T20:54:40.950Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "c36862c11a8e09b718dde37d6eeaceb6f022d66c",
+  "mainSha": "9548501bec3648492e108c33c58704fd5c21d5dc",
   "overall": "Acceptance incomplete",
   "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Social sign-in correction verified in production",
+      "state": "Verified",
+      "detail": "2026-10-27: Dave explicitly approved merge and deployment. PR231 merged as 9548501 after all six checks passed, including 1359 shared tests, 231 legacy tests, 25 landing browser tests and 65 hosted browser tests with one existing authenticated skip. Vercel dpl_CA61j5y5tpkSeZR5modyWXRSKTFM READY at exact merge and aliases promptlab.tools. Visually verified the actual signed-out /app/ page: GitHub and Google icons and labels are readable; both images loaded; dark rgb(24,24,27) text on light rgb(240,237,230) buttons. Local screenshot evidence saved. Prior approval hold superseded. Scoped issue Done, Notion read back.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/231"
+    },
+    {
+      "label": "Current web, extension and desktop builds available",
+      "state": "Verified",
+      "detail": "2026-10-27: Fresh extension ZIP built from main d782bde on Duncan Node22.23.4. Downloaded version1.8.0 Windows MSI/NSIS, macOS universal DMG and Linux DEB/AppImage from latest successful main Desktop Build40356488179 at c36862c, all six jobs passing. GitHub compare confirms only tracking files differ from d782bde; application source matches. SHA256 hashes and source provenance saved in local builds folder. Vercel production READY at d782bde. No user installation, store submission or public release; published v1.5.0 preview is stale. Broader signing/manual acceptance remains open.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40356488179"
+    },
     {
       "label": "Prompts beside Write and a wider inspector (October intake Slice 2)",
       "state": "Verified",
@@ -484,7 +496,7 @@
     {
       "label": "Live UX follow-up",
       "state": "Open",
-      "detail": "Production sign-in social-button text has low contrast. The companion measures 412px document width at a 400px viewport; both pre- and post-PR #105 screenshots have the same width. Retain these existing issues for the planned UX/accessibility phase; this test-only PR did not change application UI.",
+      "detail": "The historical social-button contrast issue is resolved by PR231, visually verified in production on October 27. The separate historical companion width issue remains unverified.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/105"
     },
     {
@@ -1051,7 +1063,7 @@
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
       "nextAction": "Qualify a named existing disposable VM with owner, guest access and whole-VM snapshot control before prior-version upgrade/restore. Recover the inaccessible runner route for qualification if appropriate. Keep Mac signing/profile and human/physical gates separate.",
-      "verification": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent. Earlier record: 2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened."
+      "verification": "2026-10-23: bounded read-only capability discovery found no qualified existing disposable VM/snapshot controller on two reachable runners; a third documented route timed out, so its VM capability remains Unknown. Standard tools/inventory locations were inspected, not every disk/profile. Prior v1.5.0-desktop-preview assets remain available at284ff094; candidate Desktop39900076918/d33ac1b artifacts are unexpired and native/shared source matches inspected main70f2c12. No package installation, upgrade or whole-VM restore was executed. Plan J Library Phase8 remains Done; these Plan I gates remain Unknown. Exact next prerequisite: a named existing disposable guest with owner, supported OS, synthetic profile, guest access and whole-VM snapshot control. No jobs/reservations/VMs/containers/remote claims or infrastructure changes were made; unrelated claims/services and newer repair/pricing/security owners were preserved. Notion Desktop/RUN/Hub appended and read back;51rows/14plan IDs preserved. Private Next Steps Board mapping remains absent. Earlier record: 2026-10-19: Desktop39211387600 on ea73681 passed6 jobs; all8 final Windows MSI/NSIS/Linux DEB/AppImage exercise and retention receipts passed. Exact macOS universal1.8.0 package builds, but strict signing fails and no DMG ticket is stapled. Mac installed interaction remains Unknown; existing personal1.7.0 app/profile untouched. Same-version retention is not prior-version upgrade or snapshot restore proof. PR131 merged as 547be3c. Candidate Desktop 37904980954 and exact-main 37906879426 passed all six jobs, including Windows MSI/NSIS and Linux DEB/AppImage exercise/retention. Fresh Windows diagnostics verify trusted click, loopback provider request and connection cancellation. Original precise timeout cause remains unproven; no assertions weakened. 2026-10-27: Fresh extension ZIP built from main d782bde on Duncan Node22.23.4. Downloaded version1.8.0 Windows MSI/NSIS, macOS universal DMG and Linux DEB/AppImage from latest successful main Desktop Build40356488179 at c36862c, all six jobs passing. GitHub compare confirms only tracking files differ from d782bde; application source matches. SHA256 hashes and source provenance saved in local builds folder. Vercel production READY at d782bde. No user installation, store submission or public release; published v1.5.0 preview is stale. Broader signing/manual acceptance remains open. 2026-10-27: Fresh extension ZIP built from main d782bde on Duncan Node22.23.4. Downloaded version1.8.0 Windows MSI/NSIS, macOS universal DMG and Linux DEB/AppImage from latest successful main Desktop Build40356488179 at c36862c, all six jobs passing. GitHub compare confirms only tracking files differ from d782bde; application source matches. SHA256 hashes and source provenance saved in local builds folder. Vercel production READY at d782bde. No user installation, store submission or public release; published v1.5.0 preview is stale. Broader signing/manual acceptance remains open."
     },
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
@@ -1328,6 +1340,18 @@
       "area": "Library",
       "type": "Tech Debt",
       "url": "https://app.notion.com/405255fc8f44814e998fdf193173cfe8"
+    },
+    {
+      "id": "406255fc8f4481ee8b3afcc77c0938d7",
+      "title": "Restore readable GitHub and Google sign-in buttons",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Bug",
+      "url": "https://app.notion.com/406255fc8f4481ee8b3afcc77c0938d7",
+      "inPlan": false,
+      "nextAction": "Retain explicit provider-button contrast when changing Clerk appearance.",
+      "verification": "2026-10-27: Dave explicitly approved merge and deployment. PR231 merged as 9548501 after all six checks passed, including 1359 shared tests, 231 legacy tests, 25 landing browser tests and 65 hosted browser tests with one existing authenticated skip. Vercel dpl_CA61j5y5tpkSeZR5modyWXRSKTFM READY at exact merge and aliases promptlab.tools. Visually verified the actual signed-out /app/ page: GitHub and Google icons and labels are readable; both images loaded; dark rgb(24,24,27) text on light rgb(240,237,230) buttons. Local screenshot evidence saved. Prior approval hold superseded. Scoped issue Done, Notion read back."
     }
   ]
 }
