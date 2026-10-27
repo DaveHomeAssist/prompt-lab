@@ -618,6 +618,10 @@ export default function LibraryWorkspace({
       side="end"
       getEdge={() => workspaceRef.current?.getBoundingClientRect().right}
     />
+    {/* At 1100 px and below the inspector floats over the list. The scrim makes
+        that a real drawer: the list underneath is dimmed and a tap on it closes
+        the inspector instead of acting on a half-covered card (V-06). */}
+    {selected && <button type="button" className="pl-inspector-scrim" data-dialog-scrim aria-hidden="true" tabIndex={-1} onClick={closeInspector} />}
     <aside
       ref={inspectorDialogRef}
       className="pl-library-inspector"

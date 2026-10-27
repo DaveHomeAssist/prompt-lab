@@ -46,6 +46,23 @@ export default function AppHeader({
       document.removeEventListener('keydown', onKey);
     };
   }, [moreOpen]);
+  // Publish the live header height so fixed drawers (the Library inspector at
+  // <=700 px) start below it instead of under a wrapped two- or three-row header.
+  const headerRef = useRef(null);
+  useEffect(() => {
+    const node = headerRef.current;
+    if (!node || typeof document === 'undefined') return undefined;
+    const root = document.documentElement;
+    const publish = () => root.style.setProperty('--pl-app-header-h', `${Math.round(node.getBoundingClientRect().height)}px`);
+    publish();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', publish);
+      return () => window.removeEventListener('resize', publish);
+    }
+    const observer = new ResizeObserver(publish);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const runMore = (action) => () => { setMoreOpen(false); action(); };
   const moreItemClass = `pl-header-more-item ui-control flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${m.textAlt} hover:text-orange-300`;
   const prelaunchOpenAccess = isPrelaunchOpenAccess({
@@ -73,7 +90,7 @@ export default function AppHeader({
 
   return (
     <>
-      <header className={`pl-app-header px-4 py-2 ${m.header} border-b shrink-0`}>
+      <header ref={headerRef} className={`pl-app-header px-4 py-2 ${m.header} border-b shrink-0`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="pl-header-identity flex min-w-0 items-center gap-2.5">
           <div className="flex items-center gap-2">

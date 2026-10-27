@@ -1342,3 +1342,23 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
   .pl-app-header .pl-header-actions { flex-wrap: nowrap; max-width: 100%; }
   .pl-app-header .pl-header-actions > * { flex-shrink: 0; }
 }
+
+/* Library inspector as a drawer at <=1100 px (V-06, V-07). */
+.pl-inspector-scrim { display: none; }
+@media (max-width: 1100px) {
+  .pl-library-workspace.has-inspector-selection > .pl-inspector-scrim { display: block; position: absolute; z-index: 4; inset: 0; min-width: 0; min-height: 0; border: 0; padding: 0; background: rgba(0, 0, 0, 0.45); cursor: default; }
+}
+@media (min-width: 401px) and (max-width: 700px) {
+  .pl-library-workspace.has-inspector-selection::before { content: none; }
+  .pl-library-workspace.has-inspector-selection > .pl-inspector-scrim { position: fixed; z-index: 74; top: var(--pl-app-header-h, 5rem); background: rgba(0, 0, 0, 0.58); }
+}
+@media (max-width: 700px) {
+  /* Start the fixed drawer below the live header height, not a fixed 5rem. */
+  .pl-library-inspector { top: var(--pl-app-header-h, 5rem); }
+}
+@media (max-width: 400px) {
+  .pl-library-workspace.has-inspector-selection > .pl-inspector-scrim { display: none; }
+}
+/* Let the inspector tabs wrap instead of hiding Version History off the edge. */
+.pl-inspector-tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 0.15rem; }
+.pl-inspector-tabs button { flex: 1 0 auto; }
