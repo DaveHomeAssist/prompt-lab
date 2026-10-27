@@ -70,7 +70,12 @@ function ReportDialog({ onClose }) {
           <div className="pl-report-actions">
             <button type="button" disabled={busy} onClick={exportReport}>Export report</button>
             <button type="button" disabled={busy} onClick={copyReport}>Copy report</button>
-            <a href={issueDraftUrl(report)} target="_blank" rel="noopener noreferrer">Open GitHub issue draft</a>
+            <a href={issueDraftUrl(report)} target="_blank" rel="noopener noreferrer" onClick={async event => {
+              if (!globalThis.PromptLabDiagnosticsNative?.openIssue) return;
+              event.preventDefault();
+              try { await globalThis.PromptLabDiagnosticsNative.openIssue(report.reportId); setStatus('Issue draft requested in your default browser. You choose what to attach and submit.'); }
+              catch { setStatus('Could not open the browser. Copy or export the report, then open the PromptLab GitHub issue page manually.'); }
+            }}>Open GitHub issue draft</a>
           </div>
           <p>The issue opens as a draft. You submit it yourself and choose whether to attach the reviewed export.</p>
         </>}

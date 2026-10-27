@@ -9,7 +9,7 @@ use tauri::menu::{Menu, MenuItem, MenuItemKind};
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export])
+        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue])
         .setup(|app| {
             app.manage(diagnostics::initialize(app.handle()));
             let menu = Menu::default(app.handle())?;
