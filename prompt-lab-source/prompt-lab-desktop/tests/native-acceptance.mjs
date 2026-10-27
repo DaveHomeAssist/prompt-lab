@@ -708,6 +708,40 @@ try {
     evidence.workspaceImport = previous.workspaceImport;
     await checkpoint('imported versions, mapped runs/test cases and provenance survived OS uninstall and reinstall');
   } else {
+    // Disposable CI profile only: prove the native thread keeps observing while
+    // JavaScript is blocked, then verify privacy and the exact reviewed export.
+    await waitFor(() => execute('return Boolean(window.PromptLabDiagnosticsNative);'), 'native diagnostics bridge');
+    await execute('window.PromptLabDiagnosticsNative.heartbeat({visible:true,heapBytes:null}); return true;');
+    await delay(2200);
+    await executeAsync(`
+      const done = arguments[arguments.length - 1];
+      setTimeout(() => {
+        const until = performance.now() + 19000;
+        while (performance.now() < until) { /* deliberately block disposable renderer */ }
+        done(true);
+      }, 0);
+    `);
+    const nativeDiagnostics = await waitFor(async () => {
+      const result = await executeAsync('const done=arguments[arguments.length-1]; window.PromptLabDiagnosticsNative.read().then(done);');
+      return result.events.some(e => e.code === 'renderer_recovered') ? result : false;
+    }, 'native watchdog recovery evidence');
+    assert.ok(nativeDiagnostics.events.some(e => e.code === 'renderer_hang_suspected'), 'Native watchdog observed renderer stall');
+    const exported = await executeAsync(`
+      const done=arguments[arguments.length-1];
+      (async () => {
+        await window.PromptLabDiagnosticsNative.record({code:'operation_error',metadata:{apiKey:'sk-PRIVATE_CANARY',prompt:'PRIVATE_CANARY',provider:'openai'},frames:['secret-customer.js:1:1']});
+        const native=await window.PromptLabDiagnosticsNative.read();
+        const report=await window.PromptLabDiagnosticsNative.prepare({reportId:crypto.randomUUID(),description:'Synthetic user report',events:[],native,warnings:[]});
+        const path=await window.PromptLabDiagnosticsNative.export(report);
+        done({path,report});
+      })().catch(() => done({failed:true}));
+    `);
+    assert.ok(exported.path, 'Native export acknowledged saved path');
+    const exportedText = await readFile(exported.path, 'utf8');
+    assert.deepEqual(JSON.parse(exportedText), exported.report, 'Saved bytes match complete preview');
+    assert.ok(!exportedText.includes('PRIVATE_CANARY') && !exportedText.includes('secret-customer'), 'Automatic diagnostic data is allowlisted');
+    evidence.diagnostics = { stallDetected:true, recovered:true, reviewedExportMatches:true, privateCanaryExcluded:true };
+    await checkpoint('native diagnostics stall, recovery, privacy and reviewed export passed');
     const baseline = await readLibrary();
     assert.ok(!baseline.some(row => row.original === 'Summarize this synthetic native acceptance note.'), 'Disposable runner must not contain a previous acceptance prompt');
     evidence.baselinePromptCount = baseline.length;

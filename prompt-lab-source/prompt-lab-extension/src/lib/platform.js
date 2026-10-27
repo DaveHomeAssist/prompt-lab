@@ -13,6 +13,7 @@
  */
 
 import { getInstalledProviderFixture } from './providerFixture.js';
+import { diagnostics } from './diagnostics.js';
 
 const IS_EXTENSION =
   typeof chrome !== 'undefined' &&
@@ -45,8 +46,10 @@ function buildRequestId() {
   return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-function extCallModel(payload, { signal } = {}) {
-  return new Promise((resolve, reject) => {
+async function extCallModel(payload, { signal } = {}) {
+  const finish = diagnostics().begin('model', { provider: payload?.provider });
+  try {
+  const result = await new Promise((resolve, reject) => {
     if (signal?.aborted) return reject(createAbortError());
     const requestId = buildRequestId();
     let settled = false;
@@ -84,6 +87,12 @@ function extCallModel(payload, { signal } = {}) {
       }
     );
   });
+  finish('operation_end');
+  return result;
+  } catch (error) {
+    finish(error?.name === 'AbortError' ? 'operation_cancel' : 'operation_error');
+    throw error;
+  }
 }
 
 function extListOllamaModels(baseUrl) {

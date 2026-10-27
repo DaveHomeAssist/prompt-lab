@@ -1,9 +1,11 @@
+import '../../prompt-lab-extension/src/lib/diagnosticsStart.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter } from 'react-router-dom';
 import { ClerkProvider, SignedIn, SignedOut, SignIn, UserButton, useUser, useAuth } from '@clerk/clerk-react';
 import App from '../../prompt-lab-extension/src/App';
 import ErrorBoundary from '../../prompt-lab-extension/src/ErrorBoundary';
+import ReportProblemHost from '../../prompt-lab-extension/src/ReportProblemHost.jsx';
 import {
   buildLandingIntentRedirectUrl,
   clearLandingAttribution,
@@ -14,6 +16,10 @@ import {
 import '../../prompt-lab-extension/src/index.css';
 
 const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+const reportRoot = document.createElement('div');
+reportRoot.id = 'promptlab-report-root';
+document.body.appendChild(reportRoot);
+ReactDOM.createRoot(reportRoot).render(<ReportProblemHost />);
 
 function getLandingStorage() {
   if (typeof window === 'undefined') return null;
