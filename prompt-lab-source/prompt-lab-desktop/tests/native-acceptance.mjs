@@ -711,6 +711,14 @@ try {
     // Disposable CI profile only: prove the native thread keeps observing while
     // JavaScript is blocked, then verify privacy and the exact reviewed export.
     await waitFor(() => execute('return Boolean(window.PromptLabDiagnosticsNative);'), 'native diagnostics bridge');
+    await click('[aria-label="Report a problem"]');
+    await waitFor(() => execute('return document.activeElement?.id === "pl-report-description";'), 'report initial keyboard focus');
+    await fill('#pl-report-description', 'Synthetic report UI acceptance');
+    await click('.pl-report-body > button');
+    await waitFor(() => execute('return Boolean(document.querySelector("[aria-label=\"Complete diagnostic report\"]"));'), 'complete report preview');
+    assert.equal(await execute('const r=document.querySelector(".pl-report-dialog").getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight;'), true, 'Report fits native viewport');
+    await screenshot('diagnostic-report-preview');
+    await click('[aria-label="Close problem report"]');
     await execute('window.PromptLabDiagnosticsNative.heartbeat({visible:true,heapBytes:null}); return true;');
     await delay(2200);
     await executeAsync(`
