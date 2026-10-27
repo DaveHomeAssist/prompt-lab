@@ -551,7 +551,7 @@ export default function LibraryWorkspace({
 
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">
-        <summary className="cursor-pointer text-sm font-semibold">Starter Libraries</summary>
+        <summary className="pl-starter-summary cursor-pointer text-sm font-semibold">Starter Libraries</summary>
         <div className="mt-3 flex flex-col gap-2">
           {lib.starterLibraries.map(pack => <StarterPackCard key={pack.id} pack={pack} m={m} onLoad={lib.loadStarterPack} />)}
         </div>
@@ -585,7 +585,7 @@ export default function LibraryWorkspace({
 
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
-        <div className="pl-library-index-actions">{entries.length > 0 && <label><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
+        <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
       </div>
 
       {entries.length === 0

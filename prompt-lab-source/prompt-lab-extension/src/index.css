@@ -1210,7 +1210,8 @@ textarea:disabled {
 .pl-artwork-picker { display: grid; gap: 0.5rem; min-width: 0; padding: 0.5rem; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 8px; }
 .pl-artwork-picker legend { font-size: 0.7rem; }
 .pl-artwork-options { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.pl-artwork-options button { padding: 0.4rem; border-radius: 5px; }
+.pl-artwork-options button { display: inline-grid; flex: 0 0 auto; min-width: 2rem; min-height: 2rem; place-items: center; padding: 0.4rem; border-radius: 5px; }
+.pl-starter-summary { padding-block: 0.25rem; }
 .pl-artwork-options button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 20%, transparent); }
 .pl-artwork-upload input { max-width: 100%; font-size: 0.7rem; }
 .pl-library-results.is-compact { display: grid; gap: 0.25rem; }
@@ -1386,3 +1387,17 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
   .pl-mobile-nav { margin: 0.2rem 0.25rem calc(0.2rem + env(safe-area-inset-bottom)); padding: 0.15rem; }
   .pl-app-shell.is-compact .pl-mobile-nav button { min-height: 2.75rem; }
 }
+
+/* Tap targets (V-11): at least 24 x 24 px of hit area, added with padding
+   and min sizes rather than larger visuals. Phones already get 44 px. */
+.pl-md-toggle { min-height: 1.5rem; min-width: 2.75rem; }
+.pl-library-card-select,
+.pl-library-select-all,
+.pl-check-row { display: inline-flex; align-items: center; gap: 0.35rem; min-height: 1.75rem; cursor: pointer; }
+.pl-library-card-select { justify-content: center; min-width: 1.75rem; }
+.pl-library-card-select input,
+.pl-library-select-all input,
+.pl-check-row input { width: 1rem; height: 1rem; cursor: pointer; }
+.pl-scratch-toolbar button { min-width: 1.75rem; }
+.pl-drawer-close { min-height: 1.75rem; padding-block: 0.3rem; }
+.pl-context-summary { min-height: 1.5rem; }

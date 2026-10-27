@@ -269,9 +269,9 @@ export default function CreateEditorPane({
             <span id="prompt-input-label" className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
             <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                className={`pl-md-toggle text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
               <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                className={`pl-md-toggle text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Preview</button>
             </div>
           </div>
           <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>
