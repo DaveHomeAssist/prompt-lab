@@ -25,6 +25,7 @@ fn metadata(value: &Value) -> Value {
         ("provider", &["anthropic", "openai", "gemini", "openrouter", "ollama", "unknown"][..]),
         ("operation", &["model", "enhance", "test", "storage", "report", "unknown"][..]),
         ("errorType", &["Error", "TypeError", "RangeError", "SyntaxError", "AbortError", "QuotaExceededError", "SecurityError", "UnknownError"][..]),
+        ("source", &["library_journal", "scratch_read", "scratch_save", "scratch_export", "experiments_read", "experiments_save", "run_read", "run_save", "test_case_read", "test_case_save", "indexeddb", "local_storage", "unknown"][..]),
     ] { if let Some(text) = value.get(key).and_then(Value::as_str) { if allowed.contains(&text) { result.insert(key.into(), json!(text)); } } }
     Value::Object(result)
 }
@@ -169,6 +170,19 @@ pub fn diagnostics_read(state: tauri::State<'_, Diagnostics>) -> Result<Value, S
 #[tauri::command]
 pub fn diagnostics_prepare(state: tauri::State<'_, Diagnostics>, report: Value) -> Result<Value, String> { state.prepare_report(&report) }
 #[tauri::command]
+pub fn diagnostics_open_issue(report_id: String) -> Result<(), String> {
+    if !valid_id(&report_id) { return Err("invalid_report_id".into()); }
+    // The renderer cannot choose a host, command, file or arbitrary query text.
+    let url = format!("https://github.com/DaveHomeAssist/prompt-lab/issues/new?title=Prompt%20Lab%20problem%20report&body=Report%20ID%3A%20{}%0ABuild%3A%20{}%20({})%0ASurface%3A%20desktop%0A%0ADescribe%20the%20problem%20and%20attach%20your%20reviewed%20export%20if%20appropriate.", report_id, env!("CARGO_PKG_VERSION"), option_env!("PROMPTLAB_REVISION").unwrap_or("unknown"));
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new("rundll32.exe").args(["url.dll,FileProtocolHandler", &url]).spawn();
+    #[cfg(target_os = "macos")]
+    let result = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(target_os = "linux")]
+    let result = std::process::Command::new("xdg-open").arg(&url).spawn();
+    result.map(|_| ()).map_err(|_| "browser_open_failed".into())
+}
+#[tauri::command]
 pub fn diagnostics_export(state: tauri::State<'_, Diagnostics>, report: Option<Value>) -> Result<String, String> { state.export_report(report.as_ref()) }
 
 pub fn initialize(app: &tauri::AppHandle) -> Diagnostics {
@@ -184,7 +198,14 @@ pub fn initialize(app: &tauri::AppHandle) -> Diagnostics {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         // Do not serialize panic payloads or filesystem paths.
-        panic_state.log("native_panic", &json!({})); previous(info);
+        // A panic may occur while diagnostics already holds its mutex. Never
+        // wait for that same lock from the panic hook and turn a crash into a hang.
+        if let Ok(mut inner) = panic_state.0.try_lock() {
+            let event = normalized(&json!({}), "native_panic", timestamp_ms(), &inner.session);
+            if let Some(store) = &inner.store { let _ = store.append(&event.to_string()); }
+            inner.memory.push(event);
+        }
+        previous(info);
     }));
     let watcher = state.clone(); let handle = app.clone();
     std::thread::spawn(move || loop {
@@ -214,6 +235,11 @@ pub fn reveal_report(path: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn issue_launcher_rejects_urls_and_shell_text() {
+        assert!(diagnostics_open_issue("https://example.com".into()).is_err());
+        assert!(diagnostics_open_issue("12345678&body=PRIVATE".into()).is_err());
+    }
     #[test]
     fn privacy_and_reviewed_export_are_idempotent() {
         let dir = std::env::temp_dir().join(format!("pl-report-{}-{}", std::process::id(), timestamp_ms()));

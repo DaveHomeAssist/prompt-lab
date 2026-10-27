@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createDiagnostics, safeFrames, registerDiagnosticSource } from '../lib/diagnostics.js';
+import { createDiagnostics, diagnostics, safeFrames, registerDiagnosticSource } from '../lib/diagnostics.js';
+import { logWarn } from '../lib/logger.js';
 
 describe('local diagnostic contract', () => {
   beforeEach(() => localStorage.clear());
@@ -52,5 +53,13 @@ describe('local diagnostic contract', () => {
     expect(new TextEncoder().encode(JSON.stringify(snapshot.events)).length).toBeLessThanOrEqual(1200);
     expect(safeFrames('at x (/private/secret-customer.js:1:2)')).toEqual([]);
     expect(safeFrames('at x (/assets/app-PRIVATE_CANARY.js:1:2)')).toEqual([]);
+  });
+  it('retains fixed failure-source labels without interpolated prompt titles', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    logWarn('test case batch: PRIVATE_CANARY', new Error('PRIVATE_CANARY'));
+    const snapshot = diagnostics().snapshot();
+    expect(snapshot.events.at(-1).metadata.source).toBe('test_case_save');
+    expect(JSON.stringify(snapshot)).not.toContain('PRIVATE_CANARY');
+    warn.mockRestore();
   });
 });

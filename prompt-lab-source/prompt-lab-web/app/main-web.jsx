@@ -19,7 +19,7 @@ const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const reportRoot = document.createElement('div');
 reportRoot.id = 'promptlab-report-root';
 document.body.appendChild(reportRoot);
-ReactDOM.createRoot(reportRoot).render(<ReportProblemHost />);
+ReactDOM.createRoot(reportRoot).render(<ReportProblemHost launcher />);
 
 function getLandingStorage() {
   if (typeof window === 'undefined') return null;

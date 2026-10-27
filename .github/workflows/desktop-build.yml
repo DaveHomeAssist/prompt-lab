@@ -56,7 +56,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify native scenario logic, Library layout and overlap, and Library test cases
-        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js
+        run: node ../prompt-lab-desktop/tests/native-script-syntax.test.mjs && npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js
 
   desktop-build:
     needs: extension-tests
@@ -100,10 +100,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
-      - name: Test native diagnostic contracts
-        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
-        run: cargo test --bin prompt-lab-desktop
-
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -111,6 +107,10 @@ jobs:
         with:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
+
+      - name: Test native diagnostic contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
+        run: cargo test --release --bin prompt-lab-desktop
 
       - name: Retain diagnostic source maps
         uses: actions/upload-artifact@v4

@@ -8,6 +8,7 @@ globalThis.PromptLabDiagnosticsNative = {
   heartbeat: ({ visible, heapBytes }) => invoke('diagnostics_heartbeat', { visible, heapBytes }),
   read: () => invoke('diagnostics_read'),
   prepare: report => invoke('diagnostics_prepare', { report }),
+  openIssue: reportId => invoke('diagnostics_open_issue', { reportId }),
   export: report => invoke('diagnostics_export', { report }),
 };
 listen('promptlab:report-problem', () => window.dispatchEvent(new Event('promptlab:report-problem'))).catch(() => {});

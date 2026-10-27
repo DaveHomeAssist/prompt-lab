@@ -48,3 +48,15 @@ it('remains usable after an application render failure and contains keyboard foc
   last.focus(); fireEvent.keyDown(last, { key: 'Tab' });
   expect(screen.getByRole('button', { name: 'Use dark mode' })).toHaveFocus();
 });
+it('uses only the report ID to open the native issue draft and shows launch failure', async () => {
+  globalThis.PromptLabDiagnosticsNative = { read: vi.fn().mockResolvedValue({ events: [] }), openIssue: vi.fn().mockRejectedValue(new Error('unavailable')) };
+  render(<ReportProblemHost />);
+  act(() => window.dispatchEvent(new Event('promptlab:report-problem')));
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'PRIVATE_USER_DESCRIPTION' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Preview diagnostic report' }));
+  await screen.findByLabelText('Complete diagnostic report');
+  fireEvent.click(screen.getByRole('link', { name: 'Open GitHub issue draft' }));
+  expect(await screen.findByText(/Could not open the browser/)).toBeInTheDocument();
+  expect(globalThis.PromptLabDiagnosticsNative.openIssue).toHaveBeenCalledWith(expect.stringMatching(/^[a-f0-9-]+$/i));
+  expect(JSON.stringify(globalThis.PromptLabDiagnosticsNative.openIssue.mock.calls)).not.toContain('PRIVATE');
+});
