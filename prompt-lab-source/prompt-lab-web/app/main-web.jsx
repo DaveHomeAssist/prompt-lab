@@ -89,13 +89,27 @@ function AuthGate() {
           <SignIn
             forceRedirectUrl={landingIntentRedirectUrl || undefined}
             appearance={{
+              layout: { socialButtonsVariant: 'blockButton' },
               variables: {
                 colorPrimary: '#c2410c',
                 colorBackground: '#06060a',
                 colorText: '#f0ede6',
+                colorNeutral: '#f0ede6',
                 colorInputBackground: '#18181b',
                 colorInputText: '#f0ede6',
                 borderRadius: '0.75rem',
+              },
+              elements: {
+                // Provider artwork includes dark pixels; give it a light surface
+                // instead of relying on the card's general text color.
+                socialButtonsBlockButton: {
+                  backgroundColor: '#f0ede6',
+                  color: '#18181b',
+                  border: '1px solid #f0ede6',
+                  '&:hover': { backgroundColor: '#ffffff' },
+                  '&:focus-visible': { outline: '2px solid #fb923c', outlineOffset: '3px' },
+                },
+                socialButtonsBlockButtonText: { color: '#18181b' },
               },
             }}
           />
