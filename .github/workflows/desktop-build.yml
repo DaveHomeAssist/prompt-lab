@@ -100,10 +100,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
-      - name: Test native diagnostic contracts
-        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
-        run: cargo test --bin prompt-lab-desktop
-
       - name: Build desktop app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -111,6 +107,10 @@ jobs:
         with:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
+
+      - name: Test native diagnostic contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
+        run: cargo test --release --bin prompt-lab-desktop
 
       - name: Retain diagnostic source maps
         uses: actions/upload-artifact@v4
