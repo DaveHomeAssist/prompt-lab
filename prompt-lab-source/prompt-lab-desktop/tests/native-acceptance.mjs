@@ -715,7 +715,7 @@ try {
     await waitFor(() => execute('return document.activeElement?.id === "pl-report-description";'), 'report initial keyboard focus');
     await fill('#pl-report-description', 'Synthetic report UI acceptance');
     await click('.pl-report-body > button');
-    await waitFor(() => execute('return Boolean(document.querySelector("[aria-label=\"Complete diagnostic report\"]"));'), 'complete report preview');
+    await waitFor(() => execute('return Boolean(document.querySelector(".pl-report-body pre"));'), 'complete report preview');
     assert.equal(await execute('const r=document.querySelector(".pl-report-dialog").getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.bottom<=innerHeight;'), true, 'Report fits native viewport');
     await screenshot('diagnostic-report-preview');
     await click('[aria-label="Close problem report"]');
