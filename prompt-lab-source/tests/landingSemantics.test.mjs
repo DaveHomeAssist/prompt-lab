@@ -100,7 +100,7 @@ test('interactive sample uses labeled native controls and persistent status sema
   assert.equal(modeInputs.length, 3);
   assert.deepEqual(
     modeInputs.map((tag) => attributeValue(tag, 'value')).sort(),
-    ['balanced', 'concise', 'detailed'],
+    ['expanded', 'rebuilt', 'refined'],
   );
   for (const tag of modeInputs) {
     assert.equal(attributeValue(tag, 'type'), 'radio');
@@ -246,9 +246,9 @@ test('landing conversion controls have unique stable analytics identifiers', () 
   assert.equal(new Set(analyticsIds).size, analyticsIds.length, 'Landing analytics IDs must be unique');
   assert.deepEqual([...analyticsIds].sort(), [
     'landing.demo.example_prompt',
-    'landing.demo.mode_balanced',
-    'landing.demo.mode_concise',
-    'landing.demo.mode_detailed',
+    'landing.demo.mode_expanded',
+    'landing.demo.mode_rebuilt',
+    'landing.demo.mode_refined',
     'landing.demo.show_result',
     'landing.demo.try_own',
     'landing.final.try_free',
