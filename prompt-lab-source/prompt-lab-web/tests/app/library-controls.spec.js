@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { selectPalette, switchTheme } from './theme-toggle.js';
 
 for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]]) {
   test(`hosted Library controls at ${width}x${height}`, async ({ page }) => {
@@ -15,9 +16,9 @@ for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [3440, 1440]
     await expect(page.getByRole('button', { name: 'Inspect Production handoff' })).toBeVisible();
     for (const mode of ['dark', 'light']) {
       const shell = page.locator('.pl-app-shell');
-      if (await shell.getAttribute('data-theme') !== mode) await page.getByRole('button', { name: `Switch to ${mode} mode` }).click();
+      if (await shell.getAttribute('data-theme') !== mode) await switchTheme(page, mode);
       for (const palette of ['ember', 'ocean', 'forest', 'plum']) {
-        await page.getByLabel('Color palette').selectOption(palette);
+        await selectPalette(page, palette);
         await expect(page.locator('html')).toHaveAttribute('data-palette', palette);
       }
     }

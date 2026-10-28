@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { switchTheme } from './theme-toggle.js';
 
 const note = '# Active note\n\nA synthetic note for screen-space acceptance.\n\n' + 'Long note content.\n'.repeat(80);
 const readPads = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-pads')));
@@ -74,7 +75,7 @@ for (const size of [{ width: 1440, height: 900 }, { width: 375, height: 812 }, {
         expect(await target.evaluate(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.x >= 0 && r.y >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })).toBe(true);
       }
       await page.screenshot({ path: testInfo.outputPath(`focus-${size.width}-${theme}.png`) });
-      await page.getByRole('button', { name: /Switch to (dark|light) mode/ }).click();
+      await switchTheme(page);
     }
     await exit.click();
     await expect(editor).toHaveValue(note + '\nA saved focus edit.');

@@ -32,7 +32,11 @@ for (const [width, height] of [[375, 812], [812, 375], [1440, 900], [1920, 1080]
     if (width < 720) { await expect(page.getByRole('dialog', { name: 'Library views' })).toBeVisible(); await page.keyboard.press('Escape'); }
     else await page.getByRole('button', { name: 'Hide Library drawer', exact: true }).click();
     for (const view of ['Compact view', 'Gallery view', 'Tile view', 'List view']) { await page.getByRole('button', { name: view }).click(); await expect(page.getByRole('button', { name: view })).toHaveAttribute('aria-pressed', 'true'); }
-    for (const palette of ['forest', 'plum', 'ember', 'ocean']) await page.getByLabel('Color palette').selectOption(palette);
+    // Phones (<=520 px) fold the palette picker into the header's More menu.
+    const more = page.getByRole('button', { name: 'More actions', exact: true });
+    const paletteScope = await more.isVisible() ? (await more.click(), page.locator('#pl-header-more-panel')) : page.locator('[data-header-actions]');
+    for (const palette of ['forest', 'plum', 'ember', 'ocean']) await paletteScope.getByLabel('Color palette').selectOption(palette);
+    if (await more.isVisible()) await page.keyboard.press('Escape');
     await expect(page.locator('html')).toHaveAttribute('data-palette', 'ocean');
     await page.getByRole('button', { name: `Inspect ${entry.title}` }).click();
     if (width > 1100) {
