@@ -24,6 +24,11 @@ describe('appPathToHashUrl (V-03)', () => {
     expect(appPathToHashUrl({ pathname: '/app/compare', search: '', hash: '#/library' })).toBe('/app/#/library');
   });
 
+  it('keeps shared prompt and pack payload fragments', () => {
+    expect(appPathToHashUrl({ pathname: '/app/library', search: '', hash: '#share=abc123' })).toBe('/app/#share=abc123');
+    expect(appPathToHashUrl({ pathname: '/app/compare', search: '?x=1', hash: '#pack=xyz' })).toBe('/app/?x=1#pack=xyz');
+  });
+
   it('leaves the app root and non-app paths alone', () => {
     for (const pathname of ['/app/', '/app', '/app/index.html', '/', '/terms']) {
       expect(appPathToHashUrl({ pathname, search: '', hash: '#/library' })).toBeNull();

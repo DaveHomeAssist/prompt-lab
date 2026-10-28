@@ -23,6 +23,9 @@ export function appPathToHashUrl({ pathname = '', search = '', hash = '' } = {},
   if (!pathname.startsWith(prefix)) return null;
   const rest = pathname.slice(prefix.length).replace(/\/+$/, '');
   if (!rest || rest === 'index.html') return null;
+  // Shared prompt/pack payloads (#share=…, #pack=…) must reach
+  // usePersistenceFlow intact; keep the fragment and drop only the path.
+  if (/^#(share|pack)=/.test(hash)) return `${prefix}${search}${hash}`;
   // An explicit hash route wins over the path, e.g. /app/foo#/library.
   if (/^#\/./.test(hash)) return `${prefix}${search}${hash}`;
   const [first, ...tail] = rest.split('/').map((part) => {
