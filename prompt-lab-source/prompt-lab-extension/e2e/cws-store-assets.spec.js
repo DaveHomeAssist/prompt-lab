@@ -146,7 +146,7 @@ test('capture CWS listing screenshots and promo tile', async () => {
     const exp = evaluate ? await tryClick(page, ['Compare']) : null;
     expect(exp, 'Compare view reached before screenshot').toBeTruthy();
     await frame(context, await page.screenshot(), {
-      title: 'A/B compare across models and variants',
+      title: 'Compare across models and variants',
       body: 'Run one prompt against several providers or variations and compare the results side by side to find what actually works.',
     }, 'screenshot-3-experiments.png');
     captured.push('screenshot-3-experiments.png');

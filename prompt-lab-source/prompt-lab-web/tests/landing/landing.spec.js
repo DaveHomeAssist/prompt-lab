@@ -227,11 +227,16 @@ test('critical landing controls work through the tab order without pointer input
 
   const monthly = page.locator('#billingMonthly');
   const annual = page.locator('#billingAnnual');
-  await tabUntil(page, monthly);
+  // Annual is preselected, so Tab lands on it; Monthly is one arrow key away.
+  await tabUntil(page, annual);
+  await page.keyboard.press('ArrowLeft');
+  await expect(monthly).toBeChecked();
+  await expect(monthly).toBeFocused();
+  await expect(page.locator('#proPrice')).toHaveText('9');
+  await expect(page.locator('#proCta')).toHaveAttribute('href', '/app?upgrade=pro&period=monthly&source=landing-pricing');
   await page.keyboard.press('ArrowRight');
   await expect(annual).toBeChecked();
-  await expect(annual).toBeFocused();
-  await expect(page.locator('#proPrice')).toContainText('79');
+  await expect(page.locator('#proPrice')).toHaveText('79');
   await expect(page.locator('#proCta')).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
 
   const firstQuestion = page.locator('#faq summary').first();
@@ -381,7 +386,8 @@ test('landing controls purge poisoned attribution and store only allowlisted fun
   await page.locator('[data-analytics-id="landing.surface.extension"]').click();
   await page.locator('#demoRun').click();
   await expect(page.locator('#demoStatus')).toHaveText('Example ready. No provider was called.');
-  await page.locator('label[for="billingAnnual"]').click();
+  // Annual is the default, so switching to Monthly is the recorded change.
+  await page.locator('label[for="billingMonthly"]').click();
 
   const stored = await page.evaluate(() => sessionStorage.getItem('promptlab_landing_attribution'));
   expect(stored).not.toBeNull();
@@ -417,6 +423,11 @@ test('landing controls purge poisoned attribution and store only allowlisted fun
     placement: 'surface_extension',
     intent: 'open',
     destination: 'setup',
+  });
+  expect(payload.events[5]).toMatchObject({
+    event: 'landing.pricing_period_selected',
+    placement: 'pricing_pro',
+    period: 'monthly',
   });
 
   const allowedKeys = new Set([
@@ -664,21 +675,27 @@ test('billing-period radios update displayed pricing and the explicit app handof
   const period = page.locator('#proPeriod');
   const cta = page.locator('#proCta');
 
+  // Proposal 1: Annual is the default view and the default handoff.
+  await expect(annual).toBeChecked();
+  await expect(monthly).not.toBeChecked();
+  await expect(price).toHaveText('79');
+  await expect(period).toHaveText('per year · $6.58 effective monthly · save $29/year');
+  await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
+  await expect(cta).toHaveAttribute('data-period', 'annual');
+
+  await page.locator('label[for="billingMonthly"]').click();
   await expect(monthly).toBeChecked();
-  await expect(price).toContainText('9');
-  await expect(period).toContainText(/month/i);
+  await expect(price).toHaveText('9');
+  await expect(period).toHaveText('per month');
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=monthly&source=landing-pricing');
+  await expect(cta).toHaveAttribute('data-period', 'monthly');
 
   await page.locator('label[for="billingAnnual"]').click();
-  await expect(price).toContainText('79');
+  await expect(price).toHaveText('79');
   await expect(period).toContainText(/year/i);
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
   await expect(page.locator('#pricing')).toContainText('$6.58');
   await expect(page.locator('#pricing')).toContainText(/Save \$29\/year/i);
-
-  await page.locator('label[for="billingMonthly"]').click();
-  await expect(price).toContainText('9');
-  await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=monthly&source=landing-pricing');
 });
 
 test('target-blank links protect the opener in rendered landing and docs pages', async ({ page }) => {

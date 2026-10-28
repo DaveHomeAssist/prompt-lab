@@ -160,13 +160,13 @@ describe('LibraryPanel actions', () => {
     expect(props.lib.del).not.toHaveBeenCalled();
   });
 
-  it('routes library prompts into the requested A/B variant', () => {
+  it('routes library prompts into the requested Compare variant', () => {
     const props = makeProps();
 
     render(<LibraryPanel {...props} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /A\/B A/i }));
-    fireEvent.click(screen.getByRole('button', { name: /A\/B B/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Compare A/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Compare B/i }));
 
     expect(props.sendToABTest).toHaveBeenNthCalledWith(1, props.lib.filtered[0], 'a');
     expect(props.sendToABTest).toHaveBeenNthCalledWith(2, props.lib.filtered[0], 'b');

@@ -221,7 +221,7 @@ vi.mock('../icons.jsx', () => ({
 }));
 
 vi.mock('../AppHeader.jsx', () => ({
-  default: ({ billingUiEnabled }) => <div data-testid="app-header" data-billing-ui={String(billingUiEnabled)} />,
+  default: ({ billingUiEnabled, desktopPlanLink }) => <div data-testid="app-header" data-billing-ui={String(billingUiEnabled)} data-desktop-plan-link={String(Boolean(desktopPlanLink))} />,
 }));
 
 vi.mock('../MainWorkspace.jsx', () => ({
@@ -397,6 +397,20 @@ describe('App', () => {
     });
   });
 
+  it('lets first-run telemetry consent be deferred for the session without recording a choice', async () => {
+    window.sessionStorage.removeItem('pl2-telemetry-prompt-deferred');
+    render(<MemoryRouter><App /></MemoryRouter>);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask me later' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Allow analytics' })).not.toBeInTheDocument();
+    });
+    expect(window.sessionStorage.getItem('pl2-telemetry-prompt-deferred')).toBe('1');
+    expect(global.fetch).not.toHaveBeenCalled();
+    window.sessionStorage.removeItem('pl2-telemetry-prompt-deferred');
+  });
+
   it('opens a valid web pricing handoff once without starting checkout', async () => {
     vi.stubEnv('VITE_WEB_MODE', 'true');
     const onLandingIntentConsumed = vi.fn();
@@ -452,6 +466,30 @@ describe('App', () => {
     expect(screen.queryByRole('dialog', { name: 'Billing handoff' })).not.toBeInTheDocument();
     expect(onLandingIntentConsumed).not.toHaveBeenCalled();
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('uses the desktop plan link instead of billing screens in the desktop app', () => {
+    vi.stubEnv('VITE_WEB_MODE', 'false');
+    vi.stubEnv('VITE_PROMPTLAB_SURFACE', 'desktop');
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    const header = screen.getByTestId('app-header');
+    expect(header).toHaveAttribute('data-billing-ui', 'true');
+    expect(header).toHaveAttribute('data-desktop-plan-link', 'true');
+    expect(screen.queryByRole('dialog', { name: /Prompt Lab Pro|Pro feature/ })).not.toBeInTheDocument();
+  });
+
+  it('does not use the desktop plan link on the web app', () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    render(
+      <MemoryRouter>
+        <App />
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId('app-header')).toHaveAttribute('data-desktop-plan-link', 'false');
   });
 
   it('does not apply landing handoff props outside web mode', () => {

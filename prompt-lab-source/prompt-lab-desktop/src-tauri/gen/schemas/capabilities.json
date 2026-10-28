@@ -1,1 +1,1 @@
-{"desktop":{"identifier":"desktop","description":"Core permissions required by the Prompt Lab desktop window.","local":true,"windows":["main"],"permissions":["core:default","core:webview:allow-set-webview-zoom"]}}
+{"desktop":{"identifier":"desktop","description":"Core permissions required by the Prompt Lab desktop window, plus opening promptlab.tools links in the system browser (scope set in tauri.conf.json plugins.shell.open).","local":true,"windows":["main"],"permissions":["core:default","core:webview:allow-set-webview-zoom","shell:allow-open"]}}

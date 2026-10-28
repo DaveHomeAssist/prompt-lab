@@ -14,6 +14,14 @@ async function openView(page, name, width) {
   else await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name, exact: true }).click();
 }
 
+async function switchTheme(page, mode) {
+  const toggle = page.getByRole('button', { name: `Switch to ${mode} mode`, exact: true });
+  if (await toggle.isVisible()) return toggle.click();
+  // Phones (<=520 px) fold the theme toggle into the header's More menu.
+  await page.getByRole('button', { name: 'More actions', exact: true }).click();
+  return page.locator('#pl-header-more-panel').getByRole('button', { name: `${mode === 'dark' ? 'Dark' : 'Light'} mode`, exact: true }).click();
+}
+
 async function showDrawer(page) {
   const show = page.getByRole('button', { name: 'Show Library drawer', exact: true });
   if (await show.isVisible()) await show.click();
@@ -76,11 +84,11 @@ for (const surface of surfaces) for (const width of [400, 480, 1180]) {
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
-      await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+      await switchTheme(page, 'dark');
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'dark');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('appearance', 'none');
       await expect(page.getByRole('button', { name: 'Settings', exact: true })).toHaveCSS('-webkit-appearance', 'none');
-      await page.getByRole('button', { name: 'Switch to light mode' }).click();
+      await switchTheme(page, 'light');
       await expect(page.getByRole('combobox', { name: 'Sort prompts', exact: true })).toHaveCSS('color-scheme', 'light');
       const list = page.getByRole('list', { name: 'Saved prompts' });
       await expect(list.getByRole('listitem').first()).toContainText('Beta starter');

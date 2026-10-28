@@ -1,5 +1,43 @@
 # Prompt Lab Changelog (Plain English)
 
+## Version 1.9.0
+
+Date: 2026-10-27. Covers pull requests #238 to #242.
+
+- **Billing (#239):** Checkout refuses a second Pro subscription when you
+  already have one, and Go Pro is hidden for Pro users. Stripe Checkout and the
+  billing portal open on click, with a visible link if the browser blocks the
+  tab. Returning from Stripe confirms the result, even if you had to sign in
+  again. Signed-out visitors who chose a plan on the landing page see why they
+  are signing in and come back to it afterwards.
+- **One price source (#239):** the landing page, upgrade dialog and feature
+  gates read prices and the Pro feature list from one place. The Diff viewer
+  is free, and the pricing card no longer sells it as Pro.
+- **Site safety and speed (#239):** every page sends security headers that stop
+  other sites from framing it. Built assets are cached for a year. /pricing
+  and /privacy go to the right place.
+- **Annual first (#240):** the pricing toggle and upgrade dialog start on the
+  $79/year plan. $9/month is still one click away.
+- **Naming and badges (#241):** the variant-comparison feature is called
+  Compare everywhere. Locked tabs and buttons show a Pro badge, and the landing
+  illustration uses the real mode names.
+- **Desktop (#241):** the desktop app shows a link to your plan on
+  promptlab.tools instead of billing screens it cannot complete. The link opens
+  in your browser.
+- **Phones and small windows (#242):** on narrow screens the account menu,
+  Report and Settings stay reachable, with Sign out and Manage account also in
+  a More menu, Settings and the command palette. The Library side panel is a
+  real drawer below the header. Small phones get more room, tap targets are at
+  least 24 px, and the active workspace is announced to screen readers.
+- **Links and addresses (#242):** links such as /app/compare or /app/settings
+  open that view, and /login, /settings and /account go into the app. Unknown
+  addresses show a Prompt Lab "Page not found" page. Shared prompt links keep
+  working from any app path.
+- **Library (#242):** version counts include the current version, and moving
+  a library over from the old demo address works again.
+- **Tests (#238):** the restart test now waits out a browser storage race, so
+  it no longer fails intermittently.
+
 ## Selected legacy recoveries (unreleased)
 
 - An optional Image Generation pack contains 34 prompts. Download it from the

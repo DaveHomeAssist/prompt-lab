@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Prompt Lab",
-  "version": "1.8.0",
-  "description": "AI prompt enhancer, library, composer, A/B tester, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
+  "version": "1.9.0",
+  "description": "AI prompt enhancer, library, composer, prompt Compare, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.",
   "permissions": [
     "storage",
     "sidePanel",

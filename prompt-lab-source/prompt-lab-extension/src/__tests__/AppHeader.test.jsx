@@ -72,3 +72,21 @@ describe('AppHeader billing presentation', () => {
     expect(openBilling).not.toHaveBeenCalled();
   });
 });
+
+describe('AppHeader Pro badges (product call 3)', () => {
+  it('marks a locked Evaluate view with an accessible Pro badge', () => {
+    renderHeader({ primaryView: 'runs', activeSection: 'evaluate', lockedRunsViews: { compare: true } });
+    const compare = screen.getByRole('tab', { name: 'Compare Pro feature' });
+    const badge = compare.querySelector('[data-testid="pro-badge"]');
+    expect(badge).not.toBeNull();
+    expect(badge).toHaveTextContent('Pro');
+    expect(badge).toHaveAttribute('title', 'Pro feature');
+    expect(screen.getByRole('tab', { name: 'History' }).querySelector('[data-testid="pro-badge"]')).toBeNull();
+  });
+
+  it('shows no badge when the view is unlocked (Pro, or a build without gates)', () => {
+    renderHeader({ primaryView: 'runs', activeSection: 'evaluate', billingPlan: 'pro', lockedRunsViews: { compare: false } });
+    expect(screen.getByRole('tab', { name: 'Compare' })).toBeInTheDocument();
+    expect(screen.queryByTestId('pro-badge')).not.toBeInTheDocument();
+  });
+});

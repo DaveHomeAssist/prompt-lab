@@ -1,0 +1,18 @@
+.pl-report-overlay { position:fixed; inset:0; z-index:10000; display:flex; align-items:center; justify-content:center; padding:16px; background:#0009; }
+.pl-report-dialog { width:min(760px,100%); max-height:calc(100dvh - 32px); display:flex; flex-direction:column; border:1px solid #a8a29e; border-radius:12px; background:#fffdfa; color:#24130d; font:14px/1.5 system-ui,sans-serif; color-scheme:light; }
+.pl-report-dialog[data-theme=dark] { background:#18181b; color:#f0ede6; color-scheme:dark; }
+.pl-report-dialog header { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid #a8a29e66; }
+.pl-report-dialog h2 { margin:0 auto 0 0; font-size:18px; font-weight:700; }
+.pl-report-body { overflow:auto; min-height:0; padding:16px; }
+.pl-report-body p { margin:0 0 12px; }
+.pl-report-body label { display:block; font-weight:600; }
+.pl-report-dialog textarea { width:100%; padding:10px; border:1px solid #78716c; border-radius:6px; margin:6px 0 12px; color:inherit; background:transparent; resize:vertical; }
+.pl-report-dialog button,.pl-report-dialog a { display:inline-flex; align-items:center; justify-content:center; min-height:36px; border:1px solid #78716c; border-radius:6px; padding:6px 10px; color:inherit; background:transparent; cursor:pointer; text-decoration:underline; }
+.pl-report-dialog button:disabled { opacity:.55; cursor:wait; }
+.pl-report-dialog :is(button,a,textarea,pre):focus-visible { outline:3px solid #c2410c; outline-offset:3px; }
+.pl-report-dialog[data-theme=dark] :is(button,a,textarea,pre):focus-visible { outline-color:#fb923c; }
+.pl-report-dialog pre { max-height:32dvh; overflow:auto; padding:12px; border:1px solid #78716c; border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:12px; }
+.pl-report-actions { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.pl-report-launcher { position:fixed; bottom:12px; right:12px; z-index:9000; padding:8px 12px; min-height:40px; border:1px solid #a8a29e; border-radius:6px; color:#24130d; background:#fffdfa; font:14px system-ui,sans-serif; }
+body:has(.pl-app-shell) .pl-report-launcher { display:none; }
+@media(pointer:coarse) { .pl-report-dialog button,.pl-report-dialog a { min-height:44px; } }

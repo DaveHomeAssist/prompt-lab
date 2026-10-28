@@ -1,5 +1,6 @@
 import { checkVersions } from '../scripts/check-version-consistency.mjs';
 import { buildIdentity } from '../scripts/build-identity.mjs';
+import { diagnosticSourceMaps } from '../scripts/diagnostic-sourcemaps.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -10,8 +11,10 @@ const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
 export default defineConfig({
-  define: buildIdentity(),
-  plugins: [react()],
+  // Product call 7: marks the desktop surface so billing screens that cannot
+  // complete a purchase here are replaced by a link to promptlab.tools.
+  define: { ...buildIdentity(), 'import.meta.env.VITE_PROMPTLAB_SURFACE': JSON.stringify('desktop') },
+  plugins: [react(), diagnosticSourceMaps('desktop')],
   resolve: {
     alias: {
       // Force shared extension source to resolve deps from desktop node_modules
@@ -23,6 +26,7 @@ export default defineConfig({
     },
   },
   build: {
+    sourcemap: 'hidden',
     outDir: 'dist',
     rollupOptions: {
       input: {

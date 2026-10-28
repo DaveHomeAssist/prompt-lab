@@ -32,3 +32,7 @@ Issue counts describe recorded Notion dispositions. Evidence cards describe insp
 The folder concurrency repair remains on [PR234](https://github.com/DaveHomeAssist/prompt-lab/pull/234). The October 27 CI reconciliation preserves the current main issue snapshot and generated page exactly, including the newer owner records. Main already contains the ErrorBoundary report-flow test fix and diagnostics-aware import assertions. The PR retains its folder-only regression and removes its overlapping legacy assertion patch. Verification uses a test-only combined tree on Dominic; no branch merge, deployment or Notion synchronization is implied.
 
 Dominic Node 22 verified combined tree `02cdcefbb5bbba3a26221ef4b1ee9e526074e56e` against main `54b89a4`: 1,401 Vitest tests and 231 legacy tests pass, extension build and progress-render check pass. The first run omitted root contract fixtures from its temporary archive; the two affected suites passed after restoring those inputs. No assertions were skipped.
+
+### Current branch reconciliation: October 28
+
+2026-10-28: PR234 reconciled with main f47f337 on its existing branch. Dominic Node 22.23.4 verified combined tree 65a69629d321b494817a351443871c0c9fad2a4e: 1,447 Vitest tests across 127 files, 231 legacy tests, 13 offline eval-runner tests, extension build and diagnostic source-map test pass. Folder-only concurrency regression retained. No assertions skipped. PR CI remains separate; no merge, deployment or native acceptance claimed. Notion writes were prohibited; the issue snapshot and timestamp are preserved.

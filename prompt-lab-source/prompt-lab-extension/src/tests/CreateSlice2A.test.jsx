@@ -177,8 +177,8 @@ function renderPane(overrides = {}) {
     quickSave={noop} editingId="entry-1" goldenResponse={null} goldenSimilarity={null} goldenThreshold={0.8}
     goldenVerdict={null} comparisonText="" comparisonSourceLabel="" lib={lib} variants={[]} showNotes={false}
     notes="" evalRuns={[]} libraryCount={1} evalRunCount={0} onLoadQuickStartPrompt={noop} onOpenEvaluate={noop}
-    showEvalHistory={false} setShowEvalHistory={noop} streamPreview="" showDiffUpgradeHint={false}
-    onUnlockDiff={noop} runCasesLocked={false} newPrompt={noop} {...overrides} />);
+    showEvalHistory={false} setShowEvalHistory={noop} streamPreview=""
+    runCasesLocked={false} newPrompt={noop} {...overrides} />);
 }
 
 function renderContext(overrides = {}) {
@@ -219,13 +219,15 @@ describe('CreateEditorPane slice 2A wiring', () => {
       resultMeta: entry.resultMeta, variants: entry.variants, notes: entry.notes, ...changes });
     expect(screen.getByRole('region', { name: 'Editing context' })).toHaveTextContent('Unsaved changes');
   });
-  it('leaves context to the shell and keeps chip strips when controls are off', () => {
+  it('keeps desktop and extension editors free of legacy suggestion strips', () => {
     renderPane();
     expect(screen.queryByRole('region', { name: 'Editing context' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Prompt shortcuts' })).not.toBeInTheDocument();
     expect(screen.queryByText('Editing')).not.toBeInTheDocument();
-    expect(screen.getByText('Recent')).toBeInTheDocument();
-    expect(screen.getByText('Quick')).toBeInTheDocument();
+    expect(screen.queryByText('Recent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Quick')).not.toBeInTheDocument();
+    expect(screen.queryByText('Alpha recent')).not.toBeInTheDocument();
+    expect(screen.queryByText('Beta quick')).not.toBeInTheDocument();
   });
   it('shows prompt shortcuts without duplicating the shell context when controls are on', () => {
     stubViewport(false);

@@ -2009,10 +2009,10 @@ section[id] { scroll-margin-top: 88px; }
         </div>
         <div class="feature-visual-body">
           <div class="mock-tabs">
-            <div class="mock-tab active">Improve</div>
-            <div class="mock-tab">Expand</div>
-            <div class="mock-tab">Shorten</div>
-            <div class="mock-tab">Fix</div>
+            <div class="mock-tab active">Balanced</div>
+            <div class="mock-tab">Claude</div>
+            <div class="mock-tab">ChatGPT</div>
+            <div class="mock-tab">Concise</div>
           </div>
           <div class="mock-diff">
             <div class="mock-diff-panel">
@@ -2101,7 +2101,7 @@ section[id] { scroll-margin-top: 88px; }
         <p class="feature-desc">Keep evaluation history visible, compare variants when the workflow needs proof, and preserve the model context behind every result you reuse.</p>
         <ul class="feature-bullets">
           <li>Run timeline with provider, model, latency, and status</li>
-          <li>A/B Compare and side-by-side diff available in Pro</li>
+          <li>Diff of every improvement on every plan; Compare in Pro</li>
           <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter, and Ollama</li>
         </ul>
       </div>
@@ -2235,8 +2235,8 @@ section[id] { scroll-margin-top: 88px; }
     </div>
     <fieldset class="billing-toggle">
       <legend>Choose a Pro billing period</legend>
-      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingMonthly" value="monthly" checked data-analytics-id="landing.pricing.monthly"><label for="billingMonthly">Monthly</label></div>
-      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingAnnual" value="annual" data-analytics-id="landing.pricing.annual"><label for="billingAnnual">Annual <span class="billing-save">Save $29</span></label></div>
+      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingMonthly" value="monthly" data-analytics-id="landing.pricing.monthly"><label for="billingMonthly">Monthly</label></div>
+      <div class="billing-option"><input type="radio" name="billingPeriod" id="billingAnnual" value="annual" checked data-analytics-id="landing.pricing.annual"><label for="billingAnnual">Annual <span class="billing-save">Save $29</span></label></div>
     </fieldset>
     <div class="pricing-grid">
       <div class="pricing-card reveal">
@@ -2245,6 +2245,7 @@ section[id] { scroll-margin-top: 88px; }
         <div class="pricing-period">Forever free</div>
         <ul class="pricing-features">
           <li>All 7 enhancement modes</li>
+          <li>Diff of every improvement</li>
           <li>Prompt library with search</li>
           <li>Preset pack and library import</li>
           <li>JSON library export</li>
@@ -2256,16 +2257,15 @@ section[id] { scroll-margin-top: 88px; }
       </div>
       <div class="pricing-card featured reveal">
         <div class="pricing-tier">Pro</div>
-        <div class="pricing-price"><span class="currency">$</span><span id="proPrice">9</span></div>
-        <div class="pricing-period" id="proPeriod">per month</div>
+        <div class="pricing-price"><span class="currency">$</span><span id="proPrice">79</span></div>
+        <div class="pricing-period" id="proPeriod">per year · $6.58 effective monthly · save $29/year</div>
         <ul class="pricing-features">
           <li>Everything in Free</li>
-          <li>A/B Compare in Evaluate</li>
-          <li>Side-by-side diff viewer</li>
+          <li>Compare in Evaluate</li>
           <li>Batch test-case runs</li>
           <li>Collections for grouped libraries</li>
         </ul>
-        <a href="/app?upgrade=pro&amp;period=monthly&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-analytics-id="landing.pricing.pro">Continue to PromptLab &rarr;</a>
+        <a href="/app?upgrade=pro&amp;period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-period="annual" data-analytics-id="landing.pricing.pro">Continue to PromptLab &rarr;</a>
         <p class="pricing-note">Opens Prompt Lab and asks you to confirm before checkout. Selecting a plan here never charges you.</p>
       </div>
     </div>
@@ -2741,7 +2741,7 @@ section[id] { scroll-margin-top: 88px; }
 
   function updateBillingChoice(event) {
     const selected = document.querySelector('input[name="billingPeriod"]:checked');
-    const period = selected ? selected.value : 'monthly';
+    const period = selected ? selected.value : 'annual';
     if (period === 'annual') {
       proPrice.textContent = '79';
       proPeriod.textContent = 'per year · $6.58 effective monthly · save $29/year';

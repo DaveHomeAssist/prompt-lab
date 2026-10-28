@@ -41,7 +41,9 @@ export default function useDialogA11y({ open = true, onClose, initialFocusRef, r
     while (branch?.parentElement && branch !== appShell) {
       const parent = branch.parentElement;
       [...parent.children].forEach((sibling) => {
-        if (sibling === branch) return;
+        // A dialog's own scrim (aria-hidden, untabbable) stays clickable so a
+        // tap outside the drawer can close it.
+        if (sibling === branch || sibling.hasAttribute?.('data-dialog-scrim')) return;
         isolated.push({
           element: sibling,
           inert: sibling.inert,

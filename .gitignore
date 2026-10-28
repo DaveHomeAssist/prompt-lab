@@ -1,4 +1,5 @@
 node_modules/
+.diagnostic-source-maps/
 .DS_Store
 *.log
 *.zip

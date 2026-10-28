@@ -18,7 +18,7 @@ vi.mock('../lib/platform.js', () => ({
   get isExtension() { return platformState.isExtension; },
 }));
 
-const PRO_FEATURE_IDS = ['abTesting', 'diffView', 'batchRuns', 'collections'];
+const PRO_FEATURE_IDS = ['abTesting', 'batchRuns', 'collections'];
 
 function enableWebGates() {
   vi.stubEnv('VITE_WEB_MODE', 'true');
@@ -47,7 +47,13 @@ describe('Pro feature gates', () => {
     localStorage.clear();
   });
 
-  it('gates exactly the four advertised Pro features and nothing else', () => {
+  it('keeps the diff viewer free on every plan (AUD-008)', () => {
+    enableWebGates();
+    expect(isProFeature('diffView')).toBe(false);
+    expect(canAccessFeature({ plan: 'free' }, 'diffView')).toBe(true);
+  });
+
+  it('gates exactly the three advertised Pro features and nothing else', () => {
     expect(Object.keys(BILLING_FEATURES).sort()).toEqual([...PRO_FEATURE_IDS].sort());
     for (const id of PRO_FEATURE_IDS) expect(isProFeature(id)).toBe(true);
     // Import and preset packs are Free on the landing page.

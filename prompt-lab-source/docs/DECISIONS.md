@@ -78,11 +78,13 @@ table can be checked against the registry rather than merely read alongside it.
 | `/compare` | `runs` · `compare` | Runs, compare |
 | `/scratch` | `notebook` | Notebook — canonical |
 | `/pad` | `notebook` | Notebook — legacy alias, accepted but never emitted |
+| `/settings` | `settings` | Dialog route — opens Settings over the current workspace |
+| `/account` | `account` | Dialog route — opens the account profile (signed in) or Settings |
 
 Differences from the decision as written:
 
 - there is no `#/create`; the create surface is the root route `/`
-- there is no `#/settings` route; settings open as a modal, not a route
+- settings are still a modal, not a view: `#/settings` and `#/account` (added 2026-10-27, V-04) open their dialog over the current workspace, then the URL settles back on that workspace's route
 - run-level deep links (`#/evaluate/run/abc123`) were never implemented
 - the `#/create/prompt` / `#/create/config` / `#/create/run` split never happened; Create gained `library`, `composer`, and `split` subviews instead
 - a router library *is* used — `useRouteSync.js` builds on `react-router-dom`, contrary to "no router library needed"

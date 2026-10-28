@@ -54,7 +54,7 @@ describe('useABTest', () => {
     expect(saveEvalRun).toHaveBeenCalledTimes(2);
     for (const [index, side] of ['A', 'B'].entries()) {
       expect(saveEvalRun).toHaveBeenNthCalledWith(index + 1, expect.objectContaining({
-        promptTitle: `A/B Variant ${side}`, mode: 'ab', variantLabel: `Variant ${side}`, input: `Prompt ${side}`,
+        promptTitle: `Compare Variant ${side}`, mode: 'ab', variantLabel: `Variant ${side}`, input: `Prompt ${side}`,
         output: `Response for ${side}`, provider: 'anthropic', model: 'claude-sonnet-4-6', latencyMs: expect.any(Number), requestedOutputTokens: 4096,
       }));
     }
@@ -122,7 +122,7 @@ describe('useABTest', () => {
     await act(async () => { await result.current.pickWinner('A'); });
     expect(result.current.abWinner).toBe('Variant A');
     expect(saveExperiment).toHaveBeenCalledTimes(1);
-    expect(saveExperiment).toHaveBeenCalledWith(expect.objectContaining({ label: 'A/B: Prompt A',
+    expect(saveExperiment).toHaveBeenCalledWith(expect.objectContaining({ label: 'Compare: Prompt A',
       variants: [expect.objectContaining({ id: 'A', prompt: 'Prompt A', response: 'Answer A' }), expect.objectContaining({ id: 'B', prompt: 'Prompt B', response: 'Answer B' })], outcome: { winnerVariantId: 'A' } }));
     expect(result.current.history).toEqual(savedHistory);
     expect(notify).toHaveBeenCalledWith('Experiment saved');

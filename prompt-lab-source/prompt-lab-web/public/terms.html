@@ -190,6 +190,9 @@ footer {
 footer a {
   color: var(--lab-violet-light);
   text-decoration: none;
+  /* >=24 px hit area without changing the line's look (V-11). */
+  display: inline-block;
+  padding: 0.45rem 0.3rem;
 }
 
 @media (max-width: 640px) {
@@ -265,7 +268,7 @@ footer a {
 <p>Prompt Lab is a workspace for writing, testing, comparing and saving AI prompts. It works with AI providers you choose (Anthropic, OpenAI, Google Gemini, OpenRouter and Ollama), usually with your own API key. Your prompts, library and settings are stored on your device; see the Privacy Policy for what is sent where.</p>
 <ul>
   <li>The Chrome extension and the desktop app are free and include every workflow feature. They do not sell Prompt Lab Pro.</li>
-  <li>The hosted web app requires a free account. Its Free plan includes enhancement modes, the prompt library, preset packs, library import and JSON library export, and the composer. Prompt Lab Pro adds A/B testing, the side-by-side diff viewer, batch test-case runs and collections.</li>
+  <li>The hosted web app requires a free account. Its Free plan includes enhancement modes, the prompt library, preset packs, library import and JSON library export, and the composer. Prompt Lab Pro adds Compare, batch test-case runs and collections.</li>
   <li>Requests to an AI provider are governed by that provider's own terms and pricing. Usage you pay a provider for with your own key is between you and that provider.</li>
 </ul>
 

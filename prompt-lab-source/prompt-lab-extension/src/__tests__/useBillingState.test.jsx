@@ -423,6 +423,38 @@ describe('useBillingState', () => {
     );
   });
 
+  it('refreshes entitlement instead of opening checkout when the server reports an existing subscription (AUD-001)', async () => {
+    const calls = [];
+    global.fetch = vi.fn(async (url, init) => {
+      calls.push(String(url));
+      if (String(url).endsWith('/billing/checkout')) {
+        return new Response(JSON.stringify({
+          error: 'This account already has a Prompt Lab Pro subscription. Use Manage Purchases to change or cancel it.',
+          code: 'already_subscribed',
+          portalAvailable: true,
+          retryable: false,
+        }), { status: 409, headers: { 'Content-Type': 'application/json' } });
+      }
+      expect(JSON.parse(init.body)).toEqual({ action: 'validate' });
+      return new Response(JSON.stringify({
+        ok: true, plan: 'pro', status: 'active', billingPeriod: 'annual', customerId: 'cus_123',
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    });
+    localStorage.setItem('pl2-billing', JSON.stringify({ plan: 'free', status: 'free', clerkUserId: 'user_123' }));
+    const { result } = renderHook(() => useBillingState({ notify: vi.fn(), clerkGetToken: vi.fn(async () => 'clerk-token') }));
+
+    let checkoutError;
+    await act(async () => {
+      checkoutError = await result.current.startCheckout('monthly').catch((error) => error);
+    });
+
+    expect(checkoutError.status).toBe(409);
+    expect(checkoutError.code).toBe('already_subscribed');
+    expect(checkoutError.message).toMatch(/already has a Prompt Lab Pro subscription/);
+    await waitFor(() => expect(result.current.plan).toBe('pro'));
+    expect(calls.some((url) => url.endsWith('/billing/license'))).toBe(true);
+  });
+
   it('keeps cached Pro and stamps lastValidatedAt on a terminal billingDisabled response', async () => {
     const staleStamp = new Date(Date.now() - (8 * 60 * 60 * 1000)).toISOString();
     localStorage.setItem('pl2-billing', JSON.stringify({

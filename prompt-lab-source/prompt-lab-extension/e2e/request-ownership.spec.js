@@ -56,10 +56,10 @@ for (const width of [400, 1180]) {
       await page.getByRole('textbox', { name: 'Prompt for variant B' }).fill('Contact second@example.com');
       await page.getByRole('button', { name: 'Run All', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Sensitive Data Detected' });
-      await expect(dialog.getByText('Arena Variant A')).toBeVisible();
+      await expect(dialog.getByText('Compare Variant A')).toBeVisible();
       expect(await page.evaluate(() => window.__attempts.length)).toBe(0);
       await dialog.getByRole('button', { name: 'Redact & Send' }).click();
-      await expect(dialog.getByText('Arena Variant B')).toBeVisible();
+      await expect(dialog.getByText('Compare Variant B')).toBeVisible();
       await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
       expect(await page.evaluate(() => JSON.stringify(window.__attempts[0].message))).not.toContain('first@example.com');
       if (width < 720) await page.getByRole('tablist', { name: 'Prompt variants' }).getByRole('tab', { name: 'Variant A', exact: true }).click();

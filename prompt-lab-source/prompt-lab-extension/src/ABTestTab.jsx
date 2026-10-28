@@ -60,7 +60,7 @@ export default function ABTestTab({
   return (
     <div className={pageScroll ? 'flex flex-col' : 'flex flex-1 flex-col overflow-hidden'}>
       <div className={`px-4 py-2 border-b ${m.border} flex items-center justify-between shrink-0`}>
-        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Model Arena · {arenaVariants.length} variants</p>
+        <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Compare · {arenaVariants.length} variants</p>
         <div className={`flex items-center gap-3 ${compact ? 'flex-wrap justify-end' : ''}`}>
           {abWinner && <span className="text-xs font-bold text-green-400 flex items-center gap-1"><Ic n="Check" size={11} />Winner: {abWinner}</span>}
           <button type="button" onClick={runAll} disabled={anyLoading || !arenaVariants.some((variant) => variant.prompt.trim())}

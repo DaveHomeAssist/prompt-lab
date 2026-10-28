@@ -96,6 +96,15 @@ async function checkoutHandler(request) {
       customerId: result.customerId,
     }, 200, {}, request);
   } catch (error) {
+    if (error?.code === 'already_subscribed') {
+      return jsonResponse({
+        error: error.message,
+        code: 'already_subscribed',
+        subscriptionStatus: error.subscriptionStatus || '',
+        portalAvailable: true,
+        retryable: false,
+      }, 409, {}, request);
+    }
     return jsonResponse(
       { error: error.message || 'Could not create checkout.' },
       isExternalFetchTimeout(error) ? 504 : 500,

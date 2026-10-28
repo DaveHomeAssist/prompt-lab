@@ -1,4 +1,5 @@
 import React from 'react';
+import { diagnostics, openProblemReport } from './lib/diagnostics.js';
 
 export default class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -11,7 +12,8 @@ export default class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[PromptLab] Uncaught error:', error, info?.componentStack);
+    diagnostics().exception('react_error', error);
+    console.error('[PromptLab] React render failed; use Report a problem for diagnostic evidence.');
   }
 
   render() {
@@ -37,18 +39,17 @@ export default class ErrorBoundary extends React.Component {
           >
             Reload panel
           </button>
-          <a
-            href="https://github.com/DaveHomeAssist/prompt-lab/issues/new"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={openProblemReport}
             style={{
               padding: '0.5rem 1.25rem', borderRadius: '0.5rem', border: '1px solid #334155',
               background: 'transparent', color: '#94a3b8', fontWeight: 600, fontSize: '0.875rem',
               textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
             }}
           >
-            Report issue
-          </a>
+            Report a problem
+          </button>
         </div>
         <details style={{ marginTop: '1.5rem', color: '#64748b', fontSize: '0.75rem', maxWidth: '360px', textAlign: 'left' }}>
           <summary style={{ cursor: 'pointer' }}>Error details</summary>

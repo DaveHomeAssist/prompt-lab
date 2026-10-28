@@ -123,8 +123,8 @@ test('@production signed-in Free account matches the expected billing mode', asy
     if (billingEnabled) {
       await expect(billingDialog.getByRole('button', { name: /Go Pro Monthly/ })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: /Go Pro Annual/ })).toBeEnabled();
-      await expect(billingDialog.getByText('$9/month via Stripe', { exact: true })).toBeVisible();
-      await expect(billingDialog.getByText('$79/year, save $29', { exact: true })).toBeVisible();
+      await expect(billingDialog.getByRole('button', { name: /Go Pro Monthly/ })).toContainText('$9/month, cancel anytime');
+      await expect(billingDialog.getByRole('button', { name: /Go Pro Annual/ })).toContainText('$79/year ($6.58/month), save $29');
       await expect(billingDialog.getByRole('button', { name: 'Manage Purchases' })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: 'Sync Purchase' })).toBeEnabled();
       await expect(billingDialog.getByRole('button', { name: 'Refresh Status' })).toBeEnabled();
@@ -141,13 +141,13 @@ test('@production signed-in Free account matches the expected billing mode', asy
     await page.keyboard.press('Escape');
     await expect(billingDialog).toHaveCount(0);
 
-    reportPhase('checking Model Arena access');
+    reportPhase('checking Compare access');
     await page.goto(`${appUrl.href}#/compare`, { waitUntil: 'domcontentloaded' });
     if (billingEnabled && license.checkoutDisabled !== true) {
       await expect(page).toHaveURL(/#\/evaluate$/);
-      await expect(page.getByText(/Model Arena/)).toHaveCount(0);
+      await expect(page.getByText(/Model Arena|Compare · \d+ variants/)).toHaveCount(0);
     } else {
-      await expect(page.getByText(/Model Arena/)).toBeVisible();
+      await expect(page.getByText(/Model Arena|Compare · \d+ variants/)).toBeVisible();
     }
     expect(blockedRequests, 'The smoke must not request billing, Stripe, providers, or telemetry.').toEqual([]);
 

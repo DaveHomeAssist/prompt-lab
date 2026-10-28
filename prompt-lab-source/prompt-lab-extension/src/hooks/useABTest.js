@@ -156,7 +156,7 @@ export default function useABTest({ notify }) {
         const responseText = extractTextFromAnthropic(data);
         setter(prev => ({ ...prev, response: responseText, loading: false, error: false }));
         await saveEvalRun({
-          promptId: source?.entryId || null, promptTitle: source?.title || `A/B Variant ${id.toUpperCase()}`,
+          promptId: source?.entryId || null, promptTitle: source?.title || `Compare Variant ${id.toUpperCase()}`,
           mode: 'ab', requestedOutputTokens: approvedPayload.max_tokens,
           provider: data?.provider || selection?.provider || 'unknown',
           model: data?.model || selection?.model || 'unknown', variantLabel: `Variant ${id.toUpperCase()}`,
@@ -173,7 +173,7 @@ export default function useABTest({ notify }) {
         if (attempts.current[id] === attempt) delete attempts.current[id];
       }
     };
-    const reviewed = preflight.review({ payload, scope: id, label: `Arena Variant ${id.toUpperCase()}`, isCurrent, resume: execute });
+    const reviewed = preflight.review({ payload, scope: id, label: `Compare Variant ${id.toUpperCase()}`, isCurrent, resume: execute });
     if (reviewed.payload) return execute(reviewed.payload);
   };
 
@@ -234,7 +234,7 @@ export default function useABTest({ notify }) {
       if (experimentIdRef.current?.snapshotKey !== snapshotKey) experimentIdRef.current = { id: crypto.randomUUID(), snapshotKey };
       const record = {
         id: experimentIdRef.current.id, createdAt: new Date().toISOString(),
-        label: `${variants.length === 2 ? 'A/B' : 'Arena'}: ${variants[0]?.prompt.slice(0, 40) || 'Untitled'}`,
+        label: `Compare: ${variants[0]?.prompt.slice(0, 40) || 'Untitled'}`,
         variants: variants.map(variant => ({ id: variant.label, promptHash: hashText(variant.prompt), prompt: variant.prompt, response: variant.response })),
         keyInputSnapshot: JSON.stringify(Object.fromEntries(variants.map(variant => [`${variant.id}Prompt`, variant.prompt.slice(0, 280)]))),
         outcome: { winnerVariantId: side }, notes: '',

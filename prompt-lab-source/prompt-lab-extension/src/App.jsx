@@ -60,7 +60,7 @@ import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import WorkspaceImportModal from './modals/WorkspaceImportModal.jsx';
 import BillingModal from './modals/BillingModal.jsx';
-import { isBillingUiEnabled } from './lib/billing.js';
+import { isBillingUiEnabled, isDesktopAppSurface } from './lib/billing.js';
 import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
@@ -119,11 +119,14 @@ function persistDraftRecovery(snapshot) {
   }
 }
 
+const TELEMETRY_PROMPT_DEFER_KEY = 'pl2-telemetry-prompt-deferred';
+
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App({
   clerkUser,
   clerkGetToken,
   clerkUserButton,
+  clerkAccountActions = null,
   landingIntent,
   landingAttribution,
   onLandingIntentConsumed,
@@ -172,6 +175,9 @@ export default function App({
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   // Extension builds hide Upgrade/Pro UI (no sign-in, so checkout cannot complete).
   const billingUiEnabled = isBillingUiEnabled();
+  // Desktop shows the plan and a link to promptlab.tools instead of billing
+  // screens that cannot complete a purchase there (product call 7).
+  const desktopPlanLink = billingUiEnabled && isDesktopAppSurface();
   // Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
   //
   // 'contained' locks the shell to the viewport and scrolls inside it.
@@ -230,6 +236,15 @@ export default function App({
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
   const telemetryConsentPending = telemetry.consentGiven == null;
+  // "Ask me later" hides the consent bar for this browser session without
+  // recording a choice; nothing is sent while consent is still pending.
+  const [telemetryPromptDeferred, setTelemetryPromptDeferred] = useState(() => {
+    try { return typeof window !== 'undefined' && window.sessionStorage?.getItem(TELEMETRY_PROMPT_DEFER_KEY) === '1'; } catch { return false; }
+  });
+  const deferTelemetryPrompt = () => {
+    setTelemetryPromptDeferred(true);
+    try { window.sessionStorage?.setItem(TELEMETRY_PROMPT_DEFER_KEY, '1'); } catch { /* session-only either way */ }
+  };
   const trackTelemetry = (event, context = {}) => {
     if (telemetry.consentGiven !== 'granted') return false;
     void telemetry.track(event, context);
@@ -305,7 +320,7 @@ export default function App({
   } = ed;
 
   const openBilling = (featureId = null) => {
-    if (!billingUiEnabled) return;
+    if (!billingUiEnabled || desktopPlanLink) return;
     trackTelemetry('billing.modal_opened', {
       featureId: featureId || 'general',
       plan: billing.plan,
@@ -330,7 +345,6 @@ export default function App({
   const canImportLibrary = billing.hasFeature('import');
   const canUsePacks = billing.hasFeature('packs');
   const canRunBatchCases = billing.hasFeature('batchRuns');
-  const canUseDiffView = billing.hasFeature('diffView');
   const canUseAbTesting = billing.hasFeature('abTesting');
   const saveFlowOverrides = canUseCollections ? {} : { collectionOverride: '', preserveExistingCollection: true };
 
@@ -407,6 +421,13 @@ export default function App({
     // instead of silently resolving back to the previous workspace.
     onUnknownRoute: (pathname) => {
       notify(`Page not found (${pathname}). Showing the Write workspace.`);
+    },
+    onRouteModal: (modal) => {
+      if (modal === 'account' && clerkUser && clerkAccountActions?.manageAccount) {
+        clerkAccountActions.manageAccount();
+        return;
+      }
+      setShowSettings(true);
     },
   });
 
@@ -591,7 +612,7 @@ export default function App({
   const createLayoutOptions = [];
   const resultTabs = [
     { id: 'improved', label: 'Improved' },
-    ...(canUseDiffView ? [{ id: 'diff', label: 'Diff' }] : []),
+    { id: 'diff', label: 'Diff' },
     ...(variants.length > 0 ? [{ id: 'variants', label: `Variants (${variants.length})` }] : []),
     ...(showNotes && notes ? [{ id: 'notes', label: 'Notes' }] : []),
   ];
@@ -978,7 +999,7 @@ export default function App({
       title: payload.title,
     });
     openRunsViewWithBilling('compare');
-    notify('Scratch content loaded into A/B Variant A.');
+    notify('Scratch content loaded into Compare Variant A.');
   };
   const promoteScratchToLibrary = (title, content, options = {}) => lib.doSave({
     raw: content,
@@ -1073,7 +1094,7 @@ export default function App({
     }
     trackTelemetry('evaluate.compare_opened', { plan: billing.plan });
     openRunsViewWithBilling('compare');
-    notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
+    notify('Opened Compare. Paste two variants or send prompts from the library to start a Compare run.');
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
@@ -1093,6 +1114,8 @@ export default function App({
     openSettings: () => { setShowSettings(true); closePalette(); },
     openOptions: () => { openOptions(); closePalette(); },
     showShortcuts: () => { setShowShortcuts(true); closePalette(); },
+    manageAccount: clerkUser && clerkAccountActions?.manageAccount ? () => { closePalette(); clerkAccountActions.manageAccount(); } : undefined,
+    signOut: clerkUser && clerkAccountActions?.signOut ? () => { closePalette(); clerkAccountActions.signOut(); } : undefined,
   });
   const filteredCmds = filterCommands(CMD_ACTIONS, cmdQuery);
 
@@ -1126,27 +1149,32 @@ export default function App({
         billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
         billingUiEnabled={billingUiEnabled}
+        desktopPlanLink={desktopPlanLink}
         clerkUserButton={clerkUser ? clerkUserButton : null}
+        accountActions={clerkUser ? clerkAccountActions : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
+        lockedRunsViews={{ compare: !canUseAbTesting }}
       />
 
       <PendingWritesNotice m={m} />
 
-      {telemetryConsentPending && (
-        <div className={`${m.surface} ${m.border} border-b px-4 py-3`}>
-          <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className={`text-sm ${m.text}`}>
-              Help improve Prompt Lab with lightweight usage analytics.
+      {telemetryConsentPending && !telemetryPromptDeferred && (
+        <div className={`pl-consent-bar ${m.surface} ${m.border} border-b px-4 py-3`} data-telemetry-consent role="region" aria-label="Usage analytics">
+          <div className="pl-consent-inner mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className={`pl-consent-copy text-sm ${m.text}`}>
+              <span className="pl-consent-long">Help improve Prompt Lab with lightweight usage analytics.</span>
+              <span className="pl-consent-short">Allow usage analytics?</span>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="pl-consent-actions flex flex-wrap gap-2">
               <button
                 type="button"
                 data-testid="telemetry-allow"
+                aria-label="Allow analytics"
                 onClick={telemetry.grantConsent}
                 className="ui-control rounded-lg bg-orange-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-500"
               >
-                Allow analytics
+                <span className="pl-consent-long">Allow analytics</span><span className="pl-consent-short">Allow</span>
               </button>
               <button
                 type="button"
@@ -1155,6 +1183,16 @@ export default function App({
                 className={`ui-control rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${m.border} ${m.textSub} hover:bg-white/[0.06]`}
               >
                 No thanks
+              </button>
+              <button
+                type="button"
+                data-testid="telemetry-later"
+                onClick={deferTelemetryPrompt}
+                aria-label="Ask me later"
+                title="Ask me later"
+                className={`ui-control rounded-lg px-2 py-2 text-sm ${m.textSub} hover:bg-white/[0.06]`}
+              >
+                <Ic n="X" size={14} />
               </button>
             </div>
           </div>
@@ -1295,8 +1333,6 @@ export default function App({
               onOpenEvaluate={handleWorkbenchOpenEvaluate}
               showEvalHistory={showEvalHistory} setShowEvalHistory={setShowEvalHistory}
               streamPreview={streamPreview}
-              showDiffUpgradeHint={!canUseDiffView && Boolean((enhanced || '').trim())}
-              onUnlockDiff={() => openBilling('diffView')}
               runCasesLocked={!canRunBatchCases}
               followUps={followUpSuggestions.followUps}
               followUpsLoading={followUpSuggestions.followUpsLoading}
@@ -1327,6 +1363,7 @@ export default function App({
               copy={copy}
               addToComposer={handleAddToComposer}
               sendToABTest={(entry) => handleSendToABTest(entry, 'a')}
+              compareLocked={!canUseAbTesting}
               openSavePanel={openSavePanel}
               onOpenScratchSource={(noteId) => {
                 setScratchOpenNoteId(noteId);
@@ -1367,6 +1404,7 @@ export default function App({
               runSingleCase={runSingleCase} removeCase={removeCase}
               loadEntry={handleLoadEntry} deleteEntry={deleteEntry} addToComposer={handleAddToComposer}
               openSavePanel={openSavePanel} sendToABTest={handleSendToABTest} copy={copy}
+              compareLocked={!canUseAbTesting}
               canUseCollections={canUseCollections}
               canExportLibrary={canExportLibrary}
               openBilling={openBilling}
@@ -1394,10 +1432,10 @@ export default function App({
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
             <p className={`mt-1 text-xs ${m.textMuted}`}>
               {runsView === 'compare'
-                ? 'Compare prompt variants, capture winners, and keep recent A/B runs in one place.'
+                ? 'Compare prompt variants, capture winners, and keep recent Compare runs in one place.'
                 : (currentEntry
-                    ? 'Review enhance, test-case, and A/B runs for the selected prompt.'
-                    : 'Review enhance, test-case, and A/B runs across your saved workbench.')}
+                    ? 'Review enhance, test-case, and Compare runs for the selected prompt.'
+                    : 'Review enhance, test-case, and Compare runs across your saved workbench.')}
             </p>
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
@@ -1407,7 +1445,7 @@ export default function App({
                 ? (
                   <div className="flex h-full items-center justify-center p-6">
                     <div className={`${m.surface} ${m.border} max-w-md rounded-2xl border p-5 text-center`}>
-                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is part of Prompt Lab Pro.</p>
+                      <p className={`text-sm font-semibold ${m.text}`}>Compare is part of Prompt Lab Pro.</p>
                       <p className={`mt-2 text-xs leading-relaxed ${m.textMuted}`}>
                         Unlock head-to-head prompt runs, saved winners, and compare history with a Prompt Lab Pro plan.
                       </p>
@@ -1430,6 +1468,7 @@ export default function App({
                   pageScroll={pageScroll}
                   onQuickStart={handleEvaluateQuickStart}
                   onOpenCompare={handleEvaluateOpenCompare}
+                  compareLocked={!canUseAbTesting}
                 />
               )}
           </div>
@@ -1454,6 +1493,7 @@ export default function App({
             onSendToEditor={sendScratchToEditor}
             onSendToComposer={sendScratchToComposer}
             onSendToABTest={sendScratchToABTest}
+            compareLocked={!canUseAbTesting}
           />
         </div>
       )}
@@ -1598,6 +1638,7 @@ export default function App({
           pendingImport={lib.pendingImport} retryImport={lib.retryImport}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billingUiEnabled ? billing : null}
+          desktopPlanLink={desktopPlanLink}
           openBilling={(featureId) => {
             setBillingReturnToSettings(true);
             setShowSettings(false);
@@ -1606,6 +1647,7 @@ export default function App({
           canUseCollections={canUseCollections}
           canExportLibrary={canExportLibrary}
           telemetry={telemetry}
+          account={clerkUser ? clerkAccountActions : null}
           returnFocusRef={settingsButtonRef}
         />
       )}
@@ -1621,7 +1663,7 @@ export default function App({
         <ShortcutsModal m={m} primaryModKey={primaryModKey} saveLabel={primarySaveLabel} onClose={() => setShowShortcuts(false)} />
       )}
 
-      {billingUiEnabled && showBillingModal && (
+      {billingUiEnabled && !desktopPlanLink && showBillingModal && (
         <BillingModal
           m={m}
           billing={billing}

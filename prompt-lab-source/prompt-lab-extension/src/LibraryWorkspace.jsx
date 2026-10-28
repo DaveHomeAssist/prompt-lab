@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
@@ -16,6 +17,7 @@ import usePersistedState from './usePersistedState.js';
 import PanelResizer, { clampWidth } from './PanelResizer.jsx';
 import { INSPECTOR_WIDTH, LIBRARY_DRAWER_WIDTH, inspectorMaxWidth } from './lib/sidePane.js';
 import { APP_VERSION, DEFAULT_GOLDEN_THRESHOLD } from './constants.js';
+import { getVersionCount } from './lib/promptSchema.js';
 
 const SMART_VIEWS = Object.freeze([
   { id: 'all', icon: 'FolderOpen', label: 'All prompts' },
@@ -176,7 +178,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
         <div><dt>Updated</dt><dd>{new Date(selected.updatedAt || selected.updated_at || selected.createdAt).toLocaleString()}</dd></div>
         <div><dt>Uses</dt><dd>{selected.useCount || 0}</dd></div>
-        <div><dt>Saved versions</dt><dd>{selected.versions?.length || 0}</dd></div>
+        <div><dt>Versions</dt><dd>{getVersionCount(selected)}</dd></div>
       </dl>
     </div>;
   }
@@ -233,7 +235,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 }
 
 export default function LibraryWorkspace({
-  m, lib, loadEntry, copy, addToComposer, sendToABTest, openSavePanel,
+  m, lib, loadEntry, copy, addToComposer, sendToABTest, compareLocked = false, openSavePanel,
   onOpenScratchSource, onExportEntries,
   canUseCollections = true, canExportLibrary = true,
   canImportLibrary = canExportLibrary, canUsePacks = true, openBilling,
@@ -502,7 +504,7 @@ export default function LibraryWorkspace({
         {canUseCollections ? folderRows.filter(folder => !collapsedFolders.some(id => folderDescendants(folderRecords, id).has(folder.id) && id !== folder.id)).map(folder => <div key={folder.id} className="pl-library-folder" style={{ paddingLeft: `${Math.min(folder.depth, 6) * 10}px` }}>
           {folder.hasChildren && <button type="button" aria-label={`${collapsedFolders.includes(folder.id) ? 'Expand' : 'Collapse'} folder ${folder.name}`} aria-expanded={!collapsedFolders.includes(folder.id)} onClick={() => setCollapsedFolders(current => current.includes(folder.id) ? current.filter(item => item !== folder.id) : [...current, folder.id])}><Ic n={collapsedFolders.includes(folder.id) ? 'ArrowRight' : 'ChevronDown'} size={12} /></button>}
           <button type="button" className="pl-folder-select" title={folder.collection} aria-current={smartView === 'collection' && lib.activeCollection === folder.collection ? 'page' : undefined} onClick={() => { setSmartView('collection'); setCheckedIds([]); setSelectedId(null); lib.setActiveTag(null); lib.setActiveCollection(folder.collection); if (compact) setDrawerOpen(false); }}><Artwork value={folder.artwork} fallback="Folder" /><span>{folder.name}</span><small>{lib.library.filter(entry => folderRecords.some(item => item.collection === entry.collection && folderDescendants(folderRecords, folder.id).has(item.id))).length}</small></button>
-        </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections · Pro</button>}
+        </div>) : <button type="button" className="pl-library-locked-row" onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
         {showCollectionManager && canUseCollections && <div className="pl-collection-manager">
           <label>Parent folder<select aria-label="Parent folder" value={collectionParent} onChange={event => setCollectionParent(event.target.value)}><option value="">Library root</option>{folderRows.map(folder => <option key={folder.id} value={folder.id}>{folder.collection}</option>)}</select></label>
           <div className="pl-collection-create"><input value={collectionDraft} onChange={(event) => setCollectionDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') createCollection(); }} placeholder="New collection" aria-label="New collection name" /><button type="button" onClick={createCollection} disabled={!collectionDraft.trim() || folderSaving}>Add</button></div>
@@ -549,7 +551,7 @@ export default function LibraryWorkspace({
 
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">
-        <summary className="cursor-pointer text-sm font-semibold">Starter Libraries</summary>
+        <summary className="pl-starter-summary cursor-pointer text-sm font-semibold">Starter Libraries</summary>
         <div className="mt-3 flex flex-col gap-2">
           {lib.starterLibraries.map(pack => <StarterPackCard key={pack.id} pack={pack} m={m} onLoad={lib.loadStarterPack} />)}
         </div>
@@ -569,7 +571,7 @@ export default function LibraryWorkspace({
           <button type="button" onClick={() => runBulk(() => checkedEntries.forEach((entry) => lib.restoreDeleted(entry.id)), `Restored ${checkedEntries.length} prompts.`)}>Restore</button>
           <button type="button" onClick={() => runBulk(() => lib.permanentlyDeleteEntries?.(checkedIds) ?? 0, `Permanently deleted ${checkedEntries.length} ${checkedEntries.length === 1 ? 'prompt' : 'prompts'}.`)}><Ic n="Trash2" size={13} /> Delete forever</button>
         </> : <>
-          {canUseCollections ? <label>Move to<select aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" onClick={() => openBilling?.('collections')}>Collections Pro</button>}
+          {canUseCollections ? <label>Move to<select aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
           <label>Add tag<input value={bulkTag} onChange={(event) => setBulkTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && bulkTag.trim()) { const tag = bulkTag.trim(); runBulk(() => lib.addTagToEntries(checkedIds, tag), `Added #${tag} to ${checkedIds.length} prompts.`); setBulkTag(''); } }} placeholder="Type + Enter" /></label>
           <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: true })), `Favorited ${checkedIds.length} prompts.`)}><Ic n="Star" size={13} /> Favorite</button>
           <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: false })), `Unfavorited ${checkedIds.length} prompts.`)}>Unfavorite</button>
@@ -583,7 +585,7 @@ export default function LibraryWorkspace({
 
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
-        <div className="pl-library-index-actions">{entries.length > 0 && <label><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
+        <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
       </div>
 
       {entries.length === 0
@@ -593,7 +595,7 @@ export default function LibraryWorkspace({
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
               <span className="pl-library-card-copy"><Artwork value={entry.metadata?.artwork} /><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
-              <span className="pl-library-card-meta"><span>{entry.versions?.length || 0} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
+              <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
               {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>
@@ -617,6 +619,10 @@ export default function LibraryWorkspace({
       side="end"
       getEdge={() => workspaceRef.current?.getBoundingClientRect().right}
     />
+    {/* At 1100 px and below the inspector floats over the list. The scrim makes
+        that a real drawer: the list underneath is dimmed and a tap on it closes
+        the inspector instead of acting on a half-covered card (V-06). */}
+    {selected && <button type="button" className="pl-inspector-scrim" data-dialog-scrim aria-hidden="true" tabIndex={-1} onClick={closeInspector} />}
     <aside
       ref={inspectorDialogRef}
       className="pl-library-inspector"
@@ -647,7 +653,7 @@ export default function LibraryWorkspace({
           {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>
             <button type="button" className="pl-primary-button" onClick={() => loadEntry(selected)}>Open in Editor</button>
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
-            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>A/B test</button>
+            <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare{compareLocked && <ProBadge />}</button>
             <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
             <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>

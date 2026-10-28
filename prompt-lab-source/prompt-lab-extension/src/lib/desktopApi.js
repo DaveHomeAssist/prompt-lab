@@ -9,6 +9,8 @@ import { callProvider, listOllamaModels as listModels } from './providers.js';
 import { DEFAULTS, migrateLegacyDefaults, normalizeProvider } from './providerRegistry.js';
 import { createProxyFetch } from './proxyFetch.js';
 import { clearHostedQuota } from './hostedQuota.js';
+import { diagnostics, registerDiagnosticSource } from './diagnostics.js';
+registerDiagnosticSource(import.meta.url);
 
 const SETTINGS_KEY = 'pl2-provider-settings';
 const HOSTED_PROVIDER = 'anthropic';
@@ -65,14 +67,22 @@ export async function callModelDirect(payload, { settingsOverride, onChunk, sign
   const s = normalizeHostedSettings(settingsOverride || loadSettings());
   // A payload-level provider (e.g. an arena column) overrides the settings default; hosted web stays proxied.
   const provider = IS_WEB ? HOSTED_PROVIDER : normalizeProvider(payload?.provider || s.provider);
-  return callProvider({
+  const finish = diagnostics().begin('model', { provider });
+  try {
+    const result = await callProvider({
     provider,
     payload,
     settings: withDemoKeys(s, provider),
     fetchImpl: getFetchImpl(provider),
     onChunk,
     signal,
-  });
+    });
+    finish('operation_end');
+    return result;
+  } catch (error) {
+    finish(error?.name === 'AbortError' ? 'operation_cancel' : 'operation_error', { status: typeof error?.status === 'number' ? error.status : undefined });
+    throw error;
+  }
 }
 
 export async function getConfiguredProvidersDirect() {

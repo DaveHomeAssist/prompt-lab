@@ -6,6 +6,7 @@ on:
     branches:
       - main
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
@@ -14,6 +15,7 @@ on:
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
+      - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
@@ -54,7 +56,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify native scenario logic, Library layout and overlap, and Library test cases
-        run: npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js
+        run: node ../prompt-lab-desktop/tests/native-script-syntax.test.mjs && npx playwright test e2e/native-acceptance-development.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js
 
   desktop-build:
     needs: extension-tests
@@ -105,6 +107,19 @@ jobs:
         with:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
+
+      - name: Test native diagnostic contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
+        run: cargo test --release --bin prompt-lab-desktop
+
+      - name: Retain diagnostic source maps
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-maps-desktop-${{ matrix.platform }}-${{ github.sha }}
+          path: prompt-lab-source/prompt-lab-desktop/.diagnostic-source-maps
+          include-hidden-files: true
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Upload build artifacts
         if: always()

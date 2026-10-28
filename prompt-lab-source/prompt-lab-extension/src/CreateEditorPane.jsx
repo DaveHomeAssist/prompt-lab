@@ -127,8 +127,6 @@ export default function CreateEditorPane({
   setShowEvalHistory,
   // Stream
   streamPreview,
-  showDiffUpgradeHint = false,
-  onUnlockDiff,
   runCasesLocked = false,
   // Follow-up suggestions
   followUps = [],
@@ -263,58 +261,6 @@ export default function CreateEditorPane({
         />
       )}
 
-      {/* ── Recent strip ── */}
-      {!contextControls && recentPrompts?.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-[10px] ${m.textMuted} uppercase tracking-wider font-semibold shrink-0 flex items-center gap-1`}>
-            <Ic n="Clock" size={9} className="text-blue-400" />
-            Recent
-          </span>
-          {recentPrompts.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => loadEntry(entry)}
-              className={`inline-flex items-center ${m.codeBlock} border ${m.border} rounded-md px-2 py-1 cursor-pointer transition-colors hover:border-orange-400/60`}
-              title={entry.title}
-            >
-              <span className={`text-[11px] ${m.textBody} truncate max-w-[10rem]`}>
-                {entry.title.length > 20 ? entry.title.slice(0, 20) + '\u2026' : entry.title}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* ── Quick inject (inline chips) ── */}
-      {!contextControls && quickInject.length > 0 && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`text-[10px] ${m.textMuted} uppercase tracking-wider font-semibold shrink-0 flex items-center gap-1`}>
-            <Ic n="Zap" size={9} className="text-yellow-500" />
-            Quick
-          </span>
-          {quickInject.map((entry) => (
-            <div key={entry.id} className={`inline-flex items-center gap-1.5 ${m.codeBlock} border ${m.border} rounded-md px-2 py-1`}>
-              <span className={`text-[11px] ${m.textBody} truncate max-w-[10rem]`}>{entry.title}</span>
-              <button
-                type="button"
-                onClick={() => { copy(entry.enhanced, `Copied: ${entry.title}`); bumpUse(entry.id); }}
-                className={`text-[10px] font-semibold transition-colors ${m.textAlt} ${accentHoverTextClass}`}
-              >
-                Copy
-              </button>
-              <button
-                type="button"
-                onClick={() => loadEntry(entry)}
-                className={`text-[10px] font-semibold transition-colors ${accentTextClass} ${accentHoverTextClass}`}
-              >
-                Load
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
       {draftFollowUpOrigin && <FollowUpOrigin origin={draftFollowUpOrigin} library={lib.library} onOpenParent={onOpenFollowUpParent} m={m} />}
       {/* ── Input ── */}
       <div className={splitLayout ? 'pl-create-split-input' : undefined}>
@@ -323,9 +269,9 @@ export default function CreateEditorPane({
             <span id="prompt-input-label" className={`text-xs ${m.textSub} uppercase tracking-widest font-semibold`}>Input</span>
             <div className="flex rounded-md overflow-visible border" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
               <button type="button" onClick={() => setMdPreview(false)} aria-pressed={!mdPreview}
-                className={`text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
+                className={`pl-md-toggle text-[10px] px-2 py-0.5 transition-colors ${!mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Write</button>
               <button type="button" onClick={() => setMdPreview(true)} aria-pressed={mdPreview}
-                className={`text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Preview</button>
+                className={`pl-md-toggle text-[10px] px-2 py-0.5 transition-colors ${mdPreview ? accentSolidClass : `${m.btn} ${m.textAlt}`}`}>Preview</button>
             </div>
           </div>
           <span className={`text-xs ${m.textMuted}`}>{wc}w · {raw.length}c{score ? ` · ~${score.tokens} tok` : ''}</span>

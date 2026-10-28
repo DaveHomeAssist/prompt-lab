@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { switchTheme } from './theme-toggle.js';
 
 for (const layout of ['stacked', 'split']) for (const theme of ['light', 'dark']) {
   test(`cancelled ${layout} Create results remain keyboard reachable in ${theme} mode`, async ({ page }) => {
@@ -12,7 +13,7 @@ for (const layout of ['stacked', 'split']) for (const theme of ['light', 'dark']
     await page.goto('/app/');
     const input = page.getByTestId('prompt-input');
     await expect(input).toBeVisible();
-    if (theme === 'dark') await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+    if (theme === 'dark') await switchTheme(page, 'dark');
     await page.evaluate(() => {
       const original = window.fetch;
       let once = true;

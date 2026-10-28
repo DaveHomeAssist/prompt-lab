@@ -1,3 +1,4 @@
+import { DIAGNOSTIC_KEY } from '../lib/diagnostics.js';
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
@@ -87,9 +88,9 @@ it('preview and Cancel perform no import writes, including workspace extras', as
   await act(async () => new Promise(resolve => setTimeout(resolve, 180)));
   const writes = vi.spyOn(Storage.prototype, 'setItem');
   await openPreview(tab, { library: [{ ...prompt('new'), enhanced: 'Different body' }], scratch: { pads: [{ id: 'note', content: 'New note' }] }, runs: [{ promptId: 'new', output: 'Result' }] });
-  expect(writes).not.toHaveBeenCalled();
+  expect(writes.mock.calls.filter(([key]) => key !== DIAGNOSTIC_KEY)).toHaveLength(0);
   act(() => tab.result.current.cancelImportPreview());
-  expect(writes).not.toHaveBeenCalled();
+  expect(writes.mock.calls.filter(([key]) => key !== DIAGNOSTIC_KEY)).toHaveLength(0);
   expect(tab.result.current.importPreview).toBeNull();
   expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
   expect(await listEvalRuns()).toHaveLength(0);
@@ -104,7 +105,7 @@ it('refreshes stale preview choices without writing and preserves another tab ad
   const writes = vi.spyOn(Storage.prototype, 'setItem');
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview.notice).toContain('workspace changed');
-  expect(writes).not.toHaveBeenCalled();
+  expect(writes.mock.calls.filter(([key]) => key !== DIAGNOSTIC_KEY)).toHaveLength(0);
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview).toBeNull();
   expect(tab.result.current.library.map(row => row.id)).toEqual(expect.arrayContaining(['survivor', 'other', 'new']));

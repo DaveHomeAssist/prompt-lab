@@ -45,7 +45,15 @@ describe('EditorActions', () => {
   it('keeps the locked Pro action inside the warm shared accent system', () => {
     render(<EditorActions {...baseProps} runCasesLocked />);
     expect(screen.getByRole('button', { name: /test enhancer pro/i })).toHaveClass('border', 'border-orange-400/35', 'bg-orange-500/12', 'text-orange-100');
-    expect(screen.getByText('Pro')).toHaveClass('bg-orange-500/20', 'text-orange-50');
+    const badge = screen.getByTestId('pro-badge');
+    expect(badge).toHaveClass('bg-orange-500/20', 'text-orange-50');
+    expect(badge).toHaveTextContent('Pro');
+    expect(screen.getByRole('button', { name: 'Test Enhancer Pro feature' })).toContainElement(badge);
+  });
+  it('shows no Pro badge when batch runs are available', () => {
+    render(<EditorActions {...baseProps} />);
+    expect(screen.getByRole('button', { name: 'Test Enhancer' })).toBeInTheDocument();
+    expect(screen.queryByTestId('pro-badge')).not.toBeInTheDocument();
   });
   it('persists independent task, target, strategy and budget choices', () => {
     const mounted = render(<Harness />);

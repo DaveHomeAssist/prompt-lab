@@ -8,7 +8,7 @@ submission live in the release's `SUBMISSION.md`; this file is the source copy.
 The store summary is the manifest `description` (CWS limit: 132 characters).
 Keep this line identical to `extension/manifest.json` and `public/manifest.json`:
 
-AI prompt enhancer, library, composer, A/B tester, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
+AI prompt enhancer, library, composer, prompt Compare, and notepad. Supports Anthropic, OpenAI, Gemini, OpenRouter, and Ollama.
 
 (123 characters.)
 
@@ -21,7 +21,7 @@ Prompt Lab works with Anthropic, OpenAI, Google Gemini, OpenRouter, and Ollama. 
 ### What you can do
 
 - Enhance and rewrite prompts with better structure, specificity, and clarity
-- Compare prompt variants side by side with A/B testing and keep the run history
+- Compare prompt variants side by side with Compare and keep the run history
 - Save prompts to a reusable library with tags, collections, and JSON import/export
 - Build larger prompts from reusable blocks in the composer
 - Keep working notes in the built-in Scratch notepad and promote them to prompts
@@ -53,7 +53,7 @@ no longer selectable; `Workflow & Planning` is the alternative.
 - Multi-provider support for Anthropic, OpenAI, Gemini, OpenRouter, and Ollama
 - Side panel workflow that stays open while you browse
 - Prompt enhancement with reusable optimization modes
-- A/B prompt testing with saved run history
+- Compare: side-by-side prompt testing with saved run history
 - Prompt library with tags plus JSON import/export
 - Prompt composer for building larger prompts from reusable parts
 - Prompt linting and sensitive-data scanning before send

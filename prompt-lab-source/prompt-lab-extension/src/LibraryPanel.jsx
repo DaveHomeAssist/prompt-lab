@@ -1,5 +1,7 @@
 import { Fragment, memo, useEffect, useState } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import { getVersionCount } from './lib/promptSchema.js';
 import { extractVars, looksSensitive } from './promptUtils';
 import TagChip from './TagChip';
 import TestCasesPanel from './TestCasesPanel';
@@ -47,7 +49,7 @@ const LibraryPanel = memo(function LibraryPanel({
   caseNotes, setCaseNotes,
   openCaseForm, resetCaseForm, saveCaseForPrompt,
   loadCaseIntoEditor, runSingleCase, removeCase,
-  loadEntry, deleteEntry, addToComposer, openSavePanel, sendToABTest, copy,
+  loadEntry, deleteEntry, addToComposer, openSavePanel, sendToABTest, compareLocked = false, copy,
   canUseCollections = true,
   canExportLibrary = true,
   openBilling,
@@ -392,7 +394,7 @@ const LibraryPanel = memo(function LibraryPanel({
                     {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
                     <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
                     {entry.useCount > 0 && <span className="text-orange-300">{entry.useCount}×</span>}
-                    {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
+                    {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400" title={`${getVersionCount(entry)} versions, including the current one`}><Ic n="Clock" size={8} />{getVersionCount(entry)}v</span>}
                     {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                   </div>
                 </div>
@@ -456,8 +458,8 @@ const LibraryPanel = memo(function LibraryPanel({
                   <div className={`flex flex-wrap gap-2`}>
                     <button type="button" onClick={() => openSavePanel(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors`}>Edit details</button>
                     <button type="button" onClick={() => addToComposer(entry)} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="Layers" size={11} />Build Sequence</button>
-                    <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B A</button>
-                    <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />A/B B</button>
+                    <button type="button" onClick={() => sendToABTest(entry, 'a')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />Compare A{compareLocked && <ProBadge />}</button>
+                    <button type="button" onClick={() => sendToABTest(entry, 'b')} className={`ui-control px-2 py-1 rounded ${m.btn} ${m.textAlt} text-xs transition-colors flex items-center gap-1`}><Ic n="FlaskConical" size={11} />Compare B{compareLocked && <ProBadge />}</button>
                     <button type="button" onClick={() => {
                       if ((looksSensitive(entry.original) || looksSensitive(entry.enhanced) || looksSensitive(entry.notes))
                         && !window.confirm('This shared link may include sensitive content. Continue?')) return;

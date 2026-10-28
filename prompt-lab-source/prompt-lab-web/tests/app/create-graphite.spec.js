@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { selectPalette, switchTheme } from './theme-toggle.js';
 
 const draft = 'Write a launch brief with a named owner and measurable acceptance criteria.';
 
@@ -51,10 +52,9 @@ test('flagged Create graphite preserves all palettes, both modes and the respons
   await expect(page.locator('.pl-app-shell')).toHaveAttribute('data-theme', 'light');
   const accents = new Set();
   for (const palette of ['ember', 'ocean', 'forest', 'plum']) {
-    await page.getByLabel('Color palette', { exact: true }).selectOption(palette);
+    await selectPalette(page, palette);
     for (const mode of ['light', 'dark']) {
-      const toggle = page.getByRole('button', { name: `Switch to ${mode} mode`, exact: true });
-      if (await toggle.isVisible()) await toggle.click();
+      if (await page.locator('.pl-app-shell').getAttribute('data-theme') !== mode) await switchTheme(page, mode);
       await expect(page.locator('.pl-create-graphite')).toHaveAttribute('data-create-theme', mode);
       accents.add(await page.locator('.pl-create-graphite').evaluate(el => getComputedStyle(el).getPropertyValue('--pl-brand-ember').trim()));
       for (const [width, height] of [[1440, 900], [375, 812]]) {
@@ -100,7 +100,7 @@ test('graphite empty and error states retain legible controls', async ({ page },
   await pane(page, 'Result');
   await expect(page.getByRole('alert').first()).toBeVisible();
   await checkSurface(page, 'Error light');
-  await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+  await switchTheme(page, 'dark');
   await expect(page.locator('.pl-create-graphite')).toHaveAttribute('data-create-theme', 'dark');
   await checkSurface(page, 'Error dark');
   await page.screenshot({ path: testInfo.outputPath('graphite-error-dark-375.png') });
