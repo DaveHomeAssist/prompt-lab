@@ -24,7 +24,7 @@ Consequences: what this unlocks or closes off
 
 ### [D-016] PromptLab library storage sequence
 
-Status: direction decided; implementation and hosted provider pending
+Status: direction and hosted choices decided; implementation in progress
 Owner: Dave
 Date opened: 2026-10-23
 Date direction decided: 2026-10-23
@@ -37,7 +37,29 @@ Rationale: A user-owned durable library and supported API remove dependence on a
 
 Consequences: The previous web-first Neon recommendation is superseded as the execution sequence. The former four-kind schema, 25-version cap and omission of runs/evaluations/Scratch cannot meet the preservation requirement. The revised [proposal](account-library-sync.md) and [build slices](account-library-sync-slices.md) define folder acceptance before hosted work. Existing runtime policy remains unchanged until implemented and verified.
 
-Open before hosted work: provider/cost, region, encryption/key recovery and history/backup erasure policy. Neon/Clerk is a candidate, not a selected service. Desktop/local-service first, immutable package and explicit backend switches are proposed implementation defaults for review. Mirrors DEC-87 in DB | Decisions; prior options and recommendation remain in [Git history](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/DECISIONS.md).
+Original open decisions: provider/cost, region, encryption/key recovery and history/backup erasure policy. Neon/Clerk is a candidate, not a selected service. Desktop/local-service first, immutable package and explicit backend switches are proposed implementation defaults for review. Mirrors DEC-87 in DB | Decisions; prior options and recommendation remain in [Git history](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/DECISIONS.md).
+
+---
+
+### D-016 follow-up: October 28 authorization
+
+Dave authorized implementation of all planned phases and save-state UX repairs,
+with verification against a preserved copy of his real workspace export.
+The implementation remains subject to the ordered acceptance gates.
+
+Hosted decisions made October 28:
+
+- Neon with existing Clerk authentication, US East.
+- No paid provisioning without separate approval.
+- Server-readable library content, provider encryption at rest and strict
+  account/library access checks. End-to-end encryption is not selected.
+- Retain all history and backups without automatic pruning. Permanent erasure
+  is a separate confirmed workflow disclosing provider backup retention.
+
+Implementation status: contract and isolated folder/API candidate in progress.
+The candidate is not connected to a desktop, extension or hosted library.
+Actual iCloud and installed-app acceptance remain required before hosted work.
+Provider retention claims must be verified before policy publication.
 
 ---
 

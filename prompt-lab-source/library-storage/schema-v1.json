@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:promptlab:library-package:1",
+  "$ref": "#/$defs/Package",
+  "$defs": {
+    "Object": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "kind": {
+          "enum": [
+            "source",
+            "workspace",
+            "commit"
+          ]
+        },
+        "data": {}
+      },
+      "required": [
+        "schemaVersion",
+        "kind",
+        "data"
+      ],
+      "additionalProperties": true
+    },
+    "Package": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-library-package"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "head": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "objects": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Object"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "head",
+        "objects"
+      ],
+      "additionalProperties": true
+    },
+    "Commit": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "state": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "libraryId",
+        "operationId",
+        "parents",
+        "source",
+        "state",
+        "createdAt"
+      ],
+      "additionalProperties": true
+    },
+    "Preview": {
+      "type": "object",
+      "properties": {
+        "previewId": {
+          "type": "string"
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "expiresAt": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "previewId",
+        "libraryId",
+        "expectedRevision",
+        "sourceHash",
+        "fingerprint",
+        "expiresAt"
+      ],
+      "additionalProperties": true
+    },
+    "Receipt": {
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string"
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "parentRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "checkpointId": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "state": {
+          "const": "committed"
+        },
+        "verified": {
+          "const": true
+        }
+      },
+      "required": [
+        "operationId",
+        "libraryId",
+        "parentRevision",
+        "revision",
+        "checkpointId",
+        "fingerprint",
+        "state",
+        "verified"
+      ],
+      "additionalProperties": true
+    },
+    "Checkpoint": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "objectHashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "provenance": {}
+      },
+      "required": [
+        "libraryId",
+        "revision",
+        "reason",
+        "objectHashes",
+        "provenance"
+      ],
+      "additionalProperties": true
+    },
+    "Outbox": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "baseRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "operationId": {
+          "type": "string"
+        },
+        "sourceHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "failed",
+            "committed"
+          ]
+        },
+        "sourceManifest": {}
+      },
+      "required": [
+        "schemaVersion",
+        "libraryId",
+        "baseRevision",
+        "operationId",
+        "sourceHash",
+        "state",
+        "sourceManifest"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

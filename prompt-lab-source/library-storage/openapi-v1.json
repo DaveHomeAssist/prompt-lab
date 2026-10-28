@@ -1,0 +1,674 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PromptLab local library contract candidate",
+    "version": "1.0.0",
+    "description": "Unconnected candidate. Proposed recovery routes return 404 until implemented. Pairing and installed desktop support are not delivered by this candidate."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/v1/library": {
+      "get": {
+        "summary": "Read bound identity and acknowledged revision",
+        "operationId": "getV1Library",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
+      }
+    },
+    "/v1/library/snapshot": {
+      "get": {
+        "summary": "Page object hashes pinned to a revision",
+        "operationId": "getV1LibrarySnapshot",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "parameters": [
+          {
+            "in": "query",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/library/objects/{hash}": {
+      "get": {
+        "summary": "Read one integrity-checked object",
+        "operationId": "getV1LibraryObjectsHash",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "hash",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/library/previews": {
+      "post": {
+        "summary": "Preview a complete source workspace without active mutation",
+        "operationId": "postV1LibraryPreviews",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "libraryId": {
+                    "type": "string"
+                  },
+                  "expectedRevision": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "sourceText": {
+                    "type": "string"
+                  },
+                  "resolutions": {
+                    "type": "object",
+                    "maxProperties": 0
+                  }
+                },
+                "required": [
+                  "libraryId",
+                  "expectedRevision",
+                  "sourceText"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/library/commits": {
+      "post": {
+        "summary": "Commit a bound preview with an idempotency key",
+        "operationId": "postV1LibraryCommits",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preview"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/library/operations/{operationId}": {
+      "get": {
+        "summary": "Read a persisted operation receipt",
+        "operationId": "getV1LibraryOperationsOperationid",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "operationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/v1/library/backups": {
+      "get": {
+        "summary": "Page verified checkpoints",
+        "operationId": "getV1LibraryBackups",
+        "x-implementation-status": "proposed",
+        "responses": {
+          "200": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
+      }
+    },
+    "/v1/library/restores": {
+      "post": {
+        "summary": "Preview a restore respecting deletion markers",
+        "operationId": "postV1LibraryRestores",
+        "x-implementation-status": "proposed",
+        "responses": {
+          "201": {
+            "description": "Acknowledged result"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Object": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "kind": {
+            "enum": [
+              "source",
+              "workspace",
+              "commit"
+            ]
+          },
+          "data": {}
+        },
+        "required": [
+          "schemaVersion",
+          "kind",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "Package": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-package"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "head": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "objects": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "head",
+          "objects"
+        ],
+        "additionalProperties": true
+      },
+      "Commit": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "state": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "libraryId",
+          "operationId",
+          "parents",
+          "source",
+          "state",
+          "createdAt"
+        ],
+        "additionalProperties": true
+      },
+      "Preview": {
+        "type": "object",
+        "properties": {
+          "previewId": {
+            "type": "string"
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "expiresAt": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "previewId",
+          "libraryId",
+          "expectedRevision",
+          "sourceHash",
+          "fingerprint",
+          "expiresAt"
+        ],
+        "additionalProperties": true
+      },
+      "Receipt": {
+        "type": "object",
+        "properties": {
+          "operationId": {
+            "type": "string"
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "parentRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "checkpointId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "state": {
+            "const": "committed"
+          },
+          "verified": {
+            "const": true
+          }
+        },
+        "required": [
+          "operationId",
+          "libraryId",
+          "parentRevision",
+          "revision",
+          "checkpointId",
+          "fingerprint",
+          "state",
+          "verified"
+        ],
+        "additionalProperties": true
+      },
+      "Checkpoint": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "objectHashes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "provenance": {}
+        },
+        "required": [
+          "libraryId",
+          "revision",
+          "reason",
+          "objectHashes",
+          "provenance"
+        ],
+        "additionalProperties": true
+      },
+      "Outbox": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "baseRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operationId": {
+            "type": "string"
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "failed",
+              "committed"
+            ]
+          },
+          "sourceManifest": {}
+        },
+        "required": [
+          "schemaVersion",
+          "libraryId",
+          "baseRevision",
+          "operationId",
+          "sourceHash",
+          "state",
+          "sourceManifest"
+        ],
+        "additionalProperties": true
+      }
+    }
+  }
+}

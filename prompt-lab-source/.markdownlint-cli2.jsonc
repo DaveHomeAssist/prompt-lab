@@ -9,6 +9,7 @@
     "./NOTION_DOCS_AGENT.md",
     "./docs/account-library-sync.md",
     "./docs/account-library-sync-slices.md",
+    "./docs/library-storage-contract-candidate.md",
     "./docs/billing-policy.md",
     "./docs/docs-map.md",
     "./docs/docs-style-guide.md",

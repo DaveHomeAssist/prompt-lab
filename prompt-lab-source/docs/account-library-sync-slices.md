@@ -95,3 +95,35 @@ Acceptance: two clients converge for complete workspace data; response loss is i
 For each later authorized slice: reverify current main and ownership, use disposable fixtures and qualified runners, run scoped tests and failure paths, deliver through required PR gates, then update existing records with the actual evidence. Provider/billing calls and infrastructure changes need their own scope. Documentation delivery is not storage implementation or data migration.
 
 Next action: review the reconciled plan and authorize A1, shared contracts and lossless fixtures. The chosen sequence does not need another vote. Dave selects the actual iCloud folder through the delivered picker later.
+
+## Implementation progress: October 28
+
+Dave authorized all planned phases, real-export verification and the reported
+save-state UX repair. Sequential acceptance still applies. Hosted decisions
+are recorded in the D-016 follow-up; no paid provisioning is authorized.
+
+| Stage | Evidence state | Remaining acceptance |
+| --- | --- | --- |
+| A1 | Contract candidate and raw synthetic preservation fixture implemented | Complete-source inventory, reviewed conflict semantics and full schema/API acceptance |
+| A2 | Isolated folder and programmatic loopback API candidate tested | Production service ownership, secure pairing, recovery APIs and complete failure matrix |
+| A3 | Not started | Native picker, packaging, app connection and reviewed migration |
+| A4 | Not accepted | Actual two-client iCloud, installed artifacts, independent recovery and human acceptance |
+| B1 | Provider, region, encryption direction and retention decisions made | Verify provider constraints, costs and policy facts after Phase A |
+| B2 | Not started | Accepted Phase A and hosted contract, authorized provisioning |
+| B3 | Not started | Hosted parity, policy approval, deployment/runtime/native acceptance |
+
+The private real export passed an isolated source-byte and full JSON round trip,
+reopen and duplicate retry. Its original remained unchanged. That proves
+preservation of the supplied export only, not app integration, absent source
+stores, actual iCloud replication or release readiness. No private fixture is
+stored in the repository or runner workspace.
+
+The first folder reopen exposed an EEXIST error, fixed before the passing
+readback. A synthetic iCloud propagation probe was not visible on either
+qualified Windows SSH host during the bounded checks. This is an open cloud
+qualification result; it does not establish the cause or justify changing
+account settings.
+
+The candidate and remaining limitations are described in
+[library-storage-contract-candidate.md](library-storage-contract-candidate.md).
+Next: complete A1 acceptance before advancing the production folder service.
