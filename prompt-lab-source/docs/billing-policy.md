@@ -135,7 +135,7 @@ values above against `billingPolicy.js`.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
-  A/B testing, batch runs or collections. The diff viewer, library export,
+  Compare, batch runs or collections. The diff viewer, library export,
   import, preset packs and enhancement stay free on every plan.
   Free accounts keep every feature while the server reports `billingDisabled`
   or `checkoutDisabled`. The extension and desktop builds have no sign-in or
@@ -157,7 +157,7 @@ new subscriptions from existing annual renewal prices.
 
 [Production acceptance](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39235873168)
 verified the annual modal, actual Free JSON downloads and their contents at
-375px and 1440px, and the existing Model Arena and collection restrictions.
+375px and 1440px, and the existing Compare and collection restrictions.
 Focused tests retain all four Pro gates, including batch runs and the diff viewer.
 [Unpaid checkout acceptance](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/39235912086)
 opened real hosted Stripe Checkout and verified USD 79.00/year and USD 9.00/month.

@@ -51,9 +51,9 @@ export const PRICE_COPY = Object.freeze({
 export const PRO_FEATURE_LIST = Object.freeze([
   Object.freeze({
     id: 'abTesting',
-    label: 'A/B testing',
+    label: 'Compare',
     description: 'Run prompt variants head-to-head inside Evaluate.',
-    landingLabel: 'A/B Compare in Evaluate',
+    landingLabel: 'Compare in Evaluate',
   }),
   Object.freeze({
     id: 'batchRuns',

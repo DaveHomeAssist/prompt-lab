@@ -69,7 +69,7 @@ export default function DiffPane({ textA, textB, onClose, copy, m }) {
         <div className={`px-5 py-4 border-b ${m.border} flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center`}>
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-orange-400 mb-1">Prompt Diff</p>
-            <h2 id="diff-pane-title" className={`text-base font-semibold ${m.text}`}>A/B Output Comparison</h2>
+            <h2 id="diff-pane-title" className={`text-base font-semibold ${m.text}`}>Compare outputs</h2>
             <p id="diff-pane-description" className="sr-only">Compare the two prompt outputs, synchronize scrolling, or copy the differences as Markdown.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">

@@ -11,7 +11,9 @@ const versionErrors = checkVersions().errors;
 if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
 export default defineConfig({
-  define: buildIdentity(),
+  // Product call 7: marks the desktop surface so billing screens that cannot
+  // complete a purchase here are replaced by a link to promptlab.tools.
+  define: { ...buildIdentity(), 'import.meta.env.VITE_PROMPTLAB_SURFACE': JSON.stringify('desktop') },
   plugins: [react(), diagnosticSourceMaps('desktop')],
   resolve: {
     alias: {

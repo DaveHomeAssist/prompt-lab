@@ -60,7 +60,7 @@ import ShortcutsModal from './modals/ShortcutsModal';
 import PiiWarningModal from './modals/PiiWarningModal';
 import WorkspaceImportModal from './modals/WorkspaceImportModal.jsx';
 import BillingModal from './modals/BillingModal.jsx';
-import { isBillingUiEnabled } from './lib/billing.js';
+import { isBillingUiEnabled, isDesktopAppSurface } from './lib/billing.js';
 import {
   buildLandingTelemetryEvents,
   normalizeLandingIntent,
@@ -172,6 +172,9 @@ export default function App({
   const isWeb = !isExtension && import.meta.env?.VITE_WEB_MODE === 'true';
   // Extension builds hide Upgrade/Pro UI (no sign-in, so checkout cannot complete).
   const billingUiEnabled = isBillingUiEnabled();
+  // Desktop shows the plan and a link to promptlab.tools instead of billing
+  // screens that cannot complete a purchase there (product call 7).
+  const desktopPlanLink = billingUiEnabled && isDesktopAppSurface();
   // Phase A1 of docs/VIEWPORT_SHELL_OVERHAUL_PLAN.md.
   //
   // 'contained' locks the shell to the viewport and scrolls inside it.
@@ -305,7 +308,7 @@ export default function App({
   } = ed;
 
   const openBilling = (featureId = null) => {
-    if (!billingUiEnabled) return;
+    if (!billingUiEnabled || desktopPlanLink) return;
     trackTelemetry('billing.modal_opened', {
       featureId: featureId || 'general',
       plan: billing.plan,
@@ -977,7 +980,7 @@ export default function App({
       title: payload.title,
     });
     openRunsViewWithBilling('compare');
-    notify('Scratch content loaded into A/B Variant A.');
+    notify('Scratch content loaded into Compare Variant A.');
   };
   const promoteScratchToLibrary = (title, content, options = {}) => lib.doSave({
     raw: content,
@@ -1072,7 +1075,7 @@ export default function App({
     }
     trackTelemetry('evaluate.compare_opened', { plan: billing.plan });
     openRunsViewWithBilling('compare');
-    notify('Opened Compare. Paste two variants or send prompts from the library to start an A/B run.');
+    notify('Opened Compare. Paste two variants or send prompts from the library to start a Compare run.');
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
@@ -1125,9 +1128,11 @@ export default function App({
         billingDisabled={billing.billingDisabled}
         openBilling={openBilling}
         billingUiEnabled={billingUiEnabled}
+        desktopPlanLink={desktopPlanLink}
         clerkUserButton={clerkUser ? clerkUserButton : null}
         settingsButtonRef={settingsButtonRef}
         renderMobileNavigation={false}
+        lockedRunsViews={{ compare: !canUseAbTesting }}
       />
 
       <PendingWritesNotice m={m} />
@@ -1324,6 +1329,7 @@ export default function App({
               copy={copy}
               addToComposer={handleAddToComposer}
               sendToABTest={(entry) => handleSendToABTest(entry, 'a')}
+              compareLocked={!canUseAbTesting}
               openSavePanel={openSavePanel}
               onOpenScratchSource={(noteId) => {
                 setScratchOpenNoteId(noteId);
@@ -1364,6 +1370,7 @@ export default function App({
               runSingleCase={runSingleCase} removeCase={removeCase}
               loadEntry={handleLoadEntry} deleteEntry={deleteEntry} addToComposer={handleAddToComposer}
               openSavePanel={openSavePanel} sendToABTest={handleSendToABTest} copy={copy}
+              compareLocked={!canUseAbTesting}
               canUseCollections={canUseCollections}
               canExportLibrary={canExportLibrary}
               openBilling={openBilling}
@@ -1391,10 +1398,10 @@ export default function App({
             <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider`}>Evaluate</p>
             <p className={`mt-1 text-xs ${m.textMuted}`}>
               {runsView === 'compare'
-                ? 'Compare prompt variants, capture winners, and keep recent A/B runs in one place.'
+                ? 'Compare prompt variants, capture winners, and keep recent Compare runs in one place.'
                 : (currentEntry
-                    ? 'Review enhance, test-case, and A/B runs for the selected prompt.'
-                    : 'Review enhance, test-case, and A/B runs across your saved workbench.')}
+                    ? 'Review enhance, test-case, and Compare runs for the selected prompt.'
+                    : 'Review enhance, test-case, and Compare runs across your saved workbench.')}
             </p>
           </div>
           <div className={`min-h-0 flex-1 ${pageScroll ? '' : 'overflow-hidden'}`}>
@@ -1404,7 +1411,7 @@ export default function App({
                 ? (
                   <div className="flex h-full items-center justify-center p-6">
                     <div className={`${m.surface} ${m.border} max-w-md rounded-2xl border p-5 text-center`}>
-                      <p className={`text-sm font-semibold ${m.text}`}>A/B testing is part of Prompt Lab Pro.</p>
+                      <p className={`text-sm font-semibold ${m.text}`}>Compare is part of Prompt Lab Pro.</p>
                       <p className={`mt-2 text-xs leading-relaxed ${m.textMuted}`}>
                         Unlock head-to-head prompt runs, saved winners, and compare history with a Prompt Lab Pro plan.
                       </p>
@@ -1427,6 +1434,7 @@ export default function App({
                   pageScroll={pageScroll}
                   onQuickStart={handleEvaluateQuickStart}
                   onOpenCompare={handleEvaluateOpenCompare}
+                  compareLocked={!canUseAbTesting}
                 />
               )}
           </div>
@@ -1451,6 +1459,7 @@ export default function App({
             onSendToEditor={sendScratchToEditor}
             onSendToComposer={sendScratchToComposer}
             onSendToABTest={sendScratchToABTest}
+            compareLocked={!canUseAbTesting}
           />
         </div>
       )}
@@ -1595,6 +1604,7 @@ export default function App({
           pendingImport={lib.pendingImport} retryImport={lib.retryImport}
           openOptions={openOptions} onClose={() => setShowSettings(false)}
           billing={billingUiEnabled ? billing : null}
+          desktopPlanLink={desktopPlanLink}
           openBilling={(featureId) => {
             setBillingReturnToSettings(true);
             setShowSettings(false);
@@ -1618,7 +1628,7 @@ export default function App({
         <ShortcutsModal m={m} primaryModKey={primaryModKey} saveLabel={primarySaveLabel} onClose={() => setShowShortcuts(false)} />
       )}
 
-      {billingUiEnabled && showBillingModal && (
+      {billingUiEnabled && !desktopPlanLink && showBillingModal && (
         <BillingModal
           m={m}
           billing={billing}

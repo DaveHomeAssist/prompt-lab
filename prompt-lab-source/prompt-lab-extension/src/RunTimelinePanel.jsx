@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
 import useEvalRuns from './hooks/useEvalRuns.js';
 import usePersistedState from './usePersistedState.js';
@@ -37,7 +38,7 @@ const DEFAULT_EVALUATE_TIMELINE_FILTERS = Object.freeze({
 
 const MODE_LABELS = {
   enhance: 'Enhance',
-  ab: 'A/B',
+  ab: 'Compare',
   'test-case': 'Test Case',
 };
 const STATUS_LABELS = {
@@ -394,6 +395,7 @@ export default function RunTimelinePanel({
   pageScroll,
   onQuickStart,
   onOpenCompare,
+  compareLocked = false,
 }) {
   const [timelineFilters, setTimelineFilters] = usePersistedState(
     EVALUATE_TIMELINE_FILTERS_KEY,
@@ -547,6 +549,7 @@ export default function RunTimelinePanel({
                 >
                   <Ic n="GitBranch" size={11} />
                   Compare View
+                  {compareLocked && <ProBadge />}
                 </button>
               )}
             </div>
@@ -571,7 +574,7 @@ export default function RunTimelinePanel({
             className={`text-xs ${m.input} border rounded px-2 py-1.5 focus:outline-none ${ACCENT_FOCUS_CLASS}`}>
             <option value="">All modes</option>
             <option value="enhance">Enhance</option>
-            <option value="ab">A/B</option>
+            <option value="ab">Compare</option>
             <option value="test-case">Test Case</option>
           </select>
           <select value={provider} onChange={e => setTimelineFilter('provider', e.target.value)} aria-label="Filter by provider"
@@ -740,7 +743,7 @@ export default function RunTimelinePanel({
             <p className={`mt-1 text-xs ${m.textMuted}`}>
               {prompt
                 ? 'Enhance this prompt, run its test cases, or compare variants and the timeline will fill in here.'
-                : 'Enhance a prompt or run an A/B compare and every saved run will appear here.'}
+                : 'Enhance a prompt or run a Compare and every saved run will appear here.'}
             </p>
             <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
               <button

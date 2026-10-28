@@ -121,10 +121,24 @@ test('pricing card lists library export under Free and keeps it out of Pro', () 
   const proCard = landingHtml.match(/<div class="pricing-tier">Pro<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
   assert.match(freeCard, /JSON library export/);
   assert.doesNotMatch(proCard, /export/i);
-  for (const feature of ['A/B Compare', 'Batch test-case runs', 'Collections']) {
+  for (const feature of ['Compare in Evaluate', 'Batch test-case runs', 'Collections']) {
     assert.ok(proCard.includes(feature), `Pro card should list ${feature}`);
   }
   // AUD-008: the diff viewer is free.
   assert.doesNotMatch(proCard, /diff/i);
   assert.match(freeCard, /Diff of every improvement/);
+});
+
+// Product call 4: the workbench illustration's mode chips must be real
+// enhancement modes (they used to read Improve / Expand / Shorten / Fix).
+test('workbench illustration only shows real enhancement mode names', () => {
+  const constants = readFileSync(new URL('../prompt-lab-extension/src/constants.js', import.meta.url), 'utf8');
+  const modesBlock = constants.match(/export const MODES = \[([\s\S]*?)\n\];/)?.[1] || '';
+  const modeLabels = new Set([...modesBlock.matchAll(/label: '([^']+)'/g)].map((m) => m[1]));
+  assert.ok(modeLabels.size >= 7, 'MODES labels should be readable from constants.js');
+  const tabs = landingHtml.match(/<div class="mock-tabs">([\s\S]*?)<\/div>\s*<div class="mock-diff">/)?.[1] || '';
+  const chips = [...tabs.matchAll(/<div class="mock-tab[^"]*">([^<]+)<\/div>/g)].map((m) => m[1].trim());
+  assert.ok(chips.length > 0, 'workbench mode chips not found');
+  for (const chip of chips) assert.ok(modeLabels.has(chip), `"${chip}" is not a real mode`);
+  for (const fake of ['Improve', 'Expand', 'Shorten', 'Fix']) assert.ok(!chips.includes(fake), `fake chip "${fake}" is back`);
 });

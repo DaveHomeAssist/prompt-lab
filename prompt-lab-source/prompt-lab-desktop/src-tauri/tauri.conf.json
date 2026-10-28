@@ -48,5 +48,10 @@
         "bundleMediaFramework": false
       }
     }
+  },
+  "plugins": {
+    "shell": {
+      "open": "^https://promptlab\\.tools/"
+    }
   }
 }

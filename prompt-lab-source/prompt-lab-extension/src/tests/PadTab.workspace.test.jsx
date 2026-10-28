@@ -189,7 +189,7 @@ describe('Scratch workspace v4', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Editor' }));
     fireEvent.click(screen.getByRole('button', { name: 'Composer' }));
-    fireEvent.click(screen.getByRole('button', { name: 'A/B' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
     await waitFor(() => expect(editorSend).toHaveBeenCalled());
     [editorSend, composerSend, abSend].forEach((callback) => expect(callback).toHaveBeenCalledWith(expect.objectContaining({
       content: 'selected text',

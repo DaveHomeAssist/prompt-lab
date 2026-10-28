@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DESKTOP_PLAN_LINK_TEXT, DESKTOP_PLAN_URL } from '../lib/billing.js';
 import Ic from '../icons';
 import useDialogA11y from '../hooks/useDialogA11y.js';
 
@@ -21,6 +22,8 @@ export default function SettingsModal({
   onClose,
   billing,
   openBilling,
+  // Desktop: link to promptlab.tools instead of the billing dialog.
+  desktopPlanLink = false,
   canUseCollections = true,
   canExportLibrary = true,
   telemetry,
@@ -95,13 +98,25 @@ export default function SettingsModal({
                 <p className={`mt-1 text-sm font-semibold ${m.text}`}>{billing.planLabel}</p>
                 <p className={`mt-1 text-xs leading-relaxed ${m.textMuted}`}>{billing.statusCopy}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => openBilling?.()}
-                className="ui-control min-h-11 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-500"
-              >
-                {billing.plan === 'pro' ? 'Manage Billing' : 'Upgrade to Pro'}
-              </button>
+              {desktopPlanLink ? (
+                <a
+                  data-testid="desktop-plan-link"
+                  href={DESKTOP_PLAN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`text-xs font-semibold underline underline-offset-2 ${m.textAlt}`}
+                >
+                  {DESKTOP_PLAN_LINK_TEXT}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openBilling?.()}
+                  className="ui-control min-h-11 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-500"
+                >
+                  {billing.plan === 'pro' ? 'Manage Billing' : 'Upgrade to Pro'}
+                </button>
+              )}
             </div>
           </div>
         )}

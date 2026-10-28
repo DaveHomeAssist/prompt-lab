@@ -685,7 +685,7 @@ footer a:hover { color: var(--text-sub); }
         <span class="section-num">00</span>
         <h2>How provider configuration works</h2>
       </div>
-      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">PromptLab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or A/B test, the extension reads your stored key and sends the request directly to your chosen provider.</p>
+      <p style="font-size:0.88rem; color:var(--text-sub); margin-bottom:1rem; line-height:1.65;">PromptLab routes all API calls through its background service worker. Your API key never touches the panel UI — it lives in extension storage, sandboxed away from the page context. When you run an enhance or Compare, the extension reads your stored key and sends the request directly to your chosen provider.</p>
       <div class="callout info">
         <span class="callout-icon">ℹ</span>
         <div class="callout-body"><strong>Five providers supported:</strong> Anthropic Claude, OpenAI, Google Gemini, OpenRouter (gateway to 200+ models), and Ollama for fully local inference. You can switch providers at any time from Options without losing your library or settings.</div>
@@ -892,7 +892,7 @@ footer a:hover { color: var(--text-sub); }
         </div>
         <div class="callout tip" style="margin-top:1rem;">
           <span class="callout-icon">✓</span>
-          <div class="callout-body"><strong>Best for exploration:</strong> OpenRouter gives you access to 200+ models through a single key. Great for A/B testing across providers without managing multiple accounts.</div>
+          <div class="callout-body"><strong>Best for exploration:</strong> OpenRouter gives you access to 200+ models through a single key. Great for comparing providers in Compare without managing multiple accounts.</div>
         </div>
         <div class="callout warn" style="margin-top:0.5rem;">
           <span class="callout-icon">!</span>
@@ -985,7 +985,7 @@ footer a:hover { color: var(--text-sub); }
         <div class="step">
           <div class="step-num" style="background:rgba(248,113,113,0.1); border-color:rgba(248,113,113,0.3); color:var(--red);">!</div>
           <div class="step-body">
-            <strong>Enhance / A/B test gives no response</strong>
+            <strong>Enhance / Compare gives no response</strong>
             <p>Save your settings in Options, then reload the extension from <code>chrome://extensions</code> and try again.</p>
           </div>
         </div>

@@ -174,7 +174,7 @@ describe('shared modal accessibility', () => {
     const diffView = render(
       <DiffPane textA="Use one tone." textB="Use a concise tone." onClose={vi.fn()} copy={vi.fn()} m={theme} />,
     );
-    expect(screen.getByRole('dialog', { name: 'A/B Output Comparison' })).toHaveAccessibleDescription();
+    expect(screen.getByRole('dialog', { name: 'Compare outputs' })).toHaveAccessibleDescription();
     expect(screen.getByRole('button', { name: 'Synchronize scrolling: on' })).toHaveAttribute('aria-pressed', 'true');
     diffView.unmount();
 

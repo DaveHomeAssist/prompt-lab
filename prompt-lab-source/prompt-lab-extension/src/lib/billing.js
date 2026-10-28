@@ -85,6 +85,22 @@ export function isOwnerAccessAvailable() {
 // extension production builds (npm run build / build:cws); the hosted web app
 // and desktop builds use their own configs and keep billing UI. Read at call
 // time so tests can stub it.
+// Product call 7: the desktop (Tauri) app has no sign-in and no Stripe
+// checkout, so its billing screens could never complete a purchase. Desktop
+// keeps Pro detection (billing state, plan chip, hasFeature) but replaces the
+// Upgrade/billing dialog with a link to the web app, where plans are bought
+// and managed. The desktop Vite config sets VITE_PROMPTLAB_SURFACE=desktop;
+// the Tauri runtime marker covers builds made without it. Read at call time
+// so tests can stub it.
+export const DESKTOP_PLAN_URL = 'https://promptlab.tools/app/';
+export const DESKTOP_PLAN_LINK_TEXT = 'Manage your plan at promptlab.tools';
+
+export function isDesktopAppSurface() {
+  if (isExtension) return false;
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_PROMPTLAB_SURFACE === 'desktop') return true;
+  return typeof window !== 'undefined' && Boolean(window.__TAURI_INTERNALS__);
+}
+
 export function isBillingUiEnabled() {
   if (typeof import.meta === 'undefined') return true;
   return import.meta.env?.VITE_PROMPTLAB_BILLING_UI !== 'off';

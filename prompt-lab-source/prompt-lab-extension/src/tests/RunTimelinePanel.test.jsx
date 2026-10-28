@@ -111,7 +111,7 @@ describe('RunTimelinePanel', () => {
     expect(screen.getByPlaceholderText('Search runs…')).toHaveValue('latency');
     expect(screen.getByText('Model Comparison (latest per model)')).toBeInTheDocument();
     expect(screen.getByText('Filtered view')).toBeInTheDocument();
-    expect(screen.getByText('Mode: A/B')).toBeInTheDocument();
+    expect(screen.getByText('Mode: Compare')).toBeInTheDocument();
   });
 
   it('persists filter edits and supports resetting them', async () => {
@@ -351,5 +351,23 @@ describe('RunTimelinePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(refreshEvalRuns).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('RunTimelinePanel Pro badge (product call 3)', () => {
+  beforeEach(() => {
+    useEvalRunsMock.mockReset();
+    useEvalRunsMock.mockReturnValue({ evalRuns: [], updateRun: vi.fn(), refreshEvalRuns: vi.fn() });
+  });
+  it('marks Compare View as Pro only when Compare is locked', () => {
+    const onOpenCompare = vi.fn();
+    const { unmount } = renderPanel({ compareLocked: true, onOpenCompare });
+    const locked = screen.getByRole('button', { name: 'Compare View Pro feature' });
+    fireEvent.click(locked);
+    expect(onOpenCompare).toHaveBeenCalledTimes(1);
+    unmount();
+    renderPanel({ onOpenCompare });
+    expect(screen.getByRole('button', { name: 'Compare View' })).toBeInTheDocument();
+    expect(screen.queryByTestId('pro-badge')).not.toBeInTheDocument();
   });
 });
