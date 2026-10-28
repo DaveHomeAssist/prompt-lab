@@ -1,6 +1,6 @@
 // ── Shared constants ─────────────────────────────────────────────────────────
 
-export const APP_VERSION = '1.8.0';
+export const APP_VERSION = '1.9.0';
 
 export const DEFAULT_ENHANCE_MODEL = 'claude-sonnet-4-6';
 
