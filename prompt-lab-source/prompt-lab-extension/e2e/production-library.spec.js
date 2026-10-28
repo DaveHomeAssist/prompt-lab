@@ -129,7 +129,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       const collectionsGated = isFreeFeatureGated('collections');
       if (collectionsGated) {
         const beforeGate = await storedState(page);
-        await page.getByRole('button', { name: 'Collections · Pro', exact: true }).click();
+        await page.getByRole('button', { name: 'Collections Pro feature', exact: true }).click();
         const gate = page.getByRole('dialog', { name: 'Collections is a Pro feature', exact: true });
         await expect(gate).toBeVisible();
         await gate.getByRole('button', { name: 'Close billing modal', exact: true }).click();
