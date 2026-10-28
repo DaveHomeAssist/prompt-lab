@@ -26,3 +26,9 @@ Refresh after meaningful implementation, verification, merge, release, blocker, 
 - `../prompt-lab-source/scripts/render-project-progress.mjs`: Node-only renderer and consistency check.
 
 Issue counts describe recorded Notion dispositions. Evidence cards describe inspected verification. Neither is an overall production-readiness percentage. No calendar commitments, owners, or new sprint scope may be inferred from a status alone. This contract requires agent/operator updates; it creates no scheduled automation or external service.
+
+## PR234 import verification
+
+The folder concurrency repair remains on [PR234](https://github.com/DaveHomeAssist/prompt-lab/pull/234). The October 27 CI reconciliation preserves the current main issue snapshot and generated page exactly, including the newer owner records. Main already contains the ErrorBoundary report-flow test fix and diagnostics-aware import assertions. The PR retains its folder-only regression and removes its overlapping legacy assertion patch. Verification uses a test-only combined tree on Dominic; no branch merge, deployment or Notion synchronization is implied.
+
+Dominic Node 22 verified combined tree `02cdcefbb5bbba3a26221ef4b1ee9e526074e56e` against main `54b89a4`: 1,401 Vitest tests and 231 legacy tests pass, extension build and progress-render check pass. The first run omitted root contract fixtures from its temporary archive; the two affected suites passed after restoring those inputs. No assertions were skipped.

@@ -8,8 +8,6 @@ vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
   ...await importOriginal(), shouldAttemptLegacyWebMigration: () => false,
 }));
 
-// Diagnostics may record storage warnings; only workspace writes belong to the import contract.
-const importWrites = spy => spy.mock.calls.filter(([key]) => key !== 'pl2-diagnostics-v1');
 const prompt = (id) => ({ id, title: id, original: 'Same input', enhanced: 'Same output', currentVersionId: `${id}-version` });
 class FileReaderFixture {
   readAsText(file) { queueMicrotask(() => this.onload({ target: { result: file.contents } })); }
@@ -89,9 +87,9 @@ it('preview and Cancel perform no import writes, including workspace extras', as
   await act(async () => new Promise(resolve => setTimeout(resolve, 180)));
   const writes = vi.spyOn(Storage.prototype, 'setItem');
   await openPreview(tab, { library: [{ ...prompt('new'), enhanced: 'Different body' }], scratch: { pads: [{ id: 'note', content: 'New note' }] }, runs: [{ promptId: 'new', output: 'Result' }] });
-  expect(importWrites(writes)).toEqual([]);
+  expect(writes).not.toHaveBeenCalled();
   act(() => tab.result.current.cancelImportPreview());
-  expect(importWrites(writes)).toEqual([]);
+  expect(writes).not.toHaveBeenCalled();
   expect(tab.result.current.importPreview).toBeNull();
   expect(tab.result.current.library.map(row => row.id)).toEqual(['survivor']);
   expect(await listEvalRuns()).toHaveLength(0);
@@ -106,7 +104,7 @@ it('refreshes stale preview choices without writing and preserves another tab ad
   const writes = vi.spyOn(Storage.prototype, 'setItem');
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview.notice).toContain('workspace changed');
-  expect(importWrites(writes)).toEqual([]);
+  expect(writes).not.toHaveBeenCalled();
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview).toBeNull();
   expect(tab.result.current.library.map(row => row.id)).toEqual(expect.arrayContaining(['survivor', 'other', 'new']));
@@ -137,7 +135,7 @@ it('refreshes folder-only changes before Apply and retains new folders on renewe
   const writes = vi.spyOn(Storage.prototype, 'setItem');
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview?.notice).toContain('workspace changed');
-  expect(importWrites(writes)).toEqual([]);
+  expect(writes.mock.calls.filter(([key]) => key !== 'pl2-diagnostics-v1')).toEqual([]);
   expect(JSON.parse(localStorage.getItem('pl2-collection-folders'))).toEqual(concurrent);
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.importPreview).toBeNull();
