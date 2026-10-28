@@ -141,12 +141,18 @@ test('pricing uses one labeled billing-period group and explicit upgrade intent'
     assertLabelFor(landingHtml, attributeValue(tag, 'id'));
   }
 
+  // Proposal 1: Annual is the default selection and the default handoff.
+  const checked = periodInputs.filter((tag) => /\schecked(?=[\s>])/i.test(tag));
+  assert.equal(checked.length, 1, 'exactly one billing period is preselected');
+  assert.equal(attributeValue(checked[0], 'id'), 'billingAnnual');
+
   const proCtaTag = openingTagById(landingHtml, 'proCta');
   assert.match(proCtaTag, /^<a\b/i);
   assert.equal(
     attributeValue(proCtaTag, 'href'),
-    '/app?upgrade=pro&period=monthly&source=landing-pricing',
+    '/app?upgrade=pro&period=annual&source=landing-pricing',
   );
+  assert.equal(attributeValue(proCtaTag, 'data-period'), 'annual');
 
   openingTagById(landingHtml, 'proPrice');
   openingTagById(landingHtml, 'proPeriod');

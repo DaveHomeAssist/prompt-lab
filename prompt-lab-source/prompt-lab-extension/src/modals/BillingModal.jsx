@@ -9,6 +9,26 @@ import {
 
 const FEATURE_LIST = Object.values(BILLING_FEATURES);
 
+// Proposal 1 (conversion review, 2026-10-23): Annual is listed first and is the
+// filled, primary choice with a "Best value" tag; Monthly is one click away as
+// the secondary button. An explicit plan choice (landing toggle or the AUD-006
+// signed-out ?period= handoff) keeps that plan highlighted and primary.
+// All amounts come from shared/pricing.js.
+const PLAN_ORDER = Object.freeze(['annual', 'monthly']);
+const DEFAULT_PRIMARY_PERIOD = 'annual';
+const PLAN_OPTIONS = Object.freeze({
+  annual: Object.freeze({
+    title: 'Go Pro Annual',
+    tag: 'Best value',
+    detail: `${PRICE_COPY.annualPerPeriod} (${PRICE_COPY.annualEffectiveMonthly}/month), save ${PRICE_COPY.annualSavings}`,
+  }),
+  monthly: Object.freeze({
+    title: 'Go Pro Monthly',
+    tag: '',
+    detail: `${PRICE_COPY.monthlyPerPeriod}, cancel anytime`,
+  }),
+});
+
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -40,6 +60,7 @@ export default function BillingModal({
   const safeRequestedPeriod = requestedPeriod === 'monthly' || requestedPeriod === 'annual'
     ? requestedPeriod
     : null;
+  const primaryPeriod = safeRequestedPeriod || DEFAULT_PRIMARY_PERIOD;
   const checkoutSource = requestedSource === 'landing-pricing'
     ? 'landing-pricing'
     : (requestedFeature || 'billing-modal');
@@ -298,33 +319,42 @@ export default function BillingModal({
         )}
 
         {showPurchase && (
-        <div className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
-          <button
-            type="button"
-            onClick={() => handleCheckout('monthly')}
-            disabled={billing.busyAction === 'checkout:monthly'}
-            data-requested={safeRequestedPeriod === 'monthly' ? 'true' : undefined}
-            className={`ui-control rounded-xl bg-orange-600 px-4 py-3 text-left text-white transition-colors hover:bg-orange-500 disabled:opacity-40 ${safeRequestedPeriod === 'monthly' ? 'ring-2 ring-orange-300' : ''}`}
-          >
-            <div className="text-sm font-semibold">Go Pro Monthly</div>
-            <div className="mt-1 text-xs text-orange-100">{PRICE_COPY.monthlyPerPeriod} via Stripe</div>
-            {safeRequestedPeriod === 'monthly' && (
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-white">Selected on pricing page</div>
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleCheckout('annual')}
-            disabled={billing.busyAction === 'checkout:annual'}
-            data-requested={safeRequestedPeriod === 'annual' ? 'true' : undefined}
-            className={`ui-control rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-left text-emerald-100 transition-colors hover:border-emerald-400 hover:bg-emerald-500/15 disabled:opacity-40 ${safeRequestedPeriod === 'annual' ? 'ring-2 ring-emerald-300' : ''}`}
-          >
-            <div className="text-sm font-semibold">Go Pro Annual</div>
-            <div className="mt-1 text-xs text-emerald-200">{PRICE_COPY.annualPerPeriod}, save {PRICE_COPY.annualSavings}</div>
-            {safeRequestedPeriod === 'annual' && (
-              <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-emerald-100">Selected on pricing page</div>
-            )}
-          </button>
+        <div data-testid="billing-plan-options" className={`${safeRequestedPeriod ? 'mt-2' : 'mt-4'} grid gap-2 sm:grid-cols-2`}>
+          {PLAN_ORDER.map((period) => {
+            const plan = PLAN_OPTIONS[period];
+            const isPrimary = period === primaryPeriod;
+            const isRequested = safeRequestedPeriod === period;
+            return (
+              <button
+                key={period}
+                type="button"
+                onClick={() => handleCheckout(period)}
+                disabled={billing.busyAction === `checkout:${period}`}
+                data-period={period}
+                data-primary={isPrimary ? 'true' : undefined}
+                data-requested={isRequested ? 'true' : undefined}
+                className={`ui-control rounded-xl px-4 py-3 text-left transition-colors disabled:opacity-40 ${isPrimary
+                  ? 'bg-orange-600 text-white hover:bg-orange-500'
+                  : `border ${m.border} ${m.surface} ${m.text} hover:border-orange-400`} ${isRequested ? 'ring-2 ring-orange-300' : ''}`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold">{plan.title}</span>
+                  {plan.tag && (
+                    <span
+                      data-testid="billing-best-value"
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${isPrimary ? 'bg-white/20 text-white' : 'bg-orange-500/15 text-orange-400'}`}
+                    >
+                      {plan.tag}
+                    </span>
+                  )}
+                </div>
+                <div className={`mt-1 text-xs ${isPrimary ? 'text-orange-100' : m.textMuted}`}>{plan.detail}</div>
+                {isRequested && (
+                  <div className={`mt-2 text-[11px] font-semibold uppercase tracking-wider ${isPrimary ? 'text-white' : m.text}`}>Selected on pricing page</div>
+                )}
+              </button>
+            );
+          })}
         </div>
         )}
 
