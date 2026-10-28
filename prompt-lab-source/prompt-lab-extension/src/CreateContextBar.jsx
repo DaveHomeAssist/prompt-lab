@@ -12,7 +12,7 @@ const sameTags = (left, right) => {
 // so edits made in the details panel count as unsaved even after it closes.
 export function describeEditingContext({
   currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
-  resultMeta, variants, notes,
+  resultMeta, variants, notes, saving = false, saveError = '',
 }) {
   const draft = raw ?? '';
   const result = enhanced ?? '';
@@ -32,14 +32,14 @@ export function describeEditingContext({
     const detailsChanged = (pendingTitle && pendingTitle !== savedTitle)
       || (pendingFolder !== undefined && pendingFolder !== savedFolder)
       || (Array.isArray(saveTags) && !sameTags(saveTags, currentEntry.tags));
-    const unsaved = contentChanged || detailsChanged;
+    const unsaved = contentChanged || detailsChanged || saving || Boolean(saveError);
     return {
       mode: 'editing',
       heading: 'Editing saved prompt:',
       title: pendingTitle || savedTitle,
       folder: pendingFolder !== undefined ? pendingFolder : savedFolder,
       unsaved,
-      saveState: unsaved ? 'Unsaved changes' : 'No unsaved changes',
+      saveState: saving ? 'Saving…' : saveError ? 'Save failed. Retry to confirm.' : unsaved ? 'Unsaved changes' : 'No unsaved changes',
       saveBehavior: 'Save adds a new version',
       canStartNew: true,
     };
@@ -50,7 +50,7 @@ export function describeEditingContext({
     title: hasContent ? (pendingTitle || suggestedSaveTitle || 'Untitled prompt') : '',
     folder: hasContent && pendingFolder ? pendingFolder : '',
     unsaved: hasContent,
-    saveState: hasContent ? 'Not saved yet' : 'Empty draft',
+    saveState: saving ? 'Saving…' : saveError ? 'Save failed. Retry to confirm.' : hasContent ? 'Not saved yet' : 'Empty draft',
     saveBehavior: 'Save creates a new prompt',
     canStartNew: hasContent,
   };
@@ -82,14 +82,14 @@ function SidePanelToggle({ m, panel, label, icon, accentBadgeClass }) {
 
 export default function CreateContextBar({
   m, compact = false, currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags, canSavePanel,
-  resultMeta, variants, notes,
+  resultMeta, variants, notes, saving = false, saveError = '',
   openSavePanel, openSection, accentTextClass, accentHoverTextClass, accentBadgeClass,
   scratchPanel = null,
   promptsPanel = null,
 }) {
   const context = describeEditingContext({
     currentEntry, raw, enhanced, suggestedSaveTitle, saveTitle, saveCollection, saveTags,
-    resultMeta, variants, notes,
+    resultMeta, variants, notes, saving, saveError,
   });
   const linkClass = `min-h-8 [@media(pointer:coarse)]:min-h-11 items-center px-2 text-[11px] font-semibold transition-colors ${accentHoverTextClass}`;
   return (
@@ -99,7 +99,7 @@ export default function CreateContextBar({
       className={`flex items-center gap-x-3 gap-y-1 flex-wrap ${m.surface} border ${m.border} rounded-lg px-3 py-1`}
     >
       <details className="min-w-0 flex-1" open={!compact}>
-      <summary className="pl-context-summary flex cursor-pointer items-center gap-2 min-w-0 text-xs">
+      <summary className="pl-context-summary flex flex-wrap cursor-pointer items-center gap-2 min-w-0 text-xs">
         <span aria-hidden="true">▸</span>
         <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
         {context.title && <span className={`font-semibold ${m.text} truncate min-w-0`} title={context.title}>{context.title}</span>}
@@ -108,12 +108,13 @@ export default function CreateContextBar({
             Folder: {context.folder}
           </span>
         )}
+        <span role="status" aria-live="polite" title={saveError || undefined}
+          className={`shrink-0 text-[11px] ${context.unsaved ? `rounded px-1.5 py-0.5 font-semibold ${accentBadgeClass}` : m.textMuted}`}>
+          {context.saveState}
+        </span>
       </summary>
       <div className="flex items-center gap-x-3 gap-y-1 flex-wrap pt-1">
       <p className="flex items-center gap-2 text-[11px] flex-wrap">
-        <span aria-live="polite" className={context.unsaved ? `rounded px-1.5 py-0.5 font-semibold ${accentBadgeClass}` : m.textMuted}>
-          {context.saveState}
-        </span>
         <span className={m.textSub}>{context.saveBehavior}</span>
       </p>
       <p className={`w-full text-[11px] ${m.textSub}`} data-testid="refinement-identity">

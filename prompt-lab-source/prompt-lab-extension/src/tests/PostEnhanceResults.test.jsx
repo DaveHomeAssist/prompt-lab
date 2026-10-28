@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import PostEnhanceResults from '../PostEnhanceResults.jsx';
 vi.mock('../icons.jsx', () => ({ default: () => null }));
@@ -30,6 +30,32 @@ function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), on
 }
 
 describe('PostEnhanceResults', () => {
+  it('keeps the primary Save before review content and acknowledges the saved candidate only after persistence', async () => {
+    let finish;
+    const onSave = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+    const { container } = render(<Harness onSave={onSave} splitWorkspace />);
+    const save = screen.getByTestId('save-to-library');
+    const bar = container.querySelector('.pl-result-commit-bar');
+    expect(bar.compareDocumentPosition(container.querySelector('.pl-results-body')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(save);
+    expect(save).toBeDisabled();
+    expect(bar).toHaveTextContent('Saving Improved');
+    expect(bar).not.toHaveTextContent('Saved Improved');
+    await act(async () => finish({ id: 'prompt-1', title: 'Prompt title', versionNumber: 2 }));
+    await waitFor(() => expect(bar).toHaveTextContent('Saved Improved to “Prompt title” · version 2.'));
+    expect(save).not.toBeDisabled();
+    fireEvent.change(screen.getByLabelText('Improved candidate'), { target: { value: 'Later unsaved edit' } });
+    expect(bar).toHaveTextContent('Current result has unsaved changes.');
+  });
+  it('keeps failed saves at the point of action and permits an acknowledged retry', async () => {
+    const onSave = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 'prompt-1', title: 'Prompt title', versionNumber: 2 });
+    const { container } = render(<Harness onSave={onSave} splitWorkspace />);
+    fireEvent.click(screen.getByTestId('save-to-library'));
+    await waitFor(() => expect(container.querySelector('.pl-result-commit-bar')).toHaveTextContent('Save failed. Your result is still here. Retry saving.'));
+    fireEvent.click(screen.getByTestId('save-to-library'));
+    await waitFor(() => expect(container.querySelector('.pl-result-commit-bar')).toHaveTextContent('Saved Improved'));
+    expect(onSave).toHaveBeenCalledTimes(2);
+  });
   it('switches candidates and edits their actual content', () => {
     render(<Harness />);
     expect(screen.getByRole('option', { name: /Strict JSON/ })).toBeInTheDocument();
@@ -49,6 +75,7 @@ describe('PostEnhanceResults', () => {
   it('keeps save-as-new distinct from saving a version', () => {
     const onSaveAsNew = vi.fn();
     render(<Harness onSaveAsNew={onSaveAsNew} />);
+    fireEvent.click(screen.getByText('More', { selector: 'summary' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save as new prompt' }));
     expect(onSaveAsNew).toHaveBeenCalledTimes(1);
   });

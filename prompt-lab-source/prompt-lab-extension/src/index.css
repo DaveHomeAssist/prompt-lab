@@ -442,7 +442,7 @@ textarea:disabled {
 /* ── Post-enhance workspace ── */
 .pl-results-shell {
   --result-line: color-mix(in srgb, currentColor 13%, transparent);
-  overflow: hidden;
+  overflow: clip;
   border: 1px solid color-mix(in srgb, var(--pl-brand-ember) 28%, transparent);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--pl-brand-ink) 94%, var(--pl-brand-ember));
@@ -535,9 +535,14 @@ textarea:disabled {
 .pl-reasoning { margin-top: 0.75rem; border: 1px solid var(--result-line); border-radius: 0.65rem; padding: 0.7rem 0.8rem; }
 .pl-reasoning summary { cursor: pointer; font-size: 0.72rem; font-weight: 750; }
 .pl-reasoning p { margin-top: 0.55rem; font-size: 0.73rem; line-height: 1.6; opacity: 0.7; }
-/* Keep save actions in document flow: a sticky footer can cover review controls
-   when the result scrollport is shorter than the candidate rail at tablet sizes. */
-.pl-result-commit-bar { position: static; border-top: 1px solid var(--result-line); background: color-mix(in srgb, var(--pl-brand-ink) 92%, transparent); backdrop-filter: blur(18px); }
+/* Top action bar keeps Save beside its acknowledgement while review content scrolls. */
+.pl-result-commit-bar { position: sticky; top: 0; z-index: 6; flex-wrap: wrap; border-bottom: 1px solid var(--result-line); background: var(--pl-brand-ink); }
+.pl-result-save-feedback { flex: 1 0 100%; font-size: 0.72rem; overflow-wrap: anywhere; }
+.pl-result-save-more { position: relative; flex: 0 0 auto; }
+.pl-result-save-more > summary { cursor: pointer; }
+.pl-result-save-menu { position: absolute; right: 0; top: calc(100% + 0.25rem); z-index: 8; display: grid; gap: 0.35rem; width: 13rem; padding: 0.5rem; border: 1px solid var(--result-line); border-radius: 0.5rem; background: var(--pl-brand-ink); box-shadow: 0 0.5rem 1.5rem #0004; }
+.pl-result-save-menu button { width: 100%; }
+.pl-create-split-pane[data-pane='result'] { scroll-padding-top: 14rem; }
 [data-theme="light"] .pl-result-commit-bar { background: rgba(255, 253, 250, 0.94); }
 .pl-commit-copy { min-width: 10rem; flex: 1; }
 .pl-commit-copy input { width: min(100%, 24rem); margin-top: 0.3rem; border: 0; border-bottom: 1px solid var(--result-line); border-radius: 0; background: transparent; padding: 0.25rem 0; font-size: 0.82rem; font-weight: 700; }
@@ -1032,7 +1037,11 @@ textarea:disabled {
   .pl-candidate-rail { padding-inline: 0.55rem; }
   .pl-candidate-actions { min-width: max-content; }
   .pl-result-commit-bar { padding: 0.8rem; }
-  .pl-commit-actions > * { flex: 1 1 9rem; }
+  .pl-commit-actions { gap: 0.35rem; }
+  .pl-commit-actions > .pl-primary-button { flex: 1 1 0; min-width: 0; }
+  .pl-commit-actions > .pl-secondary-button,
+  .pl-commit-actions > .pl-result-save-more { flex: 0 0 auto; }
+  .pl-result-commit-bar .pl-eyebrow { display: none; }
   .pl-inspector-form-row,
   .pl-inspector-audit-metadata { grid-template-columns: 1fr; }
 }
@@ -1401,3 +1410,12 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-scratch-toolbar button { min-width: 1.75rem; }
 .pl-drawer-close { min-height: 1.75rem; padding-block: 0.3rem; }
 .pl-context-summary { min-height: 1.5rem; }
+
+/* Save occupies its own area in the bounded result pane, outside review scrolling. */
+.pl-result-save-slot { --result-line: color-mix(in srgb, currentColor 13%, transparent); flex: 0 0 auto; }
+.pl-result-save-slot .pl-result-commit-bar { position: static; border: 1px solid var(--result-line); border-radius: 0.7rem; }
+.pl-create-result-frame { min-width: 0; min-height: 0; }
+.pl-create-split:not(.is-flow) .pl-create-split-pane[data-pane='result'] { overflow: hidden; }
+.pl-create-split:not(.is-flow) .pl-create-result-frame { display: flex; flex-direction: column; height: 100%; }
+.pl-create-split:not(.is-flow) .pl-create-result-review { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pl-create-split.is-flow .pl-result-save-slot { position: sticky; top: 0; z-index: 6; }

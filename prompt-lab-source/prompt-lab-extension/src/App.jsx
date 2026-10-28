@@ -1202,6 +1202,7 @@ export default function App({
       {primaryView === 'create' && (workspaceView === 'editor' || workspaceView === 'split') && (
         <div className="px-3 py-1 shrink-0">
           <CreateContextBar m={m} compact={viewportHeight < 500 || viewportWidth < 1100} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+            saving={lib.saving} saveError={lib.saveError}
             resultMeta={resultMeta} variants={variants} notes={notes}
             suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle}
             saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
