@@ -73,7 +73,8 @@ async function resetDocsDir() {
     join(docsDir, 'privacy'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
-    // promptlab.tools is served by Vercel; remove any stale Pages CNAME.\n    join(docsDir, 'CNAME'),
+    // promptlab.tools is served by Vercel; remove any stale Pages CNAME.
+    join(docsDir, 'CNAME'),
   ];
 
   for (const target of generatedTargets) {
