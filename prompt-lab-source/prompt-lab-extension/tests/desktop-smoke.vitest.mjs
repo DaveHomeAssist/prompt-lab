@@ -79,4 +79,17 @@ describe('desktop smoke', () => {
     expect(capability.windows).toContain('main');
     expect(capability.permissions).toContain('core:webview:allow-set-webview-zoom');
   });
+
+  it('desktop shell may open only promptlab.tools links in the system browser', async () => {
+    const config = JSON.parse(await readFile('../prompt-lab-desktop/src-tauri/tauri.conf.json', 'utf8'));
+    const capability = JSON.parse(await readFile('../prompt-lab-desktop/src-tauri/capabilities/desktop.json', 'utf8'));
+    const { DESKTOP_PLAN_URL } = await import('../src/lib/billing.js');
+
+    expect(capability.permissions).toContain('shell:allow-open');
+    const scope = new RegExp(config.plugins.shell.open);
+    expect(scope.test(DESKTOP_PLAN_URL)).toBe(true);
+    expect(scope.test('https://evil.example/')).toBe(false);
+    expect(scope.test('https://promptlab.tools.evil.example/')).toBe(false);
+    expect(scope.test('file:///etc/passwd')).toBe(false);
+  });
 });
