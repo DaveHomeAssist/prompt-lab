@@ -127,3 +127,13 @@ it.each([false, true])('keeps New Prompt in the shared header (compact %s)', com
   renderHeader({ compact, onNewPrompt, newPromptDisabled: true });
   expect(screen.getByRole('button', { name: 'New Prompt', exact: true })).toBeDisabled();
 });
+
+it('marks the active workspace with aria-current inside a labelled navigation landmark (V-13)', () => {
+  renderHeader({ workspaceView: 'library' });
+  const nav = screen.getByRole('navigation', { name: 'Primary navigation' });
+  const active = screen.getByRole('tab', { name: 'Library' });
+  expect(nav).toContainElement(active);
+  expect(active).toHaveAttribute('aria-current', 'page');
+  expect(active).toHaveAttribute('aria-selected', 'true');
+  expect(screen.getByRole('tab', { name: 'Write' })).not.toHaveAttribute('aria-current');
+});

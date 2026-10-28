@@ -41,7 +41,7 @@ export default function GenerationControls({ m, mode, onModeChange, onTransform,
               {OUTPUT_BUDGETS.map(limit => <option key={limit} value={limit}>{limit.toLocaleString()} tokens</option>)}
             </select>
           </label>
-          <label className="flex w-full items-center gap-2">
+          <label className="pl-check-row flex w-full items-center gap-2">
             <input type="checkbox" checked={options.alternatives} onChange={event => update({ alternatives: event.target.checked })} />Generate alternatives (three candidates total)
           </label>
           <p className="w-full">The destination does not change your enhancement provider. Budgets cover the whole response; hosted and provider limits may be lower. Answer length stays as requested in your prompt.</p>

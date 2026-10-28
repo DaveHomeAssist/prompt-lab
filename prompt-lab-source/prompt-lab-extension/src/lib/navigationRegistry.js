@@ -106,6 +106,10 @@ const ROUTE_TO_STATE = Object.freeze({
   '/scratch': { primaryView: 'notebook' },
   // Backward-compatible route for saved links from the Notebook-era UI.
   '/pad': { primaryView: 'notebook' },
+  // Dialog routes: open a modal over the current workspace instead of
+  // swapping views, then settle back on that workspace's canonical route.
+  '/settings': { modal: 'settings' },
+  '/account': { modal: 'account' },
 });
 
 /**
@@ -184,6 +188,7 @@ export function buildCommandActions(handlers) {
     enhance, save, saveLabel, clear, newPrompt,
     goEditor, goLibrary, goBuild, goSplit, goRuns, goCompare, goNotebook,
     toggleTheme, exportLib, openSettings, openOptions, showShortcuts,
+    manageAccount, signOut,
   } = handlers;
 
   return [
@@ -203,6 +208,8 @@ export function buildCommandActions(handlers) {
     { label: 'Open Settings', hint: '', action: openSettings },
     { label: 'Extension Options (API Key)', hint: '', action: openOptions },
     { label: 'Show Keyboard Shortcuts', hint: '?', action: showShortcuts },
+    { label: 'Manage Account', hint: '', action: manageAccount },
+    { label: 'Sign Out', hint: '', action: signOut },
   ].filter((entry) => typeof entry.action === 'function');
 }
 

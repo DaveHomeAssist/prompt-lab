@@ -1,6 +1,7 @@
 import { Fragment, memo, useEffect, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import { getVersionCount } from './lib/promptSchema.js';
 import { extractVars, looksSensitive } from './promptUtils';
 import TagChip from './TagChip';
 import TestCasesPanel from './TestCasesPanel';
@@ -393,7 +394,7 @@ const LibraryPanel = memo(function LibraryPanel({
                     {entry.collection && <span className="flex items-center gap-1"><Ic n="FolderOpen" size={8} />{entry.collection}</span>}
                     <span>{new Date(entry.createdAt).toLocaleDateString()}</span>
                     {entry.useCount > 0 && <span className="text-orange-300">{entry.useCount}×</span>}
-                    {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400"><Ic n="Clock" size={8} />{entry.versions.length}v</span>}
+                    {(entry.versions || []).length > 0 && <span className="flex items-center gap-0.5 text-blue-400" title={`${getVersionCount(entry)} versions, including the current one`}><Ic n="Clock" size={8} />{getVersionCount(entry)}v</span>}
                     {extractVars(entry.enhanced).length > 0 && <span className="text-amber-400">{'{{vars}}'}</span>}
                   </div>
                 </div>

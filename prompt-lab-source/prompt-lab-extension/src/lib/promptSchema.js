@@ -270,6 +270,17 @@ export function appendVersionSnapshot(entry, options = {}) {
   };
 }
 
+/**
+ * Total number of versions of a prompt, counting the current content.
+ * `versions[]` only holds snapshots of earlier content, so a prompt saved once
+ * has zero snapshots and one version. Every surface that shows a count (the
+ * Library card, the inspector, the save toast) uses this so they agree (V-08).
+ */
+export function getVersionCount(entry) {
+  const past = Array.isArray(entry?.versions) ? entry.versions.length : 0;
+  return past + 1;
+}
+
 export function createPromptEntry(value, options = {}) {
   const now = safeDate(options.now || new Date().toISOString());
   return normalizeEntry({

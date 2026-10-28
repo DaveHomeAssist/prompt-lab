@@ -27,6 +27,7 @@ export default function SettingsModal({
   canUseCollections = true,
   canExportLibrary = true,
   telemetry,
+  account = null,
   returnFocusRef,
 }) {
   const [telemetryEnabled, setTelemetryEnabled] = useState(telemetry?.telemetryEnabled !== false);
@@ -59,6 +60,15 @@ export default function SettingsModal({
           <button type="button" onClick={closeDialog} aria-label="Close settings" className={`${m.textSub} min-h-11 min-w-11 rounded-lg p-2 hover:text-white`}><Ic n="X" size={15} /></button>
         </div>
         <p id="modal-settings-description" className="sr-only">Configure appearance, billing, insights, collections, and library data.</p>
+        {account && (account.manageAccount || account.signOut) && (
+          <section aria-labelledby="modal-settings-account" data-testid="settings-account">
+            <h3 id="modal-settings-account" className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider mb-2`}>Account</h3>
+            <div className="flex flex-wrap gap-2">
+              {account.manageAccount && <button type="button" onClick={() => { closeDialog(); account.manageAccount(); }} className={`ui-control min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold ${m.border} ${m.textBody}`}>Manage account</button>}
+              {account.signOut && <button type="button" onClick={() => { closeDialog(); account.signOut(); }} className={`ui-control min-h-11 rounded-lg border px-3 py-2 text-sm font-semibold ${m.border} ${m.textBody}`}>Sign out</button>}
+            </div>
+          </section>
+        )}
         <label className={`flex min-h-11 items-center justify-between text-sm ${m.textBody} cursor-pointer`}>
           <span>Show enhancement notes</span>
           <input type="checkbox" checked={showNotes} onChange={e => setShowNotes(e.target.checked)} className="accent-orange-500" />

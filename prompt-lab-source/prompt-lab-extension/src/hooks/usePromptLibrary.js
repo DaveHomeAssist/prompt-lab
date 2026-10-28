@@ -4,6 +4,7 @@ import { APP_VERSION, DEFAULT_LIBRARY_SEEDS } from '../constants.js';
 import { encodeShare, looksSensitive } from '../promptUtils.js';
 import {
   createPromptEntry,
+  getVersionCount,
   normalizeEntry,
   normalizeLibrary,
   restorePromptVersion,
@@ -458,7 +459,7 @@ export default function usePromptLibrary(notify) {
       libraryRef.current = nextLibrary;
       setLibrary(nextLibrary);
       const savedEntry = nextLibrary.find((entry) => entry.id === editingId);
-      const versionNumber = (savedEntry?.versions?.length || 0) + 1;
+      const versionNumber = getVersionCount(savedEntry);
       return {
         result: {
           id: editingId,

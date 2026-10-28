@@ -5,6 +5,15 @@ import assert from 'node:assert/strict';
 const ids = ['native-library-alpha', 'native-library-hidden', 'native-library-beta'];
 const collection = 'Native acceptance collection';
 
+// Phones (<=520 px) fold the theme toggle into the header's More menu.
+async function switchTheme({ execute, click }, mode) {
+  const label = `Switch to ${mode} mode`;
+  const visible = await execute('const b = document.querySelector(`[aria-label="${arguments[0]}"]`); return Boolean(b && b.getClientRects().length);', [label]);
+  if (visible) return click(`[aria-label="${label}"]`);
+  await click('button[aria-label="More actions"]');
+  return click(`//div[@id="pl-header-more-panel"]//button[normalize-space()="${mode === 'dark' ? 'Dark' : 'Light'} mode"]`, 'xpath');
+}
+
 export async function checkLibraryPersisted({ readLibrary, execute, click, fill, waitFor, screenshot, recordDiagnostic }, expected) {
   const library = await readLibrary();
   assert.deepEqual(library.map(row => row.id), expected.order, 'Native Library manual order survives restart');
@@ -32,13 +41,13 @@ export async function checkLibraryPersisted({ readLibrary, execute, click, fill,
       colorScheme: style.colorScheme,
       classes: [...button.classList],
     };`, [theme]);
-  if (await execute('return Boolean(document.querySelector(`[aria-label="Switch to light mode"]`));')) await click('[aria-label="Switch to light mode"]');
+  if (await execute('return Boolean(document.querySelector(`[aria-label="Switch to light mode"]`));')) await switchTheme({ execute, click }, 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'light');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');
   const lightSettingsAppearance = await settingsAppearance('light');
   await screenshot('library-light-controls');
-  await click('[aria-label="Switch to dark mode"]');
+  await switchTheme({ execute, click }, 'dark');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`[aria-label="Sort prompts"]`)).colorScheme;'), 'dark');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).appearance;'), 'none');
   assert.equal(await execute('return getComputedStyle(document.querySelector(`button[aria-label="Settings"]`)).getPropertyValue("-webkit-appearance");'), 'none');

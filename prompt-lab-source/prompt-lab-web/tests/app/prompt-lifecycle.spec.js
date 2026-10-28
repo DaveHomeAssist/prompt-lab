@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { switchTheme } from './theme-toggle.js';
 
 const source = 'Write a release checklist with owners and clear acceptance criteria.';
 const result = 'Create a release checklist. For every item name its owner, verification command, expected result and rollback action.';
@@ -112,7 +113,7 @@ for (const [width, height] of [[1440, 900], [375, 812], [844, 390], [320, 256], 
     await page.setViewportSize({ width, height });
     await prepare(page, 'split');
     for (const theme of ['light', 'dark']) {
-      if (theme === 'dark') await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+      if (theme === 'dark') await switchTheme(page, 'dark');
       for (const route of ['/', '/split', '/library', '/evaluate', '/scratch']) {
         await page.evaluate(route => { location.hash = route; }, route);
         const button = page.getByRole('button', { name: 'New Prompt', exact: true });

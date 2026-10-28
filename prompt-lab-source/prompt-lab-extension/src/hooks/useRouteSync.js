@@ -19,6 +19,9 @@ import { resolveRouteState, stateToRoute } from '../lib/navigationRegistry.js';
  *   /scratch       → notebook (canonical)
  *   /pad           → notebook (legacy alias; accepted on the way in, but
  *                    stateToRoute always emits /scratch)
+ *   /settings      → dialog route: opens Settings over the current workspace
+ *   /account       → dialog route: opens the account profile (or Settings)
+ *                    (both settle back on the current workspace's route)
  *
  * This hook reads the URL on mount and pushes state → URL on nav changes.
  * It preserves the existing state model so all current code keeps working.
@@ -32,12 +35,17 @@ export default function useRouteSync({
   compact = false,
   preserveSharedHash = false,
   onUnknownRoute,
+  onRouteModal,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
   const suppressPush = useRef(false);
   const onUnknownRouteRef = useRef(onUnknownRoute);
   useEffect(() => { onUnknownRouteRef.current = onUnknownRoute; }, [onUnknownRoute]);
+  const onRouteModalRef = useRef(onRouteModal);
+  useEffect(() => { onRouteModalRef.current = onRouteModal; }, [onRouteModal]);
+  const currentRouteRef = useRef('/');
+  currentRouteRef.current = stateToRoute(primaryView, workspaceView, runsView, { compact, splitPane });
   // L-2 loop guard: remembers the pathname we already recovered from so an
   // unresolvable route can never trigger more than one redirect attempt.
   const recoveredFromRef = useRef(null);
@@ -70,6 +78,13 @@ export default function useRouteSync({
       return;
     }
     recoveredFromRef.current = null;
+
+    if (mapping.modal) {
+      // /settings and /account open their dialog over the current workspace.
+      if (typeof onRouteModalRef.current === 'function') onRouteModalRef.current(mapping.modal);
+      replaceRoute(currentRouteRef.current);
+      return;
+    }
 
     suppressPush.current = true;
 

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { switchTheme } from './theme-toggle.js';
 
 // Slice 2 of the October intake: Prompts beside Write (All, Recent and
 // Favorites), the resizable Library drawer and the wider inspector.
@@ -53,7 +54,7 @@ test('Prompts beside Write list the same prompts as the Library smart views', as
 
   for (const theme of ['light', 'dark']) {
     await page.evaluate(() => { location.hash = '/'; });
-    if (theme === 'dark') await page.getByRole('button', { name: 'Switch to dark mode', exact: true }).click();
+    if (theme === 'dark') await switchTheme(page, 'dark');
     const toggle = page.getByRole('button', { name: 'Prompts', exact: true });
     if (await toggle.getAttribute('aria-pressed') !== 'true') await toggle.click();
     const panel = page.getByRole('complementary', { name: 'Prompts beside Write' });

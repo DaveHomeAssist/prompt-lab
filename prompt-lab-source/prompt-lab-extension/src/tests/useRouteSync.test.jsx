@@ -167,3 +167,23 @@ describe('useRouteSync route recovery', () => {
     },
   );
 });
+
+describe('useRouteSync dialog routes (V-04)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    routeStateOverride.current = null;
+  });
+
+  it.each(['settings', 'account'])('opens the %s dialog over the current workspace', async (modal) => {
+    const props = renderRouteSync(`/${modal}`, {
+      workspaceView: 'library', onUnknownRoute: vi.fn(), onRouteModal: vi.fn(),
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('pathname')).toHaveTextContent(/^\/library$/);
+    });
+    expect(props.onRouteModal).toHaveBeenCalledWith(modal);
+    expect(props.onUnknownRoute).not.toHaveBeenCalled();
+    // Settling back on /library may re-apply that same mapping; it never swaps views.
+    for (const [view] of props.setWorkspaceView.mock.calls) expect(view).toBe('library');
+  });
+});
