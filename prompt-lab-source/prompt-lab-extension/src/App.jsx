@@ -350,7 +350,7 @@ export default function App({
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
   const kbFns = useRef({ enhance, doSave, openSavePanel, primarySave: doSave });
-  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: quickSave }; });
+  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: saveCurrentPrompt }; });
 
   const nav = useNavigation({
     primaryView, setPrimaryView,
@@ -970,6 +970,9 @@ export default function App({
       ...saveFlowOverrides,
     },
   );
+  const saveCurrentPrompt = () => primaryView === 'create' && workspaceView === 'split'
+    ? saveDualDraft({ raw, title: saveTitle }, Boolean(editingId))
+    : quickSave();
   const sendScratchToEditor = (payload) => {
     if (raw.trim() || enhanced.trim() || editingId) preserveDraftForUndo('scratch-handoff');
     clearEditor();
@@ -1098,7 +1101,7 @@ export default function App({
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
-    save: () => { if (canSavePanel) quickSave(); closePalette(); },
+    save: () => { if (canSavePanel) saveCurrentPrompt(); closePalette(); },
     saveLabel: primarySaveLabel,
     newPrompt: () => { requestDraftReset('new'); closePalette(); },
     clear: () => { requestDraftReset(); closePalette(); },
