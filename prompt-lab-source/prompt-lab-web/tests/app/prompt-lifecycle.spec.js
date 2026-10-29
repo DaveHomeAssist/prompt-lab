@@ -22,6 +22,14 @@ for (const width of [1440, 375]) {
     await showResult(page);
     await expect(page.getByTestId('output-textarea')).toHaveValue(result);
     expect(await readLibrary(page)).toEqual(saved);
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Save as new prompt');
+    await page.getByRole('dialog').getByTestId('save-to-library').click();
+    await expect.poll(async () => (await readLibrary(page)).length).toBe(saved.length + 1);
+    const afterDetailsSave = await readLibrary(page);
+    expect(afterDetailsSave.find(entry => entry.id === saved[0].id)).toEqual(saved[0]);
+    expect(afterDetailsSave.find(entry => entry.id !== saved[0].id)).toMatchObject({ original: source, enhanced: result });
     await fits(page);
   });
 }
