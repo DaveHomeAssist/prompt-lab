@@ -141,18 +141,24 @@ test('journals above the snapshot cache budget retain verification without trust
   }
   assert.ok(totalBytes > MAX_BYTES, 'Exercise the real snapshot cache budget');
   const adapter = await createFolderAdapter(dir), before = await adapter.read();
-  const originalDigest = globalThis.crypto.subtle.digest, originalClone = globalThis.structuredClone;
-  let semanticDigests = 0, journalClones = 0;
+  const originalDigest = globalThis.crypto.subtle.digest, originalClone = globalThis.structuredClone, originalParse = JSON.parse;
+  let semanticDigests = 0, journalClones = 0, journalParses = 0;
   globalThis.crypto.subtle.digest = function (...args) { semanticDigests++; return originalDigest.apply(this, args); };
   globalThis.structuredClone = function (value, ...args) {
     if (value?.schemaVersion === 2 && value.state?.objects) journalClones++;
     return originalClone(value, ...args);
+  };
+  JSON.parse = function (...args) {
+    const value = originalParse(...args);
+    if (value?.schemaVersion === 2 && value.state?.objects) journalParses++;
+    return value;
   };
   try {
     const warm = await adapter.read();
     assert.deepEqual(warm, before);
     assert.equal(semanticDigests, 0, 'Unchanged freshly read bytes reuse their canonical and semantic proof');
     assert.equal(journalClones, 0, 'Evicted legacy journal envelopes are not cloned for canonical cache ownership');
+    assert.equal(journalParses, 0, 'Repeated legacy objects fit once in the bounded cache instead of reparsing every journal');
     warm.operations['snapshot-0'].verified = false;
     assert.equal((await adapter.read()).operations['snapshot-0'].verified, true);
     const contents = await readFile(oldest, 'utf8'), metadata = await stat(oldest);
@@ -164,5 +170,5 @@ test('journals above the snapshot cache budget retain verification without trust
     await assert.rejects(adapter.read(), { code: 'MISSING_OBJECT' });
     await rename(oldest + '.missing', oldest);
     assert.deepEqual(await adapter.read(), before);
-  } finally { globalThis.crypto.subtle.digest = originalDigest; globalThis.structuredClone = originalClone; }
+  } finally { globalThis.crypto.subtle.digest = originalDigest; globalThis.structuredClone = originalClone; JSON.parse = originalParse; }
 });

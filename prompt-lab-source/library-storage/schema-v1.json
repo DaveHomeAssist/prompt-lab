@@ -6366,34 +6366,17 @@
       "additionalProperties": true
     },
     "FolderTransaction": {
-      "type": "object",
-      "properties": {
-        "schemaVersion": {
-          "const": 2
+      "oneOf": [
+        {
+          "$ref": "#/$defs/LegacyFolderTransaction"
         },
-        "parents": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^sha256:[a-f0-9]{64}$"
-          },
-          "uniqueItems": true
+        {
+          "$ref": "#/$defs/SnapshotFolderTransaction"
         },
-        "state": {
-          "$ref": "#/$defs/FolderState"
+        {
+          "$ref": "#/$defs/ManifestFolderTransaction"
         }
-      },
-      "required": [
-        "schemaVersion",
-        "parents",
-        "state"
-      ],
-      "additionalProperties": true,
-      "not": {
-        "required": [
-          "parent"
-        ]
-      }
+      ]
     },
     "LibraryIdentity": {
       "type": "object",
@@ -8826,6 +8809,130 @@
         "captureObjectsVerified",
         "sourceReadbackVerified",
         "activationReady"
+      ],
+      "additionalProperties": false
+    },
+    "SnapshotFolderTransaction": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 2
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "state": {
+          "$ref": "#/$defs/FolderState"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parents",
+        "state"
+      ],
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "parent"
+        ]
+      }
+    },
+    "FolderMetadata": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "libraryId",
+        "revision"
+      ],
+      "additionalProperties": true,
+      "not": {
+        "anyOf": [
+          {
+            "required": [
+              "objects"
+            ]
+          },
+          {
+            "required": [
+              "operations"
+            ]
+          },
+          {
+            "required": [
+              "checkpoints"
+            ]
+          }
+        ]
+      }
+    },
+    "ManifestFolderTransaction": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 3
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "metadata": {
+          "$ref": "#/$defs/FolderMetadata"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "operations": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parents",
+        "metadata",
+        "objects",
+        "operations",
+        "checkpoints"
       ],
       "additionalProperties": false
     }

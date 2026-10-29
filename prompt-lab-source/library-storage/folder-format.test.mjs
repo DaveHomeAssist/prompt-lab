@@ -22,6 +22,25 @@ async function files(root, section) {
   return new Map(await Promise.all((await readdir(join(root, section))).filter(name => name.endsWith('.json')).map(async name => [name, await readFile(join(root, section, name))])));
 }
 
+test('published folder schema and OpenAPI describe the actual generation 3 manifest and retained legacy formats', async t => {
+  const schema = JSON.parse(await readFile(new URL('./schema-v1.json', import.meta.url), 'utf8'));
+  const openapi = JSON.parse(await readFile(new URL('./openapi-v1.json', import.meta.url), 'utf8'));
+  assert.deepEqual(JSON.parse(JSON.stringify(schema.$defs).replaceAll('#/$defs/', '#/components/schemas/')), openapi.components.schemas);
+  const formats = schema.$defs.FolderTransaction.oneOf.map(value => schema.$defs[value.$ref.split('/').at(-1)]);
+  assert.deepEqual(formats.map(value => value.properties.schemaVersion.const), [1, 2, 3]);
+  const root = await fixture(t), adapter = await createFolderAdapter(root); await save(adapter);
+  const manifest = JSON.parse([...(await files(root, 'transactions')).values()][0]);
+  const declared = formats.find(value => value.properties.schemaVersion.const === manifest.schemaVersion);
+  assert.deepEqual(Object.keys(manifest).sort(), declared.required.toSorted());
+  assert.equal(declared.additionalProperties, false);
+  assert.equal(declared.properties.metadata.$ref, '#/$defs/FolderMetadata');
+  for (const key of ['parents', 'objects', 'checkpoints']) {
+    assert.equal(declared.properties[key].uniqueItems, true);
+    assert.ok(manifest[key].every(value => new RegExp(declared.properties[key].items.pattern).test(value)));
+  }
+  assert.ok(Object.values(manifest.operations).every(value => new RegExp(declared.properties.operations.additionalProperties.pattern).test(value)));
+});
+
 test('generation 3 stores new objects once and preserves exact transfer state across restart', async t => {
   const root = await fixture(t), adapter = await createFolderAdapter(root);
   await save(adapter);

@@ -1,5 +1,49 @@
 # Library storage contract candidate
 
+## Shared legacy read cache: October 29
+
+Retained generation 1/2 journals duplicate their full object tables. A real-data
+fixture holds 115 MiB of such journal files, exceeding the existing 64 MiB
+parsed-cache estimate and forcing repeated parsing during saves. Cache verified
+content objects once across legacy entries, account for their shared ownership,
+and release them when the last referring entry is evicted. Preserve the current
+entry and memory budgets rather than increasing them to fit one fixture.
+
+Every access still reads and hashes the actual file bytes. A matching object
+address is insufficient for sharing: verify content identity before reusing its
+immutable value. Retain transaction metadata, receipts, checkpoints and unknown
+fields. Never rewrite, prune or migrate historical files as a cache side effect.
+Acceptance includes bounded accounting, eviction/replacement, hostile repeated
+addresses, unchanged-file parse reuse, same-size/timestamp corruption, complete
+storage regressions and the same isolated private-export workflow.
+
+Contract reconciliation also found that the published folder transaction schema
+still required generation 2 full snapshots, rejecting the generation 3 files
+the service now writes. The generic transaction definition now accepts all three
+retained formats, with separate full-snapshot and manifest definitions. New
+manifests forbid unknown envelope fields and metadata that substitutes content
+sections; their object/receipt/checkpoint references remain explicit. OpenAPI
+uses the same definitions and now describes generation 3. Validate real emitted
+manifests and malformed variants with the available JSON Schema 2020-12 validator;
+the Node suite also guards definition parity and the actual emitted field shape.
+
+All 421 storage tests pass on Dominic Node 22.23.4. The previous implementation
+fails the warm-read regression with 11 legacy reparses; the bounded shared cache
+performs none. Both published schemas pass JSON Schema 2020-12 validation for
+seven positive cases, including three actual manifests and both earlier formats,
+and reject 19 malformed variants each. All 79 schema definitions match OpenAPI.
+
+The same isolated private-export workflow on Mac Node 22.22.1 passes all six
+operations and reopen. Saves take 3.488 to 4.452 seconds, down from 10.517 to
+12.436 seconds; open takes 0.931 rather than 4.260 seconds. These observations
+are not a latency guarantee. All 218 fixture prompts, two original Trash rows,
+18 original folders, prior histories, 71 prior objects and 13 byte-identical
+transaction files remain. Exactly six operations are added; the original export
+hash is unchanged. No private content is uploaded or personal storage activated.
+The modern synthetic profile remains comparable at 2.965 seconds per save.
+Native integration, actual two-client iCloud sync, interactive latency acceptance
+and the remaining Phase A gates are still open. Hosted work remains gated.
+
 ## Immutable read snapshots: October 29
 
 The loopback synthetic profile at `8bb4935` spends 4.134 seconds saving one

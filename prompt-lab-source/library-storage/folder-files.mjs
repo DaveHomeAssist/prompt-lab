@@ -2,26 +2,19 @@ import { mkdir, open, readdir, lstat, link, unlink } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { canonical, hash, ownObjectTable, LibraryError, MAX_BYTES } from './contract.mjs';
+import { canonical, hash, ownObjectTable, LibraryError } from './contract.mjs';
+import { createFolderReadCache } from './folder-read-cache.mjs';
 
 const nameFor = id => {
   if (typeof id !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(id)) throw new LibraryError('INVALID_REQUEST', 'A complete content hash is required.');
   return id.slice(7) + '.json';
-};
-const freeze = value => {
-  if (value && typeof value === 'object') {
-    for (const child of Object.values(value)) freeze(child);
-    Object.freeze(value);
-  }
-  return value;
 };
 
 // Publication never replaces an existing file. A partial file is kept under a
 // .pending name until flushed; an interrupted publication is safe to retry.
 export async function createFolderFiles(directory, kind, fault) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  const cache = new Map(), proofs = new Map();
-  let cacheBytes = 0;
+  const cache = createFolderReadCache({ kind }), proofs = new Map();
   async function directorySafe() {
     if ((await lstat(directory)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library content directory cannot be a symbolic link.');
   }
@@ -53,8 +46,8 @@ export async function createFolderFiles(directory, kind, fault) {
       throw new LibraryError(error.code === 'ENOENT' ? 'MISSING_OBJECT' : 'INCOMPLETE_STORE', 'Library content is unavailable; preserve files and retry after recovery.', 503);
     }
     const digest = createHash('sha256').update(contents).digest('hex');
-    const known = cache.get(name);
-    if (known?.digest === digest) return known.value;
+    const known = cache.get(name, digest);
+    if (known !== undefined) return known;
     let value;
     try { value = JSON.parse(contents.toString('utf8')); }
     catch { throw new LibraryError('INCOMPLETE_STORE', 'Library content is unreadable; preserve files for recovery.', 503); }
@@ -63,21 +56,9 @@ export async function createFolderFiles(directory, kind, fault) {
     // strings here would multiply memory and work whenever the cache evicts.
     if (kind === 'object') value = ownObjectTable({ value }).value;
     if (proofs.get(name) !== digest && await hash(value) !== id) throw new LibraryError('HASH_MISMATCH', 'Library content failed verification.', 503);
-    freeze(value);
     if (proofs.size >= 4096) proofs.delete(proofs.keys().next().value);
     proofs.set(name, digest);
-    if (known) { cacheBytes -= known.bytes; cache.delete(name); }
-    // Count both parsed JSON and its retained canonical string conservatively.
-    // Reread actual bytes even on cache hits.
-    const bytes = contents.byteLength * (kind === 'object' ? 5 : 3);
-    if (bytes <= MAX_BYTES) {
-      while (cache.size >= 128 || cacheBytes + bytes > MAX_BYTES) {
-        const oldest = cache.keys().next().value;
-        cacheBytes -= cache.get(oldest).bytes; cache.delete(oldest);
-      }
-      cache.set(name, { digest, value, bytes }); cacheBytes += bytes;
-    }
-    return value;
+    return cache.remember(name, digest, value, contents.byteLength);
   }
   async function publish(id, value) {
     await directorySafe();
