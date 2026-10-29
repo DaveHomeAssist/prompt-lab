@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T16:28:01.529Z",
+  "snapshotAt": "2026-10-29T16:48:44.544Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Diagnose native driver reconnect failures while continuing shared folder transactions and remaining domain commands; preserve the iCloud gate.",
+  "nextAction": "Inspect current native acceptance artifacts and continue remaining shared folder commands; preserve the native packaging decision and two-client iCloud gate.",
   "evidence": [
+    {
+      "label": "Native display and renderer readiness checked",
+      "state": "Open",
+      "detail": "2026-10-29 native test configuration: 7bad9b1bbbba6a6f7e3d8296a22bd64617187184 adds a bounded read-only Windows renderer readiness check before the single WebDriver session, and keeps the Linux Xvfb display alive across app restarts with separate display logs. Dominic Node 22: six focused tests, one real Chromium protocol check, four documentation contracts, documentation lint, YAML parse and both Linux shell syntax checks pass; six source hashes match. The display-reset experiment confirms the default reset and -noreset behavior. Current installed verification is running at https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40914684701 . Earlier head 4073c2e, tested merge b171fd6dd75b2d6d899864d1baff14dbea2995aa, passed Windows MSI and Linux DEB exercise and uninstall/reinstall retention in run https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40912086206 . This preserves the prior run 40908292879 failures as intermittent setup evidence, not a proven sole cause. Current-head native acceptance, alternate packages, macOS installed acceptance and human acceptance remain open. No production deployment or personal data activation. Next: inspect current-head installed artifacts and finish the remaining platform acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40914684701"
+    },
     {
       "label": "Catalog metadata and pack commands verified",
       "state": "Open",
@@ -1032,8 +1038,8 @@
       "type": "Bug",
       "url": "https://app.notion.com/3d2255fc8f44814bb93cf90f2931876e",
       "inPlan": true,
-      "nextAction": "Diagnose native driver attachment across restarts and rerun current installed acceptance.",
-      "verification": "2026-10-29 native acceptance on PR248 parent ca4b3b5, tested merge 0976a3ec25d1e62f4fa80c154a8dc04a2d24cfc1, run https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40908292879 . Windows MSI exercise passed, including workspace import associations and restart. Its separate retention phase failed at POST /session: session not created, disconnected, unable to connect to renderer (job 123572766517). Linux DEB exercise passed the initial native scenarios through acknowledged Library matrix, then POST /session timed out on a later launch (job 123572766570). macOS packaging passed; alternate-package acceptance was skipped. These are current native verification failures; their underlying cause is not yet established. Source 6cea611 has new CI pending. No merge or production deployment. Next: diagnose driver attachment across native restarts and rerun installed acceptance on the current revision."
+      "nextAction": "Verify imported associations on current candidate packages.",
+      "verification": "2026-10-29 native association verification: the Windows MSI and Linux DEB exercise and retention receipts for head 4073c2e (tested merge b171fd6dd75b2d6d899864d1baff14dbea2995aa) both pass, including imported versions, mapped runs/test cases, provenance, restart and uninstall/reinstall. Evidence: https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40912086206 . Prior run 40908292879 failures remain historical and were not erased. Source 7bad9b1 now strengthens native display/renderer preconditions; its installed checks are running at https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40914684701 . Broader package/platform and human acceptance remain open. Next: verify the same association scenarios on the current candidate artifacts."
     },
     {
       "id": "3d2255fc8f44814ebf3dfff35975b014",
@@ -1380,8 +1386,8 @@
       "type": "Tech Debt",
       "url": "https://app.notion.com/d39b7b5b076041de8718e4c2f1134422",
       "inPlan": true,
-      "nextAction": "Diagnose native driver attachment across restarts and rerun current installed acceptance.",
-      "verification": "2026-10-29 native acceptance on PR248 parent ca4b3b5, tested merge 0976a3ec25d1e62f4fa80c154a8dc04a2d24cfc1, run https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40908292879 . Windows MSI exercise passed, including workspace import associations and restart. Its separate retention phase failed at POST /session: session not created, disconnected, unable to connect to renderer (job 123572766517). Linux DEB exercise passed the initial native scenarios through acknowledged Library matrix, then POST /session timed out on a later launch (job 123572766570). macOS packaging passed; alternate-package acceptance was skipped. These are current native verification failures; their underlying cause is not yet established. Source 6cea611 has new CI pending. No merge or production deployment. Next: diagnose driver attachment across native restarts and rerun installed acceptance on the current revision."
+      "nextAction": "Verify current native readiness and remaining package/platform acceptance.",
+      "verification": "2026-10-29 native test configuration: 7bad9b1bbbba6a6f7e3d8296a22bd64617187184 adds a bounded read-only Windows renderer readiness check before the single WebDriver session, and keeps the Linux Xvfb display alive across app restarts with separate display logs. Dominic Node 22: six focused tests, one real Chromium protocol check, four documentation contracts, documentation lint, YAML parse and both Linux shell syntax checks pass; six source hashes match. The display-reset experiment confirms the default reset and -noreset behavior. Current installed verification is running at https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40914684701 . Earlier head 4073c2e, tested merge b171fd6dd75b2d6d899864d1baff14dbea2995aa, passed Windows MSI and Linux DEB exercise and uninstall/reinstall retention in run https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40912086206 . This preserves the prior run 40908292879 failures as intermittent setup evidence, not a proven sole cause. Current-head native acceptance, alternate packages, macOS installed acceptance and human acceptance remain open. No production deployment or personal data activation. Next: inspect current-head installed artifacts and finish the remaining platform acceptance."
     },
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
