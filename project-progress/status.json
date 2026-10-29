@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T12:28:37.220Z",
+  "snapshotAt": "2026-10-29T12:51:00.160Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete the active app projection, native and legacy client ownership, remaining transient forms, other store retention policies and native service boundary. Inspect Windows iCloud account and visible sync warnings when UI access is available, then qualify two-client propagation. Hosted work follows accepted Phase A; no paid provisioning. Registered Next Steps Board file remains absent.",
+  "nextAction": "Integrate the reviewed current-record view with app reads, mutations and durable outbox; complete native/legacy ownership, remaining transient forms and retention gaps, service packaging and installed acceptance. Inspect Windows iCloud account and sync warnings when UI access is available, then qualify two-client propagation. Hosted work follows accepted Phase A; no paid provisioning. Registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Reviewed current records verified",
+      "state": "Open",
+      "detail": "2026-10-29 reviewed current domain view pushed in 8319f002073d5501ec21761266fa0b7ee39f750f: https://github.com/DaveHomeAssist/prompt-lab/commit/8319f002073d5501ec21761266fa0b7ee39f750f . The shared command service and loopback API now commit an immutable current-record selection over preserved sources. Import/reconciliation still own prompt choices; differing nonprompt replicas or absence across captures require explicit review, including an inactive choice that retains all content. Permanent deletion/clear and Scratch tombstones constrain selection. Later imports, restores and reconciliation require fresh review. Dominic Node 22.23.4: 173 storage tests pass, including all domain families, 1,002 traces, 41 versions, API permissions, transfer/restart/idempotency and three publication interruption points. Runtime payloads pass 18 schema/OpenAPI checks; five malformed payloads are rejected and definitions match. Eleven source files hash-match the runner. Private Mac Node 22.22.1: all 216 real-export prompts and 21 historical versions match their original values after reviewed selection, complete transfer reconstruction and restarted retry (12.515 seconds). Original SHA-256 unchanged; no private transfer, live-store capture or personal activation. A1 remains In progress. Native service packaging/ownership, remaining unsaved forms, app mutation/outbox integration, other legacy retention policies and installed/two-client acceptance remain open. Fresh iCloud configuration checks show registered running Windows clients but no cross-device probe propagation; visible account/warning inspection still requires Mac unlock. Settings unchanged. PR248 remains draft; exact-head CI is separate. Next: wire the reviewed view into app reads and writes under one revision and durable outbox; complete native and actual iCloud acceptance before hosted work. No paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/8319f002073d5501ec21761266fa0b7ee39f750f"
+    },
     {
       "label": "App saves preserve complete prompt history",
       "state": "Open",
@@ -1308,8 +1314,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Complete the active app projection and native service boundary, including remaining legacy retention and ownership gates.",
-      "verification": "Source 562ab49: all 1,528 shared, 231 legacy and 157 storage tests pass; desktop/phone browser Save and reload retain 42 history records. Copies of all 216 real-export prompts save, reopen and restore without pruning; original hash unchanged. Full A1 activation remains incomplete.",
+      "nextAction": "Integrate reviewed current records with app reads, mutations and durable outbox; complete native ownership and acceptance.",
+      "verification": "Source 8319f00: 173 storage tests, 18 schema/OpenAPI payload checks, five rejection cases, extension/web bundle builds and four documentation contracts pass. All 216 private-export prompts and 21 versions survive selection, transfer and restart with exact values and unchanged source hash. Full app/native acceptance remains incomplete.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
