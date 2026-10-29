@@ -85,6 +85,40 @@ async function pane(page, name) {
 const library = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]'));
 const session = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-session-pl2-session') || '{}'));
 
+for (const width of [1440, 375]) {
+  test(`@production Dual Pane shortcut saves the current draft and version at ${width}`, async ({ page, qa }) => {
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+    await authenticate(page, qa, false);
+    await page.evaluate(() => { location.hash = '/split/write'; });
+    const editor = page.getByLabel('Dual pane prompt editor');
+    const firstBody = 'Production shortcut fixture. Preserve this current draft in Library.';
+    await editor.fill(firstBody);
+    await expect(page.locator('.pl-dual-autosave-status')).toHaveText('Draft saved');
+    expect(await library(page)).toEqual([]);
+    await editor.press('Control+s');
+    await expect.poll(async () => (await library(page))[0]?.enhanced).toBe(firstBody);
+    const first = (await library(page))[0];
+    const updatedBody = `${firstBody} Retain the same identity when adding a version.`;
+    await editor.fill(updatedBody);
+    await expect(page.locator('.pl-dual-autosave-status')).toHaveText('Draft saved');
+    expect((await library(page))[0]).toEqual(first);
+    await editor.press('Control+s');
+    await expect.poll(async () => (await library(page))[0]?.enhanced).toBe(updatedBody);
+    const updated = (await library(page))[0];
+    expect(await library(page)).toHaveLength(1);
+    expect(updated.id).toBe(first.id);
+    expect(updated.versions).toHaveLength(first.versions.length + 1);
+    await expect(page.getByRole('region', { name: 'Editing context' })).toContainText('No unsaved changes');
+    await expect.poll(async () => (await session(page)).editingVersionId).toBe(updated.currentVersionId);
+    await page.reload();
+    await expect(editor).toHaveValue(updatedBody);
+    expect((await library(page))[0]).toMatchObject({ id: first.id, enhanced: updatedBody, currentVersionId: updated.currentVersionId });
+    expect(qa.calls).toEqual([]);
+    expect(qa.blocked).toEqual([]);
+    console.info(`[Save acceptance] ${width}px draft acknowledgement, shortcut new/version save, same identity, accurate feedback and reload passed`);
+  });
+}
+
 async function reachable(locator) {
   await locator.scrollIntoViewIfNeeded();
   return locator.evaluate(element => {
