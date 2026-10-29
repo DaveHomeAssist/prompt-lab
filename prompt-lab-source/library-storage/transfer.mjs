@@ -22,6 +22,14 @@ async function verifyState(input) {
       if (typeof object.data !== 'string') fail('Retained source is not JSON text.');
       assertWorkspace(workspace);
     }
+    if (object?.kind === 'pack-source') {
+      let pack;
+      try { pack = JSON.parse(object.data); } catch { fail('Retained pack source is not valid JSON.'); }
+      if (typeof object.data !== 'string' || !record(pack) || pack.type !== 'prompt-pack' || !Array.isArray(pack.presets)) {
+        fail('Retained pack source is not a complete prompt pack.');
+      }
+      assertWorkspace({ ...pack, library: [] });
+    }
   }
   const pkg = { format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId, head: state.revision, objects: state.objects };
   const inspection = await inspectPackage(pkg);

@@ -38,6 +38,9 @@ async function publish(service, value = fixture(), id = 'import', sourceIdentity
 }
 async function records(service, domain) { return (await service.currentRecords({ ...await query(service), domain })).items; }
 async function requestFor(service, sourceBinding, action = 'publish') {
+  if (action === 'install') return { ...await query(service), sourceBinding, changedAt: stamp, action, packId: 'pack',
+    sourceText: JSON.stringify({ type: 'prompt-pack', id: 'pack', title: 'Installed', version: '3', presets: [{ id: 'preset', prompt: 'Whole imported text', versions: fixture().library[0].versions, unknown: { keep: true } }] }, null, 2),
+    choices: [{ index: 0, action: 'add', promptId: 'installed' }] };
   const page = await service.currentRecords({ ...await query(service), domain: 'prompts' });
   const row = page.items.find(row => row.sourceId === 'q' && row.origin.binding === sourceBinding);
   return { ...await query(service), sourceBinding, changedAt: stamp, action, packId: 'pack', ...(action === 'remove'
@@ -103,24 +106,24 @@ test('pack commands reject stale members, foreign sources, malformed actions and
   await assert.rejects(inspectPackage({ ...pkg(state), head: head.hash, objects: { ...state.objects, [plan.hash]: plan.object, [head.hash]: head.object } }), { code: 'PACK_PLAN_MISMATCH' });
 });
 
-for (const action of ['publish', 'remove']) test(`pack ${action} survives interruption and response loss as one recoverable operation`, async t => {
+for (const action of ['publish', 'remove', 'install']) test(`pack ${action} survives interruption and response loss as one recoverable operation`, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'promptlab-pack-')); t.after(() => rm(directory, { recursive: true, force: true }));
   let failure; const adapter = await createFolderAdapter(directory, { fault: async point => { if (failure === point) throw new Error('Injected interruption'); } });
   const service = createCommandService(adapter), imported = await publish(service), before = await service.read();
   const review = await service.previewPack(await requestFor(service, imported.sourceBinding, action));
   for (failure of ['before-flush', 'before-publication']) {
-    await assert.rejects(service.apply({ ...review, idempotencyKey: action })); assert.deepEqual(await service.read(), before);
+    await assert.rejects(service.apply({ ...review, idempotencyKey: action }), /Injected interruption/); assert.deepEqual(await service.read(), before);
   }
-  failure = 'after-publication'; await assert.rejects(service.apply({ ...review, idempotencyKey: action }));
+  failure = 'after-publication'; await assert.rejects(service.apply({ ...review, idempotencyKey: action }), /Injected interruption/);
   const reopened = createCommandService(await createFolderAdapter(directory)), receipt = await reopened.operation(action);
   assert.equal(receipt.operation, 'pack'); assert.deepEqual(await reopened.apply({ ...review, idempotencyKey: action }), receipt);
-  assert.equal((await records(reopened, 'prompts')).length, action === 'remove' ? 1 : 2);
+  assert.equal((await records(reopened, 'prompts')).length, action === 'remove' ? 1 : action === 'install' ? 3 : 2);
   assert.equal((await records(reopened, 'packs')).length, action === 'remove' ? 0 : 1);
   assert.equal((await records(reopened, 'loaded-packs')).length, action === 'remove' ? 0 : 1);
   assert.deepEqual((await inspectTransfer(await createTransfer(await reopened.read()))).state, await reopened.read());
 });
 
-for (const action of ['publish', 'remove']) test(`pack ${action} has direct/API parity and outbox replay without duplicate revisions`, async t => {
+for (const action of ['publish', 'remove', 'install']) test(`pack ${action} has direct/API parity and outbox replay without duplicate revisions`, async t => {
   const adapter = createMemoryAdapter(), service = createCommandService(adapter), imported = await publish(service);
   const token = 'synthetic-pack-credential-'.repeat(2);
   const api = createLocalApi({ adapter, libraryId: 'lib', credentials: [{ token, scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 }] });
@@ -193,4 +196,119 @@ test('pack publication cannot assign a prompt from another source or bypass read
   const baseUrl = await api.listen();t.after(() => api.close());
   const transport = createLoopbackTransport({ baseUrl, libraryId: 'lib', getToken: () => token });
   await assert.rejects(transport.preview({ ...input, ...await query(service), mode: 'pack' }), { code: 'FORBIDDEN' });
+});
+
+test('installation retains exact raw source, skipped presets, unknown fields and both complete histories', async () => {
+  const service = createCommandService(createMemoryAdapter()), original = fixture(), imported = await publish(service);
+  const page = await service.currentRecords({ ...await query(service), domain: 'prompts' }), old = page.items.find(row => row.sourceId === 'p');
+  const input = await requestFor(service, imported.sourceBinding, 'install');
+  const pack = JSON.parse(input.sourceText); pack.future = { untouched: true };
+  pack.presets.push({ id: 'skip', prompt: 'Retain even when skipped', versions: [{ id: 's', future: true }] });
+  input.sourceText = ' \n' + JSON.stringify(pack, null, 3) + '\n';
+  input.choices = [{ index: 0, action: 'replace', groupId: page.groups.find(group => group.selected === old.key).id, expectedRecordHash: old.valueHash }, { index: 1, action: 'skip' }];
+  const before = await service.read(), { review } = await mutate(service, input, 'install-replacement'), state = await service.read();
+  assert.equal(state.objects[review.packPlan.archiveSource].data, input.sourceText);
+  const next = (await records(service, 'prompts')).find(row => row.sourceId === 'p').value;
+  assert.equal(next.original, pack.presets[0].prompt); assert.equal(next.enhanced, pack.presets[0].prompt);
+  assert.deepEqual(next.versions.slice(0,41), original.library[0].versions);
+  assert.deepEqual(next.versions.slice(42), pack.presets[0].versions); assert.equal(next.versions.length,83);
+  assert.deepEqual(next.future, original.library[0].future); assert.deepEqual(next.unknown, { keep: true });
+  assert.deepEqual((await records(service, 'packs'))[0].value.presets, pack.presets);
+  assert.deepEqual((await records(service, 'packs'))[0].value.unknown, original.packs.pack.unknown);
+  for (const [key,value] of Object.entries(before.objects)) assert.deepEqual(state.objects[key],value);
+  const restore = await service.previewRestore({ ...await query(service), checkpointId: before.revision });
+  await service.apply({ ...restore, idempotencyKey: 'restore-installed' }); await select(service, 'select-restored');
+  assert.deepEqual((await records(service, 'prompts')).find(row => row.sourceId === 'p').value, original.library[0]);
+  assert.equal((await service.read()).objects[review.packPlan.archiveSource].data, input.sourceText);
+  assert.deepEqual((await inspectTransfer(await createTransfer(await service.read()))).state,await service.read());
+});
+
+test('installation requires exhaustive nonduplicated choices, explicit new identities and pinned source-local replacements', async () => {
+  const service = createCommandService(createMemoryAdapter()), imported = await publish(service);
+  const input = await requestFor(service, imported.sourceBinding, 'install'), before = await service.read();
+  await assert.rejects(service.previewPack({ ...input, choices: [] }), { code:'PACK_REVIEW_REQUIRED' });
+  for (const choices of [[...input.choices,...input.choices],[{ index:0, action:'add' }],[{ index:0,action:'skip',promptId:'x' }]]) {
+    await assert.rejects(service.previewPack({ ...input, choices }), { code:'INVALID_PACK_COMMAND' });
+  }
+  for (const promptId of ['p','t']) await assert.rejects(service.previewPack({ ...input, choices:[{ index:0,action:'add',promptId }] }), { code:'IDENTITY_CONFLICT' });
+  const page=await service.currentRecords({ ...await query(service),domain:'prompts' }), row=page.items[0];
+  const choice={ index:0,action:'replace',groupId:page.groups.find(group=>group.selected===row.key).id,expectedRecordHash:'sha256:'+'0'.repeat(64) };
+  await assert.rejects(service.previewPack({ ...input,choices:[choice] }), { code:'RECORD_CONFLICT' });
+  assert.deepEqual(await service.read(),before);
+  const foreign=await publish(service,{ library:[{ id:'foreign',original:'Other account data' }] },'foreign','foreign');
+  await assert.rejects(service.previewPack({ ...input,...await query(service),sourceBinding:foreign.sourceBinding,choices:[{ ...choice,expectedRecordHash:row.valueHash }] }), { code:'PACK_TARGET_UNAVAILABLE' });
+  await assert.rejects(service.previewPack(input),{ code:'REVISION_CONFLICT' });
+});
+
+test('installation rejects malformed content without changing state and retains skipped malformed history as raw data', async () => {
+  const service=createCommandService(createMemoryAdapter()),imported=await publish(service),input=await requestFor(service,imported.sourceBinding,'install'),before=await service.read();
+  const pack=JSON.parse(input.sourceText);
+  for (const value of [null,{ ...pack,type:'workspace' },{ ...pack,id:'wrong' },{ ...pack,presets:[{ id:'x',versions:'broken' }] },{ ...pack,presets:[{ id:'x',metadata:'broken' }] }]) {
+    await assert.rejects(service.previewPack({ ...input,sourceText:JSON.stringify(value) }),{ code:'INVALID_PACK_SOURCE' });
+  }
+  await assert.rejects(service.previewPack({ ...input,sourceText:'{broken' }),{ code:'INVALID_PACK_SOURCE' });
+  assert.deepEqual(await service.read(),before);
+  const sourceText=JSON.stringify({ ...pack,presets:[{ id:'x',versions:'broken',unknown:true }] });
+  const { review }=await mutate(service,{ ...input,sourceText,choices:[{ index:0,action:'skip' }] },'skip-all');
+  assert.equal((await service.read()).objects[review.packPlan.archiveSource].data,sourceText);
+  assert.deepEqual((await records(service,'prompts')).map(row=>row.value),fixture().library);
+});
+
+test('install after uninstall keeps registry metadata but cannot resurrect removed prompt identities or permanent pack deletion',async()=>{
+  const service=createCommandService(createMemoryAdapter()),imported=await publish(service);
+  await mutate(service,await requestFor(service,imported.sourceBinding,'remove'),'remove');
+  const input=await requestFor(service,imported.sourceBinding,'install');
+  await assert.rejects(service.previewPack({ ...input,choices:[{ index:0,action:'add',promptId:'p' }] }),{ code:'IDENTITY_CONFLICT' });
+  await mutate(service,input,'install-new');
+  assert.deepEqual((await records(service,'packs'))[0].value.unknown,fixture().packs.pack.unknown);
+  assert.deepEqual((await records(service,'loaded-packs')).map(row=>row.value),['pack']);
+  assert.ok((await records(service,'trash')).some(row=>row.sourceId==='p'));
+  const page=await service.currentRecords({ ...await query(service),domain:'packs' }),row=page.items[0];
+  const deleted=await service.previewRecord({ ...await query(service),domain:'packs',action:'delete',groupId:page.groups.find(group=>group.selected===row.key).id,expectedRecordHash:row.valueHash,changedAt:stamp,confirmPermanentDeletion:true });
+  await service.apply({ ...deleted,idempotencyKey:'delete-registry' });
+  await assert.rejects(service.previewPack({ ...input,...await query(service),choices:[{ index:0,action:'skip' }] }),{ code:'IDENTITY_CONFLICT' });
+});
+
+test('installation rejects a forged archived source and forged choices during ancestry verification',async()=>{
+  const service=createCommandService(createMemoryAdapter()),imported=await publish(service);
+  await mutate(service,await requestFor(service,imported.sourceBinding,'install'),'install');
+  const state=await service.read(),commit=state.objects[state.revision].data;
+  for(const field of ['archiveSource','changedMembers']){
+    const forged=structuredClone(state.objects[commit.packPlan].data);
+    forged[field]=field==='archiveSource'?'sha256:'+'0'.repeat(64):[];
+    const plan=await makeObject('pack-mutation-plan',forged),head=await makeObject('commit',{ ...commit,packPlan:plan.hash });
+    await assert.rejects(inspectPackage({ ...pkg(state),head:head.hash,objects:{ ...state.objects,[plan.hash]:plan.object,[head.hash]:head.object } }),{ code:'PACK_PLAN_MISMATCH' });
+  }
+});
+
+test('a new installation can be checkpoint-restored and competing replacements require an explicit causal choice',async()=>{
+  const service=createCommandService(createMemoryAdapter()),imported=await publish(service),base=await service.read();
+  await mutate(service,await requestFor(service,imported.sourceBinding,'install'),'install-added');
+  const restore=await service.previewRestore({ ...await query(service),checkpointId:base.revision });
+  await service.apply({ ...restore,idempotencyKey:'restore-add' });await select(service,'select-add-restore');
+  assert.deepEqual((await records(service,'prompts')).map(row=>row.sourceId),['p','q']);
+  const left=createCommandService(createMemoryAdapter(base)),right=createCommandService(createMemoryAdapter(base));
+  const page=await left.currentRecords({ ...await query(left),domain:'prompts' }),row=page.items.find(row=>row.sourceId==='p'),groupId=page.groups.find(group=>group.selected===row.key).id;
+  const input={ ...await requestFor(left,imported.sourceBinding,'install'),choices:[{ index:0,action:'replace',groupId,expectedRecordHash:row.valueHash }] };
+  await mutate(left,input,'install-left');
+  const edit=await right.previewEdit({ ...await query(right),groupId,expectedRecordHash:row.valueHash,editedAt:stamp,updates:[{ path:['original'],value:'Other device edit' }] });
+  await right.apply({ ...edit,idempotencyKey:'edit-right' });
+  const incoming=await createTransfer(await right.read()),review=await left.previewReconcile({ ...await query(left),incoming });
+  assert.equal(review.commitAvailable,false);
+  const resolutions=Object.fromEntries(review.reconciliationPlan.rows.filter(row=>row.conflict).map(row=>[row.groupId,'incoming']));
+  const resolved=await left.previewReconcile({ ...await query(left),incoming,resolutions });assert.equal(resolved.commitAvailable,true);
+  await left.apply({ ...resolved,idempotencyKey:'reconcile-installed' });await select(left,'selected-merge');
+  assert.equal((await records(left,'prompts')).find(row=>row.sourceId==='p').value.original,'Other device edit');
+  assert.deepEqual((await inspectTransfer(await createTransfer(await left.read()))).state,await left.read());
+});
+
+test('pack source archives retain extensions but exclude credential stores and reject invalid transferred raw packs',async()=>{
+  const service=createCommandService(createMemoryAdapter()),imported=await publish(service),input=await requestFor(service,imported.sourceBinding,'install'),before=await service.read();
+  await assert.rejects(service.previewPack({ ...input,sourceText:JSON.stringify({ ...JSON.parse(input.sourceText),apiKeys:{ provider:'synthetic-not-a-secret' } }) }),{ code:'EXCLUDED_STORE' });
+  assert.deepEqual(await service.read(),before);
+  await mutate(service,input,'install');const state=await service.read();
+  for(const value of ['broken','null',JSON.stringify({ type:'prompt-pack',presets:[],credentials:{} })]){
+    const extra=await makeObject('pack-source',value);
+    await assert.rejects(createTransfer({ ...state,objects:{ ...state.objects,[extra.hash]:extra.object } }),error=>['INVALID_TRANSFER','EXCLUDED_STORE'].includes(error.code));
+  }
 });

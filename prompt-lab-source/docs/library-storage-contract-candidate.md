@@ -1,5 +1,55 @@
 # Library storage contract candidate
 
+## Lossless pack installation
+
+Installation must publish the selected prompts, registry and loaded marker as
+one command. Preserve the exact input text and every preset, including skipped
+presets, unknown fields and unlimited history. Review every preset by index:
+add with an explicit new prompt identity, replace a pinned active prompt, or
+skip while retaining its source. Never guess an identity collision or revive a
+deleted identity. Replacement preserves previous history and unmentioned fields
+alongside all incoming history. Pin the library revision and source binding.
+
+The command uses the existing pack preview, API, outbox and immutable receipt.
+Verify whole-operation interruption, restart, idempotent recovery, source
+isolation, stale choices, checkpoint restore and complete transfer using
+disposable fixtures. This slice does not activate personal storage or close
+app migration, native ownership, performance or actual iCloud acceptance.
+
+The implementation preserves an exact `pack-source` object, including whitespace,
+and publishes additions, pinned replacements, registry and loaded marker together.
+Each preset has an explicit indexed choice; duplicate identities and replacement
+targets, foreign sources, stale hashes and permanently deleted identities fail
+before publication. Replacement retains all prior versions, its complete previous
+value and every incoming version. The pack registry also retains skipped presets.
+Existing workspace source validation remains intact; pack archives receive their
+own validation and the same exclusion of credential/settings stores.
+
+Verification found two issues before delivery: raw packs initially used the
+workspace source kind, which prevented folder publication and transfer; the
+reviewed-command schema initially omitted installation. Both failures are retained
+and their corrected runtime/schema checks pass. No existing assertions were
+removed. The interruption tests now require the exact injected failure.
+
+Dominic Node 22.23.4 passed the 334-test storage suite, the subsequently added
+credential-store/raw-pack regression, all 43 browser source-capture/outbox checks,
+the extension build, Markdown lint and four documentation contracts. Schema
+validation accepted 38 pack and 168 earlier fixtures and rejected 34 malformed
+requests. The first browser attempt could not write an existing result directory;
+the fresh disposable result directory passed without changing its permissions.
+
+On Mac Node 22.22.1, a disposable copy of the full 216-prompt export passed
+installation, readback, checkpoint restore, selection and complete transfer.
+The review replaced one prompt, added one and retained one skipped preset.
+All original objects/receipts remain, with exact restored selected values,
+origins and identities and every original reference target preserved. An initial
+readback assertion wrongly required replaced children to keep their old selected
+addresses; its retained failure was followed by archived-child and selected-value
+checks. No write was repeated to repair that assertion. Original export bytes
+remain unchanged, with no private upload or personal activation. These harness
+phases took approximately 13 to 41 seconds including repeated verification;
+interactive performance, app migration and native/iCloud acceptance remain open.
+
 ## Atomic pack publication and removal
 
 Pack Studio currently assigns prompt membership, saves the registry and moves
@@ -11,8 +61,9 @@ content and clears the selected registry and loaded marker without permanent
 erasure. Publication requires reviewed prompt identities and hashes, preserves
 unmentioned registry metadata and rejects permanently deleted identities.
 
-This increment covers shared publish and remove commands, not pack-file parsing
-or the app's migration switch. Pack import remains a separate lossless review:
+The earlier publication/removal increment covered shared commands, with pack-file
+installation and the app migration switch left open. Installation now adds its
+separate lossless review described above:
 keep its raw source, imported history and conflict choices before installation.
 Native activation, performance and actual two-client iCloud acceptance remain
 open. Verify source isolation, complete history, restore, competing branches,

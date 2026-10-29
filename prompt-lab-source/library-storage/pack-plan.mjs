@@ -23,6 +23,10 @@ function mergeFields(previous, incoming) {
 /** Compose existing planners in memory; only the outer operation is published. */
 export async function planPackMutation(pkg, inspected, value) {
   const request = normalizePackRequest(value);
+  if (request.action === 'install') {
+    const { planPackInstallation } = await import('./pack-install.mjs');
+    return planPackInstallation(pkg, inspected, request);
+  }
   if (pkg.libraryId !== request.libraryId) fail('WRONG_LIBRARY', 'Pack command targets another library.');
   if (pkg.head !== request.expectedRevision) fail('REVISION_CONFLICT', 'The library changed before the pack review.');
   if (!inspected.currentView || inspected.currentView.unresolved) fail('SELECTION_REQUIRED', 'Review the current records before changing a pack.');

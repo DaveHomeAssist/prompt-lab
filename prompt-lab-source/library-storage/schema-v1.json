@@ -28,7 +28,8 @@
             "prompt-lifecycle-plan",
             "record-mutation-plan",
             "folder-mutation-plan",
-            "pack-mutation-plan"
+            "pack-mutation-plan",
+            "pack-source"
           ]
         },
         "data": {}
@@ -5772,6 +5773,136 @@
             "mode"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "packId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "install"
+            },
+            "sourceText": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000000
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "add"
+                      },
+                      "promptId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "\\S"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action",
+                      "promptId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "skip"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "replace"
+                      },
+                      "groupId": {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      },
+                      "expectedRecordHash": {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action",
+                      "groupId",
+                      "expectedRecordHash"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "maxItems": 1000,
+              "uniqueItems": true
+            },
+            "mode": {
+              "const": "pack"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "packId",
+            "changedAt",
+            "action",
+            "sourceText",
+            "choices",
+            "mode"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -6489,7 +6620,8 @@
             "action": {
               "enum": [
                 "publish",
-                "remove"
+                "remove",
+                "install"
               ]
             },
             "packId": {
@@ -8176,6 +8308,132 @@
             "confirmRemoval"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "packId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "install"
+            },
+            "sourceText": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20000000
+            },
+            "choices": {
+              "type": "array",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "add"
+                      },
+                      "promptId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200,
+                        "pattern": "\\S"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action",
+                      "promptId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "skip"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "action": {
+                        "const": "replace"
+                      },
+                      "groupId": {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      },
+                      "expectedRecordHash": {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      }
+                    },
+                    "required": [
+                      "index",
+                      "action",
+                      "groupId",
+                      "expectedRecordHash"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "maxItems": 1000,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "packId",
+            "changedAt",
+            "action",
+            "sourceText",
+            "choices"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -8230,6 +8488,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "uniqueItems": true
+        },
+        "archiveSource": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
         }
       },
       "required": [

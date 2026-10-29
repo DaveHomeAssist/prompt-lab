@@ -59,7 +59,7 @@ const valueCases = {
   'recovery-replace': { domain: 'recovery', action: 'replace', value: 'Complete record' },
   'loaded-pack-delete': { domain: 'loaded-packs', action: 'delete' },
 };
-for (const action of ['publish', 'remove']) test(`atomic pack ${action} survives a separate browser process and keeps all prompt history`, async () => {
+for (const action of ['publish', 'remove', 'install']) test(`atomic pack ${action} survives a separate browser process and keeps all prompt history`, async () => {
   const credential = { token: 'synthetic-atomic-pack-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
   const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
@@ -78,6 +78,7 @@ for (const action of ['publish', 'remove']) test(`atomic pack ${action} survives
     const pageRecords = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: base.revision, domain: 'prompts' }), row = pageRecords.items[0];
     const request = { libraryId: 'lib', expectedRevision: base.revision, sourceBinding: imported.sourceBinding, packId: 'pack',
       changedAt: '2026-10-29T12:00:00.000Z', action, mode: 'pack', ...(action === 'remove' ? { confirmRemoval: true }
+        : action === 'install' ? { sourceText: JSON.stringify({ type: 'prompt-pack', id: 'pack', title: 'Installed', version: '3', presets: [content.library[0]] }), choices: [{ index: 0, action: 'replace', groupId: pageRecords.groups.find(group => group.selected === row.key).id, expectedRecordHash: row.valueHash }] }
         : { pack: { id: 'pack', title: 'Published', version: '2', source: 'user' },
           members: [{ groupId: pageRecords.groups.find(group => group.selected === row.key).id, expectedRecordHash: row.valueHash }] }) };
     context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
@@ -92,7 +93,7 @@ for (const action of ['publish', 'remove']) test(`atomic pack ${action} survives
     const query = { libraryId: 'lib', expectedRevision: committed.receipt.revision };
     const prompts = await api.service.currentRecords({ ...query, domain: action === 'remove' ? 'trash' : 'prompts' });
     expect(prompts.total).toBe(1); expect(prompts.items[0].value.versions.slice(0, 41)).toEqual(content.library[0].versions);
-    expect(prompts.items[0].value.versions).toHaveLength(action === 'remove' ? 41 : 42);
+    expect(prompts.items[0].value.versions).toHaveLength(action === 'remove' ? 41 : action === 'install' ? 83 : 42);
     expect((await api.service.currentRecords({ ...query, domain: 'packs' })).total).toBe(action === 'remove' ? 0 : 1);
     expect((await api.service.currentRecords({ ...query, domain: 'loaded-packs' })).total).toBe(action === 'remove' ? 0 : 1);
     expect(Object.keys((await adapter.read()).operations)).toHaveLength(3);
