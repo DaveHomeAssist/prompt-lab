@@ -1,5 +1,22 @@
 # Library storage contract candidate
 
+## App prompt save preservation
+
+The existing app save normalizer still trimmed changed prompts to 25 historical
+versions and rebuilt records from a fixed field list. Before connecting the
+shared library, remove that implicit retention cap and retain extension fields
+on valid prompt records, historical versions, variants, embedded cases, inputs
+and golden responses. A new historical snapshot must preserve the previous
+record without recursively embedding its older history. Existing invalid-input
+validation and explicit deletion semantics remain separate contracts.
+
+Acceptance covers saving and reopening a prompt with more than 25 versions,
+restoring an old version without pruning either history, preservation of unknown
+fields and complete golden text, and the actual app save hook. Test an isolated
+copy of the real export on the Mac. This is a prerequisite repair, not proof of
+complete active projection, native activation or preservation of every legacy
+store's retention policy.
+
 ## Reviewed branch reconciliation
 
 The next contract increment combines two verified branches of the same logical
