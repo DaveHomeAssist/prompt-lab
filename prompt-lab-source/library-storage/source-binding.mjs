@@ -98,13 +98,14 @@ export async function collectDeletionEvidence(objects, bindingHashes) {
   const scopes = new Map();
   for (const bindingHash of [...new Set(bindingHashes)].sort()) {
     const inspected = await inspectSourceBinding(objects, bindingHash);
-    const { manifest, captures, workspaceHash } = inspected;
+    const { manifest, captures, binding } = inspected;
     let scope = scopes.get(manifest.sourceIdentity);
     if (!scope) {
       scope = { sourceIdentity: manifest.sourceIdentity, workspaces: new Set(), bindings: [], deletedIds: new Set(), generation: '0', issues: [] };
       scopes.set(manifest.sourceIdentity, scope);
     }
-    scope.workspaces.add(workspaceHash); scope.bindings.push(bindingHash);
+    // Graph nodes identify workspace objects, not hashes of their raw data.
+    scope.workspaces.add(binding.workspace); scope.bindings.push(bindingHash);
     collectMarkers(captures['local-content'].entries, scope, { binding: bindingHash, source: 'local-content' });
     if (manifest.surface !== 'desktop') continue;
     const journal = captures['durable-journal'];

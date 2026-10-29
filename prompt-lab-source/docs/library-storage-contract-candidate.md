@@ -187,6 +187,54 @@ markers, rehashed semantic tampering and publication interruption. Use the real
 export only in a new local disposable fixture with test-only deletion markers;
 never infer that its omitted metadata proves the personal library has no markers.
 
+### Reviewed restore implementation
+
+`restore-plan.mjs` now builds a review from an earlier retained ancestor
+checkpoint and the pinned current revision. `POST /v1/library/restores` requires
+write scope and returns the normal expiring preview envelope. Apply uses
+`POST /v1/library/commits` and its idempotency key. The receipt distinguishes the
+checkpoint made immediately before restore from `restoredCheckpointId`.
+Restore appends a commit; it retains every previous object, operation receipt,
+checkpoint, raw source and history record. Backup reconstruction verifies and
+replays restore receipts through the same contract.
+
+`selection-policy.mjs` evaluates all retained source bindings. Permanent IDs and
+clear generations suppress affected groups while retaining a recovery selection
+and all members. Inactive groups remain indexed for later imports, preventing a
+replacement or old alias from silently reviving an erased prompt. References to
+suppressed groups remain recorded with `prompt-not-selected`. The review names
+each suppression and reports incomplete, unbound or ambiguous source evidence.
+Such a review cannot commit. Bound imports enforce the same policy, including
+after restore. Malformed generations cannot be interpreted as absent metadata.
+
+Identical workspace objects bound to different source identities currently produce
+an ambiguous-source review. This prevents guessing a deletion scope; explicit
+origin-qualified domain mapping remains open. Legacy unbound archives stay
+readable but cannot supply the evidence required for ordinary restore. No
+option reintroduces permanently deleted content. Full app-domain restoration,
+native activation, independent-backup destination selection and an intentional
+erasure recovery workflow remain separate gates.
+
+Dominic Node 22.23.4 passes 121 storage tests, including 18 restore cases covering
+scope isolation, alias suppression, generation markers, missing evidence, stale
+and expired previews, unrelated checkpoints, rehashed tampering, restart/replay,
+HTTP scope enforcement and three publication interruption boundaries. The shared
+Draft 2020-12 schema validates 41 generated runtime records and rejects six
+malformed variants. The private verifier `scripts/verify-library-restore.mjs`
+uses a disposable copy of an explicit export and clearly synthetic deletion
+metadata. It checks an actual selected edit before restore, original selection
+after restore, deletion suppression, complete backup reconstruction and replay.
+
+The October 29 private Mac Node 22.22.1 check passed against the supplied
+1,666,421-byte export. Its original SHA-256 stayed unchanged. The disposable
+restore retained both raw source versions, 491 indexed records and 42 historical
+version records across those sources, 24 objects, three commits/receipts and two
+checkpoints. It selected 212 prompt groups and suppressed the single test-deleted
+group. The 10,748,670-byte backup reconstructed the complete state and replayed
+the restore receipt. These counts include retained records from both sources;
+they are not counts of distinct personal prompts or new versions. No personal
+app store, real deletion state or iCloud propagation was accepted by this check.
+
 ### Bound source evidence
 
 The first restore prerequisite is implemented in `source-binding.mjs`. Snapshot
@@ -205,9 +253,8 @@ journal shapes and unavailable journals produce incomplete evidence with stable
 codes. They never become empty deletion sets. A workspace without a binding has
 no inferred deletion scope; equal prompt IDs alone do not join source identities.
 
-This is provenance and evidence collection only. Restore preview/commit and
-selection suppression are still unimplemented, including enforcement on later
-imports. A stable local capture does not prove a cross-store write barrier or
+The reviewed restore and bound-import policy above consume this evidence.
+A stable local capture does not prove a cross-store write barrier or
 complete domain materialization. The real-export verifier
 `scripts/verify-library-source-binding.mjs` exercises full transfer, reconstruction
 and replay in fresh disposable folders, with clearly synthetic capture/deletion
@@ -229,8 +276,8 @@ the expected manifest hash. Fault cases cover interruption before flush, before
 publication and after publication. No backup health is inferred from iCloud.
 Tests reconstruct a disposable adapter from the verified archive and compare its
 complete state and operation readback. This transfer contract does not authorize
-replacing an existing library; checkpoint restore still needs a new reviewed
-commit with permanent-deletion suppression and a pre-restore checkpoint.
+replacing an existing library. The reviewed checkpoint restore above publishes
+a separate commit with deletion suppression and a pre-restore checkpoint.
 
 `transfer.mjs` owns the portable manifest and semantic verification.
 `backup-file.mjs` writes bounded JSON records, with a manifest first and an explicit
@@ -250,7 +297,7 @@ revision. The response contains `libraryId`, `revision`, bounded `items` and
 `nextCursor`. Items include the checkpoint hash, name, creation time and state
 hash/kind, with `independentBackup: false`. Bad pagination returns 400, invalid
 authorization 401/403, stale revision 409 and invalid archive state 422/503.
-Checkpoint restore still returns 404 until deletion-aware apply is implemented.
+Checkpoint restore is available through the separate reviewed write route above.
 
 For example, an authorized read of
 `/v1/library/backups?revision=sha256:<current revision>&limit=1` returns the first
@@ -381,24 +428,24 @@ private check with `node scripts/verify-import-plan.mjs` and an explicit export
 path; it reads one file and emits aggregate results only.
 
 `library-storage/schema-v1.json` specifies package, object, commit, preview,
-receipt, checkpoint and outbox envelopes. `openapi-v1.json` distinguishes
-candidate routes from proposed recovery routes. These files are draft contracts,
-not a declaration that every route is implemented.
+receipt, checkpoint, deletion review, restore plan and outbox envelopes.
+`openapi-v1.json` labels available candidate routes. These files are draft
+contracts, not evidence of installed service or app acceptance.
 
 Preview binds library identity, revision, exact source, operation mode and
 resolutions for five minutes. Snapshot operations reject nonempty resolution
 maps; import operations use the shared planner. Apply persists operation identity
 with state; response-loss retries return the original receipt and changed-input
 retries conflict. The app is not connected to this service yet.
-Ordinary app import application, field-level causal reconciliation,
-reviewed fork resolution and permanent-deletion-aware restore remain open.
+Ordinary app import application, complete domain restoration, field-level causal
+reconciliation and reviewed fork resolution remain open.
 
 The local API rejects wrong Host/Origin, absent/expired/revoked credentials,
 wrong library and insufficient scope. It binds 127.0.0.1, uses no cookies and
 does not accept URL credentials. Secure pairing, keychain integration, installed
 service ownership and native packaging remain open. It is not automatically
-started. Checkpoint reads are available; restore writes return 404 until their
-preservation rules are complete.
+started. Checkpoint reads and reviewed restore writes are available in this
+unconnected service candidate.
 
 ## Verification and next gates
 
@@ -411,6 +458,10 @@ and retains the disposable folder locally for inspection.
 Use `node scripts/verify-library-transfer.mjs` with an explicit private export
 path for complete backup-file readback and new disposable adapter reconstruction.
 This harness is not a public restore command or personal-library activation.
+Use `node scripts/verify-library-restore.mjs` with the same explicit private
+export path for reviewed checkpoint restore and subsequent independent backup
+reconstruction. Its deletion markers and app-store inventory are synthetic;
+the original file stays unchanged and no personal app library is activated.
 
 Initial tests found an EEXIST reopen error; recursive directory creation fixed
 it and reopen was tested again. The first hostile-Host test used fetch, which

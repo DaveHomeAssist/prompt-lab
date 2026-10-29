@@ -18,7 +18,8 @@
             "library-state",
             "import-plan",
             "source-inventory",
-            "source-binding"
+            "source-binding",
+            "restore-plan"
           ]
         },
         "data": {}
@@ -100,7 +101,8 @@
         "operation": {
           "enum": [
             "snapshot",
-            "import"
+            "import",
+            "restore"
           ]
         },
         "importPlan": {
@@ -114,6 +116,17 @@
         "sourceBinding": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "restorePlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "restoredCheckpointId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "selectionPolicy": {
+          "const": "preserve-deletions-v1"
         }
       },
       "required": [
@@ -142,6 +155,71 @@
               "importPlan",
               "inputState"
             ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "restore"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "restorePlan",
+              "restoredCheckpointId"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "inputState"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "selectionPolicy"
+            ]
+          },
+          "then": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "import"
+              }
+            }
           }
         }
       ]
@@ -183,7 +261,8 @@
         "mode": {
           "enum": [
             "snapshot",
-            "import"
+            "import",
+            "restore"
           ]
         },
         "commitAvailable": {
@@ -195,6 +274,13 @@
         "sourceBinding": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "checkpointId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "restorePlan": {
+          "$ref": "#/$defs/RestorePlan"
         }
       },
       "required": [
@@ -211,6 +297,9 @@
       "allOf": [
         {
           "if": {
+            "required": [
+              "mode"
+            ],
             "properties": {
               "mode": {
                 "const": "import"
@@ -256,7 +345,75 @@
               "required": [
                 "importPlan"
               ]
-            },
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "restore"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "restorePlan",
+              "checkpointId"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "restorePlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "restorePlan"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "snapshot"
+              }
+            }
+          },
+          "then": {
             "properties": {
               "commitAvailable": {
                 "const": true
@@ -318,7 +475,8 @@
         "operation": {
           "enum": [
             "snapshot",
-            "import"
+            "import",
+            "restore"
           ]
         },
         "stateHash": {
@@ -368,6 +526,10 @@
         "sourceBinding": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "restoredCheckpointId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -380,7 +542,36 @@
         "state",
         "verified"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "restore"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "restoredCheckpointId"
+            ],
+            "properties": {
+              "parentRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "checkpointId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            }
+          }
+        }
+      ]
     },
     "Checkpoint": {
       "type": "object",
@@ -1013,7 +1204,10 @@
                 "pattern": "^sha256:[a-f0-9]{64}$"
               },
               "selected": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "members": {
                 "type": "array",
@@ -1022,6 +1216,15 @@
                 },
                 "minItems": 1,
                 "uniqueItems": true
+              },
+              "retainedSelection": {
+                "type": "string"
+              },
+              "inactiveReason": {
+                "enum": [
+                  "permanent-deletion",
+                  "checkpoint-not-selected"
+                ]
               }
             },
             "required": [
@@ -1029,7 +1232,43 @@
               "selected",
               "members"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "selected"
+                  ],
+                  "properties": {
+                    "selected": {
+                      "const": null
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "retainedSelection",
+                    "inactiveReason"
+                  ]
+                },
+                "else": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "retainedSelection"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "inactiveReason"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
           }
         },
         "references": {
@@ -1096,6 +1335,9 @@
             ],
             "additionalProperties": false
           }
+        },
+        "deletionPolicy": {
+          "$ref": "#/$defs/DeletionPolicy"
         }
       },
       "required": [
@@ -1231,6 +1473,9 @@
         "fingerprint": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "deletionReview": {
+          "$ref": "#/$defs/DeletionReview"
         }
       },
       "required": [
@@ -1664,6 +1909,449 @@
         "inventory"
       ],
       "additionalProperties": true
+    },
+    "DeletionPolicy": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "sourceBindings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "version",
+        "sourceBindings"
+      ],
+      "additionalProperties": false
+    },
+    "DeletionIssue": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "object",
+          "properties": {
+            "binding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "source": {
+              "enum": [
+                "local-content",
+                "durable-journal"
+              ]
+            }
+          },
+          "required": [
+            "binding",
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        "code": {
+          "enum": [
+            "INVALID_DELETION_ENTRIES",
+            "INVALID_DELETION_MARKER",
+            "DELETION_SOURCE_UNAVAILABLE",
+            "UNKNOWN_JOURNAL_RECORD",
+            "INVALID_JOURNAL_REVISION"
+          ]
+        }
+      },
+      "required": [
+        "origin",
+        "code"
+      ],
+      "additionalProperties": false
+    },
+    "DeletionEvidence": {
+      "type": "object",
+      "properties": {
+        "bindingCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "scopes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sourceIdentity": {
+                "type": "string"
+              },
+              "workspaces": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "uniqueItems": true
+              },
+              "bindings": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "uniqueItems": true
+              },
+              "deletedIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "uniqueItems": true
+              },
+              "generation": {
+                "type": "string",
+                "pattern": "^(0|[0-9]{16}:[a-f0-9-]+)$"
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/DeletionIssue"
+                }
+              },
+              "complete": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "sourceIdentity",
+              "workspaces",
+              "bindings",
+              "deletedIds",
+              "generation",
+              "issues",
+              "complete"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "bindingCount",
+        "activationReady",
+        "scopes"
+      ],
+      "additionalProperties": false
+    },
+    "DeletionBlock": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "enum": [
+            "UNBOUND_SOURCE",
+            "AMBIGUOUS_SOURCE_IDENTITY",
+            "DELETION_EVIDENCE_UNKNOWN",
+            "MISSING_RECORD_ID",
+            "INVALID_RECORD_GENERATION"
+          ]
+        },
+        "workspace": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "sourceIdentity": {
+          "type": "string"
+        },
+        "issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeletionIssue"
+          }
+        },
+        "groupId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "member": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "UNBOUND_SOURCE",
+                  "AMBIGUOUS_SOURCE_IDENTITY",
+                  "DELETION_EVIDENCE_UNKNOWN"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "workspace"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "DELETION_EVIDENCE_UNKNOWN"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "sourceIdentity",
+              "issues"
+            ],
+            "properties": {
+              "issues": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "MISSING_RECORD_ID",
+                  "INVALID_RECORD_GENERATION"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "groupId",
+              "member"
+            ]
+          }
+        }
+      ]
+    },
+    "DeletionSuppression": {
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "member": {
+          "type": "string"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "member": {
+                "type": "string"
+              },
+              "sourceIdentity": {
+                "type": "string"
+              },
+              "sourceId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "code": {
+                "enum": [
+                  "PERMANENT_DELETION",
+                  "CLEARED_GENERATION"
+                ]
+              },
+              "generation": {
+                "type": "string"
+              },
+              "currentGeneration": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "member",
+              "sourceIdentity",
+              "sourceId",
+              "code"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "code": {
+                      "const": "CLEARED_GENERATION"
+                    }
+                  }
+                },
+                "then": {
+                  "required": [
+                    "generation",
+                    "currentGeneration"
+                  ]
+                }
+              }
+            ]
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "groupId",
+        "member",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "DeletionReview": {
+      "type": "object",
+      "properties": {
+        "evidence": {
+          "$ref": "#/$defs/DeletionEvidence"
+        },
+        "suppressed": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeletionSuppression"
+          }
+        },
+        "blocked": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DeletionBlock"
+          }
+        }
+      },
+      "required": [
+        "evidence",
+        "suppressed",
+        "blocked"
+      ],
+      "additionalProperties": false
+    },
+    "RestoreRequest": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "checkpointId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision",
+        "checkpointId"
+      ],
+      "additionalProperties": false
+    },
+    "RestorePlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-library-restore-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "baseRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "checkpointId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "manifest": {
+          "$ref": "#/$defs/LibraryState"
+        },
+        "deletionReview": {
+          "$ref": "#/$defs/DeletionReview"
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "selectedBefore": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "selectedAfter": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "suppressed": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retainedRecords": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "retainedSources": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "selectedBefore",
+            "selectedAfter",
+            "suppressed",
+            "retainedRecords",
+            "retainedSources"
+          ],
+          "additionalProperties": false
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "baseRevision",
+        "checkpointId",
+        "source",
+        "manifest",
+        "deletionReview",
+        "counts",
+        "unresolved",
+        "activationReady",
+        "fingerprint"
+      ],
+      "additionalProperties": false
     }
   }
 }

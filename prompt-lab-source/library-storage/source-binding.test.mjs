@@ -106,6 +106,7 @@ test('ancestry retains bindings and unions deletion evidence only within the nam
   assert.deepEqual(evidence.scopes[0].deletedIds, ['__proto__', 'journal-only', 'other', 'same-id']);
   assert.equal(evidence.scopes[0].generation, '0000000000000007:abc-123');
   assert.equal(evidence.scopes[0].complete, true);
+  assert.ok(evidence.scopes[0].workspaces.includes(state.objects[first.sourceBinding].data.workspace));
   assert.deepEqual(evidence.scopes[1].deletedIds, []);
   assert.equal(evidence.scopes[1].generation, '0');
   assert.equal(evidence.scopes[1].complete, true);
@@ -145,15 +146,20 @@ test('a historical unbound snapshot never acquires inferred deletion provenance'
   await inspectTransfer(await createTransfer(await service.read()));
 });
 
-test('later unbound imports retain earlier capture provenance without assigning it to another source', async () => {
+test('later unbound imports cannot borrow earlier deletion provenance or commit an unsafe selection', async () => {
   const service = createCommandService(createMemoryAdapter());
   const first = await commit(service, await fixture({ markers: { 'pl2-library-deleted:erased': '1' } }), 'first');
-  await commit(service, { libraryId: 'lib', expectedRevision: first.revision, mode: 'import', sourceText: '{"library":[{"id":"different","original":"new"}]}' }, 'unbound-import');
+  const before = await service.read();
+  const preview = await service.preview({ libraryId: 'lib', expectedRevision: first.revision, mode: 'import', sourceText: '{"library":[{"id":"different","original":"new"}]}' });
+  assert.equal(preview.commitAvailable, false);
+  assert.ok(preview.importPlan.deletionReview.blocked.some(issue => issue.code === 'UNBOUND_SOURCE'));
+  await assert.rejects(service.apply({ ...preview, idempotencyKey: 'unbound-import' }), { code: 'DELETION_EVIDENCE_UNKNOWN' });
+  assert.deepEqual(await service.read(), before);
   const state = await service.read(), inspection = await inspectPackage(pkgFor(state));
   assert.deepEqual(inspection.sourceBindings, [first.sourceBinding]);
   const evidence = await collectDeletionEvidence(state.objects, inspection.sourceBindings);
   assert.equal(evidence.scopes[0].workspaces.length, 1);
-  assert.equal(inspection.manifest.sources.length, 2);
+  assert.equal(preview.importPlan.manifest.sources.length, 2);
   assert.deepEqual(evidence.scopes[0].deletedIds, ['erased']);
   await inspectTransfer(await createTransfer(state));
 });

@@ -68,7 +68,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) throw new LibraryError('INVALID_REQUEST', 'Invalid pagination.', 400);
         const ids = Object.keys(state.objects).sort();
         const commit = await readObject(state.objects, state.revision, 'commit');
-        const stateKind = commit.operation === 'import' ? 'library-state' : 'workspace';
+        const stateKind = ['import', 'restore'].includes(commit.operation) ? 'library-state' : 'workspace';
         await readObject(state.objects, commit.state, stateKind);
         return send(200, { libraryId, revision: state.revision, stateHash: commit.state, stateKind, objects: ids.slice(offset, offset + limit), nextCursor: offset + limit < ids.length ? String(offset + limit) : null });
       }
@@ -99,7 +99,12 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Request targets another library.', 409);
         return send(201, await service.apply({ ...input, idempotencyKey: req.headers['idempotency-key'] }));
       }
-      // Restore writes remain unavailable until permanent-deletion suppression is implemented.
+      if (req.method === 'POST' && url.pathname === '/v1/library/restores') {
+        if (!req.headers['content-type']?.startsWith('application/json')) throw new LibraryError('INVALID_REQUEST', 'Use application/json.', 400);
+        const input = await body(req);
+        if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Request targets another library.', 409);
+        return send(201, await service.previewRestore(input));
+      }
       throw new LibraryError('NOT_FOUND', 'Operation is not available in this contract candidate.', 404);
     } catch (error) {
       send(error instanceof LibraryError ? error.status : 503, { ok: false, code: error instanceof LibraryError ? error.code : 'STORAGE_UNAVAILABLE', error: error instanceof LibraryError ? error.message : 'Storage unavailable; keep your draft and retry.', retryable: false });

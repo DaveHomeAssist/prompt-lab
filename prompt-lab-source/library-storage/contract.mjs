@@ -109,6 +109,14 @@ export async function inspectPackage(pkg) {
     if (commit.libraryId !== pkg.libraryId || !commit.operationId || !Array.isArray(commit.parents) || new Set(commit.parents).size !== commit.parents.length) throw new LibraryError('INVALID_ANCESTRY', 'Invalid commit identity or parents.');
     for (const parent of commit.parents) await visit(parent);
     const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
+    const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
+    if (Object.hasOwn(commit, 'sourceBinding')) {
+      if (operation === 'restore') throw new LibraryError('UNSUPPORTED_OPERATION', 'Restore uses retained ancestry evidence only.');
+      const { inspectSourceBinding } = await import('./source-binding.mjs');
+      await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
+      if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
+    }
+    if (commit.selectionPolicy != null && (operation !== 'import' || commit.selectionPolicy !== 'preserve-deletions-v1')) throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported selection policy.');
     let result;
     if (operation === 'import') {
       if (commit.parents.length > 1) throw new LibraryError('INVALID_ANCESTRY', 'Import must have one expected parent or an empty library.');
@@ -117,9 +125,21 @@ export async function inspectPackage(pkg) {
       const parent = commit.parents.length ? visited.get(commit.parents[0]) : null;
       const { planLibraryImport } = await import('./import-plan.mjs');
       const expected = await planLibraryImport({ base: parent?.manifest ?? (parent ? { sources: [{ source: parent.sourceObject, workspace: parent.stateObject }] } : null),
-        baseRevision: commit.parents[0] ?? null, incoming: { source: commit.source, workspace: commit.inputState }, objects: pkg.objects, resolutions: plan.resolutions });
+        baseRevision: commit.parents[0] ?? null, incoming: { source: commit.source, workspace: commit.inputState }, objects: pkg.objects, resolutions: plan.resolutions,
+        sourceBindings, enforceDeletions: commit.selectionPolicy === 'preserve-deletions-v1' });
       if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(expected.manifest) !== canonical(manifest)) {
         throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import commit does not match its complete sources, parent and reviewed choices.', 409);
+      }
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+    } else if (operation === 'restore') {
+      if (commit.parents.length !== 1 || !visited.has(commit.restoredCheckpointId)) throw new LibraryError('INVALID_CHECKPOINT', 'Restore must name an ancestor checkpoint and one current parent.', 409);
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      const plan = await readObject(pkg.objects, commit.restorePlan, 'restore-plan');
+      const { planCheckpointRestore } = await import('./restore-plan.mjs');
+      const expected = await planCheckpointRestore({ current: visited.get(commit.parents[0]), checkpoint: visited.get(commit.restoredCheckpointId),
+        baseRevision: commit.parents[0], checkpointId: commit.restoredCheckpointId, objects: pkg.objects });
+      if (expected.unresolved || commit.source !== expected.source || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)) {
+        throw new LibraryError('RESTORE_PLAN_MISMATCH', 'Restore differs from its current parent, checkpoint or deletion evidence.', 409);
       }
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
     } else if (operation === 'snapshot') {
@@ -132,12 +152,6 @@ export async function inspectPackage(pkg) {
       if (typeof sourceText !== 'string' || canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived source and workspace disagree.');
       result = { stateKind: 'workspace', manifest: null, workspace, sourceText };
     } else throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported commit operation.');
-    const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
-    if (Object.hasOwn(commit, 'sourceBinding')) {
-      const { inspectSourceBinding } = await import('./source-binding.mjs');
-      await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
-      if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
-    }
     active.delete(id);
     visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort() });
   }
@@ -155,7 +169,19 @@ async function reviewImport(state, incomingPackage, resolutions) {
   const { planLibraryImport } = await import('./import-plan.mjs');
   return planLibraryImport({ base: current?.manifest ?? (current ? { sources: [{ source: current.sourceObject, workspace: current.stateObject }] } : null),
     baseRevision: state.revision, incoming: { source: incomingCommit.source, workspace: incomingCommit.state },
-    objects: { ...state.objects, ...incomingPackage.objects }, resolutions });
+    objects: { ...state.objects, ...incomingPackage.objects }, resolutions,
+    sourceBindings: [...(current?.sourceBindings ?? []), ...(incomingCommit.sourceBinding ? [incomingCommit.sourceBinding] : [])],
+    enforceDeletions: Boolean(incomingCommit.sourceBinding || current?.sourceBindings.length) });
+}
+
+async function reviewRestore(state, { libraryId, expectedRevision, checkpointId }) {
+  if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+  if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin restore review to the current revision.', 409);
+  if (!validHash(checkpointId) || !state.checkpoints.includes(checkpointId)) throw new LibraryError('INVALID_CHECKPOINT', 'Select a retained recovery checkpoint.', 409);
+  const current = await inspectPackage(packageFor(state));
+  const checkpoint = await inspectPackage({ ...packageFor(state), head: checkpointId });
+  const { planCheckpointRestore } = await import('./restore-plan.mjs');
+  return planCheckpointRestore({ current, checkpoint, baseRevision: expectedRevision, checkpointId, objects: state.objects });
 }
 
 // Adapter transaction must atomically publish state and operation receipts, or publish neither.
@@ -221,10 +247,21 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: commit.operation === 'import' ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
+    },
+    async previewRestore({ libraryId, expectedRevision, checkpointId, ...options }) {
+      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Restore has no deletion bypass or additional options.', 400);
+      const input = { libraryId, expectedRevision, checkpointId, mode: 'restore' };
+      const restorePlan = await reviewRestore(await adapter.read(), input);
+      const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId, expectedRevision, checkpointId, sourceHash: restorePlan.source, fingerprint,
+        expiresAt: expires, mode: 'restore', commitAvailable: restorePlan.unresolved === 0, restorePlan };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
     },
     async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot', sourceInventory }) {
       if (!['snapshot', 'import'].includes(mode)) throw new LibraryError('INVALID_MODE', 'Select snapshot or import review.');
@@ -268,10 +305,21 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         if (!preview || preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
         if (preview.fingerprint !== fingerprint || preview.input.libraryId !== libraryId || preview.input.expectedRevision !== expectedRevision || state.revision !== expectedRevision || (state.libraryId && state.libraryId !== libraryId)) throw new LibraryError('REVISION_CONFLICT', 'Preview no longer matches the library.', 409);
         if (preview.input.mode === 'import') {
+          if (preview.response.importPlan.deletionReview?.blocked.length) throw new LibraryError('DELETION_EVIDENCE_UNKNOWN', 'Import cannot commit while deletion evidence is unknown. Capture and review the affected sources again.', 409);
           if (preview.response.importPlan.unresolved) throw new LibraryError('UNRESOLVED_IMPORT', 'Resolve every import choice and preview again.', 409);
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
-        let pkg = await createPackage(preview.input.sourceText, { ...identity, sourceInventory: preview.input.sourceInventory });
+        let pkg;
+        if (preview.input.mode === 'restore') {
+          if (preview.response.restorePlan.unresolved) throw new LibraryError('DELETION_EVIDENCE_UNKNOWN', 'Restore cannot commit while deletion evidence is unknown.', 409);
+          const plan = await reviewRestore(state, preview.input);
+          if (canonical(plan) !== canonical(preview.response.restorePlan)) throw new LibraryError('RESTORE_PLAN_MISMATCH', 'Restore no longer matches its reviewed checkpoint and evidence.', 409);
+          const planObject = await makeObject('restore-plan', plan), manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, operation: 'restore', source: plan.source, state: manifest.hash,
+            restorePlan: planObject.hash, restoredCheckpointId: plan.checkpointId, createdAt: new Date().toISOString() });
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else pkg = await createPackage(preview.input.sourceText, { ...identity, sourceInventory: preview.input.sourceInventory });
         if (preview.input.mode === 'import') {
           const plan = await reviewImport(state, pkg, preview.input.resolutions);
           if (canonical(plan) !== canonical(preview.response.importPlan)) throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import no longer matches its reviewed sources and choices.', 409);
@@ -280,11 +328,12 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
           const manifest = await makeObject('library-state', plan.manifest);
           const commit = await makeObject('commit', { ...identity, operation: 'import', source: incoming.source, inputState: incoming.state,
             state: manifest.hash, importPlan: planObject.hash, createdAt: incoming.createdAt,
+            ...(plan.manifest.deletionPolicy ? { selectionPolicy: 'preserve-deletions-v1' } : {}),
             ...(incoming.sourceBinding ? { sourceBinding: incoming.sourceBinding } : {}) });
           const inputObjects = { ...pkg.objects }; delete inputObjects[pkg.head];
           pkg = { ...pkg, head: commit.hash, objects: { ...inputObjects,
             [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
-        } else if (state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
+        } else if (preview.input.mode === 'snapshot' && state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
           throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
         }
         Object.assign(state.objects, pkg.objects);
@@ -295,6 +344,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         state.revision = pkg.head;
         const receipt = { operationId: idempotencyKey, libraryId, parentRevision: expectedRevision, revision: pkg.head, checkpointId, fingerprint,
           operation: preview.input.mode, stateHash: verified.stateObject, sourceHash: verified.sourceObject,
+          ...(preview.input.mode === 'restore' ? { restoredCheckpointId: preview.input.checkpointId } : {}),
           ...(pkg.objects[pkg.head].data.sourceBinding ? { sourceBinding: pkg.objects[pkg.head].data.sourceBinding } : {}),
           counts: { objects: verified.objectCount, sources: verified.manifest?.sources.length ?? 1,
             records: verified.manifest?.nodes.length ?? null, historyRecords: verified.manifest?.nodes.filter(node => node.kind === 'version').length ?? null },

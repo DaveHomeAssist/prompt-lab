@@ -107,5 +107,5 @@ test('HTTP backup inventory pages verified checkpoints with read scope and rejec
   const newer = await api.service.preview({ libraryId: 'lib1', expectedRevision: revisions[2], sourceText: '{"library":[]}' });
   await api.service.apply({ ...newer, idempotencyKey: 'newer' });
   assert.equal((await request(path + '&cursor=1')).status, 409);
-  assert.equal((await request('/v1/library/restores', { method: 'POST' })).status, 404);
+  assert.equal((await request('/v1/library/restores', { method: 'POST' })).status, 400);
 });

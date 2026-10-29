@@ -47,7 +47,10 @@ async function verifyState(input) {
     const mode = commit.operation ?? 'snapshot';
     if (receipt.operation != null && receipt.operation !== mode) fail('Operation mode differs from its commit.');
     const resolutions = mode === 'import' ? state.objects[commit.importPlan].data.resolutions : {};
-    const input = { libraryId: state.libraryId, expectedRevision: parent, sourceText: state.objects[commit.source].data, resolutions, mode };
+    const input = mode === 'restore'
+      ? { libraryId: state.libraryId, expectedRevision: parent, checkpointId: commit.restoredCheckpointId, mode }
+      : { libraryId: state.libraryId, expectedRevision: parent, sourceText: state.objects[commit.source].data, resolutions, mode };
+    if (mode === 'restore' && (receipt.restoredCheckpointId !== commit.restoredCheckpointId || !state.checkpoints.includes(commit.restoredCheckpointId))) fail('Restore receipt or checkpoint differs from the committed review.');
     if (Object.hasOwn(commit, 'sourceBinding')) {
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       input.sourceInventory = (await inspectSourceBinding(state.objects, commit.sourceBinding)).inventory;
@@ -59,7 +62,7 @@ async function verifyState(input) {
     if (receipt.fingerprint !== current && !(commit.operation == null && receipt.operation == null && receipt.fingerprint === await hash(legacy))) fail('Operation fingerprint differs from its committed input.');
     if ((receipt.sourceHash != null && receipt.sourceHash !== commit.source) || (receipt.stateHash != null && receipt.stateHash !== commit.state)) fail('Receipt object references differ from its commit.');
     if (receipt.counts != null) {
-      const manifest = mode === 'import' ? state.objects[commit.state].data : null;
+      const manifest = ['import', 'restore'].includes(mode) ? state.objects[commit.state].data : null;
       const counts = receipt.counts;
       if (!record(counts) || !Number.isSafeInteger(counts.objects) || counts.objects < 1 || counts.objects > Object.keys(state.objects).length
         || counts.sources !== (manifest?.sources.length ?? 1) || counts.records !== (manifest?.nodes.length ?? null)

@@ -92,10 +92,12 @@ async function planSources(sources, resolutions, { incomingSource, initialGroups
   if (initialGroups) {
     for (const original of initialGroups) {
       const group = structuredClone(original);
-      if (!group.members.includes(group.selected) || group.members.some(key => !nodeByKey.has(key) || groupByMember.has(key))) throw new LibraryError('INVALID_IMPORT_STATE', 'Existing group members are unavailable or ambiguous.');
+      const candidate = group.selected ?? group.retainedSelection;
+      if (!group.members.includes(candidate) || group.members.some(key => !nodeByKey.has(key) || groupByMember.has(key)
+        || nodeByKey.get(key).node.kind !== 'prompt' || nodeByKey.get(key).node.path[0] !== 'library')) throw new LibraryError('INVALID_IMPORT_STATE', 'Existing group members are unavailable or ambiguous.');
       groups.push(group);
       for (const key of group.members) groupByMember.set(key, group);
-      indexed.push(nodeByKey.get(group.selected).node);
+      indexed.push(nodeByKey.get(candidate).node);
     }
   } else {
     for (const node of nodes.filter(node => node.source !== incomingSource && node.path[0] === 'library' && node.kind === 'prompt')) {
@@ -115,7 +117,8 @@ async function planSources(sources, resolutions, { incomingSource, initialGroups
     if (repeatedSource) {
       if (Object.keys(resolutions).length) throw new LibraryError('INVALID_RESOLUTIONS', 'This source was already imported. Reimport cannot change its earlier choices.');
       const group = groupByMember.get(node.key);
-      rows.push({ member: node.key, kind: 'duplicate', matches: group ? [group.selected] : [], choice: { action: 'skip', ...(group ? { target: group.selected } : {}) } });
+      const target = group?.selected ?? group?.retainedSelection;
+      rows.push({ member: node.key, kind: 'duplicate', matches: group ? [target] : [], choice: { action: 'skip', ...(group ? { target } : {}) } });
       continue;
     }
     const entry = nodeByKey.get(node.key).data;
@@ -164,6 +167,8 @@ async function planSources(sources, resolutions, { incomingSource, initialGroups
         if (replaced.has(group.id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choose only one replacement for each logical prompt.');
         replaced.add(group.id);
         group.selected = node.key;
+        delete group.retainedSelection;
+        delete group.inactiveReason;
       }
       group.members.push(node.key);
       groupByMember.set(node.key, group);
@@ -189,6 +194,7 @@ async function planSources(sources, resolutions, { incomingSource, initialGroups
     const group = groupByMember.get(promptKey);
     if (!target) reason ??= 'missing-source-reference';
     else if (['prompt', 'version'].includes(targetNode.kind) && targetNode.path[0] === 'library' && !group) reason = 'prompt-not-selected';
+    else if (group?.selected === null) reason = 'prompt-not-selected';
     references.push({ from: from.key, path, sourceId, kind, target: target ?? null, groupId: group?.id ?? null, ...(reason ? { reason } : {}) });
   }
   for (const node of nodes) {
@@ -228,7 +234,7 @@ export async function verifyImportPlan(plan, existing, incoming, resolutions = {
 }
 
 /** Build the complete library state, retaining all raw object pairs from ancestry. */
-export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {} }) {
+export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {}, sourceBindings = [], enforceDeletions = false }) {
   if (!record(resolutions)) throw new LibraryError('INVALID_RESOLUTIONS', 'Import choices must be an object.');
   canonical(resolutions);
   resolutions = structuredClone(resolutions);
@@ -252,8 +258,30 @@ export async function planLibraryImport({ base = null, baseRevision = null, inco
   const initial = repeatedSource && !base?.groups
     ? await planSources(workspaces, {}, { incomingSource: null }) : null;
   const review = await planSources(workspaces, resolutions, { incomingSource: incoming.workspace, initialGroups: base?.groups ?? initial?.groups, repeatedSource });
-  const manifest = { format: 'promptlab-library-state', schemaVersion: 1, sources, nodes: review.nodes, groups: review.groups, references: review.references };
+  let manifest = { format: 'promptlab-library-state', schemaVersion: 1, sources, nodes: review.nodes, groups: review.groups, references: review.references };
+  let deletionReview;
+  if (enforceDeletions || base?.deletionPolicy) {
+    const { applyDeletionPolicy } = await import('./selection-policy.mjs');
+    ({ manifest, ...deletionReview } = await applyDeletionPolicy(manifest, objects, sourceBindings));
+  }
   const plan = { format: 'promptlab-library-import-plan', schemaVersion: 1, baseRevision, incoming, resolutions,
-    sources: review.sources, rows: review.rows, unresolved: review.unresolved, manifest, activationReady: false };
+    sources: review.sources, rows: review.rows, unresolved: review.unresolved + (deletionReview?.blocked.length ?? 0), manifest, activationReady: false,
+    ...(deletionReview ? { deletionReview } : {}) };
   return { ...plan, fingerprint: await hash(plan) };
+}
+
+/** Rebuild references over retained sources without choosing or importing rows. */
+export async function buildLibrarySelection({ sources, groups, objects }) {
+  const workspaces = {};
+  for (const source of sources) {
+    const workspace = await readObject(objects, source.workspace, 'workspace');
+    assertWorkspace(workspace);
+    const text = await readObject(objects, source.source, 'source');
+    let decoded;
+    try { decoded = JSON.parse(text); } catch { throw new LibraryError('INVALID_JSON', 'Archived selection source is invalid.'); }
+    if (typeof text !== 'string' || canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived selection source differs.');
+    workspaces[source.workspace] = workspace;
+  }
+  const review = await planSources(workspaces, {}, { incomingSource: null, initialGroups: groups });
+  return { format: 'promptlab-library-state', schemaVersion: 1, sources: structuredClone(sources), nodes: review.nodes, groups: review.groups, references: review.references };
 }

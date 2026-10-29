@@ -104,8 +104,8 @@ are recorded in the D-016 follow-up; no paid provisioning is authorized.
 
 | Stage | Evidence state | Remaining acceptance |
 | --- | --- | --- |
-| A1 | Contract candidate and raw synthetic preservation fixture implemented | Complete-source inventory, reviewed conflict semantics and full schema/API acceptance |
-| A2 | Isolated folder and programmatic loopback API candidate tested | Production service ownership, secure pairing, recovery APIs and complete failure matrix |
+| A1 | Source-bound import and reviewed checkpoint restore candidates; raw preservation and deletion suppression tested | Complete domain mapping, migration write barrier, reviewed causal conflicts and full schema/API acceptance |
+| A2 | Isolated folder/API, backup transfer and reviewed restore candidate tested | Production service ownership, secure pairing, native recovery integration and complete failure matrix |
 | A3 | Not started | Native picker, packaging, app connection and reviewed migration |
 | A4 | Not accepted | Actual two-client iCloud, installed artifacts, independent recovery and human acceptance |
 | B1 | Provider, region, encryption direction and retention decisions made | Verify provider constraints, costs and policy facts after Phase A |

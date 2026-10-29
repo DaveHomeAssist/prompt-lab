@@ -69,5 +69,5 @@ console.log(JSON.stringify({ checkedAt: new Date().toISOString(), node: process.
   counts: backup.counts, records: graph.manifest.nodes.length, historyRecords: graph.manifest.nodes.filter(node => node.kind === 'version').length,
   sourceBindings: graph.sourceBindings.length, retainedCaptureObjects: Object.values(before.objects).filter(object => object.kind === 'source-capture').length,
   syntheticDeletionEvidenceVerified: true, completeStateEqual: true, operationReplayVerified: true,
-  actualAppStoresCaptured: false, actualDeletionStateKnown: false, publicRestoreImplemented: false,
+  actualAppStoresCaptured: false, actualDeletionStateKnown: false, reviewedRestoreExercised: false,
   personalLibraryActivated: false, privateDataTransferred: false }, null, 2));
