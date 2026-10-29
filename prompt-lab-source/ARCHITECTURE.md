@@ -136,7 +136,15 @@ and React mobile surfaces reach Anthropic only, because that is the sole host
 
 The proxy validates the target against `SUPPORTED_HOST` (`api.anthropic.com`)
 and `SUPPORTED_PATH` (`/v1/messages`), and restricts models to
-`HOSTED_ALLOWED_ANTHROPIC_MODELS`, which defaults to `claude-sonnet-4-6` alone.
+`HOSTED_ALLOWED_ANTHROPIC_MODELS`. Defaults are the reviewed, priced models:
+`claude-sonnet-4-6`, `claude-haiku-5-5`, `claude-sonnet-5-5`,
+`claude-opus-5-5`, `claude-haiku-4-5`, and `claude-opus-4-6`.
+Sonnet 4.6 remains the initial choice; Provider Settings persists an explicit
+selection in the existing browser settings. GET on the proxy returns only the
+configured priced catalogue without an upstream request or credentials. POST
+keeps its existing origin check. Unsupported models are rejected before
+inference, rather than silently substituted. The cycle/day/IP budget, request
+counts and token/input limits apply to every shared-key model.
 A hosted client may send the `__plb_hosted_shared_key__` placeholder instead of
 a real key; the proxy strips it and substitutes the server-side
 `ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a

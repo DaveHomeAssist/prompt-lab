@@ -51,10 +51,12 @@ for (const layout of ['stacked', 'split']) for (const width of [1440, 375]) {
     await expect(context).toHaveAttribute('data-editing-mode', 'new');
     await expect(context.getByTestId('refinement-identity')).toContainText('Refine keeps this draft');
     await showResult(page);
-    await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
     await page.getByLabel('Title', { exact: true }).fill('My release checklist');
     await page.getByRole('button', { name: 'Close save panel' }).click();
-    await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
     await expect(page.getByLabel('Title', { exact: true })).toHaveValue('My release checklist');
     await page.getByRole('button', { name: 'Close save panel' }).click();
     await page.getByTestId('save-to-library').click();
@@ -86,6 +88,7 @@ for (const layout of ['stacked', 'split']) for (const width of [1440, 375]) {
     const versioned = (await readLibrary(page))[0];
     expect(versioned.id).toBe(first.id);
     expect(versioned.title).toBe('My release checklist');
+    await page.getByLabel('More result actions', { exact: true }).click();
     await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
     await expect.poll(async () => (await readLibrary(page)).length).toBe(2);
     const separate = (await readLibrary(page)).find(entry => entry.id !== first.id);

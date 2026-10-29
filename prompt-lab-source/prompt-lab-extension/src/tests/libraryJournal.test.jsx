@@ -213,7 +213,7 @@ describe('desktop library journal', () => {
     await act(async () => { first = await hook.result.current.doSave(saveArgs); });
     await settled(journal);
     const beforeEdit = localEntries();
-    const edit = { ...saveArgs, editingId: first.id, enhanced: 'Durable edited body' };
+    const edit = { ...saveArgs, editingId: first.id, expectedVersionId: first.versionId, enhanced: 'Durable edited body' };
     idb.state.failCommits = true;
     await act(async () => { expect(await hook.result.current.doSave(edit)).toBeNull(); });
     const failedVersion = hook.result.current.library[0].currentVersionId;

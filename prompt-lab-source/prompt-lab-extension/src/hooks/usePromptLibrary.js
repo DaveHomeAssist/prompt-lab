@@ -39,6 +39,7 @@ import { getNewestSortTimestamp, sortLibraryEntries } from '../lib/librarySort.j
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+const LIBRARY_CONFLICT_MESSAGE = 'Library changed in another tab. Latest changes loaded. Review and retry, or save your editor draft as a new prompt.';
 
 function recordClock(entry) {
   const value = entry?.deletedAt || entry?.updatedAt || entry?.updated_at || entry?.createdAt;
@@ -141,6 +142,8 @@ export default function usePromptLibrary(notify) {
   const notifyRef = useRef(notify);
   const legacyRecoveryAttemptedRef = useRef(false);
   const libraryPersistFailedRef = useRef(false);
+  const librarySnapshotRef = useRef({ raw: undefined, library: [] });
+  const libraryConflictRef = useRef('');
   const saveAttemptRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -152,9 +155,59 @@ export default function usePromptLibrary(notify) {
     setLibraryState(next);
   }, []);
 
-  const persistRecords = (key, records) => {
+  const adoptStoredLibrary = (raw) => {
+    generationRef.current = readLibraryDeletionState().generation;
+    const parsed = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(parsed)) throw new Error('Library storage is not a prompt list.');
+    const incoming = filterDeletedLibraryRecords(normalizeLibrary(parsed));
+    const presentIds = new Set(incoming.map(entry => entry.id));
+    // Keep independently saved records omitted by a stale whole-library write,
+    // but never carry their old content over a newer record with the same ID.
+    const retained = librarySnapshotRef.current.library.filter(entry => !presentIds.has(entry.id));
+    const reconciled = reconcileLibraryRecords(retained, [], incoming, loadJson(storageKeys.trash, []));
+    const next = stampLibraryGeneration(filterDeletedLibraryRecords(reconciled.library), generationRef.current);
+    librarySnapshotRef.current = { raw, library: next };
+    setLibrary(next);
+  };
+  const rejectStaleLibrary = (raw) => {
+    adoptStoredLibrary(raw);
+    const message = LIBRARY_CONFLICT_MESSAGE;
+    libraryConflictRef.current = message;
+    setSaveError(message);
+    notifyRef.current?.(message);
+    return false;
+  };
+  const notifyWriteFailure = (message) => notify(libraryConflictRef.current || message);
+  const checkLibrarySnapshot = (expectedRaw = librarySnapshotRef.current.raw) => {
+    libraryConflictRef.current = '';
+    try {
+      const stored = localStorage.getItem(storageKeys.library);
+      if (expectedRaw === undefined) return false;
+      if (stored !== expectedRaw) {
+        const parsed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(parsed)) return false;
+        const currentRecords = filterDeletedLibraryRecords(normalizeLibrary(parsed));
+        const observedRecords = filterDeletedLibraryRecords(librarySnapshotRef.current.library);
+        // Removing records already invalidated by a clear/deletion marker is
+        // not a concurrent edit. An intentional new save may follow cleanup.
+        if (expectedRaw === librarySnapshotRef.current.raw && JSON.stringify(currentRecords) === JSON.stringify(observedRecords)) {
+          librarySnapshotRef.current.raw = stored;
+          return true;
+        }
+        return rejectStaleLibrary(stored);
+      }
+      return true;
+    } catch { return false; }
+  };
+  const persistRecords = (key, records, expectedRaw = librarySnapshotRef.current.raw) => {
+    if (key === storageKeys.library && !checkLibrarySnapshot(expectedRaw)) return false;
     const next = filterDeletedLibraryRecords(stampLibraryGeneration(records, generationRef.current));
-    return saveJson(key, next) && next.length === records.length;
+    const ok = saveJson(key, next) && next.length === records.length;
+    if (ok && key === storageKeys.library) {
+      librarySnapshotRef.current = { raw: JSON.stringify(next), library: next };
+      setSaveError(error => error === LIBRARY_CONFLICT_MESSAGE ? '' : error);
+    }
+    return ok;
   };
 
   useEffect(() => { libraryRef.current = library; }, [library]);
@@ -192,6 +245,7 @@ export default function usePromptLibrary(notify) {
   }, []);
 
   useEffect(() => {
+    try { librarySnapshotRef.current.raw = localStorage.getItem(storageKeys.library); } catch { /* Writes remain unavailable. */ }
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
     const deletionState = readLibraryDeletionState();
@@ -199,6 +253,7 @@ export default function usePromptLibrary(notify) {
     const initialLibrary = stampLibraryGeneration(filterDeletedLibraryRecords(
       normalizeLibrary(hasStoredLibrary ? storedLibrary : DEFAULT_LIBRARY_SEEDS), deletionState,
     ), deletionState.generation);
+    librarySnapshotRef.current.library = initialLibrary;
     const storedTrash = normalizeLibrary(loadJson(storageKeys.trash, []));
     const expiredIds = storedTrash.filter((entry) => !isTrashEntryRestorable(entry)).map((entry) => entry.id);
     try { markLibraryDeleted(expiredIds); } catch { notifyRef.current?.('Expired prompt cleanup could not be saved.'); }
@@ -254,13 +309,14 @@ export default function usePromptLibrary(notify) {
 
   useEffect(() => {
     if (!libReady) return undefined;
+    const expectedRaw = librarySnapshotRef.current.raw;
     const timeoutId = window.setTimeout(() => {
-      const ok = persistRecords(storageKeys.library, library);
+      const ok = persistRecords(storageKeys.library, library, expectedRaw);
       // Surface the first rejected background write instead of failing silently;
       // reset once a write lands so a later failure notifies again.
       if (!ok && !libraryPersistFailedRef.current) {
         libraryPersistFailedRef.current = true;
-        notifyRef.current?.('Library changes could not be saved — browser storage may be full.');
+        if (!libraryConflictRef.current) notifyRef.current?.('Library changes could not be saved. Browser storage may be full.');
       } else if (ok) {
         libraryPersistFailedRef.current = false;
       }
@@ -306,6 +362,16 @@ export default function usePromptLibrary(notify) {
       const deletionState = readLibraryDeletionState();
       const generationChanged = generationRef.current !== deletionState.generation;
       generationRef.current = deletionState.generation;
+      let storedRaw;
+      try { storedRaw = localStorage.getItem(storageKeys.library); }
+      catch { notifyRef.current?.('Library changes from another tab could not be read. Your editor draft is unchanged.'); return; }
+      const externalLibraryChange = storedRaw !== librarySnapshotRef.current.raw;
+      if (externalLibraryChange) {
+        const pendingChanges = JSON.stringify(libraryRef.current) !== JSON.stringify(librarySnapshotRef.current.library);
+        if (pendingChanges) notifyRef.current?.('Library changed in another tab before your Library changes were saved. Latest changes loaded; review and retry. Your editor draft is unchanged.');
+        try { adoptStoredLibrary(storedRaw); }
+        catch { notifyRef.current?.('Library changes from another tab could not be read. Your editor draft is unchanged.'); return; }
+      }
       const reconciled = reconcileLibraryRecords(
         libraryRef.current,
         trashRef.current,
@@ -384,7 +450,7 @@ export default function usePromptLibrary(notify) {
     });
     const nextLibrary = [entry, ...libraryRef.current];
     if (!persistRecords(storageKeys.library, nextLibrary)) {
-      notify('Save failed — browser storage may be full. Your draft is still in the editor.');
+      notifyWriteFailure('Save failed. Browser storage may be full. Your draft is still in the editor.');
       return null;
     }
     libraryRef.current = nextLibrary;
@@ -453,7 +519,7 @@ export default function usePromptLibrary(notify) {
         });
       }
       if (!persistRecords(storageKeys.library, nextLibrary)) {
-        notify('Save failed — browser storage may be full. Your changes are still in the editor.');
+        notifyWriteFailure('Save failed. Browser storage may be full. Your changes are still in the editor.');
         return null;
       }
       libraryRef.current = nextLibrary;
@@ -481,6 +547,20 @@ export default function usePromptLibrary(notify) {
   const doSave = (args) => {
     const signature = JSON.stringify(args);
     const previous = saveAttemptRef.current;
+    if (!checkLibrarySnapshot()) {
+      notifyWriteFailure('Save failed. Browser storage could not be read. Your draft is still available.');
+      return null;
+    }
+    const currentEntry = libraryRef.current.find(entry => entry.id === args.editingId);
+    const retryOwnVersion = previous?.signature === signature && previous.prepared?.result.versionId === currentEntry?.currentVersionId;
+    if (currentEntry && args.expectedVersionId && currentEntry.currentVersionId !== args.expectedVersionId && !retryOwnVersion) {
+      const message = args.expectedVersionId === 'unverified'
+        ? 'This older editor session has no saved version information. Your draft is unchanged. Reload the prompt from Library, or save this draft as a new prompt.'
+        : 'This prompt has a newer version in another tab. Your draft is unchanged. Reload the prompt from Library, or save this draft as a new prompt.';
+      setSaveError(message);
+      notify(message);
+      return null;
+    }
     // Double-clicks share the same save; another draft must not be reported as
     // saved while this one is pending. A failed identical retry reuses its ID
     // and version rather than creating a second Library record.
@@ -492,6 +572,14 @@ export default function usePromptLibrary(notify) {
     const succeed = () => {
       if (!libraryRef.current.some(entry => entry.id === prepared.result.id)) {
         setSaveError('Save interrupted — this prompt was deleted. Your draft is still available.');
+        saveAttemptRef.current = null;
+        return null;
+      }
+      const storedEntry = loadJson(storageKeys.library, []).find(entry => entry.id === prepared.result.id);
+      if (storedEntry?.currentVersionId !== prepared.result.versionId) {
+        const message = 'Another tab changed this prompt while saving. Your editor draft is unchanged. Review Library before saving again.';
+        setSaveError(message);
+        notify(message);
         saveAttemptRef.current = null;
         return null;
       }
@@ -529,12 +617,12 @@ export default function usePromptLibrary(notify) {
       tombstoneVersion: (deletedEntry.tombstoneVersion || 0) + 1,
     }, ...trashRef.current.filter((entry) => entry.id !== id)];
     if (!persistRecords(storageKeys.trash, nextTrash)) {
-      notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
+      notifyWriteFailure('Delete failed. Browser storage may be full. The prompt is still in your Library.');
       return false;
     }
     if (!persistRecords(storageKeys.library, nextLibrary)) {
       persistRecords(storageKeys.trash, trashRef.current);
-      notify('Delete failed — browser storage may be full. The prompt is still in your Library.');
+      notifyWriteFailure('Delete failed. Browser storage may be full. The prompt is still in your Library.');
       return false;
     }
     libraryRef.current = nextLibrary;
@@ -577,7 +665,7 @@ export default function usePromptLibrary(notify) {
     const nextLibrary = [restored, ...libraryRef.current.filter((item) => item.id !== id)];
     const nextTrash = trashRef.current.filter((item) => item.id !== id);
     if (!persistRecords(storageKeys.library, nextLibrary) || !persistRecords(storageKeys.trash, nextTrash)) {
-      notify('Restore failed — browser storage may be full.');
+      notifyWriteFailure('Restore failed. Browser storage may be full.');
       return null;
     }
     libraryRef.current = nextLibrary;
@@ -696,12 +784,12 @@ export default function usePromptLibrary(notify) {
     ];
     const nextLibrary = libraryRef.current.filter((entry) => !selected.has(entry.id));
     if (!persistRecords(storageKeys.trash, nextTrash)) {
-      notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
+      notifyWriteFailure('Delete failed. Browser storage may be full. Your prompts are still in the Library.');
       return 0;
     }
     if (!persistRecords(storageKeys.library, nextLibrary)) {
       persistRecords(storageKeys.trash, trashRef.current);
-      notify('Delete failed — browser storage may be full. Your prompts are still in the Library.');
+      notifyWriteFailure('Delete failed. Browser storage may be full. Your prompts are still in the Library.');
       return 0;
     }
     libraryRef.current = nextLibrary;
@@ -723,7 +811,7 @@ export default function usePromptLibrary(notify) {
       entry.collection === collectionName ? stampRecordMutation(entry, { ...entry, collection: '' }) : entry
     );
     if (!persistRecords(storageKeys.library, nextLibrary)) {
-      notify('Collection removal failed. Prompt assignments are unchanged; retry when storage is available.');
+      notifyWriteFailure('Collection removal failed. Prompt assignments are unchanged; retry when storage is available.');
       return false;
     }
     libraryRef.current = nextLibrary;
@@ -836,7 +924,7 @@ export default function usePromptLibrary(notify) {
     }
     const nextLibrary = libraryRef.current.map(entry => entry.id === entryId ? restoredEntry : entry);
     if (!persistRecords(storageKeys.library, nextLibrary)) {
-      notify('Restore failed — browser storage may be full. The prompt and editor were not changed.');
+      notifyWriteFailure('Restore failed. Browser storage may be full. The prompt and editor were not changed.');
       return null;
     }
     libraryRef.current = nextLibrary;
@@ -948,7 +1036,7 @@ export default function usePromptLibrary(notify) {
     if (!current) return false;
     const next = before.map(entry => entry.id === id ? stampRecordMutation(entry, updater(entry)) : entry);
     try {
-      if (!persistRecords(storageKeys.library, next)) throw new Error('Library storage write failed.');
+      if (!persistRecords(storageKeys.library, next)) throw new Error(libraryConflictRef.current || 'Library storage write failed.');
       const durable = commitLibrarySave(); if (durable) await durable;
       if (libraryRef.current !== before) throw new Error('The Library changed while saving. Review your edits and retry.');
       libraryRef.current = next; setLibrary(next); return true;
@@ -1021,6 +1109,8 @@ export default function usePromptLibrary(notify) {
 
   const readImportContext = async () => {
     const [runs, testCases] = await Promise.all([listEvalRuns({ limit: null }), listTestCases({ limit: null })]);
+    const libraryRaw = localStorage.getItem(storageKeys.library);
+    if (libraryRaw !== librarySnapshotRef.current.raw) adoptStoredLibrary(libraryRaw);
     const read = (key, fallback) => {
       const value = localStorage.getItem(key);
       return value == null ? fallback : JSON.parse(value);
@@ -1035,9 +1125,11 @@ export default function usePromptLibrary(notify) {
     const reconciled = reconcileLibraryRecords(libraryRef.current, trashRef.current,
       stableLegacyRows(read(storageKeys.library, [])), stableLegacyRows(read(storageKeys.trash, [])));
     return {
+      libraryRaw,
       library: filterDeletedLibraryRecords(reconciled.library),
       trash: filterDeletedLibraryRecords(reconciled.trash), runs, testCases,
       collections: read(storageKeys.collections, collectionsRef.current),
+      folders: reconcileFolders(read(storageKeys.folders, foldersRef.current)),
       packs: read(storageKeys.packs, []), scratch: read('pl2-pads', null),
       ...readLibraryDeletionState(),
     };
@@ -1110,7 +1202,7 @@ export default function usePromptLibrary(notify) {
         reportProgress();
       };
       await stage('Library', () => {
-        if (!persistRecords(storageKeys.library, plan.library)) throw new Error('Library storage write failed.');
+        if (!persistRecords(storageKeys.library, plan.library, context.libraryRaw)) throw new Error(libraryConflictRef.current || 'Library storage write failed.');
         setLibrary(plan.library);
       });
       await stage('Trash', () => {
@@ -1126,7 +1218,7 @@ export default function usePromptLibrary(notify) {
         setCollections(next);
       });
       if (plan.parsed.folders) await stage('Folders', async () => {
-        const next = mergeFolders(foldersRef.current, plan.parsed.folders, collectionsRef.current);
+        const next = mergeFolders(context.folders, plan.parsed.folders, collectionsRef.current);
         if (!saveJson(storageKeys.folders, next)) throw new Error('Folder storage write failed.');
         const durable = commitLibrarySave(); if (durable) await durable;
         foldersRef.current = next; setFolderRecords(next);

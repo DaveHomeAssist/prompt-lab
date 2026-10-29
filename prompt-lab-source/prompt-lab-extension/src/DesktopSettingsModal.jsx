@@ -3,6 +3,7 @@ import Ic from './icons';
 import { DEFAULTS, getOllamaEndpoint, OLLAMA_ENDPOINTS } from './lib/providerRegistry.js';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import HostedQuotaBadge from './HostedQuotaBadge.jsx';
+import { loadHostedModels } from './lib/hostedModels.js';
 import {
   isExtension,
   listOllamaModels,
@@ -37,6 +38,8 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
   const [connectionStatusType, setConnectionStatusType] = useState('neutral');
   const [isRefreshingModels, setIsRefreshingModels] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [hostedModels, setHostedModels] = useState([]);
+  const [hostedModelsError, setHostedModelsError] = useState('');
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const closeDialog = useCallback(() => closeRef.current?.(), []);
@@ -49,6 +52,20 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
   const buttonClass = `min-h-11 px-4 py-2 rounded-lg text-sm font-medium ${m.btn} ${m.textAlt}`;
   const readOnlyInputClass = `${inputClass} cursor-not-allowed opacity-70`;
   const isHostedWeb = !isExtension && IS_WEB;
+  const hostedSelectionAvailable = hostedModels.some(model => model.id === settings.anthropicModel);
+
+  useEffect(() => {
+    if (!show || !isHostedWeb) return;
+    const controller = new AbortController();
+    setHostedModels([]);
+    setHostedModelsError('');
+    loadHostedModels(controller.signal).then(models => {
+      if (!controller.signal.aborted) setHostedModels(models);
+    }).catch(error => {
+      if (!controller.signal.aborted) setHostedModelsError(error.message);
+    });
+    return () => controller.abort();
+  }, [show, isHostedWeb]);
 
   useEffect(() => {
     if (!show) return;
@@ -110,6 +127,7 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
   }
 
   async function handleSave() {
+    if (isHostedWeb && !hostedSelectionAvailable) return;
     try {
       await saveProviderSettings(settings);
       setConnectionStatus('Settings saved.');
@@ -193,7 +211,7 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
       }
       await testProviderConnection({
         model,
-        max_tokens: 10,
+        max_tokens: /^claude-(opus|sonnet|haiku)-5(?:-|$)/.test(model) ? 2048 : 10,
         messages: [{ role: 'user', content: 'Say "ok"' }],
       }, settingsForTest);
       setConnectionStatus(settings.provider === 'ollama'
@@ -258,8 +276,8 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
               <div className={`space-y-2 rounded-xl border p-3 ${m.border} ${m.btn}`}>
                 <p className={`text-sm font-semibold ${m.text}`}>Hosted access</p>
                 <p className={`text-xs ${m.textMuted}`}>
-                  Hosted Prompt Lab is currently locked to Anthropic. The shared hosted key is used
-                  automatically when you leave the personal key field blank.
+                  Choose an Anthropic model below. The shared hosted key is used automatically
+                  when you leave the personal key field blank. Existing usage and spending limits still apply.
                 </p>
                 <HostedQuotaBadge m={m} colorMode={colorMode} />
               </div>
@@ -307,20 +325,33 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
               </label>
               <label className="block space-y-1">
                 <span className={`text-xs font-medium uppercase tracking-wide ${m.textMuted}`}>Model</span>
-                <input
+                {isHostedWeb ? <select
+                  value={settings.anthropicModel}
+                  onChange={event => updateSetting('anthropicModel', event.target.value)}
+                  disabled={!hostedModels.length}
+                  className={inputClass}
+                >
+                  {!hostedSelectionAvailable && <option value={settings.anthropicModel} disabled>
+                    {settings.anthropicModel} (unavailable)
+                  </option>}
+                  {hostedModels.map(model => <option key={model.id} value={model.id}>
+                    {model.label} · ${model.input} input / ${model.output} output
+                  </option>)}
+                </select> : <input
                   type="text"
                   value={settings.anthropicModel}
                   onChange={event => updateSetting('anthropicModel', event.target.value)}
-                  readOnly={isHostedWeb}
-                  disabled={isHostedWeb}
-                  className={isHostedWeb ? readOnlyInputClass : inputClass}
-                />
+                  className={inputClass}
+                />}
               </label>
               {isHostedWeb && (
                 <p className={`text-xs ${m.textMuted}`}>
-                  Hosted mode keeps Anthropic fixed for now so shared usage stays predictable.
+                  Prices shown are base USD rates per million tokens. Cache and large-context rates may differ.
+                  {' '}Save to use this model for your next run. Your choice stays in this browser.
                 </p>
               )}
+              {isHostedWeb && hostedModelsError && <p role="alert">{hostedModelsError} Reopen settings to retry.</p>}
+              {isHostedWeb && !hostedModelsError && !hostedModels.length && <p role="status">Loading hosted models…</p>}
             </>
           )}
 
@@ -477,7 +508,7 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
               <button
                 type="button"
                 onClick={handleTestConnection}
-                disabled={isTestingConnection}
+                disabled={isTestingConnection || (isHostedWeb && !hostedSelectionAvailable)}
                 className={buttonClass}
               >
                 {isTestingConnection ? 'Testing...' : 'Test Connection'}
@@ -485,6 +516,7 @@ export default function DesktopSettingsModal({ show, onClose, m, colorMode, noti
               <button
                 type="button"
                 onClick={handleSave}
+                disabled={isHostedWeb && !hostedSelectionAvailable}
                 className="min-h-11 rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-500"
               >
                 Save

@@ -9,7 +9,7 @@ import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict
 import { saveEvalRun } from '../experimentStore';
 import { scanSensitiveData } from '../piiScanner';
 import useSensitivePreflight from './useSensitivePreflight.js';
-import { openSettings } from '../lib/platform.js';
+import { openSettings, getConfiguredProviders } from '../lib/platform.js';
 import { logWarn } from '../lib/logger.js';
 import { ensureString } from '../lib/utils.js';
 import { AppError, ErrorCategory, normalizeError } from '../lib/errorTaxonomy.js';
@@ -187,6 +187,11 @@ export default function useExecutionFlow({ ui, lib, editor, persistence }) {
     let executionModel = payload?.model || 'unknown';
     let accumulatedUsage = null;
     try {
+      if (import.meta.env?.VITE_WEB_MODE === 'true') {
+        const [configured] = await getConfiguredProviders();
+        executionProvider = configured?.provider || executionProvider;
+        executionModel = configured?.model || executionModel;
+      }
       const streamOptions = {
         signal: abortController?.signal,
         onChunk: (chunk, fullText) => {
