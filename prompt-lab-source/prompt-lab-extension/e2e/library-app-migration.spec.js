@@ -10,11 +10,13 @@ import { createFolderAdapter } from '../../library-storage/folder-adapter.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const appModules = ['libraryAppMigration', 'libraryCommandOutbox', 'librarySourceCapture', 'libraryWriteCoordinator',
   'libraryOriginCapture', 'libraryEditBuffers', 'draftRecoveryCapture', 'libraryMatching', 'promptSchema',
-  'utils', 'tagSchema', 'enhancementResult', 'followUpProvenance', 'collectionFolders', 'libraryPresentation'];
+  'utils', 'tagSchema', 'enhancementResult', 'followUpProvenance', 'collectionFolders', 'libraryPresentation',
+  'appLibraryRepository', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
 let server, origin;
 test.use({ channel: 'chromium' });
 test.beforeAll(async () => {
-  const paths = ['/prompt-lab-extension/src/constants.js', ...appModules.map(name => `/prompt-lab-extension/src/lib/${name}.js`),
+  const paths = ['/prompt-lab-extension/src/constants.js', '/prompt-lab-extension/src/experimentStore.js',
+    ...appModules.map(name => `/prompt-lab-extension/src/lib/${name}.js`),
     ...(await readdir(resolve(root, 'library-storage'))).filter(name => name.endsWith('.mjs') && !name.endsWith('.test.mjs')).map(name => `/library-storage/${name}`)];
   const modules = new Map(await Promise.all(paths.map(async path => [path, await readFile(resolve(root, path.slice(1)))])));
   server = createServer((req, res) => {
@@ -23,6 +25,78 @@ test.beforeAll(async () => {
   });
   await new Promise(done => server.listen(0, '127.0.0.1', done));
   origin = `http://127.0.0.1:${server.address().port}`;
+});
+
+test('connected experiment store uses folder commands and recovers across a real browser restart', async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), 'promptlab-app-repository-'));
+  const credential = { token: 'synthetic-repository-credential-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 180_000 };
+  const adapter = await createFolderAdapter(resolve(directory, 'library'));
+  const api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
+  const options = { baseUrl: await api.listen(), libraryId: 'lib', token: credential.token };
+  const responses = [];
+  const observe = page => page.on('response', response => {
+    if (response.url().startsWith(options.baseUrl) && response.request().method() !== 'OPTIONS') {
+      responses.push({ path: new URL(response.url()).pathname, status: response.status() });
+    }
+  });
+  let context;
+  try {
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    let page = await context.newPage(); observe(page); await boot(page, options);
+    const sourceBinding = await page.evaluate(async () => {
+      localStorage.setItem('pl2-library', '[{"id":"prompt","original":"Keep original","unknown":true}]');
+      buffers.register('editor', () => ({ raw: 'Retained draft' }));
+      const ids = { libraryId: 'lib', operationId: 'copy' };
+      await migration.prepare({ ...ids, sourceIdentity: 'disposable-origin', archives: { reviewed: true, records: [] } });
+      const copied = await migration.copy({ ...ids, reviewed: await migration.review(ids) });
+      const review = await transport.preview({ mode: 'select', libraryId: 'lib', expectedRevision: copied.copiedRevision });
+      await transport.apply({ ...review, idempotencyKey: 'select' });
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const { createExperimentStore } = await import('/prompt-lab-extension/src/experimentStore.js');
+      window.repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding: copied.sourceBinding, transport });
+      await repository.open(); window.records = createExperimentStore(repository);
+      await records.saveEvalRun({ id: 'eval', promptId: 'prompt', output: 'Entire output', future: { keep: true } });
+      await records.saveTestCase({ id: 'case', promptId: 'prompt', input: 'Complete test input' });
+      await records.saveRunRecord({ run_id: 'trace', trace_id: 'parent', outputs: { text: 'Complete trace' } });
+      await records.saveExperiment({ id: 'experiment', label: 'Browser experiment', variants: [{ id: 'variant', unknown: true }] });
+      const apply = transport.apply;
+      transport.apply = async input => { await apply(input); throw new Error('Synthetic lost response'); };
+      try { await records.saveEvalRun({ id: 'lost-response', output: 'Keep after restart' }); throw new Error('Expected response loss'); }
+      catch (error) { if (error.message !== 'Synthetic lost response') throw error; }
+      return copied.sourceBinding;
+    });
+    expect(Object.keys((await adapter.read()).operations)).toHaveLength(7);
+    await context.close();
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    page = await context.newPage(); observe(page); await boot(page, options);
+    const recovered = await page.evaluate(async sourceBinding => {
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const { createExperimentStore } = await import('/prompt-lab-extension/src/experimentStore.js');
+      window.repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding, transport });
+      await repository.open(); window.records = createExperimentStore(repository);
+      const runs = await records.listEvalRuns({ limit: 'all' });
+      const cases = await records.listTestCases({ limit: 'all' });
+      const traces = await records.listRunsByTrace('parent');
+      const experiments = await records.listExperiments();
+      await records.patchEvalRun('eval', { notes: 'Updated through real app store' });
+      const observed = (await records.listTestCases({ limit: 'all' }))[0];
+      await records.deleteTestCase('case', observed);
+      return { outputs: runs.map(row => row.output).sort(), cases: cases.length, traces: traces.length,
+        experiments: experiments.length, remainingCases: (await records.listTestCases({ limit: 'all' })).length,
+        localOriginal: localStorage.getItem('pl2-library'),
+        fallbackValues: ['pl2-eval-run-fallback', 'pl2-test-case-fallback', 'pl2-run-fallback', 'pl2-experiment-fallback'].map(key => localStorage.getItem(key)),
+        pending: (await repository.pending()).filter(row => row.state !== 'committed').length };
+    }, sourceBinding);
+    expect(recovered).toEqual({ outputs: ['Entire output', 'Keep after restart'], cases: 1, traces: 1,
+      experiments: 1, remainingCases: 0, localOriginal: '[{"id":"prompt","original":"Keep original","unknown":true}]',
+      fallbackValues: [null, null, null, null], pending: 0 });
+    const reopened = await (await createFolderAdapter(resolve(directory, 'library'))).read();
+    expect(Object.keys(reopened.operations)).toHaveLength(9);
+  } finally {
+    console.log('Connected store HTTP requests:', JSON.stringify({ count: responses.length,
+      rejected: responses.filter(response => response.status >= 400 && response.status !== 404) }));
+    await context?.close(); await api.close(); await rm(directory, { recursive: true, force: true });
+  }
 });
 test.afterAll(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); });
 

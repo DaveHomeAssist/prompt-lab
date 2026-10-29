@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { createCommandService, readObject, canonical, MAX_BYTES, LibraryError } from './contract.mjs';
 
-export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins = [], requestsPerMinute = 60 }) {
+export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins = [], requestsPerMinute = 120 }) {
   if (!libraryId || !Array.isArray(credentials) || !credentials.length || credentials.some(c => typeof c.token !== 'string' || c.token.length < 32 || !Array.isArray(c.scopes) || !Number.isFinite(c.expiresAt))) throw new Error('A bound library and expiring scoped credentials are required.');
   const rootService = createCommandService(adapter), recoveryServices = new Map();
   const windows = new Map();

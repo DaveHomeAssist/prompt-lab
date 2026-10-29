@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, readdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdtemp, rm, readdir, readFile, writeFile, rename, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFolderAdapter } from './folder-adapter.mjs';
@@ -57,4 +57,33 @@ test('cloud conflict copies fail closed and are preserved for review', async t =
   await rename(join(journal, name), join(journal, name.replace('.json', ' conflict.json')));
   await assert.rejects((await createFolderAdapter(dir)).read(), { code: 'CLOUD_CONFLICT' });
   assert.equal((await readdir(journal)).length, 1);
+});
+
+test('warm folder reads reject changed historical bytes even at the same size and timestamp', async t => {
+  const dir = await fixture(t), adapter = await createFolderAdapter(dir), service = createCommandService(adapter);
+  await apply(service, await service.preview(input));
+  const before = await adapter.read(), journal = join(dir, 'transactions');
+  const file = join(journal, (await readdir(journal))[0]), text = await readFile(file, 'utf8'), metadata = await stat(file);
+  const next = await service.preview({ ...input, expectedRevision: before.revision });
+  await service.apply({ ...next, idempotencyKey: 'second' });
+  await adapter.read();
+  await writeFile(file, text.replace('keep', 'LOSS')); await utimes(file, metadata.atime, metadata.mtime);
+  await assert.rejects(adapter.read(), { code: 'HASH_MISMATCH' });
+  await writeFile(file, text);
+  assert.equal(Object.keys((await adapter.read()).operations).length, 2);
+  await rename(file, file + '.missing');
+  await assert.rejects(adapter.read(), { code: 'MISSING_OBJECT' });
+});
+
+test('warm folder reads see external commits and never share mutable state with callers', async t => {
+  const dir = await fixture(t), adapter = await createFolderAdapter(dir), service = createCommandService(adapter);
+  await apply(service, await service.preview(input));
+  const before = await adapter.read(), original = structuredClone(before);
+  before.objects = {}; before.operations.first.verified = false; before.checkpoints.push('caller edit');
+  assert.deepEqual(await adapter.read(), original);
+  const external = createCommandService(await createFolderAdapter(dir));
+  const next = await external.preview({ ...input, expectedRevision: original.revision });
+  const receipt = await external.apply({ ...next, idempotencyKey: 'external' });
+  assert.equal((await adapter.read()).revision, receipt.revision);
+  assert.deepEqual((await adapter.read()).operations.external, receipt);
 });

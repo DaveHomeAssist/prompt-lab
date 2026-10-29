@@ -1,5 +1,65 @@
 # Library storage contract candidate
 
+## App repository and record store connection
+
+Every connected app reader and writer must use the selected library revision.
+Introduce an explicit app repository over the existing service transport and
+durable outbox. Read every page at one revision, check record hashes and reject
+mixed or incomplete responses. Retain a failed command and recover its original
+receipt before accepting another write. Never report a local fallback as a
+connected library save. Disconnect preserves pending commands and stops access.
+
+Connect the real experiment store through a constructed repository dependency:
+evaluations, test cases, execution traces and experiments keep their existing
+normalization, filtering and recovery behavior, but their connected persistence
+uses the shared record commands. Field updates retain unmentioned metadata and
+creation identity. Ambiguous identities and stale records require review.
+An unconfigured store keeps its existing browser behavior. No product control
+may select this partial connection as the active personal library: prompt,
+Scratch, folder, pack, draft and recovery integration and native activation
+remain required before that switch is available.
+
+Verify actual store calls against the shared service, readback after API edits,
+failed durable queueing, lost responses, restart, disconnect, pagination and
+stale-write rejection. Use disposable source inventories and the authorized
+export copy; keep original bytes and all history. This is app integration work,
+not permission to select a personal folder or advance hosted storage.
+
+The first browser restart test reached the service's former 60 request budget
+and failed at request 61 with HTTP 429. Connected readers now reuse validated
+pages only after checking the service revision. The authenticated local budget
+is 120 requests per credential per minute to accommodate review, commit,
+receipt recovery and verified readback in one editing sequence. It remains
+bounded, with explicit rate rejection covered by the existing negative test.
+Larger libraries and sustained editing still require performance acceptance.
+
+Real-export verification exposed repeated full-journal validation on every
+service read. The folder reader now retains a bounded graph of verified,
+deeply frozen transactions, reusing it only after reading and comparing every
+current file's exact bytes. The retained graph is capped at 64 MiB of serialized
+input; larger journals use full validation. Changed bytes, missing ancestors,
+new files and cloud conflicts still take the validation path. Caller snapshots
+are independent copies. Retained-state verification is reused only for these
+private immutable objects. Warm-cache corruption and external-commit checks
+must pass before repeating the retained real-data acceptance.
+
+Dominic Node 22.23.4 passed all 359 storage tests and four browser scenarios,
+plus 1,553 app tests, 231 legacy tests and the extension build. The synthetic
+save/restart scenario completed in 8.8 seconds after the cache change, compared
+with 23.6 seconds before it. Documentation lint and four consistency checks pass.
+
+The Mac real-export attempt was stopped after more than four minutes of sustained
+verification. Its retained folder and pending outbox were resumed after the
+cache change. The original three runs read back exactly; ensuring all four record
+types were saved took 67.6 seconds. A three-minute stop limit interrupted final
+restart/edit/delete readback, so that acceptance remains unverified. The original
+export bytes remain unchanged. Initial module-server setup failures and both
+interrupted attempts are retained. No private data was uploaded, and personal
+app storage was not activated. Further command-service verification cost must
+be reduced and the same retained test completed before whole-app activation.
+Offline edits without a reviewed preview still need durable intent handling;
+the existing outbox only retains already-reviewed commands.
+
 ## App owned migration copy
 
 The app's migration boundary must capture its actual stores and every cooperating

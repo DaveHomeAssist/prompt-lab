@@ -1,3 +1,4 @@
+import { APP_RECORD_VERSION } from './lib/appLibraryRepository.js';
 import { runLibraryWrite, writeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import {
   filterEvalRuns,
@@ -109,10 +110,10 @@ function txDone(tx) {
   });
 }
 
-export async function saveRunRecord(record) {
+export async function saveRunRecord(record, repository = null) {
   if (!record || !record.run_id) return null;
   const snapshot = { ...record };
-  return writeWithRecovery(`run:${snapshot.run_id}`, permit => persistRunRecord(snapshot, permit));
+  return writeWithRecovery(writeKey(repository, `run:${snapshot.run_id}`), permit => repository ? repository.saveRecord('execution-traces', snapshot) : persistRunRecord(snapshot, permit));
 }
 
 async function persistRunRecord(record, permit) {
@@ -128,12 +129,15 @@ async function persistRunRecord(record, permit) {
   return record;
 }
 
-export async function listRunsByTrace(traceId) {
+export async function listRunsByTrace(traceId, repository = null) {
   const id = String(traceId || '').trim();
   if (!id) return [];
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  const db = repository ? null : await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   let records = [];
-  if (!db) {
+  if (repository) {
+    records = await repository.readDomain('execution-traces');
+    records = records.filter(row => row.trace_id === id);
+  } else if (!db) {
     records = readFallback(RUNS_LS_KEY).filter((row) => row.trace_id === id);
   } else {
     const tx = db.transaction(RUNS_STORE, 'readonly');
@@ -155,9 +159,9 @@ export function normalizeExperimentRecord(record) {
   };
 }
 
-export async function saveExperiment(record) {
+export async function saveExperiment(record, repository = null) {
   const normalized = normalizeExperimentRecord(record);
-  return writeWithRecovery(`experiment:${normalized.id}`, permit => persistExperiment(normalized, permit));
+  return writeWithRecovery(writeKey(repository, `experiment:${normalized.id}`), permit => repository ? repository.saveRecord('experiments', normalized) : persistExperiment(normalized, permit));
 }
 
 async function persistExperiment(normalized, permit) {
@@ -174,16 +178,18 @@ async function persistExperiment(normalized, permit) {
   return normalized;
 }
 
-export async function listExperiments(filters = {}) {
+export async function listExperiments(filters = {}, repository = null) {
   const {
     search = '',
     dateFrom = '',
     dateTo = '',
   } = filters;
   const q = String(search || '').trim().toLowerCase();
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  const db = repository ? null : await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   let records = [];
-  if (!db) {
+  if (repository) {
+    records = await repository.readDomain('experiments');
+  } else if (!db) {
     records = readFallback(EXPERIMENT_LS_KEY);
   } else {
     const tx = db.transaction(EXPERIMENT_STORE, 'readonly');
@@ -204,8 +210,9 @@ export async function listExperiments(filters = {}) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-export async function getExperimentById(id) {
+export async function getExperimentById(id, repository = null) {
   if (!id) return null;
+  if (repository) return repository.readRecord('experiments', id);
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     return readFallback(EXPERIMENT_LS_KEY).find((entry) => entry.id === id) || null;
@@ -215,9 +222,9 @@ export async function getExperimentById(id) {
   return txRequest(store.get(id));
 }
 
-export async function saveEvalRun(record) {
+export async function saveEvalRun(record, repository = null) {
   const normalized = normalizeEvalRunRecord(record);
-  return writeWithRecovery(`eval:${normalized.id}`, permit => persistEvalRun(normalized, permit));
+  return writeWithRecovery(writeKey(repository, `eval:${normalized.id}`), permit => repository ? repository.saveRecord('evaluations', normalized) : persistEvalRun(normalized, permit));
 }
 
 async function persistEvalRun(normalized, permit) {
@@ -235,25 +242,27 @@ async function persistEvalRun(normalized, permit) {
   return normalized;
 }
 
-export async function patchEvalRun(id, patch) {
-  const existing = await getEvalRunById(id);
+export async function patchEvalRun(id, patch, repository = null) {
+  const existing = await getEvalRunById(id, repository);
   if (!existing) return null;
-  return saveEvalRun({ ...existing, ...(patch && typeof patch === 'object' ? patch : {}) });
+  return saveEvalRun({ ...existing, ...(patch && typeof patch === 'object' ? patch : {}) }, repository);
 }
 
-export async function linkEvalRunToPrompt(id, promptId, promptVersionId = null) {
+export async function linkEvalRunToPrompt(id, promptId, promptVersionId = null, repository = null) {
   const normalizedPromptId = normalizePromptId(promptId);
   if (!id || !normalizedPromptId) return null;
   return patchEvalRun(id, {
     promptId: normalizedPromptId,
     promptVersionId: normalizePromptId(promptVersionId),
-  });
+  }, repository);
 }
 
-export async function listEvalRuns(filters = {}) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+export async function listEvalRuns(filters = {}, repository = null) {
+  const db = repository ? null : await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   let records = [];
-  if (!db) {
+  if (repository) {
+    records = await repository.readDomain('evaluations');
+  } else if (!db) {
     records = readFallback(EVAL_RUN_LS_KEY);
   } else {
     const tx = db.transaction(EVAL_RUN_STORE, 'readonly');
@@ -263,8 +272,9 @@ export async function listEvalRuns(filters = {}) {
   return filterEvalRuns(records, filters);
 }
 
-export async function getEvalRunById(id) {
+export async function getEvalRunById(id, repository = null) {
   if (!id) return null;
+  if (repository) return repository.readRecord('evaluations', id);
   const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     return readFallback(EVAL_RUN_LS_KEY).find((entry) => entry.id === id) || null;
@@ -274,12 +284,12 @@ export async function getEvalRunById(id) {
   return txRequest(store.get(id));
 }
 
-export async function saveTestCase(record) {
+export async function saveTestCase(record, repository = null) {
   const normalized = normalizeTestCaseRecord(record);
   if (!normalized.promptId || !normalized.input.trim()) {
     throw new Error('Test cases require a promptId and input.');
   }
-  return writeWithRecovery(`case:${normalized.id}`, permit => persistTestCase(normalized, permit));
+  return writeWithRecovery(writeKey(repository, `case:${normalized.id}`), permit => repository ? repository.saveRecord('test-cases', normalized) : persistTestCase(normalized, permit));
 }
 
 async function persistTestCase(normalized, permit) {
@@ -296,15 +306,17 @@ async function persistTestCase(normalized, permit) {
   return normalized;
 }
 
-export async function listTestCases(filters = {}) {
+export async function listTestCases(filters = {}, repository = null) {
   const {
     promptId = '',
     limit = 200,
   } = filters;
   const promptFilter = normalizePromptId(promptId);
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+  const db = repository ? null : await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   let records = [];
-  if (!db) {
+  if (repository) {
+    records = await repository.readDomain('test-cases');
+  } else if (!db) {
     records = readFallback(TEST_CASE_LS_KEY);
   } else {
     const tx = db.transaction(TEST_CASE_STORE, 'readonly');
@@ -319,9 +331,9 @@ export async function listTestCases(filters = {}) {
   return sorted.slice(0, Math.max(1, Math.min(500, Number(limit) || 200)));
 }
 
-export async function deleteTestCase(id) {
+export async function deleteTestCase(id, repository = null, expectedVersion) {
   if (!id) return;
-  return writeWithRecovery(`case:${id}`, permit => removeTestCase(id, permit));
+  return writeWithRecovery(writeKey(repository, `case:${id}`), permit => repository ? repository.deleteRecord('test-cases', id, expectedVersion) : removeTestCase(id, permit));
 }
 
 async function removeTestCase(id, permit) {
@@ -340,3 +352,31 @@ export {
   normalizeEvalRunRecord,
   normalizeTestCaseRecord,
 };
+
+// The app startup owner supplies this dependency only after whole-app activation
+// is qualified. Existing exports keep their browser-store behavior until then.
+export function createExperimentStore(repository) {
+  if (!repository || typeof repository.libraryId !== 'string'
+    || ['readDomain', 'readRecord', 'saveRecord', 'deleteRecord'].some(key => typeof repository[key] !== 'function')) {
+    throw new TypeError('A selected app library repository is required.');
+  }
+  return Object.freeze({
+    saveRunRecord: record => saveRunRecord(record, repository),
+    listRunsByTrace: id => listRunsByTrace(id, repository),
+    saveExperiment: record => saveExperiment(record, repository),
+    listExperiments: filters => listExperiments(filters, repository),
+    getExperimentById: id => getExperimentById(id, repository),
+    saveEvalRun: record => saveEvalRun(record, repository),
+    patchEvalRun: (id, patch) => patchEvalRun(id, patch, repository),
+    linkEvalRunToPrompt: (id, promptId, versionId) => linkEvalRunToPrompt(id, promptId, versionId, repository),
+    listEvalRuns: filters => listEvalRuns(filters, repository),
+    getEvalRunById: id => getEvalRunById(id, repository),
+    saveTestCase: record => saveTestCase(record, repository),
+    listTestCases: filters => listTestCases(filters, repository),
+    deleteTestCase: (id, observed) => deleteTestCase(id, repository, observed?.[APP_RECORD_VERSION]),
+  });
+}
+
+function writeKey(repository, key) {
+  return repository ? `library:${JSON.stringify([repository.libraryId, key])}` : key;
+}

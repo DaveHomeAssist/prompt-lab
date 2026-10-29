@@ -1,6 +1,6 @@
 import { mkdir, open, readdir, readFile, rename, lstat } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { canonical, hash, LibraryError } from './contract.mjs';
+import { canonical, hash, MAX_BYTES, LibraryError } from './contract.mjs';
 import { createTransfer } from './transfer.mjs';
 
 const writers = new Map();
@@ -8,6 +8,11 @@ const empty = () => ({ libraryId: null, revision: null, objects: {}, operations:
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 const parentsOf = row => row.schemaVersion === 1 ? (row.parent === null ? [] : [row.parent]) : row.parents;
+function freeze(value) {
+  if (!value || typeof value !== 'object') return value;
+  for (const child of Object.values(value)) freeze(child);
+  return Object.freeze(value);
+}
 
 function preserves(next, previous) {
   if (next.libraryId !== previous.libraryId) fail('WRONG_LIBRARY', 'Folder transactions belong to different libraries.');
@@ -26,18 +31,29 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
   const journal = join(root, 'transactions');
   await mkdir(journal, { mode: 0o700, recursive: true });
   if ((await lstat(journal)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Transaction directory cannot be a symbolic link.');
+  let verifiedGraph;
+  const verifiedStates = new WeakSet();
   async function graph() {
     const files = (await readdir(journal)).filter(name => name.endsWith('.json'));
     if (!files.length) return { rows: new Map(), heads: [], libraryId: null };
-    const rows = new Map(), parents = new Set();
+    const rows = new Map(), parents = new Set(), bytes = new Map(); let size = 0;
     for (const name of files) {
       if (!/^[a-f0-9]{64}\.json$/.test(name)) throw new LibraryError('CLOUD_CONFLICT', 'Unexpected transaction or cloud conflict copy; review required.', 409);
       const file = join(journal, name);
       if ((await lstat(file)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Transaction cannot be a symbolic link.');
-      let row;
-      try { row = JSON.parse(await readFile(file, 'utf8')); } catch { throw new LibraryError('INCOMPLETE_STORE', 'Transaction is unreadable; preserve files and retry after recovery.', 503); }
+      let contents;
+      try { contents = await readFile(file); } catch { throw new LibraryError('INCOMPLETE_STORE', 'Transaction is unreadable; preserve files and retry after recovery.', 503); }
+      // Read and compare the actual bytes, never trust a filename or timestamp.
+      const retained = verifiedGraph?.bytes.get(name);
+      let row = retained?.contents.equals(contents) ? retained.row : null;
       const id = 'sha256:' + name.slice(0, -5);
-      if (await hash(row) !== id) throw new LibraryError('HASH_MISMATCH', 'Transaction failed verification.', 503);
+      if (!row) {
+        try { row = JSON.parse(contents.toString('utf8')); } catch { throw new LibraryError('INCOMPLETE_STORE', 'Transaction is unreadable; preserve files and retry after recovery.', 503); }
+        if (await hash(row) !== id) throw new LibraryError('HASH_MISMATCH', 'Transaction failed verification.', 503);
+        freeze(row);
+      }
+      size += contents.byteLength;
+      bytes.set(name, { contents, row });
       if (![1, 2].includes(row.schemaVersion)) fail('UNSUPPORTED_TRANSACTION', 'Preserve this journal generation for explicit recovery.');
       const ancestry = parentsOf(row);
       if (!Array.isArray(ancestry) || ancestry.some(parent => !address(parent)) || new Set(ancestry).size !== ancestry.length
@@ -47,6 +63,8 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
       for (const parent of ancestry) parents.add(parent);
       rows.set(id, row);
     }
+    if (verifiedGraph && rows.size === verifiedGraph.value.rows.size
+      && [...rows].every(([id, row]) => verifiedGraph.value.rows.get(id) === row)) return verifiedGraph.value;
     for (const parent of parents) if (!rows.has(parent)) throw new LibraryError('MISSING_OBJECT', 'Transaction ancestry is incomplete; wait for cloud files.', 503);
     const heads = [...rows.keys()].filter(id => !parents.has(id)).sort();
     if (!heads.length) fail('INVALID_ANCESTRY', 'Transaction history has no head.');
@@ -63,7 +81,10 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
     if (seen.size !== rows.size) fail('INVALID_ANCESTRY', 'Unreachable transaction history requires recovery.');
     const libraryId = rows.get(heads[0]).state.libraryId;
     for (const row of rows.values()) if (row.state.libraryId !== libraryId) fail('WRONG_LIBRARY', 'The folder contains transactions from another library.');
-    return { rows, heads, libraryId };
+    const value = { rows, heads, libraryId };
+    // Larger journals remain correct without retaining an unbounded cache.
+    verifiedGraph = size <= MAX_BYTES ? { bytes, value } : undefined;
+    return value;
   }
   const graphRevision = value => hash(value.heads);
   function descends(value, head, ancestor) {
@@ -94,7 +115,10 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
       context.transaction = transaction; context.heads = [...value.heads];
     }
     const state = value.rows.get(transaction).state;
-    await createTransfer(state);
+    if (!verifiedStates.has(state)) {
+      await createTransfer(state);
+      verifiedStates.add(state);
+    }
     return { state: structuredClone(state), transaction };
   }
   function access(context = null) { return {
