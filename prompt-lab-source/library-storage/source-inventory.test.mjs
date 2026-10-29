@@ -140,3 +140,31 @@ test('valid hashes cannot hide omitted raw stores, wrong store identity or crede
     await assert.rejects(inspectSourceInventory(inventory), { code: 'INVALID_SOURCE' });
   }
 });
+
+test('current inventory captures the Scratch journal revision while historical v1 remains readable with incomplete current coverage', async () => {
+  const { options, values } = fixture();
+  values['pl2-scratch-journal-revision'] = '12';
+  const inventory = await captureSourceInventory(options);
+  const current = await inspectSourceInventory(inventory);
+  assert.equal(current.manifest.schemaVersion, 2);
+  assert.equal(current.currentSourceCoverage, true);
+  assert.equal(current.captures['local-content'].entries['pl2-scratch-journal-revision'], '12');
+
+  const historical = structuredClone(inventory);
+  historical.manifest.schemaVersion = 1;
+  const source = historical.manifest.sources.find(source => source.id === 'local-content');
+  const data = structuredClone(historical.objects[source.hash].data);
+  delete data.entries['pl2-scratch-journal-revision'];
+  data.unselectedKeys.push('pl2-scratch-journal-revision');
+  const object = await makeObject('source-capture', data);
+  historical.objects[object.hash] = object.object;
+  source.hash = object.hash;
+  historical.manifestHash = await hash(historical.manifest);
+  const readback = await inspectSourceInventory(historical);
+  assert.equal(readback.currentSourceCoverage, false);
+  assert.equal(readback.manifest.sourceReadComplete, true);
+  assert.equal(readback.captures['local-content'].entries['pl2-library'], values['pl2-library']);
+  historical.manifest.schemaVersion = 2;
+  historical.manifestHash = await hash(historical.manifest);
+  await assert.rejects(inspectSourceInventory(historical), { code: 'INVALID_SOURCE' });
+});

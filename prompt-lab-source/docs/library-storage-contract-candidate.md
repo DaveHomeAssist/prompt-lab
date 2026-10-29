@@ -56,8 +56,8 @@ source bytes after close/reopen and retry, then checks the original hash again.
 
 An export cannot prove preservation of data it omitted. The read-only
 `library-storage/source-inventory.mjs` contract now captures the inspected
-source families described below. A full migration still needs an app-owned
-reader, a cross-store write barrier, reviewed backup provenance and unavailable
+source families described below. A full migration still needs a cross-store
+write barrier, reviewed backup provenance and unavailable
 references. No real export is committed as a fixture
 or transferred to a runner. The private acceptance script runs locally against
 an explicit input path, writes only to a new disposable directory and emits
@@ -65,11 +65,25 @@ aggregate evidence without prompt text.
 
 ### Raw source inventory
 
+App reader implementation brief: the existing UI readers can create or upgrade
+databases, normalize records or recover failures as empty lists. Preservation
+capture needs a separate app-owned entry point that enumerates existing databases
+before opening them, aborts any creation race, reads only approved stores in
+read-only transactions and waits for completion. Capture every raw record and
+primary key, including deletion markers in local storage and the desktop journal.
+Read only the two named extension drafts. Unsupported APIs, blocked/aborted reads,
+timeouts and non-JSON data remain explicit failures, never empty-source evidence.
+Verify actual IndexedDB behavior in a disposable browser origin on a remote
+runner, including more than 1,000 records and no database creation. This entry
+point does not activate a folder or establish a cross-store write barrier.
+
 The current workspace export reads normalized Library state, Scratch, evaluation
 runs and test cases. It does not export every store. The inventory contract
 captures raw values independently and never chooses between conflicting replicas.
 It has no browser globals or filesystem access; readers are explicitly supplied
-by the caller. It is not yet called by the shipped app.
+by the caller. The app-owned `lib/librarySourceCapture.js` entry point now binds
+those readers to the current origin's supported APIs. It is not yet mounted in
+the shipped migration UI or connected to a personal folder.
 
 | Owning source | Captured content |
 | --- | --- |
@@ -77,7 +91,7 @@ by the caller. It is not yet called by the shipped app.
 | `lib/libraryDeletion.js` | Every individual, batch and generation marker key, including raw malformed values |
 | `lib/scratchSchema.js`, `PadTab.jsx` | Current pads/schema marker and surviving legacy `pl-pad`/`pl2-pad` content and metadata |
 | `experimentStore.js` | All four IndexedDB stores (`experiments`, `eval_runs`, `test_cases`, `runs`) and their local fallback stores, without the existing 1,000-row fallback write cap |
-| `lib/libraryJournal.js` | Desktop durable journal plus local revision marker, retained separately from the local mirror |
+| `lib/libraryJournal.js`, `lib/scratchJournal.js` on current main | Every desktop journal record, including Library and Scratch, plus both local revision markers, retained separately from their local mirrors |
 | `App.jsx`, `hooks/useSessionState.js`, `lib/platform.js` | Draft reset recovery and the two explicitly named editor/dual draft session keys. Authentication sessions remain excluded |
 | Explicit archive review | User-selected backup provenance and unavailable-reference evidence, retained without scanning neighboring files |
 
@@ -94,6 +108,39 @@ Each capture has a content hash, and the manifest names every required source fo
 its shell. `sourceReadComplete` means the selected source reads were accounted
 for; `activationReady` is always false because this inventory alone proves no
 cross-store write barrier, semantic migration or destination readback.
+
+The app reader uses `indexedDB.databases()` before opening an approved database
+without a version argument. If another client deletes it between enumeration
+and open, the resulting upgrade transaction is aborted; no replacement database
+is committed. Existing older databases are not upgraded and missing stores are
+reported separately. Each cursor reads raw values and primary keys in one
+read-only transaction, preserving key path, auto-increment and database version
+metadata. Success waits for both cursor exhaustion and transaction completion.
+Blocked opens, changed versions, aborted reads, unsupported APIs, unsupported
+structured values and the bounded deadline fail explicitly. Capacity failure
+never publishes a shortened record list. The extension adapter requests only
+the editor and dual-draft session keys and checks callback-time errors.
+
+Inventory version 2 includes `pl2-scratch-journal-revision`, introduced on current
+main with durable Scratch. Version 1 remains readable against its original key
+allowlist; `inspectSourceInventory` reports `currentSourceCoverage: false` for
+that historical format. Neither version establishes activation readiness.
+
+October 29 app-reader verification on Dominic Node 22.23.4: 87 storage tests and
+seven real Chromium 145 browser checks pass. Browser checks cover an empty
+origin without database creation, all four raw history stores with 1,002 traces,
+41 versions, both durable journal records, malformed deletion markers, old
+database inspection without upgrade, deletion during open, aborted cursor reads,
+unsupported Blob preservation and the real extension session API. All data is
+synthetic in disposable origins. This does not establish installed WebView
+capability, current personal-profile completeness or cross-store consistency.
+The initial host browser attempts failed before running tests because browser
+binaries and native dependencies were absent; the existing matching Playwright
+container supplied the successful browser runtime.
+
+API references: [database enumeration](https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/databases),
+[database open behavior](https://developer.mozilla.org/en-US/docs/Web/API/IDBFactory/open)
+and [extension storage](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
 October 29 verification on Dominic Node22: the complete storage suite passed
 30 tests, including 41 versions, 1,002 trace records, divergent journal/mirror

@@ -1,7 +1,7 @@
 import { canonical, hash, LibraryError, makeObject, readObject } from './contract.mjs';
 
 // Versioned from the shipped stores, before any UI normalizer or retention cap.
-export const LOCAL_CONTENT_KEYS = Object.freeze([
+const V1_LOCAL_CONTENT_KEYS = Object.freeze([
   'pl2-library', 'pl2-library-trash', 'pl2-collections', 'pl2-collection-folders',
   'pl2-packs', 'pl2-loaded-packs', 'pl2-library-journal-revision',
   'pl2-pads', 'pl2-pads-schema-version', 'pl2-pad', 'pl2-pad_meta', 'pl-pad', 'pl-pad_meta',
@@ -10,6 +10,8 @@ export const LOCAL_CONTENT_KEYS = Object.freeze([
   // These are editor drafts, not authentication sessions or provider settings.
   'pl2-session-pl2-session', 'pl2-session-pl2-dual-draft',
 ]);
+export const LOCAL_CONTENT_KEYS = Object.freeze([...V1_LOCAL_CONTENT_KEYS, 'pl2-scratch-journal-revision']);
+export const SOURCE_INVENTORY_VERSION = 2;
 export const DELETION_PREFIXES = Object.freeze([
   'pl2-library-deleted:', 'pl2-library-deleted-batch:', 'pl2-library-clear:',
 ]);
@@ -57,16 +59,18 @@ function validateRead(result) {
   return result;
 }
 
-function assertCapture(id, data) {
+function assertCapture(id, data, version = SOURCE_INVENTORY_VERSION) {
   if (id === 'local-content') {
+    const contentKeys = version === 1 ? V1_LOCAL_CONTENT_KEYS : LOCAL_CONTENT_KEYS;
+    const selected = key => contentKeys.includes(key) || DELETION_PREFIXES.some(prefix => key.startsWith(prefix));
     const observations = data.state === 'changed' ? data.observations : [data];
     if (!Array.isArray(observations) || observations.length !== (data.state === 'changed' ? 2 : 1)) throw new LibraryError('INVALID_SOURCE', 'Local observations are incomplete.');
     for (const observation of observations) {
       const entries = observation?.entries;
       if (!entries || Object.getPrototypeOf(entries) !== Object.prototype
-        || LOCAL_CONTENT_KEYS.some(key => !Object.hasOwn(entries, key))
-        || Object.entries(entries).some(([key, value]) => !isLocalContentKey(key) || (value !== null && typeof value !== 'string'))
-        || !Array.isArray(observation.unselectedKeys) || observation.unselectedKeys.some(key => typeof key !== 'string' || isLocalContentKey(key))) {
+        || contentKeys.some(key => !Object.hasOwn(entries, key))
+        || Object.entries(entries).some(([key, value]) => !selected(key) || (value !== null && typeof value !== 'string'))
+        || !Array.isArray(observation.unselectedKeys) || observation.unselectedKeys.some(key => typeof key !== 'string' || selected(key))) {
         throw new LibraryError('INVALID_SOURCE', 'Local capture is incomplete or includes an unselected store.');
       }
     }
@@ -139,7 +143,7 @@ export async function captureSourceInventory({
     return { ...archives, state: archives.reviewed ? 'present' : 'unreviewed' };
   });
   const manifest = {
-    format: 'promptlab-source-inventory', schemaVersion: 1, surface, sourceIdentity, capturedAt,
+    format: 'promptlab-source-inventory', schemaVersion: SOURCE_INVENTORY_VERSION, surface, sourceIdentity, capturedAt,
     sources, sourceReadComplete: sources.every(source => ['present', 'absent'].includes(source.state)),
     // Separate store reads cannot prove a cross-store write barrier or migration.
     activationReady: false,
@@ -149,7 +153,7 @@ export async function captureSourceInventory({
 
 export async function inspectSourceInventory(inventory) {
   const { manifest, manifestHash, objects } = inventory || {};
-  if (manifest?.format !== 'promptlab-source-inventory' || manifest.schemaVersion !== 1
+  if (manifest?.format !== 'promptlab-source-inventory' || ![1, SOURCE_INVENTORY_VERSION].includes(manifest.schemaVersion)
     || !['desktop', 'web', 'extension'].includes(manifest.surface)
     || typeof manifest.sourceIdentity !== 'string' || !manifest.sourceIdentity
     || typeof manifest.capturedAt !== 'string' || !Number.isFinite(Date.parse(manifest.capturedAt))
@@ -172,11 +176,11 @@ export async function inspectSourceInventory(inventory) {
     }
     const capture = await readObject(objects, source.hash, 'source-capture');
     if (capture.id !== source.id || capture.state !== source.state) throw new LibraryError('INVALID_SOURCE', 'Source identity or state disagrees.');
-    assertCapture(source.id, capture);
+    assertCapture(source.id, capture, manifest.schemaVersion);
     Object.defineProperty(captures, source.id, { value: capture, enumerable: true });
   }
   const complete = manifest.sources.every(source => ['present', 'absent'].includes(source.state));
   if (manifest.sourceReadComplete !== complete) throw new LibraryError('INVALID_SOURCE', 'Source completeness disagrees with evidence.');
   for (const [id, object] of Object.entries(objects)) if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Retained source object changed.');
-  return { manifest: structuredClone(manifest), captures };
+  return { manifest: structuredClone(manifest), captures, currentSourceCoverage: manifest.schemaVersion === SOURCE_INVENTORY_VERSION };
 }
