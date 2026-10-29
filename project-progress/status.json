@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T11:18:46.082Z",
+  "snapshotAt": "2026-10-29T11:46:38.682Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "8c8ed89fa7b0c36eb91d35769d61a6c91746f891",
+  "mainSha": "35bfb9e35903e2f0edbb98746d8879c9a580549c",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance. Native service ownership, app activation and real two-client iCloud acceptance remain open. Hosted work follows accepted Phase A; no paid provisioning. The registered Next Steps Board file remains absent.",
+  "nextAction": "Complete native and legacy client ownership, remaining transient edit forms, reviewed active projection and causal reconciliation. Inspect the Windows iCloud account and sync warning after the Mac is unlocked, then prove two-client propagation. Native service/app acceptance remains open; hosted work follows accepted Phase A. No paid provisioning. The registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Coordinated origin capture verified",
+      "state": "Open",
+      "detail": "2026-10-29 coordinated origin capture verified and pushed at cb4127cf4059fd79e8075b1e7ceb972b4955623a: https://github.com/DaveHomeAssist/prompt-lab/commit/cb4127cf4059fd79e8075b1e7ceb972b4955623a . Capture registers cooperating app windows before startup writes, freezes membership, pauses real writers and autosave timers, drains pending writes and preserves each window's named unsaved editor buffers separately. Inventory v4 retains these as addressable drafts; older versions remain readable. Missing acknowledgements, changed buffers, write interference, incomplete sources and deadlines reject. Owner closure resumes peers. Scope remains cooperating clients in one storage partition, activationReady=false. Source 4858f8a integrates merged journal recovery main 35bfb9e through cb4127c. Dominic Node 22.23.4: 145 storage tests, 1521 app tests in 136 files, 231 legacy tests pass before integration. Combined: 48 focused journal/editor tests, two native script guards, 20 capture/Scratch browser cases and 24 hosted Save/shortcut/side-panel cases pass; fresh extension/web builds and 4 documentation contracts pass; all 30 changed/integrated files hash-match. Initial OpenAPI/schema enum mismatch was fixed and the 145-test rerun passed; first failure retained. Private Mac Node 22.22.1 verification preserves all 353 export occurrences across 4 pages after reopen; original SHA-256 unchanged, 60 absent run references remain explicit. No private payload transferred or personal library activated. Latest iCloud configuration at 11:37 UTC: Windows roots registered, version 15.10.39.0 running, but no Mac probe/export visible; Mac probe uploaded, Walter probe absent. Account/warning screen remains unverified because Mac is locked. No configuration changes. A1 remains In progress; PR248 remains draft and current-head CI is a separate gate. Next: finish native/legacy ownership and remaining transient-form capture, reviewed active projection and causal conflict acceptance. Actual two-client iCloud, native app/service acceptance and hosted phases remain open; no paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/cb4127cf4059fd79e8075b1e7ceb972b4955623a"
+    },
     {
       "label": "Current context write coordination verified",
       "state": "Open",
@@ -1284,8 +1290,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance.",
-      "verification": "2026-10-29 Current-context write coordination pushed as 16fc8ab in draft PR248. Actual queued records, complete imports, Library/Scratch journal completion and extension draft callbacks are tracked before capture. Interference, unresolved failures, incomplete reads and timeouts reject; receipt scope is current-context with activationReady=false. A first database read refused during capture now permits later durable saves; its real browser regression failed before the repair. Dominic Node 22.23.4: 141 storage tests, 1517 app tests in 135 files and 231 legacy tests passed. After the final narrow retry repair, all 14 Chromium/extension cases, four focused record/recovery/import tests and fresh extension build passed. Full app suite preceded that repair. Docs lint 30 files and 4/4 consistency passed; all 21 source/doc files match runner hashes. Initial metadata parse failures were retained and the two pre-existing AppleDouble files moved outside the runner test tree; no repository test disabled. Private Mac export check preserved all 353 occurrences across 4 pages after reopen and original SHA-256; 60 missing run references remain explicit. No private payload transferred or personal library activated. A1 remains In progress. Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance.",
+      "nextAction": "Complete native and legacy ownership, remaining transient edit forms, reviewed active projection and causal conflict acceptance.",
+      "verification": "Coordinated capture source 4858f8a plus main integration cb4127c verified with storage/app suites, 44 combined browser cases and the private real export. Activation remains disabled; full A1 acceptance is incomplete.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
