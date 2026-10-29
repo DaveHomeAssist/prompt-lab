@@ -1610,55 +1610,14 @@
         "additionalProperties": true
       },
       "Outbox": {
-        "type": "object",
-        "properties": {
-          "schemaVersion": {
-            "const": 1
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/LegacyOutbox"
           },
-          "libraryId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "baseRevision": {
-            "anyOf": [
-              {
-                "type": "string",
-                "pattern": "^sha256:[a-f0-9]{64}$"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "operationId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200
-          },
-          "sourceHash": {
-            "type": "string",
-            "pattern": "^sha256:[a-f0-9]{64}$"
-          },
-          "state": {
-            "enum": [
-              "pending",
-              "failed",
-              "committed"
-            ]
-          },
-          "sourceManifest": {}
-        },
-        "required": [
-          "schemaVersion",
-          "libraryId",
-          "baseRevision",
-          "operationId",
-          "sourceHash",
-          "state",
-          "sourceManifest"
-        ],
-        "additionalProperties": true
+          {
+            "$ref": "#/components/schemas/DurableOutbox"
+          }
+        ]
       },
       "SourceInventory": {
         "type": "object",
@@ -4286,6 +4245,393 @@
           "nextCursor"
         ],
         "additionalProperties": false
+      },
+      "LegacyOutbox": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "baseRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "failed",
+              "committed"
+            ]
+          },
+          "sourceManifest": {}
+        },
+        "required": [
+          "schemaVersion",
+          "libraryId",
+          "baseRevision",
+          "operationId",
+          "sourceHash",
+          "state",
+          "sourceManifest"
+        ],
+        "additionalProperties": true,
+        "description": "Historical declaration only. Preserve without replay; it lacks the complete reviewed command and integrity bindings required by version 2."
+      },
+      "ReviewedCommand": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "enum": [
+                  "snapshot",
+                  "import"
+                ],
+                "default": "snapshot"
+              },
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "expectedRevision": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "sourceText": {
+                "type": "string"
+              },
+              "resolutions": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "enum": [
+                        "keep",
+                        "replace",
+                        "skip"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": true
+                }
+              },
+              "sourceInventory": {
+                "$ref": "#/components/schemas/SourceCaptureInventory"
+              }
+            },
+            "required": [
+              "mode",
+              "libraryId",
+              "expectedRevision",
+              "sourceText"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "resolutions": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "mode": {
+                "const": "select"
+              }
+            },
+            "required": [
+              "mode",
+              "libraryId",
+              "expectedRevision"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "checkpointId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "mode": {
+                "const": "restore"
+              }
+            },
+            "required": [
+              "mode",
+              "libraryId",
+              "expectedRevision",
+              "checkpointId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "incoming": {
+                "$ref": "#/components/schemas/Transfer"
+              },
+              "resolutions": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "additionalProperties": {
+                  "enum": [
+                    "current",
+                    "incoming"
+                  ]
+                }
+              },
+              "mode": {
+                "const": "reconcile"
+              }
+            },
+            "required": [
+              "mode",
+              "libraryId",
+              "expectedRevision",
+              "incoming"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "DurableOutbox": {
+        "type": "object",
+        "description": "App-owned pending command. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime before replay. Completed records are retained.",
+        "properties": {
+          "format": {
+            "const": "promptlab-command-outbox"
+          },
+          "schemaVersion": {
+            "const": 2
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "baseRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "operationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "request": {
+            "$ref": "#/components/schemas/ReviewedCommand"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reviewHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "failed",
+              "committed"
+            ]
+          },
+          "receipt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Receipt"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^[A-Z_]{1,64}$"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "commandHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "recordHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "baseRevision",
+          "operationId",
+          "request",
+          "fingerprint",
+          "reviewHash",
+          "sourceHash",
+          "createdAt",
+          "version",
+          "state",
+          "receipt",
+          "lastError",
+          "commandHash",
+          "recordHash"
+        ],
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "committed"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "then": {
+              "properties": {
+                "receipt": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Receipt"
+                    },
+                    {
+                      "required": [
+                        "operation",
+                        "sourceHash",
+                        "stateHash"
+                      ]
+                    }
+                  ]
+                },
+                "lastError": {
+                  "type": "null"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "receipt": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        ]
       }
     }
   }

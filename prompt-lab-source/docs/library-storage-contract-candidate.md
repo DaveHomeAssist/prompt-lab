@@ -1,5 +1,28 @@
 # Library storage contract candidate
 
+## Durable reviewed commands
+
+App integration needs a durable pending-command boundary before any transport.
+Store complete reviewed command inputs, library identity, base revision,
+operation identity and review hashes in an app-owned IndexedDB outbox. A strict
+transaction must complete before acknowledging Pending. No fallback to memory
+or another library is permitted. Credentials stay outside this store.
+
+The same client calls the existing shared service directly or through its
+authenticated loopback API. Reconnect checks the bound library, reads the
+operation receipt first, and recreates only the exact reviewed preview when
+necessary. Changed revisions or review results require a fresh user review;
+never silently rebase queued input. Persist a verified receipt before reporting
+Committed. Response loss, revocation, disconnect, write rejection and restart
+retain the command for recovery. Retain completed receipts without auto-pruning.
+
+Acceptance includes real IndexedDB close/reopen, transaction abort and denied
+write, concurrent queue instances, operation-key collisions, stale revisions,
+review expiry/recreation, response loss and wrong-library or revoked transport.
+Exercise full real-export input on its original Mac using isolated storage.
+This boundary supports later activation; native ownership, picker migration and
+complete app mutation wiring remain separate required work.
+
 ## App history retention
 
 Before activation, current app saves and reads must obey the preservation
