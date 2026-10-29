@@ -110,6 +110,28 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Bound import review
+
+The next command boundary exposes the lossless graph through the existing preview
+route with explicit `mode: import`. The service reads the existing workspace from
+the expected library revision, freezes caller choices before asynchronous work,
+and binds the review to the incoming bytes, choices and mode. Review readback is
+ephemeral and rejects expired or stale revisions. It does not publish objects.
+
+Import previews must never fall through to the existing whole-workspace snapshot
+commit. Until the durable graph and complete domain materialization are implemented,
+their commit attempt fails explicitly, including when all choices are resolved.
+Acceptance for this boundary covers request/response mutation, concurrent changes,
+wrong mode, expired review, HTTP readback and unchanged state after rejected apply.
+No app or personal folder is activated by this intermediate A1 contract.
+
+Verification on October 29: all 51 storage tests passed on Dominic Node 22.
+The private export also passed shared command review and review readback on the
+Mac: 246 raw records, 21 history rows, one unresolved choice and 60 missing source
+references. Apply rejected the unresolved review, published no revision or
+operation receipt, and the original file hash remained unchanged. Full import
+application and permanent review/graph storage remain open.
+
 ### Lossless import decisions
 
 `library-storage/import-plan.mjs` separates duplicate selection from source preservation.

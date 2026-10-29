@@ -78,6 +78,9 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (!receipt) throw new LibraryError('NOT_FOUND', 'Unknown operation.', 404);
         return send(200, receipt);
       }
+      if (req.method === 'GET' && url.pathname.startsWith('/v1/library/previews/')) {
+        return send(200, await service.previewRead(decodeURIComponent(url.pathname.slice('/v1/library/previews/'.length))));
+      }
       if (req.method === 'POST' && url.pathname === '/v1/library/previews') {
         if (!req.headers['content-type']?.startsWith('application/json')) throw new LibraryError('INVALID_REQUEST', 'Use application/json.', 400);
         const input = await body(req);

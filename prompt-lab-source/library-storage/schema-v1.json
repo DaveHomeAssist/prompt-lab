@@ -136,6 +136,18 @@
         },
         "expiresAt": {
           "type": "number"
+        },
+        "mode": {
+          "enum": [
+            "snapshot",
+            "import"
+          ]
+        },
+        "commitAvailable": {
+          "type": "boolean"
+        },
+        "importPlan": {
+          "$ref": "#/$defs/ImportPlan"
         }
       },
       "required": [
@@ -144,9 +156,44 @@
         "expectedRevision",
         "sourceHash",
         "fingerprint",
-        "expiresAt"
+        "expiresAt",
+        "mode",
+        "commitAvailable"
       ],
-      "additionalProperties": true
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "import"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "importPlan"
+            ],
+            "properties": {
+              "commitAvailable": {
+                "const": false
+              }
+            }
+          },
+          "else": {
+            "not": {
+              "required": [
+                "importPlan"
+              ]
+            },
+            "properties": {
+              "commitAvailable": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
     },
     "Receipt": {
       "type": "object",
@@ -675,6 +722,62 @@
         "activationReady",
         "fingerprint",
         "resolutions"
+      ],
+      "additionalProperties": false
+    },
+    "PreviewRequest": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "snapshot",
+            "import"
+          ],
+          "default": "snapshot"
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceText": {
+          "type": "string"
+        },
+        "resolutions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "enum": [
+                  "keep",
+                  "replace",
+                  "skip"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision",
+        "sourceText"
       ],
       "additionalProperties": false
     }

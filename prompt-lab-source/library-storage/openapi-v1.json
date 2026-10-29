@@ -151,12 +151,19 @@
     },
     "/v1/library/previews": {
       "post": {
-        "summary": "Preview a complete source workspace without active mutation",
+        "summary": "Review a snapshot transfer or lossless import; import apply is unavailable",
         "operationId": "postV1LibraryPreviews",
         "x-implementation-status": "candidate",
         "responses": {
           "201": {
-            "description": "Acknowledged result"
+            "description": "Ephemeral bound review; commitAvailable indicates whether the candidate supports apply",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -185,36 +192,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "libraryId": {
-                    "type": "string"
-                  },
-                  "expectedRevision": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "pattern": "^sha256:[a-f0-9]{64}$"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "sourceText": {
-                    "type": "string"
-                  },
-                  "resolutions": {
-                    "type": "object",
-                    "maxProperties": 0
-                  }
-                },
-                "required": [
-                  "libraryId",
-                  "expectedRevision",
-                  "sourceText"
-                ],
-                "additionalProperties": true
+                "$ref": "#/components/schemas/PreviewRequest"
               }
             }
           }
@@ -240,7 +218,7 @@
             "description": "Wrong scope, host or origin"
           },
           "409": {
-            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+            "description": "Stale revision, expired preview, unresolved import, import apply unavailable or idempotency mismatch"
           },
           "413": {
             "description": "Payload exceeds 64 MiB; never silently truncate"
@@ -381,6 +359,44 @@
           },
           "503": {
             "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
+      }
+    },
+    "/v1/library/previews/{previewId}": {
+      "get": {
+        "summary": "Read an unexpired review at its unchanged library revision",
+        "operationId": "getV1LibraryPreview",
+        "x-implementation-status": "candidate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "previewId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bound review, without source text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Preview expired or library revision changed"
           }
         }
       }
@@ -527,6 +543,18 @@
           },
           "expiresAt": {
             "type": "number"
+          },
+          "mode": {
+            "enum": [
+              "snapshot",
+              "import"
+            ]
+          },
+          "commitAvailable": {
+            "type": "boolean"
+          },
+          "importPlan": {
+            "$ref": "#/components/schemas/ImportPlan"
           }
         },
         "required": [
@@ -535,9 +563,44 @@
           "expectedRevision",
           "sourceHash",
           "fingerprint",
-          "expiresAt"
+          "expiresAt",
+          "mode",
+          "commitAvailable"
         ],
-        "additionalProperties": true
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "import"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "importPlan"
+              ],
+              "properties": {
+                "commitAvailable": {
+                  "const": false
+                }
+              }
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "importPlan"
+                ]
+              },
+              "properties": {
+                "commitAvailable": {
+                  "const": true
+                }
+              }
+            }
+          }
+        ]
       },
       "Receipt": {
         "type": "object",
@@ -1066,6 +1129,62 @@
           "activationReady",
           "fingerprint",
           "resolutions"
+        ],
+        "additionalProperties": false
+      },
+      "PreviewRequest": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "enum": [
+              "snapshot",
+              "import"
+            ],
+            "default": "snapshot"
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceText": {
+            "type": "string"
+          },
+          "resolutions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "enum": [
+                    "keep",
+                    "replace",
+                    "skip"
+                  ]
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "libraryId",
+          "expectedRevision",
+          "sourceText"
         ],
         "additionalProperties": false
       }

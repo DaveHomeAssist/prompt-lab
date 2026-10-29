@@ -139,20 +139,47 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     queue = result.catch(() => {});
     return result;
   }
+  async function currentReview(previewId) {
+    const preview = previews.get(previewId);
+    if (!preview || preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
+    const state = await adapter.read();
+    if (state.revision !== preview.input.expectedRevision || (state.libraryId && state.libraryId !== preview.input.libraryId)) {
+      throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
+    }
+    return structuredClone(preview.response);
+  }
   return {
     read: () => adapter.read(),
-    async preview({ libraryId, expectedRevision, sourceText, resolutions = {} }) {
+    previewRead: currentReview,
+    async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot' }) {
+      if (!['snapshot', 'import'].includes(mode)) throw new LibraryError('INVALID_MODE', 'Select snapshot or import review.');
+      canonical(resolutions);
+      // Take ownership before the first await. The caller may keep editing its
+      // choices while storage reads or hashes are still in flight.
+      resolutions = structuredClone(resolutions);
       const state = await adapter.read();
       if (state.libraryId && libraryId !== state.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
-      if (canonical(resolutions) !== '{}') throw new LibraryError('UNSUPPORTED_RESOLUTION', 'Whole-workspace transfers do not resolve record conflicts.');
+      if (mode === 'snapshot' && canonical(resolutions) !== '{}') throw new LibraryError('UNSUPPORTED_RESOLUTION', 'Whole-workspace transfers do not resolve record conflicts.');
       const pkg = await createPackage(sourceText, { libraryId, operationId: 'preview' });
-      await inspectPackage(pkg);
+      const incoming = await inspectPackage(pkg);
+      let importPlan;
+      if (mode === 'import') {
+        const existing = state.revision ? (await inspectPackage({ format: FORMAT, schemaVersion: VERSION, libraryId, head: state.revision, objects: state.objects })).workspace : { library: [] };
+        // Load at the command boundary to avoid a static cycle with the planner's
+        // shared JSON/integrity primitives in this module.
+        const { planLosslessImport } = await import('./import-plan.mjs');
+        importPlan = await planLosslessImport(existing, incoming.workspace, resolutions);
+      }
       const previewId = globalThis.crypto.randomUUID();
-      const input = { libraryId, expectedRevision, sourceText, resolutions };
+      const input = { libraryId, expectedRevision, sourceText, resolutions, mode };
       const fingerprint = await hash(input);
-      previews.set(previewId, { input, fingerprint, expires: now() + previewLifetimeMs });
-      return { previewId, libraryId, expectedRevision, sourceHash: await hash(sourceText), fingerprint, expiresAt: now() + previewLifetimeMs };
+      const expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId, expectedRevision, sourceHash: await hash(sourceText), fingerprint, expiresAt: expires, mode,
+        commitAvailable: mode === 'snapshot', ...(importPlan ? { importPlan } : {}) };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
     },
     async apply({ previewId, libraryId, expectedRevision, idempotencyKey, fingerprint }) {
       if (typeof idempotencyKey !== 'string' || !idempotencyKey || idempotencyKey.length > 200) throw new LibraryError('INVALID_OPERATION', 'An idempotency key up to 200 characters is required.');
@@ -165,6 +192,10 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const preview = previews.get(previewId);
         if (!preview || preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
         if (preview.fingerprint !== fingerprint || preview.input.libraryId !== libraryId || preview.input.expectedRevision !== expectedRevision || state.revision !== expectedRevision || (state.libraryId && state.libraryId !== libraryId)) throw new LibraryError('REVISION_CONFLICT', 'Preview no longer matches the library.', 409);
+        if (preview.input.mode === 'import') {
+          if (preview.response.importPlan.unresolved) throw new LibraryError('UNRESOLVED_IMPORT', 'Resolve every import choice and preview again.', 409);
+          throw new LibraryError('IMPORT_APPLY_UNAVAILABLE', 'Import review is available; applying the complete preserved graph is not implemented.', 409);
+        }
         const pkg = await createPackage(preview.input.sourceText, { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] });
         Object.assign(state.objects, pkg.objects);
         await inspectPackage({ ...pkg, objects: state.objects });
