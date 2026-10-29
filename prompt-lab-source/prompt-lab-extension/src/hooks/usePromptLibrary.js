@@ -13,6 +13,7 @@ import {
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, removeKey, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { commitLibrarySave } from '../lib/libraryJournal.js';
+import { assertScratchJournalReady, commitScratchSave } from '../lib/scratchJournal.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
 import {
@@ -1225,7 +1226,11 @@ export default function usePromptLibrary(notify) {
         const durable = commitLibrarySave(); if (durable) await durable;
         foldersRef.current = next; setFolderRecords(next);
       });
-      if (plan.scratch) await stage('Scratch', () => localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch)));
+      if (plan.scratch) await stage('Scratch', async () => {
+        assertScratchJournalReady();
+        localStorage.setItem(storageKeys.scratch, JSON.stringify(plan.scratch));
+        const durable = commitScratchSave(); if (durable) await durable;
+      });
       if (plan.parsed.packs) await stage('Packs', () => {
         if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
       });

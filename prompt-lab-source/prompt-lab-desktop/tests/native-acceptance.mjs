@@ -19,7 +19,8 @@ const phase = process.env.PL_NATIVE_PHASE || 'exercise';
 assert.ok(['exercise', 'retention'].includes(phase));
 const evidenceDir = path.resolve(process.env.PL_NATIVE_EVIDENCE || 'native-evidence');
 await mkdir(evidenceDir, { recursive: true });
-const evidence = { application, phase, platform: process.platform, sha: process.env.GITHUB_SHA, checks: [] };
+const evidence = { application, phase, platform: process.platform, os: { release: os.release(), version: os.version(), arch: os.arch() }, sha: process.env.GITHUB_SHA, checks: [] };
+evidence.binarySHA256 = createHash('sha256').update(await readFile(application)).digest('hex');
 const tauriOptions = { application };
 if (process.platform === 'win32') {
   assert.ok(process.env.LOCALAPPDATA, 'Windows local app data directory is required');
@@ -238,6 +239,22 @@ const readLibraryJournal = () => command('POST', `/session/${session}/execute/as
     };
     transaction.onerror = () => { db.close(); done({ local, journal: { error: String(transaction.error) } }); };
   };` });
+
+const readScratchJournal = () => command('POST', `/session/${session}/execute/async`, { args: [], script: `
+  const done = arguments[arguments.length - 1];
+  const request = indexedDB.open('prompt_lab_durable');
+  request.onupgradeneeded = () => request.transaction.abort();
+  request.onerror = () => done({ error: String(request.error) });
+  request.onsuccess = () => {
+    const db = request.result;
+    const tx = db.transaction('journal', 'readonly');
+    const read = tx.objectStore('journal').get('scratch');
+    tx.oncomplete = () => {
+      db.close();
+      done(read.result ? { revision: read.result.revision, notes: JSON.parse(read.result.entries['pl2-pads'] || 'null') } : null);
+    };
+    tx.onerror = () => { db.close(); done({ error: String(tx.error) }); };
+  };` });
 async function element(value, using = 'css selector') {
   const result = await waitFor(() => command('POST', `/session/${session}/element`, { using, value }), value);
   return result['element-6066-11e4-a52e-4f735466cecf'] || result.ELEMENT;
@@ -390,6 +407,10 @@ async function openSession() {
   // Inspect after startup only. A readonly IndexedDB transaction before close
   // can wait behind a pending write and accidentally give it time to commit.
   (evidence.libraryJournalsAtBoot ||= []).push({ launch: launchNumber, ...await readLibraryJournal().catch(error => ({ error: error.message })) });
+  (evidence.scratchJournalsAtBoot ||= []).push({ launch: launchNumber,
+    boot: await execute(`return performance.getEntriesByName('prompt-lab:scratch-journal-boot').at(-1)?.detail || null;`),
+    record: await readScratchJournal().catch(error => ({ error: error.message })),
+  });
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
@@ -804,13 +825,65 @@ try {
     evidence.savedPromptId = saved.id;
     await checkpoint('Enhance reached only the loopback fixture and saved through the native UI');
     await click('//*[@data-testid="nav-scratch"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Scratch"]', 'xpath');
+    await waitFor(() => execute('return ["idle", "saved"].includes(document.querySelector("[data-testid=scratch-save-status]")?.dataset.saveState);'), 'initial Scratch storage ready');
+    await execute(`
+      window.__nativeScratchDurability = { fail: true, aborted: 0, completed: 0, prematureSaved: false, prematureObservations: [], watch: false, durability: [] };
+      const scratchTransactions = new WeakSet();
+      const originalTransaction = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function(...args) {
+        const tx = originalTransaction.apply(this, args);
+        // Observe completion before the app registers its promise-resolving
+        // handler. Microtasks can render Saved before a later event listener.
+        tx.addEventListener('complete', () => {
+          if (scratchTransactions.has(tx)) window.__nativeScratchDurability.completed++;
+        });
+        return tx;
+      };
+      const original = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function(value, ...args) {
+        const tx = this.transaction;
+        if (tx.db.name === 'prompt_lab_durable' && value?.id === 'scratch') {
+          const probe = window.__nativeScratchDurability;
+          probe.durability.push(tx.durability || 'not exposed');
+          scratchTransactions.add(tx);
+          if (probe.fail) { probe.aborted++; queueMicrotask(() => tx.abort()); }
+        }
+        return original.call(this, value, ...args);
+      };
+      new MutationObserver(() => {
+        const probe = window.__nativeScratchDurability;
+        const status = document.querySelector('[data-testid=scratch-save-status]');
+        if (probe.watch && !probe.completed && (status?.dataset.saveState === 'saved' || status?.textContent.trim().startsWith('Saved'))) {
+          probe.prematureSaved = true;
+          if (probe.prematureObservations.length < 20) probe.prematureObservations.push({ state: status?.dataset.saveState, label: status?.textContent.trim(), aborted: probe.aborted, at: performance.now() });
+        }
+      }).observe(document.body, { childList: true, characterData: true, subtree: true, attributes: true });
+      return true;
+    `);
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
-    await waitFor(() => execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null")?.pads.some(pad => pad.content.includes("Survives native restart"));'), 'Scratch acknowledged save');
+    await execute('window.__nativeScratchDurability.watch = true; return true;');
+    await waitFor(() => execute('return document.querySelector("[data-testid=scratch-save-status]")?.dataset.saveState === "error";'), 'Scratch strict commit failure visible');
+    assert.equal(await execute('return document.querySelector("textarea[aria-label=Scratchpad]").value;'), 'Survives native restart', 'Failed strict Scratch commit retains editor buffer');
+    await screenshot('scratch-save-failed');
+    await execute('window.__nativeScratchDurability.fail = false; return true;');
+    await click('//button[normalize-space(.)="Retry saving"]', 'xpath');
+    await waitFor(() => execute('return document.querySelector("[data-testid=scratch-save-status]")?.dataset.saveState === "saved";'), 'Scratch strict commit acknowledged');
+    evidence.scratchDurability = await execute('return window.__nativeScratchDurability;');
+    assert.ok(evidence.scratchDurability.aborted > 0, 'Scratch failure aborted a real journal write');
+    assert.ok(evidence.scratchDurability.completed > 0, 'Scratch Saved follows strict completion');
+    assert.equal(evidence.scratchDurability.prematureSaved, false, 'No Scratch Saved before strict commit');
+    if (process.platform === 'win32') assert.ok(evidence.scratchDurability.durability.every(value => value === 'strict'), 'Windows Scratch uses strict transaction durability');
+    assert.ok(await execute('return JSON.parse(localStorage.getItem("pl2-pads") || "null")?.pads.some(pad => pad.content.includes("Survives native restart"));'), 'Scratch mirror contains acknowledged content');
     await screenshot('saved');
-    await closeSession();
-    await openSession();
-    const restored = await checkPersisted();
-    assert.equal(restored.id, saved.id);
+    for (let restart = 0; restart < 3; restart++) {
+      await closeSession();
+      await openSession();
+      const restored = await checkPersisted();
+      assert.equal(restored.id, saved.id);
+      await click('//*[@data-testid="nav-scratch"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Scratch"]', 'xpath');
+      assert.equal(await execute('return document.querySelector("textarea[aria-label=Scratchpad]").value;'), 'Survives native restart', 'Scratch content visibly survives repeated full app restarts');
+      await openCreate();
+    }
     await checkpoint('full native app close and relaunch preserved Library identity/body and Scratch content');
     await screenshot('restarted');
     await exerciseFollowUp(saved.id);

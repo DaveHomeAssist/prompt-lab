@@ -5,6 +5,27 @@ const source = 'Write a release checklist with owners and clear acceptance crite
 const result = 'Create a release checklist. For every item name its owner, verification command, expected result and rollback action.';
 const readLibrary = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]'));
 
+for (const width of [1440, 375]) {
+  test(`Undo dismisses another prompt's save receipt and restores the recoverable draft at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+    await prepare(page, 'split');
+    await page.getByTestId('global-new-prompt').click();
+    await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
+    await page.getByTestId('prompt-input').fill('A separate synthetic prompt saved before Undo.');
+    await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+    await expect(page.locator('#save-receipt-title')).toBeVisible();
+    const saved = await readLibrary(page);
+    await page.getByRole('button', { name: 'Undo reset', exact: true }).click();
+    await expect(page.locator('#save-receipt-title')).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Editing context' })).toHaveAttribute('data-editing-mode', 'new');
+    await expect(page.getByTestId('prompt-input')).toHaveValue(source);
+    await showResult(page);
+    await expect(page.getByTestId('output-textarea')).toHaveValue(result);
+    expect(await readLibrary(page)).toEqual(saved);
+    await fits(page);
+  });
+}
+
 async function prepare(page, layout) {
   await page.addInitScript(({ layout, source, result }) => {
     if (sessionStorage.getItem('__lifecycleFixture')) return;

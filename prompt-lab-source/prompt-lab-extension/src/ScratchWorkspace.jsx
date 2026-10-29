@@ -7,6 +7,8 @@ import { logWarn } from './lib/logger.js';
 import { matchPadShortcut } from './lib/padShortcuts.js';
 import usePersistedState from './usePersistedState.js';
 import PanelResizer from './PanelResizer.jsx';
+import useScratchDurability from './hooks/useScratchDurability.js';
+import { getScratchDurability, startScratchJournal } from './lib/scratchJournal.js';
 import ScratchNoteRow, { SCRATCH_COLOR_SWATCHES, SCRATCH_LIST_DENSITIES, formatRelativeTime } from './ScratchNoteRow.jsx';
 import {
   SCRATCH_KEY,
@@ -178,8 +180,12 @@ export default function ScratchWorkspace({
   const [selection, setSelection] = useState({ start: 0, end: 0, text: '' });
   const [sendScope, setSendScope] = useState('whole');
   const [tagDraft, setTagDraft] = useState('');
-  const [saveState, setSaveState] = useState('idle');
-  const [saveError, setSaveError] = useState('');
+  const durability = useScratchDurability();
+  const [localSaveState, setSaveState] = useState('idle');
+  const [localSaveError, setSaveError] = useState('');
+  const saveState = durability.status === 'saving' && localSaveState !== 'dirty' ? 'saving' : localSaveState;
+  const saveError = localSaveError || (durability.status === 'error'
+    ? (durability.bootFailed ? 'Notes could not be restored. Retry loading before editing.' : 'Save failed. Your draft remains in this editor for retry.') : '');
   const [lastSavedAt, setLastSavedAt] = useState(initialPad?.updatedAt || 0);
   const [relativeSavedAt, setRelativeSavedAt] = useState('');
   const [nameDialog, setNameDialog] = useState(null);
@@ -318,6 +324,7 @@ export default function ScratchWorkspace({
   };
 
   const loadScratchState = () => {
+    if (getScratchDurability().bootFailed) return;
     const { payload, error, errorStage, migrated } = migrateScratchStorage();
     migrationReadFailedRef.current = Boolean(error && errorStage === 'read');
     if (migrationReadFailedRef.current) {
@@ -853,7 +860,7 @@ export default function ScratchWorkspace({
       aria-label="Scratchpad"
       placeholder={'Capture notes, prompt fragments, and reusable ideas…\n\nMarkdown is supported.'}
       value={text}
-      readOnly={migrationReadFailedRef.current}
+      readOnly={migrationReadFailedRef.current || durability.bootFailed}
       onChange={(event) => scheduleSave(event.target.value)}
       onKeyDown={handleEditorKeyDown}
       onSelect={(event) => setSelection(getSelection(event.currentTarget, textRef.current))}
@@ -973,11 +980,12 @@ export default function ScratchWorkspace({
           </div>
 
           <footer className="pl-scratch-footer shrink-0 flex flex-wrap items-center justify-between gap-2">
-            {saveError && <button type="button" className={`ui-control rounded-lg px-3 py-2 text-xs ${m.btn || ''}`} onClick={() => {
-              if (migrationReadFailedRef.current) loadScratchState();
+            {saveError && <button type="button" className={`ui-control rounded-lg px-3 py-2 text-xs ${m.btn || ''}`} onClick={async () => {
+              if (durability.bootFailed) { await startScratchJournal(); loadScratchState(); }
+              else if (migrationReadFailedRef.current) loadScratchState();
               else commitActiveContent(textRef.current);
-            }}>{migrationReadFailedRef.current ? 'Retry loading' : 'Retry saving'}</button>}
-            <div aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
+            }}>{migrationReadFailedRef.current || durability.bootFailed ? 'Retry loading' : 'Retry saving'}</button>}
+            <div data-testid="scratch-save-status" data-save-state={saveError ? 'error' : saveState} role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
               {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed. Stored data kept.' : 'Save failed. Draft kept.') : saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>
                   : saveState === 'saving' ? <span className={m.textMuted || ''}>Saving…</span>
