@@ -10,7 +10,7 @@ import { captureSourceInventory } from '../../library-storage/source-inventory.m
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const storePath = '/prompt-lab-extension/src/lib/libraryCommandOutbox.js';
-const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request', 'lifecycle-request', 'record-request', 'folder-request'].map(name => `/library-storage/${name}.mjs`)];
+const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request', 'lifecycle-request', 'record-request', 'folder-request', 'pack-request'].map(name => `/library-storage/${name}.mjs`)];
 const content = { library: [{ id: 'prompt', original: 'Complete $& {{input}}', unknown: { preserved: true },
   versions: Array.from({ length: 41 }, (_, n) => ({ id: `v${n}`, original: `Version ${n}` })) }],
   runs: Array.from({ length: 1002 }, (_, n) => ({ id: `r${n}`, output: `Run ${n}`, unknown: n })), backups: [{ name: 'Preserved' }] };
@@ -59,6 +59,46 @@ const valueCases = {
   'recovery-replace': { domain: 'recovery', action: 'replace', value: 'Complete record' },
   'loaded-pack-delete': { domain: 'loaded-packs', action: 'delete' },
 };
+for (const action of ['publish', 'remove']) test(`atomic pack ${action} survives a separate browser process and keeps all prompt history`, async () => {
+  const credential = { token: 'synthetic-atomic-pack-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
+  const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
+  const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
+  const profile = await mkdtemp(resolve(tmpdir(), 'promptlab-pack-outbox-')); let context;
+  try {
+    const workspace = { library: [{ ...content.library[0], metadata: { packId: 'pack' } }], trash: [],
+      packs: { pack: { id: 'pack', title: 'Before', version: '1', source: 'user', unknown: true } }, loadedPacks: ['pack'] };
+    const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': '[]' };
+    const sourceInventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'synthetic-pack-origin',
+      localStorage: { length: 2, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
+      readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic absent store.' }), archives: { reviewed: true, records: [] } });
+    const imported = await api.service.preview({ libraryId: 'lib', expectedRevision: null, sourceText: JSON.stringify(workspace), sourceInventory, mode: 'import' });
+    const receipt = await api.service.apply({ ...imported, idempotencyKey: 'import' });
+    const selected = await api.service.previewCurrentView({ libraryId: 'lib', expectedRevision: receipt.revision });
+    const base = await api.service.apply({ ...selected, idempotencyKey: 'select' });
+    const pageRecords = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: base.revision, domain: 'prompts' }), row = pageRecords.items[0];
+    const request = { libraryId: 'lib', expectedRevision: base.revision, sourceBinding: imported.sourceBinding, packId: 'pack',
+      changedAt: '2026-10-29T12:00:00.000Z', action, mode: 'pack', ...(action === 'remove' ? { confirmRemoval: true }
+        : { pack: { id: 'pack', title: 'Published', version: '2', source: 'user' },
+          members: [{ groupId: pageRecords.groups.find(group => group.selected === row.key).id, expectedRecordHash: row.valueHash }] }) };
+    context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
+    let page = await context.newPage(); await boot(page, options);
+    await page.evaluate(async request => outbox.enqueue({ request, review: await transport.preview(request), operationId: 'pack' }), request);
+    expect(await page.evaluate(() => durability)).toEqual(['strict']);
+    await context.close(); context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
+    page = await context.newPage(); await boot(page, options);
+    expect((await page.evaluate(() => outbox.read('lib', 'pack'))).request).toEqual(request);
+    const committed = await page.evaluate(() => outbox.replay('lib', 'pack', transport));
+    expect(committed.state).toBe('committed'); expect(await page.evaluate(() => outbox.replay('lib', 'pack', transport))).toEqual(committed);
+    const query = { libraryId: 'lib', expectedRevision: committed.receipt.revision };
+    const prompts = await api.service.currentRecords({ ...query, domain: action === 'remove' ? 'trash' : 'prompts' });
+    expect(prompts.total).toBe(1); expect(prompts.items[0].value.versions.slice(0, 41)).toEqual(content.library[0].versions);
+    expect(prompts.items[0].value.versions).toHaveLength(action === 'remove' ? 41 : 42);
+    expect((await api.service.currentRecords({ ...query, domain: 'packs' })).total).toBe(action === 'remove' ? 0 : 1);
+    expect((await api.service.currentRecords({ ...query, domain: 'loaded-packs' })).total).toBe(action === 'remove' ? 0 : 1);
+    expect(Object.keys((await adapter.read()).operations)).toHaveLength(3);
+  } finally { await context?.close(); await api.close(); await rm(profile, { recursive: true, force: true }); }
+});
+
 for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-create', 'record-update', 'record-delete', 'pack-create', 'pack-update', 'pack-delete', ...Object.keys(valueCases)]) test(`an ordinary ${mode} command survives browser restart and commits through the shared API once`, async () => {
   const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });

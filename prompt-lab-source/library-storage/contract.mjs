@@ -140,7 +140,7 @@ export async function inspectPackage(pkg) {
     const derivedSources = [...new Map(commit.parents.flatMap(parent => visited.get(parent).derivedSources ?? [])
       .map(source => [canonical(source), source])).values()];
     if (Object.hasOwn(commit, 'sourceBinding')) {
-      if (['restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation, selection and edits use retained ancestry evidence only.');
+      if (['restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder', 'pack'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation, selection and edits use retained ancestry evidence only.');
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
       if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
@@ -211,6 +211,20 @@ export async function inspectPackage(pkg) {
         throw new LibraryError('CREATE_PLAN_MISMATCH', 'Creation differs from its reviewed parent, identity or retained fields.', 409);
       }
       derivedSources.push(plan.derivedSource);
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null, currentView: plan.currentViewPlan };
+    } else if (operation === 'pack') {
+      if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'A pack change requires one reviewed parent.', 409);
+      const parent = visited.get(commit.parents[0]);
+      const plan = await readObject(pkg.objects, commit.packPlan, 'pack-mutation-plan');
+      const { planPackMutation } = await import('./pack-plan.mjs');
+      const expected = await planPackMutation({ ...pkg, head: commit.parents[0] }, parent, plan.request);
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      if (expected.plan.unresolved || canonical(plan) !== canonical(expected.plan) || canonical(manifest) !== canonical(plan.manifest)
+        || commit.source !== plan.source || commit.inputState !== plan.inputState
+        || Object.entries(expected.objects).some(([key, object]) => canonical(pkg.objects[key]) !== canonical(object))) {
+        throw new LibraryError('PACK_PLAN_MISMATCH', 'Pack change differs from its reviewed parent, identity or retained fields.', 409);
+      }
+      derivedSources.push(...plan.derivedSources);
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null, currentView: plan.currentViewPlan };
     } else if (operation === 'folder') {
       if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'A folder change requires one reviewed parent.', 409);
@@ -360,6 +374,22 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     read: () => adapter.read(),
     previewRead: currentReview,
     transfer: exportTransfer,
+    async previewPack(value) {
+      value = structuredClone(value);
+      const { normalizePackRequest, planPackMutation } = await import('./pack-plan.mjs');
+      const request = normalizePackRequest(value), state = await adapter.read();
+      if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Pack change targets another library.', 409);
+      if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin pack changes to the current library revision.', 409);
+      const pkg = packageFor(state), inspected = await inspectPackage(pkg);
+      const { plan } = await planPackMutation(pkg, inspected, request);
+      const input = { ...request, mode: 'pack' }, previewId = globalThis.crypto.randomUUID();
+      const fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId: request.libraryId, expectedRevision: request.expectedRevision, sourceHash: plan.source,
+        fingerprint, expiresAt: expires, mode: 'pack', commitAvailable: plan.unresolved === 0, packPlan: plan };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
+    },
     async previewFolder(value) {
       value = structuredClone(value);
       const { normalizeFolderRequest, planFolderMutation } = await import('./folder-plan.mjs');
@@ -492,7 +522,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder'].includes(commit.operation) ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder', 'pack'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
@@ -576,7 +606,19 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
         let pkg;
-        if (preview.input.mode === 'folder') {
+        if (preview.input.mode === 'pack') {
+          if (preview.response.packPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve the current view before changing packs.', 409);
+          const { planPackMutation } = await import('./pack-plan.mjs');
+          const { mode, ...request } = preview.input;
+          const current = packageFor(state), inspected = await inspectPackage(current);
+          const { plan, objects } = await planPackMutation(current, inspected, request);
+          if (canonical(plan) !== canonical(preview.response.packPlan)) throw new LibraryError('PACK_PLAN_MISMATCH', 'Pack change no longer matches its reviewed identity and action.', 409);
+          const planObject = await makeObject('pack-mutation-plan', plan), manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, operation: 'pack', source: plan.source, inputState: plan.inputState,
+            state: manifest.hash, packPlan: planObject.hash, createdAt: new Date().toISOString() });
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { ...objects, [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else if (preview.input.mode === 'folder') {
           if (preview.response.folderPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve the current view before changing folders.', 409);
           const { planFolderMutation } = await import('./folder-plan.mjs');
           const { mode, ...request } = preview.input;

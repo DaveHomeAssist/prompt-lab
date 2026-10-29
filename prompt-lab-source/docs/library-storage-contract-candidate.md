@@ -1,5 +1,40 @@
 # Library storage contract candidate
 
+## Atomic pack publication and removal
+
+Pack Studio currently assigns prompt membership, saves the registry and moves
+removed prompts to Trash through separate writes. The shared command must publish
+those related changes together, or publish none. Pin the source identity and
+library revision, retain every prompt version and unknown field, and use one
+operation receipt for recovery after a lost response. Removal keeps recovery
+content and clears the selected registry and loaded marker without permanent
+erasure. Publication requires reviewed prompt identities and hashes, preserves
+unmentioned registry metadata and rejects permanently deleted identities.
+
+This increment covers shared publish and remove commands, not pack-file parsing
+or the app's migration switch. Pack import remains a separate lossless review:
+keep its raw source, imported history and conflict choices before installation.
+Native activation, performance and actual two-client iCloud acceptance remain
+open. Verify source isolation, complete history, restore, competing branches,
+interrupted publication, restart, API and outbox parity using disposable data.
+
+Dominic Node 22.23.4 passed all 326 storage tests, 42 browser capture and outbox
+checks, the extension build, Markdown lint and four documentation contracts.
+Schema checks accepted 26 new runtime fixtures and 168 earlier fixtures, rejected
+23 malformed requests, and confirmed OpenAPI parity. Interrupted publication and
+lost acknowledgements preserve one atomic operation across restart and transfer.
+
+On an isolated copy of the complete 216-prompt export, publication, removal and
+checkpoint restoration passed. Final readback matched every selected value,
+origin and identity, retained every original reference target, object and receipt,
+and verified a complete backup transfer. The first comparison incorrectly
+required the archive's reference candidates to remain unchanged after adding
+history. The retained failure is followed by exact data and original-target
+checks that allow additional archived candidates. The original export remained
+byte identical. No private data was uploaded or personal storage activated.
+The private harness phases took 40 to 80 seconds, including repeated verification;
+interactive performance and native/app acceptance remain open.
+
 ## Shared draft, asset, recovery and loaded pack records
 
 Extend the shared record command to the remaining captured value shapes: draft

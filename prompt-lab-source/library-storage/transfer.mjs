@@ -47,7 +47,7 @@ async function verifyState(input) {
     const mode = commit.operation ?? 'snapshot';
     if (receipt.operation != null && receipt.operation !== mode) fail('Operation mode differs from its commit.');
     const resolutions = mode === 'import' ? state.objects[commit.importPlan].data.resolutions : {};
-    const input = mode === 'folder'
+    const input = mode === 'pack' ? { ...state.objects[commit.packPlan].data.request, mode } : mode === 'folder'
       ? { ...state.objects[commit.folderPlan].data.request, mode }
       : mode === 'record'
       ? { ...state.objects[commit.recordPlan].data.request, mode }
@@ -76,7 +76,7 @@ async function verifyState(input) {
     if (receipt.fingerprint !== current && !(commit.operation == null && receipt.operation == null && receipt.fingerprint === await hash(legacy))) fail('Operation fingerprint differs from its committed input.');
     if ((receipt.sourceHash != null && receipt.sourceHash !== commit.source) || (receipt.stateHash != null && receipt.stateHash !== commit.state)) fail('Receipt object references differ from its commit.');
     if (receipt.counts != null) {
-      const manifest = ['import', 'restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder'].includes(mode) ? state.objects[commit.state].data : null;
+      const manifest = ['import', 'restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record', 'folder', 'pack'].includes(mode) ? state.objects[commit.state].data : null;
       const counts = receipt.counts;
       if (!record(counts) || !Number.isSafeInteger(counts.objects) || counts.objects < 1 || counts.objects > Object.keys(state.objects).length
         || counts.sources !== (manifest?.sources.length ?? 1) || counts.records !== (manifest?.nodes.length ?? null)

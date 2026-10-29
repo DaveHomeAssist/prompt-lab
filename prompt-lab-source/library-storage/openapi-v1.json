@@ -1199,6 +1199,62 @@
           }
         ]
       }
+    },
+    "/v1/library/pack-mutations": {
+      "post": {
+        "summary": "Preview atomic pack publication or removal",
+        "operationId": "postV1LibraryPacks",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Review with suppressed selections and evidence gaps; commitAvailable is true only when unresolved is zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "description": "Publish reviewed prompt membership and pack metadata together, or move active members to Trash and deactivate the registry and loaded marker together. Retain every prior value and history. Apply the reviewed change through the shared commit endpoint with one idempotency key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1233,7 +1289,8 @@
               "prompt-create-plan",
               "prompt-lifecycle-plan",
               "record-mutation-plan",
-              "folder-mutation-plan"
+              "folder-mutation-plan",
+              "pack-mutation-plan"
             ]
           },
           "data": {}
@@ -1323,7 +1380,8 @@
               "create",
               "lifecycle",
               "record",
-              "folder"
+              "folder",
+              "pack"
             ]
           },
           "importPlan": {
@@ -1378,6 +1436,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "folderPlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "packPlan": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
           }
@@ -1989,6 +2051,99 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "pack"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "packPlan",
+                "inputState"
+              ],
+              "properties": {
+                "parents": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "sourceBinding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "selectionPolicy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "importPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restorePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restoredCheckpointId"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "reconciliationPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "incomingBranch"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "currentViewPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "editPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "createPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "lifecyclePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "recordPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "folderPlan"
+                    ]
+                  }
+                ]
+              }
+            }
           }
         ]
       },
@@ -2037,7 +2192,8 @@
               "create",
               "lifecycle",
               "record",
-              "folder"
+              "folder",
+              "pack"
             ]
           },
           "commitAvailable": {
@@ -2084,6 +2240,9 @@
           },
           "folderPlan": {
             "$ref": "#/components/schemas/FolderPlan"
+          },
+          "packPlan": {
+            "$ref": "#/components/schemas/PackPlan"
           }
         },
         "required": [
@@ -2595,6 +2754,59 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "pack"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "packPlan"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "packPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "packPlan"
+                ]
+              }
+            }
           }
         ]
       },
@@ -2658,7 +2870,8 @@
               "create",
               "lifecycle",
               "record",
-              "folder"
+              "folder",
+              "pack"
             ]
           },
           "stateHash": {
@@ -6672,6 +6885,155 @@
               "mode"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "packId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "action": {
+                "const": "publish"
+              },
+              "pack": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "\\S"
+                  },
+                  "title": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "version",
+                  "source"
+                ],
+                "additionalProperties": true
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "groupId": {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    },
+                    "expectedRecordHash": {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "groupId",
+                    "expectedRecordHash"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000,
+                "uniqueItems": true
+              },
+              "mode": {
+                "const": "pack"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "sourceBinding",
+              "packId",
+              "changedAt",
+              "action",
+              "pack",
+              "members",
+              "mode"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "packId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "action": {
+                "const": "remove"
+              },
+              "confirmRemoval": {
+                "const": true
+              },
+              "mode": {
+                "const": "pack"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "sourceBinding",
+              "packId",
+              "changedAt",
+              "action",
+              "confirmRemoval",
+              "mode"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -7378,6 +7740,39 @@
             "required": [
               "action",
               "folderId",
+              "sourceIdentity",
+              "changedAt"
+            ],
+            "additionalProperties": false
+          },
+          "packMutation": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "enum": [
+                  "publish",
+                  "remove"
+                ]
+              },
+              "packId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "sourceIdentity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              }
+            },
+            "required": [
+              "action",
+              "packId",
               "sourceIdentity",
               "changedAt"
             ],
@@ -8392,7 +8787,8 @@
             "enum": [
               "permanent-deletion",
               "checkpoint-not-selected",
-              "folder-removed"
+              "folder-removed",
+              "pack-uninstalled"
             ]
           }
         },
@@ -8897,6 +9293,220 @@
           "activationReady",
           "fingerprint",
           "changes"
+        ],
+        "additionalProperties": false
+      },
+      "PackRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "packId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "action": {
+                "const": "publish"
+              },
+              "pack": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "\\S"
+                  },
+                  "title": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "version",
+                  "source"
+                ],
+                "additionalProperties": true
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "groupId": {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    },
+                    "expectedRecordHash": {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    }
+                  },
+                  "required": [
+                    "groupId",
+                    "expectedRecordHash"
+                  ],
+                  "additionalProperties": false
+                },
+                "maxItems": 1000,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "sourceBinding",
+              "packId",
+              "changedAt",
+              "action",
+              "pack",
+              "members"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "packId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "action": {
+                "const": "remove"
+              },
+              "confirmRemoval": {
+                "const": true
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "sourceBinding",
+              "packId",
+              "changedAt",
+              "action",
+              "confirmRemoval"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "PackPlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-pack-mutation-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "request": {
+            "$ref": "#/components/schemas/PackRequest"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inputState": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/LibraryState"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activationReady": {
+            "const": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "derivedSources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/DerivedSource"
+            }
+          },
+          "changedMembers": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "request",
+          "source",
+          "inputState",
+          "manifest",
+          "currentViewPlan",
+          "unresolved",
+          "activationReady",
+          "fingerprint",
+          "derivedSources",
+          "changedMembers"
         ],
         "additionalProperties": false
       }
