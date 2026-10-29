@@ -5,7 +5,8 @@ import { createIndexedCommandStore } from './libraryCommandOutbox.js';
 import { APP_RECORD_VERSION } from './appRecordVersion.js';
 
 export { APP_RECORD_VERSION } from './appRecordVersion.js';
-const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments']);
+const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments', 'scratch-notes']);
+const readable = new Set([...supported, 'prompts', 'trash']);
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
@@ -38,6 +39,9 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
   function domainCheck(domain) {
     if (!supported.has(domain)) fail('UNSUPPORTED_APP_DOMAIN', 'This app record connection does not own that data.');
   }
+  function readCheck(domain) {
+    if (!readable.has(domain)) fail('UNSUPPORTED_APP_DOMAIN', 'This app record connection does not own that data.');
+  }
   async function refresh() {
     assertConnected();
     const identity = await transport.identity();
@@ -65,6 +69,9 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
           fail('INVALID_RESPONSE', 'A library record failed its identity or content check.');
         }
         keys.add(row.key); items.push(structuredClone(row));
+        if (row.domain === 'scratch-notes' && row.commandGroupId !== await hash([libraryId, row.domain, row.origin?.sourceIdentity, row.sourceId])) {
+          fail('INVALID_RESPONSE', 'The Scratch record command identity is invalid.');
+        }
       }
       const expectedNext = items.length < total ? String(items.length) : null;
       if (items.length > total || page.nextCursor !== expectedNext || (expectedNext !== null && !page.items.length)) {
@@ -103,10 +110,17 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
   function valueOf(row) {
     if (!row) return null;
     const value = structuredClone(row.value), group = snapshot.groups.find(group => group.selected === row.key && group.domain === row.domain);
-    if (!object(value) || !group || !address(group.id)) fail('INVALID_RESPONSE', 'The selected app record needs recovery.');
+    const groupId = row.domain === 'scratch-notes' ? row.commandGroupId : group?.id;
+    if (!object(value) || !address(groupId)) fail('INVALID_RESPONSE', 'The selected app record needs recovery.');
     value[APP_RECORD_VERSION] = Object.freeze({ libraryId, revision: snapshot.revision, domain: row.domain,
-      sourceId: row.sourceId, groupId: group.id, valueHash: row.valueHash });
+      sourceId: row.sourceId, groupId, valueHash: row.valueHash });
     return value;
+  }
+  function observed(row, version) {
+    return row && version && version.libraryId === libraryId && version.domain === row.domain
+      && version.sourceId === row.sourceId && version.revision === snapshot.revision && version.valueHash === row.valueHash
+      && (row.domain === 'scratch-notes' ? version.groupId === row.commandGroupId
+        : snapshot.groups.some(group => group.id === version.groupId && group.selected === row.key));
   }
   async function replayPending() {
     for (const entry of await outbox.list(libraryId)) {
@@ -132,15 +146,15 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
     libraryId,
     async open() { return serial(async () => { await replayPending(); await refresh(); return { libraryId, revision: snapshot.revision }; }); },
     async readDomain(domain) {
-      domainCheck(domain);
+      readCheck(domain);
       return serial(async () => { await refresh(); return snapshot.items.filter(row => row.domain === domain).map(valueOf); });
     },
     async readRecord(domain, id) {
-      domainCheck(domain);
+      readCheck(domain);
       return serial(async () => { await refresh(); return valueOf(selected(domain, id)); });
     },
     async readObservedRecord(domain, id) {
-      domainCheck(domain);
+      readCheck(domain);
       return serial(() => {
         if (!snapshot) fail('LIBRARY_NOT_OPEN', 'Open the library before editing its records.');
         // This is an editing base, not a claim that the service is current.
@@ -158,7 +172,8 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
       return serial(async () => {
         if (!snapshot) await refresh();
         const row = selected(domain, id);
-        const mutable = Object.fromEntries(Object.entries(input).filter(([key]) => ![idKey, 'createdAt', 'started_at'].includes(key)));
+        const mutable = Object.fromEntries(Object.entries(input).filter(([key]) => ![idKey, 'createdAt', 'started_at',
+          ...(domain === 'scratch-notes' ? ['updatedAt', 'timestamp'] : [])].includes(key)));
         const updates = row ? fieldUpdates(row.value, mutable) : null;
         if (row && !updates.length) {
           const identity = await transport.identity(); assertConnected();
@@ -170,9 +185,7 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
           }
           return valueOf(row);
         }
-        if (row && (!version || version.libraryId !== libraryId || version.domain !== domain || version.sourceId !== id
-          || version.revision !== snapshot.revision || version.valueHash !== row.valueHash
-          || !snapshot.groups.some(group => group.id === version.groupId && group.selected === row.key))) {
+        if (row && !observed(row, version)) {
           fail('RECORD_CONFLICT', 'This record changed or has no saved version. Keep the edit and reload its current version.');
         }
         if (!row && version) fail('RECORD_TARGET_UNAVAILABLE', 'The edited record is no longer active. Keep the edit for recovery.');
@@ -205,15 +218,80 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
           }
           return;
         }
-        if (!version || version.libraryId !== libraryId || version.domain !== domain || version.sourceId !== id
-          || version.revision !== snapshot.revision || version.valueHash !== row.valueHash
-          || !snapshot.groups.some(group => group.id === version.groupId && group.selected === row.key)) {
+        if (!observed(row, version)) {
           fail('RECORD_CONFLICT', 'Reload this record before deleting it. Pending edits are retained.');
         }
         const operationId = 'app-delete:' + (await hash(version)).slice(7);
         await publish({ mode: 'record', libraryId, expectedRevision: snapshot.revision, domain, action: 'delete',
           groupId: version.groupId, expectedRecordHash: row.valueHash, changedAt: new Date(now()).toISOString(),
           confirmPermanentDeletion: true }, operationId);
+      });
+    },
+    async readPromptLibrary() {
+      return serial(async () => {
+        await refresh();
+        return { libraryId, revision: snapshot.revision,
+          library: snapshot.items.filter(row => row.domain === 'prompts').map(valueOf),
+          trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf) };
+      });
+    },
+    async createPrompt({ creationId, record, createdAt = new Date(now()).toISOString() }) {
+      const input = structuredClone(record); canonical(input);
+      return serial(async () => {
+        if (!snapshot) await refresh();
+        const id = `p-${(await hash({ libraryId, creationId })).slice(7)}`;
+        const operationId = 'app-create:' + (await hash({ libraryId, creationId, input })).slice(7);
+        const retained = await outbox.read(libraryId, operationId);
+        if (selected('prompts', id) && !retained) fail('IDENTITY_CONFLICT', 'This creation identity is already in use.');
+        const committed = await publish({ mode: 'create', libraryId, expectedRevision: snapshot.revision,
+          sourceBinding, creationId, createdAt, record: input }, operationId);
+        const row = selected('prompts', id);
+        if (!row || fieldUpdates(row.value, input).length) fail('RECORD_CONFLICT', 'The created prompt changed. Review its retained receipt and current content.');
+        return { record: valueOf(row), receipt: structuredClone(committed.receipt) };
+      });
+    },
+    async editPrompt(record, changes) {
+      const version = record?.[APP_RECORD_VERSION], input = structuredClone(changes); canonical(input);
+      if (!object(version)) fail('RECORD_CONFLICT', 'A verified observed prompt is required before editing.');
+      return serial(async () => {
+        if (!snapshot) await refresh();
+        const operationId = 'app-edit:' + (await hash({ libraryId, version, input })).slice(7);
+        const retained = await outbox.read(libraryId, operationId);
+        const row = selected('prompts', record?.id);
+        if (!retained && !observed(row, version)) fail('RECORD_CONFLICT', 'The prompt changed. Keep the draft and review its current version.');
+        const updates = row ? fieldUpdates(row.value, input) : [];
+        if (!retained && !updates.length) {
+          const identity = await transport.identity(); assertConnected();
+          if (identity.libraryId !== libraryId || identity.revision !== snapshot.revision) fail('REVISION_CONFLICT', 'The library changed. Reload before acknowledging this prompt.');
+          if ((await outbox.list(libraryId)).some(entry => entry.state !== 'committed')) fail('LIBRARY_WRITES_PENDING', 'Recover pending changes before acknowledging this prompt.');
+          return { record: valueOf(row), unchanged: true, identity: { libraryId, revision: snapshot.revision } };
+        }
+        const committed = await publish(retained?.request ?? { mode: 'edit', libraryId, expectedRevision: snapshot.revision,
+          groupId: version.groupId, expectedRecordHash: row.valueHash, updates, editedAt: new Date(now()).toISOString() }, operationId);
+        const saved = selected('prompts', record.id);
+        if (!saved || fieldUpdates(saved.value, input).length) fail('RECORD_CONFLICT', 'Another edit followed this save. Review the retained operation and current prompt.');
+        return { record: valueOf(saved), receipt: structuredClone(committed.receipt) };
+      });
+    },
+    async changePromptLifecycle(action, record, { confirmPermanentDeletion = false } = {}) {
+      const version = record?.[APP_RECORD_VERSION];
+      if (!object(version)) fail('RECORD_CONFLICT', 'A verified observed prompt is required before changing its location.');
+      if (!['trash', 'restore', 'delete'].includes(action) || confirmPermanentDeletion !== (action === 'delete')) {
+        fail('INVALID_LIFECYCLE', 'Confirm permanent deletion explicitly; Trash and restore do not erase retained history.');
+      }
+      return serial(async () => {
+        if (!snapshot) await refresh();
+        const operationId = 'app-lifecycle:' + (await hash({ libraryId, version, action })).slice(7);
+        const retained = await outbox.read(libraryId, operationId);
+        const domain = action === 'trash' ? 'prompts' : 'trash', row = selected(domain, record?.id);
+        if (!retained && !observed(row, version)) fail('RECORD_CONFLICT', 'The prompt location or version changed. Review before continuing.');
+        const committed = await publish(retained?.request ?? { mode: 'lifecycle', libraryId, expectedRevision: snapshot.revision,
+          groupId: version.groupId, expectedRecordHash: row.valueHash, action,
+          changedAt: new Date(now()).toISOString(), confirmPermanentDeletion }, operationId);
+        const current = selected(action === 'trash' ? 'trash' : 'prompts', record.id);
+        if (action !== 'delete' && !current) fail('RECORD_CONFLICT', 'The prompt moved again. Review its retained receipt and current location.');
+        return { record: action === 'delete' ? null : valueOf(current),
+          receipt: structuredClone(committed.receipt) };
       });
     },
     async pending() { return outbox.list(libraryId); },

@@ -7,6 +7,7 @@ import { createServiceTransport } from './command-client.mjs';
 import { createAppLibraryRepository, APP_RECORD_VERSION } from '../prompt-lab-extension/src/lib/appLibraryRepository.js';
 import { createExperimentStore } from '../prompt-lab-extension/src/experimentStore.js';
 import { retryPendingWrites } from '../prompt-lab-extension/src/lib/writeRecovery.js';
+import { createPromptLibraryStore } from '../prompt-lab-extension/src/lib/promptLibraryStore.js';
 
 globalThis.window = { dispatchEvent() {} };
 const stamp = '2026-10-29T21:00:00.000Z';
@@ -22,15 +23,17 @@ function commandStore() {
     },
   };
 }
-async function fixture() {
-  const workspace = { library: [{ id: 'prompt', original: 'Preserved prompt', versions: Array.from({ length: 41 }, (_, i) => ({ id: `v${i}`, original: `v${i}` })) }],
+async function fixture(promptFields = {}) {
+  const workspace = { library: [{ id: 'prompt', title: 'Preserved prompt', original: 'Preserved prompt', enhanced: 'Preserved prompt',
+    variants: [], notes: '', tags: [], collection: '', future: { keep: true }, versions: Array.from({ length: 41 }, (_, i) => ({ id: `v${i}`, original: `v${i}` })), ...promptFields }],
+    scratch: { pads: [{ id: 'note', title: 'Source note', content: 'Keep note', future: { keep: true } }], activeId: 'note', revision: 1 },
     evaluations: [{ id: 'original-eval', input: 'Input', output: 'Original', createdAt: stamp, future: { keep: 9, edit: 1 } }],
     testCases: [{ id: 'original-case', promptId: 'prompt', input: 'Original case', createdAt: stamp, updatedAt: stamp }],
     traceRuns: [{ run_id: 'original-trace', trace_id: 'trace', outputs: { text: 'Original trace' } }],
     experiments: [{ id: 'original-experiment', label: 'Original experiment', variants: [], createdAt: stamp }] };
-  const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': '[]' };
+  const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': '[]', 'pl2-pads': JSON.stringify(workspace.scratch) };
   const inventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'fixture-origin', capturedAt: stamp,
-    localStorage: { length: 2, key: i => Object.keys(entries)[i], getItem: key => entries[key] ?? null },
+    localStorage: { length: 3, key: i => Object.keys(entries)[i], getItem: key => entries[key] ?? null },
     readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic fixture' }), archives: { reviewed: true, records: [] } });
   const service = createCommandService(createMemoryAdapter());
   const review = await service.preview({ libraryId: 'lib', expectedRevision: null, mode: 'import', sourceText: JSON.stringify(workspace), sourceInventory: inventory });
@@ -44,6 +47,166 @@ async function fixture() {
   return { service, transport, store, options, repository, app: createExperimentStore(repository) };
 }
 const read = async (f, domain) => f.service.currentRecords({ libraryId: 'lib', expectedRevision: (await f.service.read()).revision, domain });
+
+test('unchanged legacy prompts retain the displayed version identity without creating a receipt', async () => {
+  const f = await fixture(), app = createPromptLibraryStore(f.repository); await app.open();
+  const version = app.library[0].currentVersionId;
+  const saved = await app.doSave({ editingId: 'prompt', expectedVersionId: version, raw: 'Preserved prompt', title: 'Preserved prompt' });
+  assert.equal(saved.unchanged, true); assert.equal(saved.versionId, version); assert.equal(saved.operationId, null);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 2);
+  const edited = await app.doSave({ editingId: 'prompt', expectedVersionId: saved.versionId, raw: 'Next edit' });
+  assert.ok(edited.operationId); assert.notEqual(edited.versionId, version);
+});
+
+test('editing a title preserves legacy values that the UI normalizes for display', async () => {
+  const input = { variants: [{ label: 'Future variant', content: '', opaque: { keep: true } }],
+    tags: [' padded ', 'padded'], metadata: { future: { keep: true } } };
+  const f = await fixture(input), app = createPromptLibraryStore(f.repository); await app.open();
+  const displayed = app.library[0]; assert.equal(displayed.variants.length, 0);
+  const saved = await app.doSave({ editingId: displayed.id, expectedVersionId: displayed.currentVersionId,
+    raw: displayed.original, enhanced: displayed.enhanced, title: 'Only the title changed',
+    variants: displayed.variants, tags: displayed.tags, notes: displayed.notes, collection: displayed.collection,
+    metadata: displayed.metadata, resultMeta: displayed.resultMeta });
+  assert.ok(saved.operationId);
+  const current = await f.repository.readRecord('prompts', 'prompt');
+  for (const [key, value] of Object.entries(input)) assert.deepEqual(current[key], value);
+  assert.equal(current.title, 'Only the title changed'); assert.equal(current.versions.length, 42);
+});
+
+test('prompt store creates once, edits through the service and keeps complete history and unknown fields', async () => {
+  const f = await fixture(), before = await f.service.read(), messages = [];
+  const app = createPromptLibraryStore(f.repository, { notify: m => messages.push(m), newId: () => 'draft-one' }); await app.open();
+  const original = app.library.find(row => row.id === 'prompt');
+  const versionId = original.currentVersionId;
+  assert.equal((await app.refresh()).library[0].id, 'prompt');
+  assert.equal(app.library.find(row => row.id === 'prompt').currentVersionId, versionId);
+  const saved = await app.doSave({ editingId: 'prompt', expectedVersionId: versionId, raw: 'Editor update', title: 'Updated' });
+  assert.equal(saved.libraryId, 'lib'); assert.ok(saved.revision); assert.ok(saved.operationId);
+  const changed = (await read(f, 'prompts')).items.find(row => row.sourceId === 'prompt').value;
+  assert.equal(changed.original, 'Editor update'); assert.equal(changed.versions.length, 42);
+  assert.equal(changed.versions.at(-1).original, 'Preserved prompt'); assert.deepEqual(changed.future, { keep: true });
+  const args = { raw: 'New editor prompt', title: 'New prompt' };
+  const first = app.doSave(args), second = app.doSave(args); assert.equal(first, second);
+  const created = await first;
+  assert.equal(created.versionNumber, 1); assert.equal(app.library.length, 2);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 4);
+  for (const [key, value] of Object.entries(before.objects)) assert.deepEqual((await f.service.read()).objects[key], value);
+  assert.equal(messages.filter(m => m.startsWith('Saved')).length, 2);
+  const unchanged = await app.doSave({ ...args, editingId: created.id, expectedVersionId: created.versionId });
+  assert.equal(unchanged.unchanged, true); assert.equal(unchanged.operationId, null);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 4);
+});
+
+test('prompt editor preserves a failed offline intent and an identical retry after reconstructed recovery', async () => {
+  const f = await fixture(); let offline = false;
+  const repository = createAppLibraryRepository({ ...f.options, transport: { ...f.transport,
+    identity: async () => { if (offline) throw new LibraryError('SERVICE_UNAVAILABLE', 'Offline'); return f.transport.identity(); },
+  } });
+  const app = createPromptLibraryStore(repository); await app.open();
+  const args = { editingId: 'prompt', expectedVersionId: app.library[0].currentVersionId, raw: 'Offline draft', title: 'Offline title' };
+  const before = await f.service.read(); offline = true;
+  assert.equal(await app.doSave(args), null); assert.match(app.saveError, /draft is still available/);
+  const pending = (await repository.pending())[0]; assert.equal(pending.request.mode, 'edit'); assert.equal(pending.reviewHash, null);
+  assert.deepEqual(await f.service.read(), before);
+  assert.equal(await app.doSave({ ...args, raw: 'Different draft' }), null);
+  const recovered = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(f.store) }); await recovered.open();
+  offline = false;
+  const result = await app.doSave(args); assert.equal(result.versionNumber, 43);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+  assert.equal((await recovered.readRecord('prompts', 'prompt')).original, 'Offline draft');
+});
+
+test('prompt lifecycle retains bytes through Trash, restore and confirmed deletion', async () => {
+  const f = await fixture(), before = await f.service.read();
+  const row = await f.repository.readRecord('prompts', 'prompt');
+  await f.repository.changePromptLifecycle('trash', row);
+  let library = await f.repository.readPromptLibrary(); assert.equal(library.library.length, 0); assert.equal(library.trash.length, 1);
+  const trashed = library.trash[0];
+  await assert.rejects(f.repository.changePromptLifecycle('delete', trashed), { code: 'INVALID_LIFECYCLE' });
+  await f.repository.changePromptLifecycle('restore', trashed);
+  assert.equal((await f.repository.readPromptLibrary()).library[0].versions.length, 41);
+  await f.repository.changePromptLifecycle('trash', (await f.repository.readPromptLibrary()).library[0]);
+  const target = (await f.repository.readPromptLibrary()).trash[0];
+  await f.repository.changePromptLifecycle('delete', target, { confirmPermanentDeletion: true });
+  await f.repository.changePromptLifecycle('delete', target, { confirmPermanentDeletion: true });
+  library = await f.repository.readPromptLibrary(); assert.equal(library.library.length, 0); assert.equal(library.trash.length, 0);
+  const after = await f.service.read(); for (const [key, value] of Object.entries(before.objects)) assert.deepEqual(after.objects[key], value);
+  assert.equal(Object.keys(after.operations).length, 6);
+});
+
+test('a stale prompt editor cannot replace an API edit or create a replacement for a deleted target', async () => {
+  const f = await fixture(), app = createPromptLibraryStore(f.repository); await app.open();
+  const version = app.library[0].currentVersionId;
+  const other = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(commandStore()) }); await other.open();
+  await other.editPrompt(await other.readRecord('prompts', 'prompt'), { original: 'API edit' });
+  assert.equal(await app.doSave({ editingId: 'prompt', expectedVersionId: version, raw: 'Stale editor' }), null);
+  assert.equal((await read(f, 'prompts')).items[0].value.original, 'API edit');
+  assert.equal((await f.repository.pending()).filter(row => row.state !== 'committed').length, 1);
+  const blank = createPromptLibraryStore(other); await blank.open();
+  assert.equal(await blank.doSave({ editingId: 'missing', expectedVersionId: version, raw: 'Do not create' }), null);
+  assert.equal((await read(f, 'prompts')).items.length, 1);
+});
+
+test('connected prompt associations update the shared run and Scratch record without a local fallback', async () => {
+  const f = await fixture(), app = createPromptLibraryStore(f.repository, { newId: () => 'linked-prompt' }); await app.open();
+  const saved = await app.doSave({ raw: 'Linked prompt', sourceNoteId: 'note' });
+  await app.linkSavedPrompt(saved, { runId: 'original-eval', sourceNoteId: 'note' });
+  assert.equal((await f.repository.readRecord('evaluations', 'original-eval')).promptId, saved.id);
+  const note = await f.repository.readRecord('scratch-notes', 'note'); assert.equal(note.linkedPromptId, saved.id);
+  assert.deepEqual(note.future, { keep: true }); assert.equal(note.content, 'Keep note');
+});
+
+test('failed prompt intent storage never publishes, and response loss retries the same creation', async () => {
+  const f = await fixture(), before = await f.service.read();
+  let rejectWrite = true, loseResponse = true;
+  const repository = createAppLibraryRepository({ ...f.options,
+    outbox: createCommandOutbox({ ...f.store, async write(...args) {
+      if (rejectWrite) throw new LibraryError('OUTBOX_WRITE_FAILED', 'Synthetic rejected transaction');
+      return f.store.write(...args);
+    } }),
+    transport: { ...f.transport, async apply(input) {
+      const receipt = await f.transport.apply(input);
+      if (loseResponse) throw new Error('Synthetic lost response');
+      return receipt;
+    } },
+  });
+  const app = createPromptLibraryStore(repository, { newId: () => 'retained-creation' }); await app.open();
+  const args = { raw: 'Complete retained draft' };
+  assert.equal(await app.doSave(args), null);
+  assert.deepEqual(await f.service.read(), before); assert.equal((await repository.pending()).length, 0);
+  rejectWrite = false;
+  assert.equal(await app.doSave(args), null); assert.equal(app.library.length, 1);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+  loseResponse = false;
+  assert.ok((await app.doSave(args)).operationId); assert.equal(app.library.length, 2);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+});
+
+test('a retained completed save cannot relink the editor after a later API edit', async () => {
+  const f = await fixture(); let failRead = false;
+  const app = createPromptLibraryStore({ ...f.repository, async readPromptLibrary() {
+    if (failRead) throw new Error('Synthetic readback failure');
+    return f.repository.readPromptLibrary();
+  } }, { newId: () => 'readback-creation' });
+  await app.open(); failRead = true;
+  const args = { raw: 'First content' };
+  assert.equal(await app.doSave(args), null);
+  const created = (await f.repository.readPromptLibrary()).library.find(row => row.id !== 'prompt');
+  await f.repository.editPrompt(created, { original: 'Later API content' });
+  failRead = false;
+  assert.equal(await app.doSave(args), null); assert.match(app.saveError, /Another change followed/);
+  assert.equal((await f.repository.readRecord('prompts', created.id)).original, 'Later API content');
+  assert.equal(Object.keys((await f.service.read()).operations).length, 4);
+});
+
+test('prompt edits reject identity and history replacement before retaining an intent', async () => {
+  const f = await fixture(), before = await f.service.read();
+  const row = await f.repository.readRecord('prompts', 'prompt');
+  for (const changes of [{ id: 'replacement' }, { versions: [] }, { currentVersionId: 'replacement' }]) {
+    await assert.rejects(f.repository.editPrompt(row, changes));
+  }
+  assert.equal((await f.repository.pending()).length, 0); assert.deepEqual(await f.service.read(), before);
+});
 
 test('actual experiment store reads and writes all four domains through the shared service', async () => {
   const f = await fixture(), before = await f.service.read();

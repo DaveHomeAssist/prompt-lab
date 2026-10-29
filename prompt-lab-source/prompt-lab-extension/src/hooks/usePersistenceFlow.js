@@ -472,12 +472,18 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
           sourceNoteId: savedSourceNoteId,
         });
         setLastSaveReceipt({ ...receipt, resultSnapshot });
-        if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
-        if (resultMetaValue?.runId) {
+        if (lib.repository) {
+          // Connected records must never acquire backlinks in legacy storage.
+          void Promise.resolve().then(() => lib.linkSavedPrompt(saved, { runId: resultMetaValue?.runId, sourceNoteId: savedSourceNoteId }))
+            .then(() => typeof onSaved === 'function' && onSaved(saved.id))
+            .catch(() => notify('Prompt saved to the selected Library. Related run or Scratch links need retry.'));
+        } else if (resultMetaValue?.runId) {
+          if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
           void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
             .then(() => typeof onSaved === 'function' && onSaved(saved.id));
-        } else if (typeof onSaved === 'function') {
-          onSaved(saved.id);
+        } else {
+          if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
+          if (typeof onSaved === 'function') onSaved(saved.id);
         }
       }
       restoreEditorTitle();

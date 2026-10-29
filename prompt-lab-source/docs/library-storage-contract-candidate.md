@@ -1,5 +1,80 @@
 # Library storage contract candidate
 
+## Connected prompt editor boundary
+
+Connect prompt creation, field edits and Trash lifecycle to the same app
+repository used by other records. Keep source-owned identity, complete version
+history and deletion markers in the command service. An editor supplies its
+observed record and version; stale or missing targets preserve the draft rather
+than creating a replacement. New prompts use a retained creation identity so
+double clicks and identical retries cannot create duplicates. Fields unchanged
+from their display projection retain their original stored representation,
+including legacy values that the UI normalizes or hides.
+
+Explicit prompt commands may retain their normalized intent before review,
+just like record edits. Imports, restore checkpoints, selection and other
+review decisions still require their existing review first. Publication waits
+for durable review proof and verified operation readback. Receipts identify the
+library and committed revision. No local browser fallback may acknowledge a
+connected prompt save.
+
+Use a constructed prompt store in the actual editor persistence flow to verify
+new saves, versions, API changes, offline restart and failure feedback. Keep
+related run and Scratch associations in their selected repository; do not
+silently link connected records into the old local stores. Full Library action
+wiring, other app domains, native activation and personal migration remain
+separate acceptance. Verify all histories and unknown fields with synthetic
+fixtures and an isolated copy of the supplied real export.
+
+## October 29 connected prompt save verification
+
+An explicitly constructed prompt store now uses the shared repository for new
+prompts, versions and Trash lifecycle. The existing editor persistence flow
+accepts its confirmed library, revision and operation receipt. Connected run
+and Scratch links stay in that repository. A failed related link produces a
+repair message without writing to legacy browser stores. Full main Library
+action wiring and personal storage activation remain incomplete.
+
+The outbox retains normalized create, edit and lifecycle intents before review,
+alongside record intents. Restart and identical retries reuse their original
+operation. Stale targets, failed durable storage and protected identity/history
+replacement fail safely. Unchanged legacy prompts retain a stable displayed
+version ID without creating a commit. Fields left as displayed retain their
+original stored representation, including hidden legacy variants and metadata.
+A later API edit prevents an earlier completed save from relinking the editor.
+
+Dominic Node 22.23.4 passed 379 storage tests, 1,557 app tests across 140 files,
+231 legacy tests, 18 runtime outbox fixtures through both schemas and rejection
+of 23 malformed fixtures. OpenAPI definitions match. All 49 browser scenarios
+passed in Playwright 1.58.2. After the final display-preservation correction,
+23 repository tests, four actual editor-flow tests, all six migration browser
+scenarios and the extension build passed again. Ten runtime/test/schema files
+match the runner by SHA-256. Initial fixture mistakes and a Mac metadata
+sidecar accidentally transferred into the runner are retained as failed
+attempts; the clean full run passed without exclusions.
+
+The isolated real export on the Mac retained a new prompt and an offline edit
+through browser restart, leaving the other 215 original prompts and both Trash
+records exactly unchanged. The edited prompt's prior snapshot and complete
+history remain, as do all 14 original objects. The final readback retained
+61 current objects and 11 receipts, and a no-change save on the corrected
+source produced no additional operation. Original export bytes and the legacy
+browser Library/Scratch copies remain unchanged. No private upload occurred.
+The initial comparison omitted the service-owned legacy `updated_at` field
+from expected timestamp changes; the failed assertion remains in the evidence.
+Corrected full readback and no-change verification passed in 43.153 seconds.
+Creation/offline publication preceded the last display-preservation correction;
+final readback used the corrected source.
+
+Observed open, creation and restart recovery took 32.533, 49.133 and 55.990
+seconds respectively; offline retention took 0.301 seconds. These delays remain
+an activation blocker. Native runtime ownership, secure pairing, full app
+integration, offline startup reads, conflict recovery UI, actual two-client
+iCloud and installed/human acceptance remain open. Both Windows roots are
+registered and their processes run, but neither sees the Mac probe or export;
+the Mac reports its probe uploaded. Current Windows account and warning status
+remain unverified. Hosted work stays behind Phase A acceptance.
+
 ## October 29 offline edit verification
 
 The candidate retains explicit record edits before service review and reuses
@@ -45,7 +120,7 @@ operation identity, explicit deletion confirmation and original record hash.
 Changed libraries, revisions or review results require conflict recovery, not
 automatic rebasing. Existing version-two reviewed entries remain readable.
 Import, restore, selection and other decisions still require their explicit
-review before enqueueing; the new staging path accepts only record commands.
+review before enqueueing; staging accepts explicit record and prompt commands.
 
 Connected evaluation patches use the last validated observed record as their
 base, so an unavailable service cannot prevent durable retention of the edit.

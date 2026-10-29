@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const appModules = ['libraryAppMigration', 'libraryCommandOutbox', 'librarySourceCapture', 'libraryWriteCoordinator',
   'libraryOriginCapture', 'libraryEditBuffers', 'draftRecoveryCapture', 'libraryMatching', 'promptSchema',
   'utils', 'tagSchema', 'enhancementResult', 'followUpProvenance', 'collectionFolders', 'libraryPresentation',
-  'appLibraryRepository', 'appRecordVersion', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
+  'appLibraryRepository', 'promptLibraryStore', 'appRecordVersion', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
 let server, origin;
 test.use({ channel: 'chromium' });
 test.beforeAll(async () => {
@@ -154,6 +154,66 @@ test('offline app patch survives browser restart before its first service review
     await context?.close(); await api.close(); await rm(directory, { recursive: true, force: true });
   }
 });
+test('prompt store recovers an offline version through a real browser restart and retains Trash history', async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), 'promptlab-prompt-store-'));
+  const credential = { token: 'synthetic-prompt-store-credential-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 180_000 };
+  const adapter = await createFolderAdapter(resolve(directory, 'library'));
+  const api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
+  const options = { baseUrl: await api.listen(), libraryId: 'lib', token: credential.token };
+  let context;
+  try {
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    let page = await context.newPage(); await boot(page, options);
+    const prepared = await page.evaluate(async () => {
+      localStorage.setItem('pl2-library', JSON.stringify([{ id: 'prompt', original: 'Retained original', future: { keep: true },
+        variants: [{ content: '', opaque: true }],
+        versions: Array.from({ length: 41 }, (_, i) => ({ id: `v${i}`, original: `History ${i}` })) }]));
+      const ids = { libraryId: 'lib', operationId: 'copy' };
+      await migration.prepare({ ...ids, sourceIdentity: 'prompt-fixture', archives: { reviewed: true, records: [] } });
+      const copied = await migration.copy({ ...ids, reviewed: await migration.review(ids) });
+      await transport.apply({ ...await transport.preview({ mode: 'select', libraryId: 'lib', expectedRevision: copied.copiedRevision }), idempotencyKey: 'select' });
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const { createPromptLibraryStore } = await import('/prompt-lab-extension/src/lib/promptLibraryStore.js');
+      window.repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding: copied.sourceBinding, transport });
+      window.prompts = createPromptLibraryStore(repository, { newId: () => 'browser-draft' }); await prompts.open();
+      const saved = await prompts.doSave({ raw: 'New browser prompt' });
+      if (!saved?.operationId) throw new Error(prompts.saveError);
+      return { sourceBinding: copied.sourceBinding, source: localStorage.getItem('pl2-library'),
+        version: prompts.library.find(row => row.id === 'prompt').currentVersionId };
+    });
+    const before = await adapter.read(); await context.setOffline(true);
+    const retained = await page.evaluate(async version => {
+      const saved = await prompts.doSave({ editingId: 'prompt', expectedVersionId: version, raw: 'Offline complete edit' });
+      return { saved, error: prompts.saveError, pending: (await repository.pending()).filter(row => row.state !== 'committed') };
+    }, prepared.version);
+    expect(retained.saved).toBeNull(); expect(retained.error).toContain('draft is still available');
+    expect(retained.pending).toHaveLength(1); expect(retained.pending[0]).toMatchObject({ schemaVersion: 3, reviewHash: null, request: { mode: 'edit' } });
+    expect(await adapter.read()).toEqual(before);
+    await context.close();
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    page = await context.newPage(); await boot(page, options);
+    const recovered = await page.evaluate(async sourceBinding => {
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const { createPromptLibraryStore } = await import('/prompt-lab-extension/src/lib/promptLibraryStore.js');
+      const repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding, transport });
+      const prompts = createPromptLibraryStore(repository); await prompts.open();
+      const row = prompts.library.find(row => row.id === 'prompt');
+      await prompts.changeLifecycle('trash', row.id); await prompts.changeLifecycle('restore', row.id);
+      const raw = await repository.readRecord('prompts', row.id);
+      return { original: row.original, future: row.future, versions: row.versions.length,
+        retainedVariants: raw.variants,
+        previous: row.versions.at(-1).original, restored: prompts.library.length, trash: prompts.trash.length,
+        pending: (await repository.pending()).filter(row => row.state !== 'committed').length,
+        source: localStorage.getItem('pl2-library') };
+    }, prepared.sourceBinding);
+    expect(recovered).toEqual({ original: 'Offline complete edit', future: { keep: true }, versions: 42,
+      retainedVariants: [{ content: '', opaque: true }],
+      previous: 'Retained original', restored: 2, trash: 0, pending: 0, source: prepared.source });
+    const after = await adapter.read(); expect(Object.keys(after.operations)).toHaveLength(6);
+    for (const [key, value] of Object.entries(before.objects)) expect(after.objects[key]).toEqual(value);
+  } finally { await context?.close(); await api.close(); await rm(directory, { recursive: true, force: true }); }
+});
+
 test.afterAll(async () => { server.closeAllConnections(); await new Promise(done => server.close(done)); });
 
 async function boot(page, options) {
