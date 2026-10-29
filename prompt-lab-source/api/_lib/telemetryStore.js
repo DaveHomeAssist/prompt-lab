@@ -11,6 +11,10 @@ import {
 const DEFAULT_PREFIX = 'promptlab';
 const DEFAULT_EVENT_LIST_KEY = 'telemetry:events';
 const DEFAULT_EVENT_LIST_LIMIT = 2000;
+// INT-03 / SEC-A05: device profiles and contact records expire after this many
+// days without a new event from that device or contact.
+const DEFAULT_RECORD_TTL_DAYS = 180;
+const DAY_SECONDS = 24 * 60 * 60;
 const DEFAULT_REQUEST_MAX_BYTES = 16 * 1024;
 const DEFAULT_RATE_LIMIT = 60;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -150,14 +154,27 @@ export function buildTelemetryConfig() {
   return {
     redisUrl: readStringEnv('KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL').replace(/\/+$/, ''),
     redisToken: readStringEnv('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'),
-    prefix: readStringEnv('PROMPTLAB_TELEMETRY_PREFIX') || DEFAULT_PREFIX,
+    prefix: readStringEnv('PROMPTLAB_TELEMETRY_PREFIX') || defaultTelemetryPrefix(),
     consoleFallback: readBooleanEnv('PROMPTLAB_TELEMETRY_CONSOLE_FALLBACK', process.env.NODE_ENV !== 'production'),
     eventListLimit: readBoundedIntEnv('PROMPTLAB_TELEMETRY_EVENT_LIST_LIMIT', DEFAULT_EVENT_LIST_LIMIT, {
       min: 100,
       max: 10_000,
     }),
     redisTimeoutMs: readBoundedIntEnv('PROMPTLAB_REDIS_TIMEOUT_MS', REDIS_TIMEOUT_MS, { max: 5000 }),
+    recordTtlSeconds: readBoundedIntEnv('PROMPTLAB_TELEMETRY_RECORD_TTL_DAYS', DEFAULT_RECORD_TTL_DAYS, {
+      min: 1,
+      max: 730,
+    }) * DAY_SECONDS,
   };
+}
+
+// AN-04: Vercel preview and development deployments write under their own
+// prefix so QA traffic never mixes with production events. An explicit
+// PROMPTLAB_TELEMETRY_PREFIX still wins.
+export function defaultTelemetryPrefix(vercelEnv = process.env.VERCEL_ENV) {
+  const env = String(vercelEnv || '').trim().toLowerCase();
+  if (!env || env === 'production') return DEFAULT_PREFIX;
+  return `${DEFAULT_PREFIX}-${env.replace(/[^a-z0-9-]/g, '')}`;
 }
 
 export function normalizeTelemetryEvent(payload = {}, fallbackEvent = '') {
@@ -176,7 +193,9 @@ export function normalizeTelemetryEvent(payload = {}, fallbackEvent = '') {
     throw error;
   }
 
-  const landingEvent = isLandingTelemetryEvent(eventName);
+  // AN-07: only the identify payload (identity.updated) may carry the contact
+  // email; ordinary events stay keyed by the anonymous device id.
+  const acceptsContactEmail = eventName === 'identity.updated' && !isLandingTelemetryEvent(eventName);
 
   return {
     event: eventName,
@@ -185,7 +204,7 @@ export function normalizeTelemetryEvent(payload = {}, fallbackEvent = '') {
     deviceId: normalizeShortString(payload?.deviceId, 120) || `server-${Date.now().toString(36)}`,
     sessionId: normalizeShortString(payload?.sessionId, 120),
     plan: normalizeEnum(payload?.plan, ['free', 'pro'], 'free'),
-    ...(!landingEvent && normalizeEmail(payload?.contactEmail)
+    ...(acceptsContactEmail && normalizeEmail(payload?.contactEmail)
       ? { contactEmail: normalizeEmail(payload?.contactEmail) }
       : {}),
     telemetryEnabled: payload?.telemetryEnabled === true,
@@ -200,7 +219,9 @@ export async function persistTelemetryEvent(event, config = buildTelemetryConfig
   }
 
   const mode = hasRedis(config) ? 'redis' : (config.consoleFallback ? 'console' : 'noop');
-  const payload = JSON.stringify(event);
+  // The shared event list never holds the contact email (AN-07).
+  const { contactEmail: _omitContactEmail, ...listedEvent } = event;
+  const payload = JSON.stringify(listedEvent);
 
   if (hasRedis(config)) {
     const prefix = `${config.prefix}:telemetry`;
@@ -217,20 +238,29 @@ export async function persistTelemetryEvent(event, config = buildTelemetryConfig
     });
 
     const eventListKey = `${prefix}:${DEFAULT_EVENT_LIST_KEY}`;
+    const ttl = String(config.recordTtlSeconds || DEFAULT_RECORD_TTL_DAYS * DAY_SECONDS);
+    const profileKey = `${prefix}:profile:${event.deviceId}`;
+    // INT-03 / SEC-A05: profile and contact keys expire; the never-expiring
+    // devices and emails index sets are no longer written.
     const writes = [
-      redisCommand(config, 'set', [`${prefix}:profile:${event.deviceId}`], profile),
-      redisCommand(config, 'sadd', [`${prefix}:devices`, event.deviceId]),
+      redisCommand(config, 'set', [profileKey], profile),
       redisCommand(config, 'incr', [`${prefix}:count:${event.event}`]),
       redisCommand(config, 'rpush', [eventListKey], payload),
     ];
     if (event.contactEmail) {
       writes.push(
         redisCommand(config, 'set', [`${prefix}:contact:${event.contactEmail}`], profile),
-        redisCommand(config, 'sadd', [`${prefix}:emails`, event.contactEmail]),
       );
     }
     await Promise.all(writes);
+    // Upstash appends a POST body as the last argument, so SET cannot carry EX
+    // here; each key gets its expiry right after it is written.
+    await Promise.all([
+      redisCommand(config, 'expire', [profileKey, ttl]),
+      ...(event.contactEmail ? [redisCommand(config, 'expire', [`${prefix}:contact:${event.contactEmail}`, ttl])] : []),
+    ]);
     await redisCommand(config, 'ltrim', [eventListKey, -config.eventListLimit, -1]);
+    await redisCommand(config, 'expire', [eventListKey, ttl]);
   } else if (config.consoleFallback) {
     console.log('[promptlab.telemetry]', payload);
   }

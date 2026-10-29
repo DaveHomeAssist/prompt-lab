@@ -1,5 +1,6 @@
 import {
   buildStripeConfig,
+  clientErrorMessage,
   corsRejectionResponse,
   jsonResponse,
   lookupBillingForClerk,
@@ -101,7 +102,7 @@ async function licenseHandler(request) {
       checkoutDisabled,
     }, 200, {}, request);
   } catch (error) {
-    const message = error.message || 'Billing request failed.';
+    const message = clientErrorMessage(error, 'Billing request failed.');
     const status = isExternalFetchTimeout(error)
       ? 504
       : (/No active Prompt Lab Pro subscription/i.test(message) ? 404 : 400);

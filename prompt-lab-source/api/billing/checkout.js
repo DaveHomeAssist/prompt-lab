@@ -1,5 +1,6 @@
 import {
   buildStripeConfig,
+  clientErrorMessage,
   corsRejectionResponse,
   createCheckout,
   jsonResponse,
@@ -106,7 +107,7 @@ async function checkoutHandler(request) {
       }, 409, {}, request);
     }
     return jsonResponse(
-      { error: error.message || 'Could not create checkout.' },
+      { error: clientErrorMessage(error, 'Could not create checkout.') },
       isExternalFetchTimeout(error) ? 504 : 500,
       {},
       request,
