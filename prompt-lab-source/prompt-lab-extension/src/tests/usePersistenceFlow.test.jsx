@@ -129,6 +129,15 @@ function renderPersistenceFlow({
 }
 
 describe('usePersistenceFlow', () => {
+  it('uses the acknowledged version for the next save instead of its original loaded version', () => {
+    const entry = makeEntry();
+    const { result, doSave } = renderPersistenceFlow({ entry, doSaveImpl: () => ({ id: entry.id, versionId: 'acknowledged-version' }) });
+    act(() => result.current.applyEntry(entry));
+    act(() => result.current.doSave());
+    expect(doSave.mock.calls[0][0].expectedVersionId).toBe(entry.currentVersionId);
+    act(() => result.current.doSave());
+    expect(doSave.mock.calls[1][0].expectedVersionId).toBe('acknowledged-version');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();

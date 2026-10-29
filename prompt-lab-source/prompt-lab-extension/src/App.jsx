@@ -298,6 +298,7 @@ export default function App({
     lintIssues, lintOpen, setLintOpen, handleLintFix,
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
+    editingVersionId, setEditingVersionId,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
     sourceNoteId, setSourceNoteId, followUpOrigin, setFollowUpOrigin,
@@ -350,7 +351,7 @@ export default function App({
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
   const kbFns = useRef({ enhance, doSave, openSavePanel, primarySave: doSave });
-  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: quickSave }; });
+  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: saveCurrentPrompt }; });
 
   const nav = useNavigation({
     primaryView, setPrimaryView,
@@ -452,6 +453,7 @@ export default function App({
     },
     persistence: {
       editingId,
+      editingVersionId,
       saveTitle,
       saveTags: [...saveTags],
       saveCollection,
@@ -515,6 +517,7 @@ export default function App({
     setEnhMode(restoreEditorMode(editor.enhMode, readGenerationOptions()));
     if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
+    setEditingVersionId?.(persistence?.editingVersionId || (persistence?.editingId ? 'unverified' : null));
     setSaveTitle(persistence?.saveTitle || '');
     setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
     setSaveCollection(persistence?.saveCollection || '');
@@ -970,6 +973,9 @@ export default function App({
       ...saveFlowOverrides,
     },
   );
+  const saveCurrentPrompt = () => primaryView === 'create' && workspaceView === 'split'
+    ? saveDualDraft({ raw, title: saveTitle }, Boolean(editingId))
+    : quickSave();
   const sendScratchToEditor = (payload) => {
     if (raw.trim() || enhanced.trim() || editingId) preserveDraftForUndo('scratch-handoff');
     clearEditor();
@@ -1098,7 +1104,7 @@ export default function App({
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
-    save: () => { if (canSavePanel) quickSave(); closePalette(); },
+    save: () => { if (canSavePanel) saveCurrentPrompt(); closePalette(); },
     saveLabel: primarySaveLabel,
     newPrompt: () => { requestDraftReset('new'); closePalette(); },
     clear: () => { requestDraftReset(); closePalette(); },
@@ -1201,7 +1207,7 @@ export default function App({
 
       {primaryView === 'create' && (workspaceView === 'editor' || workspaceView === 'split') && (
         <div className="px-3 py-1 shrink-0">
-          <CreateContextBar m={m} compact={viewportHeight < 500 || viewportWidth < 1100} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+          <CreateContextBar m={m} compact={viewportHeight < 500 || viewportWidth < 1100} currentEntry={currentEntry} raw={raw} enhanced={workspaceView === 'split' ? raw : enhanced}
             resultMeta={resultMeta} variants={variants} notes={notes}
             suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle}
             saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
