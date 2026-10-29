@@ -59,7 +59,7 @@ jobs:
         run: npx playwright test e2e/library-source-capture.spec.js e2e/library-command-outbox.spec.js
 
       - name: Verify native scenario logic, Library layout and overlap, and Library test cases
-        run: node ../prompt-lab-desktop/tests/native-script-syntax.test.mjs && npx playwright test e2e/native-acceptance-development.spec.js e2e/scratch-durability.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js e2e/save-state-visibility.spec.js e2e/library-artwork.spec.js
+        run: node --test ../prompt-lab-desktop/tests/native-script-syntax.test.mjs ../prompt-lab-desktop/tests/native-webview-readiness.test.mjs && npx playwright test e2e/native-webview-readiness.spec.js e2e/native-acceptance-development.spec.js e2e/scratch-durability.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js e2e/save-state-visibility.spec.js e2e/library-artwork.spec.js
 
   desktop-build:
     needs: extension-tests
@@ -204,11 +204,11 @@ jobs:
           sudo apt-get install -y "$deb"
           export PL_NATIVE_APP=$(dpkg -L "$package" | grep '^/usr/bin/[^/]*$' | head -1)
           test -x "$PL_NATIVE_APP"
-          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/exercise-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           sudo apt-get remove -y "$package"
           test ! -e "$PL_NATIVE_APP"
           sudo apt-get install -y "$deb"
-          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          PL_NATIVE_PHASE=retention xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/retention-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
 
       - name: Upload native acceptance evidence
         if: always() && matrix.platform != 'macos-latest'
@@ -310,12 +310,12 @@ jobs:
           mkdir "$RUNNER_TEMP/promptlab-portable"
           export PL_NATIVE_APP="$RUNNER_TEMP/promptlab-portable/PromptLab.AppImage"
           install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
-          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/exercise-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           # Portable removal/replacement: preserve the entire application profile.
           rm -- "$PL_NATIVE_APP"
           test ! -e "$PL_NATIVE_APP"
           install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
-          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          PL_NATIVE_PHASE=retention xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/retention-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
       - name: Upload alternate package evidence
         if: always()
         uses: actions/upload-artifact@v4
