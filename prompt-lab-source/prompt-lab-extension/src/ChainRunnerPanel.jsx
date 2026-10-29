@@ -21,7 +21,7 @@ const STEP_BADGE = {
  * Chain Lab — pick a saved chain, feed it input, watch each step stream through
  * the trace layer, and hand the final output back to the editor.
  */
-export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, setTab, onClose }) {
+export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEditor, onClose }) {
   const chains = useMemo(() => library.filter(isChainEntry), [library]);
   const [chainId, setChainId] = useState('');
   const [chainInput, setChainInput] = useState('');
@@ -105,8 +105,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, setRaw, set
 
   const sendToEditor = () => {
     if (!finalOutput.trim()) return;
-    setRaw(finalOutput);
-    setTab('editor');
+    onSendToEditor?.(finalOutput, 'new');
     notify?.('Chain output loaded into the editor.');
   };
 

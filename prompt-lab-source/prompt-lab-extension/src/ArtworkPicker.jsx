@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Ic from './icons.jsx';
+import { useRecentArtwork } from './lib/recentArtwork.js';
 import { ARTWORK_ICONS, MAX_ARTWORK_BYTES, safeArtwork, safeEmoji } from './lib/libraryPresentation.js';
 
 export function Artwork({ value, fallback = 'FileText' }) {
@@ -11,6 +12,7 @@ export function Artwork({ value, fallback = 'FileText' }) {
 
 export function ArtworkControls({ value, onChange, disabled = false, label = 'Artwork', onReadyChange }) {
   const [error, setError] = useState('');
+  const recent = useRecentArtwork();
   const artwork = safeArtwork(value);
   const [emojiInput, setEmojiInput] = useState(artwork.emoji || '');
   const [reading, setReading] = useState(false);
@@ -38,6 +40,13 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
   };
   return <fieldset className="pl-artwork-picker" disabled={disabled || reading}>
     <legend>{label}</legend>
+    {recent.entries.length > 0 && <div className="pl-artwork-recents">
+      <div className="pl-artwork-recents-heading"><strong>Recently used</strong><button type="button" onClick={recent.clear}>Clear recently used</button></div>
+      <div className="pl-artwork-options" role="group" aria-label={`${label} recently used`}>
+        {recent.entries.map((item, index) => <button type="button" key={item.image || item.emoji || item.icon} aria-label={`Use recent ${item.image ? `image ${index + 1}` : item.emoji || item.icon}`} onClick={() => { onChange(item); setError(''); }}><Artwork value={item} /></button>)}
+      </div>
+    </div>}
+    {recent.error && <p role="alert">{recent.error}</p>}
     <div className="pl-artwork-options">{ARTWORK_ICONS.map(icon => <button key={icon} type="button" aria-label={`${label}: ${icon}`} aria-pressed={!artwork.image && !artwork.emoji && artwork.icon === icon} title={icon} onClick={() => { onChange({ icon, image: '' }); setError(''); }}><Ic n={icon === 'Code' ? 'Braces' : icon} size={16} /></button>)}</div>
     <label className="pl-artwork-emoji-input">Emoji<input aria-label={`${label} emoji`} value={emojiInput} placeholder="Paste one emoji" onChange={event => {
       const input = event.target.value; setEmojiInput(input);

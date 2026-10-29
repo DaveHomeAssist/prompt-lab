@@ -93,6 +93,8 @@ for (const size of [{ width: 768, height: 900 }, { width: 375, height: 812 }, { 
     else await page.keyboard.press('Control+Backslash');
     const panel = page.getByRole('complementary', { name: 'Prompts beside Write' });
     await expect(panel).toBeVisible();
+    await expect(panel.getByRole('searchbox', { name: 'Search prompts beside Write' })).toBeInViewport();
+    await panel.getByRole('button', { name: 'Close side panel' }).click({ trial: true });
     await expect(panel.getByRole('button', { name: 'Favorites', exact: true })).toHaveAttribute('aria-pressed', 'true');
     if (size.height >= 400) await expect(panel.getByRole('button', { name: 'Open Customer reply in Write' })).toBeInViewport();
     await fits(page);
