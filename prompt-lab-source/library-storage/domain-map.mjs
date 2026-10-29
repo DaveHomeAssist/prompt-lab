@@ -1,4 +1,4 @@
-import { canonical, hash, inspectPackage, LibraryError, readObject } from './contract.mjs';
+import { canonical, hash, inspectPackage, LibraryError, readObject, ownObjectTable } from './contract.mjs';
 import { inspectSourceBinding } from './source-binding.mjs';
 import { DELETION_PREFIXES } from './source-inventory.mjs';
 
@@ -31,7 +31,7 @@ const indexedDomains = new Map([['experiments', 'experiments'], ['evaluations', 
 // This is a preserved-data read model. It does not choose active replicas or
 // authorize migration. Values and addresses come only from verified objects.
 export async function buildDomainMap(pkg) {
-  pkg = structuredClone(pkg);
+  pkg = { ...pkg, objects: ownObjectTable(pkg.objects) };
   const verified = await inspectPackage(pkg);
   return buildVerifiedDomainMap(pkg, verified);
 }
@@ -39,7 +39,7 @@ export async function buildDomainMap(pkg) {
 // Internal composition boundary: callers supply the inspection of this exact
 // package, avoiding recursive inspection while verifying selection commits.
 export async function buildVerifiedDomainMap(pkg, verified) {
-  pkg = structuredClone(pkg);
+  pkg = { ...pkg, objects: ownObjectTable(pkg.objects) };
   const records = [], issues = [], stores = [], scopes = new Map();
   const pendingReferences = [], sourcePairs = new Map();
   const issue = (code, origin, key = null) => issues.push({ code, origin, key });

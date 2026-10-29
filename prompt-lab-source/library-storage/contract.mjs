@@ -6,6 +6,31 @@ const encoder = new TextEncoder();
 const forbidden = new Set(['settings', 'providersettings', 'credentials', 'tokens', 'token', 'apikeys', 'apikey', 'billing', 'telemetry', 'session', 'sessionpl2session']);
 const validId = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
 const validHash = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
+// Only private, recursively frozen snapshots enter these weak caches. A new
+// mutable input or disk read must be checked again, even at a known address.
+const immutableObjects = new WeakMap();
+
+function ownObject(value) {
+  if (value && typeof value === 'object' && immutableObjects.has(value)) return value;
+  // Validate before cloning (clone can erase unsupported prototypes), then
+  // serialize the owned bytes. Accessors may change between those two reads.
+  canonical(value);
+  const copy = structuredClone(value), serialized = canonical(copy);
+  function freeze(item) {
+    if (!item || typeof item !== 'object') return;
+    for (const child of Object.values(item)) freeze(child);
+    Object.freeze(item);
+  }
+  freeze(copy);
+  if (copy && typeof copy === 'object') immutableObjects.set(copy, { serialized });
+  return copy;
+}
+
+// Internal composition boundary. Own every object at its original depth, not
+// under an extra package envelope, and retain owned identities in nested reads.
+export function ownObjectTable(objects) {
+  return Object.freeze(Object.fromEntries(Object.entries(objects).map(([id, value]) => [id, ownObject(value)])));
+}
 
 function assertCommitIdentity({ libraryId, operationId, parents, createdAt }) {
   if (!validId(libraryId) || !validId(operationId) || !Array.isArray(parents)
@@ -25,6 +50,7 @@ export class LibraryError extends Error {
 
 export function canonical(value, depth = 0) {
   if (depth > 128) throw new LibraryError('INVALID_JSON', 'JSON nesting exceeds 128 levels.');
+  if (depth === 0 && value && typeof value === 'object' && immutableObjects.has(value)) return immutableObjects.get(value).serialized;
   if (value === null || typeof value === 'boolean' || typeof value === 'string') return JSON.stringify(value);
   if (typeof value === 'number' && Number.isFinite(value)) return JSON.stringify(value);
   if (Array.isArray(value)) {
@@ -38,10 +64,15 @@ export function canonical(value, depth = 0) {
 }
 
 export async function hash(value) {
+  const immutable = value && typeof value === 'object' ? immutableObjects.get(value) : null;
+  if (immutable?.digest) return immutable.digest;
   const bytes = encoder.encode(canonical(value));
   if (bytes.length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Object exceeds 64 MiB.', 413);
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-  return 'sha256:' + [...new Uint8Array(digest)].map(b => b.toString(16).padStart(2, '0')).join('');
+  const digest = globalThis.crypto.subtle.digest('SHA-256', bytes)
+    .then(value => 'sha256:' + [...new Uint8Array(value)].map(b => b.toString(16).padStart(2, '0')).join(''));
+  if (immutable) immutable.digest = digest;
+  try { return await digest; }
+  catch (error) { if (immutable) delete immutable.digest; throw error; }
 }
 
 export function assertWorkspace(workspace) {
@@ -62,8 +93,7 @@ export async function makeObject(kind, data) {
 
 export async function readObject(objects, id, kind) {
   if (!Object.hasOwn(objects, id)) throw new LibraryError('MISSING_OBJECT', 'Referenced object is unavailable.', 503);
-  canonical(objects[id]);
-  const object = structuredClone(objects[id]);
+  const object = ownObject(objects[id]);
   if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Object failed integrity verification.', 503);
   if (object.schemaVersion !== VERSION || object.kind !== kind) throw new LibraryError('UNSUPPORTED_OBJECT', 'Unsupported object format or kind.');
   return structuredClone(object.data);
@@ -95,10 +125,7 @@ export async function inspectPackage(pkg) {
     || !pkg.objects || Object.getPrototypeOf(pkg.objects) !== Object.prototype) throw new LibraryError('UNSUPPORTED_PACKAGE', 'Unsupported library package.');
   // Own each object at its existing depth boundary. Wrapping the whole package
   // in canonical() would add envelope levels and reject otherwise valid objects.
-  pkg = { ...pkg, objects: Object.fromEntries(Object.entries(pkg.objects).map(([id, object]) => {
-    canonical(object);
-    return [id, structuredClone(object)];
-  })) };
+  pkg = { ...pkg, objects: ownObjectTable(pkg.objects) };
   const active = new Set(), visited = new Map();
   async function visit(id) {
     if (active.has(id)) throw new LibraryError('INVALID_ANCESTRY', 'Cyclic commit ancestry.');

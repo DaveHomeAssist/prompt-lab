@@ -931,13 +931,43 @@ preservation of unrelated selected domains. It retains all 216 prompts, 18
 folders, two Trash records and three runs, adding 116 prior prompt revisions.
 The original 1,666,421 bytes remain unchanged and no private data was uploaded.
 
-Real-data performance and restore acceptance remain incomplete. The initial
+Earlier real-data performance and restore acceptance were incomplete. The initial
 combined check reached its 55-second bound after rename publication; the
 read-only resume and receipt replay passed in 8.839 seconds. A separate restore
 published its checkpoint but reached its 45-second bound before selection and
 complete transfer verification finished. The disposable state and initial logs
 are retained. Synthetic checkpoint and transfer cases pass; they do not close
 the unfinished private-data restore or scale gates.
+
+Restore performance follow-up: a synthetic 216-prompt profile on Dominic spent
+most CPU time serializing and hashing the same retained objects. Verification now
+owns and freezes each input object before awaiting work, then reuses only that
+immutable copy's serialization and digest. Mutable caller values and new disk
+reads never inherit a previous verification result. Returned values remain
+independent copies. Five regression cases cover changed input, wrong hashes and
+kinds, retained corruption, asynchronous mutation, changing accessors, depth
+limits and unchanged wire serialization. This changes neither the journal format
+nor the preservation/acceptance gates.
+
+The same synthetic fixture on Dominic Node 22.23.4 improved restore apply from
+10.204 to 7.775 seconds and restored-state inspection from 4.560 to 3.258 seconds.
+These are single CPU-profile observations, not a latency or scale guarantee.
+The retained private restore was resumed without another import, rename or
+restore publication: its missing selection completed in 22.975 seconds, and
+subsequent exact selected-domain readback plus complete transfer verification
+passed in 10.576 seconds on Mac Node 22.22.1. All 216 prompts, 18 folders, 18
+collections, 21 original history records, two Trash records and three runs match
+the pre-rename view. Every prior object and operation receipt remains retained;
+the original export bytes/hash are unchanged. Initial timeout evidence above is
+preserved. This closes that interrupted disposable restore check only. Actual
+app capture, native activation, two-client iCloud, scale and human acceptance
+remain separate requirements.
+
+The final candidate passes all 279 storage tests on Dominic Node 22.23.4,
+including the five immutable-snapshot regressions. The extension build,
+documentation lint and four documentation contracts pass. The three changed
+implementation/test files match the runner by SHA-256. Earlier timeout receipts
+and synthetic profile logs remain available separately from these passing checks.
 
 The [shared planner](../library-storage/folder-transaction.mjs) and its
 [ten focused cases](../library-storage/folder-transaction.test.mjs) are implemented.
