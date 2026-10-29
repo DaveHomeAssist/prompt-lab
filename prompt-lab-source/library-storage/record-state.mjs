@@ -37,6 +37,13 @@ export async function effectiveRecordGroup(pkg, inspected, template) {
   const { planCurrentView } = await import('./current-view.mjs');
   const view = inspected.currentView ?? (inspected.manifest ? await planCurrentView(pkg, inspected) : null);
   const group = view?.groups.find(group => group.id === template.id);
+  if (!group && template.domain === 'scratch-notes' && view) {
+    if (view.unresolved) throw new LibraryError('SELECTION_REQUIRED', 'Review checkpoint Scratch selections before reconciling their notes.', 409);
+    const { buildVerifiedDomainMap } = await import('./domain-map.mjs');
+    const { selectedScratchRecord } = await import('./scratch-state.mjs');
+    const row = await selectedScratchRecord(pkg, { ...inspected, currentView: view }, await buildVerifiedDomainMap(pkg, inspected), template.id);
+    return row ? selectionForRecord(row, template.id) : null;
+  }
   if (!group) return null;
   if (group.decision === 'unresolved' || view.blocked.length) throw new LibraryError('SELECTION_REQUIRED', 'Review the branch or checkpoint records before reconciling their changes.', 409);
   const { buildVerifiedDomainMap } = await import('./domain-map.mjs');

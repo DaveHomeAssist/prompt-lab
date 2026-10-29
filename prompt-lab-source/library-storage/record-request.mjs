@@ -1,7 +1,7 @@
 import { canonical, LibraryError } from './contract.mjs';
 
 export const recordDomains = Object.freeze({ evaluations: 'evaluations', 'test-cases': 'testCases',
-  'execution-traces': 'traceRuns', experiments: 'experiments', packs: 'packs' });
+  'execution-traces': 'traceRuns', experiments: 'experiments', packs: 'packs', 'scratch-notes': 'scratchNotes' });
 export const recordIdField = domain => domain === 'execution-traces' ? 'run_id' : 'id';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
@@ -26,6 +26,9 @@ export function normalizeRecordRequest(value) {
     if (!address(request.sourceBinding) || !object(request.record) || !id(request.record[recordIdField(request.domain)])) {
       fail('Creation requires an explicit verified source binding and a complete record with a stable ID.');
     }
+    if (request.domain === 'scratch-notes' && ['createdAt', 'updatedAt', 'timestamp'].some(key => Object.hasOwn(request.record, key))) {
+      fail('Scratch creation times are supplied by the reviewed command time.');
+    }
   } else {
     if (!address(request.groupId) || !address(request.expectedRecordHash)) fail('Update and deletion require the selected group and exact record hash.');
     if (request.action === 'delete' && request.confirmPermanentDeletion !== true) fail('Confirm permanent deletion from the current view; recovery content remains retained.');
@@ -36,7 +39,7 @@ export function normalizeRecordRequest(value) {
         if (!object(update) || Object.keys(update).length !== 2 || !Object.hasOwn(update, 'value') || !Array.isArray(update.path)
           || !update.path.length || update.path.length > 32
           || update.path.some(key => typeof key !== 'string' || !key || key.length > 200 || unsafe.has(key))
-          || [recordIdField(request.domain), 'createdAt', 'started_at'].includes(update.path[0])) fail('Update object fields explicitly and preserve the record identity and creation time.');
+          || [recordIdField(request.domain), 'createdAt', 'started_at', ...(request.domain === 'scratch-notes' ? ['updatedAt', 'timestamp'] : [])].includes(update.path[0])) fail('Update object fields explicitly and preserve the record identity and creation time.');
         if (paths.some(path => path.slice(0, update.path.length).every((key, i) => key === update.path[i])
           || update.path.slice(0, path.length).every((key, i) => key === path[i]))) fail('Field updates cannot overlap or repeat.');
         paths.push(update.path);

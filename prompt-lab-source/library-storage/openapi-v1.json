@@ -1126,7 +1126,7 @@
             "description": "Missing/corrupt/unavailable store; retain draft"
           }
         },
-        "description": "Create, update or confirm deletion of one selected record. Previous values and all source objects remain retained. The shared commit endpoint applies the reviewed preview with an idempotency key.",
+        "description": "Review a source-scoped record creation, field update or confirmed deletion. Scratch notes use per-note commandGroupId values from current reads and retain prior values, container metadata and deletion evidence. No personal app activation is implied.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4700,6 +4700,20 @@
                 "type": "null"
               }
             ]
+          },
+          "commandGroupId": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Stable command identity for a selected Scratch note, including before its first shared command."
+          },
+          "sourceValueHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Hash of the immutable archived container before the current Scratch note projection."
+          },
+          "projection": {
+            "const": "scratch-notes",
+            "description": "Current container value derives from selected note records; origin and sourceValueHash identify the retained source."
           }
         },
         "additionalProperties": false
@@ -5997,7 +6011,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -6073,6 +6088,37 @@
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "scratch-notes"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "pattern": "\\S"
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "createdAt": false,
+                        "updatedAt": false,
+                        "timestamp": false
+                      },
+                      "required": [
+                        "name",
+                        "content"
+                      ]
+                    }
+                  }
+                }
               }
             ]
           },
@@ -6095,7 +6141,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -6185,6 +6232,37 @@
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "scratch-notes"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "enum": [
+                                    "updatedAt",
+                                    "timestamp"
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             ]
           },
@@ -6207,7 +6285,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -7024,7 +7103,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "sourceIdentity": {
@@ -7591,7 +7671,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -7663,6 +7744,37 @@
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "scratch-notes"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "pattern": "\\S"
+                        },
+                        "content": {
+                          "type": "string"
+                        },
+                        "createdAt": false,
+                        "updatedAt": false,
+                        "timestamp": false
+                      },
+                      "required": [
+                        "name",
+                        "content"
+                      ]
+                    }
+                  }
+                }
               }
             ]
           },
@@ -7685,7 +7797,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -7771,6 +7884,37 @@
                     }
                   }
                 }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "scratch-notes"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "enum": [
+                                    "updatedAt",
+                                    "timestamp"
+                                  ]
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             ]
           },
@@ -7793,7 +7937,8 @@
                   "test-cases",
                   "execution-traces",
                   "experiments",
-                  "packs"
+                  "packs",
+                  "scratch-notes"
                 ]
               },
               "action": {
@@ -7844,7 +7989,8 @@
               "execution-traces",
               "experiments",
               "packs",
-              "folders"
+              "folders",
+              "scratch-notes"
             ]
           },
           "sourceIdentity": {

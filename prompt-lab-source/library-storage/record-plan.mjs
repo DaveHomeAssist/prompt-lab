@@ -6,6 +6,7 @@ import { applyDeletionPolicy } from './selection-policy.mjs';
 import { collectDeletionEvidence } from './source-binding.mjs';
 import { normalizeRecordRequest, recordDomains, recordIdField } from './record-request.mjs';
 import { recordGroupId, selectionForRecord, withRecordGroups } from './record-state.mjs';
+import { adoptScratchGroups, selectedScratchRecord, scratchTombstones } from './scratch-state.mjs';
 export { normalizeRecordRequest } from './record-request.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -14,11 +15,20 @@ function validateFields(value, keys, domain) {
   const text = domain === 'execution-traces' ? ['name', 'provider', 'model', 'run_type', 'status', 'error', 'reason']
     : domain === 'experiments' ? ['label', 'keyInputSnapshot', 'notes']
     : domain === 'test-cases' ? ['title', 'input', 'notes']
-    : domain === 'packs' ? ['title', 'version', 'source'] : ['input', 'output', 'provider', 'model', 'mode', 'status'];
+    : domain === 'packs' ? ['title', 'version', 'source']
+    : domain === 'scratch-notes' ? ['name', 'content', 'linkedPromptId', 'linkedPromptTitle', 'status', 'color'] : ['input', 'output', 'provider', 'model', 'mode', 'status'];
   for (const key of keys) {
     if ((text.includes(key) && typeof value[key] !== 'string')
       || (['variants', 'candidates', 'tags', 'messages', 'assertions'].includes(key) && !Array.isArray(value[key]))
       || (['metadata', 'outputs', 'outcome'].includes(key) && !object(value[key]))) fail('INVALID_RECORD_COMMAND', 'A changed record field has an unsupported value type.');
+    if (domain === 'scratch-notes' && ((key === 'pinned' && typeof value[key] !== 'boolean')
+      || (key === 'name' && !value.name.trim())
+      || (key === 'tags' && value.tags.some(tag => typeof tag !== 'string'))
+      || (key === 'linkedPrompts' && (!Array.isArray(value[key]) || value[key].some(link => !object(link) || typeof link.id !== 'string' || !link.id)))
+      || (key === 'status' && !['idea', 'working', 'ready', 'archived'].includes(value[key]))
+      || (key === 'color' && !['orange', 'violet', 'blue', 'green', 'amber', 'rose', 'slate'].includes(value[key])))) {
+      fail('INVALID_RECORD_COMMAND', 'A changed Scratch field has an unsupported value.');
+    }
   }
 }
 
@@ -41,12 +51,17 @@ export async function planRecordMutation(pkg, inspected, value) {
     if (map.records.some(row => row.domain === request.domain && row.origin.sourceIdentity === sourceIdentity && row.sourceId === sourceId)
       || inspected.manifest.recordGroups?.some(group => group.id === groupId)) fail('IDENTITY_CONFLICT', 'This record identity is already retained. Use a new ID for a new record.');
     next = structuredClone(request.record); validateFields(next, Object.keys(next), request.domain);
+    if (request.domain === 'scratch-notes') {
+      if (typeof next.name !== 'string' || !next.name.trim() || typeof next.content !== 'string') fail('INVALID_RECORD_COMMAND', 'A new Scratch note needs a name and complete content.');
+      next.createdAt = Date.parse(request.changedAt);
+    }
   } else {
     const group = inspected.currentView.groups.find(group => group.id === request.groupId && group.domain === request.domain);
     selected = map.records.find(row => row.key === group?.selected);
+    if (!selected && request.domain === 'scratch-notes') selected = await selectedScratchRecord(pkg, inspected, map, request.groupId);
     if (!selected || !object(selected.value) || !selected.origin.binding || !selected.sourceId) fail('RECORD_TARGET_UNAVAILABLE', 'The selected record is inactive or lacks a verified identity.');
     if (selected.valueHash !== request.expectedRecordHash) fail('RECORD_CONFLICT', 'The selected record changed. Keep the draft and review it.');
-    ({ sourceIdentity } = selected.origin); sourceId = selected.sourceId; binding = selected.origin.binding; groupId = group.id;
+    ({ sourceIdentity } = selected.origin); sourceId = selected.sourceId; binding = selected.origin.binding; groupId = request.groupId;
     if (request.domain === 'packs' && Object.hasOwn(selected.value, 'id') && selected.value.id !== sourceId) {
       fail('RECORD_IDENTITY_CONFLICT', 'The pack record ID differs from its registry key. Review the source before changing it.');
     }
@@ -65,18 +80,32 @@ export async function planRecordMutation(pkg, inspected, value) {
       if (canonical(next) === canonical(selected.value)) fail('NO_CHANGE', 'This command does not change the selected record.');
     }
   }
+  let ownedGroups = inspected.manifest.recordGroups;
+  if (request.domain === 'scratch-notes') {
+    if (map.records.some(row => row.domain === 'scratch' && row.origin.sourceIdentity === sourceIdentity)
+      && !inspected.currentView.groups.some(group => group.domain === 'scratch' && group.sourceIdentity === sourceIdentity && group.selected !== null)) {
+      fail('SCRATCH_CONTAINER_UNAVAILABLE', 'Select the retained Scratch container before changing its notes.');
+    }
+    const tombstones = scratchTombstones(map, inspected, sourceIdentity);
+    if (Object.hasOwn(tombstones, sourceId)) fail('IDENTITY_CONFLICT', 'This Scratch identity has retained deletion evidence. Use a new ID.');
+    ownedGroups = await adoptScratchGroups(pkg, inspected, map, sourceIdentity);
+    next.updatedAt = Date.parse(request.changedAt); next.timestamp = next.updatedAt;
+  }
   const recordMutation = { action: request.action, domain: request.domain, sourceIdentity, sourceId, changedAt: request.changedAt };
   const collection = request.domain === 'packs'
     ? (request.action === 'delete' ? {} : { [sourceId]: next }) : (request.action === 'delete' ? [] : [next]);
   const workspace = { library: [], [recordDomains[request.domain]]: collection,
     recordMutation: { ...recordMutation, baseRevision: pkg.head, groupId, previousSelection: selected?.key ?? null } };
+  if (request.domain === 'scratch-notes' && !map.records.some(row => row.domain === 'scratch' && row.origin.sourceIdentity === sourceIdentity)) {
+    workspace.scratch = { pads: [], tombstones: {}, activePadId: '' };
+  }
   const input = await makeObject('workspace', workspace), source = await makeObject('source', canonical(workspace));
   const objects = { ...pkg.objects, [input.hash]: input.object, [source.hash]: source.object };
   const derivedSource = { source: source.hash, workspace: input.hash, binding, baseRevision: pkg.head,
     groupId, previousMember: selected?.key ?? null, recordMutation };
   const derivedSources = [...(inspected.derivedSources ?? []), derivedSource];
   let manifest = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }],
-    groups: inspected.manifest.groups, recordGroups: inspected.manifest.recordGroups, objects });
+    groups: inspected.manifest.groups, recordGroups: ownedGroups, objects });
   const changedMap = await buildVerifiedDomainMap({ ...pkg, objects }, { ...inspected, manifest, derivedSources });
   const row = request.action === 'delete' ? selected : changedMap.records.find(row => row.origin.object === input.hash
     && row.origin.replica === 'workspace' && row.domain === request.domain && row.sourceId === sourceId);
@@ -86,6 +115,7 @@ export async function planRecordMutation(pkg, inspected, value) {
   const deletion = await applyDeletionPolicy(manifest, objects, inspected.sourceBindings, derivedSources);
   if (deletion.blocked.length) fail('DELETION_EVIDENCE_UNKNOWN', 'Source evidence prevents this record change.');
   const resolutions = retainedViewResolutions(inspected); delete resolutions[groupId];
+  for (const group of ownedGroups ?? []) delete resolutions[group.id];
   const currentViewPlan = await planCurrentView({ ...pkg, objects }, { ...inspected, manifest: deletion.manifest, derivedSources }, resolutions);
   const plan = { format: 'promptlab-record-mutation-plan', schemaVersion: 1, request, source: source.hash, inputState: input.hash,
     derivedSource, manifest: deletion.manifest, currentViewPlan, unresolved: currentViewPlan.unresolved, activationReady: false };

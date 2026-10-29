@@ -175,6 +175,9 @@ export async function buildVerifiedDomainMap(pkg, verified) {
     for (const [key, [domain, shape]] of workspaceDomains) if (Object.hasOwn(value, key)) {
       await collection(domain, value[key], child(origin, key), shape, container);
     }
+    if (derivedFrom && value.recordMutation?.domain === 'scratch-notes' && Object.hasOwn(value, 'scratchNotes')) {
+      await collection('scratch-notes', value.scratchNotes, child(origin, 'scratchNotes'), 'list', container);
+    }
     if (!bindingHash) issue('UNBOUND_WORKSPACE', origin, container.key);
   }
   // Traverse only retained ancestry; unrelated objects cannot invent a source.

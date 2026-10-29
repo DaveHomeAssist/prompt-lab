@@ -1,5 +1,55 @@
 # Library storage contract candidate
 
+## Shared Scratch note commands
+
+Scratch creation, field updates and confirmed deletion must use the shared
+record command, authenticated API, durable outbox and receipt. Own each note
+identity separately so independent edits reconcile and competing edits require
+review. Preserve every previous note, unknown field, prompt link, container
+metadata and deletion marker. Never select a winner by its timestamp.
+
+The first note command adopts the already reviewed container's note selections.
+Later current reads project those note selections into that same container;
+archival reads retain its exact original bytes. Note deletion remains effective
+after an older import or checkpoint restore. Deleted identities cannot be reused.
+An empty current note list is valid and does not manufacture a replacement note.
+Native UI activation must explicitly handle that state before connection.
+
+Acceptance covers creation, rename/content/metadata updates, independent and
+conflicting branches, source isolation, tombstones, stale input, restore,
+interrupted publication, response loss, reopen, complete transfer and API/outbox
+parity. Synthetic checks run on the remote runner; any private-export scenario
+uses isolated local storage and preserves its original. This does not activate
+the app, choose a native runtime or satisfy actual iCloud acceptance.
+
+The shared `record` route now accepts `scratch-notes`. Current note reads return
+their `commandGroupId`; updates pin that ID and the exact note hash. Current
+containers identify their projected values separately from `sourceValueHash`,
+and their active-note references follow the selected notes. Creation and update
+times come from the reviewed command; original creation times remain intact.
+Old clients reject these commands instead of dropping their data.
+
+Dominic Node 22.23.4 passed all 290 storage tests. Final review corrected the
+projected active-note reference and made an unresolved checkpoint fail closed;
+42 current-view/import/Scratch checks and then 63 record/restore/reconciliation/
+Scratch checks passed after those respective changes. All nine changed
+source/test/schema files match the runner. The extension build, Markdown lint
+and four documentation contracts pass. Existing Vite configuration and chunk-size
+warnings remain.
+
+An isolated copy of the complete private export passed a Scratch edit and exact
+checkpoint restore of all four original notes, unchanged selected related data,
+retention of every original object and receipt, and complete backup transfer.
+The original export remained byte identical and was never uploaded. The first
+readback harness started before selection finished and failed on the absent
+view; its failed evidence is retained. Waiting for that same selection process
+and rerunning readback passed without repeating any write. The edit and restore
+checks took about 60 and 48 seconds respectively; scale/performance acceptance
+is still open. This uses the earlier synthetic source-coverage fixture, not a
+capture of the actual app's stores. The disposable folder remains available for
+inspection. Full app writer migration, other writable domains, native ownership,
+actual iCloud replication and human acceptance remain required.
+
 ## Catalog preservation and pack commands
 
 Ordinary folder reconciliation, rename and artwork changes must retain unknown

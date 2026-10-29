@@ -2,6 +2,8 @@ import { canonical, hash, inspectPackage, LibraryError } from './contract.mjs';
 import { buildVerifiedDomainMap, validateDomainPage } from './domain-map.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
 import { projectFolderCollections } from './folder-projection.mjs';
+import { scratchCommandSources, validateScratchSelection, projectScratchContainer } from './scratch-state.mjs';
+import { recordGroupId } from './record-state.mjs';
 
 const record = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const rootDomains = new Set(['prompts', 'trash', 'collections', 'folders', 'packs', 'loaded-packs', 'scratch',
@@ -28,8 +30,10 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
   const map = await buildVerifiedDomainMap(pkg, inspected);
   const deletion = await applyDeletionPolicy(inspected.manifest, pkg.objects, inspected.sourceBindings, inspected.derivedSources);
   const blocked = [...map.issues, ...deletion.blocked], byKey = new Map(map.records.map(row => [row.key, row]));
-  const roots = map.records.filter(row => rootDomains.has(row.domain)
-    && (row.parent === null || byKey.get(row.parent)?.domain === 'source-stores'));
+  const scratchSources = scratchCommandSources(inspected);
+  const roots = map.records.filter(row => (rootDomains.has(row.domain)
+    && (row.parent === null || byKey.get(row.parent)?.domain === 'source-stores'))
+    || (row.domain === 'scratch-notes' && scratchSources.has(row.origin.sourceIdentity)));
   const bindingsBySource = new Map();
   for (const store of map.stores) if (store.origin.binding && store.origin.sourceIdentity) {
     if (!bindingsBySource.has(store.origin.sourceIdentity)) bindingsBySource.set(store.origin.sourceIdentity, new Set());
@@ -132,7 +136,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
     }
     // Never expose an older Scratch container that resurrects a retained
     // tombstone. Explicit restore remains a separate command, not a read choice.
-    if (selected?.domain === 'scratch' && record(selected.value)) {
+    if (selected?.domain === 'scratch' && record(selected.value) && !scratchSources.has(group.sourceIdentity)) {
       const deleted = new Set();
       for (const row of rows) {
         if (!record(row.value)) continue;
@@ -145,6 +149,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
   for (const group of deletion.manifest.recordGroups ?? []) if (!groupByKey.has(group.id)) blocked.push({ code: 'RECORD_SELECTION_UNAVAILABLE', groupId: group.id });
   for (const key of Object.keys(resolutions)) if (!groupByKey.has(key)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unavailable current-view group.');
   projectFolderCollections(groups, byKey, inspected, resolutions, blocked);
+  validateScratchSelection(groups, map, inspected, blocked);
   const selectedRoots = new Set(groups.flatMap(group => group.selected === null ? [] : [group.selected]));
   const rootFor = row => { let current = row; while (current.parent && !rootGroups.has(current.key)) current = byKey.get(current.parent); return current.key; };
   const selected = map.records.filter(row => selectedRoots.has(rootFor(row))).map(row => row.key).sort();
@@ -166,8 +171,11 @@ export async function pageCurrentView(pkg, inspected, { domain, cursor = '0', li
   if (!inspected.currentView) throw new LibraryError('SELECTION_REQUIRED', 'Review the current records for this revision before reading them.', 409);
   const map = await buildVerifiedDomainMap(pkg, inspected), selected = new Set(inspected.currentView.selected);
   const locations = new Map(inspected.currentView.groups.filter(group => group.selected !== null).map(group => [group.selected, group.domain]));
-  const rows = map.records.filter(row => selected.has(row.key)).map(row => locations.has(row.key) && locations.get(row.key) !== row.domain
+  const selectedRows = map.records.filter(row => selected.has(row.key)).map(row => locations.has(row.key) && locations.get(row.key) !== row.domain
     ? { ...row, domain: locations.get(row.key) } : row).filter(row => domain === undefined || row.domain === domain);
+  const rows = await Promise.all(selectedRows.map(async row => row.domain === 'scratch-notes'
+    ? { ...row, commandGroupId: await recordGroupId(pkg.libraryId, row.domain, row.origin.sourceIdentity, row.sourceId) }
+    : projectScratchContainer(row, map, inspected)));
   const offset = Number(cursor);
   return { format: 'promptlab-current-view-page', schemaVersion: 1, libraryId: pkg.libraryId, revision: pkg.head,
     view: 'reviewed', activationReady: false, domain: domain ?? null, total: rows.length,
