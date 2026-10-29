@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDomainMap, pageDomainMap } from './domain-map.mjs';
-import { createPackage, createMemoryAdapter, createCommandService, canonical, FORMAT, VERSION } from './contract.mjs';
+import { buildDomainMap, buildVerifiedDomainMap, pageDomainMap } from './domain-map.mjs';
+import { createPackage, createMemoryAdapter, createCommandService, canonical, inspectPackage, makeObject, FORMAT, VERSION } from './contract.mjs';
 import { captureSourceInventory } from './source-inventory.mjs';
 import { createLocalApi } from './local-api.mjs';
 
@@ -272,4 +272,40 @@ test('coordinated client buffers remain separate addressable drafts through pack
   assert.equal(rows.length, 2);
   assert.deepEqual(rows.map(row => originalValue(pkg, row)).sort((a, b) => a.raw.localeCompare(b.raw)), clientBuffers.map(client => client.buffers[0].value));
   assert.equal(canonical(pkg), before);
+});
+
+test('warm domain indexing verifies new input bytes without rehashing every record', async () => {
+  const { pkg } = await fixture({ sourceIdentity: 'domain-cache-performance' });
+  const expected = await buildDomainMap(pkg), originalDigest = globalThis.crypto.subtle.digest;
+  let digests = 0;
+  globalThis.crypto.subtle.digest = function (...args) { digests++; return originalDigest.apply(this, args); };
+  try {
+    const result = await buildDomainMap(structuredClone(pkg));
+    assert.deepEqual(result, expected);
+    assert.equal(digests, Object.keys(pkg.objects).length, 'Every new object is checked once; unchanged records reuse their complete index');
+    result.records[0].value = 'caller edit'; result.stores.length = 0; result.counts.prompts = 0;
+    assert.deepEqual(await buildDomainMap(pkg), expected);
+    const changed = structuredClone(pkg), workspace = pkg.objects[pkg.head].data.state;
+    changed.objects[workspace].data.library[0].title = 'Changed without a new address';
+    await assert.rejects(buildDomainMap(changed), { code: 'HASH_MISMATCH' });
+    delete changed.objects[workspace];
+    await assert.rejects(buildDomainMap(changed), { code: 'MISSING_OBJECT' });
+  } finally { globalThis.crypto.subtle.digest = originalDigest; }
+});
+
+test('domain index reuse is bound to object set, library, ancestry and inspection inputs', async () => {
+  const { pkg } = await fixture({ sourceIdentity: 'domain-cache-inputs' });
+  const inspected = await inspectPackage(pkg), expected = await buildVerifiedDomainMap(pkg, inspected);
+  const extra = await makeObject('future', { preserve: true });
+  const expanded = { ...pkg, objects: { ...pkg.objects, [extra.hash]: extra.object } };
+  assert.deepEqual(await buildVerifiedDomainMap(expanded, inspected), expected);
+  extra.object.data.preserve = false;
+  await assert.rejects(buildVerifiedDomainMap(expanded, inspected), { code: 'HASH_MISMATCH' });
+  const foreign = await buildVerifiedDomainMap({ ...pkg, libraryId: 'another' }, inspected);
+  assert.equal(foreign.libraryId, 'another');
+  await assert.rejects(buildVerifiedDomainMap({ ...pkg, head: 'sha256:' + '0'.repeat(64) }, inspected), { code: 'MISSING_OBJECT' });
+  const unbound = await buildVerifiedDomainMap(pkg, { ...inspected, sourceBindings: [] });
+  assert.ok(unbound.issues.some(issue => issue.code === 'UNBOUND_WORKSPACE'));
+  await assert.rejects(buildVerifiedDomainMap(pkg, { ...inspected, derivedSources: [{ binding: 'sha256:' + '0'.repeat(64) }] }), { code: 'MISSING_OBJECT' });
+  assert.deepEqual(await buildVerifiedDomainMap(pkg, inspected), expected);
 });

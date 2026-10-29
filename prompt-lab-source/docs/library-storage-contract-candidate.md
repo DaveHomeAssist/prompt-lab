@@ -1,5 +1,57 @@
 # Library storage contract candidate
 
+## Shared verification work during saves
+
+The connected Library still takes seconds to acknowledge ordinary changes.
+Profile the existing command path with a synthetic full library on a remote
+runner, then reduce repeated work within a verified operation. Share only
+privately owned immutable object snapshots among validation stages. New disk
+bytes, caller mutations, missing history, stale revisions and changed receipts
+must still be checked. Do not change the package format or weaken the review,
+durable outbox, flush or receipt-readback contract. Compare the same synthetic
+fixture before and after, run preservation/failure checks, then verify on an
+isolated copy of the real export without uploading it or activating storage.
+
+The service now owns each package once across inspection and command planning.
+A bounded domain-index cache checks every incoming object hash before reuse;
+its key includes library, revision, complete object set and inspection inputs.
+A separate bounded commit proof permits appended objects only after all new
+input hashes pass, the entire earlier object set remains and ancestry is
+visited again. New commits still receive full semantic validation. Cached
+results are private copies; returned results and caller input remain separate.
+
+Dominic Node 22.23.4 passes all 387 storage tests. Both performance regressions
+fail on the previous implementation: warm indexing performs 736 digests rather
+than 12 required object checks, and extending a verified package performs 55
+rather than 16. Corruption, missing dependencies, changed library/ancestry or
+inspection inputs and caller mutations still receive independent checks.
+The first new fixture incorrectly returned Library bytes for every storage key;
+that binding failure is retained, and the corrected fixture passes. The first
+old-code comparison omitted its shared matching module; the corrected baseline
+fails on the intended performance assertions.
+
+The actual editor and Library integration pass all seven focused component
+tests. All 52 browser scenarios for capture, migration, outbox recovery and
+connected Library actions pass in the existing Playwright 1.58.2 container.
+The extension build, Markdown lint and four documentation contracts pass.
+
+The same generated 216-prompt synthetic workload on Dominic, measured with CPU
+profiling, improves an evaluation save from 8.983 to 5.108 seconds. On the Mac
+with Node 22.22.1, the same isolated real-export base passes offline Favorite,
+exact retry, Trash, restore and reopen again. All 218 prompts, both original
+Trash records, 71 prior objects and complete prior versions remain; exactly
+three operations are added. Original export bytes remain unchanged with no
+private upload or personal activation. Open takes 4.391 seconds; Favorite retry,
+Trash and restore improve from 18.135/20.126/21.362 to 11.851/12.589/13.496 seconds.
+This is a direct-service fixture with a memory outbox, not native acceptance.
+
+Interactive performance remains open. The reference adapter still serializes
+the complete accumulated state into each immutable transaction, which repeats
+archive bytes and applies the 64 MiB object limit to an aggregate transaction.
+The production adapter needs the planned separate content-addressed object
+files and small commit manifests, with preserved older generations, interruption
+recovery and complete transfer parity, before activation or scale acceptance.
+
 ## Connected Library action integration
 
 The Library inspector, favorites and Trash actions must wait for the shared

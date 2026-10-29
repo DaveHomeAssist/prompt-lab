@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonical, hash, makeObject, readObject, ownObjectTable, createPackage, inspectPackage } from './contract.mjs';
+import { canonical, hash, makeObject, readObject, ownObjectTable, createPackage, inspectPackage, createMemoryAdapter, createCommandService, FORMAT, VERSION } from './contract.mjs';
+import { captureSourceInventory } from './source-inventory.mjs';
 
 test('owned verification reads preserve hashes, isolate output and reject later mutable input changes', async () => {
   const made = await makeObject('workspace', { library: [{ id: 'p', original: 'Keep', future: { value: 7 } }] });
@@ -124,4 +125,36 @@ test('warm inspection owns envelope metadata and object bytes before awaiting ha
   assert.equal(libraryReads, 1);
   assert.equal(headReads, 1);
   await assert.rejects(inspectPackage(pkg), { code: 'HASH_MISMATCH' });
+});
+
+test('appended objects reuse earlier commit proofs only after fresh content and complete ancestry checks', async () => {
+  const workspace = { library: [{ id: 'p', title: 'Keep', original: 'Keep every version', versions: [{ original: 'Prior' }] }] };
+  const inventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'commit-proof',
+    localStorage: { length: 1, key: () => 'pl2-library', getItem: key => key === 'pl2-library' ? JSON.stringify(workspace.library) : null },
+    readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic fixture' }), archives: { reviewed: true, records: [] } });
+  const service = createCommandService(createMemoryAdapter());
+  const initial = await service.apply({ ...await service.preview({ libraryId: 'proof', expectedRevision: null,
+    mode: 'import', sourceText: JSON.stringify(workspace), sourceInventory: inventory }), idempotencyKey: 'initial' });
+  const receipt = await service.apply({ ...await service.previewCurrentView({ libraryId: 'proof', expectedRevision: initial.revision }), idempotencyKey: 'select' });
+  const state = await service.read(), pkg = { format: FORMAT, schemaVersion: VERSION, libraryId: 'proof', head: receipt.revision, objects: state.objects };
+  const expected = await inspectPackage(pkg), extra = await makeObject('future', { retain: 'Extra' });
+  const expanded = { ...pkg, objects: { ...pkg.objects, [extra.hash]: extra.object } };
+  const originalDigest = globalThis.crypto.subtle.digest; let digests = 0;
+  globalThis.crypto.subtle.digest = function (...args) { digests++; return originalDigest.apply(this, args); };
+  try {
+    const warm = await inspectPackage(expanded);
+    assert.equal(digests, Object.keys(expanded.objects).length, 'Hash every fresh object but do not recompute an unchanged selection plan');
+    assert.deepEqual(warm, { ...expected, objectCount: expected.objectCount + 1 });
+    warm.currentView.groups[0].selected = null;
+    assert.deepEqual((await inspectPackage(pkg)).currentView, expected.currentView);
+  } finally { globalThis.crypto.subtle.digest = originalDigest; }
+  const changed = structuredClone(expanded), source = state.objects[initial.revision].data.inputState;
+  changed.objects[source].data.library[0].title = 'Altered';
+  await assert.rejects(inspectPackage(changed), { code: 'HASH_MISMATCH' });
+  const missing = structuredClone(expanded); delete missing.objects[source];
+  await assert.rejects(inspectPackage(missing), { code: 'MISSING_OBJECT' });
+  const invalid = await makeObject('commit', { ...state.objects[receipt.revision].data, parents: [receipt.revision], source: 'sha256:' + '0'.repeat(64) });
+  await assert.rejects(inspectPackage({ ...expanded, head: invalid.hash, objects: { ...expanded.objects, [invalid.hash]: invalid.object } }), { code: 'SELECTION_MISMATCH' });
+  await assert.rejects(inspectPackage({ ...expanded, libraryId: 'another' }), { code: 'INVALID_ANCESTRY' });
+  assert.deepEqual((await inspectPackage(expanded)).currentView, expected.currentView);
 });

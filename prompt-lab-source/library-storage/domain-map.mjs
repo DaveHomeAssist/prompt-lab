@@ -6,6 +6,22 @@ import { valueRecordDomains } from './record-request.mjs';
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && value.length > 0;
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+// Reuse only a complete map of freshly verified input. Neither a revision nor
+// a caller-provided address alone establishes that the input bytes are intact.
+const verifiedMaps = new Map();
+let mapBytes = 0;
+const mapBudget = 64 * 1024 * 1024;
+function retainMap(key, result) {
+  const bytes = 2 * (key.length + JSON.stringify(result).length);
+  if (bytes > mapBudget) return;
+  const previous = verifiedMaps.get(key);
+  if (previous) { mapBytes -= previous.bytes; verifiedMaps.delete(key); }
+  while (verifiedMaps.size >= 8 || mapBytes + bytes > mapBudget) {
+    const oldest = verifiedMaps.keys().next().value;
+    mapBytes -= verifiedMaps.get(oldest).bytes; verifiedMaps.delete(oldest);
+  }
+  verifiedMaps.set(key, { result: structuredClone(result), bytes }); mapBytes += bytes;
+}
 const localDomains = new Map([
   ['pl2-library', ['prompts', 'list']], ['pl2-library-trash', ['trash', 'list']],
   ['pl2-collections', ['collections', 'list']], ['pl2-collection-folders', ['folders', 'list']],
@@ -41,6 +57,17 @@ export async function buildDomainMap(pkg) {
 // package, avoiding recursive inspection while verifying selection commits.
 export async function buildVerifiedDomainMap(pkg, verified) {
   pkg = { ...pkg, objects: ownObjectTable(pkg.objects) };
+  // Capture the inspection inputs before the first asynchronous check too.
+  verified = structuredClone({ sourceBindings: verified.sourceBindings, derivedSources: verified.derivedSources ?? [] });
+  const mapKey = canonical({ libraryId: pkg.libraryId, revision: pkg.head, objects: Object.keys(pkg.objects).sort(), ...verified });
+  for (const [id, value] of Object.entries(pkg.objects)) {
+    if (await hash(value) !== id) throw new LibraryError('HASH_MISMATCH', 'Domain input failed integrity verification.', 503);
+  }
+  const cached = verifiedMaps.get(mapKey);
+  if (cached) {
+    verifiedMaps.delete(mapKey); verifiedMaps.set(mapKey, cached);
+    return structuredClone(cached.result);
+  }
   const records = [], issues = [], stores = [], scopes = new Map();
   const pendingReferences = [], sourcePairs = new Map();
   const issue = (code, origin, key = null) => issues.push({ code, origin, key });
@@ -270,8 +297,10 @@ export async function buildVerifiedDomainMap(pkg, verified) {
   records.sort((a, b) => compare(a.key, b.key)); identities.sort((a, b) => compare(a.key, b.key));
   const counts = {};
   for (const row of records) Object.defineProperty(counts, row.domain, { value: (counts[row.domain] ?? 0) + 1, enumerable: true, configurable: true });
-  return { format: 'promptlab-domain-map', schemaVersion: 1, libraryId: pkg.libraryId, revision: pkg.head,
+  const result = { format: 'promptlab-domain-map', schemaVersion: 1, libraryId: pkg.libraryId, revision: pkg.head,
     view: 'preserved', activationReady: false, records, identities, stores, issues, counts };
+  retainMap(mapKey, result);
+  return result;
 }
 
 export function validateDomainPage({ domain, cursor = '0', limit = 100 } = {}) {

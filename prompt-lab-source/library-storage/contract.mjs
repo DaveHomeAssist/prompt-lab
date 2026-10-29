@@ -14,6 +14,21 @@ const immutableObjects = new WeakMap();
 const inspections = new Map();
 let inspectionBytes = 0;
 const inspectionLimit = 64 * 1024 * 1024;
+const commitInspections = new Map();
+let commitInspectionBytes = 0;
+
+function retainCommitInspection(key, addresses, result) {
+  const bytes = 2 * (key.length + JSON.stringify(addresses).length + JSON.stringify(result).length);
+  if (bytes > inspectionLimit) return;
+  const previous = commitInspections.get(key);
+  if (previous) { commitInspectionBytes -= previous.bytes; commitInspections.delete(key); }
+  while (commitInspections.size >= 128 || commitInspectionBytes + bytes > inspectionLimit) {
+    const oldest = commitInspections.keys().next().value;
+    commitInspectionBytes -= commitInspections.get(oldest).bytes; commitInspections.delete(oldest);
+  }
+  commitInspections.set(key, { addresses, result: structuredClone(result), bytes });
+  commitInspectionBytes += bytes;
+}
 
 function retainInspection(key, addresses, result) {
   const bytes = 2 * (key.length + addresses.length + JSON.stringify(result).length);
@@ -168,6 +183,16 @@ export async function inspectPackage(pkg) {
     assertCommitIdentity(commit);
     if (commit.libraryId !== pkg.libraryId || !commit.operationId || !Array.isArray(commit.parents) || new Set(commit.parents).size !== commit.parents.length) throw new LibraryError('INVALID_ANCESTRY', 'Invalid commit identity or parents.');
     for (const parent of commit.parents) await visit(parent);
+    // Appending an object cannot alter a previously verified commit's pinned
+    // inputs. Every incoming object hash was checked above and every ancestor
+    // was visited again. Require the complete earlier object set to remain:
+    // omitted dependencies must never borrow a proof from a larger package.
+    const commitKey = JSON.stringify([pkg.libraryId, id]);
+    const retained = commitInspections.get(commitKey);
+    if (retained && retained.addresses.every(address => Object.hasOwn(pkg.objects, address))) {
+      commitInspections.delete(commitKey); commitInspections.set(commitKey, retained);
+      active.delete(id); visited.set(id, structuredClone(retained.result)); return;
+    }
     const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
     const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
     const derivedSources = [...new Map(commit.parents.flatMap(parent => visited.get(parent).derivedSources ?? [])
@@ -321,7 +346,9 @@ export async function inspectPackage(pkg) {
       result = { stateKind: 'workspace', manifest: null, workspace, sourceText };
     } else throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported commit operation.');
     active.delete(id);
-    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort(), derivedSources });
+    const inspected = { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort(), derivedSources };
+    retainCommitInspection(commitKey, Object.keys(pkg.objects), inspected);
+    visited.set(id, inspected);
   }
   await visit(pkg.head);
   const result = { libraryId: pkg.libraryId, revision: pkg.head, ...visited.get(pkg.head), commits: visited.size, objectCount: Object.keys(pkg.objects).length };
@@ -329,7 +356,10 @@ export async function inspectPackage(pkg) {
   return result;
 }
 
-const packageFor = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId, head: state.revision, objects: state.objects });
+// Own the read once so inspection and command planning share the same immutable
+// object identities. Each fresh adapter read is still independently captured.
+const packageFor = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId,
+  head: state.revision, objects: ownObjectTable(state.objects) });
 
 async function reviewImport(state, incomingPackage, resolutions) {
   const current = state.revision ? await inspectPackage(packageFor(state)) : null;
