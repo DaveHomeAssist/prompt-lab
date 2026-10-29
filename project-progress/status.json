@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T21:11:43.871Z",
+  "snapshotAt": "2026-10-29T21:31:28.628Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
+  "nextAction": "Connect remaining app stores with retained edit recovery and improve latency before native activation.",
   "evidence": [
+    {
+      "label": "Offline edit survives restart before service review",
+      "state": "Open",
+      "detail": "2026-10-29 source verification and offline edit acceptance: runtime 5a54b15e07d5d37abf36030873d03a0aafa75dd2 pushed and remote verified, https://github.com/DaveHomeAssist/prompt-lab/commit/5a54b15e07d5d37abf36030873d03a0aafa75dd2 . Explicit app record edits are retained in a version-three durable outbox before service review; matching review proof must persist before publication. Version-two reviewed entries remain supported. Stale revisions, foreign libraries and rejected persistence fail safely. Source-binding proof reuse rechecks every bound object hash and returns independent values. Dominic Node 22.23.4: all 370 storage tests, 1,553 app tests, 231 legacy tests, 48 browser scenarios, extension build, documentation lint and four contracts pass; 12 runtime/test/schema files match the runner. Six actual outbox fixtures validate in both schemas and 23 malformed variants reject. The source-capture import failure on CI head 31aea43 is repaired by isolating record provenance from repository dependencies; the failed run remains historical and new-head CI is separate. Synthetic 1.64 MB evaluation save: 8.275 seconds, previously 13.546 and 28.292; not interactive or scale acceptance. Mac Node 22.22.1: existing isolated real-export fixture retains an offline edit in 0.167 seconds, recovers after browser restart, preserves all 14 original and 46 prior fixture objects, and retains nine operation receipts. Full sequence 43.486 seconds; recovery/readback 33.941 seconds. Original 1,666,421-byte export hash unchanged; no private upload or personal activation. Both Windows iCloud Drive roots and processes are present, but neither sees the Mac probe or October 28 export. Mac probe reports uploaded; Windows account identity and visible warnings remain unverified after remote UI timeout. A1/A2 remain In progress and PR248 remains draft. Offline startup, multiple pending edits/conflict UI, remaining app stores, interactive performance, native/iCloud and installed/human acceptance remain open. Hosted Phase B remains behind Phase A; approved Neon/Clerk US East, no paid provisioning. Next: connect remaining app stores with retained edit recovery and improve latency before native activation. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/5a54b15e07d5d37abf36030873d03a0aafa75dd2"
+    },
     {
       "label": "Retained real-data restart verified after performance repair",
       "state": "Open",
@@ -1470,8 +1476,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
-      "verification": "362 storage tests, four browser scenarios, extension build and docs pass on Dominic. Retained real-export restart/update/delete/reopen passes on Mac in 46.704 seconds; original export and archived objects unchanged. Synthetic save improves 28.292 to 13.546 seconds; interactive performance remains open. Runtime 42a70b3, draft PR248.",
+      "nextAction": "Connect remaining app stores with retained edit recovery and improve latency before native activation.",
+      "verification": "Shared candidate verified on disposable fixtures and an isolated real-export copy; whole-app, native, iCloud and release acceptance remain open.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
@@ -1518,8 +1524,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
-      "verification": "362 storage tests, four browser scenarios, extension build and docs pass on Dominic. Retained real-export restart/update/delete/reopen passes on Mac in 46.704 seconds; original export and archived objects unchanged. Synthetic save improves 28.292 to 13.546 seconds; interactive performance remains open. Runtime 42a70b3, draft PR248.",
+      "nextAction": "Connect remaining app stores with retained edit recovery and improve latency before native activation.",
+      "verification": "Shared candidate verified on disposable fixtures and an isolated real-export copy; whole-app, native, iCloud and release acceptance remain open.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
