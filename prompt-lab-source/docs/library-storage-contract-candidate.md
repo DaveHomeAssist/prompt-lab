@@ -1,5 +1,34 @@
 # Library storage contract candidate
 
+## Folder branch recovery
+
+The folder reader previously rejected divergent transaction heads before a
+review could reach either retained branch. Bounded inspection and explicitly
+selected recovery reads now use the existing command service.
+Normal reads and saves remain unavailable while multiple heads exist. Recovery
+writes permit only a reviewed reconciliation that retains the consumed branches'
+objects, receipts and checkpoints. A third branch remains visible for another
+review; neither timestamps nor a local lock choose its winner.
+
+Publish new journal transactions with explicit parent lists, retaining every
+legacy transaction unchanged. Verify ancestry and preserved state before and
+after publication. Stale head sets, partial cloud copies, corrupt metadata,
+missing objects and interrupted publication must fail without deleting inputs.
+Expose the same scoped branch inspection and transfer through the authenticated
+loopback API; branch selection is explicit and is never a second active library.
+
+New writes use journal version 2; existing version 1 bytes remain readable and
+unchanged. An older runtime may reject new transactions. Preserve the complete
+folder during rollback rather than removing newer history. Unexpected cloud
+conflict-copy names still stop safely and require a separate explicit repair.
+
+Acceptance covers two and three branches, conflicting edits, stale reviews,
+ordinary-save rejection, complete history/receipt retention, restart and lost
+response retry, existing schema reads, wrong-library and hostile-origin checks,
+and each publication interruption point. Use disposable folders on Dominic and
+an isolated copy of the private export on its Mac. Actual iCloud, native service
+ownership, app activation and human acceptance remain separate required gates.
+
 ## Durable reviewed commands
 
 App integration needs a durable pending-command boundary before any transport.

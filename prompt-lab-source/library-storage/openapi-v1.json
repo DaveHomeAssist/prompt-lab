@@ -3,7 +3,7 @@
   "info": {
     "title": "PromptLab local library contract candidate",
     "version": "1.0.0",
-    "description": "Unconnected candidate with reviewed import, checkpoint restore and branch reconciliation. Pairing, complete domain activation and installed desktop support remain open."
+    "description": "Unconnected candidate with reviewed import, checkpoint restore and branch reconciliation. Pairing, complete domain activation and installed desktop support remain open. Folder recovery uses explicit verified head selection, bounded graph-pinned inspection and version 2 journal transactions with parent lists. Legacy journal bytes remain readable and unchanged. Older runtimes may not read version 2 descendants; rollback must preserve the full folder for recovery."
   },
   "security": [
     {
@@ -18,7 +18,14 @@
         "x-implementation-status": "candidate",
         "responses": {
           "200": {
-            "description": "Acknowledged result"
+            "description": "Acknowledged result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryIdentity"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -41,7 +48,12 @@
           "503": {
             "description": "Missing/corrupt/unavailable store; retain draft"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
       }
     },
     "/v1/library/snapshot": {
@@ -109,6 +121,9 @@
               "type": "string",
               "pattern": "^[0-9]+$"
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ]
       }
@@ -152,6 +167,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ]
       }
@@ -203,7 +221,13 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ],
+        "description": " Recovery views reject this operation with RECOVERY_ONLY."
       }
     },
     "/v1/library/commits": {
@@ -247,6 +271,9 @@
               "minLength": 1,
               "maxLength": 200
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ],
         "requestBody": {
@@ -300,6 +327,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ]
       }
@@ -373,6 +403,9 @@
               "maximum": 100,
               "default": 100
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ]
       }
@@ -415,7 +448,7 @@
             "description": "Missing/corrupt/unavailable store; retain draft"
           }
         },
-        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists.",
+        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists. Recovery views reject this operation with RECOVERY_ONLY.",
         "requestBody": {
           "required": true,
           "content": {
@@ -425,7 +458,12 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
       }
     },
     "/v1/library/previews/{previewId}": {
@@ -441,6 +479,9 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ],
         "responses": {
@@ -544,6 +585,9 @@
               "minLength": 1
             },
             "description": "Exact domain name. Omit to enumerate all preserved occurrences. Unknown domains produce an empty page."
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ],
         "description": "Requires read scope. Revision must remain current through preparation and on every page. Optional domain filter and decimal offset cursor must remain unchanged while paging a revision. Raw values, source binding, replica and paths are retained. Multiple copies and unresolved references are explicit. This preserved view does not activate a library or authorize migration. Unknown or duplicate query parameters reject. Response limit is 64 MiB; reduce page size on 413. No record truncation."
@@ -587,7 +631,7 @@
             "description": "Missing/corrupt/unavailable store; retain draft"
           }
         },
-        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists.",
+        "description": "Review two verified branches against their common ancestor, retain both complete histories and require explicit concurrent-edit choices. Requires write scope. In a folder recovery view, the response also binds folderRecovery to the current head set; changed graphs require fresh review. Apply through POST /v1/library/commits with an idempotency key. A committed folder reconciliation consumes only its reviewed parent heads; other heads remain for review.",
         "requestBody": {
           "required": true,
           "content": {
@@ -597,7 +641,12 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
       }
     },
     "/v1/library/current-views": {
@@ -638,7 +687,7 @@
             "description": "Missing/corrupt/unavailable store; retain draft"
           }
         },
-        "description": "Requires write scope. Pin the current revision. Prompt choices remain governed by import/reconciliation and deletion evidence. Differing replicas or absent records require explicit per-group choices naming an occurrence or null for inactive. Unknown sources block commit. Apply through the normal commit route with an idempotency key. This read-view contract does not authorize native activation.",
+        "description": "Requires write scope. Pin the current revision. Prompt choices remain governed by import/reconciliation and deletion evidence. Differing replicas or absent records require explicit per-group choices naming an occurrence or null for inactive. Unknown sources block commit. Apply through the normal commit route with an idempotency key. This read-view contract does not authorize native activation. Recovery views reject this operation with RECOVERY_ONLY.",
         "requestBody": {
           "required": true,
           "content": {
@@ -648,7 +697,12 @@
               }
             }
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
       }
     },
     "/v1/library/current-records": {
@@ -729,9 +783,141 @@
               "minLength": 1
             },
             "description": "Exact domain name. Omit to enumerate all preserved occurrences. Unknown domains produce an empty page."
+          },
+          {
+            "$ref": "#/components/parameters/FolderBranch"
           }
         ],
         "description": "Requires read scope and a pinned current revision. Returns exact selected values and source-qualified references, including missing/ambiguous targets; all unselected data remain available through preserved record reads. A later import, restore or reconciliation requires a new selection review. Unknown/duplicate query parameters reject. The response is bounded at 64 MiB without truncation."
+      }
+    },
+    "/v1/library/folder-branches": {
+      "get": {
+        "summary": "Inspect verified folder heads without activating one",
+        "operationId": "getV1LibraryFolderBranches",
+        "x-implementation-status": "candidate",
+        "description": "Requires read scope. Available even when normal reads fail with DIVERGENT_HEADS. Returns at most 100 complete branch summaries per page. Pin every continuation to graphRevision; a changed head set fails with FOLDER_CHANGED. All ancestry must be present and preserve retained objects, operation receipts and checkpoints. No paths or credentials are returned.",
+        "parameters": [
+          {
+            "name": "graph",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "description": "Required for any nonzero cursor; the graphRevision returned by the first page."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "default": "0"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified result pinned to the selected graph or revision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderBranchPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
+      }
+    },
+    "/v1/library/transfer": {
+      "get": {
+        "summary": "Read a complete verified transfer for the selected revision",
+        "operationId": "getV1LibraryTransfer",
+        "x-implementation-status": "candidate",
+        "description": "Requires read scope. Complete objects, receipts, checkpoints and metadata are verified before response. The 64 MiB HTTP response bound returns 413 instead of truncating; larger libraries need the paginated object and backup routes. Optional branch selection permits recovery reads while normal reads are blocked.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified result pinned to the selected graph or revision.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transfer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        }
       }
     }
   },
@@ -1175,6 +1361,9 @@
           },
           "currentViewPlan": {
             "$ref": "#/components/schemas/CurrentViewPlan"
+          },
+          "folderRecovery": {
+            "$ref": "#/components/schemas/FolderRecovery"
           }
         },
         "required": [
@@ -4632,6 +4821,261 @@
             }
           }
         ]
+      },
+      "FolderRecovery": {
+        "type": "object",
+        "properties": {
+          "anchorTransaction": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "graphRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "anchorTransaction",
+          "graphRevision"
+        ],
+        "additionalProperties": false
+      },
+      "FolderBranch": {
+        "type": "object",
+        "properties": {
+          "transactionId": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TransferCounts"
+          }
+        },
+        "required": [
+          "transactionId",
+          "revision",
+          "counts"
+        ],
+        "additionalProperties": false
+      },
+      "FolderBranchPage": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-folder-branches"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "graphRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "recoveryRequired": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/FolderBranch"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "graphRevision",
+          "recoveryRequired",
+          "total",
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "FolderState": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "objects": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RetainedObject"
+            }
+          },
+          "operations": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Receipt"
+            }
+          },
+          "checkpoints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "libraryId",
+          "revision",
+          "objects",
+          "operations",
+          "checkpoints"
+        ],
+        "additionalProperties": true
+      },
+      "LegacyFolderTransaction": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 1
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/FolderState"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "parent",
+          "state"
+        ],
+        "additionalProperties": true
+      },
+      "FolderTransaction": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "const": 2
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/FolderState"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "parents",
+          "state"
+        ],
+        "additionalProperties": true,
+        "not": {
+          "required": [
+            "parent"
+          ]
+        }
+      },
+      "LibraryIdentity": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "backend": {
+            "const": "folder"
+          },
+          "cloudReplication": {
+            "const": "unknown"
+          },
+          "independentBackup": {
+            "const": "unknown"
+          },
+          "folderRecovery": {
+            "$ref": "#/components/schemas/FolderRecovery"
+          }
+        },
+        "required": [
+          "libraryId",
+          "revision",
+          "backend",
+          "cloudReplication",
+          "independentBackup"
+        ],
+        "additionalProperties": true
+      }
+    },
+    "parameters": {
+      "FolderBranch": {
+        "name": "X-Library-Branch",
+        "in": "header",
+        "required": false,
+        "description": "Explicit verified folder transaction selected from folder-branches. This recovery view follows its unique causal descendant for operation readback. Competing descendants or a changed sibling set require a fresh inspection and review. Only reconciliation may mutate a recovery view. It never activates another library.",
+        "schema": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
       }
     }
   }

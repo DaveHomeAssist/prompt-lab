@@ -1,10 +1,10 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
-import { createCommandService, readObject, MAX_BYTES, LibraryError } from './contract.mjs';
+import { createCommandService, readObject, canonical, MAX_BYTES, LibraryError } from './contract.mjs';
 
 export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins = [], requestsPerMinute = 60 }) {
   if (!libraryId || !Array.isArray(credentials) || !credentials.length || credentials.some(c => typeof c.token !== 'string' || c.token.length < 32 || !Array.isArray(c.scopes) || !Number.isFinite(c.expiresAt))) throw new Error('A bound library and expiring scoped credentials are required.');
-  const service = createCommandService(adapter);
+  const rootService = createCommandService(adapter), recoveryServices = new Map();
   const windows = new Map();
   function credential(authorization) {
     const candidate = Buffer.from((authorization ?? '').replace(/^Bearer /, ''));
@@ -42,7 +42,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       }
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key');
+        res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Idempotency-Key, X-Library-Branch');
         return send(200, { ok: true });
       }
       const user = credential(req.headers.authorization);
@@ -55,9 +55,44 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       if (++window.count > requestsPerMinute) { res.setHeader('Retry-After', '60'); throw new LibraryError('RATE_LIMIT', 'Local request limit reached.', 429); }
       const url = new URL(req.url, 'http://127.0.0.1');
       if (url.searchParams.has('token') || url.searchParams.has('key')) throw new LibraryError('INVALID_REQUEST', 'Credentials cannot be supplied in URLs.', 400);
-      const state = await adapter.read();
+      if (req.method === 'GET' && url.pathname === '/v1/library/folder-branches') {
+        if (!adapter.branches) throw new LibraryError('UNSUPPORTED_OPERATION', 'This backend has no folder branch inspection.', 409);
+        const keys = [...url.searchParams.keys()];
+        if (keys.some(key => !['graph', 'cursor', 'limit'].includes(key)) || keys.length !== new Set(keys).size) throw new LibraryError('INVALID_REQUEST', 'Invalid branch query.', 400);
+        return send(200, await adapter.branches({ libraryId, expectedGraph: url.searchParams.get('graph') ?? undefined,
+          cursor: url.searchParams.get('cursor') ?? '0', limit: Number(url.searchParams.get('limit') ?? 100) }));
+      }
+      const selectedBranch = req.headers['x-library-branch'];
+      let service = rootService, selectedAdapter = adapter;
+      if (selectedBranch !== undefined) {
+        if (typeof selectedBranch !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(selectedBranch)) throw new LibraryError('INVALID_REQUEST', 'Select a verified folder branch.', 400);
+        if (!adapter.selectBranch) throw new LibraryError('UNSUPPORTED_OPERATION', 'This backend has no folder recovery view.', 409);
+        for (const [key, value] of recoveryServices) if (Date.now() - value.usedAt > 300_000) recoveryServices.delete(key);
+        let recovery = recoveryServices.get(selectedBranch);
+        if (!recovery) {
+          if (recoveryServices.size >= 32) throw new LibraryError('RECOVERY_LIMIT', 'Too many active recovery views. Retain pending commands and retry later.', 429);
+          const selected = await adapter.selectBranch(selectedBranch);
+          if ((await selected.read()).libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Folder belongs to another library.', 409);
+          recovery = { adapter: selected, service: createCommandService(selected) };
+          recoveryServices.set(selectedBranch, recovery);
+        }
+        recovery.usedAt = Date.now(); service = recovery.service; selectedAdapter = recovery.adapter;
+      }
+      let state;
+      try { state = await selectedAdapter.read(); }
+      catch (error) { if (error.code === 'FOLDER_CHANGED' && selectedBranch) recoveryServices.delete(selectedBranch); throw error; }
       if (state.libraryId && state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Selected folder contains another library.', 409);
-      if (req.method === 'GET' && url.pathname === '/v1/library') return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown' });
+      if (selectedBranch && req.method !== 'GET' && !['/v1/library/reconciliations', '/v1/library/commits'].includes(url.pathname)) {
+        throw new LibraryError('RECOVERY_ONLY', 'Recovery views accept reviewed reconciliation only.', 409);
+      }
+      if (req.method === 'GET' && url.pathname === '/v1/library') return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown',
+        ...(selectedBranch ? { folderRecovery: await selectedAdapter.recoveryContext() } : {}) });
+      if (req.method === 'GET' && url.pathname === '/v1/library/transfer') {
+        if ([...url.searchParams.keys()].some(key => key !== 'revision') || url.searchParams.getAll('revision').length !== 1) throw new LibraryError('INVALID_REQUEST', 'Pin the complete transfer to one revision.', 400);
+        const transfer = await service.transfer({ libraryId, expectedRevision: url.searchParams.get('revision') });
+        if (Buffer.byteLength(canonical(transfer)) > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Complete transfer exceeds the bounded HTTP response limit.', 413);
+        return send(200, transfer);
+      }
       if (req.method === 'GET' && ['/v1/library/records', '/v1/library/current-records'].includes(url.pathname)) {
         const keys = [...url.searchParams.keys()];
         if (keys.some(key => !['revision', 'domain', 'cursor', 'limit'].includes(key)) || new Set(keys).size !== keys.length) throw new LibraryError('INVALID_REQUEST', 'Invalid record query.', 400);
@@ -133,7 +168,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
   server.requestTimeout = 30_000;
   server.headersTimeout = 10_000;
   return {
-    service,
+    service: rootService,
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return `http://127.0.0.1:${server.address().port}`; },
     async close() { server.closeAllConnections(); await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); },
   };

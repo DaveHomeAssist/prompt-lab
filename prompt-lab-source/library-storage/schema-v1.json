@@ -435,6 +435,9 @@
         },
         "currentViewPlan": {
           "$ref": "#/$defs/CurrentViewPlan"
+        },
+        "folderRecovery": {
+          "$ref": "#/$defs/FolderRecovery"
         }
       },
       "required": [
@@ -3892,6 +3895,249 @@
           }
         }
       ]
+    },
+    "FolderRecovery": {
+      "type": "object",
+      "properties": {
+        "anchorTransaction": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "graphRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "anchorTransaction",
+        "graphRevision"
+      ],
+      "additionalProperties": false
+    },
+    "FolderBranch": {
+      "type": "object",
+      "properties": {
+        "transactionId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "counts": {
+          "$ref": "#/$defs/TransferCounts"
+        }
+      },
+      "required": [
+        "transactionId",
+        "revision",
+        "counts"
+      ],
+      "additionalProperties": false
+    },
+    "FolderBranchPage": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-folder-branches"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "graphRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "recoveryRequired": {
+          "type": "boolean"
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/FolderBranch"
+          }
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "graphRevision",
+        "recoveryRequired",
+        "total",
+        "items",
+        "nextCursor"
+      ],
+      "additionalProperties": false
+    },
+    "FolderState": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "objects": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/RetainedObject"
+          }
+        },
+        "operations": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/Receipt"
+          }
+        },
+        "checkpoints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "libraryId",
+        "revision",
+        "objects",
+        "operations",
+        "checkpoints"
+      ],
+      "additionalProperties": true
+    },
+    "LegacyFolderTransaction": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "parent": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/FolderState"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parent",
+        "state"
+      ],
+      "additionalProperties": true
+    },
+    "FolderTransaction": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": 2
+        },
+        "parents": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "state": {
+          "$ref": "#/$defs/FolderState"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "parents",
+        "state"
+      ],
+      "additionalProperties": true,
+      "not": {
+        "required": [
+          "parent"
+        ]
+      }
+    },
+    "LibraryIdentity": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "revision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "backend": {
+          "const": "folder"
+        },
+        "cloudReplication": {
+          "const": "unknown"
+        },
+        "independentBackup": {
+          "const": "unknown"
+        },
+        "folderRecovery": {
+          "$ref": "#/$defs/FolderRecovery"
+        }
+      },
+      "required": [
+        "libraryId",
+        "revision",
+        "backend",
+        "cloudReplication",
+        "independentBackup"
+      ],
+      "additionalProperties": true
     }
   }
 }

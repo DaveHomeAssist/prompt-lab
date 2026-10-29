@@ -20,11 +20,12 @@ export function createServiceTransport(service, { libraryId }) {
 }
 
 /** Tokens are obtained at send time and never enter command or outbox records. */
-export function createLoopbackTransport({ baseUrl, libraryId, getToken, fetchImpl = globalThis.fetch, timeoutMs = 30_000 }) {
+export function createLoopbackTransport({ baseUrl, libraryId, getToken, folderBranch, fetchImpl = globalThis.fetch, timeoutMs = 30_000 }) {
   const base = new URL(baseUrl);
   if (base.protocol !== 'http:' || base.hostname !== '127.0.0.1' || !base.port || base.pathname !== '/'
     || base.username || base.password || base.search || base.hash || typeof libraryId !== 'string' || !libraryId
     || typeof getToken !== 'function' || typeof fetchImpl !== 'function'
+    || (folderBranch !== undefined && (typeof folderBranch !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(folderBranch)))
     || !Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new LibraryError('INVALID_TRANSPORT', 'A selected loopback service and scoped credential provider are required.');
   const pending = new Set(); let disconnected = false;
   async function request(path, { payload, operationId, missing = false } = {}) {
@@ -49,6 +50,7 @@ export function createLoopbackTransport({ baseUrl, libraryId, getToken, fetchImp
       if (body && new TextEncoder().encode(body).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Command exceeds the transport limit.', 413);
       const response = await wait(fetchImpl(new URL(path, base), { method: payload === undefined ? 'GET' : 'POST',
         headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/json' } : {}),
+          ...(folderBranch ? { 'X-Library-Branch': folderBranch } : {}),
           ...(operationId ? { 'Idempotency-Key': operationId } : {}) },
         body, signal: controller.signal, redirect: 'error', cache: 'no-store', credentials: 'omit' }));
       const reader = response.body?.getReader();
@@ -82,6 +84,11 @@ export function createLoopbackTransport({ baseUrl, libraryId, getToken, fetchImp
   return {
     async identity() { const result = await request('/v1/library'); bound(result); return result; },
     operation: operationId => request(`/v1/library/operations/${encodeURIComponent(operationId)}`, { missing: true }),
+    branches({ expectedGraph, cursor = '0', limit = 100 } = {}) {
+      const query = new URLSearchParams({ cursor, limit: String(limit), ...(expectedGraph ? { graph: expectedGraph } : {}) });
+      return request(`/v1/library/folder-branches?${query}`);
+    },
+    transfer(expectedRevision) { return request(`/v1/library/transfer?revision=${encodeURIComponent(expectedRevision)}`); },
     preview(value) {
       const command = normalizeCommandRequest(value); bound(command);
       const { mode, ...input } = command;

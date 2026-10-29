@@ -332,7 +332,8 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       const input = { libraryId, expectedRevision, incomingManifestHash: branch.manifestHash, resolutions, mode: 'reconcile' };
       const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
       const response = { previewId, libraryId, expectedRevision, incomingRevision: branch.revision, sourceHash: state.objects[state.revision].data.source, fingerprint, expiresAt: expires,
-        mode: 'reconcile', commitAvailable: reconciliationPlan.unresolved === 0, reconciliationPlan };
+        mode: 'reconcile', commitAvailable: reconciliationPlan.unresolved === 0, reconciliationPlan,
+        ...(adapter.recoveryContext ? { folderRecovery: await adapter.recoveryContext() } : {}) };
       previews.set(previewId, { input, incoming, fingerprint, expires, response });
       try { return await currentReview(previewId); }
       catch (error) { previews.delete(previewId); throw error; }
