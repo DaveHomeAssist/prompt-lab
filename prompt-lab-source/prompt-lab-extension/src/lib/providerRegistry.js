@@ -122,6 +122,7 @@ function streamFrameError(data) {
 
 function parseSseChunks(buffer, flush = false, inspectFrame, acceptsDoneMarker = false) {
   const chunks = [];
+  let model = null;
   let usage = null;
   let done = false;
   let error = null;
@@ -149,19 +150,20 @@ function parseSseChunks(buffer, flush = false, inspectFrame, acceptsDoneMarker =
     // Inspection errors propagate; a valid error event must never disappear
     // inside the JSON parse catch. Keep earlier text from this transport chunk.
     const inspected = inspectFrame(data);
+    if (typeof inspected?.model === 'string' && inspected.model) model = inspected.model;
     if (inspected?.text) chunks.push(inspected.text);
     usage = mergeUsage(usage, inspected?.usage);
     done ||= inspected?.done === true;
   }
 
-  return { buffer: working, chunks, usage, done, error };
+  return { buffer: working, chunks, usage, done, error, ...(model ? { model } : {}) };
 }
 
 function parseAnthropicSse(buffer, flush = false) {
   return parseSseChunks(buffer, flush, (data) => {
     if (data?.type === 'message_stop') return { done: true };
     if (data?.type === 'message_start') {
-      return { text: '', usage: { input: data?.message?.usage?.input_tokens, output: null, total: null } };
+      return { text: '', model: data?.message?.model, usage: { input: data?.message?.usage?.input_tokens, output: null, total: null } };
     }
     if (data?.type === 'content_block_delta') return { text: data?.delta?.text || '', usage: null };
     if (data?.type === 'message_delta') {
@@ -182,9 +184,10 @@ function parseOpenAiSse(buffer, flush = false) {
 
 // Anthropic dropped sampling params (temperature/top_p/top_k) starting with
 // Opus 4.7; Opus 4.8 and Fable 5 / Mythos 5 also reject them with a 400.
-// Opus 4.6 and earlier, Sonnet, and Haiku still accept them.
+// The selectable Claude 5 models also reject sampling parameters.
 function anthropicRejectsSamplingParams(model) {
   const id = String(model || '');
+  if (/^claude-(opus|sonnet|haiku)-5(?:-|$)/.test(id)) return true;
   if (/^claude-(fable|mythos)-5\b/.test(id)) return true;
   const opus = id.match(/^claude-opus-4-(\d+)/);
   return Boolean(opus) && Number(opus[1]) >= 7;

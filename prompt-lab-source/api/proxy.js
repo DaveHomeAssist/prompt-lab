@@ -9,6 +9,7 @@ import {
 } from './_lib/runtimeSafety.js';
 import { corsHeadersForRequest, corsRejectionResponse } from './_lib/allowedOrigins.js';
 import { isHostedOwner } from './_lib/hostedOwner.js';
+import { HOSTED_MODELS, HOSTED_DEFAULT_MODEL } from '../prompt-lab-extension/src/lib/hostedModels.js';
 import {
   BUDGET_TRANSACTION_SCRIPT,
   budgetRefusalScope,
@@ -32,7 +33,7 @@ const ALLOWED_UPSTREAM_HEADERS = new Set([
   'content-type',
   'x-api-key',
 ]);
-const DEFAULT_ALLOWED_MODELS = ['claude-sonnet-4-6'];
+const DEFAULT_ALLOWED_MODELS = [HOSTED_DEFAULT_MODEL, ...HOSTED_MODELS.map(model => model.id).filter(id => id !== HOSTED_DEFAULT_MODEL)];
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;
@@ -71,7 +72,8 @@ function readIntEnv(name, fallback) {
 }
 
 function getAllowedModels() {
-  return readListEnv('HOSTED_ALLOWED_ANTHROPIC_MODELS', DEFAULT_ALLOWED_MODELS);
+  return readListEnv('HOSTED_ALLOWED_ANTHROPIC_MODELS', DEFAULT_ALLOWED_MODELS)
+    .filter(id => HOSTED_MODELS.some(model => model.id === id) && pricingFor(id));
 }
 
 function getBurstLimit() {
@@ -408,7 +410,11 @@ function sanitizeAnthropicBody(rawBody, { sharedKey = false } = {}) {
   const hostedMaxTokens = Math.max(1, getHostedMaxTokens());
   const requestedMaxTokens = Number(payload.max_tokens);
 
-  payload.model = allowedModels.includes(requestedModel) ? requestedModel : defaultModel;
+  if (!allowedModels.length) throw new Error('No priced hosted models are available.');
+  if (requestedModel && !allowedModels.includes(requestedModel)) {
+    throw new Error('This model is not available for hosted use. Choose a model in Provider Settings.');
+  }
+  payload.model = requestedModel || defaultModel;
   payload.max_tokens = Number.isFinite(requestedMaxTokens) && requestedMaxTokens > 0
     ? Math.min(Math.floor(requestedMaxTokens), hostedMaxTokens)
     : hostedMaxTokens;
@@ -512,7 +518,10 @@ function meteredBody(body, hold, rates) {
 }
 
 export default async function handler(request) {
-  const corsRejection = corsRejectionResponse(request);
+  // Same-origin browser GETs omit Origin. This branch only exposes the public
+  // priced catalogue; inference POSTs retain the existing origin requirement.
+  const publicCatalogue = request.method === 'GET' && !request.headers.get('Origin');
+  const corsRejection = publicCatalogue ? null : corsRejectionResponse(request);
   if (corsRejection) return corsRejection;
 
   if (!isFeatureEnabled('HOSTED_PROXY_ENABLED')) {
@@ -522,8 +531,17 @@ export default async function handler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
-      headers: corsHeadersForRequest(request),
+      headers: corsHeadersForRequest(request, {}, { allowMethods: 'GET, POST, OPTIONS' }),
     });
+  }
+
+  if (request.method === 'GET') {
+    const allowed = getAllowedModels();
+    return jsonResponse({
+      models: HOSTED_MODELS.filter(model => allowed.includes(model.id)).map(model => ({
+        ...model, input: pricingFor(model.id).input, output: pricingFor(model.id).output,
+      })),
+    }, 200, { 'Cache-Control': 'no-store' }, request);
   }
 
   if (request.method !== 'POST') {
