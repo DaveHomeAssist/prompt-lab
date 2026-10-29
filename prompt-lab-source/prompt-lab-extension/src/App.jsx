@@ -164,6 +164,7 @@ export default function App({
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
   const resetCancelRef = useRef(null);
@@ -510,6 +511,7 @@ export default function App({
     if (!draftRecovery) return;
     persistenceFlow.clearPersistenceState();
     dismissSaveReceipt();
+    setResultContextRevision(revision => revision + 1);
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
@@ -1355,6 +1357,7 @@ export default function App({
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
               lastSaveReceipt={lastSaveReceipt}
+              resultContextRevision={resultContextRevision}
               onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
