@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T21:57:45.941Z",
+  "snapshotAt": "2026-10-29T22:11:23.055Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Complete main Library actions and recovery UI while reducing latency before native activation.",
   "evidence": [
+    {
+      "label": "Large folder history read performance verified",
+      "state": "Open",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/e3aa59f04309330bdcd5b1ebb80fdb79ac59aabc",
+      "detail": "2026-10-29: Runtime e3aa59f is pushed and remote verified. Bounded verification proofs survive the 64 MiB snapshot-cache threshold; actual file bytes are still checked on every read, with no format change or pruning. Dominic Node 22.23.4: all 381 storage tests pass; the new regression fails before the fix with 49 repeated semantic digests. Same synthetic journal repeated reads: 1.795 to 1.864 seconds before, 0.341 to 0.350 after. Cold reads: 2.454 and 2.597 seconds; no cold-start guarantee. Same isolated real-export readback on Mac Node 22.22.1: 33.630 to 8.407 seconds, all 11 journal files byte-identical, 217 prompts, two Trash records, 61 objects and 11 receipts retained. Separate copied-fixture create/offline/restart/recovery/reopen passes, 218 prompts and 13 receipts, all prior history and objects retained. Open/create/recovery: 12.231/20.998/22.093 seconds, offline retention 0.293 seconds. Original export and browser sources unchanged; no private upload or personal activation. Save latency remains unsuitable for activation. Main Library actions, recovery UI, native/pairing, actual two-client iCloud and installed/human acceptance remain open. A2 In progress, PR248 draft; hosted remains behind Phase A and no paid provisioning. Notion A2 and RUN historical content preserved and read back. Next: complete main Library actions and recovery UI, and improve remaining save/recovery latency."
+    },
     {
       "label": "Shared prompt save and offline recovery verified",
       "state": "Open",
@@ -1530,8 +1536,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Complete main Library actions and recovery UI while reducing latency before native activation.",
-      "verification": "Explicit prompt store and editor flow verified on synthetic fixtures and an isolated real-export copy; full Library wiring, latency, native, iCloud and release acceptance remain open.",
+      "nextAction": "Complete main Library actions and recovery UI, then reduce remaining save and recovery latency before native activation.",
+      "verification": "All 381 storage tests pass. Identical real-export readback improved from 33.630 to 8.407 seconds; separate copied-fixture creation and offline recovery pass. Save latency, app integration, native/iCloud and installed/human acceptance remain open.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
