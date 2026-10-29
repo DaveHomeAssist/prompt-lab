@@ -96,6 +96,7 @@ const richPrompt = {
   },
   goldenThreshold: 0.9,
   metadata: {
+    artwork: { icon: '', image: '', emoji: '👩🏽‍💻' },
     owner: 'Dave',
     purpose: 'Verify releases',
     status: 'active',
@@ -245,6 +246,7 @@ describe('workspace export and import contract', () => {
       library: [expect.objectContaining({
         id: 'prompt-1',
         favorite: true,
+        metadata: expect.objectContaining({ artwork: { icon: '', image: '', emoji: '👩🏽‍💻' } }),
         kind: 'template',
         sourceNoteId: 'scratch-1',
         tombstoneVersion: 2,
@@ -290,6 +292,7 @@ describe('workspace export and import contract', () => {
     expect(importedHook.result.current.library[0]).toEqual(expect.objectContaining({
       id: 'prompt-1',
       favorite: true,
+      metadata: expect.objectContaining({ artwork: { icon: '', image: '', emoji: '👩🏽‍💻' } }),
       kind: 'template',
       sourceNoteId: 'scratch-1',
       tombstoneVersion: 2,
