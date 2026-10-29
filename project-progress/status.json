@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T19:48:41.018Z",
+  "snapshotAt": "2026-10-29T20:04:15.258Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete lossless pack installation and app migration before native activation and actual two-client iCloud acceptance.",
+  "nextAction": "Complete app-owned migration and active projection before native service, picker and actual two-client iCloud acceptance.",
   "evidence": [
+    {
+      "label": "Lossless atomic pack installation",
+      "state": "Open",
+      "detail": "2026-10-29: Lossless atomic pack installation pushed in 7399e20d64cc75c334295bc141dc6b5c0e4ac11d: https://github.com/DaveHomeAssist/prompt-lab/commit/7399e20d64cc75c334295bc141dc6b5c0e4ac11d . Shared pack/API/outbox command archives exact raw input, skipped presets and unknown fields; explicit indexed add/replace/skip choices publish prompts, registry and loaded marker together. Replacement retains complete prior and incoming histories; stale, foreign and deleted identities fail before publication. Dominic Node 22.23.4: 334-test storage suite plus the added raw-pack/credential regression, 43 browser checks, extension build, Markdown lint and four documentation contracts pass. Schema validation: 38 pack and 168 earlier fixtures accepted, 34 malformed rejected; nine source hashes match the runner. Mac Node 22.22.1: disposable complete 216-prompt export passes installation/readback, checkpoint restore, exact selected values/origins/identities, all original reference targets and full transfer. Original export unchanged; no private upload or personal activation. Retained initial failures and corrections: raw object kind, missing installation command schema, browser output permissions, and overstrict child-origin assertion. Private harness phases took 13 to 41 seconds; interactive performance remains open. A1/A2 remain In progress; PR248 remains draft. Native screen access was rechecked and Mac remains locked; actual two-client iCloud acceptance is unproven. Next: complete app-owned migration and active projection, then native service/picker acceptance. Hosted work remains behind Phase A. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/7399e20d64cc75c334295bc141dc6b5c0e4ac11d"
+    },
     {
       "label": "Atomic pack publication and removal",
       "state": "Open",
