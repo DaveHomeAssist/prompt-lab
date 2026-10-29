@@ -30,12 +30,26 @@ async function prepare(page, existing) {
 }
 
 test('a stale tab cannot replace a newer saved body by changing Favorite', async ({ page, context }) => {
+  // Finish each document's startup write before introducing the concurrent edit.
+  // Otherwise startup can adopt the newer record before the first Favorite click.
+  await context.addInitScript(() => {
+    window.__splitSaveReadyWrites = 0;
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      const result = setItem.call(this, key, value);
+      if (key === 'pl2-library' && Array.isArray(JSON.parse(value)?.[0]?.versions)) window.__splitSaveReadyWrites += 1;
+      return result;
+    };
+  });
   await prepare(page, true);
+  await expect.poll(() => page.evaluate(() => window.__splitSaveReadyWrites)).toBeGreaterThan(0);
   const stale = await context.newPage();
   await stale.addInitScript(() => window.addEventListener('storage', event => event.stopImmediatePropagation(), true));
   await prepare(stale, true);
   await stale.goto('/app/#/library');
   await expect(stale.getByTestId('library-search')).toBeVisible();
+  await expect.poll(() => stale.evaluate(() => window.__splitSaveReadyWrites)).toBeGreaterThan(0);
+  await expect(stale.getByTestId('library-save-error')).toHaveCount(0);
   await page.getByLabel('Dual pane prompt editor').fill(NEW);
   await page.getByLabel('Dual pane prompt editor').press('Control+s');
   await expect.poll(async () => (await readLibrary(page))[0]?.enhanced).toBe(NEW);
