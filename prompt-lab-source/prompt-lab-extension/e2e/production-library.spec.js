@@ -130,7 +130,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' }).fill('avery navigation');
       await expect(promptPanel.getByRole('button', { name: 'Open QA Alpha in Write', exact: true })).toBeVisible();
       await expect(promptPanel.getByRole('button', { name: 'Open QA Beta in Write', exact: true })).toHaveCount(0);
-      await promptsToggle.click();
+      await promptPanel.getByRole('button', { name: 'Close side panel', exact: true }).click();
       await openView(page, 'Library', viewport.width);
 
       await showLibraryDrawer(page);
@@ -140,6 +140,9 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('draft');
       await expect(list.getByRole('listitem')).toHaveCount(0);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
+      await openView(page, 'Write', viewport.width);
+      await openView(page, 'Library', viewport.width);
+      await expect(page.getByRole('combobox', { name: 'Filter by status', exact: true })).toHaveValue('active');
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('QA Alpha');
       await page.getByRole('button', { name: 'Clear all', exact: true }).click();
