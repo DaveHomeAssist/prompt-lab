@@ -682,6 +682,8 @@ test('billing-period radios update displayed pricing and the explicit app handof
   await expect(period).toHaveText('per year · $6.58 effective monthly · save $29/year');
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
   await expect(cta).toHaveAttribute('data-period', 'annual');
+  await expect(cta).toHaveText('Get Pro, $79/year →');
+  await expect(page.locator('#pricing .pricing-note')).toHaveText("You'll confirm in Prompt Lab before Stripe Checkout. Nothing is charged here.");
 
   await page.locator('label[for="billingMonthly"]').click();
   await expect(monthly).toBeChecked();
@@ -689,11 +691,13 @@ test('billing-period radios update displayed pricing and the explicit app handof
   await expect(period).toHaveText('per month');
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=monthly&source=landing-pricing');
   await expect(cta).toHaveAttribute('data-period', 'monthly');
+  await expect(cta).toHaveText('Get Pro, $9/month →');
 
   await page.locator('label[for="billingAnnual"]').click();
   await expect(price).toHaveText('79');
   await expect(period).toContainText(/year/i);
   await expect(cta).toHaveAttribute('href', '/app?upgrade=pro&period=annual&source=landing-pricing');
+  await expect(cta).toHaveText('Get Pro, $79/year →');
   await expect(page.locator('#pricing')).toContainText('$6.58');
   await expect(page.locator('#pricing')).toContainText(/Save \$29\/year/i);
 });
