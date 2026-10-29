@@ -827,7 +827,7 @@ try {
     await click('//*[@data-testid="nav-scratch"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Scratch"]', 'xpath');
     await waitFor(() => execute('return ["idle", "saved"].includes(document.querySelector("[data-testid=scratch-save-status]")?.dataset.saveState);'), 'initial Scratch storage ready');
     await execute(`
-      window.__nativeScratchDurability = { fail: true, aborted: 0, completed: 0, prematureSaved: false, watch: false, durability: [] };
+      window.__nativeScratchDurability = { fail: true, aborted: 0, completed: 0, prematureSaved: false, prematureObservations: [], watch: false, durability: [] };
       const original = IDBObjectStore.prototype.put;
       IDBObjectStore.prototype.put = function(value, ...args) {
         const tx = this.transaction;
@@ -842,8 +842,11 @@ try {
       new MutationObserver(() => {
         const probe = window.__nativeScratchDurability;
         const status = document.querySelector('[data-testid=scratch-save-status]');
-        if (probe.watch && !probe.completed && (status?.dataset.saveState === 'saved' || status?.textContent.trim().startsWith('Saved'))) probe.prematureSaved = true;
-      }).observe(document.body, { childList: true, subtree: true, attributes: true });
+        if (probe.watch && !probe.completed && (status?.dataset.saveState === 'saved' || status?.textContent.trim().startsWith('Saved'))) {
+          probe.prematureSaved = true;
+          if (probe.prematureObservations.length < 20) probe.prematureObservations.push({ state: status?.dataset.saveState, label: status?.textContent.trim(), aborted: probe.aborted, at: performance.now() });
+        }
+      }).observe(document.body, { childList: true, characterData: true, subtree: true, attributes: true });
       return true;
     `);
     await fill('textarea[aria-label="Scratchpad"]', 'Survives native restart');
