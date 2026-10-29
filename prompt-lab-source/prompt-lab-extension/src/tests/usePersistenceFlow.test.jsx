@@ -50,6 +50,29 @@ it('does not relink a new draft when an earlier durable save completes', async (
   expect(result.current.showSave).toBe(true);
 });
 
+it('does not relink a restored draft when a dismissed durable save completes', async () => {
+  let settle;
+  const durable = new Promise(resolve => { settle = resolve; });
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => durable });
+  act(() => result.current.openSavePanel());
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  act(() => {
+    result.current.closeSavePanel();
+    result.current.dismissSaveReceipt();
+    result.current.setEditingId('restored-prompt');
+    result.current.setSaveTitle('Restored prompt');
+  });
+  await act(async () => {
+    settle({ id: 'later-prompt', title: 'Later prompt', versionNumber: 1 });
+    await pending;
+  });
+  expect(result.current.editingId).toBe('restored-prompt');
+  expect(result.current.saveTitle).toBe('Restored prompt');
+  expect(result.current.lastSaveReceipt).toBeNull();
+  expect(result.current.showSave).toBe(false);
+});
+
 function makeEntry(overrides = {}) {
   return normalizeEntry({
     id: 'entry-1',

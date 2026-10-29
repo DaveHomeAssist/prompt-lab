@@ -508,6 +508,8 @@ export default function App({
 
   const undoDraftReset = () => {
     if (!draftRecovery) return;
+    closeSavePanel();
+    dismissSaveReceipt();
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
