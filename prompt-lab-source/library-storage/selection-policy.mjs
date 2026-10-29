@@ -2,7 +2,7 @@ import { canonical, LibraryError, readObject } from './contract.mjs';
 import { collectDeletionEvidence } from './source-binding.mjs';
 
 /** Retain every group and member while excluding permanently deleted selections. */
-export async function applyDeletionPolicy(input, objects, sourceBindings) {
+export async function applyDeletionPolicy(input, objects, sourceBindings, derivedSources = []) {
   const manifest = structuredClone(input);
   sourceBindings = [...new Set(sourceBindings)].sort();
   const evidence = await collectDeletionEvidence(objects, sourceBindings);
@@ -10,7 +10,8 @@ export async function applyDeletionPolicy(input, objects, sourceBindings) {
   const nodes = new Map(manifest.nodes.map(node => [node.key, node]));
   for (const source of manifest.sources) {
     if (byWorkspace.has(source.workspace)) continue;
-    const scopes = evidence.scopes.filter(scope => scope.workspaces.includes(source.workspace));
+    const inherited = derivedSources.filter(item => item.workspace === source.workspace).map(item => item.binding);
+    const scopes = evidence.scopes.filter(scope => scope.workspaces.includes(source.workspace) || inherited.some(binding => scope.bindings.includes(binding)));
     const scope = scopes.length === 1 ? scopes[0] : null;
     byWorkspace.set(source.workspace, scope);
     if (!scope) blocked.push({ workspace: source.workspace, code: scopes.length ? 'AMBIGUOUS_SOURCE_IDENTITY' : 'UNBOUND_SOURCE' });

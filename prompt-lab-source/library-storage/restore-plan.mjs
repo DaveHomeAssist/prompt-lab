@@ -24,7 +24,7 @@ async function ancestrySources(objects, revision) {
     if (seen.has(id)) continue;
     seen.add(id);
     const commit = await readObject(objects, id, 'commit');
-    if (!['restore', 'reconcile', 'select'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
+    if (!['restore', 'reconcile', 'select', 'edit'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
     pending.push(...commit.parents);
   }
   return sources;
@@ -48,7 +48,7 @@ export async function planCheckpointRestore({ current, checkpoint, baseRevision,
       inactiveReason: group.inactiveReason === 'permanent-deletion' ? 'permanent-deletion' : 'checkpoint-not-selected' });
   }
   const selection = await buildLibrarySelection({ sources, groups, objects });
-  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, current.sourceBindings);
+  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, current.sourceBindings, current.derivedSources);
   const plan = { format: 'promptlab-library-restore-plan', schemaVersion: 1, baseRevision, checkpointId,
     source: checkpoint.sourceObject, manifest, deletionReview,
     counts: { selectedBefore: currentManifest.groups.filter(group => group.selected !== null).length,

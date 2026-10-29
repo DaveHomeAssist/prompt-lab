@@ -20,7 +20,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
   canonical(resolutions); resolutions = structuredClone(resolutions);
   if (inspected.stateKind !== 'library-state') throw new LibraryError('IMPORT_REQUIRED', 'Review the imported library before selecting its current view.', 409);
   const map = await buildVerifiedDomainMap(pkg, inspected);
-  const deletion = await applyDeletionPolicy(inspected.manifest, pkg.objects, inspected.sourceBindings);
+  const deletion = await applyDeletionPolicy(inspected.manifest, pkg.objects, inspected.sourceBindings, inspected.derivedSources);
   const blocked = [...map.issues, ...deletion.blocked], byKey = new Map(map.records.map(row => [row.key, row]));
   const roots = map.records.filter(row => rootDomains.has(row.domain)
     && (row.parent === null || byKey.get(row.parent)?.domain === 'source-stores'));

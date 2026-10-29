@@ -97,7 +97,7 @@ export async function planReconciliation({ libraryId, currentRevision, incomingR
   }
   const selection = await buildLibrarySelection({ sources, groups, objects });
   const sourceBindings = [...new Set([...current.sourceBindings, ...incoming.sourceBindings])].sort();
-  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, sourceBindings);
+  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, sourceBindings, [...(current.derivedSources ?? []), ...(incoming.derivedSources ?? [])]);
   const plan = { format: 'promptlab-library-reconciliation-plan', schemaVersion: VERSION, libraryId, baseRevision: currentRevision,
     incomingRevision, incomingManifestHash, ancestorRevision, resolutions, rows, manifest, deletionReview,
     unresolved: rows.filter(row => row.choice === null).length + deletionReview.blocked.length, activationReady: false };

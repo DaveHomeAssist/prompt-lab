@@ -166,9 +166,9 @@ export async function buildVerifiedDomainMap(pkg, verified) {
       }
     }
   }
-  async function workspace(pair, bindingHash = null, inspected = null) {
+  async function workspace(pair, bindingHash = null, inspected = null, derivedFrom = null) {
     const context = { binding: bindingHash, sourceIdentity: inspected?.manifest.sourceIdentity ?? null,
-      surface: inspected?.manifest.surface ?? null, replica: 'workspace' };
+      surface: inspected?.manifest.surface ?? null, replica: 'workspace', ...(derivedFrom ? { derivedFrom } : {}) };
     const origin = address(context, pair.workspace), value = await readObject(pkg.objects, pair.workspace, 'workspace');
     const container = await add('source-stores', value, origin);
     stores.push({ origin, state: 'present', domain: 'workspace' });
@@ -184,7 +184,7 @@ export async function buildVerifiedDomainMap(pkg, verified) {
     visited.add(revision);
     const commit = await readObject(pkg.objects, revision, 'commit');
     for (const parent of commit.parents) await ancestry(parent);
-    if (['restore', 'reconcile', 'select'].includes(commit.operation)) return;
+    if (['restore', 'reconcile', 'select', 'edit'].includes(commit.operation)) return;
     const pair = { source: commit.source, workspace: commit.inputState ?? commit.state };
     sourcePairs.set(canonical(pair), pair);
   }
@@ -227,6 +227,10 @@ export async function buildVerifiedDomainMap(pkg, verified) {
         }
       }
     }
+  }
+  for (const derived of verified.derivedSources ?? []) {
+    const inspected = await inspectSourceBinding(pkg.objects, derived.binding);
+    await workspace(derived, derived.binding, inspected, derived.baseRevision);
   }
   for (const [key, pair] of [...sourcePairs].sort(([a], [b]) => compare(a, b))) if (!boundPairs.has(key)) await workspace(pair);
 

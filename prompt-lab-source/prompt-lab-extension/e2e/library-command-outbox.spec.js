@@ -6,10 +6,11 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createMemoryAdapter } from '../../library-storage/contract.mjs';
 import { createLocalApi } from '../../library-storage/local-api.mjs';
+import { captureSourceInventory } from '../../library-storage/source-inventory.mjs';
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const storePath = '/prompt-lab-extension/src/lib/libraryCommandOutbox.js';
-const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys'].map(name => `/library-storage/${name}.mjs`)];
+const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request'].map(name => `/library-storage/${name}.mjs`)];
 const content = { library: [{ id: 'prompt', original: 'Complete $& {{input}}', unknown: { preserved: true },
   versions: Array.from({ length: 41 }, (_, n) => ({ id: `v${n}`, original: `Version ${n}` })) }],
   runs: Array.from({ length: 1002 }, (_, n) => ({ id: `r${n}`, output: `Run ${n}`, unknown: n })), backups: [{ name: 'Preserved' }] };
@@ -51,6 +52,42 @@ async function boot(page, options) {
     };
   }, { options, storePath });
 }
+
+test('an ordinary prompt edit survives browser restart and commits through the shared API once', async () => {
+  const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
+  const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
+  const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
+  const profile = await mkdtemp(resolve(tmpdir(), 'promptlab-edit-outbox-')); let context;
+  try {
+    const workspace = { ...content, runs: content.runs.slice(0, 1) }, entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': '[]' };
+    const sourceInventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'synthetic-browser-origin',
+      localStorage: { length: 2, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
+      readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic absent store.' }), archives: { reviewed: true, records: [] } });
+    const imported = await api.service.preview({ libraryId: 'lib', expectedRevision: null, sourceText: JSON.stringify(workspace), sourceInventory, mode: 'import' });
+    const importedReceipt = await api.service.apply({ ...imported, idempotencyKey: 'import' });
+    const selected = await api.service.previewCurrentView({ libraryId: 'lib', expectedRevision: importedReceipt.revision });
+    const selectedReceipt = await api.service.apply({ ...selected, idempotencyKey: 'select' });
+    const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: 'prompts' });
+    const row = records.items[0], group = records.groups.find(group => group.selected === row.key);
+    const request = { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
+      editedAt: '2026-10-29T12:00:00.000Z', updates: [{ path: ['original'], value: 'Browser edit with $& {{input}}' }], mode: 'edit' };
+    context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
+    let page = await context.newPage(); await boot(page, options);
+    const queued = await page.evaluate(async request => outbox.enqueue({ request, review: await transport.preview(request), operationId: 'browser-edit' }), request);
+    expect(queued.state).toBe('pending'); expect(await page.evaluate(() => durability)).toEqual(['strict']);
+    await context.close(); context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
+    page = await context.newPage(); await boot(page, options);
+    expect((await page.evaluate(() => outbox.read('lib', 'browser-edit'))).request).toEqual(request);
+    const committed = await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport));
+    expect(committed.state).toBe('committed');
+    expect(await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport))).toEqual(committed);
+    const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'prompts' });
+    expect(current.items[0].value.original).toBe('Browser edit with $& {{input}}');
+    expect(current.items[0].value.versions).toHaveLength(42);
+    expect(current.items[0].value.unknown).toEqual(content.library[0].unknown);
+    expect(Object.keys((await adapter.read()).operations)).toHaveLength(3);
+  } finally { await context?.close(); await api.close(); await rm(profile, { recursive: true, force: true }); }
+});
 
 test('complete commands and receipts survive separate browser processes and lost responses', async () => {
   const f = await fixture(), profile = await mkdtemp(resolve(tmpdir(), 'promptlab-outbox-'));

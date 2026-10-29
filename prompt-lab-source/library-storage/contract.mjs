@@ -110,8 +110,10 @@ export async function inspectPackage(pkg) {
     for (const parent of commit.parents) await visit(parent);
     const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
     const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
+    const derivedSources = [...new Map(commit.parents.flatMap(parent => visited.get(parent).derivedSources ?? [])
+      .map(source => [canonical(source), source])).values()];
     if (Object.hasOwn(commit, 'sourceBinding')) {
-      if (['restore', 'reconcile', 'select'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation and selection use retained ancestry evidence only.');
+      if (['restore', 'reconcile', 'select', 'edit'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation, selection and edits use retained ancestry evidence only.');
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
       if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
@@ -126,7 +128,7 @@ export async function inspectPackage(pkg) {
       const { planLibraryImport } = await import('./import-plan.mjs');
       const expected = await planLibraryImport({ base: parent?.manifest ?? (parent ? { sources: [{ source: parent.sourceObject, workspace: parent.stateObject }] } : null),
         baseRevision: commit.parents[0] ?? null, incoming: { source: commit.source, workspace: commit.inputState }, objects: pkg.objects, resolutions: plan.resolutions,
-        sourceBindings, enforceDeletions: commit.selectionPolicy === 'preserve-deletions-v1' });
+        sourceBindings, derivedSources, enforceDeletions: commit.selectionPolicy === 'preserve-deletions-v1' });
       if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(expected.manifest) !== canonical(manifest)) {
         throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import commit does not match its complete sources, parent and reviewed choices.', 409);
       }
@@ -155,6 +157,20 @@ export async function inspectPackage(pkg) {
       if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)
         || commit.source !== visited.get(commit.parents[0]).sourceObject) throw new LibraryError('RECONCILIATION_MISMATCH', 'Reconciliation differs from its reviewed branches and choices.', 409);
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+    } else if (operation === 'edit') {
+      if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'An edit requires one reviewed parent.', 409);
+      const parent = visited.get(commit.parents[0]);
+      const plan = await readObject(pkg.objects, commit.editPlan, 'prompt-edit-plan');
+      const { planPromptEdit } = await import('./edit-plan.mjs');
+      const expected = await planPromptEdit({ ...pkg, head: commit.parents[0] }, parent, plan.request);
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      if (expected.plan.unresolved || canonical(plan) !== canonical(expected.plan) || canonical(manifest) !== canonical(plan.manifest)
+        || commit.source !== plan.source || commit.inputState !== plan.inputState
+        || Object.entries(expected.objects).some(([key, object]) => canonical(pkg.objects[key]) !== canonical(object))) {
+        throw new LibraryError('EDIT_PLAN_MISMATCH', 'Edit differs from its selected parent, updates or retained history.', 409);
+      }
+      derivedSources.push(plan.derivedSource);
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null, currentView: plan.currentViewPlan };
     } else if (operation === 'select') {
       if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'Selection requires one reviewed parent.', 409);
       const parent = visited.get(commit.parents[0]);
@@ -175,7 +191,7 @@ export async function inspectPackage(pkg) {
       result = { stateKind: 'workspace', manifest: null, workspace, sourceText };
     } else throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported commit operation.');
     active.delete(id);
-    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort() });
+    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort(), derivedSources });
   }
   await visit(pkg.head);
   // Retained unreachable objects are part of the archive too; never silently drop them.
@@ -193,6 +209,7 @@ async function reviewImport(state, incomingPackage, resolutions) {
     baseRevision: state.revision, incoming: { source: incomingCommit.source, workspace: incomingCommit.state },
     objects: { ...state.objects, ...incomingPackage.objects }, resolutions,
     sourceBindings: [...(current?.sourceBindings ?? []), ...(incomingCommit.sourceBinding ? [incomingCommit.sourceBinding] : [])],
+    derivedSources: current?.derivedSources ?? [],
     enforceDeletions: Boolean(incomingCommit.sourceBinding || current?.sourceBindings.length) });
 }
 
@@ -260,6 +277,22 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     read: () => adapter.read(),
     previewRead: currentReview,
     transfer: exportTransfer,
+    async previewEdit(value) {
+      value = structuredClone(value);
+      const { normalizeEditRequest, planPromptEdit } = await import('./edit-plan.mjs');
+      const request = normalizeEditRequest(value), state = await adapter.read();
+      if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Edit targets another library.', 409);
+      if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin edits to the current library revision.', 409);
+      const pkg = packageFor(state), inspected = await inspectPackage(pkg);
+      const { plan } = await planPromptEdit(pkg, inspected, request);
+      const input = { ...request, mode: 'edit' }, previewId = globalThis.crypto.randomUUID();
+      const fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId: request.libraryId, expectedRevision: request.expectedRevision, sourceHash: plan.source,
+        fingerprint, expiresAt: expires, mode: 'edit', commitAvailable: plan.unresolved === 0, editPlan: plan };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
+    },
     async currentRecords({ libraryId, expectedRevision, domain, cursor = '0', limit = 100, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown current-view query option.', 400);
       const state = await adapter.read();
@@ -312,7 +345,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select'].includes(commit.operation) ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select', 'edit'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
@@ -396,7 +429,19 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
         let pkg;
-        if (preview.input.mode === 'select') {
+        if (preview.input.mode === 'edit') {
+          if (preview.response.editPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve the current records before editing.', 409);
+          const { planPromptEdit } = await import('./edit-plan.mjs');
+          const { mode, ...request } = preview.input;
+          const current = packageFor(state), inspected = await inspectPackage(current);
+          const { plan, objects } = await planPromptEdit(current, inspected, request);
+          if (canonical(plan) !== canonical(preview.response.editPlan)) throw new LibraryError('EDIT_PLAN_MISMATCH', 'Edit no longer matches its reviewed prompt.', 409);
+          const planObject = await makeObject('prompt-edit-plan', plan), manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, operation: 'edit', source: plan.source, inputState: plan.inputState,
+            state: manifest.hash, editPlan: planObject.hash, createdAt: new Date().toISOString() });
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { ...objects, [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else if (preview.input.mode === 'select') {
           if (preview.response.currentViewPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve current-view choices and source issues before committing.', 409);
           const { reviewCurrentView } = await import('./current-view.mjs');
           const plan = await reviewCurrentView(packageFor(state), preview.input.resolutions);

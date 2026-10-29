@@ -22,7 +22,8 @@
             "restore-plan",
             "reconciliation-plan",
             "branch-transfer",
-            "current-view-plan"
+            "current-view-plan",
+            "prompt-edit-plan"
           ]
         },
         "data": {}
@@ -107,7 +108,8 @@
             "import",
             "restore",
             "reconcile",
-            "select"
+            "select",
+            "edit"
           ]
         },
         "importPlan": {
@@ -142,6 +144,10 @@
           "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "currentViewPlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "editPlan": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
         }
@@ -363,6 +369,74 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "edit"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "editPlan",
+              "inputState"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restorePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restoredCheckpointId"
+                  ]
+                },
+                {
+                  "required": [
+                    "reconciliationPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "incomingBranch"
+                  ]
+                },
+                {
+                  "required": [
+                    "currentViewPlan"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -406,7 +480,8 @@
             "import",
             "restore",
             "reconcile",
-            "select"
+            "select",
+            "edit"
           ]
         },
         "commitAvailable": {
@@ -438,6 +513,9 @@
         },
         "folderRecovery": {
           "$ref": "#/$defs/FolderRecovery"
+        },
+        "editPlan": {
+          "$ref": "#/$defs/EditPlan"
         }
       },
       "required": [
@@ -684,6 +762,59 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "edit"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "editPlan"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "editPlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "editPlan"
+              ]
+            }
+          }
         }
       ]
     },
@@ -742,7 +873,8 @@
             "import",
             "restore",
             "reconcile",
-            "select"
+            "select",
+            "edit"
           ]
         },
         "stateHash": {
@@ -2657,6 +2789,10 @@
               "type": "null"
             }
           ]
+        },
+        "derivedFrom": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
         }
       },
       "additionalProperties": false
@@ -3731,6 +3867,54 @@
             "incoming"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "groupId": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "expectedRecordHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "editedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "updates": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 100,
+              "items": {
+                "$ref": "#/$defs/EditUpdate"
+              }
+            },
+            "mode": {
+              "const": "edit"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "groupId",
+            "expectedRecordHash",
+            "editedAt",
+            "updates",
+            "mode"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -4138,6 +4322,190 @@
         "independentBackup"
       ],
       "additionalProperties": true
+    },
+    "EditUpdate": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "not": {
+              "enum": [
+                "__proto__",
+                "prototype",
+                "constructor"
+              ]
+            }
+          },
+          "prefixItems": [
+            {
+              "not": {
+                "enum": [
+                  "id",
+                  "versions",
+                  "currentVersionId",
+                  "createdAt",
+                  "updatedAt",
+                  "updated_at",
+                  "schema_version",
+                  "schemaVersion",
+                  "version",
+                  "deletedAt",
+                  "tombstoneVersion"
+                ]
+              }
+            }
+          ]
+        },
+        "value": {}
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "additionalProperties": false
+    },
+    "EditRequest": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "groupId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "expectedRecordHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "editedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "updates": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "$ref": "#/$defs/EditUpdate"
+          }
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision",
+        "groupId",
+        "expectedRecordHash",
+        "editedAt",
+        "updates"
+      ],
+      "additionalProperties": false
+    },
+    "DerivedSource": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "workspace": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "binding": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "baseRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "groupId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "previousMember": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "workspace",
+        "binding",
+        "baseRevision",
+        "groupId",
+        "previousMember"
+      ],
+      "additionalProperties": false
+    },
+    "EditPlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-prompt-edit-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "request": {
+          "$ref": "#/$defs/EditRequest"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "inputState": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "derivedSource": {
+          "$ref": "#/$defs/DerivedSource"
+        },
+        "manifest": {
+          "$ref": "#/$defs/LibraryState"
+        },
+        "currentViewPlan": {
+          "$ref": "#/$defs/CurrentViewPlan"
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "request",
+        "source",
+        "inputState",
+        "derivedSource",
+        "manifest",
+        "currentViewPlan",
+        "unresolved",
+        "activationReady",
+        "fingerprint"
+      ],
+      "additionalProperties": false
     }
   }
 }

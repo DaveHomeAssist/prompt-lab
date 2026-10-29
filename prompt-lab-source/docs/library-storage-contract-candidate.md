@@ -1,5 +1,42 @@
 # Library storage contract candidate
 
+## Shared prompt edit command
+
+The app currently writes prompts directly to its legacy stores. The shared
+service has no ordinary edit command, so connecting those stores as writable
+mirrors would introduce another source of truth. Add an explicit prompt edit
+to the existing command service before native activation.
+
+An edit names the library revision, stable prompt group and exact selected
+record hash. Field updates preserve unspecified and unknown values. Identity,
+generation and history are service-owned: retain every previous version and
+append the previous complete record before publishing its successor. The new
+source object records the edit provenance and inherits the selected source's
+deletion scope, without fabricating a browser capture. Keep other reviewed
+domain selections unchanged. Import, restore, branch reconciliation, complete
+transfer and current reads must understand this ancestry.
+
+Use the same preview, durable outbox, commit and receipt through direct and
+authenticated API transports. Reject stale revisions, changed records,
+inactive targets, unreviewed source coverage, invalid updates and publication
+failures without reporting Saved. Retry after response loss returns the same
+receipt and creates no additional version. Native packaging remains a separate
+pending decision; this command does not activate any personal library.
+
+Acceptance covers repeated edits and more than 25 versions, nested unknown
+fields, unchanged related records, source-scoped deletion after edits, actual
+edit forks and explicit reconciliation, restore, reopen, interrupted folder
+publication, transfer and API/outbox parity. Run synthetic checks on Dominic
+and use the private export only on its original Mac with disposable storage.
+Prompt creation, Trash/deletion commands and the complete app writer migration
+remain required subsequent work; an edit command alone does not complete A1/A3.
+
+The first direct/API tests and actual-edit fork tests pass. Browser request
+validation lives in a small shared module so loading the durable queue does not
+load the domain engine. Older runtimes reject the new edit operation; preserve
+the complete folder and use a compatible runtime rather than removing history.
+No native runtime choice or personal activation is implied.
+
 ## Folder branch recovery
 
 The folder reader previously rejected divergent transaction heads before a

@@ -239,7 +239,7 @@ export async function verifyImportPlan(plan, existing, incoming, resolutions = {
 }
 
 /** Build the complete library state, retaining all raw object pairs from ancestry. */
-export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {}, sourceBindings = [], enforceDeletions = false }) {
+export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {}, sourceBindings = [], derivedSources = [], enforceDeletions = false }) {
   if (!record(resolutions)) throw new LibraryError('INVALID_RESOLUTIONS', 'Import choices must be an object.');
   canonical(resolutions);
   resolutions = structuredClone(resolutions);
@@ -267,7 +267,7 @@ export async function planLibraryImport({ base = null, baseRevision = null, inco
   let deletionReview;
   if (enforceDeletions || base?.deletionPolicy) {
     const { applyDeletionPolicy } = await import('./selection-policy.mjs');
-    ({ manifest, ...deletionReview } = await applyDeletionPolicy(manifest, objects, sourceBindings));
+    ({ manifest, ...deletionReview } = await applyDeletionPolicy(manifest, objects, sourceBindings, derivedSources));
   }
   const plan = { format: 'promptlab-library-import-plan', schemaVersion: 1, baseRevision, incoming, resolutions,
     sources: review.sources, rows: review.rows, unresolved: review.unresolved + (deletionReview?.blocked.length ?? 0), manifest, activationReady: false,
