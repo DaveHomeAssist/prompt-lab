@@ -180,6 +180,18 @@ Acceptance: the picker opens by click and keyboard, closes on Escape, and
 returns focus to the card; chosen artwork survives reload, export and import;
 image limits and error messages are unchanged.
 
+### Slice 3 implementation contract
+
+Card artwork uses a dedicated button and a shared modal popover with Apply and
+Cancel. Apply saves only artwork after acknowledged persistence, retaining the
+choice on failure. Existing inspector drafts keep their other fields and adopt
+the explicitly applied artwork so a later Details save cannot restore stale art.
+Deleted prompts remain read-only. Images take precedence over emoji, then icons.
+Emoji accepts one grapheme, including flags, skin tones and joined sequences.
+Existing image limits and local storage remain unchanged. No new dependencies,
+provider calls, image processing, bulk editing or account sync are introduced.
+Older builds may drop emoji when re-saving a prompt.
+
 ## Slice 4: Feedback from inside the app
 
 Problem: there is no in-app way to capture a bug or request, and the earlier
