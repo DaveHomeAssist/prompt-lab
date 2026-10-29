@@ -36,12 +36,18 @@ async function fixture() {
     },
   };
   const transport = createServiceTransport(service, { libraryId: 'editor-lib' });
-  let offline = false;
+  let offline = false, barrier = null;
   const options = { libraryId: 'editor-lib', sourceBinding: copied.sourceBinding, outbox: createCommandOutbox(store), transport: {
     ...transport, identity: async () => { if (offline) throw new LibraryError('SERVICE_UNAVAILABLE', 'Service offline'); return transport.identity(); },
+    apply: async request => { if (barrier) await barrier; return transport.apply(request); },
   } };
   const repository = createAppLibraryRepository(options), notify = vi.fn();
-  const lib = createPromptLibraryStore(repository, { notify, newId: () => 'retained-editor-draft' }); await lib.open();
+  const libraryStore = createPromptLibraryStore(repository, { notify, newId: () => 'retained-editor-draft' }); await libraryStore.open();
+  const lib = Object.create(libraryStore);
+  lib.del = async id => {
+    const result = await lib.changeLifecycle('trash', id);
+    return result ? result.record ?? true : false;
+  };
   const hook = renderHook(() => {
     const [raw, setRaw] = useState('Complete editor draft'), [enhanced, setEnhanced] = useState('');
     const [variants, setVariants] = useState([]), [notes, setNotes] = useState('');
@@ -49,7 +55,8 @@ async function fixture() {
       editor: { raw, enhanced, variants, notes, resultMeta: null, enhMode: 'balanced', setRaw, setEnhanced, setVariants, setNotes, setEnhMode() {}, setComposerBlocks() {} } });
     return { ...flow, raw, setRaw };
   });
-  return { ...hook, lib, notify, repository, service, options, setOffline: value => { offline = value; } };
+  return { ...hook, lib, notify, repository, service, options, setOffline: value => { offline = value; },
+    hold: () => { let release; barrier = new Promise(resolve => { release = resolve; }); return () => { barrier = null; release(); }; } };
 }
 
 it('actual editor save reports the selected library revision and keeps legacy browser data untouched', async () => {
@@ -101,4 +108,55 @@ it('a missing shared Scratch link reports repair without changing the legacy not
   await waitFor(() => expect(f.notify).toHaveBeenCalledWith('Prompt saved to the selected Library. Related run or Scratch links need retry.'));
   expect(localStorage.getItem('pl2-pads')).toBe(original);
   expect((await f.repository.readPromptLibrary()).library).toHaveLength(2);
+});
+
+async function openOriginal(f) {
+  const entry = f.lib.library.find(row => row.id === 'original');
+  act(() => { f.result.current.setEditingId(entry.id); f.result.current.setEditingVersionId(entry.currentVersionId); });
+  act(() => { f.result.current.openSavePanel(); f.result.current.setChangeNote('Keep my note'); });
+  return entry;
+}
+
+it('offline deletion preserves the loaded save target and panel until the retained operation succeeds', async () => {
+  const f = await fixture(), entry = await openOriginal(f); f.setOffline(true);
+  await act(async () => expect(await f.result.current.deleteEntry(entry.id)).toBe(false));
+  expect(f.result.current.editingId).toBe(entry.id); expect(f.result.current.editingVersionId).toBe(entry.currentVersionId);
+  expect(f.result.current.saveTargetId).toBe(entry.id); expect(f.result.current.showSave).toBe(true);
+  expect(f.result.current.changeNote).toBe('Keep my note'); expect(f.result.current.raw).toBe('Complete editor draft');
+  f.setOffline(false);
+  await act(async () => expect(await f.result.current.deleteEntry(entry.id)).toBe(true));
+  expect(f.result.current.editingId).toBeNull(); expect(f.result.current.saveTargetId).toBeNull();
+  expect(f.result.current.raw).toBe('Complete editor draft'); expect(f.lib.trash).toHaveLength(1);
+  expect(Object.keys((await f.service.read()).operations)).toHaveLength(3);
+});
+
+it('delayed deletion waits for acknowledgement and preserves newer draft edits and save details', async () => {
+  const f = await fixture(), entry = await openOriginal(f), release = f.hold();
+  let pending; act(() => { pending = f.result.current.deleteEntry(entry.id); });
+  await waitFor(() => expect(f.lib.saving).toBe(true));
+  expect(f.result.current.editingId).toBe(entry.id); expect(f.result.current.showSave).toBe(true);
+  act(() => { f.result.current.setRaw('Newer draft'); f.result.current.setChangeNote('Newer note'); });
+  await act(async () => { release(); expect(await pending).toBe(true); });
+  expect(f.result.current.editingId).toBeNull(); expect(f.result.current.saveTargetId).toBeNull();
+  expect(f.result.current.raw).toBe('Newer draft'); expect(f.result.current.changeNote).toBe('Newer note');
+  expect(f.result.current.showSave).toBe(true);
+});
+
+it('late deletion cannot close or clear a new prompt save panel', async () => {
+  const f = await fixture(), entry = await openOriginal(f), release = f.hold();
+  let pending; act(() => { pending = f.result.current.deleteEntry(entry.id); });
+  await waitFor(() => expect(f.lib.saving).toBe(true));
+  act(() => { f.result.current.clearPersistenceState(); f.result.current.setRaw('Unrelated new prompt'); });
+  act(() => { f.result.current.openSavePanel(); f.result.current.setChangeNote('New prompt note'); });
+  await act(async () => { release(); expect(await pending).toBe(true); });
+  expect(f.result.current.editingId).toBeNull(); expect(f.result.current.showSave).toBe(true);
+  expect(f.result.current.raw).toBe('Unrelated new prompt'); expect(f.result.current.changeNote).toBe('New prompt note');
+});
+
+it('a rejected deletion promise reports failure and keeps the editor target intact', async () => {
+  const f = await fixture(), entry = await openOriginal(f);
+  vi.spyOn(f.lib, 'del').mockRejectedValueOnce(new Error('Storage rejected'));
+  await act(async () => expect(await f.result.current.deleteEntry(entry.id)).toBe(false));
+  expect(f.result.current.editingId).toBe(entry.id); expect(f.result.current.showSave).toBe(true);
+  expect(f.notify).toHaveBeenCalledWith('Prompt removal was not confirmed. Your draft is still available.');
 });

@@ -19,8 +19,8 @@ export function useRepositoryPromptLibrary(repository, notify) {
   if (!store) return null;
 
   const unavailable = () => { notifyRef.current?.('This action is not available for the selected Library yet. Your data is unchanged.'); return false; };
-  const unconnected = Object.fromEntries(['setLibrary', 'setTrash', 'setCollections', 'saveFolders', 'duplicateEntry',
-    'moveEntriesToCollection', 'moveLibraryEntry', 'moveLibraryEntryByOffset', 'deleteCollection', 'clearLibrary',
+  const unconnected = Object.fromEntries(['setLibrary', 'setTrash', 'setCollections', 'duplicateEntry',
+    'moveLibraryEntry', 'moveLibraryEntryByOffset', 'clearLibrary',
     'restoreVersion', 'removeEntriesByPackId', 'assignEntriesToPack', 'exportLib', 'exportEntries', 'importLib',
     'retryImport', 'chooseImportResolution', 'cancelImportPreview', 'confirmImport', 'recoverLegacyWebLibrary',
     'loadStarterPack'].map(key => [key, unavailable]));
@@ -34,6 +34,7 @@ export function useRepositoryPromptLibrary(repository, notify) {
     saving: store.saving, saveError: store.saveError, retryPending: store.retryPending,
     refresh: store.refresh, doSave: store.doSave, linkSavedPrompt: store.linkSavedPrompt,
     saveEntryDetails: store.saveEntryDetails, setFavorite: store.setFavorite, updateEntries: store.updateEntries,
+    saveFolders: store.saveFolders, deleteCollection: store.deleteCollection, moveEntriesToCollection: store.moveEntriesToCollection,
     addTagToEntries: (ids, tag) => store.updateEntries(ids, entry => ({ ...entry, tags: normalizeTagList([...(entry.tags || []), tag]) })),
     del: (id, { skipConfirm = false } = {}) => !skipConfirm && !window.confirm('Move this prompt to Recently Deleted?') ? false : lifecycle('trash', id),
     restoreDeleted: id => lifecycle('restore', id),

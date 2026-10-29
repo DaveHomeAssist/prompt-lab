@@ -10,7 +10,7 @@ const object = value => value && Object.getPrototypeOf(value) === Object.prototy
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
-const intentModes = new Set(['record', 'create', 'edit', 'lifecycle']);
+const intentModes = new Set(['record', 'create', 'edit', 'lifecycle', 'folder']);
 const modes = ['snapshot', 'import', 'select', 'restore', 'reconcile', 'edit', 'create', 'lifecycle', 'record', 'folder', 'pack'];
 
 export function normalizeCommandRequest(value) {
@@ -102,7 +102,7 @@ export async function inspectOutboxEntry(value) {
   const { recordHash, ...record } = entry;
   if (recordHash !== await hash(record) || entry.commandHash !== await hash(envelope(entry))) fail('OUTBOX_CORRUPT', 'Pending-command integrity check failed.');
   const request = normalizeCommandRequest(entry.request);
-  if (entry.schemaVersion === 3 && !intentModes.has(request.mode)) fail('OUTBOX_CORRUPT', 'A retained app intent must be an explicit record or prompt command.');
+  if (entry.schemaVersion === 3 && !intentModes.has(request.mode)) fail('OUTBOX_CORRUPT', 'A retained app intent must be an explicit record, prompt or folder command.');
   const unreviewed = entry.schemaVersion === 3 && intentModes.has(request.mode) && entry.reviewHash === null && entry.sourceHash === null
     && ['awaiting-review', 'failed'].includes(entry.state);
   if (request.libraryId !== entry.libraryId || request.expectedRevision !== entry.baseRevision
@@ -206,7 +206,7 @@ export function createCommandOutbox(store, { now = () => Date.now() } = {}) {
     read,
     async stage({ request: value, operationId }) {
       const request = normalizeCommandRequest(value);
-      if (!intentModes.has(request.mode) || !id(operationId)) fail('REVIEW_REQUIRED', 'Only explicit record and prompt commands may be retained before service review.');
+      if (!intentModes.has(request.mode) || !id(operationId)) fail('REVIEW_REQUIRED', 'Only explicit record, prompt and folder commands may be retained before service review.');
       const entry = { format: 'promptlab-command-outbox', schemaVersion: 3, libraryId: request.libraryId,
         baseRevision: request.expectedRevision, operationId, request, fingerprint: await commandFingerprint(request),
         reviewHash: null, sourceHash: null, createdAt: new Date(now()).toISOString(), version: 1,

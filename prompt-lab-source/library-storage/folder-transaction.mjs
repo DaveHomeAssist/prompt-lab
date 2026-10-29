@@ -47,18 +47,25 @@ export async function planFolderTransaction(workspace, value) {
       nextFolders = folders.filter(folder => folder.id !== target.id);
     } else {
       const changes = value.changes;
-      if (!object(changes) || !Object.keys(changes).length || Object.keys(changes).some(key => !['name', 'parentId'].includes(key))
+      if (!object(changes) || !Object.keys(changes).length || Object.keys(changes).some(key => !['name', 'parentId', 'artwork'].includes(key))
         || (Object.hasOwn(changes, 'name') && typeof changes.name !== 'string')
-        || (Object.hasOwn(changes, 'parentId') && changes.parentId !== null && !identity(changes.parentId))) {
-        fail('INVALID_FOLDER_COMMAND', 'Change the folder name or parent explicitly; identity and other metadata are retained.');
+        || (Object.hasOwn(changes, 'parentId') && changes.parentId !== null && !identity(changes.parentId))
+        || (Object.hasOwn(changes, 'artwork') && (!object(changes.artwork) || !Object.keys(changes.artwork).length
+          || Object.entries(changes.artwork).some(([key, field]) => !['icon', 'image', 'emoji'].includes(key) || typeof field !== 'string')))) {
+        fail('INVALID_FOLDER_COMMAND', 'Change the folder name, parent or displayed artwork explicitly; other metadata is retained.');
+      }
+      if (changes.artwork && target.artwork != null && !object(target.artwork)) {
+        fail('INVALID_FOLDER_COMMAND', 'This folder has unrecognized artwork metadata. Keep it intact and review it before editing artwork.');
       }
       try {
-        const changed = changeFolder(folders, target.id, changes);
+        const structural = Object.hasOwn(changes, 'name') || Object.hasOwn(changes, 'parentId');
+        const changed = structural ? changeFolder(folders, target.id, changes) : folders;
         // The UI helper sanitizes presentation fields. A storage transaction
-        // changes only the reviewed structural fields, retaining artwork bytes.
-        nextFolders = folders.map((folder, index) => ({ ...folder, name: changed[index].name,
+        // changes only reviewed fields, retaining all unmentioned artwork bytes.
+        nextFolders = folders.map((folder, index) => ({ ...folder, ...(structural ? { name: changed[index].name,
           ...(Object.hasOwn(folder, 'parentId') || folder.id === target.id ? { parentId: changed[index].parentId ?? null } : {}),
-          collection: changed[index].collection }));
+          collection: changed[index].collection } : {}),
+          ...(folder.id === target.id && changes.artwork ? { artwork: { ...folder.artwork, ...changes.artwork } } : {}) }));
       } catch (error) { fail('INVALID_FOLDER_GRAPH', error.message); }
     }
   }

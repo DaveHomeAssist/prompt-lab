@@ -275,6 +275,7 @@ export default function LibraryWorkspace({
   const [savingDetails, setSavingDetails] = useState(false);
   const detailsSavingRef = useRef(false);
   const [folderError, setFolderError] = useState('');
+  const folderFormRef = useRef(null);
   const workspaceRef = useRef(null);
   const folderRecords = useMemo(() => lib.folders || reconcileFolders([], lib.collections), [lib.folders, lib.collections]);
   const folderRows = useMemo(() => folderTree(folderRecords), [folderRecords]);
@@ -325,6 +326,7 @@ export default function LibraryWorkspace({
   const [collectionDraft, setCollectionDraft] = useState('');
   const [renamingCollection, setRenamingCollection] = useState('');
   const [renameCollectionDraft, setRenameCollectionDraft] = useState('');
+  folderFormRef.current = { collectionDraft, collectionParent, renamingCollection, renameCollectionDraft };
   const [announcement, setAnnouncement] = useState('');
   const importInputRef = useRef(null);
   const inspectorDialogRef = useDialogA11y({
@@ -521,9 +523,25 @@ export default function LibraryWorkspace({
     try {
       const saved = await lib.saveFolders(next, changes);
       if (!saved) { setFolderError('Folder changes were not saved. Please retry.'); return false; }
-      if (changes.has(lib.activeCollection)) lib.setActiveCollection(changes.get(lib.activeCollection) || null);
+      lib.setActiveCollection(current => changes.has(current) ? changes.get(current) || null : current);
       return true;
     } finally { setFolderSaving(false); }
+  };
+  const retryPendingChanges = async () => {
+    const before = folderRecords, result = await lib.retryPending();
+    if (!result?.folderPlan) return;
+    const { command, expectedFolders } = result.folderPlan;
+    const paths = new Map(before.map(folder => [folder.collection, expectedFolders.find(row => row.id === folder.id)?.collection ?? '']));
+    lib.setActiveCollection(current => paths.has(current) ? paths.get(current) || null : current);
+    setFolderError(''); setAnnouncement('Folder changes saved.');
+    const form = folderFormRef.current;
+    if (command.action === 'create' && form.collectionDraft.trim() === command.folder.name
+      && (form.collectionParent || null) === command.folder.parentId) setCollectionDraft('');
+    if (command.action === 'change' && form.renamingCollection === command.folderId
+      && (Object.hasOwn(command.changes, 'name') || Object.hasOwn(command.changes, 'parentId'))) {
+      const saved = expectedFolders.find(row => row.id === command.folderId);
+      if (saved?.name === form.renameCollectionDraft.trim() && saved.parentId === (form.collectionParent || null)) setRenamingCollection('');
+    }
   };
   const createCollection = async () => {
     if (!canUseCollections) { openBilling?.('collections'); return; }
@@ -533,14 +551,23 @@ export default function LibraryWorkspace({
       const parent = folderRecords.find(folder => folder.id === collectionParent);
       const draft = [...folderRecords, { id, name: '__new__', parentId: null, collection: `__new__${id}`, artwork: {} }];
       const next = changeFolder(draft, id, { name, parentId: parent?.id || null });
-      if (await persistFolders(next)) { setCollectionDraft(''); setAnnouncement(`Created folder ${name}.`); }
+      if (await persistFolders(next)) {
+        const current = folderFormRef.current;
+        if (current.collectionDraft.trim() === name && current.collectionParent === collectionParent) setCollectionDraft('');
+        setAnnouncement(`Created folder ${name}.`);
+      }
     } catch (error) { setFolderError(error.message); }
   };
   const saveCollectionRename = async () => {
     if (folderSaving) return;
     try {
       const next = changeFolder(folderRecords, renamingCollection, { name: renameCollectionDraft, parentId: collectionParent || null });
-      if (await persistFolders(next)) { setRenamingCollection(''); setAnnouncement('Folder and prompt assignments updated.'); }
+      if (await persistFolders(next)) {
+        const current = folderFormRef.current;
+        if (current.renamingCollection === renamingCollection && current.renameCollectionDraft === renameCollectionDraft
+          && current.collectionParent === collectionParent) setRenamingCollection('');
+        setAnnouncement('Folder and prompt assignments updated.');
+      }
     } catch (error) { setFolderError(error.message); }
   };
   const deleteFolder = async folder => {
@@ -614,7 +641,7 @@ export default function LibraryWorkspace({
         {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
       </header>
 
-      {lib.repository && lib.saveError && <div className="pl-library-save-feedback" role="alert"><span>{lib.saveError}</span><button type="button" className="pl-secondary-button" disabled={lib.saving} onClick={() => lib.retryPending()}>Retry pending changes</button></div>}
+      {lib.repository && lib.saveError && <div className="pl-library-save-feedback" role="alert"><span>{lib.saveError}</span><button type="button" className="pl-secondary-button" disabled={lib.saving} onClick={retryPendingChanges}>Retry pending changes</button></div>}
       {lib.repository && lib.saving && <p className="pl-library-save-feedback" role="status">Saving to the selected Library…</p>}
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">

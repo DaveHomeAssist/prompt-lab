@@ -237,6 +237,19 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
           folders: snapshot.items.filter(row => row.domain === 'folders').map(row => structuredClone(row.value)) };
       });
     },
+    async changeFolder(command, expectedRevision) {
+      const input = structuredClone(command); canonical(input);
+      if (!address(expectedRevision)) fail('REVISION_CONFLICT', 'Review the current folders before changing them.');
+      return serial(async () => {
+        if (!snapshot) await refresh();
+        const operationId = 'app-folder:' + (await hash({ libraryId, sourceBinding, expectedRevision, input })).slice(7);
+        const retained = await outbox.read(libraryId, operationId);
+        if (!retained && snapshot.revision !== expectedRevision) fail('REVISION_CONFLICT', 'The folders changed. Keep your edits and review the current Library.');
+        const committed = await publish(retained?.request ?? { ...input, mode: 'folder', libraryId, sourceBinding,
+          expectedRevision, changedAt: new Date(now()).toISOString() }, operationId);
+        return { receipt: structuredClone(committed.receipt) };
+      });
+    },
     async createPrompt({ creationId, record, createdAt = new Date(now()).toISOString() }) {
       const input = structuredClone(record); canonical(input);
       return serial(async () => {

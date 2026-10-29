@@ -86,6 +86,20 @@ test('literal legacy paths stay literal until their exact folder is changed', as
   assert.equal(plan.workspace.folders.at(-1).id, 'legacy');
 });
 
+test('artwork patches retain unknown fields and literal names without rewriting prompts or paths', async () => {
+  const workspace = fixture(); workspace.folders.push({ id: 'legacy', name: 'A/B', collection: 'A/B', parentId: null,
+    artwork: { icon: 'Star', future: { bytes: 'keep' } } }); workspace.collections.push('A/B');
+  const plan = await planFolderTransaction(workspace, await input(workspace, 'change', 'legacy', { artwork: { emoji: '🧪', icon: '' } }));
+  assert.deepEqual(plan.workspace.folders.at(-1), { ...workspace.folders.at(-1), artwork: { icon: '', emoji: '🧪', future: { bytes: 'keep' } } });
+  assert.deepEqual(plan.workspace.library, workspace.library); assert.deepEqual(plan.workspace.collections, workspace.collections);
+  assert.deepEqual(plan.changes.prompts, []); assert.deepEqual(plan.changes.paths, []);
+  for (const artwork of [{ future: false }, { icon: null }, {}, []]) {
+    await assert.rejects(planFolderTransaction(workspace, await input(workspace, 'change', 'legacy', { artwork })), { code: 'INVALID_FOLDER_COMMAND' });
+  }
+  workspace.folders.at(-1).artwork = ['opaque future artwork'];
+  await assert.rejects(planFolderTransaction(workspace, await input(workspace, 'change', 'legacy', { artwork: { icon: 'Star' } })), { code: 'INVALID_FOLDER_COMMAND' });
+});
+
 test('stale workspace and target hashes reject without altering the source', async () => {
   const workspace = fixture(), request = await input(workspace), stale = structuredClone(workspace);
   stale.extension.concurrent = true;

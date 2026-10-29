@@ -1146,7 +1146,7 @@
     },
     "/v1/library/folder-mutations": {
       "post": {
-        "summary": "Preview an atomic folder creation, rename, move or removal",
+        "summary": "Preview an atomic folder creation, rename, move, artwork change or removal",
         "operationId": "postV1LibraryFolders",
         "x-implementation-status": "candidate",
         "responses": {
@@ -6809,6 +6809,22 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "artwork": {
+                    "type": "object",
+                    "properties": {
+                      "icon": {
+                        "type": "string"
+                      },
+                      "image": {
+                        "type": "string"
+                      },
+                      "emoji": {
+                        "type": "string"
+                      }
+                    },
+                    "minProperties": 1,
+                    "additionalProperties": false
                   }
                 },
                 "required": [],
@@ -7170,7 +7186,7 @@
       },
       "DurableOutbox": {
         "type": "object",
-        "description": "App-owned pending command. Version 3 retains explicit record and prompt intents before review. A matching review must be durably stored before publication. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime; completed records are retained.",
+        "description": "App-owned pending command. Version 3 retains explicit record, prompt and folder intents before review. A matching review must be durably stored before publication. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime; completed records are retained.",
         "properties": {
           "format": {
             "const": "promptlab-command-outbox"
@@ -7385,7 +7401,8 @@
                         "record",
                         "create",
                         "edit",
-                        "lifecycle"
+                        "lifecycle",
+                        "folder"
                       ]
                     }
                   },
@@ -9296,6 +9313,22 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "artwork": {
+                    "type": "object",
+                    "properties": {
+                      "icon": {
+                        "type": "string"
+                      },
+                      "image": {
+                        "type": "string"
+                      },
+                      "emoji": {
+                        "type": "string"
+                      }
+                    },
+                    "minProperties": 1,
+                    "additionalProperties": false
                   }
                 },
                 "required": [],

@@ -3,12 +3,13 @@ import { normalizeEntry, suggestTitleFromText } from './promptSchema.js';
 import { normalizeTagList } from './tagSchema.js';
 import { ensureString } from './utils.js';
 import { canonical } from '../../../library-storage/contract.mjs';
+import { planAppFolderCommand } from './appFolderCommand.js';
 
 // An explicit dependency for the editor. Construction never selects storage.
 export function createPromptLibraryStore(repository, { notify = () => {}, newId = () => crypto.randomUUID() } = {}) {
   if (!repository || ['readPromptLibrary', 'createPrompt', 'editPrompt', 'changePromptLifecycle', 'readRecord', 'saveRecord']
     .some(key => typeof repository[key] !== 'function')) throw new TypeError('A shared prompt repository is required.');
-  let view = { library: [], trash: [] }, ready = false, attempt = null, actionAttempt = null, saveError = '';
+  let view = { library: [], trash: [], folders: [], collections: [] }, ready = false, attempt = null, actionAttempt = null, saveError = '';
   const listeners = new Set();
   const emit = () => { for (const listener of listeners) listener(); };
   const presentation = entry => normalizeEntry({ ...entry,
@@ -24,6 +25,13 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     if (rows.length !== 1) throw new Error('Review the current prompt before changing it.');
     return rows[0];
   }
+  function folderAssignment(collection) {
+    const matches = view.folders.filter(folder => folder.collection === collection);
+    if (typeof collection !== 'string' || (collection && matches.length !== 1)) {
+      throw new Error('Review the destination folder before moving this prompt.');
+    }
+    return { collection, folderId: collection ? matches[0].id : '' };
+  }
   function updates(record, updater) {
     const shown = presentation(record), next = updater(structuredClone(shown));
     if (!next || typeof next !== 'object' || Array.isArray(next)) throw new Error('Prompt changes must contain explicit fields.');
@@ -33,6 +41,13 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
       if (Object.hasOwn(shown, key) && canonical(shown[key]) === canonical(value)) continue;
       if (owned.has(key)) throw new Error('Prompt identity and history are owned by the Library.');
       changes[key] = value;
+    }
+    if (Object.hasOwn(changes, 'collection') || Object.hasOwn(changes, 'folderId')) {
+      const assignment = folderAssignment(changes.collection ?? record.collection ?? '');
+      if (Object.hasOwn(changes, 'folderId') && changes.folderId !== assignment.folderId) {
+        throw new Error('The destination folder and collection path must agree.');
+      }
+      Object.assign(changes, assignment);
     }
     return changes;
   }
@@ -70,6 +85,13 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
             throw new Error('Another change followed this save. Review the retained operation and current prompt.');
           }
         }
+        if (current.completed.folderPlan) {
+          const plan = current.completed.folderPlan, sorted = rows => [...rows].sort((a, b) => a.id.localeCompare(b.id));
+          if (canonical(sorted(view.folders)) !== canonical(sorted(plan.expectedFolders))
+            || canonical([...view.collections].sort()) !== canonical([...plan.expectedCollections].sort())) {
+            throw new Error('Another folder change followed this save. Review the retained operation and current folders.');
+          }
+        }
         saveError = ''; actionAttempt = null; notify(current.message); return current.completed;
       } catch (error) { report(error); return false; }
       finally { current.pending = null; emit(); }
@@ -104,9 +126,10 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
       // not an edit and must retain its original stored representation.
       const changed = Object.fromEntries(Object.entries(fields).filter(([key, value]) =>
         !Object.hasOwn(displayed, key) || canonical(displayed[key]) !== canonical(value)));
+      if (Object.hasOwn(changed, 'collection')) Object.assign(changed, folderAssignment(changed.collection));
       return { mode: 'edit', record, fields: changed };
     }
-    return { mode: 'create', creationId: newId(), fields: { ...fields, useCount: 0 }, savedAsNew: args.copyAsNew === true };
+    return { mode: 'create', creationId: newId(), fields: { ...fields, ...folderAssignment(fields.collection), useCount: 0 }, savedAsNew: args.copyAsNew === true };
   }
   const store = {
     repository,
@@ -160,6 +183,36 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     },
     setFavorite(id, favorite) {
       return store.saveEntryDetails(id, entry => ({ ...entry, favorite: typeof favorite === 'boolean' ? favorite : !entry.favorite }));
+    },
+    async saveFolders(next) {
+      try {
+        if (!ready) throw new Error('Open the selected Library before changing folders.');
+        const signature = canonical(['folders', next]);
+        if (actionAttempt) return Boolean(await runAction(signature, () => null, () => null, 'Folders saved.'));
+        const plan = await planAppFolderCommand(structuredClone(view), structuredClone(next));
+        return Boolean(await runAction(signature, () => plan, async value => ({
+          ...await repository.changeFolder(value.command, value.expectedRevision), folderPlan: value,
+        }), 'Folder changes saved.'));
+      } catch (error) { report(error); return false; }
+    },
+    async deleteCollection(collection) {
+      const folders = view.folders.filter(folder => folder.collection === collection);
+      if (folders.length !== 1) { report(new Error('Review the selected folder before removing it.')); return false; }
+      if (view.folders.some(folder => folder.parentId === folders[0].id)) {
+        report(new Error('Move this folder’s subfolders before removing it. Prompts will be kept.')); return false;
+      }
+      return store.saveFolders(view.folders.filter(folder => folder.id !== folders[0].id));
+    },
+    async moveEntriesToCollection(ids, collection) {
+      const folders = view.folders.filter(folder => folder.collection === collection);
+      if (collection && folders.length !== 1) { report(new Error('Review the destination folder before moving prompts.')); return false; }
+      const folder = folders[0], expected = canonical(folder ?? null);
+      return batchObserved(ids, 'library', id => {
+        if (canonical(view.folders.find(row => row.id === folder?.id) ?? null) !== expected) {
+          throw new Error('The destination folder changed during the move. Review before retrying.');
+        }
+        return store.saveEntryDetails(id, entry => ({ ...entry, collection, folderId: folder?.id ?? '' }));
+      });
     },
     changeLifecycle(action, id, confirmation = {}) {
       return runAction(canonical(['lifecycle', action, id, confirmation]), () => observed(id, action === 'trash' ? 'library' : 'trash'),

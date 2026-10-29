@@ -1,5 +1,56 @@
 # Library storage contract candidate
 
+## Connected folder controls and confirmed editor deletion
+
+The shared Library must support the existing folder create, rename, parent move,
+artwork and removal controls through one verified command. Derive one explicit
+folder action from the displayed change, preserve unmentioned artwork and future
+fields, and reject unrelated multi-folder edits. Folder paths, descendant paths
+and prompt assignments commit together. Retain the original revision and command
+in the durable outbox before service access, so offline failure can be retried
+after restart without changing identity or falling back to local storage.
+
+Connect collection assignment to both the selected folder ID and its current
+path. Wait for confirmed deletion before clearing the editor's saved target,
+and preserve a newer draft or navigation while that confirmation is pending.
+Verify real controls, failed and delayed acknowledgement, stale folder input,
+offline/restart/retry, unknown metadata and full history retention. Test a fresh
+isolated real-export copy. Keep personal activation and remaining unsupported
+Library actions behind their explicit integration and native acceptance gates.
+
+Folder controls now derive one revision-pinned command and retain its identity
+before transport access. Create, rename, parent move, artwork and removal share
+the service and verify the resulting folder projection before acknowledging.
+Prompt assignment updates both folder identity and path. Artwork edits preserve
+unknown fields and literal legacy folder names. Retry clears the old failure
+message only after confirmation, and delayed saves preserve newer form edits.
+Editor removal waits for confirmed success and preserves newer draft content or
+navigation. Two regressions fail against the previous deletion implementation.
+
+Browser inspection exposed clipped artwork controls in the narrow desktop
+drawer and a stale phone drawer height cap. The collection and artwork grids
+now shrink to the drawer width, and the phone drawer uses its available height.
+Rendered control bounds are part of the browser acceptance checks.
+
+Dominic Node 22.23.4 passes all 410 storage tests and 1,571 app tests across 141
+files. Chromium passes the complete folder workflow at 375, 1440 and 2560 pixels,
+including persistent offline recovery after reload and control-bound checks.
+The new layout assertion fails on the prior CSS. Six actual outbox states pass
+both published schema validators; 23 malformed outbox states and four malformed
+artwork patches reject. Initial test-fixture, locator and schema-harness mistakes
+are retained in the evidence and corrected before the passing runs.
+
+On the Mac with Node 22.22.1, a fresh isolated real-export fixture passes folder
+creation, prompt assignment, offline rename/retry, artwork, folder removal,
+original assignment restoration and reopen. All 218 fixture prompts, both
+original Trash records, 18 original folders, complete prior histories, 71 prior
+objects and 13 earlier transaction files remain. Exactly six operations are
+added. The original export remains byte identical, with no private upload or
+personal activation. Saves take 10.899 to 11.876 seconds, so latency remains an
+acceptance gap. This direct service fixture uses a memory test outbox; browser
+restart/retry is verified separately. Native, actual two-client iCloud and human
+acceptance are still open, and hosted implementation remains behind Phase A.
+
 ## Separate immutable folder objects
 
 Ordinary folder transactions currently embed the complete archive, making each

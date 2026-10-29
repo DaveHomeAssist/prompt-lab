@@ -25,10 +25,12 @@ export function normalizeFolderRequest(value) {
     if (!id(value.folderId) || !address(value.expectedFolderHash)) fail('Pin the selected folder ID and record hash.');
     if (value.action === 'remove' && value.confirmRemoval !== true) fail('Confirm folder removal while keeping its prompts.');
     if (value.action === 'change' && (!object(value.changes) || !Object.keys(value.changes).length
-      || Object.keys(value.changes).some(key => !['name', 'parentId'].includes(key))
+      || Object.keys(value.changes).some(key => !['name', 'parentId', 'artwork'].includes(key))
       || (Object.hasOwn(value.changes, 'name') && typeof value.changes.name !== 'string')
-      || (Object.hasOwn(value.changes, 'parentId') && value.changes.parentId !== null && !id(value.changes.parentId)))) {
-      fail('Change the name or parent explicitly; preserve identity and other metadata.');
+      || (Object.hasOwn(value.changes, 'parentId') && value.changes.parentId !== null && !id(value.changes.parentId))
+      || (Object.hasOwn(value.changes, 'artwork') && (!object(value.changes.artwork) || !Object.keys(value.changes.artwork).length
+        || Object.entries(value.changes.artwork).some(([key, field]) => !['icon', 'image', 'emoji'].includes(key) || typeof field !== 'string'))))) {
+      fail('Change the name, parent or displayed artwork explicitly; preserve identity and other metadata.');
     }
   }
   return structuredClone(value);
