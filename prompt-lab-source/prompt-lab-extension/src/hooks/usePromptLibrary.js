@@ -106,6 +106,8 @@ export default function usePromptLibrary(notify) {
   const [folderRecords, setFolderRecords] = useState([]);
   const foldersRef = useRef([]);
   const folders = useMemo(() => reconcileFolders(folderRecords, collections), [folderRecords, collections]);
+  const [smartView, setSmartView] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState(null);
   const [activeCollection, setActiveCollection] = useState(null);
@@ -1411,7 +1413,7 @@ export default function usePromptLibrary(notify) {
 
   return {
     library, setLibrary, trash, setTrash, libReady, collections, setCollections, folders, saveFolders, saveEntryDetails,
-    search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
+    smartView, setSmartView, statusFilter, setStatusFilter, search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,

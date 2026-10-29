@@ -117,6 +117,21 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
         await expect(artworkDialog).toHaveCount(0); await expect(artworkTrigger).toBeFocused();
       }
       await page.getByRole('button', { name: 'List view', exact: true }).click();
+      await page.getByRole('button', { name: 'Change artwork for QA Beta', exact: true }).click();
+      const reuseDialog = page.getByRole('dialog', { name: 'Artwork for QA Beta', exact: true });
+      await reuseDialog.getByRole('button', { name: 'Use recent 👩🏽‍💻', exact: true }).click();
+      await reuseDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+      await expect(reuseDialog).toHaveCount(0);
+      expect((await storedState(page)).library.find(row => row.id === 'qa-beta').metadata.artwork.emoji).toBe('👩🏽‍💻');
+      await openView(page, 'Write', viewport.width);
+      const promptsToggle = page.getByRole('button', { name: 'Prompts', exact: true });
+      if (await promptsToggle.getAttribute('aria-pressed') !== 'true') await promptsToggle.click();
+      const promptPanel = page.getByRole('complementary', { name: 'Prompts beside Write' });
+      await promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' }).fill('avery navigation');
+      await expect(promptPanel.getByRole('button', { name: 'Open QA Alpha in Write', exact: true })).toBeVisible();
+      await expect(promptPanel.getByRole('button', { name: 'Open QA Beta in Write', exact: true })).toHaveCount(0);
+      await promptPanel.getByRole('button', { name: 'Close side panel', exact: true }).click();
+      await openView(page, 'Library', viewport.width);
 
       await showLibraryDrawer(page);
       await page.getByRole('button', { name: '#qa-active', exact: true }).click();
@@ -125,6 +140,9 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('draft');
       await expect(list.getByRole('listitem')).toHaveCount(0);
       await page.getByRole('combobox', { name: 'Filter by status', exact: true }).selectOption('active');
+      await openView(page, 'Write', viewport.width);
+      await openView(page, 'Library', viewport.width);
+      await expect(page.getByRole('combobox', { name: 'Filter by status', exact: true })).toHaveValue('active');
       await expect(list.getByRole('listitem')).toHaveCount(1);
       await expect(list).toContainText('QA Alpha');
       await page.getByRole('button', { name: 'Clear all', exact: true }).click();

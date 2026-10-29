@@ -663,19 +663,26 @@ export default function ScratchWorkspace({
 
   const copyText = async (value, label = 'Note') => {
     if (!value.trim()) return;
+    const previousFocus = document.activeElement;
     try {
-      await navigator.clipboard.writeText(value);
+      try { await navigator.clipboard.writeText(value); }
+      catch {
+        const element = document.createElement('textarea');
+        element.value = value;
+        element.style.cssText = 'position:fixed;top:-9999px;opacity:0';
+        document.body.appendChild(element);
+        try {
+          element.focus(); element.select();
+          if (document.execCommand('copy') !== true) throw new Error('Clipboard rejected the copy.');
+        } finally {
+          element.remove();
+          if (previousFocus?.isConnected) previousFocus.focus();
+        }
+      }
+      notify?.(`${label} copied.`);
     } catch {
-      const element = document.createElement('textarea');
-      element.value = value;
-      element.style.cssText = 'position:fixed;top:-9999px;opacity:0';
-      document.body.appendChild(element);
-      element.focus();
-      element.select();
-      document.execCommand('copy');
-      element.remove();
+      notify?.('Copy failed. Select the note text and copy it manually, or try Copy again.');
     }
-    notify?.(`${label} copied.`);
   };
 
   const exportPad = () => {

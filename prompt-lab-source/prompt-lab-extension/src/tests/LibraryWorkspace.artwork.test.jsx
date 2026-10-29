@@ -38,6 +38,7 @@ describe('card artwork persistence', () => {
     expect(outer).not.toHaveBeenCalled();
     expect(screen.queryByRole('dialog', { name: 'Artwork for Handoff' })).not.toBeInTheDocument();
     expect(save).not.toHaveBeenCalled();
+    expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
   });
   it('keeps deleted prompts read-only', () => {
     render(<Harness />);
@@ -58,6 +59,7 @@ describe('card artwork persistence', () => {
     resolve(true);
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Artwork for Handoff' })).not.toBeInTheDocument());
     expect(screen.getByTestId('library')).toHaveTextContent('🧪');
+    expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))[0].emoji).toBe('🧪');
   });
   it.each(['List view', 'Tile view', 'Compact view', 'Gallery view'])('opens independently in %s and Cancel discards the draft', view => {
     render(<Harness />); fireEvent.click(screen.getByRole('button', { name: view }));
@@ -65,6 +67,7 @@ describe('card artwork persistence', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Prompt artwork: Clock', exact: true }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     expect(save).not.toHaveBeenCalled();
+    expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save details', exact: true })).not.toBeInTheDocument();
     expect(screen.getByTestId('library')).toHaveTextContent('Star');
   });
@@ -78,6 +81,7 @@ describe('card artwork persistence', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
     await waitFor(() => expect(within(dialog).getByRole('alert')).toHaveTextContent('not saved'));
     expect(screen.getByTestId('library')).toHaveTextContent('Original owner');
+    expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Apply' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Artwork for Handoff' })).not.toBeInTheDocument());
     expect(owner).toHaveValue('Pending owner');

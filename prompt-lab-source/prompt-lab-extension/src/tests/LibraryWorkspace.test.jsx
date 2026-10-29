@@ -594,3 +594,17 @@ describe('LibraryWorkspace Pro badges (product call 3)', () => {
     expect(screen.queryByTestId('pro-badge')).not.toBeInTheDocument();
   });
 });
+
+it('records shared recent artwork only after a collection save succeeds', async () => {
+  localStorage.clear();
+  const lib = makeLib(); lib.saveFolders.mockResolvedValueOnce(false).mockResolvedValue(true);
+  renderLibrary({ lib });
+  fireEvent.click(screen.getByRole('button', { name: 'Manage collections' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Artwork', exact: true }));
+  fireEvent.click(screen.getByText('Collection artwork', { selector: 'summary' }));
+  fireEvent.change(screen.getByLabelText('Collection artwork emoji'), { target: { value: '🧪' } });
+  await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+  expect(localStorage.getItem('pl2-recent-artwork')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Collection artwork: Star', exact: true }));
+  await waitFor(() => expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))[0].icon).toBe('Star'));
+});

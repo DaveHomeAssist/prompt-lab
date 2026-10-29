@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import { rememberArtwork } from './lib/recentArtwork.js';
 import ArtworkPopover from './ArtworkPopover.jsx';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
@@ -246,7 +247,9 @@ export default function LibraryWorkspace({
   // them the Tests tab stays read-only.
   testCasesByPrompt, testCaseControls,
 }) {
-  const [smartView, setSmartView] = useState('all');
+  const [localSmartView, setLocalSmartView] = useState(() => lib.activeCollection ? 'collection' : lib.activeTag ? 'tag' : 'all');
+  const smartView = lib.smartView ?? localSmartView;
+  const setSmartView = lib.setSmartView || setLocalSmartView;
   // Persisted like the other UI preferences (pl2-mode, pl2-density) so the
   // chosen layout survives navigating away and reloading. The validator keeps
   // a corrupted or removed value from rendering an unknown `is-<layout>` class.
@@ -266,6 +269,8 @@ export default function LibraryWorkspace({
   const [collectionParent, setCollectionParent] = useState('');
   const [artworkCollection, setArtworkCollection] = useState('');
   const [artworkTarget, setArtworkTarget] = useState(null);
+  const [artworkHistoryError, setArtworkHistoryError] = useState('');
+  const recordArtwork = artwork => setArtworkHistoryError(rememberArtwork(artwork).error);
   const [folderSaving, setFolderSaving] = useState(false);
   const [folderError, setFolderError] = useState('');
   const workspaceRef = useRef(null);
@@ -306,7 +311,9 @@ export default function LibraryWorkspace({
   const [selectedId, setSelectedId] = useState(null);
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [localStatusFilter, setLocalStatusFilter] = useState('');
+  const statusFilter = lib.statusFilter ?? localStatusFilter;
+  const setStatusFilter = lib.setStatusFilter || setLocalStatusFilter;
   const [bulkTag, setBulkTag] = useState('');
   const [bulkCollection, setBulkCollection] = useState('');
   const [inspectorTab, setInspectorTab] = useState('details');
@@ -364,6 +371,7 @@ export default function LibraryWorkspace({
     const pending = pendingDetailsRef.current.get(id);
     if (pending) pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
     setDetailsRevision(revision => revision + 1);
+    recordArtwork(nextArtwork);
     setAnnouncement('Prompt artwork saved.');
     return true;
   };
@@ -430,6 +438,7 @@ export default function LibraryWorkspace({
       return;
     }
     // Saved: drop the kept draft so the inspector shows the stored entry.
+    recordArtwork(detailsDraft.artwork);
     pendingDetailsRef.current.delete(savedId);
     setDetailsRevision(revision => revision + 1);
     setAnnouncement(`Saved details for ${detailsDraft.title.trim()}.`);
@@ -527,7 +536,7 @@ export default function LibraryWorkspace({
           {folderRows.map(folder => renamingCollection === folder.id
             ? <div key={folder.id} className="pl-collection-edit"><input value={renameCollectionDraft} onChange={event => setRenameCollectionDraft(event.target.value)} aria-label={`Rename ${folder.name}`} /><button type="button" disabled={folderSaving} onClick={saveCollectionRename}>Save</button><button type="button" onClick={() => setRenamingCollection('')}>Cancel</button></div>
             : <div key={folder.id} className="pl-collection-manage-row"><span>{folder.collection}</span><button type="button" onClick={() => setArtworkCollection(artworkCollection === folder.id ? '' : folder.id)}>Artwork</button><button type="button" onClick={() => { setRenamingCollection(folder.id); setRenameCollectionDraft(folder.name); setCollectionParent(folder.parentId || ''); }}>Rename / Move</button><button type="button" disabled={folderSaving} onClick={() => deleteFolder(folder)} aria-label={`Remove folder ${folder.name}, keep prompts`}>Remove</button></div>)}
-          {artworkCollection && <ArtworkPicker key={artworkCollection} label="Collection artwork" disabled={folderSaving} value={folderRecords.find(folder => folder.id === artworkCollection)?.artwork} onChange={artwork => persistFolders(folderRecords.map(folder => folder.id === artworkCollection ? { ...folder, artwork } : folder))} />}
+          {artworkCollection && <ArtworkPicker key={artworkCollection} label="Collection artwork" disabled={folderSaving} value={folderRecords.find(folder => folder.id === artworkCollection)?.artwork} onChange={async artwork => { const saved = await persistFolders(folderRecords.map(folder => folder.id === artworkCollection ? { ...folder, artwork } : folder)); if (saved) recordArtwork(artwork); }} />}
           {folderError && <p role="alert">{folderError}</p>}
           <small>Select a parent, then add a folder or save Rename / Move. Parent views include subfolders. Removing a folder keeps its prompts. Artwork travels with workspace exports.</small>
         </div>}
@@ -600,6 +609,7 @@ export default function LibraryWorkspace({
       </div>}
 
       {artworkTarget && smartView !== 'trash' && lib.library.some(entry => entry.id === artworkTarget.id) && <ArtworkPopover key={artworkTarget.id} entry={lib.library.find(entry => entry.id === artworkTarget.id)} trigger={artworkTarget.trigger} onSave={saveCardArtwork} onClose={() => setArtworkTarget(null)} />}
+      {artworkHistoryError && <p role="status" className="pl-artwork-history-error">{artworkHistoryError}</p>}
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
         <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
