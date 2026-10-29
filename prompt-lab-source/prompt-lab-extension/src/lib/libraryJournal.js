@@ -49,8 +49,8 @@ export function readLibraryState(storage) {
   return entries;
 }
 
-export function readLocalRevision(storage) {
-  const revision = Number(storage.getItem(LIBRARY_JOURNAL_REVISION_KEY));
+export function readLocalRevision(storage, revisionKey = LIBRARY_JOURNAL_REVISION_KEY) {
+  const revision = Number(storage.getItem(revisionKey));
   return Number.isSafeInteger(revision) && revision > 0 ? revision : 0;
 }
 
@@ -94,10 +94,10 @@ function openJournal(idb) {
   });
 }
 
-function readRecord(db) {
+function readRecord(db, recordId) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(LIBRARY_JOURNAL_STORE, 'readonly');
-    const request = transaction.objectStore(LIBRARY_JOURNAL_STORE).get(LIBRARY_JOURNAL_RECORD);
+    const request = transaction.objectStore(LIBRARY_JOURNAL_STORE).get(recordId);
     transaction.oncomplete = () => resolve(request.result || null);
     transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error || new Error('Library journal read aborted.'));
@@ -108,15 +108,15 @@ function readRecord(db) {
 // (flushed) commit. The snapshot is read inside the transaction, so commits
 // that IndexedDB serializes always carry the newest localStorage state, and the
 // revision always moves past the journal's, so the journal never goes back.
-function writeRecord(db, storage, wanted) {
+function writeRecord(db, storage, wanted, recordId, readState) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(LIBRARY_JOURNAL_STORE, 'readwrite', { durability: 'strict' });
     const store = transaction.objectStore(LIBRARY_JOURNAL_STORE);
-    const current = store.get(LIBRARY_JOURNAL_RECORD);
+    const current = store.get(recordId);
     let revision = wanted;
     current.onsuccess = () => {
       revision = Math.max(wanted, (current.result?.revision || 0) + 1);
-      store.put({ id: LIBRARY_JOURNAL_RECORD, revision, entries: readLibraryState(storage), savedAt: new Date().toISOString() });
+      store.put({ id: recordId, revision, entries: readState(storage), savedAt: new Date().toISOString() });
     };
     transaction.oncomplete = () => resolve(revision);
     transaction.onerror = () => reject(transaction.error);
@@ -140,7 +140,14 @@ function markBoot(detail) {
   }
 }
 
-export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS }) {
+export function createLibraryJournal({
+  storage, idb, timeoutMs = BOOT_TIMEOUT_MS,
+  recordId = LIBRARY_JOURNAL_RECORD,
+  revisionKey = LIBRARY_JOURNAL_REVISION_KEY,
+  readState = readLibraryState,
+  applyRecord = applyLibraryJournalRecord,
+  isKey = isLibraryJournalKey,
+}) {
   let dbPromise = null;
   let queued = false;
   let chain = Promise.resolve();
@@ -157,7 +164,7 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
 
   const setLocalRevision = (value) => {
     try {
-      storage.setItem(LIBRARY_JOURNAL_REVISION_KEY, String(value));
+      storage.setItem(revisionKey, String(value));
     } catch (error) {
       logWarn('library journal revision', error);
     }
@@ -166,14 +173,14 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
   const commit = () => {
     queued = false;
     // Written after the data it covers. Another window may have advanced it.
-    revision = Math.max(revision, readLocalRevision(storage)) + 1;
+    revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
     const wanted = revision;
     setLocalRevision(wanted);
-    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted)).then((committed) => {
+    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState)).then((committed) => {
       // The journal was ahead (for example after a boot read timed out), so
       // the commit took a higher revision. Keep localStorage in step with it.
       if (committed > revision) revision = committed;
-      if (committed > readLocalRevision(storage)) setLocalRevision(committed);
+      if (committed > readLocalRevision(storage, revisionKey)) setLocalRevision(committed);
       return committed;
     });
     pending = write;
@@ -187,18 +194,18 @@ export function createLibraryJournal({ storage, idb, timeoutMs = BOOT_TIMEOUT_MS
 
   // Writes in one synchronous turn share one snapshot, taken after the turn.
   const note = (key) => {
-    if (!isLibraryJournalKey(key) || queued) return;
+    if (!isKey(key) || queued) return;
     queued = true;
     queueMicrotask(() => { if (queued) commit(); });
   };
 
   const restore = async () => {
-    const local = { revision: readLocalRevision(storage), entries: readLibraryState(storage) };
+    const local = { revision: readLocalRevision(storage, revisionKey), entries: readState(storage) };
     revision = local.revision;
-    const record = await withTimeout(database().then(readRecord), timeoutMs);
+    const record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs);
     const action = planLibraryJournalBoot(local, record);
     if (action === 'restore') {
-      applyLibraryJournalRecord(storage, record);
+      applyRecord(storage, record);
       revision = record.revision;
     } else if (action === 'journal') {
       revision = Math.max(revision, record?.revision || 0);
