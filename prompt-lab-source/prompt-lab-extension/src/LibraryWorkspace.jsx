@@ -246,7 +246,9 @@ export default function LibraryWorkspace({
   // them the Tests tab stays read-only.
   testCasesByPrompt, testCaseControls,
 }) {
-  const [smartView, setSmartView] = useState('all');
+  const [localSmartView, setLocalSmartView] = useState(() => lib.activeCollection ? 'collection' : lib.activeTag ? 'tag' : 'all');
+  const smartView = lib.smartView ?? localSmartView;
+  const setSmartView = lib.setSmartView || setLocalSmartView;
   // Persisted like the other UI preferences (pl2-mode, pl2-density) so the
   // chosen layout survives navigating away and reloading. The validator keeps
   // a corrupted or removed value from rendering an unknown `is-<layout>` class.
@@ -306,7 +308,9 @@ export default function LibraryWorkspace({
   const [selectedId, setSelectedId] = useState(null);
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [localStatusFilter, setLocalStatusFilter] = useState('');
+  const statusFilter = lib.statusFilter ?? localStatusFilter;
+  const setStatusFilter = lib.setStatusFilter || setLocalStatusFilter;
   const [bulkTag, setBulkTag] = useState('');
   const [bulkCollection, setBulkCollection] = useState('');
   const [inspectorTab, setInspectorTab] = useState('details');
