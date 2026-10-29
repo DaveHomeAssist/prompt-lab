@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T13:35:09.228Z",
+  "snapshotAt": "2026-10-29T13:56:10.236Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Integrate app reads and mutations with the reviewed command service and durable outbox. Complete native ownership/packaging, remaining capture gaps and installed acceptance. Inspect the Windows iCloud account and sync warnings when UI access is available, then qualify actual two-client propagation before hosted work. No paid provisioning. Registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Windows iCloud hierarchy errors observed",
+      "state": "Open",
+      "detail": "2026-10-29 iCloud configuration check (Mac, Walter, Duncan). Both Windows clients have iCloud 15.10.39.0 installed, registered per-user iCloud Drive roots, and running Drive/Home processes. Neither sees the October 28 export or Mac probe; Walter retains the older October 26 export. Mac File Provider reports its probe uploaded, not paused and not excluded; Walter's probe remains absent on Mac. Bounded Windows log inspection found concrete hierarchy-application errors: missing/deleted parent records on both clients, failed placeholder creation on Walter, and continuing missing-parent retries on Duncan through 09:54 EDT. These errors make Windows sync metadata/state the leading explanation, but no direct mapping to the probe files or definitive root cause was established. Current Apple Account identity and visible warnings remain unverified because native UI access reports the Mac locked. No settings, credentials, services or private content were changed or transferred. A2 stays In progress; actual two-client acceptance remains unmet. Next: inspect the visible iCloud account and sync warning on Walter once UI access is available, then qualify bidirectional disposable probes before library activation. MUT-7: direct instruction in this session.",
+      "url": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
+    },
     {
       "label": "Durable pending commands verified",
       "state": "Open",
@@ -1374,8 +1380,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Accept A1, then integrate native ownership, pairing and recovery; qualify real iCloud propagation.",
-      "verification": "2026-10-29 Candidate 5df76e5 adds POST /v1/library/restores with write-scoped expiring review and apply through the normal commit route. Pre-restore checkpoint, restart/replay, unrelated-ancestor rejection and three publication interruption boundaries pass. The private real-export backup fully reconstructs the restored graph in a fresh disposable folder. Dominic 121 storage tests; schema/API and documentation checks pass. A2 remains In progress: production service ownership, pairing, native integration, capacity and real two-client iCloud acceptance are open. October 29 10:06 UTC configuration check still finds running registered clients but no cross-client probe propagation. No settings, credentials, personal library or paid infrastructure changed. Next: finish A1 domain mappings and write barrier before production service integration.",
+      "nextAction": "Inspect Walter iCloud account and visible sync warning; qualify bidirectional disposable probes before activation.",
+      "verification": "2026-10-29 iCloud configuration check (Mac, Walter, Duncan). Both Windows clients have iCloud 15.10.39.0 installed, registered per-user iCloud Drive roots, and running Drive/Home processes. Neither sees the October 28 export or Mac probe; Walter retains the older October 26 export. Mac File Provider reports its probe uploaded, not paused and not excluded; Walter's probe remains absent on Mac. Bounded Windows log inspection found concrete hierarchy-application errors: missing/deleted parent records on both clients, failed placeholder creation on Walter, and continuing missing-parent retries on Duncan through 09:54 EDT. These errors make Windows sync metadata/state the leading explanation, but no direct mapping to the probe files or definitive root cause was established. Current Apple Account identity and visible warnings remain unverified because native UI access reports the Mac locked. No settings, credentials, services or private content were changed or transferred. A2 stays In progress; actual two-client acceptance remains unmet. Next: inspect the visible iCloud account and sync warning on Walter once UI access is available, then qualify bidirectional disposable probes before library activation. MUT-7: direct instruction in this session. Earlier implementation evidence retained in the issue history.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
