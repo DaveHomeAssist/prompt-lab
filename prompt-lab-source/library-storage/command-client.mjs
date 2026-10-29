@@ -8,7 +8,7 @@ export function createServiceTransport(service, { libraryId }) {
     preview(value) {
       const { mode, ...input } = normalizeCommandRequest(value);
       if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Command targets another library.', 409);
-      return mode === 'lifecycle' ? service.previewLifecycle(input) : mode === 'create' ? service.previewCreate(input) : mode === 'edit' ? service.previewEdit(input) : mode === 'select' ? service.previewCurrentView(input) : mode === 'restore' ? service.previewRestore(input)
+      return mode === 'record' ? service.previewRecord(input) : mode === 'lifecycle' ? service.previewLifecycle(input) : mode === 'create' ? service.previewCreate(input) : mode === 'edit' ? service.previewEdit(input) : mode === 'select' ? service.previewCurrentView(input) : mode === 'restore' ? service.previewRestore(input)
         : mode === 'reconcile' ? service.previewReconcile(input) : service.preview({ ...input, mode });
     },
     apply(input) {
@@ -92,7 +92,7 @@ export function createLoopbackTransport({ baseUrl, libraryId, getToken, folderBr
     preview(value) {
       const command = normalizeCommandRequest(value); bound(command);
       const { mode, ...input } = command;
-      const path = ({ lifecycle: 'lifecycles', create: 'creations', edit: 'edits', select: 'current-views', restore: 'restores', reconcile: 'reconciliations' })[mode];
+      const path = ({ record: 'record-mutations', lifecycle: 'lifecycles', create: 'creations', edit: 'edits', select: 'current-views', restore: 'restores', reconcile: 'reconciliations' })[mode];
       return request(`/v1/library/${path ?? 'previews'}`, { payload: path ? input : command });
     },
     apply(input) {

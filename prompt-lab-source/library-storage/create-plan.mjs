@@ -34,7 +34,7 @@ export async function planPromptCreate(pkg, inspected, value) {
     baseRevision: pkg.head, groupId, previousMember: null };
   const derivedSources = [...(inspected.derivedSources ?? []), derivedSource], member = JSON.stringify([input.hash, 'library', 0]);
   const groups = [...structuredClone(inspected.manifest.groups), { id: groupId, selected: member, members: [member] }];
-  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, objects });
+  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, recordGroups: inspected.manifest.recordGroups, objects });
   const deletion = await applyDeletionPolicy(selection, objects, inspected.sourceBindings, derivedSources);
   if (deletion.blocked.length || deletion.manifest.groups.find(row => row.id === groupId).selected === null) {
     fail('DELETION_EVIDENCE_UNKNOWN', 'Deletion evidence prevents creating this prompt.');

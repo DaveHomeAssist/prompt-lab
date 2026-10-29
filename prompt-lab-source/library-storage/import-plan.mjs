@@ -1,4 +1,5 @@
 import { assertWorkspace, canonical, hash, readObject, LibraryError } from './contract.mjs';
+import { withRecordGroups } from './record-state.mjs';
 import { getLibraryEntryCanonicalBody, normalizePromptText } from '../prompt-lab-extension/src/lib/libraryMatching.js';
 
 const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -264,6 +265,7 @@ export async function planLibraryImport({ base = null, baseRevision = null, inco
     ? await planSources(workspaces, {}, { incomingSource: null }) : null;
   const review = await planSources(workspaces, resolutions, { incomingSource: incoming.workspace, initialGroups: base?.groups ?? initial?.groups, repeatedSource });
   let manifest = { format: 'promptlab-library-state', schemaVersion: 1, sources, nodes: review.nodes, groups: review.groups, references: review.references };
+  manifest = withRecordGroups(manifest, base?.recordGroups);
   let deletionReview;
   if (enforceDeletions || base?.deletionPolicy) {
     const { applyDeletionPolicy } = await import('./selection-policy.mjs');
@@ -276,7 +278,7 @@ export async function planLibraryImport({ base = null, baseRevision = null, inco
 }
 
 /** Rebuild references over retained sources without choosing or importing rows. */
-export async function buildLibrarySelection({ sources, groups, objects }) {
+export async function buildLibrarySelection({ sources, groups, recordGroups, objects }) {
   const workspaces = {};
   for (const source of sources) {
     const workspace = await readObject(objects, source.workspace, 'workspace');
@@ -288,5 +290,5 @@ export async function buildLibrarySelection({ sources, groups, objects }) {
     workspaces[source.workspace] = workspace;
   }
   const review = await planSources(workspaces, {}, { incomingSource: null, initialGroups: groups });
-  return { format: 'promptlab-library-state', schemaVersion: 1, sources: structuredClone(sources), nodes: review.nodes, groups: review.groups, references: review.references };
+  return withRecordGroups({ format: 'promptlab-library-state', schemaVersion: 1, sources: structuredClone(sources), nodes: review.nodes, groups: review.groups, references: review.references }, recordGroups);
 }

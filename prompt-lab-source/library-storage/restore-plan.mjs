@@ -1,6 +1,7 @@
-import { canonical, hash, LibraryError, readObject } from './contract.mjs';
+import { canonical, hash, LibraryError, readObject, FORMAT, VERSION } from './contract.mjs';
 import { buildLibrarySelection } from './import-plan.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
+import { effectiveRecordGroup } from './record-state.mjs';
 
 const sourcesFor = inspection => inspection.manifest?.sources ?? [{ source: inspection.sourceObject, workspace: inspection.stateObject }];
 
@@ -24,7 +25,7 @@ async function ancestrySources(objects, revision) {
     if (seen.has(id)) continue;
     seen.add(id);
     const commit = await readObject(objects, id, 'commit');
-    if (!['restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
+    if (!['restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle', 'record'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
     pending.push(...commit.parents);
   }
   return sources;
@@ -47,7 +48,14 @@ export async function planCheckpointRestore({ current, checkpoint, baseRevision,
     else groups.push({ ...structuredClone(group), selected: null, retainedSelection: group.selected ?? group.retainedSelection,
       inactiveReason: group.inactiveReason === 'permanent-deletion' ? 'permanent-deletion' : 'checkpoint-not-selected' });
   }
-  const selection = await buildLibrarySelection({ sources, groups, objects });
+  const recordGroups = [], libraryId = (await readObject(objects, baseRevision, 'commit')).libraryId;
+  const ids = new Map([...(currentManifest.recordGroups ?? []), ...(checkpointManifest.recordGroups ?? [])].map(group => [group.id, group]));
+  for (const group of ids.values()) {
+    const restored = await effectiveRecordGroup({ format: FORMAT, schemaVersion: VERSION, libraryId, head: checkpointId, objects }, checkpoint, group);
+    recordGroups.push(restored ?? { ...group, selected: null, selectedHash: null, retainedSelection: group.selected ?? group.retainedSelection,
+      inactiveReason: 'checkpoint-not-selected' });
+  }
+  const selection = await buildLibrarySelection({ sources, groups, recordGroups, objects });
   const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, current.sourceBindings, current.derivedSources);
   const plan = { format: 'promptlab-library-restore-plan', schemaVersion: 1, baseRevision, checkpointId,
     source: checkpoint.sourceObject, manifest, deletionReview,

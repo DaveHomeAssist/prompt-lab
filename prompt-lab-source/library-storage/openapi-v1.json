@@ -1087,6 +1087,62 @@
           }
         ]
       }
+    },
+    "/v1/library/record-mutations": {
+      "post": {
+        "summary": "Preview one evaluation, test case, execution trace or experiment change",
+        "operationId": "postV1LibraryRecords",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Review with suppressed selections and evidence gaps; commitAvailable is true only when unresolved is zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "description": "Create, update or confirm deletion of one selected record. Previous values and all source objects remain retained. The shared commit endpoint applies the reviewed preview with an idempotency key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1119,7 +1175,8 @@
               "current-view-plan",
               "prompt-edit-plan",
               "prompt-create-plan",
-              "prompt-lifecycle-plan"
+              "prompt-lifecycle-plan",
+              "record-mutation-plan"
             ]
           },
           "data": {}
@@ -1207,7 +1264,8 @@
               "select",
               "edit",
               "create",
-              "lifecycle"
+              "lifecycle",
+              "record"
             ]
           },
           "importPlan": {
@@ -1254,6 +1312,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "lifecyclePlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "recordPlan": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
           }
@@ -1694,6 +1756,89 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "record"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "recordPlan",
+                "inputState"
+              ],
+              "properties": {
+                "parents": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "sourceBinding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "selectionPolicy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "importPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restorePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restoredCheckpointId"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "reconciliationPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "incomingBranch"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "currentViewPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "editPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "createPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "lifecyclePlan"
+                    ]
+                  }
+                ]
+              }
+            }
           }
         ]
       },
@@ -1740,7 +1885,8 @@
               "select",
               "edit",
               "create",
-              "lifecycle"
+              "lifecycle",
+              "record"
             ]
           },
           "commitAvailable": {
@@ -1781,6 +1927,9 @@
           },
           "lifecyclePlan": {
             "$ref": "#/components/schemas/LifecyclePlan"
+          },
+          "recordPlan": {
+            "$ref": "#/components/schemas/RecordPlan"
           }
         },
         "required": [
@@ -2186,6 +2335,59 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "record"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "recordPlan"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "recordPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "recordPlan"
+                ]
+              }
+            }
           }
         ]
       },
@@ -2247,7 +2449,8 @@
               "select",
               "edit",
               "create",
-              "lifecycle"
+              "lifecycle",
+              "record"
             ]
           },
           "stateHash": {
@@ -3076,6 +3279,13 @@
           },
           "deletionPolicy": {
             "$ref": "#/components/schemas/DeletionPolicy"
+          },
+          "recordGroups": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "#/components/schemas/RecordGroup"
+            }
           }
         },
         "required": [
@@ -4834,7 +5044,8 @@
               "deleted",
               "reviewed",
               "automatic",
-              "unresolved"
+              "unresolved",
+              "command"
             ]
           }
         },
@@ -5524,6 +5735,271 @@
                 }
               }
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "create"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "record": {
+                "type": "object"
+              },
+              "mode": {
+                "const": "record"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "sourceBinding",
+              "record",
+              "mode"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "execution-traces"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "run_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "\\S"
+                        }
+                      },
+                      "required": [
+                        "run_id"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "\\S"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "update"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "updates": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/components/schemas/RecordUpdate"
+                }
+              },
+              "mode": {
+                "const": "record"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "updates",
+              "mode"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "execution-traces"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "const": "run_id"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "const": "id"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "delete"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "confirmPermanentDeletion": {
+                "const": true
+              },
+              "mode": {
+                "const": "record"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "confirmPermanentDeletion",
+              "mode"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -6077,6 +6553,49 @@
               "sourceId"
             ],
             "additionalProperties": false
+          },
+          "recordMutation": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "enum": [
+                  "create",
+                  "update",
+                  "delete"
+                ]
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "sourceIdentity": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sourceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              }
+            },
+            "required": [
+              "action",
+              "domain",
+              "sourceIdentity",
+              "sourceId",
+              "changedAt"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -6515,6 +7034,475 @@
           "activationReady",
           "fingerprint",
           "retainedRecoveryContent"
+        ],
+        "additionalProperties": false
+      },
+      "RecordUpdate": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "not": {
+                "enum": [
+                  "__proto__",
+                  "prototype",
+                  "constructor"
+                ]
+              }
+            },
+            "prefixItems": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "not": {
+                  "enum": [
+                    "__proto__",
+                    "prototype",
+                    "constructor",
+                    "createdAt",
+                    "started_at"
+                  ]
+                }
+              }
+            ]
+          },
+          "value": {}
+        },
+        "required": [
+          "path",
+          "value"
+        ],
+        "additionalProperties": false
+      },
+      "RecordRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "create"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "record": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "sourceBinding",
+              "record"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "execution-traces"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "run_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "\\S"
+                        }
+                      },
+                      "required": [
+                        "run_id"
+                      ]
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "record": {
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200,
+                          "pattern": "\\S"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "update"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "updates": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {
+                  "$ref": "#/components/schemas/RecordUpdate"
+                }
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "updates"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "execution-traces"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "const": "run_id"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "updates": {
+                      "items": {
+                        "properties": {
+                          "path": {
+                            "prefixItems": [
+                              {
+                                "not": {
+                                  "const": "id"
+                                }
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "evaluations",
+                  "test-cases",
+                  "execution-traces",
+                  "experiments"
+                ]
+              },
+              "action": {
+                "const": "delete"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "confirmPermanentDeletion": {
+                "const": true
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "confirmPermanentDeletion"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RecordGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "domain": {
+            "enum": [
+              "evaluations",
+              "test-cases",
+              "execution-traces",
+              "experiments"
+            ]
+          },
+          "sourceIdentity": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "pattern": "\\S"
+          },
+          "selected": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "selectedHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retainedSelection": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inactiveReason": {
+            "enum": [
+              "permanent-deletion",
+              "checkpoint-not-selected"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "sourceIdentity",
+          "sourceId",
+          "selected",
+          "selectedHash",
+          "retainedSelection"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "selected": {
+                  "const": null
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "inactiveReason"
+              ],
+              "properties": {
+                "selectedHash": {
+                  "const": null
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "selectedHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              },
+              "not": {
+                "required": [
+                  "inactiveReason"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "RecordPlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-record-mutation-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "request": {
+            "$ref": "#/components/schemas/RecordRequest"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inputState": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "derivedSource": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedSource"
+              },
+              {
+                "required": [
+                  "recordMutation"
+                ]
+              }
+            ]
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/LibraryState"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activationReady": {
+            "const": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "request",
+          "source",
+          "inputState",
+          "derivedSource",
+          "manifest",
+          "currentViewPlan",
+          "unresolved",
+          "activationReady",
+          "fingerprint"
         ],
         "additionalProperties": false
       }

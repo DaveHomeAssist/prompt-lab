@@ -1,5 +1,31 @@
 # Library storage contract candidate
 
+## Shared related record commands
+
+Evaluations, test cases, execution traces and experiments need ordinary create,
+field-update and confirmed deletion commands before the app can use the shared
+library. Bind each command to the library revision and verified source identity.
+Updates and deletion also name the exact selected record hash. Preserve every
+prior source object, nested value and unknown field; retain history as immutable
+source ancestry instead of pruning or rewriting earlier records.
+
+Each changed record has a source-scoped selection in the shared manifest.
+Checkpoint restore and branch reconciliation compare individual records with
+their common ancestor. Independent changes merge; concurrent changes to the same
+record need explicit review. Confirmed deletion excludes future current selection
+without erasing archived data, including after older imports and restores.
+Existing imports retain command-owned selections; their other source occurrences
+remain available in the complete archive. Other domain families keep their
+existing review behavior until their commands are implemented.
+
+Use the existing preview, authenticated API, durable outbox and receipt path.
+Acceptance covers all four domains, unknown values, invalid/stale input, source
+isolation, independent/conflicting edits, checkpoints, deletion, interrupted
+publication, response loss, restart and complete transfer. Use synthetic runner
+fixtures and isolated real-export data on its Mac. Scratch, collections, packs,
+assets, drafts, native ownership and full application activation remain required
+subsequent work; this increment does not complete those gates.
+
 ## Complete chain output history
 
 Chain execution passed complete output to the next step but saved only its first

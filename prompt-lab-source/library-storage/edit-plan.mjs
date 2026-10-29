@@ -69,7 +69,7 @@ export async function planPromptEdit(pkg, inspected, value) {
   const groups = structuredClone(inspected.manifest.groups), successor = groups.find(row => row.id === group.id);
   successor.selected = JSON.stringify([input.hash, 'library', 0]);
   successor.members.push(successor.selected);
-  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, objects });
+  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, recordGroups: inspected.manifest.recordGroups, objects });
   const deletion = await applyDeletionPolicy(selection, objects, inspected.sourceBindings, derivedSources);
   if (deletion.blocked.length || deletion.manifest.groups.find(row => row.id === group.id).selected === null) {
     fail('EDIT_TARGET_UNAVAILABLE', 'Deletion evidence prevents editing this prompt.');

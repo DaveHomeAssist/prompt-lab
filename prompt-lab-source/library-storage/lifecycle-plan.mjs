@@ -66,7 +66,7 @@ export async function planPromptLifecycle(pkg, inspected, value) {
   const successor = { ...structuredClone(group), selected: member, members: [...group.members, member], lifecycle: request.action === 'restore' ? 'active' : request.action === 'delete' ? 'deleted' : 'trash' };
   delete successor.retainedSelection; delete successor.inactiveReason;
   const groups = inspected.manifest.groups.filter(row => row.id !== group.id).map(row => structuredClone(row)); groups.push(successor);
-  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, objects });
+  const selection = await buildLibrarySelection({ sources: [...inspected.manifest.sources, { source: source.hash, workspace: input.hash }], groups, recordGroups: inspected.manifest.recordGroups, objects });
   const deletion = await applyDeletionPolicy(selection, objects, inspected.sourceBindings, derivedSources);
   if (deletion.blocked.length) fail('DELETION_EVIDENCE_UNKNOWN', 'Incomplete deletion evidence prevents this lifecycle change.');
   if (request.action !== 'delete' && deletion.manifest.groups.find(row => row.id === group.id).selected === null) {

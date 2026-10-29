@@ -2,6 +2,7 @@ import { canonical, hash, inspectPackage, LibraryError, readObject, FORMAT, VERS
 import { buildLibrarySelection } from './import-plan.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
 import { inspectTransfer } from './transfer.mjs';
+import { effectiveRecordGroup } from './record-state.mjs';
 
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -77,7 +78,8 @@ export async function planReconciliation({ libraryId, currentRevision, incomingR
   const signature = group => !group ? 'absent' : group.selected === null ? `inactive:${group.inactiveReason}` : `${group.lifecycle ?? 'active'}:${nodes.get(group.selected)?.hash}`;
   const sources = [...new Map(manifests.flatMap(manifest => manifest.sources).map(source => [canonical(source), source])).values()];
   const ids = [...new Set(maps.flatMap(map => [...map.keys()]))].sort(), groups = [], rows = [];
-  for (const id of Object.keys(resolutions)) if (!ids.includes(id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unknown group.');
+  const recordTemplates = new Map(manifests.flatMap(manifest => (manifest.recordGroups ?? []).map(group => [group.id, group])));
+  for (const id of Object.keys(resolutions)) if (!ids.includes(id) && !recordTemplates.has(id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unknown group.');
   for (const id of ids) {
     const [original, left, right] = maps.map(map => map.get(id));
     // Imported branches never remove a group. An inactive selection keeps its history.
@@ -95,7 +97,26 @@ export async function planReconciliation({ libraryId, currentRevision, incomingR
     rows.push({ groupId: id, ancestor: original?.selected ?? null, current: left?.selected ?? null, incoming: right?.selected ?? null,
       conflict, choice, reason: conflict ? 'concurrent-change' : a === b ? 'same-selection' : 'causal-change' });
   }
-  const selection = await buildLibrarySelection({ sources, groups, objects });
+  const recordGroups = [];
+  for (const id of [...recordTemplates.keys()].sort()) {
+    const template = recordTemplates.get(id), states = [];
+    for (const [revision, inspection] of [[ancestorRevision, base], [currentRevision, current], [incomingRevision, incoming]]) {
+      states.push(await effectiveRecordGroup(packageFor(libraryId, revision, objects), inspection, template));
+    }
+    const [original, left, right] = states;
+    const signature = group => !group ? 'absent' : group.selected === null ? `inactive:${group.inactiveReason}` : group.selectedHash;
+    const [before, a, b] = states.map(signature);
+    let choice = a === b ? 'current' : a === before ? 'incoming' : b === before ? 'current' : !left ? 'incoming' : !right ? 'current' : null;
+    const conflict = choice === null;
+    if (Object.hasOwn(resolutions, id)) {
+      if (!conflict || !['current', 'incoming'].includes(resolutions[id])) throw new LibraryError('INVALID_RESOLUTIONS', 'Choose a branch only for an unresolved record.');
+      choice = resolutions[id];
+    }
+    recordGroups.push(structuredClone(choice === 'incoming' ? right : left ?? right));
+    rows.push({ groupId: id, ancestor: original?.selected ?? null, current: left?.selected ?? null, incoming: right?.selected ?? null,
+      conflict, choice, reason: conflict ? 'concurrent-change' : a === b ? 'same-selection' : 'causal-change' });
+  }
+  const selection = await buildLibrarySelection({ sources, groups, recordGroups, objects });
   const sourceBindings = [...new Set([...current.sourceBindings, ...incoming.sourceBindings])].sort();
   const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, sourceBindings, [...(current.derivedSources ?? []), ...(incoming.derivedSources ?? [])]);
   const plan = { format: 'promptlab-library-reconciliation-plan', schemaVersion: VERSION, libraryId, baseRevision: currentRevision,

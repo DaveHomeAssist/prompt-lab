@@ -9,7 +9,7 @@ const singletonDomains = new Set(['scratch', 'recovery']);
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
 export function retainedViewResolutions(inspected) {
-  const owned = new Set(inspected.manifest.groups.map(group => group.id));
+  const owned = new Set([...inspected.manifest.groups, ...(inspected.manifest.recordGroups ?? [])].map(group => group.id));
   return Object.fromEntries(inspected.currentView.groups.filter(group => !owned.has(group.id)).map(group => [group.id, group.selected]));
 }
 
@@ -95,6 +95,16 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
     group.candidates.sort();
     const rows = group.candidates.map(key => byKey.get(key)), present = new Set(rows.map(row => row.origin.binding));
     group.absentBindings = [...(bindingsBySource.get(group.sourceIdentity) ?? [])].filter(binding => !present.has(binding)).sort();
+    const owned = deletion.manifest.recordGroups?.find(input => input.id === group.id);
+    if (owned) {
+      if (Object.hasOwn(resolutions, group.id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Record commands and reconciliation own this selection.', 409);
+      const retained = byKey.get(owned.selected ?? owned.retainedSelection);
+      if (!retained || !group.candidates.includes(retained.key) || retained.domain !== owned.domain
+        || retained.origin.sourceIdentity !== owned.sourceIdentity || retained.sourceId !== owned.sourceId
+        || (owned.selected !== null && retained.valueHash !== owned.selectedHash)) blocked.push({ code: 'RECORD_SELECTION_UNAVAILABLE', groupId: group.id });
+      group.selected = owned.selected; group.decision = owned.selected === null ? 'deleted' : 'command';
+      continue;
+    }
     if (Object.hasOwn(resolutions, group.id)) {
       const selected = resolutions[group.id];
       if (selected !== null && !group.candidates.includes(selected)) throw new LibraryError('INVALID_RESOLUTIONS', 'Select a listed source occurrence or null to keep it inactive.');
@@ -131,6 +141,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
       if (Array.isArray(selected.value.pads) && selected.value.pads.some(pad => deleted.has(pad?.id))) blocked.push({ code: 'SCRATCH_DELETION_CONFLICT', key: selected.key });
     }
   }
+  for (const group of deletion.manifest.recordGroups ?? []) if (!groupByKey.has(group.id)) blocked.push({ code: 'RECORD_SELECTION_UNAVAILABLE', groupId: group.id });
   for (const key of Object.keys(resolutions)) if (!groupByKey.has(key)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unavailable current-view group.');
   const selectedRoots = new Set(groups.flatMap(group => group.selected === null ? [] : [group.selected]));
   const rootFor = row => { let current = row; while (current.parent && !rootGroups.has(current.key)) current = byKey.get(current.parent); return current.key; };

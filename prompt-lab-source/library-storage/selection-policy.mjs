@@ -1,5 +1,6 @@
 import { canonical, LibraryError, readObject } from './contract.mjs';
 import { collectDeletionEvidence } from './source-binding.mjs';
+import { suppressDeletedRecords } from './record-state.mjs';
 
 /** Retain every group and member while excluding permanently deleted selections. */
 export async function applyDeletionPolicy(input, objects, sourceBindings, derivedSources = []) {
@@ -50,6 +51,7 @@ export async function applyDeletionPolicy(input, objects, sourceBindings, derive
   const inactive = new Set(manifest.groups.filter(group => group.selected === null).map(group => group.id));
   for (const reference of manifest.references) if (inactive.has(reference.groupId)) reference.reason = 'prompt-not-selected';
   manifest.deletionPolicy = { version: 1, sourceBindings };
+  suppressDeletedRecords(manifest, derivedSources);
   const unique = [...new Map(blocked.map(issue => [canonical(issue), issue])).values()];
   return { manifest, evidence, suppressed, blocked: unique };
 }
