@@ -16,6 +16,7 @@ export function createServiceTransport(service, { libraryId }) {
       return service.apply(input);
     },
     currentRecords: input => service.currentRecords({ ...input, libraryId }),
+    transfer: expectedRevision => service.transfer({ libraryId, expectedRevision }),
   };
 }
 

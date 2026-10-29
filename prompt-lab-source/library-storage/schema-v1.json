@@ -8509,6 +8509,184 @@
         "changedMembers"
       ],
       "additionalProperties": false
+    },
+    "AppMigrationBackup": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-app-migration"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "version": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "baseRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sourceText": {
+          "type": "string"
+        },
+        "sourceInventory": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/SourceCaptureInventory"
+            },
+            {
+              "properties": {
+                "manifest": {
+                  "properties": {
+                    "schemaVersion": {
+                      "const": 4
+                    },
+                    "sourceReadComplete": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "coordination": {
+          "type": "object",
+          "properties": {
+            "protocolVersion": {
+              "const": 1
+            },
+            "scope": {
+              "const": "cooperating-origin-clients"
+            },
+            "clientIds": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9-]{1,80}$"
+              },
+              "minItems": 1,
+              "maxItems": 32,
+              "uniqueItems": true
+            },
+            "activationReady": {
+              "const": false
+            }
+          },
+          "required": [
+            "protocolVersion",
+            "scope",
+            "clientIds",
+            "activationReady"
+          ],
+          "additionalProperties": false
+        },
+        "recordHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "version",
+        "libraryId",
+        "operationId",
+        "baseRevision",
+        "sourceText",
+        "sourceInventory",
+        "coordination",
+        "recordHash"
+      ],
+      "additionalProperties": false
+    },
+    "MigrationCopyVerification": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-migration-copy-verification"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "operationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "backupHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "copiedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "verifiedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "sourceHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "sourceInventoryHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "sourceBinding": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "captureObjectsVerified": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceReadbackVerified": {
+          "const": true
+        },
+        "activationReady": {
+          "const": false
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "operationId",
+        "backupHash",
+        "copiedRevision",
+        "verifiedRevision",
+        "sourceHash",
+        "sourceInventoryHash",
+        "sourceBinding",
+        "captureObjectsVerified",
+        "sourceReadbackVerified",
+        "activationReady"
+      ],
+      "additionalProperties": false
     }
   }
 }

@@ -1,5 +1,53 @@
 # Library storage contract candidate
 
+## App owned migration copy
+
+The app's migration boundary must capture its actual stores and every cooperating
+editor together, derive prompt and Trash input from that same capture, and retain
+a strict durable source backup before reviewing or publishing a destination copy.
+Never replace source arrays with the UI's normalized arrays or combine conflicting
+replicas. Archive selection remains an explicit review. Keep the source backup
+and original app stores after failed review, interrupted copy or lost response.
+An initial copy into an empty library keeps every source occurrence, including
+matching IDs, titles and bodies. Generic import deduplication cannot silently
+collapse the existing catalog. Copying into an existing library retains the
+shared explicit conflict review.
+
+Use the existing shared import command and durable outbox. Restart resumes the
+same operation. Complete destination readback must verify its receipt, source
+binding, exact raw captures and object hashes, including retained histories,
+unknown fields and references. A later destination commit must not force another
+copy of the source. This proves a recoverable copy only. Activation still needs
+fresh source comparison, the app reader/writer switch, selected-folder ownership,
+secure native service and actual device acceptance. No migration helper may
+activate a personal library merely because the copy verified.
+
+The implemented boundary uses actual app source capture, a separate strict
+IndexedDB migration backup, the shared import/outbox and complete transfer
+readback. The retained backup survives browser restart. Failed backup writes
+prevent destination publication; a lost copy response resumes one operation.
+The backup is same-origin storage, not an independent off-device backup.
+
+Dominic Node 22.23.4 passed 345 storage tests and 46 browser checks, including
+two-window capture, restart, lost response and aborted backup transactions.
+The final initial-copy duplicate rule then passed 35 affected tests. Schema
+validation accepted both runtime records, rejected 13 malformed variants and
+confirmed OpenAPI parity. The extension build passed from its package directory.
+The final browser rerun is assigned to CI because Dominic subsequently lost AC
+power. Earlier fixture, module-server and build-command failures are retained.
+
+On Mac Node 22.22.1, the full export was seeded into a disposable Chrome profile
+and captured through the app's real localStorage and IndexedDB readers. The
+backup survived browser restart; copy, full readback and folder reopening passed.
+All 216 prompt occurrences remain selected, with two Trash entries, three runs,
+four Scratch notes and the exact original export retained. The source stores and
+original file remain unchanged. Initial private harness failures exposed an
+object-key-order assertion, an origin mismatch and unresolved duplicate matches;
+the retained backup was recovered without recapture or duplicate publication.
+The successful copy/readback and reopen run took about ten seconds. This does
+not prove personal-profile migration, interactive performance, native activation
+or actual iCloud propagation.
+
 ## Lossless pack installation
 
 Installation must publish the selected prompts, registry and loaded marker as
