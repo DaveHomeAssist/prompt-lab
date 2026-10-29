@@ -27,6 +27,14 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
 async function planSources(sources, resolutions, { incomingSource, initialGroups, repeatedSource = false }) {
   const nodes = [], groups = [], rows = [], references = [];
   const nodeByKey = new Map(), groupByMember = new Map();
+  const matching = new Map();
+  function matchingFor(key) {
+    if (!matching.has(key)) {
+      const value = nodeByKey.get(key).data;
+      matching.set(key, { body: bodyFor(value), title: titleFor(value) });
+    }
+    return matching.get(key);
+  }
   const indexes = new Map();
   const sourceHashes = {};
   for (const [source, workspace] of Object.entries(sources)) sourceHashes[source] = await hash(workspace);
@@ -121,15 +129,12 @@ async function planSources(sources, resolutions, { incomingSource, initialGroups
       rows.push({ member: node.key, kind: 'duplicate', matches: group ? [target] : [], choice: { action: 'skip', ...(group ? { target } : {}) } });
       continue;
     }
-    const entry = nodeByKey.get(node.key).data;
-    const body = bodyFor(entry);
-    const title = titleFor(entry);
+    const { body, title } = matchingFor(node.key);
     // Empty bodies are not duplicates. They remain preserved and reviewable.
-    const exact = body ? indexed.filter(target => bodyFor(nodeByKey.get(target.key).data) === body) : [];
+    const exact = body ? indexed.filter(target => matchingFor(target.key).body === body) : [];
     const matches = exact.length ? exact : indexed.filter(target => {
-      const other = nodeByKey.get(target.key).data;
       const aliases = groupByMember.get(target.key)?.members ?? [target.key];
-      return (title && titleFor(other) === title) || (node.sourceId && aliases.some(key => nodeByKey.get(key).node.sourceId === node.sourceId));
+      return (title && matchingFor(target.key).title === title) || (node.sourceId && aliases.some(key => nodeByKey.get(key).node.sourceId === node.sourceId));
     });
     const supplied = aliasesFor(node).filter(key => Object.hasOwn(resolutions, key));
     if (supplied.length > 1) throw new LibraryError('INVALID_RESOLUTIONS', 'Supply only one choice for each incoming source record.');

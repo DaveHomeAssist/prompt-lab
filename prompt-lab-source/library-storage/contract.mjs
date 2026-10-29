@@ -111,7 +111,7 @@ export async function inspectPackage(pkg) {
     const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
     const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
     if (Object.hasOwn(commit, 'sourceBinding')) {
-      if (operation === 'restore') throw new LibraryError('UNSUPPORTED_OPERATION', 'Restore uses retained ancestry evidence only.');
+      if (['restore', 'reconcile'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery and reconciliation use retained ancestry evidence only.');
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
       if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
@@ -141,6 +141,19 @@ export async function inspectPackage(pkg) {
       if (expected.unresolved || commit.source !== expected.source || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)) {
         throw new LibraryError('RESTORE_PLAN_MISMATCH', 'Restore differs from its current parent, checkpoint or deletion evidence.', 409);
       }
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+    } else if (operation === 'reconcile') {
+      if (commit.parents.length !== 2) throw new LibraryError('INVALID_ANCESTRY', 'Reconciliation requires both reviewed branch parents.', 409);
+      const { planReconciliation, readArchivedBranch } = await import('./reconcile-plan.mjs');
+      const incoming = await readArchivedBranch(pkg.objects, commit.incomingBranch);
+      if (incoming.libraryId !== pkg.libraryId || incoming.revision !== commit.parents[1]) throw new LibraryError('WRONG_LIBRARY', 'Archived branch differs from the second parent.', 409);
+      const plan = await readObject(pkg.objects, commit.reconciliationPlan, 'reconciliation-plan');
+      const expected = await planReconciliation({ libraryId: pkg.libraryId, currentRevision: commit.parents[0], incomingRevision: commit.parents[1],
+        incomingManifestHash: incoming.manifestHash, objects: pkg.objects, resolutions: plan.resolutions,
+        inspected: { current: visited.get(commit.parents[0]), incoming: visited.get(commit.parents[1]), ancestor: id => visited.get(id) } });
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)
+        || commit.source !== visited.get(commit.parents[0]).sourceObject) throw new LibraryError('RECONCILIATION_MISMATCH', 'Reconciliation differs from its reviewed branches and choices.', 409);
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
     } else if (operation === 'snapshot') {
       if (commit.parents.some(parent => visited.get(parent).stateKind !== 'workspace')) throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
@@ -261,10 +274,30 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore'].includes(commit.operation) ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
+    },
+    async previewReconcile({ libraryId, expectedRevision, incoming, resolutions = {}, ...options }) {
+      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown reconciliation option.', 400);
+      incoming = structuredClone(incoming); resolutions = structuredClone(resolutions);
+      const state = await adapter.read();
+      if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+      if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin reconciliation to the current revision.', 409);
+      const { inspectTransfer } = await import('./transfer.mjs');
+      const branch = await inspectTransfer(incoming);
+      const { combineBranchState, planReconciliation } = await import('./reconcile-plan.mjs');
+      const combined = combineBranchState(state, branch.state);
+      const reconciliationPlan = await planReconciliation({ libraryId, currentRevision: expectedRevision, incomingRevision: branch.revision,
+        incomingManifestHash: branch.manifestHash, objects: combined.objects, resolutions });
+      const input = { libraryId, expectedRevision, incomingManifestHash: branch.manifestHash, resolutions, mode: 'reconcile' };
+      const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId, expectedRevision, incomingRevision: branch.revision, sourceHash: state.objects[state.revision].data.source, fingerprint, expiresAt: expires,
+        mode: 'reconcile', commitAvailable: reconciliationPlan.unresolved === 0, reconciliationPlan };
+      previews.set(previewId, { input, incoming, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
     },
     async previewRestore({ libraryId, expectedRevision, checkpointId, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Restore has no deletion bypass or additional options.', 400);
@@ -324,7 +357,25 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
         let pkg;
-        if (preview.input.mode === 'restore') {
+        if (preview.input.mode === 'reconcile') {
+          if (preview.response.reconciliationPlan.unresolved) throw new LibraryError('UNRESOLVED_RECONCILIATION', 'Resolve branch choices and deletion evidence before committing.', 409);
+          const { inspectTransfer } = await import('./transfer.mjs');
+          const branch = await inspectTransfer(preview.incoming, { expectedManifestHash: preview.input.incomingManifestHash });
+          if (Object.hasOwn(branch.state.operations, idempotencyKey)) throw new LibraryError('IDEMPOTENCY_CONFLICT', 'The incoming branch already used this operation key.', 409);
+          const { combineBranchState, archiveBranch, planReconciliation } = await import('./reconcile-plan.mjs');
+          const combined = combineBranchState(state, branch.state);
+          const plan = await planReconciliation({ libraryId, currentRevision: expectedRevision, incomingRevision: branch.revision,
+            incomingManifestHash: branch.manifestHash, objects: combined.objects, resolutions: preview.input.resolutions });
+          if (canonical(plan) !== canonical(preview.response.reconciliationPlan)) throw new LibraryError('RECONCILIATION_MISMATCH', 'Branches or reviewed choices changed.', 409);
+          const archive = await makeObject('branch-transfer', archiveBranch(preview.incoming));
+          const planObject = await makeObject('reconciliation-plan', plan), manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, parents: [expectedRevision, branch.revision], operation: 'reconcile',
+            source: state.objects[expectedRevision].data.source, state: manifest.hash, incomingBranch: archive.hash,
+            reconciliationPlan: planObject.hash, createdAt: new Date().toISOString() });
+          Object.assign(state, combined);
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { [archive.hash]: archive.object, [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else if (preview.input.mode === 'restore') {
           if (preview.response.restorePlan.unresolved) throw new LibraryError('DELETION_EVIDENCE_UNKNOWN', 'Restore cannot commit while deletion evidence is unknown.', 409);
           const plan = await reviewRestore(state, preview.input);
           if (canonical(plan) !== canonical(preview.response.restorePlan)) throw new LibraryError('RESTORE_PLAN_MISMATCH', 'Restore no longer matches its reviewed checkpoint and evidence.', 409);
@@ -353,7 +404,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         Object.assign(state.objects, pkg.objects);
         const verified = await inspectPackage({ ...pkg, objects: state.objects });
         const checkpointId = state.revision;
-        if (checkpointId) state.checkpoints.push(checkpointId);
+        if (checkpointId && !state.checkpoints.includes(checkpointId)) state.checkpoints.push(checkpointId);
         state.libraryId = libraryId;
         state.revision = pkg.head;
         const receipt = { operationId: idempotencyKey, libraryId, parentRevision: expectedRevision, revision: pkg.head, checkpointId, fingerprint,

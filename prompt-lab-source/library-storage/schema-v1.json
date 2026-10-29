@@ -19,7 +19,9 @@
             "import-plan",
             "source-inventory",
             "source-binding",
-            "restore-plan"
+            "restore-plan",
+            "reconciliation-plan",
+            "branch-transfer"
           ]
         },
         "data": {}
@@ -102,7 +104,8 @@
           "enum": [
             "snapshot",
             "import",
-            "restore"
+            "restore",
+            "reconcile"
           ]
         },
         "importPlan": {
@@ -127,6 +130,14 @@
         },
         "selectionPolicy": {
           "const": "preserve-deletions-v1"
+        },
+        "incomingBranch": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "reconciliationPlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -221,6 +232,64 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "reconcile"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "incomingBranch",
+              "reconciliationPlan"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "inputState"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restorePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restoredCheckpointId"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -262,7 +331,8 @@
           "enum": [
             "snapshot",
             "import",
-            "restore"
+            "restore",
+            "reconcile"
           ]
         },
         "commitAvailable": {
@@ -281,6 +351,13 @@
         },
         "restorePlan": {
           "$ref": "#/$defs/RestorePlan"
+        },
+        "incomingRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "reconciliationPlan": {
+          "$ref": "#/$defs/ReconciliationPlan"
         }
       },
       "required": [
@@ -420,6 +497,60 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "reconcile"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "reconciliationPlan",
+              "incomingRevision"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "reconciliationPlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "reconciliationPlan"
+              ]
+            }
+          }
         }
       ]
     },
@@ -476,7 +607,8 @@
           "enum": [
             "snapshot",
             "import",
-            "restore"
+            "restore",
+            "reconcile"
           ]
         },
         "stateHash": {
@@ -2788,6 +2920,223 @@
           }
         }
       },
+      "additionalProperties": false
+    },
+    "ReconciliationRequest": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "incoming": {
+          "$ref": "#/$defs/Transfer"
+        },
+        "resolutions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "additionalProperties": {
+            "enum": [
+              "current",
+              "incoming"
+            ]
+          }
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision",
+        "incoming"
+      ],
+      "additionalProperties": false
+    },
+    "ReconciliationPlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-library-reconciliation-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "baseRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "incomingRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "incomingManifestHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "ancestorRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "resolutions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "additionalProperties": {
+            "enum": [
+              "current",
+              "incoming"
+            ]
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "ancestor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "current": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "incoming": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "conflict": {
+                "type": "boolean"
+              },
+              "choice": {
+                "enum": [
+                  "current",
+                  "incoming",
+                  null
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "concurrent-change",
+                  "same-selection",
+                  "causal-change"
+                ]
+              }
+            },
+            "required": [
+              "groupId",
+              "ancestor",
+              "current",
+              "incoming",
+              "conflict",
+              "choice",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "manifest": {
+          "$ref": "#/$defs/LibraryState"
+        },
+        "deletionReview": {
+          "$ref": "#/$defs/DeletionReview"
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "baseRevision",
+        "incomingRevision",
+        "incomingManifestHash",
+        "ancestorRevision",
+        "fingerprint",
+        "resolutions",
+        "rows",
+        "manifest",
+        "deletionReview",
+        "unresolved",
+        "activationReady"
+      ],
+      "additionalProperties": false
+    },
+    "BranchArchive": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-library-transfer"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "manifest": {
+          "$ref": "#/$defs/TransferManifest"
+        },
+        "manifestHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "metadata": {
+          "$ref": "#/$defs/TransferMetadata"
+        },
+        "operations": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Receipt"
+          }
+        },
+        "checkpoints": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "manifest",
+        "manifestHash",
+        "metadata",
+        "operations",
+        "checkpoints"
+      ],
       "additionalProperties": false
     }
   }

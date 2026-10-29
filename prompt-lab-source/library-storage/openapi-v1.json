@@ -3,7 +3,7 @@
   "info": {
     "title": "PromptLab local library contract candidate",
     "version": "1.0.0",
-    "description": "Unconnected candidate with reviewed checkpoint restore. Pairing, complete domain activation and installed desktop support are not delivered by this candidate."
+    "description": "Unconnected candidate with reviewed import, checkpoint restore and branch reconciliation. Pairing, complete domain activation and installed desktop support remain open."
   },
   "security": [
     {
@@ -548,6 +548,57 @@
         ],
         "description": "Requires read scope. Revision must remain current through preparation and on every page. Optional domain filter and decimal offset cursor must remain unchanged while paging a revision. Raw values, source binding, replica and paths are retained. Multiple copies and unresolved references are explicit. This preserved view does not activate a library or authorize migration. Unknown or duplicate query parameters reject. Response limit is 64 MiB; reduce page size on 413. No record truncation."
       }
+    },
+    "/v1/library/reconciliations": {
+      "post": {
+        "summary": "Preview causal reconciliation of two preserved library branches",
+        "operationId": "postV1LibraryReconciliations",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Review with suppressed selections and evidence gaps; commitAvailable is true only when unresolved is zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReconciliationRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -574,7 +625,9 @@
               "import-plan",
               "source-inventory",
               "source-binding",
-              "restore-plan"
+              "restore-plan",
+              "reconciliation-plan",
+              "branch-transfer"
             ]
           },
           "data": {}
@@ -657,7 +710,8 @@
             "enum": [
               "snapshot",
               "import",
-              "restore"
+              "restore",
+              "reconcile"
             ]
           },
           "importPlan": {
@@ -682,6 +736,14 @@
           },
           "selectionPolicy": {
             "const": "preserve-deletions-v1"
+          },
+          "incomingBranch": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reconciliationPlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -776,6 +838,64 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "reconcile"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "incomingBranch",
+                "reconciliationPlan"
+              ],
+              "properties": {
+                "parents": {
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "sourceBinding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "selectionPolicy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "inputState"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "importPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restorePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restoredCheckpointId"
+                    ]
+                  }
+                ]
+              }
+            }
           }
         ]
       },
@@ -817,7 +937,8 @@
             "enum": [
               "snapshot",
               "import",
-              "restore"
+              "restore",
+              "reconcile"
             ]
           },
           "commitAvailable": {
@@ -836,6 +957,13 @@
           },
           "restorePlan": {
             "$ref": "#/components/schemas/RestorePlan"
+          },
+          "incomingRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reconciliationPlan": {
+            "$ref": "#/components/schemas/ReconciliationPlan"
           }
         },
         "required": [
@@ -975,6 +1103,60 @@
                 }
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "reconcile"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "reconciliationPlan",
+                "incomingRevision"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "reconciliationPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "reconciliationPlan"
+                ]
+              }
+            }
           }
         ]
       },
@@ -1031,7 +1213,8 @@
             "enum": [
               "snapshot",
               "import",
-              "restore"
+              "restore",
+              "reconcile"
             ]
           },
           "stateHash": {
@@ -3343,6 +3526,223 @@
             }
           }
         },
+        "additionalProperties": false
+      },
+      "ReconciliationRequest": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expectedRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "incoming": {
+            "$ref": "#/components/schemas/Transfer"
+          },
+          "resolutions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "enum": [
+                "current",
+                "incoming"
+              ]
+            }
+          }
+        },
+        "required": [
+          "libraryId",
+          "expectedRevision",
+          "incoming"
+        ],
+        "additionalProperties": false
+      },
+      "ReconciliationPlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-reconciliation-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "baseRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "incomingRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "incomingManifestHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "ancestorRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "resolutions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "enum": [
+                "current",
+                "incoming"
+              ]
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "groupId": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "ancestor": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "current": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "incoming": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "conflict": {
+                  "type": "boolean"
+                },
+                "choice": {
+                  "enum": [
+                    "current",
+                    "incoming",
+                    null
+                  ]
+                },
+                "reason": {
+                  "enum": [
+                    "concurrent-change",
+                    "same-selection",
+                    "causal-change"
+                  ]
+                }
+              },
+              "required": [
+                "groupId",
+                "ancestor",
+                "current",
+                "incoming",
+                "conflict",
+                "choice",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/LibraryState"
+          },
+          "deletionReview": {
+            "$ref": "#/components/schemas/DeletionReview"
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activationReady": {
+            "const": false
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "baseRevision",
+          "incomingRevision",
+          "incomingManifestHash",
+          "ancestorRevision",
+          "fingerprint",
+          "resolutions",
+          "rows",
+          "manifest",
+          "deletionReview",
+          "unresolved",
+          "activationReady"
+        ],
+        "additionalProperties": false
+      },
+      "BranchArchive": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-transfer"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/TransferManifest"
+          },
+          "manifestHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/TransferMetadata"
+          },
+          "operations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Receipt"
+            }
+          },
+          "checkpoints": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "manifest",
+          "manifestHash",
+          "metadata",
+          "operations",
+          "checkpoints"
+        ],
         "additionalProperties": false
       }
     }

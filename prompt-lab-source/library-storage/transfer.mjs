@@ -41,13 +41,15 @@ async function verifyState(input) {
     canonical(receipt);
     const commit = commits.get(receipt?.revision);
     const parent = commit?.parents[0] ?? null;
-    if (!record(receipt) || !commit || commit.parents.length > 1 || receipt.operationId !== operationId
+    if (!record(receipt) || !commit || (commit.parents.length > 1 && commit.operation !== 'reconcile') || receipt.operationId !== operationId
       || commit.operationId !== operationId || receipt.libraryId !== state.libraryId || receipt.parentRevision !== parent
       || receipt.checkpointId !== parent || receipt.state !== 'committed' || receipt.verified !== true || receipts.has(receipt.revision)) fail('Operation receipt does not match its commit.');
     const mode = commit.operation ?? 'snapshot';
     if (receipt.operation != null && receipt.operation !== mode) fail('Operation mode differs from its commit.');
     const resolutions = mode === 'import' ? state.objects[commit.importPlan].data.resolutions : {};
-    const input = mode === 'restore'
+    const input = mode === 'reconcile'
+      ? { libraryId: state.libraryId, expectedRevision: parent, incomingManifestHash: state.objects[commit.reconciliationPlan].data.incomingManifestHash, resolutions: state.objects[commit.reconciliationPlan].data.resolutions, mode }
+      : mode === 'restore'
       ? { libraryId: state.libraryId, expectedRevision: parent, checkpointId: commit.restoredCheckpointId, mode }
       : { libraryId: state.libraryId, expectedRevision: parent, sourceText: state.objects[commit.source].data, resolutions, mode };
     if (mode === 'restore' && (receipt.restoredCheckpointId !== commit.restoredCheckpointId || !state.checkpoints.includes(commit.restoredCheckpointId))) fail('Restore receipt or checkpoint differs from the committed review.');
@@ -62,7 +64,7 @@ async function verifyState(input) {
     if (receipt.fingerprint !== current && !(commit.operation == null && receipt.operation == null && receipt.fingerprint === await hash(legacy))) fail('Operation fingerprint differs from its committed input.');
     if ((receipt.sourceHash != null && receipt.sourceHash !== commit.source) || (receipt.stateHash != null && receipt.stateHash !== commit.state)) fail('Receipt object references differ from its commit.');
     if (receipt.counts != null) {
-      const manifest = ['import', 'restore'].includes(mode) ? state.objects[commit.state].data : null;
+      const manifest = ['import', 'restore', 'reconcile'].includes(mode) ? state.objects[commit.state].data : null;
       const counts = receipt.counts;
       if (!record(counts) || !Number.isSafeInteger(counts.objects) || counts.objects < 1 || counts.objects > Object.keys(state.objects).length
         || counts.sources !== (manifest?.sources.length ?? 1) || counts.records !== (manifest?.nodes.length ?? null)

@@ -1,5 +1,30 @@
 # Library storage contract candidate
 
+## Reviewed branch reconciliation
+
+The next contract increment combines two verified branches of the same logical
+library. It compares each prompt selection with their common ancestor, accepts
+independent changes, and requires a reviewed choice when both branches changed
+the same selection. Creation timestamps never decide a winner. Both branches,
+their raw sources, unknown fields, operation receipts and checkpoints remain
+available after the merge. Permanent deletion evidence from either branch still
+suppresses a selected prompt. The preview is pinned to both branch revisions;
+commit and retry use the existing atomic command and idempotency boundary.
+
+This increment covers imported selection graphs. Whole-workspace snapshots must
+first pass the existing import review so matching and Keep choices establish
+stable group identities. Other preserved domains remain available through the
+record inventory; this increment does not establish an active app projection,
+native folder activation, cross-process folder publication, or real iCloud
+convergence. Those acceptance gates remain required by the full plan.
+
+Acceptance includes independent and conflicting branch edits, deletion versus
+edit, stale reviews, response-loss retry, transfer reconstruction, restore after
+merge, and preservation of every original object. Invalid ancestry, conflicting
+operation IDs and incomplete deletion evidence must leave the current head
+unchanged. Tests run on Dominic with synthetic data. A bounded local check may
+use the private export without transferring it off the Mac.
+
 Status: implementation in progress. This candidate does not connect any app or
 personal folder. It is not a completed A1, A2 or release acceptance receipt.
 
