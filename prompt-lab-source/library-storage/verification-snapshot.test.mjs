@@ -70,3 +70,58 @@ test('cached root serialization preserves depth limits and unsupported prototype
   assert.throws(() => canonical({ nested: owned }), { code: 'INVALID_JSON' });
   assert.equal(canonical({ '2': true, '10': false }), '{"10":false,"2":true}');
 });
+
+test('warm inspection returns independent results and validates every incoming object', async () => {
+  const pkg = await createPackage(JSON.stringify({ library: [{ id: 'p', original: 'Keep', future: { value: 7 } }] }), { libraryId: 'warm', operationId: 'initial' });
+  const retained = await makeObject('future', { value: 'Retain' });
+  pkg.objects[retained.hash] = retained.object;
+  const first = await inspectPackage(pkg);
+  first.workspace.library[0].future.value = 99;
+  first.sourceBindings.push('poison');
+  const second = await inspectPackage(structuredClone(pkg));
+  assert.equal(second.workspace.library[0].future.value, 7);
+  assert.deepEqual(second.sourceBindings, []);
+  second.workspace.library.length = 0;
+  assert.equal((await inspectPackage(pkg)).workspace.library.length, 1);
+  const sourceId = pkg.objects[pkg.head].data.state;
+  const changed = structuredClone(pkg);
+  changed.objects[sourceId].data.library[0].original = 'Changed';
+  await assert.rejects(inspectPackage(changed), { code: 'HASH_MISMATCH' });
+  retained.object.data.value = 'Corrupt';
+  await assert.rejects(inspectPackage(pkg), { code: 'HASH_MISMATCH' });
+});
+
+test('inspection proof is bound to the complete object set and library identity', async () => {
+  const pkg = await createPackage(JSON.stringify({ library: [] }), { libraryId: 'set-bound', operationId: 'initial' });
+  const first = await inspectPackage(pkg);
+  const retained = await makeObject('future', { value: 'Extra' });
+  const extra = { ...pkg, objects: { ...pkg.objects, [retained.hash]: retained.object } };
+  assert.equal((await inspectPackage(extra)).objectCount, first.objectCount + 1);
+  assert.equal((await inspectPackage(pkg)).objectCount, first.objectCount);
+  const missing = structuredClone(pkg);
+  delete missing.objects[pkg.objects[pkg.head].data.state];
+  await assert.rejects(inspectPackage(missing), { code: 'MISSING_OBJECT' });
+  await assert.rejects(inspectPackage({ ...pkg, libraryId: 'foreign' }), { code: 'INVALID_ANCESTRY' });
+  // Correct hashes do not make a semantically invalid revision valid.
+  const forged = await makeObject('commit', { ...pkg.objects[pkg.head].data, operation: 'unknown' });
+  await assert.rejects(inspectPackage({ ...pkg, head: forged.hash,
+    objects: { ...pkg.objects, [forged.hash]: forged.object } }), { code: 'UNSUPPORTED_OPERATION' });
+});
+
+test('warm inspection owns envelope metadata and object bytes before awaiting hashes', async () => {
+  const pkg = await createPackage(JSON.stringify({ library: [{ id: 'p', original: 'Before' }] }), { libraryId: 'metadata', operationId: 'initial' });
+  await inspectPackage(pkg);
+  let libraryReads = 0, headReads = 0;
+  const input = { ...pkg,
+    get libraryId() { return ++libraryReads === 1 ? pkg.libraryId : 'foreign'; },
+    get head() { return ++headReads === 1 ? pkg.head : 'sha256:' + '0'.repeat(64); },
+  };
+  const pending = inspectPackage(input);
+  pkg.objects[pkg.objects[pkg.head].data.state].data.library[0].original = 'After';
+  const result = await pending;
+  assert.equal(result.libraryId, 'metadata');
+  assert.equal(result.workspace.library[0].original, 'Before');
+  assert.equal(libraryReads, 1);
+  assert.equal(headReads, 1);
+  await assert.rejects(inspectPackage(pkg), { code: 'HASH_MISMATCH' });
+});

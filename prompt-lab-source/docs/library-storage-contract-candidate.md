@@ -1,5 +1,46 @@
 # Library storage contract candidate
 
+## Repeated package verification
+
+A 1.64 MB synthetic source on Dominic took 28.3 seconds for one evaluation
+save. Profiling identifies repeated source inventory and ancestry validation
+inside command review, publication and readback. Retain a bounded successful
+inspection result only for the same library, revision and complete object
+address set. Own and hash every incoming object before consulting that result,
+including retained objects outside the current ancestry. Return independent
+copies. Missing, changed, newly added and invalid objects must not reuse a
+different proof. Oversized packages continue through full verification.
+
+Acceptance requires warm-cache corruption, missing-object, foreign-library,
+caller-mutation and metadata-ownership tests, the full storage suite, actual
+app browser calls, and a repeated synthetic profile. Only then resume the same
+retained private fixture for final restart, edit and deletion readback.
+
+The successful-inspection cache now retains at most 16 results and 64 MiB of
+estimated serialized text. Every call owns and hashes the complete object set
+before lookup. Three additional regressions cover independent returned values,
+reachable and retained corruption, complete object-set changes, missing objects,
+foreign library identity, hash-valid invalid revisions and changing metadata.
+Dominic Node 22.23.4 passed all 362 storage tests, four actual browser scenarios,
+the extension build, Markdown lint and four documentation contracts. The changed
+runtime and test files match the runner by SHA-256. The prior 1,553 app and
+231 legacy tests were not repeated for this verification-only change.
+
+On the same synthetic profile, saving one evaluation fell from 28.292 to
+13.546 seconds; total time fell from 42.913 to 22.522 seconds. This single
+observation does not establish interactive performance or scale acceptance.
+
+The retained Mac fixture then passed final restart, update, deletion and folder
+reopening. It recovered the previously committed update without another write,
+retained eight operation receipts and every original archived object, and left
+the original three runs and browser sources unchanged. The full original export
+hash remains unchanged. Restart/edit/readback took 29.396 seconds and reopening
+the folder took 1.196 seconds. Earlier interrupted attempts remain historical;
+their missing final readback is now verified. No private data was uploaded or
+personal storage activated. Interactive save latency, whole-app integration,
+durable offline intent, native and actual two-client iCloud acceptance remain
+open; hosted work remains behind Phase A acceptance.
+
 ## App repository and record store connection
 
 Every connected app reader and writer must use the selected library revision.

@@ -9,6 +9,25 @@ const validHash = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.
 // Only private, recursively frozen snapshots enter these weak caches. A new
 // mutable input or disk read must be checked again, even at a known address.
 const immutableObjects = new WeakMap();
+// Successful semantic proofs are private and bounded. They are reusable only
+// after every incoming object has passed its content-address check again.
+const inspections = new Map();
+let inspectionBytes = 0;
+const inspectionLimit = 64 * 1024 * 1024;
+
+function retainInspection(key, addresses, result) {
+  const bytes = 2 * (key.length + addresses.length + JSON.stringify(result).length);
+  if (bytes > inspectionLimit) return;
+  const previous = inspections.get(key);
+  if (previous) { inspectionBytes -= previous.bytes; inspections.delete(key); }
+  while (inspections.size >= 16 || inspectionBytes + bytes > inspectionLimit) {
+    const oldest = inspections.keys().next().value;
+    inspectionBytes -= inspections.get(oldest).bytes;
+    inspections.delete(oldest);
+  }
+  inspections.set(key, { addresses, result: structuredClone(result), bytes });
+  inspectionBytes += bytes;
+}
 
 function ownObject(value) {
   if (value && typeof value === 'object' && immutableObjects.has(value)) return value;
@@ -121,11 +140,25 @@ export async function createPackage(sourceText, { libraryId, operationId, parent
 }
 
 export async function inspectPackage(pkg) {
+  // Capture envelope getters once, before validation or any asynchronous work.
+  pkg = { format: pkg?.format, schemaVersion: pkg?.schemaVersion, libraryId: pkg?.libraryId,
+    head: pkg?.head, objects: pkg?.objects };
   if (pkg?.format !== FORMAT || pkg.schemaVersion !== VERSION || !validId(pkg.libraryId) || !validHash(pkg.head)
     || !pkg.objects || Object.getPrototypeOf(pkg.objects) !== Object.prototype) throw new LibraryError('UNSUPPORTED_PACKAGE', 'Unsupported library package.');
   // Own each object at its existing depth boundary. Wrapping the whole package
   // in canonical() would add envelope levels and reject otherwise valid objects.
   pkg = { ...pkg, objects: ownObjectTable(pkg.objects) };
+  // Retained unreachable objects are part of the archive too. A known head or
+  // filename does not certify new input bytes, even on a warm cache.
+  for (const [id, object] of Object.entries(pkg.objects)) if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Retained object failed integrity verification.', 503);
+  const cacheKey = JSON.stringify([pkg.libraryId, pkg.head]);
+  const addresses = JSON.stringify(Object.keys(pkg.objects).sort());
+  const cached = inspections.get(cacheKey);
+  if (cached?.addresses === addresses) {
+    inspections.delete(cacheKey);
+    inspections.set(cacheKey, cached);
+    return structuredClone(cached.result);
+  }
   const active = new Set(), visited = new Map();
   async function visit(id) {
     if (active.has(id)) throw new LibraryError('INVALID_ANCESTRY', 'Cyclic commit ancestry.');
@@ -291,9 +324,9 @@ export async function inspectPackage(pkg) {
     visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort(), derivedSources });
   }
   await visit(pkg.head);
-  // Retained unreachable objects are part of the archive too; never silently drop them.
-  for (const [id, object] of Object.entries(pkg.objects)) if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Retained object failed integrity verification.', 503);
-  return { libraryId: pkg.libraryId, revision: pkg.head, ...visited.get(pkg.head), commits: visited.size, objectCount: Object.keys(pkg.objects).length };
+  const result = { libraryId: pkg.libraryId, revision: pkg.head, ...visited.get(pkg.head), commits: visited.size, objectCount: Object.keys(pkg.objects).length };
+  retainInspection(cacheKey, addresses, result);
+  return result;
 }
 
 const packageFor = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId, head: state.revision, objects: state.objects });
