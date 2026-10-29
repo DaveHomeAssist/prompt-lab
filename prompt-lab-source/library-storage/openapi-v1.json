@@ -7170,13 +7170,16 @@
       },
       "DurableOutbox": {
         "type": "object",
-        "description": "App-owned pending command. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime before replay. Completed records are retained.",
+        "description": "App-owned pending command. Version 3 retains explicit record intents before review. A matching review must be durably stored before publication. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime; completed records are retained.",
         "properties": {
           "format": {
             "const": "promptlab-command-outbox"
           },
           "schemaVersion": {
-            "const": 2
+            "enum": [
+              2,
+              3
+            ]
           },
           "libraryId": {
             "type": "string",
@@ -7207,12 +7210,26 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "reviewHash": {
-            "type": "string",
-            "pattern": "^sha256:[a-f0-9]{64}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "sourceHash": {
-            "type": "string",
-            "pattern": "^sha256:[a-f0-9]{64}$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -7224,6 +7241,7 @@
           },
           "state": {
             "enum": [
+              "awaiting-review",
               "pending",
               "failed",
               "committed"
@@ -7324,6 +7342,91 @@
               "properties": {
                 "receipt": {
                   "type": "null"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "schemaVersion": {
+                  "const": 2
+                }
+              },
+              "required": [
+                "schemaVersion"
+              ]
+            },
+            "then": {
+              "properties": {
+                "reviewHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "sourceHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "state": {
+                  "enum": [
+                    "pending",
+                    "failed",
+                    "committed"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "request": {
+                  "properties": {
+                    "mode": {
+                      "const": "record"
+                    }
+                  },
+                  "required": [
+                    "mode"
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "reviewHash": {
+                  "type": "null"
+                }
+              },
+              "required": [
+                "reviewHash"
+              ]
+            },
+            "then": {
+              "properties": {
+                "sourceHash": {
+                  "type": "null"
+                },
+                "state": {
+                  "enum": [
+                    "awaiting-review",
+                    "failed"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "sourceHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "state": {
+                  "enum": [
+                    "pending",
+                    "failed",
+                    "committed"
+                  ]
                 }
               }
             }

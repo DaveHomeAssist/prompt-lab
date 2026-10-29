@@ -1,5 +1,73 @@
 # Library storage contract candidate
 
+## October 29 offline edit verification
+
+The candidate retains explicit record edits before service review and reuses
+source-binding validation only after freshly checking every bound object hash.
+Dominic Node 22.23.4 passed all 370 storage tests, 1,553 app tests, 231 legacy
+tests, 48 browser scenarios, the extension build, Markdown lint and four
+documentation contracts. Six runtime outbox fixtures passed both schemas;
+23 malformed variants were rejected and the OpenAPI definition matches.
+The final browser run includes the source-capture regression from CI on
+31aea43: importing a small record-version symbol no longer pulls the repository
+dependency graph into the legacy experiment store. The original CI failure is
+preserved; new commit CI remains a separate gate.
+
+The same 1.64 MB synthetic profile now saves an evaluation in 8.275 seconds,
+compared with 13.546 seconds at the preceding checkpoint and 28.292 seconds
+before the two verification optimizations. These single observations are not
+interactive performance or scale acceptance.
+
+The existing isolated real-export fixture on the Mac retained an offline edit
+in 0.167 seconds before any service review, then recovered it across browser
+restart with one additional operation receipt. The full 43.486-second sequence
+preserved all 14 original and 46 prior fixture objects, the original three runs
+and all source bytes. Reconnection, recovery and readback took 33.941 seconds.
+No private upload or personal storage activation occurred. The fixture remains
+isolated for recovery evidence, with its owned browser and service closed.
+
+Offline startup reads, multiple pending edits and conflict recovery UI,
+remaining app stores, native connection, actual two-client iCloud and installed
+acceptance remain open. The configuration recheck still finds both Windows
+Drive roots registered and their processes running, but neither client sees the
+Mac's existing probe or October 28 export. The Mac reports its probe uploaded;
+current Windows account identity and visible warnings remain unverified.
+Hosted work remains behind Phase A acceptance.
+
+## Durable app edits before review
+
+For an edit based on an opened, validated snapshot, persist its complete
+revision-pinned record request before any network request.
+A version-three outbox entry without a review is a retained intent, never a
+committed save. On reconnection, obtain a committable review for that exact
+request and durably store its proof before sending the command. Preserve the
+operation identity, explicit deletion confirmation and original record hash.
+Changed libraries, revisions or review results require conflict recovery, not
+automatic rebasing. Existing version-two reviewed entries remain readable.
+Import, restore, selection and other decisions still require their explicit
+review before enqueueing; the new staging path accepts only record commands.
+
+Connected evaluation patches use the last validated observed record as their
+base, so an unavailable service cannot prevent durable retention of the edit.
+Normal reads continue checking the service. This does not supply an offline
+read cache after app restart or activate personal storage. Verify failed initial
+storage, failed review-proof storage, lost responses, concurrent replay, stale
+revision rejection, actual browser restart and a preserved real-export copy.
+
+## Source verification cost
+
+The latest synthetic profile spends most CPU time serializing JSON. Repeated
+source binding checks reconstruct and validate the same captured source during
+planning, ancestry inspection and readback. Reuse a bounded successful binding
+proof only after checking every object referenced by that binding, including
+its source, workspace, inventory and complete capture list. The binding hash
+pins that list; expected source/workspace checks still run on every call.
+Package inspection continues checking every retained object independently.
+Returned binding results must be independent copies. Corrupt or missing input,
+changed expected identity and caller mutation must fail safely on a warm cache.
+Measure the same synthetic save and repeat retained private-data verification
+before claiming an improvement. Personal activation remains gated.
+
 ## Repeated package verification
 
 A 1.64 MB synthetic source on Dominic took 28.3 seconds for one evaluation
@@ -98,8 +166,11 @@ export bytes remain unchanged. Initial module-server setup failures and both
 interrupted attempts are retained. No private data was uploaded, and personal
 app storage was not activated. Further command-service verification cost must
 be reduced and the same retained test completed before whole-app activation.
-Offline edits without a reviewed preview still need durable intent handling;
-the existing outbox only retains already-reviewed commands.
+At this earlier checkpoint, edits without a reviewed preview still needed
+durable intent handling: the outbox retained only already-reviewed commands.
+The version-three record-intent work above addresses that gap for an opened
+repository. Offline read-cache startup and app-wide recovery remain separate
+integration requirements.
 
 ## App owned migration copy
 

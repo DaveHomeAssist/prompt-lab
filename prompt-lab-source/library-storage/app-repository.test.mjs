@@ -114,11 +114,50 @@ test('lost acknowledgement persists one command and reconstructed repository res
 });
 
 test('failed durable queueing never publishes or falls back to browser storage', async () => {
-  const f = await fixture(), before = await f.service.read(); let writes = 0;
+  const f = await fixture(), before = await f.service.read(); let writes = 0, network = 0;
   const rejecting = { ...f.store, async write() { writes++; throw new LibraryError('OUTBOX_WRITE_FAILED', 'Synthetic quota failure'); } };
-  const repository = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(rejecting) }); await repository.open();
+  const repository = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(rejecting), transport: { ...f.transport,
+    identity: async () => { network++; return f.transport.identity(); }, preview: async request => { network++; return f.transport.preview(request); },
+  } }); await repository.open(); network = 0;
   await assert.rejects(repository.saveRecord('evaluations', { id: 'not-saved', output: 'Keep draft' }), { code: 'OUTBOX_WRITE_FAILED' });
-  assert.equal(writes, 1); assert.deepEqual(await f.service.read(), before);
+  assert.equal(writes, 1); assert.equal(network, 0); assert.deepEqual(await f.service.read(), before);
+});
+
+test('actual app patch is durable before service review and a reconstructed repository resumes it', async () => {
+  const f = await fixture(), before = await f.service.read(); let offline = false;
+  const repository = createAppLibraryRepository({ ...f.options, transport: { ...f.transport,
+    identity: async () => { if (offline) throw new LibraryError('SERVICE_UNAVAILABLE', 'Synthetic offline'); return f.transport.identity(); },
+  } });
+  await repository.open(); offline = true;
+  const app = createExperimentStore(repository);
+  await assert.rejects(app.patchEvalRun('original-eval', { output: 'Retained offline patch' }), { code: 'SERVICE_UNAVAILABLE' });
+  const pending = (await repository.pending())[0];
+  assert.equal(pending.reviewHash, null); assert.equal(pending.sourceHash, null);
+  assert.equal(pending.request.expectedRevision, before.revision);
+  assert.ok(pending.request.updates.some(u => u.path[0] === 'output' && u.value === 'Retained offline patch'));
+  assert.deepEqual(await f.service.read(), before);
+  const restarted = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(f.store) });
+  await restarted.open();
+  const saved = await restarted.readRecord('evaluations', 'original-eval');
+  assert.equal(saved.output, 'Retained offline patch'); assert.deepEqual(saved.future, { keep: 9, edit: 1 });
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+  assert.equal((await restarted.pending())[0].state, 'committed');
+  offline = false; await retryPendingWrites();
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+});
+
+test('an offline app edit never rebases over a later API update', async () => {
+  const f = await fixture();
+  const repository = createAppLibraryRepository({ ...f.options, transport: { ...f.transport, preview: async () => { throw new Error('Offline preview'); } } });
+  await repository.open();
+  await assert.rejects(repository.saveRecord('evaluations', { ...await repository.readObservedRecord('evaluations', 'original-eval'), output: 'Offline edit' }), /Offline preview/);
+  const other = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(commandStore()) }); await other.open();
+  await other.saveRecord('evaluations', { ...await other.readRecord('evaluations', 'original-eval'), output: 'API edit' });
+  const latest = await f.service.read();
+  const restarted = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(f.store) });
+  await assert.rejects(restarted.open(), { code: 'REVISION_CONFLICT' });
+  assert.deepEqual(await f.service.read(), latest);
+  assert.equal((await restarted.pending()).find(e => e.state !== 'committed').request.updates[0].value, 'Offline edit');
 });
 
 test('page identity, cursor and record hashes are checked before app data is returned', async () => {

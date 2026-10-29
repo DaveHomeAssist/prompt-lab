@@ -27,6 +27,28 @@ async function fixture({ content = workspace, sourceIdentity = 'origin-a', marke
 }
 const commit = async (service, input, key) => service.apply({ ...await service.preview(input), idempotencyKey: key });
 
+test('warm binding proof checks every dependency and expected identity, with isolated returned captures', async () => {
+  const input = await fixture();
+  const pkg = await createPackage(input.sourceText, { libraryId: 'warm-binding', operationId: 'initial', sourceInventory: input.sourceInventory });
+  const id = pkg.objects[pkg.head].data.sourceBinding;
+  const first = await inspectSourceBinding(pkg.objects, id);
+  const expected = structuredClone(first);
+  first.inventory.manifest.sourceIdentity = 'poison';
+  first.captures['local-content'].entries['pl2-library'] = '[]';
+  first.inventory.objects[first.inventory.manifest.sources.find(s => s.id === 'local-content').hash].data.entries['pl2-pad'] = 'changed';
+  assert.deepEqual(await inspectSourceBinding(structuredClone(pkg.objects), id), expected);
+  const references = [id, expected.binding.source, expected.binding.workspace, expected.binding.inventory, ...Object.keys(expected.inventory.objects)];
+  for (const reference of references) {
+    const missing = structuredClone(pkg.objects); delete missing[reference];
+    await assert.rejects(inspectSourceBinding(missing, id), { code: 'MISSING_OBJECT' });
+    const corrupt = structuredClone(pkg.objects); corrupt[reference].kind += '-changed';
+    await assert.rejects(inspectSourceBinding(corrupt, id), { code: 'HASH_MISMATCH' });
+  }
+  await assert.rejects(inspectSourceBinding(pkg.objects, id, { source: 'wrong' }), { code: 'SOURCE_BINDING_MISMATCH' });
+  await assert.rejects(inspectSourceBinding(pkg.objects, id, { workspace: 'wrong' }), { code: 'SOURCE_BINDING_MISMATCH' });
+  assert.deepEqual(await inspectSourceBinding(pkg.objects, id, { source: expected.binding.source, workspace: expected.binding.workspace }), expected);
+});
+
 for (const mode of ['snapshot', 'import']) {
   test(`${mode} binds exact raw captures and survives complete transfer and replay`, async () => {
     const service = createCommandService(createMemoryAdapter());

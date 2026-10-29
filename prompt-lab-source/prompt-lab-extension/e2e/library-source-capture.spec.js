@@ -10,7 +10,7 @@ const readerPath = '/prompt-lab-extension/src/lib/librarySourceCapture.js';
 const inventoryPath = '/library-storage/source-inventory.mjs';
 const modulePaths = [readerPath, inventoryPath, '/library-storage/contract.mjs', '/library-storage/content-keys.mjs',
   ...['lib/libraryWriteCoordinator.js', 'lib/libraryOriginCapture.js', 'lib/libraryEditBuffers.js', 'lib/draftRecoveryCapture.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
-    'lib/scratchJournal.js', 'lib/writeRecovery.js', 'experimentStore.js', 'lib/logger.js', 'lib/diagnostics.js',
+    'lib/scratchJournal.js', 'lib/writeRecovery.js', 'lib/appRecordVersion.js', 'experimentStore.js', 'lib/logger.js', 'lib/diagnostics.js',
     'constants.js', 'lib/evalSchema.js', 'lib/enhancementResult.js', 'lib/tagSchema.js', 'lib/utils.js',
     'lib/sourceLink.js', 'lib/platform.js', 'lib/providerFixture.js'].map(path => `/prompt-lab-extension/src/${path}`)];
 let server, origin;

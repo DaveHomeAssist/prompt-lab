@@ -93,16 +93,20 @@ function checkReceipt(receipt, entry) {
 
 export async function inspectOutboxEntry(value) {
   const entry = structuredClone(value);
-  if (!object(entry) || entry.format !== 'promptlab-command-outbox' || entry.schemaVersion !== 2
+  if (!object(entry) || entry.format !== 'promptlab-command-outbox' || ![2, 3].includes(entry.schemaVersion)
     || !id(entry.libraryId) || !id(entry.operationId) || !Number.isSafeInteger(entry.version) || entry.version < 1
-    || !['pending', 'failed', 'committed'].includes(entry.state) || !Number.isFinite(Date.parse(entry.createdAt))) {
+    || !['awaiting-review', 'pending', 'failed', 'committed'].includes(entry.state) || !Number.isFinite(Date.parse(entry.createdAt))) {
     fail('INVALID_OUTBOX', 'Pending-command storage requires recovery; preserve it without replaying.');
   }
   const { recordHash, ...record } = entry;
   if (recordHash !== await hash(record) || entry.commandHash !== await hash(envelope(entry))) fail('OUTBOX_CORRUPT', 'Pending-command integrity check failed.');
   const request = normalizeCommandRequest(entry.request);
+  if (entry.schemaVersion === 3 && request.mode !== 'record') fail('OUTBOX_CORRUPT', 'A retained app intent must be a record command.');
+  const unreviewed = entry.schemaVersion === 3 && request.mode === 'record' && entry.reviewHash === null && entry.sourceHash === null
+    && ['awaiting-review', 'failed'].includes(entry.state);
   if (request.libraryId !== entry.libraryId || request.expectedRevision !== entry.baseRevision
-    || entry.fingerprint !== await commandFingerprint(request) || !address(entry.reviewHash) || !address(entry.sourceHash)) fail('OUTBOX_CORRUPT', 'Pending-command identity or input differs.');
+    || entry.fingerprint !== await commandFingerprint(request)
+    || (!unreviewed && (entry.state === 'awaiting-review' || !address(entry.reviewHash) || !address(entry.sourceHash)))) fail('OUTBOX_CORRUPT', 'Pending-command identity or input differs.');
   if (entry.state === 'committed') checkReceipt(entry.receipt, entry);
   else if (entry.receipt !== null) fail('OUTBOX_CORRUPT', 'A pending command cannot claim a committed receipt.');
   return entry;
@@ -133,13 +137,49 @@ export function createCommandOutbox(store, { now = () => Date.now() } = {}) {
     }
     fail('OUTBOX_BUSY', 'Another window is updating this pending command.');
   }
+  async function retainReview(original, review) {
+    if (review?.libraryId !== original.libraryId || review.expectedRevision !== original.baseRevision || review.mode !== 'record'
+      || review.fingerprint !== original.fingerprint || !Number.isFinite(review.expiresAt) || review.expiresAt <= now()) {
+      fail('REVIEW_CHANGED', 'The retained edit needs a current review for its original input.');
+    }
+    const reviewHash = await commandReviewHash(review), sourceHash = review.sourceHash;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const current = await read(original.libraryId, original.operationId);
+      if (!current || current.fingerprint !== original.fingerprint || current.baseRevision !== original.baseRevision) {
+        fail('OUTBOX_CHANGED', 'The retained edit changed before review.');
+      }
+      if (current.reviewHash !== null) {
+        if (current.reviewHash !== reviewHash || current.sourceHash !== sourceHash) fail('REVIEW_CHANGED', 'Another window retained a different review.');
+        return current;
+      }
+      const next = { ...current, reviewHash, sourceHash, state: 'pending', lastError: null, version: current.version + 1 };
+      next.commandHash = await hash(envelope(next));
+      const sealed = await seal(next);
+      if (review.expiresAt <= now()) fail('REVIEW_REQUIRED', 'The review expired before it could be stored.');
+      try { await store.write(sealed, current.version); return sealed; }
+      catch (error) { if (error.code !== 'OUTBOX_CONFLICT') throw error; }
+    }
+    fail('OUTBOX_BUSY', 'Another window is reviewing this retained edit.');
+  }
   async function replay(libraryId, operationId, transport) {
-    const entry = await read(libraryId, operationId);
+    let entry = await read(libraryId, operationId);
     if (!entry) fail('OUTBOX_NOT_FOUND', 'The pending command is unavailable.');
     if (entry.state === 'committed') return entry;
     try {
       const identity = await transport.identity();
       if (identity.libraryId !== entry.libraryId) fail('WRONG_LIBRARY', 'Reconnect to the library that owns this pending command.');
+      if (entry.reviewHash === null) {
+        // Another window may have reviewed or committed this same intent while
+        // identity was in flight. Read its durable proof before trusting a receipt.
+        const current = await read(libraryId, operationId);
+        if (!current || current.fingerprint !== entry.fingerprint || current.baseRevision !== entry.baseRevision) fail('OUTBOX_CHANGED', 'The retained edit changed.');
+        entry = current;
+        if (entry.reviewHash === null) {
+          if (identity.revision !== entry.baseRevision) fail('REVISION_CONFLICT', 'The library changed. Keep the offline edit and review the conflict.');
+          entry = await retainReview(entry, await transport.preview(structuredClone(entry.request)));
+        }
+        if (entry.state === 'committed') return entry;
+      }
       let receipt = await transport.operation(entry.operationId);
       if (!receipt) {
         if (identity.revision !== entry.baseRevision) fail('REVISION_CONFLICT', 'The library changed. Keep the pending command and review the conflict.');
@@ -163,6 +203,25 @@ export function createCommandOutbox(store, { now = () => Date.now() } = {}) {
   }
   return {
     read,
+    async stage({ request: value, operationId }) {
+      const request = normalizeCommandRequest(value);
+      if (request.mode !== 'record' || !id(operationId)) fail('REVIEW_REQUIRED', 'Only explicit record edits may be retained before service review.');
+      const entry = { format: 'promptlab-command-outbox', schemaVersion: 3, libraryId: request.libraryId,
+        baseRevision: request.expectedRevision, operationId, request, fingerprint: await commandFingerprint(request),
+        reviewHash: null, sourceHash: null, createdAt: new Date(now()).toISOString(), version: 1,
+        state: 'awaiting-review', receipt: null, lastError: null };
+      entry.commandHash = await hash(envelope(entry));
+      const sealed = await seal(entry);
+      try { await store.write(sealed, null); return sealed; }
+      catch (error) {
+        if (error.code !== 'OUTBOX_CONFLICT') throw error;
+        const current = await read(entry.libraryId, operationId);
+        if (!current || current.fingerprint !== entry.fingerprint || current.baseRevision !== entry.baseRevision) {
+          fail('IDEMPOTENCY_CONFLICT', 'This operation already names a different retained edit.');
+        }
+        return current;
+      }
+    },
     async list(libraryId) {
       if (!id(libraryId)) fail('INVALID_COMMAND', 'Select the pending command library.');
       const rows = await store.list(libraryId), result = [];

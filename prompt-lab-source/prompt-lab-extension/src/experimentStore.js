@@ -1,4 +1,4 @@
-import { APP_RECORD_VERSION } from './lib/appLibraryRepository.js';
+import { APP_RECORD_VERSION } from './lib/appRecordVersion.js';
 import { runLibraryWrite, writeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import {
   filterEvalRuns,
@@ -243,7 +243,8 @@ async function persistEvalRun(normalized, permit) {
 }
 
 export async function patchEvalRun(id, patch, repository = null) {
-  const existing = await getEvalRunById(id, repository);
+  if (!id) return null;
+  const existing = repository ? await repository.readObservedRecord('evaluations', id) : await getEvalRunById(id);
   if (!existing) return null;
   return saveEvalRun({ ...existing, ...(patch && typeof patch === 'object' ? patch : {}) }, repository);
 }
@@ -357,7 +358,7 @@ export {
 // is qualified. Existing exports keep their browser-store behavior until then.
 export function createExperimentStore(repository) {
   if (!repository || typeof repository.libraryId !== 'string'
-    || ['readDomain', 'readRecord', 'saveRecord', 'deleteRecord'].some(key => typeof repository[key] !== 'function')) {
+    || ['readDomain', 'readRecord', 'readObservedRecord', 'saveRecord', 'deleteRecord'].some(key => typeof repository[key] !== 'function')) {
     throw new TypeError('A selected app library repository is required.');
   }
   return Object.freeze({

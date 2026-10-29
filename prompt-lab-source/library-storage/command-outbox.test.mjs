@@ -41,6 +41,80 @@ async function fixture({ mode = 'snapshot', libraryId = 'lib', operationId = 'op
 }
 const enqueue = f => f.outbox.enqueue({ request: f.request, review: f.review, operationId: f.operationId });
 
+async function recordFixture() {
+  const f = await fixture({ mode: 'import' });
+  const receipt = await f.transport.apply({ ...f.review, idempotencyKey: 'source' });
+  const selected = await f.transport.apply({ ...await f.transport.preview({ mode: 'select', libraryId: 'lib', expectedRevision: receipt.revision }), idempotencyKey: 'select' });
+  f.request = { mode: 'record', libraryId: 'lib', expectedRevision: selected.revision, domain: 'evaluations', action: 'create',
+    sourceBinding: receipt.sourceBinding, record: { id: 'offline', output: 'Keep the complete edit', future: { keep: true } }, changedAt: '2026-10-29T21:00:00.000Z' };
+  return f;
+}
+const stage = f => f.outbox.stage({ request: f.request, operationId: 'offline' });
+
+test('unreviewed record intent survives failed preview and restart, with proof persisted before publication', async () => {
+  const f = await recordFixture(), before = await f.service.read();
+  const retained = await stage(f);
+  assert.equal(retained.state, 'awaiting-review'); assert.equal(retained.schemaVersion, 3);
+  assert.equal(retained.reviewHash, null); assert.equal(retained.receipt, null);
+  await assert.rejects(f.outbox.replay('lib', 'offline', { ...f.transport, preview: async () => { throw new Error('Offline before review'); } }), /Offline before review/);
+  assert.deepEqual(await f.service.read(), before);
+  const saved = await f.outbox.read('lib', 'offline');
+  assert.equal(saved.state, 'failed'); assert.deepEqual(saved.request, f.request); assert.equal(saved.reviewHash, null);
+  const restarted = createCommandOutbox(memoryStore(await f.store.list('lib')));
+  const result = await restarted.replay('lib', 'offline', { ...f.transport, apply: async input => {
+    const proof = await restarted.read('lib', 'offline');
+    assert.equal(proof.state, 'pending'); assert.ok(proof.reviewHash); assert.ok(proof.sourceHash);
+    return f.transport.apply(input);
+  } });
+  assert.equal(result.state, 'committed'); assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+  assert.deepEqual(await restarted.replay('lib', 'offline', f.transport), result);
+});
+
+test('failed intent or review-proof persistence cannot publish, and the original intent remains recoverable', async () => {
+  const f = await recordFixture(), before = await f.service.read(); let sent = 0;
+  f.store.failure = () => true;
+  await assert.rejects(stage(f), { code: 'OUTBOX_WRITE_FAILED' });
+  assert.deepEqual(await f.outbox.list('lib'), []);
+  f.store.failure = null; await stage(f);
+  f.store.failure = row => row.reviewHash !== null;
+  await assert.rejects(f.outbox.replay('lib', 'offline', { ...f.transport, apply: async () => { sent++; } }), { code: 'OUTBOX_WRITE_FAILED' });
+  assert.equal(sent, 0); assert.deepEqual(await f.service.read(), before);
+  assert.equal((await f.outbox.read('lib', 'offline')).reviewHash, null);
+  f.store.failure = null;
+  assert.equal((await f.outbox.replay('lib', 'offline', f.transport)).state, 'committed');
+});
+
+test('staged edits retain their original revision across another writer and a foreign destination', async () => {
+  const f = await recordFixture(); await stage(f);
+  await assert.rejects(f.outbox.replay('lib', 'offline', { ...f.transport, identity: async () => ({ libraryId: 'foreign', revision: f.request.expectedRevision }) }), { code: 'WRONG_LIBRARY' });
+  const other = { ...f.request, record: { id: 'other', output: 'Other writer' } };
+  await f.transport.apply({ ...await f.transport.preview(other), idempotencyKey: 'other' });
+  const before = await f.service.read();
+  await assert.rejects(f.outbox.replay('lib', 'offline', f.transport), { code: 'REVISION_CONFLICT' });
+  assert.deepEqual(await f.service.read(), before);
+  assert.deepEqual((await f.outbox.read('lib', 'offline')).request, f.request);
+  assert.equal((await f.outbox.read('lib', 'offline')).reviewHash, null);
+});
+
+test('two windows reviewing the same retained intent publish exactly one operation', async () => {
+  const f = await recordFixture(); await stage(f);
+  const other = createCommandOutbox(f.store);
+  const results = await Promise.all([f.outbox.replay('lib', 'offline', f.transport), other.replay('lib', 'offline', f.transport)]);
+  assert.deepEqual(results[0].receipt, results[1].receipt);
+  assert.equal(Object.keys((await f.service.read()).operations).length, 3);
+  assert.equal((await other.list('lib')).length, 1);
+});
+
+test('staging cannot bypass import review or reuse an intent identity for different input', async () => {
+  const f = await fixture();
+  await assert.rejects(f.outbox.stage({ request: f.request, operationId: 'import-intent' }), { code: 'REVIEW_REQUIRED' });
+  const edit = await recordFixture(); await stage(edit);
+  await assert.rejects(edit.outbox.stage({ request: { ...edit.request, record: { id: 'different' } }, operationId: 'offline' }), { code: 'IDEMPOTENCY_CONFLICT' });
+  await assert.rejects(edit.outbox.replay('lib', 'offline', { ...edit.transport, preview: async request => ({ ...await edit.transport.preview(request), commitAvailable: false }) }), { code: 'REVIEW_REQUIRED' });
+  assert.equal((await edit.outbox.read('lib', 'offline')).reviewHash, null);
+  assert.equal(Object.keys((await edit.service.read()).operations).length, 2);
+});
+
 test('complete queued input survives reconstruction and response loss without another commit', async () => {
   const f = await fixture(); const queued = await enqueue(f);
   assert.equal(queued.state, 'pending'); assert.equal((await f.service.read()).revision, null);

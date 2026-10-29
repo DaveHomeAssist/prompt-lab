@@ -1,8 +1,25 @@
-import { assertWorkspace, canonical, hash, LibraryError, makeObject, readObject } from './contract.mjs';
+import { assertWorkspace, canonical, hash, LibraryError, makeObject, ownObjectTable, readObject } from './contract.mjs';
 import { inspectSourceInventory } from './source-inventory.mjs';
 
 const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = message => { throw new LibraryError('SOURCE_BINDING_MISMATCH', message, 409); };
+const verifiedBindings = new Map();
+let retainedBytes = 0;
+const retainedLimit = 64 * 1024 * 1024;
+
+function retainBinding(id, result) {
+  const bytes = 2 * JSON.stringify(result).length;
+  if (bytes > retainedLimit) return;
+  while (verifiedBindings.size >= 8 || retainedBytes + bytes > retainedLimit) {
+    const oldest = verifiedBindings.keys().next().value;
+    retainedBytes -= verifiedBindings.get(oldest).bytes;
+    verifiedBindings.delete(oldest);
+  }
+  const previous = verifiedBindings.get(id);
+  if (previous) retainedBytes -= previous.bytes;
+  verifiedBindings.set(id, { result: structuredClone(result), bytes });
+  retainedBytes += bytes;
+}
 
 function rawRows(entries, key) {
   if (entries[key] === null) return [];
@@ -60,13 +77,29 @@ export async function inspectSourceBinding(objects, bindingHash, expected = {}) 
     || (expected.workspace !== undefined && binding.workspace !== expected.workspace)) fail('Binding refers to another workspace or source.');
   const stored = await readObject(objects, binding.inventory, 'source-inventory');
   if (!Array.isArray(stored.captureObjects) || new Set(stored.captureObjects).size !== stored.captureObjects.length) fail('Capture object inventory is invalid.');
+  // The binding pins every dependency. Own and hash fresh input before using
+  // a proof; an old address or a caller-frozen object is not fresh evidence.
+  const references = [...new Set([bindingHash, binding.source, binding.workspace, binding.inventory, ...stored.captureObjects])];
+  const owned = ownObjectTable(Object.fromEntries(references.map(id => {
+    if (!Object.hasOwn(objects, id)) throw new LibraryError('MISSING_OBJECT', 'Referenced source object is unavailable.', 503);
+    return [id, objects[id]];
+  })));
+  for (const id of references) if (await hash(owned[id]) !== id) throw new LibraryError('HASH_MISMATCH', 'Bound source object failed integrity verification.', 503);
+  const cached = verifiedBindings.get(bindingHash);
+  if (cached) {
+    verifiedBindings.delete(bindingHash); verifiedBindings.set(bindingHash, cached);
+    return structuredClone(cached.result);
+  }
   const captures = {};
   for (const id of stored.captureObjects) {
-    await readObject(objects, id, 'source-capture');
-    captures[id] = structuredClone(objects[id]);
+    await readObject(owned, id, 'source-capture');
+    captures[id] = owned[id];
   }
   const inventory = { manifest: stored.manifest, manifestHash: stored.manifestHash, objects: captures };
-  return { binding, inventory, ...await validateBinding(binding.source, binding.workspace, inventory, objects) };
+  const result = { binding, inventory, ...await validateBinding(binding.source, binding.workspace, inventory, owned) };
+  retainBinding(bindingHash, result);
+  // Owned input is private, including the capture object roots in inventory.
+  return structuredClone(result);
 }
 
 function collectMarkers(entries, scope, origin) {

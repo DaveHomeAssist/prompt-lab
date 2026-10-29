@@ -2,9 +2,9 @@ import { canonical, hash, LibraryError } from '../../../library-storage/contract
 import { createCommandOutbox } from '../../../library-storage/command-outbox.mjs';
 import { recordIdField } from '../../../library-storage/record-request.mjs';
 import { createIndexedCommandStore } from './libraryCommandOutbox.js';
+import { APP_RECORD_VERSION } from './appRecordVersion.js';
 
-// UI-only provenance survives object spread but never enters JSON or storage.
-export const APP_RECORD_VERSION = Symbol('PromptLab record version');
+export { APP_RECORD_VERSION } from './appRecordVersion.js';
 const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments']);
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
@@ -120,8 +120,7 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
       if ((await outbox.list(libraryId)).some(row => row.state !== 'committed')) {
         fail('LIBRARY_WRITES_PENDING', 'Resolve the retained pending change before saving another change.');
       }
-      const review = await transport.preview(request); assertConnected();
-      await outbox.enqueue({ request, review, operationId });
+      await outbox.stage({ request, operationId });
     }
     assertConnected();
     const committed = await outbox.replay(libraryId, operationId, transport);
@@ -139,6 +138,15 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
     async readRecord(domain, id) {
       domainCheck(domain);
       return serial(async () => { await refresh(); return valueOf(selected(domain, id)); });
+    },
+    async readObservedRecord(domain, id) {
+      domainCheck(domain);
+      return serial(() => {
+        if (!snapshot) fail('LIBRARY_NOT_OPEN', 'Open the library before editing its records.');
+        // This is an editing base, not a claim that the service is current.
+        // The durable intent retains its revision and must pass service review.
+        return valueOf(selected(domain, id));
+      });
     },
     async saveRecord(domain, record) {
       domainCheck(domain);

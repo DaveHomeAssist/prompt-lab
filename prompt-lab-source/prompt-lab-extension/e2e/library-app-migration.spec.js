@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const appModules = ['libraryAppMigration', 'libraryCommandOutbox', 'librarySourceCapture', 'libraryWriteCoordinator',
   'libraryOriginCapture', 'libraryEditBuffers', 'draftRecoveryCapture', 'libraryMatching', 'promptSchema',
   'utils', 'tagSchema', 'enhancementResult', 'followUpProvenance', 'collectionFolders', 'libraryPresentation',
-  'appLibraryRepository', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
+  'appLibraryRepository', 'appRecordVersion', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
 let server, origin;
 test.use({ channel: 'chromium' });
 test.beforeAll(async () => {
@@ -95,6 +95,62 @@ test('connected experiment store uses folder commands and recovers across a real
   } finally {
     console.log('Connected store HTTP requests:', JSON.stringify({ count: responses.length,
       rejected: responses.filter(response => response.status >= 400 && response.status !== 404) }));
+    await context?.close(); await api.close(); await rm(directory, { recursive: true, force: true });
+  }
+});
+test('offline app patch survives browser restart before its first service review', async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), 'promptlab-offline-intent-'));
+  const credential = { token: 'synthetic-offline-credential-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 180_000 };
+  const adapter = await createFolderAdapter(resolve(directory, 'library'));
+  const api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
+  const options = { baseUrl: await api.listen(), libraryId: 'lib', token: credential.token };
+  let context;
+  try {
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    let page = await context.newPage(); await boot(page, options);
+    const sourceBinding = await page.evaluate(async () => {
+      localStorage.setItem('pl2-library', '[{"id":"prompt","original":"Original source"}]');
+      const ids = { libraryId: 'lib', operationId: 'copy' };
+      await migration.prepare({ ...ids, sourceIdentity: 'offline-fixture', archives: { reviewed: true, records: [] } });
+      const copied = await migration.copy({ ...ids, reviewed: await migration.review(ids) });
+      await transport.apply({ ...await transport.preview({ mode: 'select', libraryId: 'lib', expectedRevision: copied.copiedRevision }), idempotencyKey: 'select' });
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const { createExperimentStore } = await import('/prompt-lab-extension/src/experimentStore.js');
+      window.repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding: copied.sourceBinding, transport });
+      await repository.open(); window.records = createExperimentStore(repository);
+      await records.saveEvalRun({ id: 'edit-offline', output: 'Before disconnection', future: { keep: true } });
+      return copied.sourceBinding;
+    });
+    const before = await adapter.read();
+    await context.setOffline(true);
+    const retained = await page.evaluate(async () => {
+      let code;
+      try { await records.patchEvalRun('edit-offline', { output: 'Complete offline edit' }); }
+      catch (error) { code = error.code; }
+      const rows = (await repository.pending()).filter(row => row.state !== 'committed');
+      return { code, rows: rows.map(row => ({ state: row.state, schemaVersion: row.schemaVersion, reviewHash: row.reviewHash,
+        sourceHash: row.sourceHash, receipt: row.receipt, updates: row.request.updates })) };
+    });
+    expect(retained.code).toBe('SERVICE_UNAVAILABLE');
+    expect(retained.rows).toHaveLength(1);
+    expect(retained.rows[0]).toMatchObject({ state: 'failed', schemaVersion: 3, reviewHash: null, sourceHash: null, receipt: null });
+    expect(retained.rows[0].updates).toContainEqual({ path: ['output'], value: 'Complete offline edit' });
+    expect(await adapter.read()).toEqual(before);
+    await context.close();
+    context = await chromium.launchPersistentContext(resolve(directory, 'browser'), { channel: 'chromium', headless: true });
+    page = await context.newPage(); await boot(page, options);
+    const restored = await page.evaluate(async sourceBinding => {
+      const { createAppLibraryRepository } = await import('/prompt-lab-extension/src/lib/appLibraryRepository.js');
+      const repository = createAppLibraryRepository({ libraryId: 'lib', sourceBinding, transport });
+      await repository.open(); await repository.resume();
+      const row = await repository.readRecord('evaluations', 'edit-offline');
+      return { output: row.output, future: row.future, pending: (await repository.pending()).filter(r => r.state !== 'committed').length,
+        original: localStorage.getItem('pl2-library'), fallback: localStorage.getItem('pl2-eval-run-fallback') };
+    }, sourceBinding);
+    expect(restored).toEqual({ output: 'Complete offline edit', future: { keep: true }, pending: 0,
+      original: '[{"id":"prompt","original":"Original source"}]', fallback: null });
+    expect(Object.keys((await adapter.read()).operations)).toHaveLength(4);
+  } finally {
     await context?.close(); await api.close(); await rm(directory, { recursive: true, force: true });
   }
 });
