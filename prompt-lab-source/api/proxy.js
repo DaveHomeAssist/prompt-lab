@@ -33,7 +33,7 @@ const ALLOWED_UPSTREAM_HEADERS = new Set([
   'content-type',
   'x-api-key',
 ]);
-const DEFAULT_ALLOWED_MODELS = [HOSTED_DEFAULT_MODEL, ...HOSTED_MODELS.map(model => model.id).filter(id => id !== HOSTED_DEFAULT_MODEL)];
+export const DEFAULT_ALLOWED_MODELS = [HOSTED_DEFAULT_MODEL, ...HOSTED_MODELS.map(model => model.id).filter(id => id !== HOSTED_DEFAULT_MODEL)];
 const DEFAULT_BURST_LIMIT = 30;
 const BURST_WINDOW_MS = 60_000;
 const DEFAULT_DEMO_DAILY_LIMIT = 3;

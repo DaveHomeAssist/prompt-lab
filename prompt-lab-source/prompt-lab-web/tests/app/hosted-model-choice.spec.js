@@ -43,5 +43,7 @@ for (const width of [1440, 375]) {
     expect(sent[0].body.model).toBe('claude-haiku-5-5');
     expect(sent[0].body).not.toHaveProperty('temperature');
     await expect(page.getByRole('dialog', { name: 'Provider Settings' })).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    await page.screenshot({ path: `/work/evidence/hosted-model-${width}.png` });
   });
 }

@@ -167,20 +167,19 @@ async function checkProxyBoundary() {
     SHARED_KEY_PLACEHOLDER: literal('SHARED_KEY_PLACEHOLDER'),
   };
 
-  // A missing match must fail, not quietly drop the fact. Guarding this with
-  // `if (models)` meant renaming or reformatting DEFAULT_ALLOWED_MODELS removed
-  // the model-boundary check while the contract still reported as satisfied.
-  const models = /const DEFAULT_ALLOWED_MODELS = \[([^\]]*)\]/.exec(proxy);
-  facts.DEFAULT_ALLOWED_MODELS = models
-    ? [...models[1].matchAll(/'([^']+)'/g)].map((m) => m[1]).join(', ')
-    : null;
+  // Read the computed catalogue rather than assuming a literal array. A
+  // missing export or an empty catalogue still fails the contract.
+  const { DEFAULT_ALLOWED_MODELS } = await import(moduleUrl('api/proxy.js'));
+  facts.DEFAULT_ALLOWED_MODELS = Array.isArray(DEFAULT_ALLOWED_MODELS)
+    && DEFAULT_ALLOWED_MODELS.length && DEFAULT_ALLOWED_MODELS.every(model => typeof model === 'string' && model)
+    ? DEFAULT_ALLOWED_MODELS : null;
 
   for (const [name, value] of Object.entries(facts)) {
     if (!value) {
       fail(contract, `could not read ${name} from api/proxy.js`);
       continue;
     }
-    if (!architecture.includes(value)) {
+    if (!(Array.isArray(value) ? value.every(model => architecture.includes(`\`${model}\``)) : architecture.includes(value))) {
       fail(contract, `ARCHITECTURE.md does not state the current ${name} (${value})`);
     }
   }

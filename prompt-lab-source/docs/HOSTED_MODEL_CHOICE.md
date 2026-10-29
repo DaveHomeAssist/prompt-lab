@@ -22,6 +22,7 @@ production runs, including reload and saved run history. Invalid-model and
 budget refusals must make zero provider calls. Test desktop/mobile settings,
 unavailable catalogue, existing default, custom desktop settings and cancellation.
 
-Sources: https://platform.claude.com/docs/en/models/overview and
-https://platform.claude.com/docs/en/about-claude/pricing (October 29, 2026).
+Sources: [Models overview](https://platform.claude.com/docs/en/models/overview)
+and [Pricing](https://platform.claude.com/docs/en/about-claude/pricing)
+(October 29, 2026).
 The unrelated Undo save receipt issue is outside this change.
