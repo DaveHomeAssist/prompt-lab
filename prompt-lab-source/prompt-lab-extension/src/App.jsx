@@ -511,7 +511,6 @@ export default function App({
     closeSavePanel();
     dismissSaveReceipt();
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
-    if (draftRecovery.reason === 'composer-handoff') dismissSaveReceipt();
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
     setVariants(Array.isArray(editor.variants) ? editor.variants : []);
