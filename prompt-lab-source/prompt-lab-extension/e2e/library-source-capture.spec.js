@@ -8,7 +8,11 @@ import { fileURLToPath } from 'node:url';
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const readerPath = '/prompt-lab-extension/src/lib/librarySourceCapture.js';
 const inventoryPath = '/library-storage/source-inventory.mjs';
-const modulePaths = [readerPath, inventoryPath, '/library-storage/contract.mjs'];
+const modulePaths = [readerPath, inventoryPath, '/library-storage/contract.mjs', '/library-storage/content-keys.mjs',
+  ...['lib/libraryWriteCoordinator.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
+    'lib/scratchJournal.js', 'lib/writeRecovery.js', 'experimentStore.js', 'lib/logger.js', 'lib/diagnostics.js',
+    'constants.js', 'lib/evalSchema.js', 'lib/enhancementResult.js', 'lib/tagSchema.js', 'lib/utils.js',
+    'lib/sourceLink.js', 'lib/platform.js', 'lib/providerFixture.js'].map(path => `/prompt-lab-extension/src/${path}`)];
 let server, origin;
 test.use({ channel: 'chromium' });
 
@@ -45,6 +49,156 @@ test.beforeEach(async ({ page }) => {
       request.onsuccess = () => { request.result.close(); resolve(); };
     });
   }, { readerPath, inventoryPath });
+});
+
+test('local drain waits for a queued real record write before enumerating IndexedDB', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { writeWithRecovery } = await import('/prompt-lab-extension/src/lib/writeRecovery.js');
+    const { saveRunRecord } = await import('/prompt-lab-extension/src/experimentStore.js');
+    let release;
+    const first = writeWithRecovery('run:queued', () => new Promise(resolve => { release = resolve; }));
+    const saved = saveRunRecord({ run_id: 'queued', trace_id: 'trace', future: { retained: true } });
+    const capture = reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'queued', archives: { reviewed: true, records: [] } });
+    setTimeout(() => release(), 25);
+    await Promise.all([first, saved]);
+    const report = await capture;
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { records: inspected.captures['execution-traces'].records, coordination: report.coordination,
+      activation: report.inventory.manifest.activationReady };
+  });
+  expect(result.records).toEqual([{ run_id: 'queued', trace_id: 'trace', future: { retained: true } }]);
+  expect(result.coordination.writesDrained).toBeGreaterThanOrEqual(2);
+  expect(result.coordination.scope).toBe('current-context');
+  expect(result.coordination.activationReady).toBe(false);
+  expect(result.activation).toBe(false);
+});
+
+test('a first database read refused during capture does not poison later durable saves', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { libraryWriteCoordinator: coordinator } = await import('/prompt-lab-extension/src/lib/libraryWriteCoordinator.js');
+    const { listExperiments, saveRunRecord } = await import('/prompt-lab-extension/src/experimentStore.js');
+    const refused = await coordinator.withPausedWrites(() => listExperiments()).catch(error => error.code);
+    const before = await indexedDB.databases();
+    await saveRunRecord({ run_id: 'after-read-refusal', trace_id: 'preserved' });
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'read-refusal', archives: { reviewed: true, records: [] } });
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { refused, before, records: inspected.captures['execution-traces'].records,
+      fallback: localStorage.getItem('pl2-run-fallback') };
+  });
+  expect(result.refused).toBe('LIBRARY_CAPTURE_CHANGED');
+  expect(result.before).toEqual([]);
+  expect(result.records).toEqual([{ run_id: 'after-read-refusal', trace_id: 'preserved' }]);
+  expect(result.fallback).toBeNull();
+});
+
+test('local drain includes scheduled Library and strict Scratch journal commits', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    window.__TAURI_INTERNALS__ = {};
+    const { startLibraryJournal } = await import('/prompt-lab-extension/src/lib/libraryJournal.js');
+    const { createScratchJournal } = await import('/prompt-lab-extension/src/lib/scratchJournal.js');
+    const { saveJson } = await import('/prompt-lab-extension/src/lib/storage.js');
+    const library = await startLibraryJournal(); await library.journal.flush();
+    const scratch = createScratchJournal({ storage: localStorage, idb: indexedDB });
+    saveJson('pl2-pads', { pads: [{ id: 'note', content: 'Keep every byte' }], revision: 1 });
+    scratch.commit();
+    saveJson('pl2-library', [{ id: 'after-boot', future: [1, 2, 3] }]);
+    // No intervening await: the Library journal is still a queued microtask.
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'journals', archives: { reviewed: true, records: [] } });
+    library.stop();
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { local: inspected.captures['local-content'].entries,
+      journals: inspected.captures['durable-journal'].records, drained: report.coordination.writesDrained };
+  });
+  expect(result.drained).toBeGreaterThanOrEqual(3);
+  expect(result.journals.find(row => row.id === 'library').entries['pl2-library']).toBe(result.local['pl2-library']);
+  expect(result.journals.find(row => row.id === 'scratch').entries['pl2-pads']).toBe(result.local['pl2-pads']);
+});
+
+test('real save APIs refuse interference, retain pending records, then recover', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { libraryWriteCoordinator: coordinator } = await import('/prompt-lab-extension/src/lib/libraryWriteCoordinator.js');
+    const { saveJson } = await import('/prompt-lab-extension/src/lib/storage.js');
+    const { markLibraryDeleted } = await import('/prompt-lab-extension/src/lib/libraryDeletion.js');
+    const { saveRunRecord } = await import('/prompt-lab-extension/src/experimentStore.js');
+    const recovery = await import('/prompt-lab-extension/src/lib/writeRecovery.js');
+    saveJson('pl2-library', [{ id: 'original' }]);
+    let release;
+    const check = coordinator.withPausedWrites(() => new Promise(resolve => { release = resolve; })).catch(error => error.code);
+    const saved = saveJson('pl2-library', [{ id: 'replacement' }]);
+    let deleted;
+    try { markLibraryDeleted(['original']); } catch (error) { deleted = error.code; }
+    const failed = await saveRunRecord({ run_id: 'retry', trace_id: 'trace' }).catch(error => error.code);
+    const pending = recovery.getPendingWriteCount();
+    const settings = saveJson('pl2-sort-by', 'name');
+    release();
+    const checkError = await check;
+    await recovery.retryPendingWrites();
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'retried', archives: { reviewed: true, records: [] } });
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { saved, deleted, failed, pending, settings, checkError, left: recovery.getPendingWriteCount(),
+      library: inspected.captures['local-content'].entries['pl2-library'], records: inspected.captures['execution-traces'].records };
+  });
+  expect(result).toMatchObject({ saved: false, deleted: 'LIBRARY_WRITES_PAUSED', failed: 'LIBRARY_WRITES_PAUSED',
+    pending: 1, settings: true, checkError: 'LIBRARY_CAPTURE_CHANGED', left: 0 });
+  expect(JSON.parse(result.library)).toEqual([{ id: 'original' }]);
+  expect(result.records).toEqual([{ run_id: 'retry', trace_id: 'trace' }]);
+});
+
+test('a real failed IndexedDB write prevents capture until a newer save succeeds', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { saveRunRecord } = await import('/prompt-lab-extension/src/experimentStore.js');
+    const options = { sourceIdentity: 'failed-write', archives: { reviewed: true, records: [] } };
+    const failed = await saveRunRecord({ run_id: 'broken', invalid: () => {} }).catch(error => error.name);
+    const blocked = await reader.captureAppLibrarySourcesWithLocalDrain(options).catch(error => error.code);
+    await saveRunRecord({ run_id: 'broken', trace_id: 'fixed', future: 'kept' });
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain(options);
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { failed, blocked, records: inspected.captures['execution-traces'].records };
+  });
+  expect(result.failed).toBe('DataCloneError');
+  expect(result.blocked).toBe('LIBRARY_WRITES_PENDING');
+  expect(result.records).toEqual([{ run_id: 'broken', trace_id: 'fixed', future: 'kept' }]);
+});
+
+test('refused journal scheduling does not prevent the next automatic durable save', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    window.__TAURI_INTERNALS__ = {};
+    const { libraryWriteCoordinator: coordinator } = await import('/prompt-lab-extension/src/lib/libraryWriteCoordinator.js');
+    const { startLibraryJournal } = await import('/prompt-lab-extension/src/lib/libraryJournal.js');
+    const { saveJson } = await import('/prompt-lab-extension/src/lib/storage.js');
+    const library = await startLibraryJournal(); await library.journal.flush();
+    const failed = await coordinator.withPausedWrites(async () => {
+      library.journal.note('pl2-library');
+    }).catch(error => error.code);
+    saveJson('pl2-library', [{ id: 'after-refusal' }]);
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'automatic-retry', archives: { reviewed: true, records: [] } });
+    library.stop();
+    const inspected = await inventory.inspectSourceInventory(report.inventory);
+    return { failed, journal: inspected.captures['durable-journal'].records.find(row => row.id === 'library') };
+  });
+  expect(result.failed).toBe('LIBRARY_CAPTURE_CHANGED');
+  expect(JSON.parse(result.journal.entries['pl2-library'])).toEqual([{ id: 'after-refusal' }]);
+});
+
+test('database creation and upgrade remain tracked after a drain timeout', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const connection = await new Promise(resolve => {
+      const request = indexedDB.open('prompt_lab_local', 1);
+      request.onsuccess = () => resolve(request.result);
+    });
+    const { libraryWriteCoordinator: coordinator } = await import('/prompt-lab-extension/src/lib/libraryWriteCoordinator.js');
+    const { listExperiments } = await import('/prompt-lab-extension/src/experimentStore.js');
+    const pending = listExperiments();
+    const options = { sourceIdentity: 'blocked-upgrade', archives: { reviewed: true, records: [] }, drainTimeoutMs: 25 };
+    const failed = await reader.captureAppLibrarySourcesWithLocalDrain(options).catch(error => error.code);
+    const state = coordinator.status();
+    connection.close(); await pending;
+    const report = await reader.captureAppLibrarySourcesWithLocalDrain({ ...options, drainTimeoutMs: 1000 });
+    return { failed, state, complete: report.inventory.manifest.sourceReadComplete };
+  });
+  expect(result.failed).toBe('LIBRARY_CAPTURE_TIMEOUT');
+  expect(result.state).toMatchObject({ paused: false, active: 1 });
+  expect(result.complete).toBe(true);
 });
 
 test('capture in a new origin never creates databases or reads unselected values', async ({ page }) => {
@@ -195,11 +349,13 @@ test('unsupported structured values remain in the original database and are not 
       };
       request.onerror = () => reject(request.error);
     });
-    return { source, preserved };
+    const refused = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'blob-web', archives: { reviewed: true, records: [] } }).catch(error => error.code);
+    return { source, preserved, refused };
   });
   expect(result.source.state).toBe('unavailable');
   expect(result.source.code).toBe('INVALID_JSON');
   expect(result.preserved).toBe('original bytes');
+  expect(result.refused).toBe('SOURCE_INCOMPLETE');
 });
 
 test('real extension session API captures only editor drafts and leaves credentials untouched', async () => {
@@ -228,13 +384,21 @@ test('real extension session API captures only editor drafts and leaves credenti
       chrome.storage.session.get = (keys, callback) => { requested.push(keys); return get(keys, callback); };
       const raw = await reader.captureAppLibrarySources({ sourceIdentity: 'test-extension', archives: { reviewed: true, records: [] } });
       const { manifest, captures } = await inventory.inspectSourceInventory(raw);
-      return { surface: manifest.surface, complete: manifest.sourceReadComplete, requested,
-        entries: captures['extension-drafts'].entries, unchanged: canonical(await get(null)) === canonical(original),
+      const unchanged = canonical(await get(null)) === canonical(original);
+      const { sessionSet } = await import('/prompt-lab-extension/src/lib/platform.js');
+      const pending = sessionSet({ 'pl2-session': { raw: 'acknowledged draft' } });
+      const drained = await reader.captureAppLibrarySourcesWithLocalDrain({ sourceIdentity: 'extension-drained', archives: { reviewed: true, records: [] } });
+      const after = await inventory.inspectSourceInventory(drained.inventory);
+      return { acknowledgement: await pending, drained: drained.coordination.writesDrained, after: after.captures['extension-drafts'].entries, surface: manifest.surface, complete: manifest.sourceReadComplete, requested,
+        entries: captures['extension-drafts'].entries, unchanged,
         copiedPrivate: JSON.stringify(raw).includes('synthetic private session') };
     }, { readerPath, inventoryPath });
     expect(result.surface).toBe('extension');
     expect(result.complete).toBe(true);
-    expect(result.requested).toEqual([['pl2-session', 'pl2-dual-draft']]);
+    expect(result.requested).toEqual([['pl2-session', 'pl2-dual-draft'], ['pl2-session', 'pl2-dual-draft']]);
+    expect(result.acknowledgement).toBe(true);
+    expect(result.drained).toBeGreaterThanOrEqual(1);
+    expect(result.after['pl2-session']).toEqual({ raw: 'acknowledged draft' });
     expect(result.entries).toEqual({ 'pl2-session': { raw: 'editor', future: { preserved: true } }, 'pl2-dual-draft': { raw: 'dual' } });
     expect(result.unchanged).toBe(true);
     expect(result.copiedPrivate).toBe(false);

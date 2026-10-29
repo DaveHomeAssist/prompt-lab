@@ -157,6 +157,64 @@ services acknowledging one overwritten state. Commit identities also reject
 invalid types, timestamps and parent hashes before archiving. These checks do
 not establish filesystem process ownership, which remains an A2 requirement.
 
+### Current context write coordination brief
+
+Migration capture must wait for actual asynchronous writes, including queued
+record saves and strict desktop journal commits, and reject new content writes
+while its reader is running. Add a shared app write coordinator at the existing
+store boundaries. Track completion rather than the first request or an outer
+UI timeout. Preserve write retry behavior and all source bytes. A failed drain,
+new write attempt, unavailable source or deadline must never become a successful
+migration receipt. Keep the pause until an active reader has settled, even when
+its deadline expires. Resume existing save behavior after every outcome.
+
+This first layer coordinates the current JavaScript context. It does not fence
+other tabs, workers, legacy app versions, native processes or iCloud clients.
+Expose an explicit locally drained capture separately from the observational
+reader; its receipt states that limited scope and remains activationReady false.
+Do not connect a personal folder or activate migration on this evidence. The
+next layer must coordinate every participating client and verify ownership,
+flush unsaved editor buffers and pending draft timers, then perform destination
+readback before switching. Real browser tests must exercise actual store APIs,
+queued writes, strict journal completion, failure, interference and recovery.
+
+The shared `lib/libraryWriteCoordinator.js` now tracks record save queues,
+whole workspace import attempts, extension draft callbacks, database opens and
+both strict desktop journals. Existing local content writers use the same key
+authority as raw capture; settings remain outside the pause. Nested operations
+use live permits whose synchronous scope never crosses an await. Paused record
+writes enter the existing retry queue. Failed keyed writes prevent capture until
+a successful retry, and any write attempt during a reader invalidates that
+capture even if the UI catches the error. Journal work is registered before its
+microtask; transaction tracking waits for abort or completion, not an earlier
+error event. A blocked database open remains tracked after an outer UI timeout.
+
+`captureAppLibrarySourcesWithLocalDrain` waits for that tracked work, reads the
+current context's actual stores and rejects incomplete inventories. Its separate
+coordination receipt identifies only `current-context` scope and always reports
+`activationReady: false`. A reader timeout keeps the pause until the reader has
+settled. Other clients, queued editor debounce timers, unsaved React buffers and
+native process ownership remain outside this first layer and must be addressed
+before a complete migration barrier or personal activation can be claimed.
+
+October 29 verification on Dominic Node 22.23.4: all 141 storage tests,
+1,517 app tests in 135 files, 231 legacy tests, 14 real Chromium/extension storage
+checks and the extension build pass. Coverage includes pending record queues,
+whole imports with later stages, both journal records, rejected scheduling and
+retry, failed IndexedDB writes, late upgrades after a drain timeout and extension
+draft acknowledgement. Final review reproduced a cached first-open rejection
+after capture refused a database read. The repair clears that temporary rejected
+open so subsequent saves use IndexedDB again. All 14 browser cases, four focused
+record/recovery/import tests and the extension build passed after this narrow
+repair; the full app suite was run before it. The first broad run passed all
+1,516 then-existing tests
+but also tried to parse two pre-existing AppleDouble metadata files. Their bytes
+were preserved outside the isolated runner's test directory before the successful
+final run; no repository test was removed or disabled. The private export recheck
+on Mac Node 22.22.1 still matches all 353 occurrences over four pages after folder
+reopen, with its original SHA-256 unchanged and 60 unresolved run references.
+That export check is not a capture of the user's live app stores.
+
 ## Contracts and remaining A1 proof
 
 ### Shared domain read brief

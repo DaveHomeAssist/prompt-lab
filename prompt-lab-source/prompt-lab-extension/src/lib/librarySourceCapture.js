@@ -1,5 +1,6 @@
 import { canonical, LibraryError, MAX_BYTES } from '../../../library-storage/contract.mjs';
 import { captureSourceInventory, EXTENSION_DRAFT_KEYS, INDEXED_SOURCES } from '../../../library-storage/source-inventory.mjs';
+import { libraryWriteCoordinator } from './libraryWriteCoordinator.js';
 
 const sourceError = code => new LibraryError(code, 'Source capture could not complete. Original data is unchanged.');
 const encoder = new TextEncoder();
@@ -138,4 +139,15 @@ export function captureAppLibrarySources({ sourceIdentity, archives, capturedAt,
     readIndexedStore: descriptor => readExistingIndexedSource(descriptor, { idb: environment.indexedDB, timeoutMs }),
     readExtensionDrafts: keys => readExtensionLibraryDrafts(keys, { chromeApi: environment.chrome, timeoutMs }),
   });
+}
+
+// An explicit intermediate step for the migration flow. Other contexts and
+// unsaved UI buffers still require ownership/flush gates before activation.
+export async function captureAppLibrarySourcesWithLocalDrain(options) {
+  const { value: inventory, coordination } = await libraryWriteCoordinator.withPausedWrites(async () => {
+    const result = await captureAppLibrarySources(options);
+    if (!result.manifest.sourceReadComplete) throw sourceError('SOURCE_INCOMPLETE');
+    return result;
+  }, { timeoutMs: options.drainTimeoutMs ?? 30_000 });
+  return { inventory, coordination };
 }

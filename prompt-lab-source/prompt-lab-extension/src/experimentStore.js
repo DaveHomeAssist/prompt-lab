@@ -1,3 +1,4 @@
+import { runLibraryWrite, writeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import {
   filterEvalRuns,
   normalizeEntityId as normalizePromptId,
@@ -22,10 +23,10 @@ const RUNS_LS_KEY = 'pl2-run-fallback';
 
 let dbPromise;
 
-function openDb() {
+function openDb(permit) {
   if (!('indexedDB' in window)) return Promise.resolve(null);
   if (dbPromise) return dbPromise;
-  dbPromise = new Promise((resolve, reject) => {
+  dbPromise = runLibraryWrite(() => new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
@@ -55,6 +56,11 @@ function openDb() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
+  }), { parent: permit }).catch(error => {
+    // A temporary capture pause must not cache an unavailable database after
+    // writes resume. Preserve the existing fallback for actual open failures.
+    if (error.code === 'LIBRARY_WRITES_PAUSED') dbPromise = undefined;
+    throw error;
   });
   return dbPromise;
 }
@@ -69,9 +75,9 @@ function readFallback(key) {
   }
 }
 
-function writeFallback(key, records) {
+function writeFallback(key, records, permit) {
   try {
-    localStorage.setItem(key, JSON.stringify(records));
+    writeLibraryLocalItem(localStorage, key, JSON.stringify(records), permit);
   } catch (e) {
     logWarn('localStorage write failed', e);
     throw e;
@@ -97,7 +103,8 @@ function txRequest(request) {
 function txDone(tx) {
   return new Promise((resolve, reject) => {
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
+    // An error event precedes transaction abort. Completion tracking must wait
+    // for the terminal abort/complete event, not just the failed request.
     tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
   });
 }
@@ -105,14 +112,14 @@ function txDone(tx) {
 export async function saveRunRecord(record) {
   if (!record || !record.run_id) return null;
   const snapshot = { ...record };
-  return writeWithRecovery(`run:${snapshot.run_id}`, () => persistRunRecord(snapshot));
+  return writeWithRecovery(`run:${snapshot.run_id}`, permit => persistRunRecord(snapshot, permit));
 }
 
-async function persistRunRecord(record) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+async function persistRunRecord(record, permit) {
+  const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const next = [record, ...readFallback(RUNS_LS_KEY).filter((row) => row.run_id !== record.run_id)].slice(0, 1000);
-    writeFallback(RUNS_LS_KEY, next);
+    writeFallback(RUNS_LS_KEY, next, permit);
     return record;
   }
   const tx = db.transaction(RUNS_STORE, 'readwrite');
@@ -149,15 +156,15 @@ export function normalizeExperimentRecord(record) {
 
 export async function saveExperiment(record) {
   const normalized = normalizeExperimentRecord(record);
-  return writeWithRecovery(`experiment:${normalized.id}`, () => persistExperiment(normalized));
+  return writeWithRecovery(`experiment:${normalized.id}`, permit => persistExperiment(normalized, permit));
 }
 
-async function persistExperiment(normalized) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+async function persistExperiment(normalized, permit) {
+  const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(EXPERIMENT_LS_KEY).filter((entry) => entry.id !== normalized.id);
     const next = [normalized, ...existing].slice(0, 500);
-    writeFallback(EXPERIMENT_LS_KEY, next);
+    writeFallback(EXPERIMENT_LS_KEY, next, permit);
     return normalized;
   }
   const tx = db.transaction(EXPERIMENT_STORE, 'readwrite');
@@ -209,14 +216,14 @@ export async function getExperimentById(id) {
 
 export async function saveEvalRun(record) {
   const normalized = normalizeEvalRunRecord(record);
-  return writeWithRecovery(`eval:${normalized.id}`, () => persistEvalRun(normalized));
+  return writeWithRecovery(`eval:${normalized.id}`, permit => persistEvalRun(normalized, permit));
 }
 
-async function persistEvalRun(normalized) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+async function persistEvalRun(normalized, permit) {
+  const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY).filter((entry) => entry.id !== normalized.id)].slice(0, 1000);
-    writeFallback(EVAL_RUN_LS_KEY, next);
+    writeFallback(EVAL_RUN_LS_KEY, next, permit);
     signalEvalRunsChanged(normalized.id);
     return normalized;
   }
@@ -271,15 +278,15 @@ export async function saveTestCase(record) {
   if (!normalized.promptId || !normalized.input.trim()) {
     throw new Error('Test cases require a promptId and input.');
   }
-  return writeWithRecovery(`case:${normalized.id}`, () => persistTestCase(normalized));
+  return writeWithRecovery(`case:${normalized.id}`, permit => persistTestCase(normalized, permit));
 }
 
-async function persistTestCase(normalized) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+async function persistTestCase(normalized, permit) {
+  const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== normalized.id);
     const next = [normalized, ...existing].slice(0, 1000);
-    writeFallback(TEST_CASE_LS_KEY, next);
+    writeFallback(TEST_CASE_LS_KEY, next, permit);
     return normalized;
   }
   const tx = db.transaction(TEST_CASE_STORE, 'readwrite');
@@ -313,13 +320,13 @@ export async function listTestCases(filters = {}) {
 
 export async function deleteTestCase(id) {
   if (!id) return;
-  return writeWithRecovery(`case:${id}`, () => removeTestCase(id));
+  return writeWithRecovery(`case:${id}`, permit => removeTestCase(id, permit));
 }
 
-async function removeTestCase(id) {
-  const db = await openDb().catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
+async function removeTestCase(id, permit) {
+  const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    writeFallback(TEST_CASE_LS_KEY, readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== id));
+    writeFallback(TEST_CASE_LS_KEY, readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== id), permit);
     return;
   }
   const tx = db.transaction(TEST_CASE_STORE, 'readwrite');

@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem } from './libraryWriteCoordinator.js';
 import { ensureString } from './utils.js';
 
 const PADS_KEY = 'pl2-pads';
@@ -22,7 +23,7 @@ export function linkScratchNoteToPrompt(noteId, promptId) {
       };
     });
     if (!found) return false;
-    localStorage.setItem(PADS_KEY, JSON.stringify({
+    writeLibraryLocalItem(localStorage, PADS_KEY, JSON.stringify({
       ...parsed,
       pads,
       revision: (Number.isFinite(parsed.revision) ? parsed.revision : 0) + 1,

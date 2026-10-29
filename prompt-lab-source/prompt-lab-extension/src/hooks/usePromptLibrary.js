@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem, runLibraryWrite, withLibraryWritePermit } from '../lib/libraryWriteCoordinator.js';
 import { reconcileFolders, mergeFolders } from '../lib/collectionFolders.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { APP_VERSION, DEFAULT_LIBRARY_SEEDS } from '../constants.js';
@@ -1159,100 +1160,105 @@ export default function usePromptLibrary(notify) {
     // for retry; it does not pretend to roll back acknowledged records.
   };
 
-  const applyImport = async (retainedPlan = null) => {
-    if (importBusyRef.current) return;
+  const applyImport = (retainedPlan = null) => {
+    if (importBusyRef.current) return Promise.resolve();
     const preview = importPreviewRef.current;
-    if (!retainedPlan && (!preview?.plan || preview.unresolved || preview.error)) return;
-    importBusyRef.current = true;
-    setImportApplying(true);
-    let plan = retainedPlan;
-    try {
-      const context = await readImportContext();
-      if (plan && !plan.completed.size && workspaceImportRevision(context) !== plan.revision) {
-        pendingImportRef.current = null;
-        setPendingImport(null);
-        showImportPreview({ ...buildWorkspaceImportPreview(plan.parsed, context), fileName: plan.fileName,
-          notice: 'The workspace changed before any import write succeeded. Review the refreshed choices and apply again.' });
-        return;
-      }
-      if (!plan) {
-        if (workspaceImportRevision(context) !== preview.revision) {
-          showImportPreview({ ...buildWorkspaceImportPreview(preview.source, context), fileName: preview.fileName,
-            notice: 'The workspace changed after preview. Review the refreshed choices and apply again.' });
+    if (!retainedPlan && (!preview?.plan || preview.unresolved || preview.error)) return Promise.resolve();
+    return runLibraryWrite(async permit => {
+      importBusyRef.current = true;
+      setImportApplying(true);
+      let plan = retainedPlan;
+      try {
+        const context = await readImportContext();
+        if (plan && !plan.completed.size && workspaceImportRevision(context) !== plan.revision) {
+          pendingImportRef.current = null;
+          setPendingImport(null);
+          showImportPreview({ ...buildWorkspaceImportPreview(plan.parsed, context), fileName: plan.fileName,
+            notice: 'The workspace changed before any import write succeeded. Review the refreshed choices and apply again.' });
           return;
         }
-        plan = { ...preview.plan, parsed: preview.source, fileName: preview.fileName, revision: preview.revision, completed: new Set() };
-      }
-      if (context.generation !== plan.generation || [...plan.promptIdMap.values()].some(id => context.deletedIds.has(id))) {
+        if (!plan) {
+          if (workspaceImportRevision(context) !== preview.revision) {
+            showImportPreview({ ...buildWorkspaceImportPreview(preview.source, context), fileName: preview.fileName,
+              notice: 'The workspace changed after preview. Review the refreshed choices and apply again.' });
+            return;
+          }
+          plan = { ...preview.plan, parsed: preview.source, fileName: preview.fileName, revision: preview.revision, completed: new Set() };
+        }
+        if (context.generation !== plan.generation || [...plan.promptIdMap.values()].some(id => context.deletedIds.has(id))) {
+          pendingImportRef.current = null;
+          setPendingImport(null);
+          const message = 'The import destination was deleted or cleared. No remaining stages were applied. Close this preview and choose a file to review a new import.';
+          showImportPreview({ ...(importPreviewRef.current || preview), error: message,
+            partial: true, invalidated: true, completedStages: [...plan.completed] });
+          notify(`Import stopped: ${message} Previously saved stages were not rolled back.`);
+          return;
+        }
+        pendingImportRef.current = plan;
+        setPendingImport(plan);
+        const reportProgress = (error = '') => showImportPreview({
+          ...(importPreviewRef.current || preview), fileName: plan.fileName, error,
+          completedStages: [...plan.completed], partial: true,
+        });
+        const stage = async (name, write) => {
+          if (plan.completed.has(name)) return;
+          await withLibraryWritePermit(permit, write);
+          plan.completed.add(name);
+          reportProgress();
+        };
+        await stage('Library', () => {
+          if (!persistRecords(storageKeys.library, plan.library, context.libraryRaw)) throw new Error(libraryConflictRef.current || 'Library storage write failed.');
+          setLibrary(plan.library);
+        });
+        await stage('Trash', () => {
+          const next = reconcileLibraryRecords([], context.trash, [], plan.trash).trash;
+          if (!persistRecords(storageKeys.trash, next)) throw new Error('Trash storage write failed.');
+          trashRef.current = next;
+          setTrash(next);
+        });
+        await stage('Collections', () => {
+          const next = mergeCollections(mergeCollections(context.collections, plan.parsed.collections || []), deriveCollectionsFromLibrary(plan.library));
+          if (!saveJson(storageKeys.collections, next)) throw new Error('Collection storage write failed.');
+          collectionsRef.current = next;
+          setCollections(next);
+        });
+        if (plan.parsed.folders) await stage('Folders', async () => {
+          const next = mergeFolders(context.folders, plan.parsed.folders, collectionsRef.current);
+          if (!saveJson(storageKeys.folders, next)) throw new Error('Folder storage write failed.');
+          const durable = commitLibrarySave(); if (durable) await durable;
+          foldersRef.current = next; setFolderRecords(next);
+        });
+        if (plan.scratch) await stage('Scratch', async () => {
+          assertScratchJournalReady();
+          writeLibraryLocalItem(localStorage, storageKeys.scratch, JSON.stringify(plan.scratch));
+          const durable = commitScratchSave(); if (durable) await durable;
+        });
+        if (plan.parsed.packs) await stage('Packs', () => {
+          if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
+        });
+        for (const [label, records, save] of [['Test case', plan.testCases, saveTestCase], ['Run', plan.runs, saveEvalRun]]) {
+          const writes = await Promise.allSettled(records.map(record => stage(`${label} ${record.id}`, () => save(record))));
+          const failed = writes.find(write => write.status === 'rejected');
+          if (failed) throw failed.reason;
+        }
         pendingImportRef.current = null;
         setPendingImport(null);
-        const message = 'The import destination was deleted or cleared. No remaining stages were applied. Close this preview and choose a file to review a new import.';
+        showImportPreview(null);
+        const summary = `Imported ${plan.importedCount} prompts and workspace data; replaced ${plan.replacedCount || 0}, skipped ${plan.skippedCount}.`;
+        notify(plan.warnings.length ? `${summary} ${plan.warnings.length} unresolved source references are retained in run notes or import metadata.` : summary);
+      } catch (error) {
+        const message = error.message || 'Storage write failed.';
         showImportPreview({ ...(importPreviewRef.current || preview), error: message,
-          partial: true, invalidated: true, completedStages: [...plan.completed] });
-        notify(`Import stopped: ${message} Previously saved stages were not rolled back.`);
-        return;
+          partial: Boolean(plan), completedStages: [...(plan?.completed || [])] });
+        notify(`Import incomplete: ${message}. The file and completed stages are retained in this tab; retry the remaining stages.`);
+        throw error;
+      } finally {
+        importBusyRef.current = false;
+        setImportApplying(false);
       }
-      pendingImportRef.current = plan;
-      setPendingImport(plan);
-      const reportProgress = (error = '') => showImportPreview({
-        ...(importPreviewRef.current || preview), fileName: plan.fileName, error,
-        completedStages: [...plan.completed], partial: true,
-      });
-      const stage = async (name, write) => {
-        if (plan.completed.has(name)) return;
-        await write();
-        plan.completed.add(name);
-        reportProgress();
-      };
-      await stage('Library', () => {
-        if (!persistRecords(storageKeys.library, plan.library, context.libraryRaw)) throw new Error(libraryConflictRef.current || 'Library storage write failed.');
-        setLibrary(plan.library);
-      });
-      await stage('Trash', () => {
-        const next = reconcileLibraryRecords([], context.trash, [], plan.trash).trash;
-        if (!persistRecords(storageKeys.trash, next)) throw new Error('Trash storage write failed.');
-        trashRef.current = next;
-        setTrash(next);
-      });
-      await stage('Collections', () => {
-        const next = mergeCollections(mergeCollections(context.collections, plan.parsed.collections || []), deriveCollectionsFromLibrary(plan.library));
-        if (!saveJson(storageKeys.collections, next)) throw new Error('Collection storage write failed.');
-        collectionsRef.current = next;
-        setCollections(next);
-      });
-      if (plan.parsed.folders) await stage('Folders', async () => {
-        const next = mergeFolders(context.folders, plan.parsed.folders, collectionsRef.current);
-        if (!saveJson(storageKeys.folders, next)) throw new Error('Folder storage write failed.');
-        const durable = commitLibrarySave(); if (durable) await durable;
-        foldersRef.current = next; setFolderRecords(next);
-      });
-      if (plan.scratch) await stage('Scratch', async () => {
-        assertScratchJournalReady();
-        localStorage.setItem(storageKeys.scratch, JSON.stringify(plan.scratch));
-        const durable = commitScratchSave(); if (durable) await durable;
-      });
-      if (plan.parsed.packs) await stage('Packs', () => {
-        if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
-      });
-      for (const [label, records, save] of [['Test case', plan.testCases, saveTestCase], ['Run', plan.runs, saveEvalRun]]) {
-        const writes = await Promise.allSettled(records.map(record => stage(`${label} ${record.id}`, () => save(record))));
-        const failed = writes.find(write => write.status === 'rejected');
-        if (failed) throw failed.reason;
-      }
-      pendingImportRef.current = null;
-      setPendingImport(null);
-      showImportPreview(null);
-      const summary = `Imported ${plan.importedCount} prompts and workspace data; replaced ${plan.replacedCount || 0}, skipped ${plan.skippedCount}.`;
-      notify(plan.warnings.length ? `${summary} ${plan.warnings.length} unresolved source references are retained in run notes or import metadata.` : summary);
-    } catch (error) {
-      const message = error.message || 'Storage write failed.';
-      showImportPreview({ ...(importPreviewRef.current || preview), error: message,
-        partial: Boolean(plan), completedStages: [...(plan?.completed || [])] });
-      notify(`Import incomplete: ${message}. The file and completed stages are retained in this tab; retry the remaining stages.`);
-    } finally {
-      importBusyRef.current = false;
-      setImportApplying(false);
-    }
+    }, { key: 'workspace-import' }).catch(error => {
+      if (error?.code === 'LIBRARY_WRITES_PAUSED') notify(error.message);
+    });
   };
 
   const retryImport = () => applyImport(pendingImportRef.current);

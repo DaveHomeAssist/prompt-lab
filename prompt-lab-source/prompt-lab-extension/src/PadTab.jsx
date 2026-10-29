@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem, removeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview.jsx';
@@ -104,7 +105,7 @@ function migratePadStorage() {
     // Recover if pads payload exists but version flag was never written.
     const existingPayload = readPadsPayload();
     if (existingPayload) {
-      localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+      writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
       return { migrated: true, payload: existingPayload, error: null };
     }
 
@@ -128,14 +129,14 @@ function migratePadStorage() {
     );
 
     // Write new schema first.
-    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+    writeLibraryLocalItem(localStorage, PADS_KEY, JSON.stringify(payload));
+    writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
 
     // Only remove legacy keys after successful write.
-    localStorage.removeItem(LEGACY_PAD_KEY);
-    localStorage.removeItem(LEGACY_PAD_META_KEY);
-    localStorage.removeItem('pl-pad');
-    localStorage.removeItem('pl-pad_meta');
+    removeLibraryLocalItem(localStorage, LEGACY_PAD_KEY);
+    removeLibraryLocalItem(localStorage, LEGACY_PAD_META_KEY);
+    removeLibraryLocalItem(localStorage, 'pl-pad');
+    removeLibraryLocalItem(localStorage, 'pl-pad_meta');
 
     return { migrated: true, payload, error: null };
   } catch (error) {
@@ -197,8 +198,8 @@ function persistPadsState(nextState, { lastKnownRevision = 0, preferLocalIds = [
       ...candidate,
       revision: Math.max(stored?.revision || 0, lastKnownRevision) + 1,
     };
-    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+    writeLibraryLocalItem(localStorage, PADS_KEY, JSON.stringify(payload));
+    writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
     return { ok: true, state: payload };
   } catch (e) {
     logWarn('persist pads state (quota exceeded?)', e);

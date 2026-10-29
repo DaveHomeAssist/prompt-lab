@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem } from './libraryWriteCoordinator.js';
 import { notifyLocalWrite } from './storage.js';
 
 // Append-only, content-free keys prevent concurrent tabs from replacing another
@@ -55,7 +56,7 @@ export function markLibraryDeleted(ids, storage = localStorage) {
   const key = uniqueIds.length === 1
     ? `${LIBRARY_DELETED_PREFIX}${uniqueIds[0]}`
     : `${LIBRARY_DELETED_BATCH_PREFIX}${crypto.randomUUID()}`;
-  storage.setItem(key, uniqueIds.length === 1 ? '1' : JSON.stringify(uniqueIds));
+  writeLibraryLocalItem(storage, key, uniqueIds.length === 1 ? '1' : JSON.stringify(uniqueIds));
   notifyLocalWrite(key);
 }
 
@@ -64,7 +65,7 @@ export function markLibraryCleared(storage = localStorage) {
   const counter = Number(generation.split(':')[0]) + 1;
   if (!Number.isSafeInteger(counter)) throw new Error('Library generation limit reached.');
   const next = `${String(counter).padStart(16, '0')}:${crypto.randomUUID()}`;
-  storage.setItem(`${LIBRARY_CLEAR_PREFIX}${next}`, '1');
+  writeLibraryLocalItem(storage, `${LIBRARY_CLEAR_PREFIX}${next}`, '1');
   notifyLocalWrite(`${LIBRARY_CLEAR_PREFIX}${next}`);
   return next;
 }

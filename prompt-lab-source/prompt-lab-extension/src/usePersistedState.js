@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import { useState, useEffect, useRef } from 'react';
 import { logWarn } from './lib/logger.js';
 
@@ -36,7 +37,7 @@ export default function usePersistedState(key, fallback, opts = {}) {
       return;
     }
     try {
-      localStorage.setItem(key, serialize(value));
+      writeLibraryLocalItem(localStorage, key, serialize(value));
     } catch (e) { logWarn(`localStorage write "${key}"`, e); }
   }, [value, key, serialize]);
 
