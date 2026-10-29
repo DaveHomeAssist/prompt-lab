@@ -10,8 +10,9 @@ const V1_LOCAL_CONTENT_KEYS = Object.freeze([
   // These are editor drafts, not authentication sessions or provider settings.
   'pl2-session-pl2-session', 'pl2-session-pl2-dual-draft',
 ]);
-export const LOCAL_CONTENT_KEYS = Object.freeze([...V1_LOCAL_CONTENT_KEYS, 'pl2-scratch-journal-revision']);
-export const SOURCE_INVENTORY_VERSION = 2;
+const V2_LOCAL_CONTENT_KEYS = Object.freeze([...V1_LOCAL_CONTENT_KEYS, 'pl2-scratch-journal-revision']);
+export const LOCAL_CONTENT_KEYS = Object.freeze([...V2_LOCAL_CONTENT_KEYS, 'pl2-recent-artwork']);
+export const SOURCE_INVENTORY_VERSION = 3;
 export const DELETION_PREFIXES = Object.freeze([
   'pl2-library-deleted:', 'pl2-library-deleted-batch:', 'pl2-library-clear:',
 ]);
@@ -61,7 +62,7 @@ function validateRead(result) {
 
 function assertCapture(id, data, version = SOURCE_INVENTORY_VERSION) {
   if (id === 'local-content') {
-    const contentKeys = version === 1 ? V1_LOCAL_CONTENT_KEYS : LOCAL_CONTENT_KEYS;
+    const contentKeys = version === 1 ? V1_LOCAL_CONTENT_KEYS : version === 2 ? V2_LOCAL_CONTENT_KEYS : LOCAL_CONTENT_KEYS;
     const selected = key => contentKeys.includes(key) || DELETION_PREFIXES.some(prefix => key.startsWith(prefix));
     const observations = data.state === 'changed' ? data.observations : [data];
     if (!Array.isArray(observations) || observations.length !== (data.state === 'changed' ? 2 : 1)) throw new LibraryError('INVALID_SOURCE', 'Local observations are incomplete.');
@@ -153,7 +154,7 @@ export async function captureSourceInventory({
 
 export async function inspectSourceInventory(inventory) {
   const { manifest, manifestHash, objects } = inventory || {};
-  if (manifest?.format !== 'promptlab-source-inventory' || ![1, SOURCE_INVENTORY_VERSION].includes(manifest.schemaVersion)
+  if (manifest?.format !== 'promptlab-source-inventory' || ![1, 2, SOURCE_INVENTORY_VERSION].includes(manifest.schemaVersion)
     || !['desktop', 'web', 'extension'].includes(manifest.surface)
     || typeof manifest.sourceIdentity !== 'string' || !manifest.sourceIdentity
     || typeof manifest.capturedAt !== 'string' || !Number.isFinite(Date.parse(manifest.capturedAt))

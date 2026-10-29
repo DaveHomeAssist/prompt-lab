@@ -239,7 +239,7 @@ Transport verification contracts:
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
-- The desktop shell journals Library state to IndexedDB (`prompt_lab_durable`,
+- The desktop shell journals Library and Scratch state to IndexedDB (`prompt_lab_durable`,
   see below); localStorage stays the copy every reader uses
 - The React mobile prototype stores its local workspace in browser storage
 - The native app uses SwiftData and stores its provider key in Keychain
@@ -263,6 +263,16 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   or a save receipt. A rejected or timed-out commit leaves a persistent error
   and the draft available; an identical retry keeps its staged ID and version.
   Completion from an older editing context cannot relink a newer draft.
+
+- Desktop Scratch durability (`src/lib/scratchJournal.js`, Tauri only) uses
+  the same strict transaction engine, with an independent `scratch` record and
+  `pl2-scratch-journal-revision`. The whole note payload, schema marker and
+  legacy note keys are recovered before the first render. Both Scratch views
+  show Saving until the strict commit completes, retain edits on failure and
+  offer retry. Failed startup recovery blocks editing until loading succeeds.
+  Legacy keys are removed only after the replacement has a durable commit.
+  A write interrupted before acknowledgement may roll back to the last
+  committed snapshot. Library recovery never replaces Scratch state.
 
 - Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
   with value `1`; the marker contains no title or body. Clear Library appends a

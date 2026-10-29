@@ -92,6 +92,7 @@ the shipped migration UI or connected to a personal folder.
 | `lib/scratchSchema.js`, `PadTab.jsx` | Current pads/schema marker and surviving legacy `pl-pad`/`pl2-pad` content and metadata |
 | `experimentStore.js` | All four IndexedDB stores (`experiments`, `eval_runs`, `test_cases`, `runs`) and their local fallback stores, without the existing 1,000-row fallback write cap |
 | `lib/libraryJournal.js`, `lib/scratchJournal.js` on current main | Every desktop journal record, including Library and Scratch, plus both local revision markers, retained separately from their local mirrors |
+| `lib/recentArtwork.js` on current main | Raw recent artwork, including embedded images and unknown fields, without its UI reader's normalization or 12-entry cap |
 | `App.jsx`, `hooks/useSessionState.js`, `lib/platform.js` | Draft reset recovery and the two explicitly named editor/dual draft session keys. Authentication sessions remain excluded |
 | Explicit archive review | User-selected backup provenance and unavailable-reference evidence, retained without scanning neighboring files |
 
@@ -121,15 +122,16 @@ structured values and the bounded deadline fail explicitly. Capacity failure
 never publishes a shortened record list. The extension adapter requests only
 the editor and dual-draft session keys and checks callback-time errors.
 
-Inventory version 2 includes `pl2-scratch-journal-revision`, introduced on current
-main with durable Scratch. Version 1 remains readable against its original key
-allowlist; `inspectSourceInventory` reports `currentSourceCoverage: false` for
-that historical format. Neither version establishes activation readiness.
+Inventory version 2 added `pl2-scratch-journal-revision` for durable Scratch.
+Version 3 also captures `pl2-recent-artwork`, introduced by the delivered
+workbench changes. Versions 1 and 2 remain readable against their original key
+allowlists; `inspectSourceInventory` reports `currentSourceCoverage: false` for
+those historical formats. No version establishes activation readiness.
 
 October 29 app-reader verification on Dominic Node 22.23.4: 87 storage tests and
 seven real Chromium 145 browser checks pass. Browser checks cover an empty
 origin without database creation, all four raw history stores with 1,002 traces,
-41 versions, both durable journal records, malformed deletion markers, old
+41 versions, 20 raw artwork entries, both durable journal records, malformed deletion markers, old
 database inspection without upgrade, deletion during open, aborted cursor reads,
 unsupported Blob preservation and the real extension session API. All data is
 synthetic in disposable origins. This does not establish installed WebView

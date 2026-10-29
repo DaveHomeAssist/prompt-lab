@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { listEvalRuns, listTestCases } from '../experimentStore.js';
 import { retryPendingWrites } from '../lib/writeRecovery.js';
+import * as scratchJournal from '../lib/scratchJournal.js';
 
 vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
   ...await importOriginal(), shouldAttemptLegacyWebMigration: () => false,
@@ -81,6 +82,23 @@ async function openPreview(tab, payload) {
   act(() => tab.result.current.importLib({ target: input }));
   await waitFor(() => expect(tab.result.current.importPreview).toBeTruthy());
 }
+
+it('does not finish a Scratch import until its durable write succeeds, and retries the same stage', async () => {
+  const notify = vi.fn();
+  const tab = renderHook(() => usePromptLibrary(notify));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  const durable = vi.spyOn(scratchJournal, 'commitScratchSave').mockRejectedValueOnce(new Error('Synthetic strict Scratch failure')).mockResolvedValue(2);
+  await openPreview(tab, { library: [{ ...prompt('new'), enhanced: 'Different body' }], scratch: { pads: [{ id: 'note', content: 'Imported durable note' }] } });
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.pendingImport).toBe(true);
+  expect(tab.result.current.importPreview.completedStages).not.toContain('Scratch');
+  expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Imported/));
+  const staged = localStorage.getItem('pl2-pads');
+  await act(async () => tab.result.current.retryImport());
+  expect(tab.result.current.pendingImport).toBe(false);
+  expect(localStorage.getItem('pl2-pads')).toBe(staged);
+  expect(durable).toHaveBeenCalledTimes(2);
+});
 
 it('preview and Cancel perform no import writes, including workspace extras', async () => {
   const tab = renderHook(() => usePromptLibrary(vi.fn()));

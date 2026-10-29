@@ -13,6 +13,7 @@ import {
 } from '../lib/promptSchema.js';
 import { loadJson, saveJson, removeKey, storageKeys, getAnticipation, setAnticipation } from '../lib/storage.js';
 import { commitLibrarySave } from '../lib/libraryJournal.js';
+import { assertScratchJournalReady, commitScratchSave } from '../lib/scratchJournal.js';
 import { ensureString } from '../lib/utils.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
 import {
@@ -105,6 +106,8 @@ export default function usePromptLibrary(notify) {
   const [folderRecords, setFolderRecords] = useState([]);
   const foldersRef = useRef([]);
   const folders = useMemo(() => reconcileFolders(folderRecords, collections), [folderRecords, collections]);
+  const [smartView, setSmartView] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [activeTag, setActiveTag] = useState(null);
   const [activeCollection, setActiveCollection] = useState(null);
@@ -1223,7 +1226,11 @@ export default function usePromptLibrary(notify) {
         const durable = commitLibrarySave(); if (durable) await durable;
         foldersRef.current = next; setFolderRecords(next);
       });
-      if (plan.scratch) await stage('Scratch', () => localStorage.setItem('pl2-pads', JSON.stringify(plan.scratch)));
+      if (plan.scratch) await stage('Scratch', async () => {
+        assertScratchJournalReady();
+        localStorage.setItem(storageKeys.scratch, JSON.stringify(plan.scratch));
+        const durable = commitScratchSave(); if (durable) await durable;
+      });
       if (plan.parsed.packs) await stage('Packs', () => {
         if (!saveJson(storageKeys.packs, plan.parsed.packs)) throw new Error('Pack storage write failed.');
       });
@@ -1406,7 +1413,7 @@ export default function usePromptLibrary(notify) {
 
   return {
     library, setLibrary, trash, setTrash, libReady, collections, setCollections, folders, saveFolders, saveEntryDetails,
-    search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
+    smartView, setSmartView, statusFilter, setStatusFilter, search, setSearch, activeTag, setActiveTag, activeCollection, setActiveCollection,
     sortBy, setSortBy, expandedId, setExpandedId, expandedVersionId, setExpandedVersionId, diffVersionIdx, setDiffVersionIdx,
     shareId, setShareId, renamingId, setRenamingId, renameValue, setRenameValue,
     draggingLibraryId, setDraggingLibraryId, dragOverLibraryId, setDragOverLibraryId,

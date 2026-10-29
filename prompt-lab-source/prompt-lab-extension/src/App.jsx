@@ -508,6 +508,8 @@ export default function App({
 
   const undoDraftReset = () => {
     if (!draftRecovery) return;
+    closeSavePanel();
+    dismissSaveReceipt();
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
@@ -629,7 +631,7 @@ export default function App({
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-  const recoveryActionLabel = draftRecovery?.reason === 'discard-result'
+  const recoveryActionLabel = draftRecovery?.reason === 'composer-handoff' ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
     ? 'Restore discarded result'
     : draftRecovery?.reason === 'navigation'
       ? 'Restore previous draft'
@@ -985,6 +987,30 @@ export default function App({
     setSourceNoteId(payload.sourceNoteId || '');
     openCreateView('editor');
     notify(payload.selectionOnly ? 'Scratch selection opened in Write.' : 'Scratch note opened in Write.');
+  };
+  const [composerRecovery, setComposerRecovery] = useState(null);
+  const clearComposer = () => {
+    setComposerRecovery(composerBlocks.map(block => ({ ...block })));
+    setComposerBlocks([]);
+  };
+  const undoComposerClear = () => {
+    if (!composerRecovery) return;
+    setComposerBlocks(current => [...composerRecovery, ...current]);
+    setComposerRecovery(null);
+  };
+  const sendComposerToEditor = (content, mode = 'new') => {
+    if (!content.trim()) return;
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) preserveDraftForUndo('composer-handoff');
+    dismissSaveReceipt();
+    if (mode === 'insert') insertIntoPrompt(content);
+    else if (mode === 'append') {
+      const next = insertAtCursor(raw, { start: raw.length, end: raw.length }, content, { separateAtEnd: true });
+      setRaw(next.value); updateCursor(next.caret);
+    } else {
+      clearEditor(); setRaw(content); setSaveTitle(suggestTitleFromText(content));
+    }
+    openCreateView('editor');
+    notify('Composer content opened in Write.');
   };
   const sendScratchToComposer = (payload) => {
     handleAddToComposer({
@@ -1429,7 +1455,7 @@ export default function App({
         // panel-locally. Extension and desktop keep the bare wrapper unchanged.
         <div className={contained ? 'pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden' : 'pl-tab-panel'}>
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
+          addToComposer={addToComposer} notify={notify} copy={copy} onSendToEditor={sendComposerToEditor} onClear={clearComposer} onUndoClear={undoComposerClear} canUndoClear={Boolean(composerRecovery)} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
         </div>
       )}
 

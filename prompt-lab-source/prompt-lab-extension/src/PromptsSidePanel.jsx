@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Ic from './icons';
+import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { formatRelativeTime } from './ScratchNoteRow.jsx';
 import { smartViewEntries } from './lib/librarySmartViews.js';
 import { WRITE_PROMPT_VIEWS } from './lib/sidePane.js';
@@ -35,7 +36,9 @@ export default function PromptsSidePanel({
   onInsert,
   onToggleFavorite,
 }) {
-  const entries = useMemo(() => smartViewEntries(library, view, sortBy), [library, view, sortBy]);
+  const [query, setQuery] = useState('');
+  const allEntries = useMemo(() => smartViewEntries(library, view, sortBy), [library, view, sortBy]);
+  const entries = useMemo(() => allEntries.filter(entry => matchesLibrarySearch(entry, query)), [allEntries, query]);
   const label = WRITE_PROMPT_VIEWS.find((item) => item.id === view)?.label || 'All';
 
   return (
@@ -46,10 +49,15 @@ export default function PromptsSidePanel({
             <button key={item.id} type="button" aria-pressed={view === item.id} data-side-autofocus={view === item.id ? '' : undefined} onClick={() => onViewChange?.(item.id)}>{item.label}</button>
           ))}
         </div>
-        <p className={`shrink-0 text-[10px] ${m.textMuted || ''}`}>{entries.length} prompt{entries.length === 1 ? '' : 's'}</p>
+        <p className={`shrink-0 text-[10px] ${m.textMuted || ''}`}>{query.trim() ? `${entries.length} of ${allEntries.length}` : entries.length} prompt{allEntries.length === 1 ? '' : 's'}</p>
+      </div>
+      <div className="pl-write-prompt-search">
+        <label className="sr-only" htmlFor="write-prompt-search">Search prompts beside Write</label>
+        <input id="write-prompt-search" type="search" value={query} placeholder="Search prompts…" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape' && query) { event.preventDefault(); event.stopPropagation(); setQuery(''); } }} />
+        {query && <button type="button" className={`ui-control ${m.btn || ''}`} onClick={() => setQuery('')}>Clear search</button>}
       </div>
       {entries.length === 0
-        ? <p className={`pl-write-prompts-empty text-xs ${m.textMuted || ''}`}>{EMPTY_MESSAGES[view] || EMPTY_MESSAGES.all}</p>
+        ? <p className={`pl-write-prompts-empty text-xs ${m.textMuted || ''}`}>{query.trim() ? 'No prompts match this search in the selected view.' : EMPTY_MESSAGES[view] || EMPTY_MESSAGES.all}</p>
         : (
           <ul className="pl-write-prompts-list" aria-label={`${label} prompts`}>
             {entries.map((entry) => {

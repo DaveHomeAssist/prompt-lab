@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
+import { rememberArtwork } from '../lib/recentArtwork.js';
 import ArtworkPicker, { Artwork } from '../ArtworkPicker.jsx';
 import { safeArtwork, safeEmoji, ARTWORK_ICONS, MAX_ARTWORK_BYTES } from '../lib/libraryPresentation.js';
 
-afterEach(cleanup);
+afterEach(() => { cleanup(); localStorage.clear(); });
 function Picker() {
   const [value, setValue] = useState({ icon: 'Star' });
   return <><ArtworkPicker value={value} onChange={setValue} label="Prompt artwork" /><output>{JSON.stringify(value)}</output></>;
@@ -51,4 +52,13 @@ describe('artwork choices and validation', () => {
     fireEvent.error(container.querySelector('img'));
     expect(container).toHaveTextContent('🧪');
   });
+});
+
+it('reuses a saved image in a collection picker without asking for another file', () => {
+  const image = 'data:image/png;base64,AAAA'; rememberArtwork({ image });
+  let chosen; render(<ArtworkPicker label="Collection artwork" onChange={value => { chosen = value; }} />);
+  fireEvent.click(document.querySelector('summary'));
+  fireEvent.click(screen.getByRole('button', { name: 'Use recent image 1' }));
+  expect(chosen.image).toBe(image);
+  expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))).toHaveLength(1);
 });

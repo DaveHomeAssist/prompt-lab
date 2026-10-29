@@ -81,6 +81,8 @@ test('raw app reader preserves all rows, primary keys, histories and both deleti
     localStorage.setItem('pl2-library-clear:0000000000000007:abc', '1');
     localStorage.setItem('pl2-pad', 'legacy $& {{input}}');
     localStorage.setItem('pl2-scratch-journal-revision', '12');
+    const artwork = JSON.stringify(Array.from({ length: 20 }, (_, n) => ({ image: `data:image/png;base64,AA${n}==`, unknown: n })));
+    localStorage.setItem('pl2-recent-artwork', artwork);
     localStorage.setItem('pl2-run-fallback', '[{"unmatched":true}]');
     const stores = {
       experiments: [{ id: 'e', unknown: [1, null] }], eval_runs: [{ id: 'r', promptVersionId: 'missing' }],
@@ -110,12 +112,12 @@ test('raw app reader preserves all rows, primary keys, histories and both deleti
       libraryExact: local['pl2-library'] === library && localStorage.getItem('pl2-library') === library,
       deleted: local['pl2-library-deleted:p'], malformed: local['pl2-library-deleted-batch:malformed'],
       clear: local['pl2-library-clear:0000000000000007:abc'], legacy: local['pl2-pad'],
-      scratchRevision: local['pl2-scratch-journal-revision'], traceCount: captures['execution-traces'].records.length, keyPath: captures['execution-traces'].keyPath,
+      artworkExact: local['pl2-recent-artwork'] === artwork, scratchRevision: local['pl2-scratch-journal-revision'], traceCount: captures['execution-traces'].records.length, keyPath: captures['execution-traces'].keyPath,
       version: captures['execution-traces'].databaseVersion };
   });
   expect(result).toEqual({ modes: Array(5).fill('readonly'), exact: true, complete: true, activation: false,
     journalExact: true, libraryExact: true, deleted: '1', malformed: '{broken', clear: '1', legacy: 'legacy $& {{input}}',
-    scratchRevision: '12', traceCount: 1002, keyPath: null, version: 4 });
+    artworkExact: true, scratchRevision: '12', traceCount: 1002, keyPath: null, version: 4 });
 });
 
 test('an old database is inspected without upgrading or creating its missing stores', async ({ page }) => {
