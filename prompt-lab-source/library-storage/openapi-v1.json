@@ -4704,7 +4704,7 @@
           "commandGroupId": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$",
-            "description": "Stable command identity for a selected Scratch note, including before its first shared command."
+            "description": "Stable command identity for selected Scratch notes and verified value records. Legacy root records can be addressed through their current-view group."
           },
           "sourceValueHash": {
             "type": "string",
@@ -6142,7 +6142,10 @@
                   "execution-traces",
                   "experiments",
                   "packs",
-                  "scratch-notes"
+                  "scratch-notes",
+                  "drafts",
+                  "assets",
+                  "recovery"
                 ]
               },
               "action": {
@@ -6286,7 +6289,11 @@
                   "execution-traces",
                   "experiments",
                   "packs",
-                  "scratch-notes"
+                  "scratch-notes",
+                  "drafts",
+                  "assets",
+                  "recovery",
+                  "loaded-packs"
                 ]
               },
               "action": {
@@ -6321,6 +6328,138 @@
               "groupId",
               "expectedRecordHash",
               "confirmPermanentDeletion",
+              "mode"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "drafts",
+                  "assets",
+                  "recovery",
+                  "loaded-packs"
+                ]
+              },
+              "action": {
+                "const": "create"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "record": {},
+              "recordId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "mode": {
+                "const": "record"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "sourceBinding",
+              "record",
+              "recordId",
+              "mode"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "loaded-packs"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "drafts",
+                  "assets",
+                  "recovery"
+                ]
+              },
+              "action": {
+                "const": "replace"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "value": {},
+              "mode": {
+                "const": "record"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "value",
               "mode"
             ],
             "additionalProperties": false
@@ -7094,7 +7233,8 @@
                 "enum": [
                   "create",
                   "update",
-                  "delete"
+                  "delete",
+                  "replace"
                 ]
               },
               "domain": {
@@ -7104,7 +7244,11 @@
                   "execution-traces",
                   "experiments",
                   "packs",
-                  "scratch-notes"
+                  "scratch-notes",
+                  "drafts",
+                  "assets",
+                  "recovery",
+                  "loaded-packs"
                 ]
               },
               "sourceIdentity": {
@@ -7112,10 +7256,17 @@
                 "minLength": 1
               },
               "sourceId": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 200,
-                "pattern": "\\S"
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "\\S"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "changedAt": {
                 "type": "string",
@@ -7130,7 +7281,73 @@
               "sourceId",
               "changedAt"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "not": {
+                        "enum": [
+                          "drafts",
+                          "assets",
+                          "recovery"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "sourceId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "action": {
+                      "const": "replace"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "domain": {
+                      "enum": [
+                        "drafts",
+                        "assets",
+                        "recovery"
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "loaded-packs"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "action": {
+                      "enum": [
+                        "create",
+                        "delete"
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
           },
           "folderMutation": {
             "type": "object",
@@ -7798,7 +8015,10 @@
                   "execution-traces",
                   "experiments",
                   "packs",
-                  "scratch-notes"
+                  "scratch-notes",
+                  "drafts",
+                  "assets",
+                  "recovery"
                 ]
               },
               "action": {
@@ -7938,7 +8158,11 @@
                   "execution-traces",
                   "experiments",
                   "packs",
-                  "scratch-notes"
+                  "scratch-notes",
+                  "drafts",
+                  "assets",
+                  "recovery",
+                  "loaded-packs"
                 ]
               },
               "action": {
@@ -7972,6 +8196,130 @@
               "confirmPermanentDeletion"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "drafts",
+                  "assets",
+                  "recovery",
+                  "loaded-packs"
+                ]
+              },
+              "action": {
+                "const": "create"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "record": {},
+              "recordId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "sourceBinding",
+              "record",
+              "recordId"
+            ],
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "domain": {
+                      "const": "loaded-packs"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "record": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "domain": {
+                "enum": [
+                  "drafts",
+                  "assets",
+                  "recovery"
+                ]
+              },
+              "action": {
+                "const": "replace"
+              },
+              "changedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "groupId": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "expectedRecordHash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "value": {}
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "domain",
+              "action",
+              "changedAt",
+              "groupId",
+              "expectedRecordHash",
+              "value"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -7990,7 +8338,11 @@
               "experiments",
               "packs",
               "folders",
-              "scratch-notes"
+              "scratch-notes",
+              "drafts",
+              "assets",
+              "recovery",
+              "loaded-packs"
             ]
           },
           "sourceIdentity": {
@@ -7998,10 +8350,17 @@
             "minLength": 1
           },
           "sourceId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 200,
-            "pattern": "\\S"
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "selected": {
             "anyOf": [
@@ -8077,6 +8436,31 @@
                 "required": [
                   "inactiveReason"
                 ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "domain": {
+                  "not": {
+                    "enum": [
+                      "drafts",
+                      "assets",
+                      "recovery"
+                    ]
+                  }
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "\\S"
+                }
               }
             }
           }

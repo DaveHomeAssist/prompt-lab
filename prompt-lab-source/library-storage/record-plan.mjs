@@ -4,7 +4,7 @@ import { buildVerifiedDomainMap } from './domain-map.mjs';
 import { planCurrentView, retainedViewResolutions } from './current-view.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
 import { collectDeletionEvidence } from './source-binding.mjs';
-import { normalizeRecordRequest, recordDomains, recordIdField } from './record-request.mjs';
+import { normalizeRecordRequest, recordDomains, recordIdField, valueRecordDomains } from './record-request.mjs';
 import { recordGroupId, selectionForRecord, withRecordGroups } from './record-state.mjs';
 import { adoptScratchGroups, selectedScratchRecord, scratchTombstones } from './scratch-state.mjs';
 export { normalizeRecordRequest } from './record-request.mjs';
@@ -12,6 +12,7 @@ export { normalizeRecordRequest } from './record-request.mjs';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 function validateFields(value, keys, domain) {
+  if (valueRecordDomains.includes(domain)) return;
   const text = domain === 'execution-traces' ? ['name', 'provider', 'model', 'run_type', 'status', 'error', 'reason']
     : domain === 'experiments' ? ['label', 'keyInputSnapshot', 'notes']
     : domain === 'test-cases' ? ['title', 'input', 'notes']
@@ -35,6 +36,7 @@ function validateFields(value, keys, domain) {
 /** One record changes; all previous occurrences remain immutable and addressable. */
 export async function planRecordMutation(pkg, inspected, value) {
   const request = normalizeRecordRequest(value);
+  const valueRecord = valueRecordDomains.includes(request.domain);
   if (pkg.libraryId !== request.libraryId) fail('WRONG_LIBRARY', 'Record command targets another library.');
   if (pkg.head !== request.expectedRevision) fail('REVISION_CONFLICT', 'The library changed before this record command.');
   if (!inspected.currentView || inspected.currentView.unresolved) fail('SELECTION_REQUIRED', 'Review the current records before changing them.');
@@ -46,11 +48,12 @@ export async function planRecordMutation(pkg, inspected, value) {
     const evidence = await collectDeletionEvidence(pkg.objects, inspected.sourceBindings);
     const scope = evidence.scopes.find(scope => scope.bindings.includes(binding));
     if (!scope?.complete) fail('DELETION_EVIDENCE_UNKNOWN', 'Review complete source evidence before creating a record.');
-    sourceIdentity = scope.sourceIdentity; sourceId = request.record[recordIdField(request.domain)];
+    sourceIdentity = scope.sourceIdentity; sourceId = valueRecord ? request.recordId : request.record[recordIdField(request.domain)];
     groupId = await recordGroupId(pkg.libraryId, request.domain, sourceIdentity, sourceId);
     if (map.records.some(row => row.domain === request.domain && row.origin.sourceIdentity === sourceIdentity && row.sourceId === sourceId)
+      || inspected.currentView.groups.some(group => group.id === groupId)
       || inspected.manifest.recordGroups?.some(group => group.id === groupId)) fail('IDENTITY_CONFLICT', 'This record identity is already retained. Use a new ID for a new record.');
-    next = structuredClone(request.record); validateFields(next, Object.keys(next), request.domain);
+    next = structuredClone(request.record); validateFields(next, Object.keys(next ?? {}), request.domain);
     if (request.domain === 'scratch-notes') {
       if (typeof next.name !== 'string' || !next.name.trim() || typeof next.content !== 'string') fail('INVALID_RECORD_COMMAND', 'A new Scratch note needs a name and complete content.');
       next.createdAt = Date.parse(request.changedAt);
@@ -59,13 +62,17 @@ export async function planRecordMutation(pkg, inspected, value) {
     const group = inspected.currentView.groups.find(group => group.id === request.groupId && group.domain === request.domain);
     selected = map.records.find(row => row.key === group?.selected);
     if (!selected && request.domain === 'scratch-notes') selected = await selectedScratchRecord(pkg, inspected, map, request.groupId);
-    if (!selected || !object(selected.value) || !selected.origin.binding || !selected.sourceId) fail('RECORD_TARGET_UNAVAILABLE', 'The selected record is inactive or lacks a verified identity.');
+    if (!selected || !selected.origin.binding || (!valueRecord && (!object(selected.value) || !selected.sourceId))) {
+      fail('RECORD_TARGET_UNAVAILABLE', 'The selected record is inactive or lacks a verified identity.');
+    }
     if (selected.valueHash !== request.expectedRecordHash) fail('RECORD_CONFLICT', 'The selected record changed. Keep the draft and review it.');
     ({ sourceIdentity } = selected.origin); sourceId = selected.sourceId; binding = selected.origin.binding; groupId = request.groupId;
     if (request.domain === 'packs' && Object.hasOwn(selected.value, 'id') && selected.value.id !== sourceId) {
       fail('RECORD_IDENTITY_CONFLICT', 'The pack record ID differs from its registry key. Review the source before changing it.');
     }
-    next = structuredClone(selected.value);
+    if (request.action === 'update' && !object(selected.value)) fail('INVALID_RECORD_COMMAND', 'Field updates require an object. Review an explicit replacement for a scalar or array.');
+    if (request.action === 'replace' && object(selected.value)) fail('INVALID_RECORD_COMMAND', 'Change object fields explicitly to preserve unmentioned metadata.');
+    next = structuredClone(request.action === 'replace' ? request.value : selected.value);
     for (const update of request.updates ?? []) {
       let owner = next;
       for (const key of update.path.slice(0, -1)) {
@@ -77,8 +84,8 @@ export async function planRecordMutation(pkg, inspected, value) {
     }
     if (request.action === 'update') {
       validateFields(next, request.updates.map(update => update.path[0]), request.domain);
-      if (canonical(next) === canonical(selected.value)) fail('NO_CHANGE', 'This command does not change the selected record.');
     }
+    if (['update', 'replace'].includes(request.action) && canonical(next) === canonical(selected.value)) fail('NO_CHANGE', 'This command does not change the selected record.');
   }
   let ownedGroups = inspected.manifest.recordGroups;
   if (request.domain === 'scratch-notes') {
@@ -92,7 +99,9 @@ export async function planRecordMutation(pkg, inspected, value) {
     next.updatedAt = Date.parse(request.changedAt); next.timestamp = next.updatedAt;
   }
   const recordMutation = { action: request.action, domain: request.domain, sourceIdentity, sourceId, changedAt: request.changedAt };
-  const collection = request.domain === 'packs'
+  const collection = valueRecord
+    ? (request.action === 'delete' ? [] : [{ domain: request.domain, groupId, sourceId, value: next }])
+    : request.domain === 'packs'
     ? (request.action === 'delete' ? {} : { [sourceId]: next }) : (request.action === 'delete' ? [] : [next]);
   const workspace = { library: [], [recordDomains[request.domain]]: collection,
     recordMutation: { ...recordMutation, baseRevision: pkg.head, groupId, previousSelection: selected?.key ?? null } };

@@ -1,5 +1,52 @@
 # Library storage contract candidate
 
+## Shared draft, asset, recovery and loaded pack records
+
+Extend the shared record command to the remaining captured value shapes: draft
+objects and buffers, standalone artwork, recovery values and loaded-pack IDs.
+Updates pin the selected group and exact value hash. Object field changes retain
+unmentioned metadata; an explicit replacement is available for scalar or array
+values only. Creation supplies a separate stable record ID without inserting it
+into the user's value. Loaded-pack IDs support creation and confirmed deletion;
+changing a marker must not silently change the pack identity.
+
+Derived values carry their original group identity in verified command metadata.
+Legacy anonymous records keep their existing groups through edits, restore and
+reconciliation. Ordinary imports cannot supply this metadata or override a
+selection. Every original source, raw capture, previous value and deletion stays
+retained. Artwork nested in another record remains owned by that record.
+
+Acceptance covers all four domains and legacy scalar, array and anonymous-object
+shapes, unknown fields, stale inputs, forged metadata, source isolation, causal
+merge and conflicts, checkpoint restore, deletion, interrupted publication,
+response loss, API/outbox replay and complete transfer. Remote checks use only
+synthetic fixtures. Real-export checks use an isolated local copy and never upload
+private content. Atomic pack installation, app writer migration and activation,
+native ownership and actual two-client iCloud acceptance remain separate gates.
+
+Dominic Node 22.23.4 passed the full 313-test storage suite, then 116 affected
+tests after the final anonymous-identity collision guard. Schema validation
+accepted 168 new runtime fixtures plus 91 earlier command fixtures and rejected
+170 malformed requests. The extension build passed. All 40 source-capture and
+durable-outbox browser checks passed in the existing Playwright 1.58.2 container,
+including four new value-command cases across separate browser processes.
+
+The previous head's CI browser failure was reproduced: its disposable server
+did not serve the folder-request module now imported by the outbox. Adding that
+module repairs the fixture; the original failed CI and reproduction are retained.
+The first value-record test run also retained a fixture-selection failure that
+mistook nested prompt artwork for standalone artwork. The corrected root-record
+selector passed. No failed assertion was disabled or skipped.
+
+An isolated local copy of the complete 216-prompt export passed creation of a
+draft containing one entire original prompt, exact checkpoint restoration of all
+selected records, retention of every original object and operation receipt, and
+complete backup transfer. The original export remained byte identical. These
+checks use synthetic capture coverage around the real export, not actual app
+store capture. Creation, restore and selection harness phases each took about
+81 to 88 seconds, including repeated verification; interactive performance is
+still an open acceptance gate. The disposable copy remains available locally.
+
 ## Per tab draft recovery preservation
 
 The app keeps its previous-draft recovery copy in session storage, while the

@@ -1,6 +1,7 @@
 import { canonical, hash, inspectPackage, LibraryError, readObject, ownObjectTable } from './contract.mjs';
 import { inspectSourceBinding } from './source-binding.mjs';
 import { DELETION_PREFIXES } from './source-inventory.mjs';
+import { valueRecordDomains } from './record-request.mjs';
 
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && value.length > 0;
@@ -53,13 +54,15 @@ export async function buildVerifiedDomainMap(pkg, verified) {
     if (sourceId === null || sourceId === undefined || sourceId === '') return;
     pendingReferences.push({ row, path, domain, sourceId, parentId });
   }
-  async function add(domain, value, origin, { parent = null, sourceId, primaryKey } = {}) {
+  async function add(domain, value, origin, { parent = null, sourceId, primaryKey, commandGroupId } = {}) {
     if (records.length >= 100_000) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Domain index exceeds 100,000 occurrences; no records were omitted.', 413);
     const embeddedId = object(value) ? value[domain === 'execution-traces' ? 'run_id' : 'id'] : undefined;
-    sourceId = sourceId ?? embeddedId ?? (['collections', 'loaded-packs'].includes(domain) && typeof value === 'string' ? value : null);
+    // A verified value command retains even a null legacy identity. Do not
+    // infer a new identity from content that the command has just changed.
+    if (!commandGroupId) sourceId = sourceId ?? embeddedId ?? (['collections', 'loaded-packs'].includes(domain) && typeof value === 'string' ? value : null);
     const key = await hash({ domain, origin });
     const row = { key, domain, origin, parent: parent?.key ?? null, sourceId,
-      ...(primaryKey === undefined ? {} : { primaryKey }), valueHash: await hash(value), value,
+      ...(primaryKey === undefined ? {} : { primaryKey }), ...(commandGroupId ? { commandGroupId } : {}), valueHash: await hash(value), value,
       references: [], identity: null };
     records.push(row);
     if (sourceId !== null && !id(sourceId)) issue('INVALID_RECORD_ID', origin, key);
@@ -166,7 +169,7 @@ export async function buildVerifiedDomainMap(pkg, verified) {
       }
     }
   }
-  async function workspace(pair, bindingHash = null, inspected = null, derivedFrom = null) {
+  async function workspace(pair, bindingHash = null, inspected = null, derivedFrom = null, command = null) {
     const context = { binding: bindingHash, sourceIdentity: inspected?.manifest.sourceIdentity ?? null,
       surface: inspected?.manifest.surface ?? null, replica: 'workspace', ...(derivedFrom ? { derivedFrom } : {}) };
     const origin = address(context, pair.workspace), value = await readObject(pkg.objects, pair.workspace, 'workspace');
@@ -177,6 +180,15 @@ export async function buildVerifiedDomainMap(pkg, verified) {
     }
     if (derivedFrom && value.recordMutation?.domain === 'scratch-notes' && Object.hasOwn(value, 'scratchNotes')) {
       await collection('scratch-notes', value.scratchNotes, child(origin, 'scratchNotes'), 'list', container);
+    }
+    // Only recomputed command ancestry can introduce wrappers. Imported
+    // lookalike fields remain opaque source data and cannot own a selection.
+    if (command && valueRecordDomains.includes(command.recordMutation?.domain)) {
+      for (const [i, entry] of value.valueRecords.entries()) {
+        await add(entry.domain, entry.value, child(origin, 'valueRecords', i, 'value'), {
+          parent: container, sourceId: entry.sourceId, commandGroupId: entry.groupId,
+        });
+      }
     }
     if (!bindingHash) issue('UNBOUND_WORKSPACE', origin, container.key);
   }
@@ -233,7 +245,7 @@ export async function buildVerifiedDomainMap(pkg, verified) {
   }
   for (const derived of verified.derivedSources ?? []) {
     const inspected = await inspectSourceBinding(pkg.objects, derived.binding);
-    await workspace(derived, derived.binding, inspected, derived.baseRevision);
+    await workspace(derived, derived.binding, inspected, derived.baseRevision, derived);
   }
   for (const [key, pair] of [...sourcePairs].sort(([a], [b]) => compare(a, b))) if (!boundPairs.has(key)) await workspace(pair);
 

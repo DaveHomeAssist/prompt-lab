@@ -82,8 +82,8 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
       : typeof row.sourceId === 'string' && row.sourceId ? row.sourceId
       : ['drafts', 'scratch-legacy'].includes(row.domain) ? [row.origin.replica, row.origin.path, row.origin.decodedPath]
       : ['assets', 'backups'].includes(row.domain) ? row.valueHash : null;
-    if (identity === null) blocked.push({ code: 'MISSING_RECORD_ID', key: row.key });
-    const groupId = await hash([pkg.libraryId, row.domain, row.origin.sourceIdentity, identity ?? row.key]);
+    if (identity === null && !row.commandGroupId) blocked.push({ code: 'MISSING_RECORD_ID', key: row.key });
+    const groupId = row.commandGroupId ?? await hash([pkg.libraryId, row.domain, row.origin.sourceIdentity, identity ?? row.key]);
     let group = groupByKey.get(groupId);
     if (!group) {
       group = { id: groupId, domain: row.domain, sourceIdentity: row.origin.sourceIdentity,

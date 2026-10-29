@@ -10,7 +10,7 @@ import { captureSourceInventory } from '../../library-storage/source-inventory.m
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const storePath = '/prompt-lab-extension/src/lib/libraryCommandOutbox.js';
-const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request', 'lifecycle-request', 'record-request'].map(name => `/library-storage/${name}.mjs`)];
+const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request', 'lifecycle-request', 'record-request', 'folder-request'].map(name => `/library-storage/${name}.mjs`)];
 const content = { library: [{ id: 'prompt', original: 'Complete $& {{input}}', unknown: { preserved: true },
   versions: Array.from({ length: 41 }, (_, n) => ({ id: `v${n}`, original: `Version ${n}` })) }],
   runs: Array.from({ length: 1002 }, (_, n) => ({ id: `r${n}`, output: `Run ${n}`, unknown: n })), backups: [{ name: 'Preserved' }] };
@@ -53,19 +53,27 @@ async function boot(page, options) {
   }, { options, storePath });
 }
 
-for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-create', 'record-update', 'record-delete', 'pack-create', 'pack-update', 'pack-delete']) test(`an ordinary ${mode} command survives browser restart and commits through the shared API once`, async () => {
+const valueCases = {
+  'draft-update': { domain: 'drafts', action: 'update', field: 'draft' },
+  'asset-create': { domain: 'assets', action: 'create', value: ['Complete record', { unknown: true }] },
+  'recovery-replace': { domain: 'recovery', action: 'replace', value: 'Complete record' },
+  'loaded-pack-delete': { domain: 'loaded-packs', action: 'delete' },
+};
+for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-create', 'record-update', 'record-delete', 'pack-create', 'pack-update', 'pack-delete', ...Object.keys(valueCases)]) test(`an ordinary ${mode} command survives browser restart and commits through the shared API once`, async () => {
   const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
   const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
   const profile = await mkdtemp(resolve(tmpdir(), 'promptlab-edit-outbox-')); let context;
   try {
     const lifecycle = ['trash', 'restore', 'delete'].includes(mode), initiallyTrashed = ['restore', 'delete'].includes(mode);
-    const pack = mode.startsWith('pack-'), recordDomain = pack ? 'packs' : 'evaluations';
-    const recordAction = pack ? mode.slice(5) : mode.startsWith('record-') ? mode.slice(7) : null;
-    const workspace = { ...content, packs: { p0: { id: 'p0', title: 'Before', unknown: 0 } }, library: initiallyTrashed ? [] : content.library, trash: initiallyTrashed ? content.library : [], runs: content.runs.slice(0, 1) };
-    const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': JSON.stringify(workspace.trash) };
+    const valueCase = valueCases[mode], pack = mode.startsWith('pack-'), recordDomain = valueCase?.domain ?? (pack ? 'packs' : 'evaluations');
+    const recordAction = valueCase?.action ?? (pack ? mode.slice(5) : mode.startsWith('record-') ? mode.slice(7) : null);
+    const field = valueCase?.field ?? (pack ? 'title' : 'output');
+    const workspace = { ...content, packs: { p0: { id: 'p0', title: 'Before', unknown: 0 } }, loadedPacks: ['p0'], assets: { art: 'Existing artwork' }, library: initiallyTrashed ? [] : content.library, trash: initiallyTrashed ? content.library : [], runs: content.runs.slice(0, 1) };
+    const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': JSON.stringify(workspace.trash),
+      'pl2-session-pl2-session': JSON.stringify({ draft: 'Before', unknown: 0 }), 'pl2-draft-reset-recovery-v1': JSON.stringify('Recovery before') };
     const sourceInventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'synthetic-browser-origin',
-      localStorage: { length: 2, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
+      localStorage: { length: Object.keys(entries).length, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
       readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic absent store.' }), archives: { reviewed: true, records: [] } });
     const imported = await api.service.preview({ libraryId: 'lib', expectedRevision: null, sourceText: JSON.stringify(workspace), sourceInventory, mode: 'import' });
     const importedReceipt = await api.service.apply({ ...imported, idempotencyKey: 'import' });
@@ -75,9 +83,10 @@ for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-crea
     const row = records.items[0], group = records.groups.find(group => group.selected === row.key);
     const request = recordAction ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: recordDomain, action: recordAction,
       changedAt: '2026-10-29T12:00:00.000Z', mode: 'record', ...(recordAction === 'create'
-        ? { sourceBinding: imported.sourceBinding, record: { id: 'created-record', [pack ? 'title' : 'output']: 'Complete record', unknown: 0 } }
+        ? { sourceBinding: imported.sourceBinding, ...(valueCase ? { recordId: 'created-record', record: valueCase.value }
+          : { record: { id: 'created-record', [field]: 'Complete record', unknown: 0 } }) }
         : { groupId: group.id, expectedRecordHash: row.valueHash, ...(recordAction === 'delete' ? { confirmPermanentDeletion: true }
-          : { updates: [{ path: [pack ? 'title' : 'output'], value: 'Complete record' }] }) }) }
+          : recordAction === 'replace' ? { value: valueCase.value } : { updates: [{ path: [field], value: 'Complete record' }] }) }) }
       : lifecycle ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
       action: mode, changedAt: '2026-10-29T12:00:00.000Z', confirmPermanentDeletion: mode === 'delete', mode: 'lifecycle' } : mode === 'create' ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, sourceBinding: imported.sourceBinding,
       creationId: 'browser-created', createdAt: '2026-10-29T12:00:00.000Z', record: { original: 'Browser creation with $& {{input}}', unknown: { preserved: true } }, mode }
@@ -97,8 +106,9 @@ for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-crea
       const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: recordDomain });
       expect(current.total).toBe(recordAction === 'create' ? 2 : recordAction === 'delete' ? 0 : 1);
       if (recordAction !== 'delete') {
-        const result = current.items.find(item => item.sourceId === (recordAction === 'create' ? 'created-record' : pack ? 'p0' : 'r0'));
-        expect(result.value[pack ? 'title' : 'output']).toBe('Complete record'); expect(result.value.unknown).toBe(0);
+        const result = current.items.find(item => item.sourceId === (recordAction === 'create' ? 'created-record' : row.sourceId));
+        if (valueCase && ['create', 'replace'].includes(recordAction)) expect(result.value).toEqual(valueCase.value);
+        else { expect(result.value[field]).toBe('Complete record'); expect(result.value.unknown).toBe(0); }
       }
       const prompts = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'prompts' });
       expect(prompts.items[0].value).toEqual(content.library[0]);
