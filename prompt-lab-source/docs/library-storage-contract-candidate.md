@@ -898,8 +898,46 @@ trimmed; malformed or contradictory folder references fail before mutation.
 Acceptance covers nested rename/move, leaf removal, literal legacy paths, ID
 and path collisions, stale input, unknown metadata, large histories, and the real
 export on an isolated copy. This pure planning boundary does not acknowledge a
-save. Service publication, causal reconciliation, API/outbox integration and
-app activation remain required follow-up work before the folder command ships.
+save. The service implementation below supplies publication and recovery;
+app integration and activation remain required before the folder command ships.
+
+The shared service boundary publishes changed folder identities and affected prompt
+revisions in one immutable commit. Collection strings become a compatibility
+projection of selected folder identities after the first folder command for that
+source. This avoids resurrecting old paths during concurrent renames. The service
+requires complete source evidence, retains removed folders for checkpoint restore,
+and rejects mixed branch choices with inconsistent parent paths or assignments.
+The existing preview, receipt, backup and durable outbox contracts also apply to
+folder commands. Acceptance includes interrupted publication, restart,
+idempotent retries, concurrent independent and conflicting changes, checkpoint
+restore, authenticated API parity and the private export. No dependency, automatic
+service startup or personal-library activation is introduced by this boundary.
+
+The [folder service planner](../library-storage/folder-plan.mjs), authenticated
+`/v1/library/folder-mutations` route and durable outbox now support creation,
+rename, move and confirmed removal. Removed folders remain retained for restore;
+their IDs cannot be reused. Current collection paths follow selected folder
+identities. Conflicting parent paths, duplicate sibling names and dangling prompt
+assignments block reconciliation. Every affected prompt gains a prior revision;
+existing history and unknown fields remain intact.
+
+Dominic Node 22.23.4 passes all 274 storage tests, including
+[ten service cases](../library-storage/folder-command.test.mjs), documentation
+lint and four documentation contracts. Shared and OpenAPI schemas agree: 36 new
+and 55 earlier runtime fixtures validate; 42 malformed folder requests reject.
+The real export on the Mac passes atomic rename of 116 assigned prompts,
+reopen and receipt replay, retention of all prior objects and receipts, and
+preservation of unrelated selected domains. It retains all 216 prompts, 18
+folders, two Trash records and three runs, adding 116 prior prompt revisions.
+The original 1,666,421 bytes remain unchanged and no private data was uploaded.
+
+Real-data performance and restore acceptance remain incomplete. The initial
+combined check reached its 55-second bound after rename publication; the
+read-only resume and receipt replay passed in 8.839 seconds. A separate restore
+published its checkpoint but reached its 45-second bound before selection and
+complete transfer verification finished. The disposable state and initial logs
+are retained. Synthetic checkpoint and transfer cases pass; they do not close
+the unfinished private-data restore or scale gates.
 
 The [shared planner](../library-storage/folder-transaction.mjs) and its
 [ten focused cases](../library-storage/folder-transaction.test.mjs) are implemented.

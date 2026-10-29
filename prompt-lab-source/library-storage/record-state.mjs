@@ -42,7 +42,7 @@ export async function effectiveRecordGroup(pkg, inspected, template) {
   const { buildVerifiedDomainMap } = await import('./domain-map.mjs');
   const map = await buildVerifiedDomainMap(pkg, inspected);
   const row = map.records.find(row => row.key === (group.selected ?? group.candidates[0]));
-  if (!row || !Object.hasOwn(recordDomains, row.domain)) throw new LibraryError('RECORD_TARGET_UNAVAILABLE', 'The retained record is unavailable.', 409);
+  if (!row || (!Object.hasOwn(recordDomains, row.domain) && row.domain !== 'folders')) throw new LibraryError('RECORD_TARGET_UNAVAILABLE', 'The retained record is unavailable.', 409);
   const result = selectionForRecord(row, group.id);
   return group.selected === null ? { ...result, selected: null, selectedHash: null, inactiveReason: 'checkpoint-not-selected' } : result;
 }

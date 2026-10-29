@@ -1,5 +1,6 @@
 import { assertWorkspace, canonical, hash, LibraryError } from './contract.mjs';
-import { changeFolder, reconcileFolders } from '../prompt-lab-extension/src/lib/collectionFolders.js';
+import { changeFolder } from '../prompt-lab-extension/src/lib/collectionFolders.js';
+import { assertFolderProjection } from './folder-projection.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
@@ -19,27 +20,8 @@ export async function planFolderTransaction(workspace, value) {
   const beforeHash = await hash(workspace);
   if (beforeHash !== value.expectedStateHash) fail('REVISION_CONFLICT', 'The reviewed workspace changed. Review the folder operation again.');
   const folders = workspace.folders, collections = workspace.collections;
-  if (!Array.isArray(folders) || !Array.isArray(collections) || collections.some(name => typeof name !== 'string' || !name.trim())
-    || new Set(collections).size !== collections.length) fail('FOLDER_PROJECTION_INCOMPLETE', 'Review complete folders and unique collection paths before changing them.');
-  try { reconcileFolders(folders); } catch { fail('INVALID_FOLDER_GRAPH', 'Folder IDs, paths and parent links must be unique, present and acyclic.'); }
-  const paths = new Set(folders.map(folder => folder.collection));
-  if (paths.size !== collections.length || collections.some(name => !paths.has(name))) {
-    fail('FOLDER_PROJECTION_INCOMPLETE', 'Folder records and collection paths differ. Review their migration before changing them.');
-  }
+  assertFolderProjection(workspace);
   const byId = new Map(folders.map(folder => [folder.id, folder]));
-  for (const prompt of workspace.library) {
-    if (!object(prompt)) fail('INVALID_FOLDER_REFERENCES', 'Prompt records must be preserved objects.');
-    if (prompt.folderId !== undefined && prompt.folderId !== null && prompt.folderId !== '') {
-      const folder = byId.get(prompt.folderId);
-      if (!folder || (prompt.collection !== undefined && prompt.collection !== null && prompt.collection !== '' && prompt.collection !== folder.collection)) {
-        fail('INVALID_FOLDER_REFERENCES', 'A prompt folder ID and collection path disagree. Review the source before changing it.');
-      }
-    }
-    if (prompt.collection !== undefined && typeof prompt.collection !== 'string' && prompt.collection !== null) {
-      fail('INVALID_FOLDER_REFERENCES', 'A prompt collection path has an unsupported value.');
-    }
-    if (prompt.collection && !paths.has(prompt.collection)) fail('INVALID_FOLDER_REFERENCES', 'A prompt collection has no reviewed folder record.');
-  }
   let nextFolders, target;
   if (value.action === 'create') {
     const folder = value.folder;

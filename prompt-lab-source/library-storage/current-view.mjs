@@ -1,6 +1,7 @@
 import { canonical, hash, inspectPackage, LibraryError } from './contract.mjs';
 import { buildVerifiedDomainMap, validateDomainPage } from './domain-map.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
+import { projectFolderCollections } from './folder-projection.mjs';
 
 const record = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const rootDomains = new Set(['prompts', 'trash', 'collections', 'folders', 'packs', 'loaded-packs', 'scratch',
@@ -10,7 +11,7 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
 export function retainedViewResolutions(inspected) {
   const owned = new Set([...inspected.manifest.groups, ...(inspected.manifest.recordGroups ?? [])].map(group => group.id));
-  return Object.fromEntries(inspected.currentView.groups.filter(group => !owned.has(group.id)).map(group => [group.id, group.selected]));
+  return Object.fromEntries(inspected.currentView.groups.filter(group => !owned.has(group.id) && group.decision !== 'folder-projection').map(group => [group.id, group.selected]));
 }
 
 /** Review current records without rewriting any source values or addresses. */
@@ -143,6 +144,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
   }
   for (const group of deletion.manifest.recordGroups ?? []) if (!groupByKey.has(group.id)) blocked.push({ code: 'RECORD_SELECTION_UNAVAILABLE', groupId: group.id });
   for (const key of Object.keys(resolutions)) if (!groupByKey.has(key)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unavailable current-view group.');
+  projectFolderCollections(groups, byKey, inspected, resolutions, blocked);
   const selectedRoots = new Set(groups.flatMap(group => group.selected === null ? [] : [group.selected]));
   const rootFor = row => { let current = row; while (current.parent && !rootGroups.has(current.key)) current = byKey.get(current.parent); return current.key; };
   const selected = map.records.filter(row => selectedRoots.has(rootFor(row))).map(row => row.key).sort();

@@ -118,9 +118,18 @@ export async function planReconciliation({ libraryId, currentRevision, incomingR
   }
   const selection = await buildLibrarySelection({ sources, groups, recordGroups, objects });
   const sourceBindings = [...new Set([...current.sourceBindings, ...incoming.sourceBindings])].sort();
-  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, sourceBindings, [...(current.derivedSources ?? []), ...(incoming.derivedSources ?? [])]);
+  const derivedSources = [...new Map([...(current.derivedSources ?? []), ...(incoming.derivedSources ?? [])]
+    .map(source => [canonical(source), source])).values()];
+  const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, sourceBindings, derivedSources);
+  let folderReview;
+  if (derivedSources.some(source => source.folderMutation)) {
+    const { planCurrentView } = await import('./current-view.mjs');
+    const view = await planCurrentView(packageFor(libraryId, currentRevision, objects), { stateKind: 'library-state', manifest, sourceBindings, derivedSources });
+    folderReview = { blocked: view.blocked.filter(issue => ['INVALID_FOLDER_GRAPH', 'INVALID_FOLDER_REFERENCES', 'FOLDER_PROJECTION_INCOMPLETE'].includes(issue.code)) };
+  }
   const plan = { format: 'promptlab-library-reconciliation-plan', schemaVersion: VERSION, libraryId, baseRevision: currentRevision,
     incomingRevision, incomingManifestHash, ancestorRevision, resolutions, rows, manifest, deletionReview,
-    unresolved: rows.filter(row => row.choice === null).length + deletionReview.blocked.length, activationReady: false };
+    ...(folderReview ? { folderReview } : {}),
+    unresolved: rows.filter(row => row.choice === null).length + deletionReview.blocked.length + (folderReview?.blocked.length ?? 0), activationReady: false };
   return { ...plan, fingerprint: await hash(plan) };
 }

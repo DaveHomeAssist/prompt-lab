@@ -26,7 +26,8 @@
             "prompt-edit-plan",
             "prompt-create-plan",
             "prompt-lifecycle-plan",
-            "record-mutation-plan"
+            "record-mutation-plan",
+            "folder-mutation-plan"
           ]
         },
         "data": {}
@@ -115,7 +116,8 @@
             "edit",
             "create",
             "lifecycle",
-            "record"
+            "record",
+            "folder"
           ]
         },
         "importPlan": {
@@ -166,6 +168,10 @@
           "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "recordPlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "folderPlan": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
         }
@@ -689,6 +695,94 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "folder"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "folderPlan",
+              "inputState"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restorePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restoredCheckpointId"
+                  ]
+                },
+                {
+                  "required": [
+                    "reconciliationPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "incomingBranch"
+                  ]
+                },
+                {
+                  "required": [
+                    "currentViewPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "editPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "createPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "lifecyclePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "recordPlan"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -736,7 +830,8 @@
             "edit",
             "create",
             "lifecycle",
-            "record"
+            "record",
+            "folder"
           ]
         },
         "commitAvailable": {
@@ -780,6 +875,9 @@
         },
         "recordPlan": {
           "$ref": "#/$defs/RecordPlan"
+        },
+        "folderPlan": {
+          "$ref": "#/$defs/FolderPlan"
         }
       },
       "required": [
@@ -1238,6 +1336,59 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "folder"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "folderPlan"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "folderPlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "folderPlan"
+              ]
+            }
+          }
         }
       ]
     },
@@ -1300,7 +1451,8 @@
             "edit",
             "create",
             "lifecycle",
-            "record"
+            "record",
+            "folder"
           ]
         },
         "stateHash": {
@@ -3743,6 +3895,39 @@
         },
         "activationReady": {
           "const": false
+        },
+        "folderReview": {
+          "type": "object",
+          "properties": {
+            "blocked": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "enum": [
+                      "INVALID_FOLDER_GRAPH",
+                      "INVALID_FOLDER_REFERENCES",
+                      "FOLDER_PROJECTION_INCOMPLETE"
+                    ]
+                  },
+                  "sourceIdentity": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "code",
+                  "sourceIdentity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "blocked"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -3895,7 +4080,8 @@
             "reviewed",
             "automatic",
             "unresolved",
-            "command"
+            "command",
+            "folder-projection"
           ]
         }
       },
@@ -4853,6 +5039,215 @@
             "mode"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "create"
+            },
+            "folder": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "\\S"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "parentId"
+              ],
+              "additionalProperties": true,
+              "not": {
+                "required": [
+                  "collection"
+                ]
+              }
+            },
+            "mode": {
+              "const": "folder"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folder",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "change"
+            },
+            "folderId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedFolderHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changes": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false,
+              "minProperties": 1
+            },
+            "mode": {
+              "const": "folder"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folderId",
+            "expectedFolderHash",
+            "changes",
+            "mode"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "folderId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedFolderHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "confirmRemoval": {
+              "const": true
+            },
+            "mode": {
+              "const": "folder"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folderId",
+            "expectedFolderHash",
+            "confirmRemoval",
+            "mode"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -5447,6 +5842,40 @@
             "domain",
             "sourceIdentity",
             "sourceId",
+            "changedAt"
+          ],
+          "additionalProperties": false
+        },
+        "folderMutation": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "enum": [
+                "create",
+                "change",
+                "remove"
+              ]
+            },
+            "folderId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "sourceIdentity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            }
+          },
+          "required": [
+            "action",
+            "folderId",
+            "sourceIdentity",
             "changedAt"
           ],
           "additionalProperties": false
@@ -6208,7 +6637,8 @@
             "test-cases",
             "execution-traces",
             "experiments",
-            "packs"
+            "packs",
+            "folders"
           ]
         },
         "sourceIdentity": {
@@ -6250,7 +6680,8 @@
         "inactiveReason": {
           "enum": [
             "permanent-deletion",
-            "checkpoint-not-selected"
+            "checkpoint-not-selected",
+            "folder-removed"
           ]
         }
       },
@@ -6361,6 +6792,375 @@
         "unresolved",
         "activationReady",
         "fingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "FolderRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "create"
+            },
+            "folder": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "pattern": "\\S"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "parentId"
+              ],
+              "additionalProperties": true,
+              "not": {
+                "required": [
+                  "collection"
+                ]
+              }
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folder"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "change"
+            },
+            "folderId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedFolderHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changes": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [],
+              "additionalProperties": false,
+              "minProperties": 1
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folderId",
+            "expectedFolderHash",
+            "changes"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "sourceBinding": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "const": "remove"
+            },
+            "folderId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "\\S"
+            },
+            "expectedFolderHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "confirmRemoval": {
+              "const": true
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "sourceBinding",
+            "changedAt",
+            "action",
+            "folderId",
+            "expectedFolderHash",
+            "confirmRemoval"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "FolderPlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-folder-mutation-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "request": {
+          "$ref": "#/$defs/FolderRequest"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "inputState": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "derivedSource": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/DerivedSource"
+            },
+            {
+              "required": [
+                "folderMutation"
+              ]
+            }
+          ]
+        },
+        "manifest": {
+          "$ref": "#/$defs/LibraryState"
+        },
+        "currentViewPlan": {
+          "$ref": "#/$defs/CurrentViewPlan"
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "changes": {
+          "type": "object",
+          "properties": {
+            "paths": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "folderId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "\\S"
+                  },
+                  "from": {
+                    "type": "string"
+                  },
+                  "to": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "folderId",
+                  "from",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "prompts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "index": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "id": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "index",
+                  "id"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "folders": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "pattern": "\\S"
+                  },
+                  "beforeHash": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "afterHash": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^sha256:[a-f0-9]{64}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "beforeHash",
+                  "afterHash"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "paths",
+            "prompts",
+            "folders"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "request",
+        "source",
+        "inputState",
+        "derivedSource",
+        "manifest",
+        "currentViewPlan",
+        "unresolved",
+        "activationReady",
+        "fingerprint",
+        "changes"
       ],
       "additionalProperties": false
     }

@@ -1,5 +1,6 @@
 import { canonical, hash, LibraryError } from './contract.mjs';
 import { normalizeLifecycleRequest } from './lifecycle-request.mjs';
+import { normalizeFolderRequest } from './folder-request.mjs';
 import { normalizeRecordRequest } from './record-request.mjs';
 import { normalizeCreateRequest } from './create-request.mjs';
 import { normalizeEditRequest } from './edit-request.mjs';
@@ -8,13 +9,17 @@ const object = value => value && Object.getPrototypeOf(value) === Object.prototy
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
-const modes = ['snapshot', 'import', 'select', 'restore', 'reconcile', 'edit', 'create', 'lifecycle', 'record'];
+const modes = ['snapshot', 'import', 'select', 'restore', 'reconcile', 'edit', 'create', 'lifecycle', 'record', 'folder'];
 
 export function normalizeCommandRequest(value) {
   if (!object(value) || !modes.includes(value.mode) || !id(value.libraryId)
     || (value.expectedRevision !== null && !address(value.expectedRevision))) fail('INVALID_COMMAND', 'A library, base revision and supported command are required.');
   canonical(value);
   const request = structuredClone(value), mode = request.mode;
+  if (mode === 'folder') {
+    const { mode: operation, ...input } = request;
+    return { ...normalizeFolderRequest(input), mode: operation };
+  }
   if (mode === 'record') {
     const { mode: operation, ...input } = request;
     return { ...normalizeRecordRequest(input), mode: operation };

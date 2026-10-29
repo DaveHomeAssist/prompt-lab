@@ -9,6 +9,17 @@ export { normalizeEditRequest } from './edit-request.mjs';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 
+export async function appendPromptRevision(previous, next, previousHash, identity, editedAt) {
+  if (previous.versions !== undefined && !Array.isArray(previous.versions)) fail('INVALID_EDIT', 'Preserve and repair the invalid history before editing.');
+  const { versions, ...snapshot } = structuredClone(previous);
+  snapshot.id = previous.currentVersionId || `v-${previousHash.slice(7)}`;
+  next.versions = [...(versions ?? []), snapshot];
+  next.currentVersionId = `v-${(await hash(identity)).slice(7)}`;
+  next.updatedAt = editedAt;
+  if (Object.hasOwn(next, 'updated_at')) next.updated_at = editedAt;
+  return next;
+}
+
 export function validateChangedFields(value, updates, code = 'INVALID_EDIT') {
   const strings = new Set(['title', 'original', 'enhanced', 'prompt', 'content', 'notes', 'description', 'collection', 'folderId', 'kind', 'sourceNoteId']);
   for (const key of new Set(updates.map(update => update.path[0]))) {
@@ -52,13 +63,7 @@ export async function planPromptEdit(pkg, inspected, value) {
     fail('INVALID_EDIT', 'An edit cannot change the library deletion generation.');
   }
   if (canonical(next) === canonical(previous)) fail('NO_CHANGE', 'This edit does not change the selected prompt.');
-  if (previous.versions !== undefined && !Array.isArray(previous.versions)) fail('INVALID_EDIT', 'Preserve and repair the invalid history before editing.');
-  const { versions, ...snapshot } = structuredClone(previous);
-  snapshot.id = previous.currentVersionId || `v-${selected.valueHash.slice(7)}`;
-  next.versions = [...(versions ?? []), snapshot];
-  next.currentVersionId = `v-${(await hash(request)).slice(7)}`;
-  next.updatedAt = request.editedAt;
-  if (Object.hasOwn(next, 'updated_at')) next.updated_at = request.editedAt;
+  await appendPromptRevision(previous, next, selected.valueHash, request, request.editedAt);
   const workspace = { library: [next], recordEdit: { baseRevision: pkg.head, groupId: group.id,
     previousMember: group.selected, expectedRecordHash: selected.valueHash } };
   const input = await makeObject('workspace', workspace), source = await makeObject('source', canonical(workspace));
