@@ -69,4 +69,3 @@ export function createFakeIndexedDb() {
 
   return { open, transactions, state, rows: () => databases.get(LIBRARY_JOURNAL_DB)?.stores.get(LIBRARY_JOURNAL_STORE)?.rows };
 }
-
