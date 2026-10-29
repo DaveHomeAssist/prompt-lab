@@ -298,6 +298,7 @@ export default function App({
     lintIssues, lintOpen, setLintOpen, handleLintFix,
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
+    editingVersionId, setEditingVersionId,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
     sourceNoteId, setSourceNoteId, followUpOrigin, setFollowUpOrigin,
@@ -452,6 +453,7 @@ export default function App({
     },
     persistence: {
       editingId,
+      editingVersionId,
       saveTitle,
       saveTags: [...saveTags],
       saveCollection,
@@ -515,6 +517,7 @@ export default function App({
     setEnhMode(restoreEditorMode(editor.enhMode, readGenerationOptions()));
     if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
+    setEditingVersionId?.(persistence?.editingVersionId || (persistence?.editingId ? 'unverified' : null));
     setSaveTitle(persistence?.saveTitle || '');
     setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
     setSaveCollection(persistence?.saveCollection || '');

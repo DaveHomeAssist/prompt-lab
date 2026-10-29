@@ -12,11 +12,13 @@ async function prepare(page, existing) {
     localStorage.setItem('pl_telemetry_consent', 'denied');
     localStorage.setItem('pl2-library', JSON.stringify(existing ? [{
       id: 'split-save-fixture', title, original: old, enhanced: old,
+      currentVersionId: 'initial-version',
       createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
     }] : []));
     localStorage.setItem('pl2-session-pl2-session', JSON.stringify({
       raw: old, enhanced: old, variants: [], tab: 'editor', saveTitle: title,
       editingId: existing ? 'split-save-fixture' : null,
+      editingVersionId: existing ? 'initial-version' : null,
     }));
   }, { existing, title: TITLE, old: OLD });
   await page.route('**/api/**', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{}' }));
@@ -26,6 +28,48 @@ async function prepare(page, existing) {
   }
   await expect(page.getByLabel('Dual pane prompt editor')).toHaveValue(OLD);
 }
+
+test('a stale tab cannot replace a newer saved body by changing Favorite', async ({ page, context }) => {
+  await prepare(page, true);
+  const stale = await context.newPage();
+  await stale.addInitScript(() => window.addEventListener('storage', event => event.stopImmediatePropagation(), true));
+  await prepare(stale, true);
+  await stale.goto('/app/#/library');
+  await expect(stale.getByTestId('library-search')).toBeVisible();
+  await page.getByLabel('Dual pane prompt editor').fill(NEW);
+  await page.getByLabel('Dual pane prompt editor').press('Control+s');
+  await expect.poll(async () => (await readLibrary(page))[0]?.enhanced).toBe(NEW);
+  const saved = (await readLibrary(page))[0];
+  await stale.getByRole('button', { name: `Favorite ${TITLE}`, exact: true }).click();
+  await expect(stale.getByTestId('library-save-error')).toContainText('Library changed in another tab');
+  expect((await readLibrary(stale))[0]).toEqual(saved);
+  await stale.getByRole('button', { name: `Favorite ${TITLE}`, exact: true }).click();
+  await expect.poll(async () => (await readLibrary(stale))[0]?.favorite).toBe(true);
+  expect((await readLibrary(stale))[0]).toMatchObject({ enhanced: NEW, currentVersionId: saved.currentVersionId });
+});
+
+test('a stale editor retains its draft and can save a separate copy after another tab saves', async ({ page, context }) => {
+  await prepare(page, true);
+  const stale = await context.newPage();
+  await prepare(stale, true);
+  await page.getByLabel('Dual pane prompt editor').fill(NEW);
+  await page.getByLabel('Dual pane prompt editor').press('Control+s');
+  await expect.poll(async () => (await readLibrary(page))[0]?.enhanced).toBe(NEW);
+  await expect(stale.getByTestId('dual-selected-preview')).toContainText(NEW);
+  const saved = (await readLibrary(page))[0];
+  const draft = 'Keep this independent edit from the second tab.';
+  await stale.getByLabel('Dual pane prompt editor').fill(draft);
+  await stale.getByLabel('Dual pane prompt editor').press('Control+s');
+  await expect(stale.getByTestId('library-save-error')).toContainText('newer version');
+  await expect(stale.getByLabel('Dual pane prompt editor')).toHaveValue(draft);
+  expect((await readLibrary(stale))[0]).toEqual(saved);
+  await stale.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+  await expect.poll(async () => (await readLibrary(stale)).length).toBe(2);
+  expect((await readLibrary(stale)).find(row => row.id === saved.id)).toEqual(saved);
+  expect((await readLibrary(stale)).find(row => row.id !== saved.id).enhanced).toBe(draft);
+  await stale.reload();
+  expect((await readLibrary(stale)).find(row => row.id === saved.id)).toEqual(saved);
+});
 
 for (const [width, trigger] of [[1440, 'Control+s'], [1440, 'Meta+s'], [375, 'Control+s'], [1440, 'palette']]) {
   for (const existing of [true, false]) {
