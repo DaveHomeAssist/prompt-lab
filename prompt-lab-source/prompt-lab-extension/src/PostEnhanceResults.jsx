@@ -1,4 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview';
 import { scorePrompt, wordDiff } from './promptUtils';
@@ -35,18 +36,21 @@ function restoreStructuredEdit(text, edit) {
 export default function PostEnhanceResults({
   m, compact, raw, enhanced, setEnhanced, variants, resultMeta, setResultMeta, copy, enhance, dismiss,
   editingId, lib, evalRuns, showInlineSaveBar, saveTitle, setSaveTitle, suggestedSaveTitle, canSavePanel,
-  quickSave, quickSaveAsNew, openSavePanel, currentEntry, onCandidateSelection,
+  quickSave, quickSaveAsNew, openSavePanel, currentEntry, onCandidateSelection, lastSaveReceipt,
   // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, slice 1):
   // one primary Save and Copy live in the commit bar, and the assumptions count
   // sits in the header.
   splitWorkspace = false,
   // Slice 2A: name what the candidate toolbar's Save does, as the commit bar does.
   explicitSaveLabels = false,
+  saveBarTarget = null,
 }) {
   const assumptionsHeadingRef = useRef(null);
   const [view, setView] = useState('improved');
   const [preview, setPreview] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState(null);
+  const savePendingRef = useRef(false);
   const normalized = useMemo(() => normalizeResultMeta(resultMeta, { enhanced, variants }), [resultMeta, enhanced, variants]);
   const selected = normalized.candidates.find(candidate => candidate.id === normalized.selectedCandidateId)
     || normalized.candidates[0] || { id: 'improved', label: 'Improved', content: enhanced };
@@ -61,6 +65,37 @@ export default function PostEnhanceResults({
   const latencyMs = normalized.latencyMs ?? evalRuns?.[0]?.latencyMs;
   const usage = normalized.usage || evalRuns?.[0]?.usage;
   const reversibleEdits = normalized.reversibleEdits.filter(edit => !edit.candidateId || edit.candidateId === selected.id);
+  useEffect(() => {
+    if (lastSaveReceipt?.entryId !== editingId || !lastSaveReceipt?.resultSnapshot) return;
+    setSaveFeedback({
+      ...lastSaveReceipt.resultSnapshot, state: 'saved',
+      title: lastSaveReceipt.title, versionNumber: lastSaveReceipt.versionNumber,
+    });
+  }, [lastSaveReceipt, editingId]);
+  const saving = Boolean(lib?.saving || saveFeedback?.state === 'pending');
+  const changedSinceSave = saveFeedback?.state === 'saved' && (
+    saveFeedback.content !== selected.content || saveFeedback.raw !== raw
+    || saveFeedback.candidateId !== selected.id || saveFeedback.runId !== normalized.runId
+    || saveFeedback.title !== (saveTitle || suggestedSaveTitle)
+  );
+  const resultSaveMessage = saving ? `Saving ${selected.label}…`
+    : saveFeedback?.state === 'failed' || lib?.saveError ? 'Save failed. Your result is still here. Retry saving.'
+      : saveFeedback?.state === 'saved'
+        ? `Saved ${saveFeedback.label} to “${saveFeedback.title}” · version ${saveFeedback.versionNumber}.${changedSinceSave ? ' Current result has unsaved changes.' : ''}`
+        : currentEntry ? `Selected: ${selected.label}. Save adds a version to “${currentEntry.title}”.` : `Selected: ${selected.label}. Not saved to Library yet.`;
+  const saveSelected = async (asNew = false) => {
+    if (savePendingRef.current) return;
+    savePendingRef.current = true;
+    const snapshot = { content: selected.content, raw, candidateId: selected.id, label: selected.label, runId: normalized.runId };
+    setSaveFeedback({ state: 'pending' });
+    try {
+      let saved = asNew ? quickSaveAsNew(selected) : quickSave(selected);
+      if (saved?.then) saved = await saved;
+      setSaveFeedback(saved?.id ? { ...snapshot, state: 'saved', title: saved.title || saveTitle || suggestedSaveTitle, versionNumber: saved.versionNumber || 1 } : { state: 'failed' });
+    } catch {
+      setSaveFeedback({ state: 'failed' });
+    } finally { savePendingRef.current = false; }
+  };
 
   const selectCandidate = (candidate, next = {}) => {
     const nextMeta = { ...normalized, selectedCandidateId: candidate.id };
@@ -105,9 +140,40 @@ export default function PostEnhanceResults({
     options[nextIndex]?.focus();
   };
 
+  const saveBar = (
+      <footer className="pl-result-commit-bar">
+        <div className="pl-commit-copy"><p className="pl-eyebrow">Save selected result</p><label htmlFor="result-save-title" className="sr-only">Prompt title</label><input id="result-save-title" value={saveTitle} placeholder={suggestedSaveTitle} onChange={event => setSaveTitle(event.target.value)} /></div>
+        <div className="pl-commit-actions">
+          {splitWorkspace && (
+            <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
+          )}
+          <button data-testid="save-to-library" type="button" onClick={() => saveSelected()} disabled={!canSavePanel || saving} className="pl-primary-button"><Ic n="Save" size={13} /> {saving ? 'Saving…' : currentEntry ? 'Save new version' : 'Save as new prompt'}{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
+          {(editingId || currentEntry || showInlineSaveBar) && <details className="pl-result-save-more" onKeyDown={event => {
+            if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
+          }}>
+            <summary className="pl-secondary-button" aria-label="More result actions">More</summary>
+            <div className="pl-result-save-menu" role="group" aria-label="Secondary result actions" onClick={event => {
+              if (event.target.closest('button')) {
+                const menu = event.currentTarget.closest('details');
+                menu.open = false;
+                menu.querySelector('summary')?.focus();
+              }
+            }}>
+              {currentEntry && <button type="button" onClick={() => saveSelected(true)} disabled={!canSavePanel || saving} className="pl-secondary-button">Save as new prompt</button>}
+              {editingId && <button type="button" onClick={() => pinCandidate(selected)} title="Set the comparison baseline. This does not save a Library version." className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
+              {showInlineSaveBar && <button type="button" className="pl-secondary-button" onClick={() => openSavePanel()}>Library details</button>}
+            </div>
+          </details>}
+        </div>
+        <p role="status" aria-live="polite" className="pl-result-save-feedback">{resultSaveMessage}</p>
+      </footer>
+  );
+
   return (
     <section data-testid="output-panel" className="pl-results-shell" aria-labelledby="result-verdict-title">
       <p className="sr-only" role="status" aria-live="polite">Enhancement complete. {normalized.candidates.length} candidate{normalized.candidates.length === 1 ? '' : 's'} available. {selected.label} selected.</p>
+      {saveBarTarget ? createPortal(saveBar, saveBarTarget) : saveBar}
+
       <header className="pl-results-verdict">
         <span className="sr-only">Results</span>
         <div className="min-w-0">
@@ -171,7 +237,7 @@ export default function PostEnhanceResults({
             <button type="button" onClick={() => selectCandidate(selected, { view: 'improved', preview: true })}>Preview</button>
             <button type="button" onClick={() => selectCandidate(selected, { view: 'changes', preview: false })}>Diff</button>
             {!splitWorkspace && <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)}>Copy</button>}
-            {!splitWorkspace && <button type="button" disabled={!canSavePanel} onClick={() => quickSave(selected)}>{explicitSaveLabels ? (currentEntry ? SAVE_LABELS.newVersion : SAVE_LABELS.newPrompt) : 'Save'}</button>}
+            {!splitWorkspace && <button type="button" disabled={!canSavePanel || saving} onClick={() => saveSelected()}>{explicitSaveLabels ? (currentEntry ? SAVE_LABELS.newVersion : SAVE_LABELS.newPrompt) : 'Save'}</button>}
             {editingId && <button type="button" onClick={() => pinCandidate(selected)}>Pin</button>}
           </div>
         </aside>
@@ -233,18 +299,7 @@ export default function PostEnhanceResults({
           )}
         </div>
       </div>
-      <footer className="pl-result-commit-bar">
-        <div className="pl-commit-copy"><p className="pl-eyebrow">Commit selected result</p><label htmlFor="result-save-title" className="sr-only">Prompt title</label><input id="result-save-title" value={saveTitle} placeholder={suggestedSaveTitle} onChange={event => setSaveTitle(event.target.value)} /></div>
-        <div className="pl-commit-actions">
-          {splitWorkspace && (
-            <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
-          )}
-          {editingId && <button type="button" onClick={() => pinCandidate(selected)} className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
-          {currentEntry && <button type="button" onClick={() => quickSaveAsNew(selected)} disabled={!canSavePanel} className="pl-secondary-button">Save as new prompt</button>}
-          <button data-testid="save-to-library" type="button" onClick={() => quickSave(selected)} disabled={!canSavePanel} className="pl-primary-button"><Ic n="Save" size={13} /> {currentEntry ? 'Save new version' : 'Save as new prompt'}{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
-          {showInlineSaveBar && <button type="button" className="pl-icon-button" onClick={() => openSavePanel()} aria-label="Open library details"><Ic n="SlidersHorizontal" size={14} /></button>}
-        </div>
-      </footer>
+
     </section>
   );
 }
