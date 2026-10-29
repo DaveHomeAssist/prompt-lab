@@ -63,6 +63,7 @@ vi.mock('../promptUtils', () => ({
 
 vi.mock('../lib/platform.js', () => ({
   openSettings,
+  getConfiguredProviders: vi.fn(async () => [{ provider: 'anthropic', model: 'claude-haiku-5-5' }]),
 }));
 
 vi.mock('../hooks/useEvalRuns.js', () => ({
@@ -277,6 +278,17 @@ describe('useExecutionFlow', () => {
       status: 'error',
       input: 'Keep this input intact',
     }));
+  });
+
+  it('records the saved hosted model for a failed request instead of the payload default', async () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    try {
+      callModel.mockRejectedValueOnce(new Error('Provider unavailable'));
+      const { result } = renderExecutionFlow();
+      await act(async () => { await result.current.enhance(); });
+      await waitFor(() => expect(savedRuns).toHaveLength(1));
+      expect(savedRuns[0]).toMatchObject({ status: 'error', provider: 'anthropic', model: 'claude-haiku-5-5' });
+    } finally { vi.unstubAllEnvs(); }
   });
 
   it('keeps partial streamed failure visible and records one failed attempt without automatic retry', async () => {

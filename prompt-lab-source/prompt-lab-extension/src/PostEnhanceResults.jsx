@@ -144,8 +144,14 @@ export default function PostEnhanceResults({
           {(editingId || currentEntry || showInlineSaveBar) && <details className="pl-result-save-more" onKeyDown={event => {
             if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
           }}>
-            <summary className="pl-secondary-button">More</summary>
-            <div className="pl-result-save-menu" role="group" aria-label="Secondary result actions">
+            <summary className="pl-secondary-button" aria-label="More result actions">More</summary>
+            <div className="pl-result-save-menu" role="group" aria-label="Secondary result actions" onClick={event => {
+              if (event.target.closest('button')) {
+                const menu = event.currentTarget.closest('details');
+                menu.open = false;
+                menu.querySelector('summary')?.focus();
+              }
+            }}>
               {currentEntry && <button type="button" onClick={() => saveSelected(true)} disabled={!canSavePanel || saving} className="pl-secondary-button">Save as new prompt</button>}
               {editingId && <button type="button" onClick={() => pinCandidate(selected)} title="Set the comparison baseline. This does not save a Library version." className="pl-secondary-button"><Ic n="Pin" size={13} /> Pin golden</button>}
               {showInlineSaveBar && <button type="button" className="pl-secondary-button" onClick={() => openSavePanel()}>Library details</button>}

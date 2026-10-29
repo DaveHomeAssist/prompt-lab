@@ -101,7 +101,7 @@ export default function CreateContextBar({
       <details className="min-w-0 flex-1" open={!compact}>
       <summary className="pl-context-summary flex flex-wrap cursor-pointer items-center gap-2 min-w-0 text-xs">
         <span aria-hidden="true">▸</span>
-        <span className={`text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
+        <span className={`pl-context-heading text-[10px] uppercase tracking-widest font-bold shrink-0 ${accentTextClass}`}>{context.heading}</span>
         {context.title && <span className={`font-semibold ${m.text} truncate min-w-0`} title={context.title}>{context.title}</span>}
         {context.folder && (
           <span className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${m.codeBlock} ${m.textSub}`}>

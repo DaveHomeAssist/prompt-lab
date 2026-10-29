@@ -535,8 +535,8 @@ textarea:disabled {
 .pl-reasoning { margin-top: 0.75rem; border: 1px solid var(--result-line); border-radius: 0.65rem; padding: 0.7rem 0.8rem; }
 .pl-reasoning summary { cursor: pointer; font-size: 0.72rem; font-weight: 750; }
 .pl-reasoning p { margin-top: 0.55rem; font-size: 0.73rem; line-height: 1.6; opacity: 0.7; }
-/* Top action bar keeps Save beside its acknowledgement while review content scrolls. */
-.pl-result-commit-bar { position: sticky; top: 0; z-index: 6; flex-wrap: wrap; border-bottom: 1px solid var(--result-line); background: var(--pl-brand-ink); }
+/* The stacked layout scrolls the whole result; pinning a tall bar would obscure its controls. */
+.pl-result-commit-bar { position: relative; z-index: 6; flex-wrap: wrap; border-bottom: 1px solid var(--result-line); background: var(--pl-brand-ink); }
 .pl-result-save-feedback { flex: 1 0 100%; font-size: 0.72rem; overflow-wrap: anywhere; }
 .pl-result-save-more { position: relative; flex: 0 0 auto; }
 .pl-result-save-more > summary { cursor: pointer; }
@@ -1419,3 +1419,9 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-create-split:not(.is-flow) .pl-create-result-frame { display: flex; flex-direction: column; height: 100%; }
 .pl-create-split:not(.is-flow) .pl-create-result-review { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .pl-create-split.is-flow .pl-result-save-slot { position: sticky; top: 0; z-index: 6; }
+
+/* At high zoom on short screens, retain the title and save state on one line. */
+@media (max-height: 350px) {
+  .pl-context-summary { flex-wrap: nowrap; }
+  .pl-context-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+}
