@@ -1,7 +1,6 @@
 import { APP_VERSION } from '../constants.js';
 import { isExtension } from './platform.js';
 import {
-  isLandingTelemetryEvent,
   normalizeTelemetryEventName,
   sanitizeTelemetryEventContext,
 } from '../../../shared/telemetrySchema.js';
@@ -79,7 +78,8 @@ export function createDeviceId() {
 
 export function buildTelemetryEnvelope(state, sessionId, event, context = {}) {
   const eventName = normalizeTelemetryEventName(event);
-  const landingEvent = isLandingTelemetryEvent(eventName);
+  // AN-07: events carry only the anonymous device and session ids. The contact
+  // email is sent with the identify payload (buildTelemetryIdentityPayload).
   return {
     kind: 'event',
     event: eventName,
@@ -88,9 +88,6 @@ export function buildTelemetryEnvelope(state, sessionId, event, context = {}) {
     deviceId: state.deviceId,
     sessionId,
     telemetryEnabled: state?.telemetryEnabled === true,
-    ...(!landingEvent && normalizeEmail(state.contactEmail)
-      ? { contactEmail: normalizeEmail(state.contactEmail) }
-      : {}),
     context: sanitizeTelemetryEventContext(eventName, context),
   };
 }
