@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T10:41:06.104Z",
+  "snapshotAt": "2026-10-29T11:18:46.082Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,20 @@
   },
   "mainSha": "8c8ed89fa7b0c36eb91d35769d61a6c91746f891",
   "overall": "Acceptance incomplete",
-  "nextAction": "Implement the A1 cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance. Shared domain reads dd4491a pass 133 storage tests and exact address/value checks on all 353 occurrences in the private export. Native service ownership, app activation and real two-client iCloud acceptance remain open. Hosted work follows accepted Phase A; no paid provisioning. The registered Next Steps Board file remains absent.",
+  "nextAction": "Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance. Native service ownership, app activation and real two-client iCloud acceptance remain open. Hosted work follows accepted Phase A; no paid provisioning. The registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Current context write coordination verified",
+      "state": "Open",
+      "detail": "2026-10-29 Current-context write coordination pushed as 16fc8ab in draft PR248. Actual queued records, complete imports, Library/Scratch journal completion and extension draft callbacks are tracked before capture. Interference, unresolved failures, incomplete reads and timeouts reject; receipt scope is current-context with activationReady=false. A first database read refused during capture now permits later durable saves; its real browser regression failed before the repair. Dominic Node 22.23.4: 141 storage tests, 1517 app tests in 135 files and 231 legacy tests passed. After the final narrow retry repair, all 14 Chromium/extension cases, four focused record/recovery/import tests and fresh extension build passed. Full app suite preceded that repair. Docs lint 30 files and 4/4 consistency passed; all 21 source/doc files match runner hashes. Initial metadata parse failures were retained and the two pre-existing AppleDouble files moved outside the runner test tree; no repository test disabled. Private Mac export check preserved all 353 occurrences across 4 pages after reopen and original SHA-256; 60 missing run references remain explicit. No private payload transferred or personal library activated. A1 remains In progress. Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/16fc8abbe39829569bbe6adff671b871e3038a61"
+    },
+    {
+      "label": "Previous head Linux native acceptance failed",
+      "state": "Open",
+      "detail": "Desktop run 40859669350 at 7bf4cac failed Linux WebDriver session creation with POST /session timeout. Windows and macOS jobs passed; alternate-package acceptance skipped. Original log retained, cause unconfirmed. Current source 16fc8ab has separate CI checks. No installed or two-client acceptance inferred.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40859669350/job/123401691692"
+    },
     {
       "label": "Shared domain reads verified",
       "state": "Open",
@@ -1272,8 +1284,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Implement the cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance.",
-      "verification": "2026-10-29 Shared domain read candidate dd4491a in draft PR248; main 8c8ed89 integrated as 901d9fd. Every captured content family and retained workspace is addressable by immutable source hash, binding, replica and original path through one command-service/HTTP read contract. Raw values, primary keys, full histories, variants, candidates, Scratch, folder/pack links, recovery data and missing references survive. No replica is selected automatically. Dominic Node 22.23.4: all 133 storage tests pass, including 12 mapping/read checks and 1,002 indexed traces/41 versions; 63 runtime schema fixtures and six negative cases pass; docs lint and four consistency checks pass. After main integration, 35 targeted app tests and the extension build pass. Mac Node 22.22.1: all 353 occurrences in the original 1,666,421-byte export match source addresses across four pages after reopen; original SHA-256 unchanged. The 60 evaluation-run references absent from that export remain explicitly unresolved, with no invented data. No personal app stores captured or activated. Prior add1c5d Linux DEB acceptance failed opening a new WebDriver session (POST /session timeout); log retained, cause not established. Other prior extension/landing/Windows/macOS jobs passed. A1 remains In progress. Next: implement the cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance.",
+      "nextAction": "Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance.",
+      "verification": "2026-10-29 Current-context write coordination pushed as 16fc8ab in draft PR248. Actual queued records, complete imports, Library/Scratch journal completion and extension draft callbacks are tracked before capture. Interference, unresolved failures, incomplete reads and timeouts reject; receipt scope is current-context with activationReady=false. A first database read refused during capture now permits later durable saves; its real browser regression failed before the repair. Dominic Node 22.23.4: 141 storage tests, 1517 app tests in 135 files and 231 legacy tests passed. After the final narrow retry repair, all 14 Chromium/extension cases, four focused record/recovery/import tests and fresh extension build passed. Full app suite preceded that repair. Docs lint 30 files and 4/4 consistency passed; all 21 source/doc files match runner hashes. Initial metadata parse failures were retained and the two pre-existing AppleDouble files moved outside the runner test tree; no repository test disabled. Private Mac export check preserved all 353 occurrences across 4 pages after reopen and original SHA-256; 60 missing run references remain explicit. No private payload transferred or personal library activated. A1 remains In progress. Complete cross-client ownership and unsaved-editor flush for the migration barrier, then reviewed active projection and causal conflict acceptance.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
@@ -1608,7 +1620,7 @@
     {
       "id": "408255fc8f4481a78adcf3b63de7de3f",
       "title": "Windows NSIS drops Scratch content after restart",
-      "status": "Done",
+      "status": "In progress",
       "severity": "High",
       "area": "Background",
       "type": "Bug",
