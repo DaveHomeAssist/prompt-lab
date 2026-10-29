@@ -305,6 +305,16 @@ describe('CreateContextBar Scratch toggle', () => {
     expect(scratchToggle).not.toHaveBeenCalled();
   });
 
+  it('keeps the toggles together so they wrap as a row instead of covering the heading (320px)', () => {
+    const { container } = render(<CreateContextBar {...baseProps} currentEntry={null} raw="Draft" enhanced=""
+      scratchPanel={{ open: false, onToggle: vi.fn() }} promptsPanel={{ open: false, onToggle: vi.fn() }} />);
+    const group = container.querySelector('.pl-context-toggles');
+    expect(group).not.toBeNull();
+    expect(within(group).getAllByRole('button').map((b) => b.textContent.trim())).toEqual(['Scratch', 'Prompts']);
+    // The details reserve room for the shrink-0 "New unsaved prompt" heading.
+    expect(container.querySelector('details')).toHaveClass('min-w-[9.5rem]', 'basis-[9.5rem]');
+  });
+
   it('reports and toggles the Scratch panel state', () => {
     const onToggle = vi.fn();
     render(<CreateContextBar {...baseProps} currentEntry={null} raw="" enhanced="" scratchPanel={{ open: true, onToggle }} />);

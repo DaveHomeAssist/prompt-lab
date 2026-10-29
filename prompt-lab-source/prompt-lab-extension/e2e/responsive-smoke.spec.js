@@ -14,7 +14,7 @@ const viewports = [
   { name: 'desktop-1180', width: 1180, height: 900 },
 ];
 
-const compactNavigationLabels = ['Write', 'Library', 'Compose', 'Dual', 'Evaluate', 'Scratch'];
+const compactNavigationLabels = ['Write', 'Library', 'Compose', 'Dual Pane', 'Evaluate', 'Scratch'];
 const primaryWorkspaceLabels = ['Write', 'Library', 'Compose', 'Dual Pane', 'Evaluate', 'Scratch'];
 
 const providerResponse = {
@@ -191,7 +191,7 @@ async function expectNavigationContract(page, compact) {
 async function openWorkspace(page, label, compact) {
   if (compact) {
     await page.getByRole('navigation', { name: 'Primary mobile navigation' })
-      .getByRole('button', { name: label === 'Dual Pane' ? 'Dual' : label, exact: true })
+      .getByRole('button', { name: label, exact: true })
       .click();
     return;
   }
