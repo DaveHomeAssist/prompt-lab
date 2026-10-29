@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-27T22:48:30.067Z",
+  "snapshotAt": "2026-10-29T03:24:49.478875+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "236f839a09a838418f59733055bb26580a0997c3",
+  "mainSha": "56015f8650286a4ab9c0eeff59fc75d6e4515177",
   "overall": "Acceptance incomplete",
-  "nextAction": "Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
+  "nextAction": "Finish main verification and deliver PR252 test harness plus these records. Reload all open tabs; legacy edit sessions must reopen the prompt or save separately. Earlier unrelated next actions retained as historical, not re-audited in this repair: Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Save shortcut and stale tab repair live",
+      "state": "Verified",
+      "detail": "Save repair PR251 merged56015f8 after all15 candidate checks; exact production deployment READY. Signed-in production40811481653 passed4/4, including desktop/mobile shortcuts, version/reload and cancellation/retry; four sessions revoked. Test harness9a529b5 fixes phone theme navigation, application unchanged. Dominic Node22:91 targeted tests,19 combined browser cases, final49 preservation tests and10 save browser cases pass. Main hosted and native checks still running at snapshot collection. Snapshot checks remain optimistic, not atomic. Broader installed/signing/upgrade/human gates remain separate.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/251"
+    },
     {
       "label": "Import folder concurrency branch verification",
       "state": "Verified",
@@ -1094,8 +1100,8 @@
       "inPlan": false,
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
       "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Add the shared library sync engine, unmounted (sync slice 3)",
-      "status": "Not started",
+      "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
@@ -1106,7 +1112,7 @@
       "inPlan": false,
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
       "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Record account library sync decision and draft policy text (sync slice 1)",
+      "title": "Reconcile storage plan and hosted decisions B1 (sync slice 1)",
       "status": "Not started",
       "severity": "Medium",
       "area": "Library",
@@ -1118,7 +1124,7 @@
       "inPlan": false,
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
       "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Add account library sync to the web shell (sync slice 4)",
+      "title": "Connect desktop folder picker and app A3 (sync slice 4)",
       "status": "Not started",
       "severity": "Medium",
       "area": "Library",
@@ -1126,11 +1132,23 @@
       "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
     },
     {
+      "id": "402255fc8f4481f494ced6b248f38c8c",
+      "inPlan": false,
+      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
+      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
+      "title": "Build durable folder service and local API A2 (sync slice 2)",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
+    },
+    {
       "id": "402255fc8f4481f1840fd1440a7dcb35",
       "inPlan": false,
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
       "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Launch account library sync on production web (sync slice 5)",
+      "title": "Verify iCloud recovery and API acceptance A4 (sync slice 5)",
       "status": "Not started",
       "severity": "Medium",
       "area": "Library",
@@ -1138,52 +1156,16 @@
       "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
     },
     {
-      "id": "402255fc8f4481f494ced6b248f38c8c",
-      "inPlan": false,
-      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
-      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Add account library sync schema and API behind LIBRARY_SYNC_ENABLED (sync slice 2)",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
-    },
-    {
-      "id": "402255fc8f448100b411f4a4a101b4a9",
-      "title": "Make bug reports and feature requests easy to find",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Layout",
-      "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
-      "inPlan": false,
-      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
-    },
-    {
-      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
-      "title": "Review prompt naming upgrades and remaining title quality gaps",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "UX",
-      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
-      "inPlan": false,
-      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
-      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
-    },
-    {
       "id": "402255fc8f44812cabebf92f0e4f9104",
       "title": "Clarify prompt lifecycle and keep New Prompt in one place",
-      "status": "Done",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Editor",
       "type": "UX",
       "url": "https://app.notion.com/402255fc8f44812cabebf92f0e4f9104",
       "inPlan": false,
-      "nextAction": "Retain delivered lifecycle; select the next October 23 backlog slice only when authorized.",
-      "verification": "PR199 merged b405d3c after all candidate checks passed; exact production READY and signed-in Create39935950303 passed2/2 with both session revocations verified. Dominic lifecycle9/9 and hosted47pass/1authskip; native39933693461 all6jobs pass. Main CI still running at snapshot. Broader human/signing/upgrade acceptance remains open."
+      "nextAction": "Finish post-merge main checks and record the terminal result.",
+      "verification": "Save repair PR251 merged56015f8 after all15 candidate checks; exact production deployment READY. Signed-in production40811481653 passed4/4, including desktop/mobile shortcuts, version/reload and cancellation/retry; four sessions revoked. Test harness9a529b5 fixes phone theme navigation, application unchanged. Dominic Node22:91 targeted tests,19 combined browser cases, final49 preservation tests and10 save browser cases pass. Main hosted and native checks still running at snapshot collection. Snapshot checks remain optimistic, not atomic. Broader installed/signing/upgrade/human gates remain separate."
     },
     {
       "id": "402255fc8f448140b0b8f0bfcee2b929",
@@ -1220,6 +1202,30 @@
       "inPlan": false,
       "nextAction": "Verify whether the General task and General target options already deliver a General enhance mode (D-INT-4 A).",
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f448100b411f4a4a101b4a9",
+      "title": "Make bug reports and feature requests easy to find",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "inPlan": false,
+      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
+      "title": "Review prompt naming upgrades and remaining title quality gaps",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
+      "inPlan": false,
+      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
+      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
     },
     {
       "id": "402255fc8f44813faf3ae58a8b002426",
@@ -1282,6 +1288,30 @@
       "url": "https://app.notion.com/405255fc8f4481c78d80ce2e49b6fab8"
     },
     {
+      "id": "405255fc8f4481d1bc61f4f8984c5840",
+      "inPlan": false,
+      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
+    },
+    {
+      "id": "405255fc8f4481d4824bfa1e91474ef0",
+      "inPlan": false,
+      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Notify when a long prompt run finishes",
+      "status": "Not started",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
+    },
+    {
       "id": "405255fc8f4481e0998dcf99824e8bd2",
       "inPlan": false,
       "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
@@ -1330,30 +1360,6 @@
       "url": "https://app.notion.com/405255fc8f44815689b6d0ade1bda5eb"
     },
     {
-      "id": "405255fc8f4481d1bc61f4f8984c5840",
-      "inPlan": false,
-      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
-    },
-    {
-      "id": "405255fc8f4481d4824bfa1e91474ef0",
-      "inPlan": false,
-      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Notify when a long prompt run finishes",
-      "status": "Not started",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
-    },
-    {
       "id": "405255fc8f44814e998fdf193173cfe8",
       "inPlan": false,
       "nextAction": "None for the scoped recovery. Optional signed-in and physical acceptance remains in broader QA.",
@@ -1400,6 +1406,18 @@
       "inPlan": false,
       "nextAction": "Complete Vivaldi update with its existing extension identity/data preserved, then verify its report flow.",
       "verification": "2026-10-27: PR236 merged236f839 after all14 checks. CI40594193816 passed Windows MSI/NSIS and Linux DEB/AppImage stall, recovery, private-canary, reviewed-export and reinstall retention acceptance; macOS universal and five native release tests passed. Shared1371, legacy231, landing25 and hosted65 passed (one existing authenticated skip). Installed tested da67196 on Duncan;15-file private backup;14 saved prompts/draft/three candidates restored. Local JSONL events and heap sampling active. Production236f839 READY; pre-sign-in report preview and social controls verified. Vivaldi installation/direct acceptance remains open; CPU/RSS and old-freeze root cause unknown. Notion delivery notes read back. Exact production236f839 web asset reproduced and SHA256 matched; private web maps retained. Native/extension maps also exact. Notion map receipt read back."
+    },
+    {
+      "id": "407255fc8f44819cad76dec62b424b0a",
+      "inPlan": false,
+      "verification": "Notion disposition only; not independently re-audited in this save repair.",
+      "nextAction": "Follow the existing issue acceptance contract.",
+      "title": "Enhance results: Save action hard to find and save state unclear",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Layout",
+      "type": "UX",
+      "url": "https://app.notion.com/407255fc8f44819cad76dec62b424b0a"
     }
   ]
 }
