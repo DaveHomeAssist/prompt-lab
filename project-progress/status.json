@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T19:01:54.268Z",
+  "snapshotAt": "2026-10-29T19:24:51.004Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete remaining shared writable domains and app migration integration before native activation and actual two-client iCloud acceptance.",
+  "nextAction": "Complete atomic pack operations and app migration integration before native activation and actual two-client iCloud acceptance.",
   "evidence": [
+    {
+      "label": "Shared draft asset and recovery commands",
+      "state": "Open",
+      "detail": "2026-10-29: Shared value-record commands pushed in 156b4362c7600dacce7793fd603bd09805e38759: https://github.com/DaveHomeAssist/prompt-lab/commit/156b4362c7600dacce7793fd603bd09805e38759 . Drafts, standalone assets, recovery values and loaded-pack markers now use the shared command/API/outbox path. Legacy anonymous identities remain stable; object patches retain unmentioned fields, scalar/array replacement is explicit, and deletion remains source-scoped across restore and reconciliation. Imported metadata cannot claim command identities. Dominic Node 22.23.4: 313 full storage tests passed, then 116 affected tests after final identity guard; 168 new and 91 earlier schema fixtures accepted, 170 malformed inputs rejected; all 40 browser capture/outbox tests, extension build, Markdown lint and four documentation contracts passed. Nine changed files match the runner. Previous CI failure reproduced as an omitted folder-request module in the disposable browser server and is repaired; initial failures remain retained. Mac Node 22.22.1: isolated complete 216-prompt export passed whole-prompt draft creation, exact restoration of all selected records, original object/receipt retention and complete transfer. Original file unchanged, no private upload or app activation. Synthetic source coverage only; create/restore/select harness phases took 81 to 88 seconds, so interactive performance remains open. A1/A2 stay In progress and PR248 stays draft. Native/app migration, atomic pack operations, actual two-client iCloud and human acceptance remain open. Next: complete atomic pack operations and app migration integration before native acceptance. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/156b4362c7600dacce7793fd603bd09805e38759"
+    },
     {
       "label": "Per tab recovery now retained during capture",
       "state": "Open",
