@@ -51,7 +51,14 @@
         "x-implementation-status": "candidate",
         "responses": {
           "200": {
-            "description": "Acknowledged result"
+            "description": "Revision-pinned state manifest reference and bounded object page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Snapshot"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -151,7 +158,7 @@
     },
     "/v1/library/previews": {
       "post": {
-        "summary": "Review a snapshot transfer or lossless import; import apply is unavailable",
+        "summary": "Review a snapshot transfer or lossless import of complete retained sources",
         "operationId": "postV1LibraryPreviews",
         "x-implementation-status": "candidate",
         "responses": {
@@ -218,7 +225,7 @@
             "description": "Wrong scope, host or origin"
           },
           "409": {
-            "description": "Stale revision, expired preview, unresolved import, import apply unavailable or idempotency mismatch"
+            "description": "Stale revision, expired preview, unresolved or mismatched import plan, or idempotency mismatch"
           },
           "413": {
             "description": "Payload exceeds 64 MiB; never silently truncate"
@@ -421,7 +428,9 @@
               "source",
               "workspace",
               "commit",
-              "source-capture"
+              "source-capture",
+              "library-state",
+              "import-plan"
             ]
           },
           "data": {}
@@ -499,6 +508,20 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "operation": {
+            "enum": [
+              "snapshot",
+              "import"
+            ]
+          },
+          "importPlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inputState": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -509,7 +532,27 @@
           "state",
           "createdAt"
         ],
-        "additionalProperties": true
+        "additionalProperties": true,
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "import"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "importPlan",
+                "inputState"
+              ]
+            }
+          }
+        ]
       },
       "Preview": {
         "type": "object",
@@ -535,7 +578,8 @@
           },
           "sourceHash": {
             "type": "string",
-            "pattern": "^sha256:[a-f0-9]{64}$"
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content address of the immutable source object, including its schema/kind envelope; not the raw file digest."
           },
           "fingerprint": {
             "type": "string",
@@ -554,7 +598,7 @@
             "type": "boolean"
           },
           "importPlan": {
-            "$ref": "#/components/schemas/ImportPlan"
+            "$ref": "#/components/schemas/LibraryImportPlan"
           }
         },
         "required": [
@@ -581,11 +625,35 @@
               "required": [
                 "importPlan"
               ],
-              "properties": {
-                "commitAvailable": {
-                  "const": false
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "importPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
                 }
-              }
+              ]
             },
             "else": {
               "not": {
@@ -650,6 +718,56 @@
           },
           "verified": {
             "const": true
+          },
+          "operation": {
+            "enum": [
+              "snapshot",
+              "import"
+            ]
+          },
+          "stateHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content address of the committed workspace or complete library state manifest."
+          },
+          "sourceHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content address of the immutable source object, including its schema/kind envelope; not the raw file digest."
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "objects": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "sources": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "records": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "historyRecords": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              }
+            },
+            "required": [
+              "objects",
+              "sources",
+              "records",
+              "historyRecords"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -1071,7 +1189,8 @@
                   "enum": [
                     "ambiguous-current-version",
                     "missing-source-reference",
-                    "prompt-not-selected"
+                    "prompt-not-selected",
+                    "ambiguous-source-reference"
                   ]
                 }
               },
@@ -1185,6 +1304,387 @@
           "libraryId",
           "expectedRevision",
           "sourceText"
+        ],
+        "additionalProperties": false
+      },
+      "LibrarySource": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "workspace": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "source",
+          "workspace"
+        ],
+        "additionalProperties": false
+      },
+      "LibraryNode": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              ]
+            }
+          },
+          "kind": {
+            "type": "string"
+          },
+          "sourceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "key",
+          "source",
+          "path",
+          "kind",
+          "sourceId",
+          "hash"
+        ],
+        "additionalProperties": false
+      },
+      "LibraryState": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-state"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibrarySource"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LibraryNode"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "selected": {
+                  "type": "string"
+                },
+                "members": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "uniqueItems": true
+                }
+              },
+              "required": [
+                "id",
+                "selected",
+                "members"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "references": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 0
+                      }
+                    ]
+                  }
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "groupId": {
+                  "oneOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^sha256:[a-f0-9]{64}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reason": {
+                  "enum": [
+                    "ambiguous-current-version",
+                    "missing-source-reference",
+                    "prompt-not-selected",
+                    "ambiguous-source-reference"
+                  ]
+                }
+              },
+              "required": [
+                "from",
+                "path",
+                "sourceId",
+                "kind",
+                "target",
+                "groupId"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "sources",
+          "nodes",
+          "groups",
+          "references"
+        ],
+        "additionalProperties": false
+      },
+      "LibraryImportPlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-import-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "baseRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "incoming": {
+            "$ref": "#/components/schemas/LibrarySource"
+          },
+          "resolutions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "enum": [
+                    "keep",
+                    "replace",
+                    "skip"
+                  ]
+                }
+              },
+              "required": [
+                "action"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "sources": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "description": "Workspace object address to canonical workspace-data digest; exact source byte objects are listed in manifest.sources."
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "member": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "new",
+                    "duplicate",
+                    "conflict"
+                  ]
+                },
+                "matches": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "choice": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "action": {
+                          "enum": [
+                            "keep",
+                            "replace",
+                            "skip"
+                          ]
+                        },
+                        "target": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "action"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "dependsOn": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "member",
+                "kind",
+                "matches",
+                "choice"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/LibraryState"
+          },
+          "activationReady": {
+            "const": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "baseRevision",
+          "incoming",
+          "resolutions",
+          "sources",
+          "rows",
+          "unresolved",
+          "manifest",
+          "activationReady",
+          "fingerprint"
+        ],
+        "additionalProperties": false
+      },
+      "Snapshot": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "stateHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "stateKind": {
+            "enum": [
+              "workspace",
+              "library-state"
+            ]
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "libraryId",
+          "revision",
+          "stateHash",
+          "stateKind",
+          "objects",
+          "nextCursor"
         ],
         "additionalProperties": false
       }

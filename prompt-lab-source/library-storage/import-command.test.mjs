@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createCommandService, createMemoryAdapter, hash } from './contract.mjs';
+import { createCommandService, createMemoryAdapter, hash, inspectPackage, FORMAT, VERSION } from './contract.mjs';
 
 const libraryId = 'review-library';
 const sourceText = JSON.stringify({ library: [{ id: 'p', title: 'Shared title', original: 'existing', versions: [{ id: 'old', original: 'history' }] }] });
@@ -19,25 +19,32 @@ test('shared import preview uses the stored revision and keeps both raw historie
   const p = await service.preview({ mode: 'import', libraryId, expectedRevision, sourceText: incoming });
   assert.equal(p.commitAvailable, false);
   assert.equal(p.importPlan.unresolved, 1);
-  assert.equal(p.importPlan.nodes.filter(n => n.kind === 'version').length, 2);
-  assert.equal(p.importPlan.sources.existing, await hash(JSON.parse(sourceText)));
-  assert.equal(p.importPlan.sources.incoming, await hash(JSON.parse(incoming)));
+  assert.equal(p.importPlan.manifest.nodes.filter(n => n.kind === 'version').length, 2);
+  assert.ok(Object.values(p.importPlan.sources).includes(await hash(JSON.parse(sourceText))));
+  assert.equal(p.importPlan.sources[p.importPlan.incoming.workspace], await hash(JSON.parse(incoming)));
   await assert.rejects(service.apply({ ...p, idempotencyKey: 'unresolved' }), { code: 'UNRESOLVED_IMPORT' });
   assert.deepEqual(adapter.read(), before);
   assert.equal(await service.operation('unresolved'), null);
 });
 
-test('resolved import cannot fall through to snapshot overwrite, even if caller changes response fields', async () => {
+test('resolved import publishes both sources, even if caller changes the returned mode or graph', async () => {
   const { adapter, service, expectedRevision } = await fixture();
-  const before = adapter.read();
   const p = await service.preview({ mode: 'import', libraryId, expectedRevision, sourceText: incoming, resolutions: { p: { action: 'replace', existingId: 'p' } } });
   const original = structuredClone(p);
   assert.equal(p.importPlan.unresolved, 0);
-  assert.equal(p.importPlan.groups[0].members.length, 2);
-  p.mode = 'snapshot'; p.commitAvailable = true; p.importPlan.groups.length = 0;
+  assert.equal(p.commitAvailable, true);
+  assert.equal(p.importPlan.manifest.groups[0].members.length, 2);
+  p.mode = 'snapshot'; p.commitAvailable = true; p.importPlan.manifest.groups.length = 0;
   assert.deepEqual(await service.previewRead(p.previewId), original);
-  await assert.rejects(service.apply({ ...p, idempotencyKey: 'unsafe-fallthrough' }), { code: 'IMPORT_APPLY_UNAVAILABLE' });
-  assert.deepEqual(adapter.read(), before);
+  const receipt = await service.apply({ ...p, idempotencyKey: 'preserved-import' });
+  assert.equal(receipt.operation, 'import');
+  assert.equal(receipt.sourceHash, original.sourceHash);
+  assert.equal(receipt.counts.sources, 2);
+  const state = adapter.read();
+  const result = await inspectPackage({ format: FORMAT, schemaVersion: VERSION, libraryId, head: state.revision, objects: state.objects });
+  assert.deepEqual(result.manifest, original.importPlan.manifest);
+  assert.equal(result.workspace, null);
+  assert.equal(result.manifest.nodes.filter(n => n.kind === 'version').length, 2);
 });
 
 test('caller changing choices during async review cannot change the reviewed fingerprint', async () => {
@@ -95,4 +102,16 @@ test('unknown mode cannot silently become a whole-workspace replacement', async 
   const adapter = createMemoryAdapter(), service = createCommandService(adapter);
   await assert.rejects(service.preview({ mode: 'merge', libraryId, expectedRevision: null, sourceText }), { code: 'INVALID_MODE' });
   assert.equal(adapter.read().revision, null);
+});
+
+test('a review expiring while storage is being read is not returned as current', async () => {
+  let now = 0, expireOnRead = false;
+  const adapter = createMemoryAdapter();
+  const service = createCommandService({
+    read: async () => { if (expireOnRead) now = 10; return adapter.read(); },
+    transact: adapter.transact,
+  }, { now: () => now, previewLifetimeMs: 10 });
+  const p = await service.preview({ libraryId, expectedRevision: null, sourceText });
+  expireOnRead = true;
+  await assert.rejects(service.previewRead(p.previewId), { code: 'PREVIEW_EXPIRED' });
 });

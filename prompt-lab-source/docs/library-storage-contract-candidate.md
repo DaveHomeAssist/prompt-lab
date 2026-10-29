@@ -110,27 +110,64 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Durable import state
+
+Import commits reference a versioned state manifest containing every original
+source/workspace object pair, stable source-scoped nodes, selected prompt groups
+and association evidence. Group IDs and historical members survive later imports.
+Reimporting identical workspace data retains any distinct original byte encoding
+without duplicating or reactivating records. An ambiguous legacy target ID requires
+an explicit source-scoped target. Whole-workspace replacement cannot overwrite an
+already imported graph through the snapshot reference operation.
+
+Package verification rebuilds each import from its parent manifest, exact
+incoming objects and recorded choices, then compares the plan and resulting state.
+The adapter publishes that state and its operation receipt in one transaction.
+Tests cover three successive imports with colliding IDs, retained histories
+and associations, alternate source encodings, rehashed semantic tampering, missing
+ancestry, stale writers, restart/retry and interrupted folder publication. This
+changes the isolated candidate format only; no shipped app consumes it yet.
+
+October 29 verification: all 66 storage tests pass on Dominic Node 22.23.4.
+Documentation lint and all four consistency checks pass. The cases include
+duplicate IDs within one source, ambiguous associations, more than 25 retained
+versions, concurrent writers, rehashed semantic tampering and folder restart
+after each publication fault boundary. These checks establish candidate behavior;
+native app integration and real two-client iCloud acceptance remain open.
+
 ### Bound import review
 
-The next command boundary exposes the lossless graph through the existing preview
+The shared command boundary exposes the lossless graph through the existing preview
 route with explicit `mode: import`. The service reads the existing workspace from
 the expected library revision, freezes caller choices before asynchronous work,
 and binds the review to the incoming bytes, choices and mode. Review readback is
 ephemeral and rejects expired or stale revisions. It does not publish objects.
 
-Import previews must never fall through to the existing whole-workspace snapshot
-commit. Until the durable graph and complete domain materialization are implemented,
-their commit attempt fails explicitly, including when all choices are resolved.
+Import previews never fall through to the whole-workspace snapshot operation.
+Unresolved choices reject apply. Resolved choices publish a verified import plan,
+state manifest, retained source objects and operation receipt atomically. Snapshot
+replacement of an imported graph fails explicitly. Reimporting an identical source
+retains its previous selections; changing those earlier choices is not implemented
+as a separate command yet.
 Acceptance for this boundary covers request/response mutation, concurrent changes,
 wrong mode, expired review, HTTP readback and unchanged state after rejected apply.
 No app or personal folder is activated by this intermediate A1 contract.
 
-Verification on October 29: all 51 storage tests passed on Dominic Node 22.
+Earlier verification at f96ff29: all 51 storage tests passed on Dominic Node 22.
 The private export also passed shared command review and review readback on the
 Mac: 246 raw records, 21 history rows, one unresolved choice and 60 missing source
 references. Apply rejected the unresolved review, published no revision or
-operation receipt, and the original file hash remained unchanged. Full import
-application and permanent review/graph storage remain open.
+operation receipt, and the original file hash remained unchanged. Durable import
+graph application has since been added; app view materialization remains open.
+
+The disposable import harness now uses one explicit Keep test choice for that
+export's unresolved conflict, applies the complete graph, imports an alternate
+encoding of the same source, closes and reopens the folder, and replays the second
+receipt. It preserves 246 indexed records, 21 history rows and all 60 missing
+source references, with 213 selected groups, two retained source byte sequences,
+two commits/receipts and one prior-revision checkpoint. The original remains
+unchanged. This test choice applies only to its new disposable folder and is not
+approval to reconcile or activate the personal library.
 
 ### Lossless import decisions
 
@@ -147,10 +184,14 @@ Association identities are scoped to their source workspace. A run referring to
 an unavailable prompt/version stays unresolved even if a destination happens
 to contain the same ID. Group membership maps known prompt references, while
 the original run, test case, Scratch and provenance fields stay untouched.
-Ambiguous IDs and unlisted replacement targets fail before a plan is accepted.
+Duplicate raw IDs remain separate source-path records. Ambiguous choice aliases
+and unlisted replacement targets fail before a plan is accepted; callers use the
+exact reviewed source path to resolve those choices. Associations that cannot
+distinguish duplicate prompt or version IDs remain explicitly unresolved.
 Plans are deterministic, content hashed and suitable for preview review; they
-are not activation receipts. Applying the graph, materializing app views and
-mapping the remaining domain references are required before import acceptance.
+are not activation receipts. The shared command now applies and verifies the
+retained graph. Materializing app views and mapping the remaining domain references
+are still required before complete import acceptance.
 
 The planner checks every indexed raw record against its original source path.
 It reports ambiguous current/history version identities and missing references
@@ -159,13 +200,14 @@ earlier incoming target has an unresolved choice. Unknown domains and fields
 remain covered by the complete source hash; their domain-specific reference
 rules are not claimed implemented by this planner.
 
-October 29 read-only verification on the private export preserved the original
+Initial October 29 read-only verification on the private export preserved the original
 hash and all 246 indexed raw records, including 216 active prompts, two trash
 records and 21 history rows. Matching found three duplicate rows and one
 unresolved conflict. Sixty references were absent from their source workspace. These
 are review evidence, not permission to merge or discard personal records.
 Only aggregate evidence is recorded here; the export and detailed receipt
-remain local. No import was applied and no library location was selected.
+remain local. At that read-only check no import was applied. Later disposable
+import evidence is recorded above; no personal library location is selected.
 
 Dominic Node 22 passed all 43 storage tests after this change. New cases cover
 83 combined historical versions, colliding source IDs, incoming duplicates,
@@ -180,11 +222,11 @@ receipt, checkpoint and outbox envelopes. `openapi-v1.json` distinguishes
 candidate routes from proposed recovery routes. These files are draft contracts,
 not a declaration that every route is implemented.
 
-Preview binds library identity, revision, exact source and resolutions for five
-minutes. The candidate rejects nonempty resolution maps rather than pretending
-to reconcile records. Apply persists operation identity with state; response-loss
-retries return the original receipt and changed-input retries conflict.
-The lossless import planner is not yet wired to preview/apply or the app.
+Preview binds library identity, revision, exact source, operation mode and
+resolutions for five minutes. Snapshot operations reject nonempty resolution
+maps; import operations use the shared planner. Apply persists operation identity
+with state; response-loss retries return the original receipt and changed-input
+retries conflict. The app is not connected to this service yet.
 Ordinary app import application, field-level causal reconciliation,
 reviewed fork resolution and permanent-deletion-aware restore remain open.
 
@@ -199,6 +241,9 @@ started. Recovery routes return 404 until their preservation rules are complete.
 Run `npm run test:library-storage` from the source root under Node 22.
 Use `node scripts/verify-folder-export.mjs` with an explicit export path for the
 private local acceptance harness. Do not put that input into CI or Git.
+Use `node scripts/verify-library-import.mjs` with that explicit path for disposable
+graph import, repeat, reopen and receipt acceptance. It emits aggregate evidence
+and retains the disposable folder locally for inspection.
 
 Initial tests found an EEXIST reopen error; recursive directory creation fixed
 it and reopen was tested again. The first hostile-Host test used fetch, which

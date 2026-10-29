@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canonical, hash, createPackage, inspectPackage, createMemoryAdapter, createCommandService } from './contract.mjs';
+import { canonical, hash, createPackage, inspectPackage, createMemoryAdapter, createCommandService, makeObject, readObject } from './contract.mjs';
 
 // Deliberately raw: UI normalizers must not construct the input or expected result.
 const workspace = () => ({
@@ -64,6 +64,7 @@ test('committed receipt and checkpoint survive service restart and response loss
   const service = createCommandService(adapter);
   const p = await service.preview({ libraryId: 'library1', expectedRevision: null, sourceText: source() });
   const receipt = await apply(service, p);
+  assert.equal(receipt.sourceHash, p.sourceHash);
   const restartedAdapter = createMemoryAdapter(adapter.read());
   const restarted = createCommandService(restartedAdapter);
   assert.deepEqual(await apply(restarted, p), receipt);
@@ -125,4 +126,32 @@ test('commit identities reject schema-invalid types and ancestry before archivin
   ]) {
     await assert.rejects(createPackage(source(), { libraryId: 'l', operationId: 'o', ...override }), { code: 'INVALID_IDENTITY' });
   }
+});
+
+test('object and package reads own the exact bytes verified before asynchronous hashing yields', async () => {
+  const data = { original: 'before' };
+  const pendingObject = makeObject('workspace', data);
+  data.original = 'after';
+  const wrapped = await pendingObject;
+  assert.deepEqual(wrapped.object.data, { original: 'before' });
+  const objects = { [wrapped.hash]: wrapped.object };
+  const pendingRead = readObject(objects, wrapped.hash, 'workspace');
+  objects[wrapped.hash].data.original = 'unverified edit';
+  assert.deepEqual(await pendingRead, { original: 'before' });
+  const pkg = await initialPackage();
+  const expectedHead = pkg.head;
+  const pendingInspection = inspectPackage(pkg);
+  pkg.head = 'sha256:' + 'f'.repeat(64);
+  pkg.objects[expectedHead].data.source = 'sha256:' + '0'.repeat(64);
+  const inspected = await pendingInspection;
+  assert.equal(inspected.revision, expectedHead);
+  assert.deepEqual(inspected.workspace, workspace());
+});
+
+test('package ownership does not tighten the depth limit of valid content objects', async () => {
+  let nested = null;
+  for (let i = 0; i < 125; i++) nested = { child: nested };
+  const value = { library: [], future: nested };
+  const pkg = await createPackage(JSON.stringify(value), { libraryId: 'deep', operationId: 'preserve' });
+  assert.deepEqual((await inspectPackage(pkg)).workspace, value);
 });

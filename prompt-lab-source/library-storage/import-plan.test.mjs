@@ -128,7 +128,9 @@ test('invalid, ambiguous and unlisted decisions fail without mutating sources', 
     { b: { action: 'replace', existingId: 'a' }, c: { action: 'replace', existingId: 'a' } },
   ]) await assert.rejects(planLosslessImport(existing, incoming, choices), { code: 'INVALID_RESOLUTIONS' });
   assert.deepEqual(incoming, before);
-  await assert.rejects(planLosslessImport(empty(), { library: [prompt('a', 'A', 'one'), prompt('a', 'B', 'two')] }), { code: 'AMBIGUOUS_ID' });
+  const ambiguous = await planLosslessImport(empty(), { library: [prompt('a', 'A', 'one'), prompt('a', 'B', 'two')] });
+  assert.equal(ambiguous.unresolved, 1);
+  assert.equal(ambiguous.nodes.length, 2);
   await assert.rejects(planLosslessImport(empty(), { library: [], credentials: {} }), { code: 'EXCLUDED_STORE' });
   await assert.rejects(planLosslessImport(empty(), { library: [], runs: [{ id: 'r', promptId: 1 }] }), { code: 'INVALID_REFERENCE' });
 });
@@ -163,4 +165,27 @@ test('review snapshots input before yielding and fingerprints the supplied choic
   assert.equal(plan.resolutions.a.action, 'keep');
   assert.equal(plan.nodes[0].hash, await hash(original.library[0]));
   await assert.rejects(verifyImportPlan(plan, empty(), original), { code: 'IMPORT_PLAN_MISMATCH' });
+});
+
+test('duplicate raw IDs retain every record and require path-scoped choices without invented references', async () => {
+  const incoming = { library: [prompt('same', 'A', 'first'), prompt('same', 'B', 'second')],
+    runs: [{ id: 'run', promptId: 'same', promptVersionId: 'v' }] };
+  await assert.rejects(planLosslessImport(empty(), incoming, { same: { action: 'keep' } }), { code: 'INVALID_RESOLUTIONS' });
+  const choices = { [key('incoming', 'library', 1)]: { action: 'keep' } };
+  const plan = await planLosslessImport(empty(), incoming, choices);
+  assert.equal(plan.groups.length, 2);
+  assert.equal(plan.nodes.length, 3);
+  assert.equal(plan.unresolved, 0);
+  assert.ok(plan.references.every(link => link.target === null && link.reason === 'ambiguous-source-reference'));
+});
+
+test('duplicate version IDs are preserved as distinct snapshots and ambiguous links stay unresolved', async () => {
+  const incoming = { library: [{ ...prompt('p', 'A', 'current'), versions: [{ id: 'v', original: 'first' }, { id: 'v', original: 'second' }] }],
+    runs: [{ id: 'r', promptId: 'p', promptVersionId: 'v' }] };
+  const plan = await planLosslessImport(empty(), incoming);
+  assert.equal(plan.nodes.filter(node => node.kind === 'version').length, 2);
+  assert.equal(plan.references.find(link => link.kind === 'version').reason, 'ambiguous-source-reference');
+  assert.equal(plan.references.find(link => link.kind === 'version').target, null);
+  const both = { p: { action: 'keep' }, [key('incoming', 'library', 0)]: { action: 'keep' } };
+  await assert.rejects(planLosslessImport(empty(), incoming, both), { code: 'INVALID_RESOLUTIONS' });
 });

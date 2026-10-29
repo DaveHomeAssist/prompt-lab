@@ -55,13 +55,15 @@ export function assertWorkspace(workspace) {
 }
 
 export async function makeObject(kind, data) {
-  const object = { schemaVersion: VERSION, kind, data };
+  canonical(data);
+  const object = { schemaVersion: VERSION, kind, data: structuredClone(data) };
   return { hash: await hash(object), object };
 }
 
 export async function readObject(objects, id, kind) {
-  const object = objects[id];
-  if (!object) throw new LibraryError('MISSING_OBJECT', 'Referenced object is unavailable.', 503);
+  if (!Object.hasOwn(objects, id)) throw new LibraryError('MISSING_OBJECT', 'Referenced object is unavailable.', 503);
+  canonical(objects[id]);
+  const object = structuredClone(objects[id]);
   if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Object failed integrity verification.', 503);
   if (object.schemaVersion !== VERSION || object.kind !== kind) throw new LibraryError('UNSUPPORTED_OBJECT', 'Unsupported object format or kind.');
   return structuredClone(object.data);
@@ -82,7 +84,13 @@ export async function createPackage(sourceText, { libraryId, operationId, parent
 export async function inspectPackage(pkg) {
   if (pkg?.format !== FORMAT || pkg.schemaVersion !== VERSION || !validId(pkg.libraryId) || !validHash(pkg.head)
     || !pkg.objects || Object.getPrototypeOf(pkg.objects) !== Object.prototype) throw new LibraryError('UNSUPPORTED_PACKAGE', 'Unsupported library package.');
-  const active = new Set(), visited = new Set();
+  // Own each object at its existing depth boundary. Wrapping the whole package
+  // in canonical() would add envelope levels and reject otherwise valid objects.
+  pkg = { ...pkg, objects: Object.fromEntries(Object.entries(pkg.objects).map(([id, object]) => {
+    canonical(object);
+    return [id, structuredClone(object)];
+  })) };
+  const active = new Set(), visited = new Map();
   async function visit(id) {
     if (active.has(id)) throw new LibraryError('INVALID_ANCESTRY', 'Cyclic commit ancestry.');
     if (visited.has(id)) return;
@@ -90,23 +98,49 @@ export async function inspectPackage(pkg) {
     const commit = await readObject(pkg.objects, id, 'commit');
     assertCommitIdentity(commit);
     if (commit.libraryId !== pkg.libraryId || !commit.operationId || !Array.isArray(commit.parents) || new Set(commit.parents).size !== commit.parents.length) throw new LibraryError('INVALID_ANCESTRY', 'Invalid commit identity or parents.');
-    const workspace = await readObject(pkg.objects, commit.state, 'workspace');
-    assertWorkspace(workspace);
-    const source = await readObject(pkg.objects, commit.source, 'source');
-    let decoded;
-    try { decoded = JSON.parse(source); } catch { throw new LibraryError('INVALID_JSON', 'Archived source is not valid JSON.'); }
-    if (canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived source and workspace disagree.');
     for (const parent of commit.parents) await visit(parent);
+    const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
+    let result;
+    if (operation === 'import') {
+      if (commit.parents.length > 1) throw new LibraryError('INVALID_ANCESTRY', 'Import must have one expected parent or an empty library.');
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      const plan = await readObject(pkg.objects, commit.importPlan, 'import-plan');
+      const parent = commit.parents.length ? visited.get(commit.parents[0]) : null;
+      const { planLibraryImport } = await import('./import-plan.mjs');
+      const expected = await planLibraryImport({ base: parent?.manifest ?? (parent ? { sources: [{ source: parent.sourceObject, workspace: parent.stateObject }] } : null),
+        baseRevision: commit.parents[0] ?? null, incoming: { source: commit.source, workspace: commit.inputState }, objects: pkg.objects, resolutions: plan.resolutions });
+      if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(expected.manifest) !== canonical(manifest)) {
+        throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import commit does not match its complete sources, parent and reviewed choices.', 409);
+      }
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+    } else if (operation === 'snapshot') {
+      if (commit.parents.some(parent => visited.get(parent).stateKind !== 'workspace')) throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
+      const workspace = await readObject(pkg.objects, commit.state, 'workspace');
+      assertWorkspace(workspace);
+      const sourceText = await readObject(pkg.objects, commit.source, 'source');
+      let decoded;
+      try { decoded = JSON.parse(sourceText); } catch { throw new LibraryError('INVALID_JSON', 'Archived source is not valid JSON.'); }
+      if (typeof sourceText !== 'string' || canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived source and workspace disagree.');
+      result = { stateKind: 'workspace', manifest: null, workspace, sourceText };
+    } else throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported commit operation.');
     active.delete(id);
-    visited.add(id);
+    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source });
   }
   await visit(pkg.head);
   // Retained unreachable objects are part of the archive too; never silently drop them.
   for (const [id, object] of Object.entries(pkg.objects)) if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Retained object failed integrity verification.', 503);
-  const commit = await readObject(pkg.objects, pkg.head, 'commit');
-  const workspace = await readObject(pkg.objects, commit.state, 'workspace');
-  const sourceText = await readObject(pkg.objects, commit.source, 'source');
-  return { libraryId: pkg.libraryId, revision: pkg.head, workspace, sourceText, commits: visited.size, objectCount: Object.keys(pkg.objects).length };
+  return { libraryId: pkg.libraryId, revision: pkg.head, ...visited.get(pkg.head), commits: visited.size, objectCount: Object.keys(pkg.objects).length };
+}
+
+const packageFor = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId, head: state.revision, objects: state.objects });
+
+async function reviewImport(state, incomingPackage, resolutions) {
+  const current = state.revision ? await inspectPackage(packageFor(state)) : null;
+  const incomingCommit = incomingPackage.objects[incomingPackage.head].data;
+  const { planLibraryImport } = await import('./import-plan.mjs');
+  return planLibraryImport({ base: current?.manifest ?? (current ? { sources: [{ source: current.sourceObject, workspace: current.stateObject }] } : null),
+    baseRevision: state.revision, incoming: { source: incomingCommit.source, workspace: incomingCommit.state },
+    objects: { ...state.objects, ...incomingPackage.objects }, resolutions });
 }
 
 // Adapter transaction must atomically publish state and operation receipts, or publish neither.
@@ -143,6 +177,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     const preview = previews.get(previewId);
     if (!preview || preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
     const state = await adapter.read();
+    if (preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
     if (state.revision !== preview.input.expectedRevision || (state.libraryId && state.libraryId !== preview.input.libraryId)) {
       throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
     }
@@ -162,21 +197,19 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       if (state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
       if (mode === 'snapshot' && canonical(resolutions) !== '{}') throw new LibraryError('UNSUPPORTED_RESOLUTION', 'Whole-workspace transfers do not resolve record conflicts.');
       const pkg = await createPackage(sourceText, { libraryId, operationId: 'preview' });
-      const incoming = await inspectPackage(pkg);
+      await inspectPackage(pkg);
       let importPlan;
       if (mode === 'import') {
-        const existing = state.revision ? (await inspectPackage({ format: FORMAT, schemaVersion: VERSION, libraryId, head: state.revision, objects: state.objects })).workspace : { library: [] };
-        // Load at the command boundary to avoid a static cycle with the planner's
-        // shared JSON/integrity primitives in this module.
-        const { planLosslessImport } = await import('./import-plan.mjs');
-        importPlan = await planLosslessImport(existing, incoming.workspace, resolutions);
+        importPlan = await reviewImport(state, pkg, resolutions);
+      } else if (state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
+        throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
       }
       const previewId = globalThis.crypto.randomUUID();
       const input = { libraryId, expectedRevision, sourceText, resolutions, mode };
       const fingerprint = await hash(input);
       const expires = now() + previewLifetimeMs;
-      const response = { previewId, libraryId, expectedRevision, sourceHash: await hash(sourceText), fingerprint, expiresAt: expires, mode,
-        commitAvailable: mode === 'snapshot', ...(importPlan ? { importPlan } : {}) };
+      const response = { previewId, libraryId, expectedRevision, sourceHash: pkg.objects[pkg.head].data.source, fingerprint, expiresAt: expires, mode,
+        commitAvailable: mode === 'snapshot' || importPlan.unresolved === 0, ...(importPlan ? { importPlan } : {}) };
       previews.set(previewId, { input, fingerprint, expires, response });
       try { return await currentReview(previewId); }
       catch (error) { previews.delete(previewId); throw error; }
@@ -194,16 +227,33 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         if (preview.fingerprint !== fingerprint || preview.input.libraryId !== libraryId || preview.input.expectedRevision !== expectedRevision || state.revision !== expectedRevision || (state.libraryId && state.libraryId !== libraryId)) throw new LibraryError('REVISION_CONFLICT', 'Preview no longer matches the library.', 409);
         if (preview.input.mode === 'import') {
           if (preview.response.importPlan.unresolved) throw new LibraryError('UNRESOLVED_IMPORT', 'Resolve every import choice and preview again.', 409);
-          throw new LibraryError('IMPORT_APPLY_UNAVAILABLE', 'Import review is available; applying the complete preserved graph is not implemented.', 409);
         }
-        const pkg = await createPackage(preview.input.sourceText, { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] });
+        const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
+        let pkg = await createPackage(preview.input.sourceText, identity);
+        if (preview.input.mode === 'import') {
+          const plan = await reviewImport(state, pkg, preview.input.resolutions);
+          if (canonical(plan) !== canonical(preview.response.importPlan)) throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import no longer matches its reviewed sources and choices.', 409);
+          const incoming = pkg.objects[pkg.head].data;
+          const planObject = await makeObject('import-plan', plan);
+          const manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, operation: 'import', source: incoming.source, inputState: incoming.state,
+            state: manifest.hash, importPlan: planObject.hash, createdAt: incoming.createdAt });
+          pkg = { ...pkg, head: commit.hash, objects: { [incoming.source]: pkg.objects[incoming.source], [incoming.state]: pkg.objects[incoming.state],
+            [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else if (state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
+          throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
+        }
         Object.assign(state.objects, pkg.objects);
-        await inspectPackage({ ...pkg, objects: state.objects });
+        const verified = await inspectPackage({ ...pkg, objects: state.objects });
         const checkpointId = state.revision;
         if (checkpointId) state.checkpoints.push(checkpointId);
         state.libraryId = libraryId;
         state.revision = pkg.head;
-        const receipt = { operationId: idempotencyKey, libraryId, parentRevision: expectedRevision, revision: pkg.head, checkpointId, fingerprint, state: 'committed', verified: true };
+        const receipt = { operationId: idempotencyKey, libraryId, parentRevision: expectedRevision, revision: pkg.head, checkpointId, fingerprint,
+          operation: preview.input.mode, stateHash: verified.stateObject, sourceHash: verified.sourceObject,
+          counts: { objects: verified.objectCount, sources: verified.manifest?.sources.length ?? 1,
+            records: verified.manifest?.nodes.length ?? null, historyRecords: verified.manifest?.nodes.filter(node => node.kind === 'version').length ?? null },
+          state: 'committed', verified: true };
         Object.defineProperty(state.operations, idempotencyKey, { value: receipt, enumerable: true, configurable: true, writable: true });
         return receipt;
       }));

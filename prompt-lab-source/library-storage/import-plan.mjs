@@ -1,4 +1,4 @@
-import { assertWorkspace, canonical, hash, LibraryError } from './contract.mjs';
+import { assertWorkspace, canonical, hash, readObject, LibraryError } from './contract.mjs';
 import { getLibraryEntryCanonicalBody, normalizePromptText } from '../prompt-lab-extension/src/lib/libraryMatching.js';
 
 const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -21,14 +21,15 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
   canonical(resolutions);
   // Freeze the review input before hashing yields. A caller editing its draft
   // during the async walk must not create a mixed source/record fingerprint.
-  existing = structuredClone(existing);
-  incoming = structuredClone(incoming);
-  resolutions = structuredClone(resolutions);
-  const sources = { existing, incoming };
+  return planSources({ existing: structuredClone(existing), incoming: structuredClone(incoming) }, structuredClone(resolutions), { incomingSource: 'incoming' });
+}
+
+async function planSources(sources, resolutions, { incomingSource, initialGroups, repeatedSource = false }) {
   const nodes = [], groups = [], rows = [], references = [];
   const nodeByKey = new Map(), groupByMember = new Map();
   const indexes = new Map();
-  const sourceHashes = { existing: await hash(existing), incoming: await hash(incoming) };
+  const sourceHashes = {};
+  for (const [source, workspace] of Object.entries(sources)) sourceHashes[source] = await hash(workspace);
 
   const index = (source, kind) => {
     const key = keyFor(source, [kind]);
@@ -42,11 +43,13 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
     }
     const key = keyFor(source, path);
     const ids = index(source, identityIndex);
-    if (data.id && ids.has(data.id)) throw new LibraryError('AMBIGUOUS_ID', `Duplicate ${kind} ID in the ${source} source.`);
     const node = { key, source, path, kind, sourceId: data.id ?? null, hash: await hash(data) };
     nodes.push(node);
     nodeByKey.set(key, { node, data });
-    if (data.id) ids.set(data.id, key);
+    if (data.id) {
+      const previous = ids.get(data.id);
+      ids.set(data.id, previous ? [...(Array.isArray(previous) ? previous : [previous]), key] : key);
+    }
     return key;
   }
   // Index the complete source before resolving references. Nothing is filtered
@@ -69,7 +72,7 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
           // Keep both records and report the two possible source records.
           const versions = index(source, key);
           const historical = versions.get(data.currentVersionId);
-          versions.set(data.currentVersionId, historical ? [key, historical] : key);
+          versions.set(data.currentVersionId, historical ? [key, ...(Array.isArray(historical) ? historical : [historical])] : key);
         }
       }
     }
@@ -86,16 +89,35 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
     groupByMember.set(member.key, group);
     return group;
   }
-  for (const node of nodes.filter(node => node.source === 'existing' && node.path[0] === 'library' && node.kind === 'prompt')) {
-    await newGroup(node);
-    indexed.push(node);
+  if (initialGroups) {
+    for (const original of initialGroups) {
+      const group = structuredClone(original);
+      if (!group.members.includes(group.selected) || group.members.some(key => !nodeByKey.has(key) || groupByMember.has(key))) throw new LibraryError('INVALID_IMPORT_STATE', 'Existing group members are unavailable or ambiguous.');
+      groups.push(group);
+      for (const key of group.members) groupByMember.set(key, group);
+      indexed.push(nodeByKey.get(group.selected).node);
+    }
+  } else {
+    for (const node of nodes.filter(node => node.source !== incomingSource && node.path[0] === 'library' && node.kind === 'prompt')) {
+      await newGroup(node);
+      indexed.push(node);
+    }
   }
-  const incomingNodes = nodes.filter(node => node.source === 'incoming' && node.path[0] === 'library' && node.kind === 'prompt');
-  const choiceKeys = new Set(incomingNodes.map(node => node.sourceId ?? node.key));
-  if (choiceKeys.size !== incomingNodes.length) throw new LibraryError('AMBIGUOUS_ID', 'Incoming choice keys are ambiguous.');
+  const incomingNodes = nodes.filter(node => node.source === incomingSource && node.path[0] === 'library' && node.kind === 'prompt');
+  const nodeKeys = new Set(incomingNodes.map(node => node.key));
+  const idCounts = new Map();
+  for (const node of incomingNodes) if (node.sourceId) idCounts.set(node.sourceId, (idCounts.get(node.sourceId) ?? 0) + 1);
+  const aliasesFor = node => [node.key, ...(node.sourceId && idCounts.get(node.sourceId) === 1 && !nodeKeys.has(node.sourceId) ? [node.sourceId] : [])];
+  const choiceKeys = new Set(incomingNodes.flatMap(aliasesFor));
   for (const key of Object.keys(resolutions)) if (!choiceKeys.has(key)) throw new LibraryError('INVALID_RESOLUTIONS', 'A choice names an unavailable incoming prompt.');
   const replaced = new Set();
   for (const node of incomingNodes) {
+    if (repeatedSource) {
+      if (Object.keys(resolutions).length) throw new LibraryError('INVALID_RESOLUTIONS', 'This source was already imported. Reimport cannot change its earlier choices.');
+      const group = groupByMember.get(node.key);
+      rows.push({ member: node.key, kind: 'duplicate', matches: group ? [group.selected] : [], choice: { action: 'skip', ...(group ? { target: group.selected } : {}) } });
+      continue;
+    }
     const entry = nodeByKey.get(node.key).data;
     const body = bodyFor(entry);
     const title = titleFor(entry);
@@ -103,18 +125,22 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
     const exact = body ? indexed.filter(target => bodyFor(nodeByKey.get(target.key).data) === body) : [];
     const matches = exact.length ? exact : indexed.filter(target => {
       const other = nodeByKey.get(target.key).data;
-      return (title && titleFor(other) === title) || (node.sourceId && node.sourceId === target.sourceId);
+      const aliases = groupByMember.get(target.key)?.members ?? [target.key];
+      return (title && titleFor(other) === title) || (node.sourceId && aliases.some(key => nodeByKey.get(key).node.sourceId === node.sourceId));
     });
-    const resolutionKey = node.sourceId ?? node.key;
-    const explicit = own(resolutions, resolutionKey);
-    if (Object.hasOwn(resolutions, resolutionKey) && explicit == null) throw new LibraryError('INVALID_RESOLUTIONS', 'An explicit choice must name an action.');
+    const supplied = aliasesFor(node).filter(key => Object.hasOwn(resolutions, key));
+    if (supplied.length > 1) throw new LibraryError('INVALID_RESOLUTIONS', 'Supply only one choice for each incoming source record.');
+    const explicit = supplied.length ? own(resolutions, supplied[0]) : undefined;
+    if (supplied.length && explicit == null) throw new LibraryError('INVALID_RESOLUTIONS', 'An explicit choice must name an action.');
     const first = exact[0];
     const choice = explicit ?? (first ? { action: 'skip', target: first.key } : matches.length ? null : { action: 'keep' });
     if (choice && (!record(choice) || !['keep', 'replace', 'skip'].includes(choice.action))) throw new LibraryError('INVALID_RESOLUTIONS', 'Unknown import choice.');
     let target = null;
     if (choice?.target != null || choice?.existingId != null) {
-      target = matches.find(candidate => choice.target != null ? candidate.key === choice.target
-        : candidate.sourceId === choice.existingId && candidate.source === (choice.targetSource ?? 'existing'));
+      const candidates = matches.filter(candidate => choice.target != null ? candidate.key === choice.target
+        : candidate.sourceId === choice.existingId && (choice.targetSource ? candidate.source === choice.targetSource : candidate.source !== incomingSource));
+      if (candidates.length > 1) throw new LibraryError('INVALID_RESOLUTIONS', 'The target ID is ambiguous. Select a source-scoped target.');
+      target = candidates[0];
       if (!target) throw new LibraryError('INVALID_RESOLUTIONS', 'Select a listed import target.');
     }
     if (choice?.action === 'replace' && !target) throw new LibraryError('INVALID_RESOLUTIONS', 'Replace requires a listed target.');
@@ -151,9 +177,13 @@ export async function planLosslessImport(existing, incoming, resolutions = {}) {
     let target, reason;
     if (kind === 'version') {
       const prompt = index(from.source, 'prompts').get(promptId);
-      target = prompt && index(from.source, prompt).get(sourceId);
-      if (Array.isArray(target)) { target = null; reason = 'ambiguous-current-version'; }
+      if (Array.isArray(prompt)) reason = 'ambiguous-source-reference';
+      else {
+        target = prompt && index(from.source, prompt).get(sourceId);
+        if (Array.isArray(target)) { reason = target.includes(prompt) ? 'ambiguous-current-version' : 'ambiguous-source-reference'; target = null; }
+      }
     } else target = index(from.source, kind).get(sourceId);
+    if (Array.isArray(target)) { target = null; reason = 'ambiguous-source-reference'; }
     const targetNode = target && nodeByKey.get(target).node;
     const promptKey = targetNode?.kind === 'version' ? keyFor(targetNode.source, targetNode.path.slice(0, 2)) : target;
     const group = groupByMember.get(promptKey);
@@ -195,4 +225,35 @@ export async function verifyImportPlan(plan, existing, incoming, resolutions = {
   const expected = await planLosslessImport(existing, incoming, resolutions);
   if (canonical(plan) !== canonical(expected)) throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import source, choices or graph changed. Preview again.', 409);
   return expected;
+}
+
+/** Build the complete library state, retaining all raw object pairs from ancestry. */
+export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {} }) {
+  if (!record(resolutions)) throw new LibraryError('INVALID_RESOLUTIONS', 'Import choices must be an object.');
+  canonical(resolutions);
+  resolutions = structuredClone(resolutions);
+  base = structuredClone(base);
+  incoming = structuredClone(incoming);
+  const sources = [...(base?.sources ?? [])];
+  if (!sources.some(item => canonical(item) === canonical(incoming))) sources.push(incoming);
+  const workspaces = {};
+  for (const item of sources) {
+    const workspace = await readObject(objects, item.workspace, 'workspace');
+    assertWorkspace(workspace);
+    const sourceText = await readObject(objects, item.source, 'source');
+    let decoded;
+    try { decoded = JSON.parse(sourceText); } catch { throw new LibraryError('INVALID_JSON', 'Archived import source is not valid JSON.'); }
+    if (typeof sourceText !== 'string' || canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived import source and workspace disagree.');
+    workspaces[item.workspace] = workspace;
+  }
+  const repeatedSource = Boolean(base?.sources.some(item => item.workspace === incoming.workspace));
+  // A snapshot base has no groups yet. Index every original prompt as an
+  // existing group before treating an identical first import as a no-op.
+  const initial = repeatedSource && !base?.groups
+    ? await planSources(workspaces, {}, { incomingSource: null }) : null;
+  const review = await planSources(workspaces, resolutions, { incomingSource: incoming.workspace, initialGroups: base?.groups ?? initial?.groups, repeatedSource });
+  const manifest = { format: 'promptlab-library-state', schemaVersion: 1, sources, nodes: review.nodes, groups: review.groups, references: review.references };
+  const plan = { format: 'promptlab-library-import-plan', schemaVersion: 1, baseRevision, incoming, resolutions,
+    sources: review.sources, rows: review.rows, unresolved: review.unresolved, manifest, activationReady: false };
+  return { ...plan, fingerprint: await hash(plan) };
 }

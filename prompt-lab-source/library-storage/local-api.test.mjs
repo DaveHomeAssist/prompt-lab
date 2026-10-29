@@ -59,20 +59,27 @@ test('malformed JSON bodies fail without publication and request limits are expl
   assert.equal((await api.service.read()).revision, null);
 });
 
-test('HTTP import review is readable with read scope and cannot publish an incomplete import implementation', async t => {
+test('HTTP import review commits the retained graph and exposes its state through revision-pinned reads', async t => {
   const { request, api } = await fixture(t);
   const response = await request('/v1/library/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: 'import', libraryId: 'lib1', expectedRevision: null, sourceText: JSON.stringify({ library: [{ id: 'p', original: 'preserved' }] }) }) });
   assert.equal(response.status, 201);
   const preview = await response.json();
   assert.equal(preview.importPlan.unresolved, 0);
-  assert.equal(preview.commitAvailable, false);
+  assert.equal(preview.commitAvailable, true);
   const readback = await request(`/v1/library/previews/${preview.previewId}`, { headers: { Authorization: `Bearer ${readToken}` } });
   assert.equal(readback.status, 200);
   assert.deepEqual(await readback.json(), preview);
   const commit = await request('/v1/library/commits', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'import' }, body: JSON.stringify(preview) });
-  assert.equal(commit.status, 409);
-  assert.equal((await commit.json()).code, 'IMPORT_APPLY_UNAVAILABLE');
-  assert.equal((await api.service.read()).revision, null);
-  assert.equal((await request('/v1/library/operations/import')).status, 404);
+  assert.equal(commit.status, 201);
+  const receipt = await commit.json();
+  assert.equal(receipt.operation, 'import');
+  assert.equal((await api.service.read()).revision, receipt.revision);
+  assert.deepEqual(await (await request('/v1/library/operations/import')).json(), receipt);
+  const snapshot = await (await request(`/v1/library/snapshot?revision=${encodeURIComponent(receipt.revision)}`)).json();
+  assert.equal(snapshot.stateKind, 'library-state');
+  assert.equal(snapshot.stateHash, receipt.stateHash);
+  const stateObject = await (await request(`/v1/library/objects/${snapshot.stateHash}`)).json();
+  assert.deepEqual(stateObject.data, preview.importPlan.manifest);
+  assert.equal((await request(`/v1/library/previews/${preview.previewId}`)).status, 409);
 });

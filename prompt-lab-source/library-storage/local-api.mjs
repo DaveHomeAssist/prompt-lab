@@ -63,7 +63,10 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         const limit = Number(url.searchParams.get('limit') ?? 100), offset = Number(url.searchParams.get('cursor') ?? 0);
         if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) throw new LibraryError('INVALID_REQUEST', 'Invalid pagination.', 400);
         const ids = Object.keys(state.objects).sort();
-        return send(200, { libraryId, revision: state.revision, objects: ids.slice(offset, offset + limit), nextCursor: offset + limit < ids.length ? String(offset + limit) : null });
+        const commit = await readObject(state.objects, state.revision, 'commit');
+        const stateKind = commit.operation === 'import' ? 'library-state' : 'workspace';
+        await readObject(state.objects, commit.state, stateKind);
+        return send(200, { libraryId, revision: state.revision, stateHash: commit.state, stateKind, objects: ids.slice(offset, offset + limit), nextCursor: offset + limit < ids.length ? String(offset + limit) : null });
       }
       if (req.method === 'GET' && url.pathname.startsWith('/v1/library/objects/')) {
         const id = decodeURIComponent(url.pathname.slice('/v1/library/objects/'.length));
