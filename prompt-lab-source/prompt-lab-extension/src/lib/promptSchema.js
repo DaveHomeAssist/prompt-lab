@@ -136,13 +136,20 @@ function variantsEqual(left = [], right = []) {
   return left.every((item, index) => item.label === right[index]?.label && item.content === right[index]?.content);
 }
 
+function resultMetadataFingerprint(value) {
+  // Exporters and native transports may reorder object fields. Keep array order
+  // and every metadata value significant when matching retained versions.
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+}
+
 export function arePromptSnapshotsEqual(left, right) {
   const a = normalizeContentShape(left);
   const b = normalizeContentShape(right);
   return a.original === b.original
     && a.enhanced === b.enhanced
     && a.notes === b.notes
-    && JSON.stringify(a.resultMeta) === JSON.stringify(b.resultMeta)
+    && resultMetadataFingerprint(a.resultMeta) === resultMetadataFingerprint(b.resultMeta)
     && variantsEqual(a.variants, b.variants);
 }
 
