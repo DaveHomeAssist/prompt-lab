@@ -88,7 +88,7 @@ export function createLibraryWriteCoordinator() {
       check();
       // Do not race the reader against a timer: releasing the pause while a
       // timed-out reader is still running would allow a mixed-time snapshot.
-      const value = await read({ signal: abort.signal });
+      const value = await read({ signal: abort.signal, check });
       check();
       return { value, coordination: {
         scope: 'current-context', startedAt, completedAt: new Date().toISOString(),

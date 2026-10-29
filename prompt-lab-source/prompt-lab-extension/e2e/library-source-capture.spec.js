@@ -9,7 +9,7 @@ const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const readerPath = '/prompt-lab-extension/src/lib/librarySourceCapture.js';
 const inventoryPath = '/library-storage/source-inventory.mjs';
 const modulePaths = [readerPath, inventoryPath, '/library-storage/contract.mjs', '/library-storage/content-keys.mjs',
-  ...['lib/libraryWriteCoordinator.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
+  ...['lib/libraryWriteCoordinator.js', 'lib/libraryOriginCapture.js', 'lib/libraryEditBuffers.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
     'lib/scratchJournal.js', 'lib/writeRecovery.js', 'experimentStore.js', 'lib/logger.js', 'lib/diagnostics.js',
     'constants.js', 'lib/evalSchema.js', 'lib/enhancementResult.js', 'lib/tagSchema.js', 'lib/utils.js',
     'lib/sourceLink.js', 'lib/platform.js', 'lib/providerFixture.js'].map(path => `/prompt-lab-extension/src/${path}`)];
@@ -49,6 +49,117 @@ test.beforeEach(async ({ page }) => {
       request.onsuccess = () => { request.result.close(); resolve(); };
     });
   }, { readerPath, inventoryPath });
+});
+
+async function joinCapture(page, label) {
+  await page.goto(origin);
+  await page.evaluate(async label => {
+    window.reader = await import('/prompt-lab-extension/src/lib/librarySourceCapture.js');
+    window.inventory = await import('/library-storage/source-inventory.mjs');
+    window.editBuffers = (await import('/prompt-lab-extension/src/lib/libraryEditBuffers.js')).libraryEditBuffers;
+    window.writeCoordinator = (await import('/prompt-lab-extension/src/lib/libraryWriteCoordinator.js')).libraryWriteCoordinator;
+    window.participant = await (await import('/prompt-lab-extension/src/lib/libraryOriginCapture.js')).startAppCaptureParticipant();
+    window.draft = { text: label, future: ['$&', '{{input}}'] };
+    editBuffers.register('editor', () => window.draft);
+  }, label);
+}
+
+test('two actual windows retain separate unsaved buffers, pause timers and drain real writes', async ({ page, context }) => {
+  const other = await context.newPage();
+  await joinCapture(page, 'First unsaved draft'); await joinCapture(other, 'Second unsaved draft');
+  await other.evaluate(async () => {
+    const { writeWithRecovery } = await import('/prompt-lab-extension/src/lib/writeRecovery.js');
+    const { saveRunRecord } = await import('/prompt-lab-extension/src/experimentStore.js');
+    window.pending = writeWithRecovery('held', () => new Promise(resolve => setTimeout(resolve, 80)));
+    window.saved = saveRunRecord({ run_id: 'actual-record', trace_id: 'trace' });
+    window.autosaves = 0;
+    editBuffers.schedule(() => ++window.autosaves, 250);
+  });
+  const result = await page.evaluate(async () => {
+    const report = await participant.capture(async ({ clientBuffers }) => {
+      const captured = await reader.captureAppLibrarySources({ sourceIdentity: 'origin', archives: { reviewed: true, records: [] }, clientBuffers });
+      await new Promise(resolve => setTimeout(resolve, 300));
+      return captured;
+    });
+    const inspected = await inventory.inspectSourceInventory(report.value);
+    return { clients: inspected.captures['client-buffers'].records,
+      records: inspected.captures['execution-traces'].records, coordination: report.coordination, version: report.value.manifest.schemaVersion };
+  });
+  expect(result.clients.map(client => client.buffers[0].value.text).sort()).toEqual(['First unsaved draft', 'Second unsaved draft']);
+  expect(result.records).toEqual([{ run_id: 'actual-record', trace_id: 'trace' }]);
+  expect(result.version).toBe(4);
+  expect(result.coordination).toMatchObject({ scope: 'cooperating-origin-clients', activationReady: false });
+  expect(result.coordination.clientIds).toHaveLength(2);
+  expect(await other.evaluate(() => window.autosaves)).toBe(0);
+  await expect.poll(() => other.evaluate(() => window.autosaves)).toBe(1);
+  const again = await page.evaluate(() => reader.captureAppLibrarySourcesWithOriginDrain({ sourceIdentity: 'again', archives: { reviewed: true, records: [] } }));
+  expect(again.inventory.manifest.sourceReadComplete).toBe(true);
+  await other.close();
+});
+
+test('a new window waits at startup until the existing capture releases membership', async ({ page, context }) => {
+  await joinCapture(page, 'Existing');
+  await page.evaluate(() => {
+    window.capturing = participant.capture(() => new Promise(resolve => { window.releaseCapture = resolve; }));
+  });
+  await page.waitForFunction(() => window.releaseCapture);
+  const other = await context.newPage(); await other.goto(origin);
+  const joining = other.evaluate(async () => {
+    window.started = false;
+    window.participant = await (await import('/prompt-lab-extension/src/lib/libraryOriginCapture.js')).startAppCaptureParticipant();
+    window.started = true;
+  });
+  await expect.poll(() => other.evaluate(() => window.started)).toBe(false);
+  await page.evaluate(async () => { window.releaseCapture('snapshot'); await window.capturing; });
+  await joining;
+  expect(await other.evaluate(() => window.started)).toBe(true);
+  await other.close();
+});
+
+test('a changed peer buffer or refused peer save rejects capture and a clean retry succeeds', async ({ page, context }) => {
+  const other = await context.newPage(); await joinCapture(page, 'First'); await joinCapture(other, 'Second');
+  for (const mode of ['buffer', 'write']) {
+    await page.evaluate(() => {
+      window.releaseCapture = null;
+      window.capturing = participant.capture(() => new Promise(resolve => { window.releaseCapture = resolve; }), { timeoutMs: 1000 }).catch(error => error.code);
+    });
+    await page.waitForFunction(() => window.releaseCapture);
+    await other.evaluate(async mode => {
+      if (mode === 'buffer') window.draft = { ...window.draft, text: 'Changed while capturing' };
+      else (await import('/prompt-lab-extension/src/lib/storage.js')).saveJson('pl2-library', [{ id: 'refused' }]);
+    }, mode);
+    expect(await page.evaluate(async () => { window.releaseCapture(); return window.capturing; })).toBe('LIBRARY_CAPTURE_CHANGED');
+    expect(await page.evaluate(async () => (await participant.capture(() => 'retry')).value)).toBe('retry');
+  }
+  await other.close();
+});
+
+test('a live participant that does not acknowledge prevents success without hanging writes', async ({ page, context }) => {
+  await joinCapture(page, 'Owner');
+  const other = await context.newPage(); await other.goto(origin);
+  await other.evaluate(async () => {
+    const { CAPTURE_LOCKS } = await import('/prompt-lab-extension/src/lib/libraryOriginCapture.js');
+    await new Promise(resolve => {
+      window.lease = navigator.locks.request(CAPTURE_LOCKS.participant + 'silent-peer', () => new Promise(done => { window.releaseLease = done; resolve(); }));
+    });
+  });
+  expect(await page.evaluate(() => participant.capture(() => 'must not succeed', { timeoutMs: 100 }).catch(error => error.code))).toBe('LIBRARY_CAPTURE_TIMEOUT');
+  expect(await page.evaluate(() => writeCoordinator.status().paused)).toBe(false);
+  await other.evaluate(async () => { window.releaseLease(); await window.lease; });
+  expect(await page.evaluate(async () => (await participant.capture(() => 'recovered')).value)).toBe('recovered');
+  await other.close();
+});
+
+test('closing the capture owner releases peer pauses at the bounded deadline', async ({ page, context }) => {
+  const other = await context.newPage(); await joinCapture(page, 'Owner'); await joinCapture(other, 'Survivor');
+  await page.evaluate(() => {
+    window.capturing = participant.capture(() => new Promise(() => {}), { timeoutMs: 800 }).catch(() => {});
+  });
+  await expect.poll(() => other.evaluate(() => writeCoordinator.status().paused)).toBe(true);
+  await page.close();
+  await expect.poll(() => other.evaluate(() => writeCoordinator.status().paused)).toBe(false);
+  expect(await other.evaluate(async () => (await participant.capture(() => 'survived')).value)).toBe('survived');
+  await other.close();
 });
 
 test('local drain waits for a queued real record write before enumerating IndexedDB', async ({ page }) => {

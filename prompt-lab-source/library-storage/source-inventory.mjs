@@ -2,6 +2,7 @@ import { canonical, hash, LibraryError, makeObject, readObject } from './contrac
 
 import { V1_LOCAL_CONTENT_KEYS, V2_LOCAL_CONTENT_KEYS, LOCAL_CONTENT_KEYS, SOURCE_INVENTORY_VERSION, DELETION_PREFIXES, EXTENSION_DRAFT_KEYS, isLocalContentKey } from './content-keys.mjs';
 export { LOCAL_CONTENT_KEYS, SOURCE_INVENTORY_VERSION, DELETION_PREFIXES, EXTENSION_DRAFT_KEYS, isLocalContentKey } from './content-keys.mjs';
+export const COORDINATED_INVENTORY_VERSION = 4;
 
 export const INDEXED_SOURCES = Object.freeze([
   { id: 'experiments', database: 'prompt_lab_local', store: 'experiments' },
@@ -62,6 +63,16 @@ function assertCapture(id, data, version = SOURCE_INVENTORY_VERSION) {
     if (data.state !== 'present' || !data.entries || Object.getPrototypeOf(data.entries) !== Object.prototype
       || Object.keys(data.entries).length !== EXTENSION_DRAFT_KEYS.length
       || EXTENSION_DRAFT_KEYS.some(key => !Object.hasOwn(data.entries, key))) throw new LibraryError('INVALID_SOURCE', 'Extension capture must contain only the named editor drafts.');
+  } else if (id === 'client-buffers') {
+    if (version !== COORDINATED_INVENTORY_VERSION || data.state !== 'present'
+      || !Array.isArray(data.records) || data.records.length < 1 || data.records.length > 32
+      || new Set(data.records.map(row => row?.clientId)).size !== data.records.length
+      || data.records.some(row => typeof row?.clientId !== 'string' || !/^[a-zA-Z0-9-]{1,80}$/.test(row.clientId)
+        || !Array.isArray(row.buffers) || new Set(row.buffers.map(buffer => buffer?.id)).size !== row.buffers.length
+        || row.buffers.some(buffer => typeof buffer?.id !== 'string' || !buffer.id || !Object.hasOwn(buffer, 'value')))) {
+      throw new LibraryError('INVALID_SOURCE', 'Every participating client and named editor buffer must be retained exactly once.');
+    }
+    canonical(data);
   } else if (id === 'selected-archives') {
     if (!Array.isArray(data.records) || typeof data.reviewed !== 'boolean'
       || data.state !== (data.reviewed ? 'present' : 'unreviewed')) throw new LibraryError('INVALID_SOURCE', 'Archive review evidence disagrees.');
@@ -76,17 +87,18 @@ function assertCapture(id, data, version = SOURCE_INVENTORY_VERSION) {
 // access, account discovery, database creation or writes occur in this module.
 export async function captureSourceInventory({
   surface, sourceIdentity, localStorage, readIndexedStore, readExtensionDrafts,
-  archives = { reviewed: false, records: [] }, capturedAt = new Date().toISOString(),
+  archives = { reviewed: false, records: [] }, capturedAt = new Date().toISOString(), clientBuffers,
 }) {
   if (!['desktop', 'web', 'extension'].includes(surface) || typeof sourceIdentity !== 'string' || !sourceIdentity
     || typeof capturedAt !== 'string' || !Number.isFinite(Date.parse(capturedAt))) {
     throw new LibraryError('INVALID_SOURCE', 'An explicit surface and source identity are required.');
   }
   const objects = {}, sources = [];
+  const schemaVersion = clientBuffers === undefined ? SOURCE_INVENTORY_VERSION : COORDINATED_INVENTORY_VERSION;
   async function retain(id, read) {
     try {
       const data = await read();
-      assertCapture(id, data);
+      assertCapture(id, data, schemaVersion);
       const object = await makeObject('source-capture', { id, ...data });
       objects[object.hash] = object.object;
       sources.push({ id, state: data.state, hash: object.hash });
@@ -125,8 +137,9 @@ export async function captureSourceInventory({
     if (typeof archives.reviewed !== 'boolean' || !Array.isArray(archives.records)) throw new LibraryError('INVALID_SOURCE', 'Archive inventory must include review state and provenance records.');
     return { ...archives, state: archives.reviewed ? 'present' : 'unreviewed' };
   });
+  if (clientBuffers !== undefined) await retain('client-buffers', () => ({ state: 'present', records: clientBuffers }));
   const manifest = {
-    format: 'promptlab-source-inventory', schemaVersion: SOURCE_INVENTORY_VERSION, surface, sourceIdentity, capturedAt,
+    format: 'promptlab-source-inventory', schemaVersion, surface, sourceIdentity, capturedAt,
     sources, sourceReadComplete: sources.every(source => ['present', 'absent'].includes(source.state)),
     // Separate store reads cannot prove a cross-store write barrier or migration.
     activationReady: false,
@@ -136,7 +149,7 @@ export async function captureSourceInventory({
 
 export async function inspectSourceInventory(inventory) {
   const { manifest, manifestHash, objects } = inventory || {};
-  if (manifest?.format !== 'promptlab-source-inventory' || ![1, 2, SOURCE_INVENTORY_VERSION].includes(manifest.schemaVersion)
+  if (manifest?.format !== 'promptlab-source-inventory' || ![1, 2, SOURCE_INVENTORY_VERSION, COORDINATED_INVENTORY_VERSION].includes(manifest.schemaVersion)
     || !['desktop', 'web', 'extension'].includes(manifest.surface)
     || typeof manifest.sourceIdentity !== 'string' || !manifest.sourceIdentity
     || typeof manifest.capturedAt !== 'string' || !Number.isFinite(Date.parse(manifest.capturedAt))
@@ -147,7 +160,8 @@ export async function inspectSourceInventory(inventory) {
   if (await hash(manifest) !== manifestHash) throw new LibraryError('HASH_MISMATCH', 'Source manifest changed.');
   const captures = {};
   const expected = ['local-content', ...INDEXED_SOURCES.filter(source => !source.desktopOnly || manifest.surface === 'desktop').map(source => source.id),
-    ...(manifest.surface === 'extension' ? ['extension-drafts'] : []), 'selected-archives'];
+    ...(manifest.surface === 'extension' ? ['extension-drafts'] : []), 'selected-archives',
+    ...(manifest.schemaVersion === COORDINATED_INVENTORY_VERSION ? ['client-buffers'] : [])];
   if (canonical(manifest.sources.map(source => source.id).sort()) !== canonical(expected.sort())) {
     throw new LibraryError('INCOMPLETE_SOURCE_INVENTORY', 'A required source was omitted or duplicated.');
   }
@@ -165,5 +179,5 @@ export async function inspectSourceInventory(inventory) {
   const complete = manifest.sources.every(source => ['present', 'absent'].includes(source.state));
   if (manifest.sourceReadComplete !== complete) throw new LibraryError('INVALID_SOURCE', 'Source completeness disagrees with evidence.');
   for (const [id, object] of Object.entries(objects)) if (await hash(object) !== id) throw new LibraryError('HASH_MISMATCH', 'Retained source object changed.');
-  return { manifest: structuredClone(manifest), captures, currentSourceCoverage: manifest.schemaVersion === SOURCE_INVENTORY_VERSION };
+  return { manifest: structuredClone(manifest), captures, currentSourceCoverage: manifest.schemaVersion >= SOURCE_INVENTORY_VERSION };
 }

@@ -1,3 +1,5 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from '../lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './useLibraryEditBuffer.js';
 import { useEffect, useRef } from 'react';
 import { sessionGet, sessionSet } from '../lib/platform.js';
 import { readGenerationOptions, restoreEditorMode } from '../lib/generationOptions.js';
@@ -39,13 +41,14 @@ export function useSessionRestore(setters) {
 }
 
 export function useSessionSave(state) {
+  useLibraryEditBuffer('editor-session', state);
   const timerRef = useRef(null);
   useEffect(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
+    if (timerRef.current) clearLibraryBufferTimeout(timerRef.current);
+    timerRef.current = setLibraryBufferTimeout(() => {
       sessionSet({ [SESSION_KEY]: state });
     }, DEBOUNCE_MS);
-    return () => clearTimeout(timerRef.current);
+    return () => clearLibraryBufferTimeout(timerRef.current);
   }, [
     state.raw,
     state.enhanced,

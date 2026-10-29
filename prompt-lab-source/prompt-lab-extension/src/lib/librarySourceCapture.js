@@ -1,6 +1,7 @@
 import { canonical, LibraryError, MAX_BYTES } from '../../../library-storage/contract.mjs';
 import { captureSourceInventory, EXTENSION_DRAFT_KEYS, INDEXED_SOURCES } from '../../../library-storage/source-inventory.mjs';
 import { libraryWriteCoordinator } from './libraryWriteCoordinator.js';
+import { startAppCaptureParticipant } from './libraryOriginCapture.js';
 
 const sourceError = code => new LibraryError(code, 'Source capture could not complete. Original data is unchanged.');
 const encoder = new TextEncoder();
@@ -123,12 +124,12 @@ export function readExtensionLibraryDrafts(keys, { chromeApi = globalThis.chrome
 // Explicit read-only app entry point. Merely importing it has no side effects.
 // A future migration flow must separately stop writers and verify destination
 // parity before activation; this capture cannot establish that barrier.
-export function captureAppLibrarySources({ sourceIdentity, archives, capturedAt, timeoutMs = 10_000 }, environment = globalThis) {
+export function captureAppLibrarySources({ sourceIdentity, archives, capturedAt, clientBuffers, timeoutMs = 10_000 }, environment = globalThis) {
   checkTimeout(timeoutMs);
   const surface = typeof environment.chrome?.runtime?.sendMessage === 'function' ? 'extension'
     : environment.window?.__TAURI_INTERNALS__ ? 'desktop' : 'web';
   return captureSourceInventory({
-    surface, sourceIdentity, archives, capturedAt,
+    surface, sourceIdentity, archives, capturedAt, clientBuffers,
     // Access lazily so denied localStorage is captured as unavailable while
     // independent source families can still be inventoried.
     localStorage: {
@@ -146,6 +147,17 @@ export function captureAppLibrarySources({ sourceIdentity, archives, capturedAt,
 export async function captureAppLibrarySourcesWithLocalDrain(options) {
   const { value: inventory, coordination } = await libraryWriteCoordinator.withPausedWrites(async () => {
     const result = await captureAppLibrarySources(options);
+    if (!result.manifest.sourceReadComplete) throw sourceError('SOURCE_INCOMPLETE');
+    return result;
+  }, { timeoutMs: options.drainTimeoutMs ?? 30_000 });
+  return { inventory, coordination };
+}
+
+export async function captureAppLibrarySourcesWithOriginDrain(options) {
+  const participant = await startAppCaptureParticipant();
+  if (!participant) throw sourceError('SOURCE_CAPABILITY_UNAVAILABLE');
+  const { value: inventory, coordination } = await participant.capture(async ({ clientBuffers }) => {
+    const result = await captureAppLibrarySources({ ...options, clientBuffers });
     if (!result.manifest.sourceReadComplete) throw sourceError('SOURCE_INCOMPLETE');
     return result;
   }, { timeoutMs: options.drainTimeoutMs ?? 30_000 });

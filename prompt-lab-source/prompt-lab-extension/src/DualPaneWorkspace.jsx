@@ -1,3 +1,5 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
@@ -61,6 +63,7 @@ export default function DualPaneWorkspace({
   const resolvedAutosaveStatus = autosaveStatus === undefined
     ? internalAutosaveStatus
     : autosaveStatus;
+  useLibraryEditBuffer('dual-editor', { raw, title, undoSnapshot });
   const selected = library.find((entry) => entry.id === selectedId) || library[0] || null;
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -87,7 +90,7 @@ export default function DualPaneWorkspace({
     if (!onAutosave || !resolvedDirty) return undefined;
     const revision = changeRevisionRef.current;
     let cancelled = false;
-    const timer = window.setTimeout(async () => {
+    const timer = setLibraryBufferTimeout(async () => {
       setInternalAutosaveStatus('saving');
       try {
         const result = await onAutosave({ raw, title });
@@ -103,7 +106,7 @@ export default function DualPaneWorkspace({
     }, 650);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      clearLibraryBufferTimeout(timer);
     };
   }, [onAutosave, raw, resolvedDirty, title]);
 

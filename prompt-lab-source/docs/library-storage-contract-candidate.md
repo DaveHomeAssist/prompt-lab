@@ -157,6 +157,31 @@ services acknowledging one overwritten state. Commit identities also reject
 invalid types, timestamps and parent hashes before archiving. These checks do
 not establish filesystem process ownership, which remains an A2 requirement.
 
+### Coordinated origin capture brief
+
+The next increment registers participating app windows before startup writes.
+A Web Locks membership gate prevents new participants from starting during a
+capture. The capture owner requests each existing participant to pause its
+content writers and autosave timers, wait for actual outstanding writes, and
+retain its named in-memory editor buffers separately. A missing response,
+participant exit, changed buffer, failed write or deadline aborts the capture.
+No window's unsaved draft is flushed over another window's shared draft.
+
+The new source inventory version retains per-client buffers as immutable source
+evidence and exposes them through shared domain reads. Existing inventory
+versions remain readable. No schema migration modifies original app stores.
+Browser capabilities are checked explicitly. Unsupported clients retain their
+existing app behavior, but cannot claim coordinated capture. Web Locks and
+BroadcastChannel cover cooperating contexts in one storage partition, not older
+unregistered apps, another browser profile, native processes or iCloud clients.
+The capture receipt therefore retains activationReady=false. Final native
+ownership, migration activation and lossless active projection remain required.
+
+Verification uses disposable two-window Chromium fixtures, including late joins,
+missing clients, owner closure, changed buffers, delayed writes, timeout and
+retry, plus actual editor/component debounce coverage. Private export checks
+remain local and retain the original unchanged.
+
 ### Current context write coordination brief
 
 Migration capture must wait for actual asynchronous writes, including queued

@@ -214,6 +214,11 @@ export async function buildDomainMap(pkg) {
       else if (source.id === 'extension-drafts') for (const [key, value] of Object.entries(capture.entries)) {
         if (value !== null) await add('drafts', value, child(origin, 'entries', key), { sourceId: key });
       }
+      else if (source.id === 'client-buffers') for (const [i, client] of capture.records.entries()) {
+        for (const [j, buffer] of client.buffers.entries()) {
+          await add('drafts', buffer.value, child(origin, 'records', i, 'buffers', j, 'value'), { sourceId: `${client.clientId}/${buffer.id}` });
+        }
+      }
     }
   }
   for (const [key, pair] of [...sourcePairs].sort(([a], [b]) => compare(a, b))) if (!boundPairs.has(key)) await workspace(pair);

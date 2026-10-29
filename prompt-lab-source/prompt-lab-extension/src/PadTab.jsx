@@ -1,3 +1,5 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { writeLibraryLocalItem, removeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
@@ -356,7 +358,7 @@ function LegacyPadTab({
   };
 
   const flushActivePad = ({ silent = false } = {}) => {
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     if (!activePad || text === activePad.content) {
       return { state: padsState, ok: true };
     }
@@ -446,6 +448,8 @@ function LegacyPadTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notify]);
 
+  useLibraryEditBuffer('legacy-pad', { padsState, text, padNameDialog, tagDraft });
+
   const buildFilename = () => {
     const now = new Date();
     const yyyy = String(now.getFullYear());
@@ -462,9 +466,9 @@ function LegacyPadTab({
     setText(v);
     setSaveError('');
     setSaveState('pending');
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setLibraryBufferTimeout(() => {
       commitSave(v);
     }, 600);
   };
@@ -479,7 +483,7 @@ function LegacyPadTab({
     setText(next);
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + entry.length; ta.focus(); }, 0);
     try {
-      clearTimeout(timerRef.current);
+      clearLibraryBufferTimeout(timerRef.current);
       commitSave(next);
     } catch (e) { logWarn('pad insert date', e); }
     notify('Date separator inserted');
@@ -496,7 +500,7 @@ function LegacyPadTab({
     setText(next);
     const cursorPos = selected ? start + insert.length : start + prefix.length;
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = cursorPos; ta.focus(); }, 0);
-    try { clearTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
+    try { clearLibraryBufferTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
   };
 
   const insertHeading = () => insertAtCursor('\n## ', '\n');
@@ -699,7 +703,7 @@ function LegacyPadTab({
     setSaveError('');
     setLastSavedAt('');
     setRelativeSavedAt('');
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
     setPadsState(result.state);
     notify('Pad cleared');
@@ -719,7 +723,7 @@ function LegacyPadTab({
   // Fix 3: Flush pending content on unmount before clearing timers.
   useEffect(() => () => {
     flushRef.current({ silent: true });
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
   }, []);
 

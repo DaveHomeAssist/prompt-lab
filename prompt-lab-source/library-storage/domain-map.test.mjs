@@ -5,7 +5,7 @@ import { createPackage, createMemoryAdapter, createCommandService, canonical, FO
 import { captureSourceInventory } from './source-inventory.mjs';
 import { createLocalApi } from './local-api.mjs';
 
-async function fixture({ traceCount = 3, sourceIdentity = 'origin-a', surface = 'desktop', alterEntries = () => {}, indexedOverride, parents = [] } = {}) {
+async function fixture({ traceCount = 3, sourceIdentity = 'origin-a', surface = 'desktop', alterEntries = () => {}, indexedOverride, parents = [], clientBuffers } = {}) {
   const workspace = {
     schemaVersion: 2, future: { unknown: [false, null, 'kept'] },
     library: [{ id: 'p1', title: 'Original', original: '$& {{input}}', currentVersionId: 'current', collection: 'Work', folderId: 'f1',
@@ -52,7 +52,7 @@ async function fixture({ traceCount = 3, sourceIdentity = 'origin-a', surface = 
     journal: [{ id: 'library', revision: 9, entries: { 'pl2-library': JSON.stringify([{ ...workspace.library[0], title: 'Journal copy' }]), 'pl2-library-deleted:journal-delete': '1' }, future: 2 },
       { id: 'scratch', revision: 12, entries: { 'pl2-pads': JSON.stringify({ ...workspace.scratch, future: 'journal' }) } }],
   };
-  const inventory = await captureSourceInventory({ surface, sourceIdentity,
+  const inventory = await captureSourceInventory({ surface, sourceIdentity, clientBuffers,
     localStorage: { length: Object.keys(entries).length, key: i => Object.keys(entries)[i], getItem: key => {
       assert.ok(!['pl2-provider-settings', '__clerk_client_jwt'].includes(key)); return entries[key] ?? null;
     } },
@@ -258,4 +258,18 @@ test('read-scoped HTTP record route matches the shared service and rejects inval
   assert.equal((await fetch(base + path, { headers: { Authorization: `Bearer ${writeToken}` } })).status, 403);
   for (const query of ['&limit=2', '&unknown=true', '&cursor=01']) assert.equal((await fetch(base + path + query, { headers: { Authorization: `Bearer ${token}` } })).status, 400);
   assert.equal((await fetch(base + '/v1/library/records', { headers: { Authorization: `Bearer ${token}` } })).status, 409);
+});
+
+
+test('coordinated client buffers remain separate addressable drafts through package reads', async () => {
+  const clientBuffers = [
+    { clientId: 'window-a', buffers: [{ id: 'editor', value: { raw: 'First', future: ['$&', '{{input}}'] } }] },
+    { clientId: 'window-b', buffers: [{ id: 'editor', value: { raw: 'Second' } }] },
+  ];
+  const { pkg } = await fixture({ clientBuffers });
+  const before = canonical(pkg), map = await buildDomainMap(pkg);
+  const rows = map.records.filter(row => row.domain === 'drafts' && row.origin.replica === 'client-buffers');
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map(row => originalValue(pkg, row)).sort((a, b) => a.raw.localeCompare(b.raw)), clientBuffers.map(client => client.buffers[0].value));
+  assert.equal(canonical(pkg), before);
 });
