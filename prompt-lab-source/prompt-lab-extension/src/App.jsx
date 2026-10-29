@@ -508,7 +508,7 @@ export default function App({
 
   const undoDraftReset = () => {
     if (!draftRecovery) return;
-    closeSavePanel();
+    persistenceFlow.clearPersistenceState();
     dismissSaveReceipt();
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
