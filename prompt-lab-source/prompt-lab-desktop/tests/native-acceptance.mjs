@@ -828,13 +828,24 @@ try {
     await waitFor(() => execute('return ["idle", "saved"].includes(document.querySelector("[data-testid=scratch-save-status]")?.dataset.saveState);'), 'initial Scratch storage ready');
     await execute(`
       window.__nativeScratchDurability = { fail: true, aborted: 0, completed: 0, prematureSaved: false, prematureObservations: [], watch: false, durability: [] };
+      const scratchTransactions = new WeakSet();
+      const originalTransaction = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function(...args) {
+        const tx = originalTransaction.apply(this, args);
+        // Observe completion before the app registers its promise-resolving
+        // handler. Microtasks can render Saved before a later event listener.
+        tx.addEventListener('complete', () => {
+          if (scratchTransactions.has(tx)) window.__nativeScratchDurability.completed++;
+        });
+        return tx;
+      };
       const original = IDBObjectStore.prototype.put;
       IDBObjectStore.prototype.put = function(value, ...args) {
         const tx = this.transaction;
         if (tx.db.name === 'prompt_lab_durable' && value?.id === 'scratch') {
           const probe = window.__nativeScratchDurability;
           probe.durability.push(tx.durability || 'not exposed');
-          tx.addEventListener('complete', () => { probe.completed++; });
+          scratchTransactions.add(tx);
           if (probe.fail) { probe.aborted++; queueMicrotask(() => tx.abort()); }
         }
         return original.call(this, value, ...args);
