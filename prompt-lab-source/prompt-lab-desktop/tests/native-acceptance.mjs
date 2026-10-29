@@ -786,17 +786,26 @@ try {
     // real strict transactions, then retry through the same visible save flow.
     await execute(`
       window.__nativeLibraryDurability = { fail: true, aborted: 0, completed: 0, prematureReceipt: false };
-      const original = IDBDatabase.prototype.transaction;
-      IDBDatabase.prototype.transaction = function(store, mode, options) {
-        const tx = original.call(this, store, mode, options);
-        if (this.name === 'prompt_lab_durable' && mode === 'readwrite') {
-          tx.addEventListener('complete', () => { window.__nativeLibraryDurability.completed++; });
-          if (window.__nativeLibraryDurability.fail) {
-            window.__nativeLibraryDurability.aborted++;
-            queueMicrotask(() => tx.abort());
-          }
-        }
+      const libraryTransactions = new WeakSet();
+      const originalTransaction = IDBDatabase.prototype.transaction;
+      IDBDatabase.prototype.transaction = function(...args) {
+        const tx = originalTransaction.apply(this, args);
+        tx.addEventListener('complete', () => {
+          if (libraryTransactions.has(tx)) window.__nativeLibraryDurability.completed++;
+        });
+        tx.addEventListener('abort', () => {
+          if (libraryTransactions.has(tx)) window.__nativeLibraryDurability.aborted++;
+        });
         return tx;
+      };
+      const originalPut = IDBObjectStore.prototype.put;
+      IDBObjectStore.prototype.put = function(value, ...args) {
+        const tx = this.transaction;
+        if (tx.db.name === 'prompt_lab_durable' && value?.id === 'library') {
+          libraryTransactions.add(tx);
+          if (window.__nativeLibraryDurability.fail) queueMicrotask(() => tx.abort());
+        }
+        return originalPut.call(this, value, ...args);
       };
       new MutationObserver(() => {
         const receipt = document.querySelector('#save-receipt-title');
