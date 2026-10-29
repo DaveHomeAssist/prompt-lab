@@ -6,6 +6,13 @@ export async function applyDeletionPolicy(input, objects, sourceBindings, derive
   const manifest = structuredClone(input);
   sourceBindings = [...new Set(sourceBindings)].sort();
   const evidence = await collectDeletionEvidence(objects, sourceBindings);
+  // Only verified command ancestry supplies derived sources. Preserve a
+  // deletion across checkpoints and both sides of branch reconciliation.
+  for (const derived of derivedSources.filter(row => row.lifecycle?.action === 'delete')) {
+    const scope = evidence.scopes.find(row => row.bindings.includes(derived.binding));
+    if (!scope || scope.sourceIdentity !== derived.lifecycle.sourceIdentity) throw new LibraryError('INVALID_ANCESTRY', 'Lifecycle deletion has no matching verified source scope.');
+    scope.deletedIds = [...new Set([...scope.deletedIds, derived.lifecycle.sourceId])].sort();
+  }
   const blocked = [], suppressed = [], byWorkspace = new Map(), workspaces = new Map();
   const nodes = new Map(manifest.nodes.map(node => [node.key, node]));
   for (const source of manifest.sources) {

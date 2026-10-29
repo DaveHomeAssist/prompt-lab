@@ -8,6 +8,11 @@ const rootDomains = new Set(['prompts', 'trash', 'collections', 'folders', 'pack
 const singletonDomains = new Set(['scratch', 'recovery']);
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
+export function retainedViewResolutions(inspected) {
+  const owned = new Set(inspected.manifest.groups.map(group => group.id));
+  return Object.fromEntries(inspected.currentView.groups.filter(group => !owned.has(group.id)).map(group => [group.id, group.selected]));
+}
+
 /** Review current records without rewriting any source values or addresses. */
 export async function reviewCurrentView(pkg, resolutions = {}) {
   pkg = structuredClone(pkg); resolutions = structuredClone(resolutions);
@@ -40,7 +45,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
       const node = nodes.get(input.selected); return node?.source === row.origin.object && canonical(node.path) === canonical(row.origin.path);
     });
     if (input.selected !== null && !selected) blocked.push({ code: 'SELECTED_PROMPT_UNAVAILABLE', groupId: input.id });
-    const group = { id: input.id, domain: 'prompts', sourceIdentity: selected?.origin.sourceIdentity ?? null,
+    const group = { id: input.id, domain: input.lifecycle === 'trash' ? 'trash' : 'prompts', sourceIdentity: selected?.origin.sourceIdentity ?? null,
       candidates: candidates.map(row => row.key).sort(), absentBindings: [], selected: selected?.key ?? null,
       decision: input.selected === null ? 'deleted' : 'import' };
     groups.push(group); groupByKey.set(group.id, group);
@@ -83,7 +88,7 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
     group.candidates.push(row.key); rootGroups.set(row.key, group.id);
   }
   for (const group of groups) {
-    if (group.domain === 'prompts') {
+    if (promptGroups.some(input => input.id === group.id)) {
       if (Object.hasOwn(resolutions, group.id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Prompt selection is owned by import and reconciliation.', 409);
       continue;
     }
@@ -106,6 +111,13 @@ export async function planCurrentView(pkg, inspected, resolutions = {}) {
       } else if (scope && (scope.deletedIds.includes(selected.sourceId) || generation !== scope.generation)) {
         group.selected = null; group.decision = 'deleted';
       }
+    }
+    // Retire all old Trash replicas even if competing captures had left this
+    // group unresolved. Only the lifecycle-owned prompt group selects a copy.
+    if (group.domain === 'trash' && promptGroups.some(input => input.lifecycle && input.inactiveReason !== 'checkpoint-not-selected'
+      && (inspected.derivedSources ?? []).some(source => source.groupId === input.id
+        && source.lifecycle?.sourceIdentity === group.sourceIdentity && source.lifecycle.sourceId === rows[0]?.sourceId))) {
+      group.selected = null; group.decision = 'deleted';
     }
     // Never expose an older Scratch container that resurrects a retained
     // tombstone. Explicit restore remains a separate command, not a read choice.
@@ -140,7 +152,9 @@ export async function pageCurrentView(pkg, inspected, { domain, cursor = '0', li
   validateDomainPage({ domain, cursor, limit });
   if (!inspected.currentView) throw new LibraryError('SELECTION_REQUIRED', 'Review the current records for this revision before reading them.', 409);
   const map = await buildVerifiedDomainMap(pkg, inspected), selected = new Set(inspected.currentView.selected);
-  const rows = map.records.filter(row => selected.has(row.key) && (domain === undefined || row.domain === domain));
+  const locations = new Map(inspected.currentView.groups.filter(group => group.selected !== null).map(group => [group.selected, group.domain]));
+  const rows = map.records.filter(row => selected.has(row.key)).map(row => locations.has(row.key) && locations.get(row.key) !== row.domain
+    ? { ...row, domain: locations.get(row.key) } : row).filter(row => domain === undefined || row.domain === domain);
   const offset = Number(cursor);
   return { format: 'promptlab-current-view-page', schemaVersion: 1, libraryId: pkg.libraryId, revision: pkg.head,
     view: 'reviewed', activationReady: false, domain: domain ?? null, total: rows.length,

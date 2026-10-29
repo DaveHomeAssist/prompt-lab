@@ -74,7 +74,7 @@ export async function planReconciliation({ libraryId, currentRevision, incomingR
   const manifests = [baseManifest, current.manifest, incoming.manifest];
   const maps = manifests.map(manifest => new Map(manifest.groups.map(group => [group.id, group])));
   const nodes = new Map(manifests.flatMap(manifest => manifest.nodes.map(node => [node.key, node])));
-  const signature = group => !group ? 'absent' : group.selected === null ? `inactive:${group.inactiveReason}` : nodes.get(group.selected)?.hash;
+  const signature = group => !group ? 'absent' : group.selected === null ? `inactive:${group.inactiveReason}` : `${group.lifecycle ?? 'active'}:${nodes.get(group.selected)?.hash}`;
   const sources = [...new Map(manifests.flatMap(manifest => manifest.sources).map(source => [canonical(source), source])).values()];
   const ids = [...new Set(maps.flatMap(map => [...map.keys()]))].sort(), groups = [], rows = [];
   for (const id of Object.keys(resolutions)) if (!ids.includes(id)) throw new LibraryError('INVALID_RESOLUTIONS', 'Choice names an unknown group.');

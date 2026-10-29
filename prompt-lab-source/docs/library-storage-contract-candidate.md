@@ -1,5 +1,33 @@
 # Library storage contract candidate
 
+## Shared prompt lifecycle
+
+Move to Trash, restore from Trash and permanent deletion must use the same
+reviewed command service and durable outbox as prompt creation and editing.
+Each request pins the library revision, selected logical group, exact record
+hash, action and time. This applies both to newly trashed prompts and existing
+Trash records in an imported workspace. Keep every original object, complete
+version history, unknown field, related record, backup and operation receipt.
+
+Lifecycle state belongs to the logical prompt group. Current reads project its
+selected record into Prompts or Trash; archival reads continue to describe the
+original source location. An explicit restore derives a successor without
+reusing a stale imported Trash selection. Conflicting identities require review.
+Permanent deletion adds verified, source-scoped evidence to immutable ancestry.
+Checkpoint restores, later imports and branch reconciliation must honor that
+evidence even when another branch selected older content. It removes active and
+Trash visibility but does not erase retained recovery content or backups.
+Physical erasure remains the separately confirmed workflow in the specification.
+
+Acceptance covers lifecycle round trips, imported Trash, complete history and
+unknown-field retention, edit rejection while trashed, stale requests, explicit
+confirmation, interrupted publication, response-loss retries, concurrent edits
+and lifecycle changes, deletion across restores/imports/branches, full transfer
+and the same direct/API/browser queue behavior. Run synthetic acceptance on
+Dominic and the complete private export only in disposable storage on its Mac.
+Native activation, installed-app acceptance and actual iCloud propagation remain
+separate gates; these commands do not change an existing personal library.
+
 ## Shared prompt creation
 
 Creating a prompt must use the same reviewed command, durable queue and receipt

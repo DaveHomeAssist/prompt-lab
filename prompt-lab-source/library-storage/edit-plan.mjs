@@ -1,7 +1,7 @@
 import { canonical, hash, LibraryError, makeObject } from './contract.mjs';
 import { buildLibrarySelection } from './import-plan.mjs';
 import { buildVerifiedDomainMap } from './domain-map.mjs';
-import { planCurrentView } from './current-view.mjs';
+import { planCurrentView, retainedViewResolutions } from './current-view.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
 import { normalizeEditRequest } from './edit-request.mjs';
 export { normalizeEditRequest } from './edit-request.mjs';
@@ -76,7 +76,7 @@ export async function planPromptEdit(pkg, inspected, value) {
   }
   // Preserve every reviewed non-prompt selection. New source captures still need
   // their own review; an edit never silently rebases those decisions.
-  const resolutions = Object.fromEntries(inspected.currentView.groups.filter(row => row.domain !== 'prompts').map(row => [row.id, row.selected]));
+  const resolutions = retainedViewResolutions(inspected);
   const currentViewPlan = await planCurrentView({ ...pkg, objects }, { ...inspected, manifest: deletion.manifest, derivedSources }, resolutions);
   const plan = { format: 'promptlab-prompt-edit-plan', schemaVersion: 1, request, source: source.hash, inputState: input.hash,
     derivedSource, manifest: deletion.manifest, currentViewPlan, unresolved: currentViewPlan.unresolved, activationReady: false };

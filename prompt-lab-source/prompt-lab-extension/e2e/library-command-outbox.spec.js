@@ -10,7 +10,7 @@ import { captureSourceInventory } from '../../library-storage/source-inventory.m
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const storePath = '/prompt-lab-extension/src/lib/libraryCommandOutbox.js';
-const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request'].map(name => `/library-storage/${name}.mjs`)];
+const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request', 'lifecycle-request'].map(name => `/library-storage/${name}.mjs`)];
 const content = { library: [{ id: 'prompt', original: 'Complete $& {{input}}', unknown: { preserved: true },
   versions: Array.from({ length: 41 }, (_, n) => ({ id: `v${n}`, original: `Version ${n}` })) }],
   runs: Array.from({ length: 1002 }, (_, n) => ({ id: `r${n}`, output: `Run ${n}`, unknown: n })), backups: [{ name: 'Preserved' }] };
@@ -53,13 +53,15 @@ async function boot(page, options) {
   }, { options, storePath });
 }
 
-for (const mode of ['edit', 'create']) test(`an ordinary prompt ${mode} survives browser restart and commits through the shared API once`, async () => {
+for (const mode of ['edit', 'create', 'trash', 'restore', 'delete']) test(`an ordinary prompt ${mode} survives browser restart and commits through the shared API once`, async () => {
   const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
   const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
   const profile = await mkdtemp(resolve(tmpdir(), 'promptlab-edit-outbox-')); let context;
   try {
-    const workspace = { ...content, runs: content.runs.slice(0, 1) }, entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': '[]' };
+    const lifecycle = ['trash', 'restore', 'delete'].includes(mode), initiallyTrashed = ['restore', 'delete'].includes(mode);
+    const workspace = { ...content, library: initiallyTrashed ? [] : content.library, trash: initiallyTrashed ? content.library : [], runs: content.runs.slice(0, 1) };
+    const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': JSON.stringify(workspace.trash) };
     const sourceInventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'synthetic-browser-origin',
       localStorage: { length: 2, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
       readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic absent store.' }), archives: { reviewed: true, records: [] } });
@@ -67,9 +69,10 @@ for (const mode of ['edit', 'create']) test(`an ordinary prompt ${mode} survives
     const importedReceipt = await api.service.apply({ ...imported, idempotencyKey: 'import' });
     const selected = await api.service.previewCurrentView({ libraryId: 'lib', expectedRevision: importedReceipt.revision });
     const selectedReceipt = await api.service.apply({ ...selected, idempotencyKey: 'select' });
-    const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: 'prompts' });
+    const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: initiallyTrashed ? 'trash' : 'prompts' });
     const row = records.items[0], group = records.groups.find(group => group.selected === row.key);
-    const request = mode === 'create' ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, sourceBinding: imported.sourceBinding,
+    const request = lifecycle ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
+      action: mode, changedAt: '2026-10-29T12:00:00.000Z', confirmPermanentDeletion: mode === 'delete', mode: 'lifecycle' } : mode === 'create' ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, sourceBinding: imported.sourceBinding,
       creationId: 'browser-created', createdAt: '2026-10-29T12:00:00.000Z', record: { original: 'Browser creation with $& {{input}}', unknown: { preserved: true } }, mode }
       : { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
       editedAt: '2026-10-29T12:00:00.000Z', updates: [{ path: ['original'], value: 'Browser edit with $& {{input}}' }], mode: 'edit' };
@@ -83,12 +86,18 @@ for (const mode of ['edit', 'create']) test(`an ordinary prompt ${mode} survives
     const committed = await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport));
     expect(committed.state).toBe('committed');
     expect(await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport))).toEqual(committed);
-    const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'prompts' });
+    const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: mode === 'trash' ? 'trash' : 'prompts' });
     const result = mode === 'create' ? current.items.find(item => item.sourceId !== 'prompt') : current.items[0];
-    expect(current.total).toBe(mode === 'create' ? 2 : 1);
-    expect(result.value.original).toBe(mode === 'create' ? 'Browser creation with $& {{input}}' : 'Browser edit with $& {{input}}');
-    expect(result.value.versions).toHaveLength(mode === 'create' ? 0 : 42);
-    expect(result.value.unknown).toEqual(content.library[0].unknown);
+    expect(current.total).toBe(mode === 'delete' ? 0 : mode === 'create' ? 2 : 1);
+    if (mode !== 'delete') {
+      expect(result.value.original).toBe(mode === 'create' ? 'Browser creation with $& {{input}}' : mode === 'edit' ? 'Browser edit with $& {{input}}' : content.library[0].original);
+      expect(result.value.versions).toHaveLength(mode === 'create' ? 0 : mode === 'edit' ? 42 : 41);
+      expect(result.value.unknown).toEqual(content.library[0].unknown);
+    }
+    if (lifecycle) {
+      const other = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: mode === 'trash' ? 'prompts' : 'trash' });
+      expect(other.total).toBe(0);
+    }
     if (mode === 'create') expect(current.items.find(item => item.sourceId === 'prompt').value).toEqual(workspace.library[0]);
     expect(Object.keys((await adapter.read()).operations)).toHaveLength(3);
   } finally { await context?.close(); await api.close(); await rm(profile, { recursive: true, force: true }); }

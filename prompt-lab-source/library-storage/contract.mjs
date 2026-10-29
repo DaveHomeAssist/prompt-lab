@@ -113,7 +113,7 @@ export async function inspectPackage(pkg) {
     const derivedSources = [...new Map(commit.parents.flatMap(parent => visited.get(parent).derivedSources ?? [])
       .map(source => [canonical(source), source])).values()];
     if (Object.hasOwn(commit, 'sourceBinding')) {
-      if (['restore', 'reconcile', 'select', 'edit', 'create'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation, selection and edits use retained ancestry evidence only.');
+      if (['restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation, selection and edits use retained ancestry evidence only.');
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
       if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
@@ -182,6 +182,20 @@ export async function inspectPackage(pkg) {
         || commit.source !== plan.source || commit.inputState !== plan.inputState
         || Object.entries(expected.objects).some(([key, object]) => canonical(pkg.objects[key]) !== canonical(object))) {
         throw new LibraryError('CREATE_PLAN_MISMATCH', 'Creation differs from its reviewed parent, identity or retained fields.', 409);
+      }
+      derivedSources.push(plan.derivedSource);
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null, currentView: plan.currentViewPlan };
+    } else if (operation === 'lifecycle') {
+      if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'A lifecycle change requires one reviewed parent.', 409);
+      const parent = visited.get(commit.parents[0]);
+      const plan = await readObject(pkg.objects, commit.lifecyclePlan, 'prompt-lifecycle-plan');
+      const { planPromptLifecycle } = await import('./lifecycle-plan.mjs');
+      const expected = await planPromptLifecycle({ ...pkg, head: commit.parents[0] }, parent, plan.request);
+      const manifest = await readObject(pkg.objects, commit.state, 'library-state');
+      if (expected.plan.unresolved || canonical(plan) !== canonical(expected.plan) || canonical(manifest) !== canonical(plan.manifest)
+        || commit.source !== plan.source || commit.inputState !== plan.inputState
+        || Object.entries(expected.objects).some(([key, object]) => canonical(pkg.objects[key]) !== canonical(object))) {
+        throw new LibraryError('LIFECYCLE_PLAN_MISMATCH', 'Lifecycle change differs from its reviewed parent, identity or retained fields.', 409);
       }
       derivedSources.push(plan.derivedSource);
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null, currentView: plan.currentViewPlan };
@@ -291,6 +305,22 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     read: () => adapter.read(),
     previewRead: currentReview,
     transfer: exportTransfer,
+    async previewLifecycle(value) {
+      value = structuredClone(value);
+      const { normalizeLifecycleRequest, planPromptLifecycle } = await import('./lifecycle-plan.mjs');
+      const request = normalizeLifecycleRequest(value), state = await adapter.read();
+      if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Lifecycle change targets another library.', 409);
+      if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin lifecycle changes to the current library revision.', 409);
+      const pkg = packageFor(state), inspected = await inspectPackage(pkg);
+      const { plan } = await planPromptLifecycle(pkg, inspected, request);
+      const input = { ...request, mode: 'lifecycle' }, previewId = globalThis.crypto.randomUUID();
+      const fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId: request.libraryId, expectedRevision: request.expectedRevision, sourceHash: plan.source,
+        fingerprint, expiresAt: expires, mode: 'lifecycle', commitAvailable: plan.unresolved === 0, lifecyclePlan: plan };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
+    },
     async previewCreate(value) {
       value = structuredClone(value);
       const { normalizeCreateRequest, planPromptCreate } = await import('./create-plan.mjs');
@@ -375,7 +405,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select', 'edit', 'create'].includes(commit.operation) ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select', 'edit', 'create', 'lifecycle'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
@@ -459,7 +489,19 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
         let pkg;
-        if (preview.input.mode === 'create') {
+        if (preview.input.mode === 'lifecycle') {
+          if (preview.response.lifecyclePlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve the current records before changing their lifecycle.', 409);
+          const { planPromptLifecycle } = await import('./lifecycle-plan.mjs');
+          const { mode, ...request } = preview.input;
+          const current = packageFor(state), inspected = await inspectPackage(current);
+          const { plan, objects } = await planPromptLifecycle(current, inspected, request);
+          if (canonical(plan) !== canonical(preview.response.lifecyclePlan)) throw new LibraryError('LIFECYCLE_PLAN_MISMATCH', 'Lifecycle change no longer matches its reviewed identity and action.', 409);
+          const planObject = await makeObject('prompt-lifecycle-plan', plan), manifest = await makeObject('library-state', plan.manifest);
+          const commit = await makeObject('commit', { ...identity, operation: 'lifecycle', source: plan.source, inputState: plan.inputState,
+            state: manifest.hash, lifecyclePlan: planObject.hash, createdAt: new Date().toISOString() });
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { ...objects, [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
+        } else if (preview.input.mode === 'create') {
           if (preview.response.createPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve the current records before creating.', 409);
           const { planPromptCreate } = await import('./create-plan.mjs');
           const { mode, ...request } = preview.input;

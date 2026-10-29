@@ -24,7 +24,8 @@
             "branch-transfer",
             "current-view-plan",
             "prompt-edit-plan",
-            "prompt-create-plan"
+            "prompt-create-plan",
+            "prompt-lifecycle-plan"
           ]
         },
         "data": {}
@@ -111,7 +112,8 @@
             "reconcile",
             "select",
             "edit",
-            "create"
+            "create",
+            "lifecycle"
           ]
         },
         "importPlan": {
@@ -154,6 +156,10 @@
           "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "createPlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "lifecyclePlan": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
         }
@@ -516,6 +522,84 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "lifecycle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "lifecyclePlan",
+              "inputState"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restorePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restoredCheckpointId"
+                  ]
+                },
+                {
+                  "required": [
+                    "reconciliationPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "incomingBranch"
+                  ]
+                },
+                {
+                  "required": [
+                    "currentViewPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "editPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "createPlan"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -561,7 +645,8 @@
             "reconcile",
             "select",
             "edit",
-            "create"
+            "create",
+            "lifecycle"
           ]
         },
         "commitAvailable": {
@@ -599,6 +684,9 @@
         },
         "createPlan": {
           "$ref": "#/$defs/CreatePlan"
+        },
+        "lifecyclePlan": {
+          "$ref": "#/$defs/LifecyclePlan"
         }
       },
       "required": [
@@ -951,6 +1039,59 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "lifecycle"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "lifecyclePlan"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "lifecyclePlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "lifecyclePlan"
+              ]
+            }
+          }
         }
       ]
     },
@@ -1011,7 +1152,8 @@
             "reconcile",
             "select",
             "edit",
-            "create"
+            "create",
+            "lifecycle"
           ]
         },
         "stateHash": {
@@ -1719,6 +1861,13 @@
                 "enum": [
                   "permanent-deletion",
                   "checkpoint-not-selected"
+                ]
+              },
+              "lifecycle": {
+                "enum": [
+                  "active",
+                  "trash",
+                  "deleted"
                 ]
               }
             },
@@ -4205,6 +4354,82 @@
             "mode"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "libraryId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "expectedRevision": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "groupId": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "expectedRecordHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "changedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "action": {
+              "enum": [
+                "trash",
+                "restore",
+                "delete"
+              ]
+            },
+            "confirmPermanentDeletion": {
+              "type": "boolean"
+            },
+            "mode": {
+              "const": "lifecycle"
+            }
+          },
+          "required": [
+            "libraryId",
+            "expectedRevision",
+            "groupId",
+            "expectedRecordHash",
+            "changedAt",
+            "action",
+            "confirmPermanentDeletion",
+            "mode"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "action": {
+                    "const": "delete"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "confirmPermanentDeletion": {
+                    "const": true
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "confirmPermanentDeletion": {
+                    "const": false
+                  }
+                }
+              }
+            }
+          ]
         }
       ]
     },
@@ -4732,6 +4957,32 @@
             "string",
             "null"
           ]
+        },
+        "lifecycle": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "enum": [
+                "trash",
+                "restore",
+                "delete"
+              ]
+            },
+            "sourceIdentity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceId": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "action",
+            "sourceIdentity",
+            "sourceId"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -5029,6 +5280,147 @@
         "activationReady",
         "fingerprint",
         "createdId"
+      ],
+      "additionalProperties": false
+    },
+    "LifecycleRequest": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "groupId": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "expectedRecordHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "changedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+        },
+        "action": {
+          "enum": [
+            "trash",
+            "restore",
+            "delete"
+          ]
+        },
+        "confirmPermanentDeletion": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision",
+        "groupId",
+        "expectedRecordHash",
+        "changedAt",
+        "action",
+        "confirmPermanentDeletion"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "action": {
+                "const": "delete"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "confirmPermanentDeletion": {
+                "const": true
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "confirmPermanentDeletion": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "LifecyclePlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-prompt-lifecycle-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "request": {
+          "$ref": "#/$defs/LifecycleRequest"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "inputState": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "derivedSource": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/DerivedSource"
+            },
+            {
+              "required": [
+                "lifecycle"
+              ]
+            }
+          ]
+        },
+        "manifest": {
+          "$ref": "#/$defs/LibraryState"
+        },
+        "currentViewPlan": {
+          "$ref": "#/$defs/CurrentViewPlan"
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "retainedRecoveryContent": {
+          "const": true
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "request",
+        "source",
+        "inputState",
+        "derivedSource",
+        "manifest",
+        "currentViewPlan",
+        "unresolved",
+        "activationReady",
+        "fingerprint",
+        "retainedRecoveryContent"
       ],
       "additionalProperties": false
     }
