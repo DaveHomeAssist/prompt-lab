@@ -77,6 +77,16 @@ test('Scratch strict save failure, retry and three browser restarts', async ({},
     expect(result.premature).toEqual([]);
     expect(result.aborted).toBeGreaterThan(0);
     expect(result.completed).toBeGreaterThan(0);
+    // Keep the committed revision but roll back only the mirror body. WebView2
+    // can leave this partial snapshot even after the strict journal completed.
+    const tornMirror = await page.evaluate(() => {
+      const state = JSON.parse(localStorage.getItem('pl2-pads'));
+      const revision = localStorage.getItem('pl2-scratch-journal-revision');
+      state.pads[0].content = 'Synthetic stale mirror body';
+      localStorage.setItem('pl2-pads', JSON.stringify(state));
+      return { revision, after: localStorage.getItem('pl2-scratch-journal-revision') };
+    });
+    expect(tornMirror.after).toBe(tornMirror.revision);
     for (let restart = 0; restart < 3; restart++) {
       await context.close();
       await open();
