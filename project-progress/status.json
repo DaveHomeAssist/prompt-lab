@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T06:40:40.289Z",
+  "snapshotAt": "2026-10-29T07:05:59.820Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,14 +9,14 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "c5b66776b2c687bc7107bafd2ebaf81f3af240b1",
+  "mainSha": "1f61cb236628ca04536b5fadd7cec2da90383847",
   "overall": "Acceptance incomplete",
   "nextAction": "Deliver the PR247 Save UX follow-up after exact-head CI and deployed acceptance. Complete A1 source preservation and import/conflict semantics in draft PR248. Two-client iCloud propagation and the native packaging decision remain open. Hosted choices are settled: Neon with Clerk, US East, server-readable encrypted-at-rest storage, retained history/backups and separate erasure. No paid provisioning without separate approval. Registered Next Steps Board HTML remains missing. Earlier unrelated project actions are retained as history: Hosted model choice PR256 is live and scoped acceptance passed. Choose a model in Settings > Provider Settings. Review the separate intermittent Windows NSIS Scratch restart finding and the existing Undo receipt finding before any new repair. Registered Next Steps Board file remains absent. Previous snapshot next actions, preserved as history: Review the confirmed stale save receipt after Undo reset before authorizing a narrow repair. Actual provider, shortcuts, versions, reload, run-history and stale-tab acceptance passed. Earlier unrelated next actions remain historical: Retain the delivered save repair. Reload open tabs and reopen legacy saved editing sessions; broader native/human acceptance remains separate. Local board synchronization unavailable because registered file is missing. Prior snapshot actions, preserved as historical: Finish main verification and deliver PR252 test harness plus these records. Reload all open tabs; legacy edit sessions must reopen the prompt or save separately. Earlier unrelated next actions retained as historical, not re-audited in this repair: Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
     {
       "label": "Save UX and storage candidate verification",
       "state": "Open",
-      "detail": "2026-10-29: PR247 integrates main c5b6677 and preserves its save concurrency repair. Dominic Node22:77 targeted tests pass; full hosted browser run82 passed/1 existing skip/1 stacked-layout overlap failure; after repair10/10 responsive and result-save cases pass. New-head CI, merge and production acceptance remain open. Draft PR248 safely preserves isolated A1/A2 reference candidate8189de4. Fresh private Mac export round trip matches all1,666,421 bytes and complete JSON; original unchanged,216 Library/2 trash/21 stored versions,one duplicate-retry commit. A1 inventory/conflict semantics, production A2, app connection, two-client iCloud and hosted phases remain incomplete. No private export uploaded. Notion writes/readbacks confirmed. Next Steps Board missing.",
+      "detail": "PR247 at 4094160 passed all 14 reported checks, but review identified stale result feedback after keyboard saves. Follow-up uses shared acknowledged snapshots. Dominic Node22: 76 targeted tests and five viewport browser cases with keyboard update/retry pass; regression fails before the fix. New-head checks, merge and live acceptance remain open. Separate draft PR248 at dceefad: 30 storage tests and exact real-export byte/JSON parity pass. A1/A2 remain incomplete; real two-client iCloud propagation is unverified despite Mac Sync being on and both Windows providers reporting Idle.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/247"
     },
     {
@@ -1377,7 +1377,7 @@
       "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
       "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
       "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
-      "status": "In progress",
+      "status": "Done",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
@@ -1446,8 +1446,8 @@
     {
       "id": "407255fc8f44819cad76dec62b424b0a",
       "inPlan": false,
-      "verification": "Dominic Node22: 77 targeted tests pass. Full hosted run:82 passed,1 existing skip,1 stacked overlap failure. After repair,10/10 responsive and result-save cases pass. No production acceptance yet.",
-      "nextAction": "Finish PR247 checks, merge and deployed result-save acceptance.",
+      "verification": "2026-10-29 PR247 review follow-up: shared acknowledged result snapshots now reconcile keyboard and Library-details saves with the result bar. A failed button save followed by keyboard retry clears the error, and later keyboard saves advance the displayed version without falsely marking newer edits saved. Dominic Node22: 76 targeted tests pass; all 5 viewport browser cases pass with keyboard update and retry checks. The stale receipt regression fails before the fix. Exact follow-up CI, merge and deployed acceptance remain open. Next action: complete PR247 checks, resolve the addressed review thread, merge and verify the deployed Save flow.",
+      "nextAction": "Finish current-head checks and the addressed review, merge PR247 and verify deployed Save behavior.",
       "title": "Enhance results: Save action hard to find and save state unclear",
       "status": "In progress",
       "severity": "High",

@@ -102,6 +102,7 @@ export default function CreateEditorPane({
   setSaveTitle,
   quickSave,
   quickSaveAsNew,
+  lastSaveReceipt,
   dismissResult,
   onCandidateSelection,
   // Golden
@@ -617,6 +618,7 @@ export default function CreateEditorPane({
             canSavePanel={canSavePanel}
             quickSave={quickSave}
             quickSaveAsNew={quickSaveAsNew}
+            lastSaveReceipt={lastSaveReceipt}
             openSavePanel={openSavePanel}
             currentEntry={currentEntry}
             onCandidateSelection={onCandidateSelection}

@@ -50,6 +50,19 @@ for (const [width, height] of [[375, 812], [768, 1024], [844, 390], [1440, 900],
     const editor = page.getByLabel('Expanded candidate');
     await editor.fill('Later change after the acknowledged save.');
     await expect(bar).toContainText('Current result has unsaved changes.');
+    await editor.press('ControlOrMeta+s');
+    await expect(bar).toContainText(/Saved Expanded to .+version 2/);
+    await expect(bar).not.toContainText('Current result has unsaved changes.');
+    await editor.fill('A change saved after keyboard retry.');
+    await page.evaluate(() => { window.__failLibrarySave = true; });
+    await save.click();
+    await expect(bar).toContainText('Save failed.');
+    await page.evaluate(() => { window.__failLibrarySave = false; });
+    await editor.press('ControlOrMeta+s');
+    await expect(bar).toContainText(/Saved Expanded to .+version 3/);
+    await expect(bar).not.toContainText('Save failed.');
+    await expect(bar).not.toContainText('Current result has unsaved changes.');
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))[0].enhanced)).toBe('A change saved after keyboard retry.');
     await page.screenshot({ path: testInfo.outputPath(`result-save-${width}.png`) });
   });
 }

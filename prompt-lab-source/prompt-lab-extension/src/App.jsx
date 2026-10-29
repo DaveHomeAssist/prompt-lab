@@ -1328,6 +1328,7 @@ export default function App({
               showInlineSaveBar={showInlineSaveBar}
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
+              lastSaveReceipt={lastSaveReceipt}
               onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}

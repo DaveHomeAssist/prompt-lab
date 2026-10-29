@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview';
@@ -36,7 +36,7 @@ function restoreStructuredEdit(text, edit) {
 export default function PostEnhanceResults({
   m, compact, raw, enhanced, setEnhanced, variants, resultMeta, setResultMeta, copy, enhance, dismiss,
   editingId, lib, evalRuns, showInlineSaveBar, saveTitle, setSaveTitle, suggestedSaveTitle, canSavePanel,
-  quickSave, quickSaveAsNew, openSavePanel, currentEntry, onCandidateSelection,
+  quickSave, quickSaveAsNew, openSavePanel, currentEntry, onCandidateSelection, lastSaveReceipt,
   // Two-pane Create workspace (docs/ENHANCE_WORKSPACE_REDESIGN_BRIEF.md, slice 1):
   // one primary Save and Copy live in the commit bar, and the assumptions count
   // sits in the header.
@@ -65,6 +65,13 @@ export default function PostEnhanceResults({
   const latencyMs = normalized.latencyMs ?? evalRuns?.[0]?.latencyMs;
   const usage = normalized.usage || evalRuns?.[0]?.usage;
   const reversibleEdits = normalized.reversibleEdits.filter(edit => !edit.candidateId || edit.candidateId === selected.id);
+  useEffect(() => {
+    if (lastSaveReceipt?.entryId !== editingId || !lastSaveReceipt?.resultSnapshot) return;
+    setSaveFeedback({
+      ...lastSaveReceipt.resultSnapshot, state: 'saved',
+      title: lastSaveReceipt.title, versionNumber: lastSaveReceipt.versionNumber,
+    });
+  }, [lastSaveReceipt, editingId]);
   const saving = Boolean(lib?.saving || saveFeedback?.state === 'pending');
   const changedSinceSave = saveFeedback?.state === 'saved' && (
     saveFeedback.content !== selected.content || saveFeedback.raw !== raw
