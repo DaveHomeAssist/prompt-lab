@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T13:12:11.082Z",
+  "snapshotAt": "2026-10-29T13:35:09.228Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Integrate app reads and mutations with the reviewed command service and durable outbox. Complete native ownership/packaging, remaining capture gaps and installed acceptance. Inspect the Windows iCloud account and sync warnings when UI access is available, then qualify actual two-client propagation before hosted work. No paid provisioning. Registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Durable pending commands verified",
+      "state": "Open",
+      "detail": "2026-10-29 durable reviewed commands pushed in 3220971276706f13510c38541d2645d03df717ab: https://github.com/DaveHomeAssist/prompt-lab/commit/3220971276706f13510c38541d2645d03df717ab . Version 2 outbox retains complete reviewed input, library/base/operation identity, integrity hashes and committed receipts. Strict IndexedDB transaction completion is required before Pending or Committed acknowledgement. Reconnect reads the operation receipt first; changed revisions/reviews, wrong libraries and revoked access retain the command without silent rebase. Credentials remain outside storage. Historical v1 is retained without replay. Shared direct/loopback transports include cancellation and bounded credential/response waits. Dominic Node 22.23.4: 189 storage tests, four Chromium browser cases (separate process restarts, lost response, command/receipt transaction aborts, concurrent windows, revoked access and corrupt/newer-format retention), docs lint and four documentation contracts pass. Runtime pending/receipt schema fixtures pass; seven invalid fixtures are rejected, with explicit timestamp checking because the runner lacks the optional format checker. All ten source files hash-match the runner. Mac Node 22.22.1: all 1,666,421 source bytes and complete values for 216 prompts, two Trash rows and three runs survive queue/reconstruction/commit/lost-response retry; one receipt, original SHA unchanged, no private transfer or activation. Initial unbound fixture and schema-validator setup failures are retained separately. Configuration recheck: Mac probe uploaded and sync unpaused; both Windows clients registered/running, neither sees the Mac probe or October 28 export. Mac remains locked; current Windows account/warnings and cause remain unverified. Settings unchanged. A1 stays In progress; full app mutation/outbox integration, native packaging/ownership and installed/two-client acceptance remain open. PR248 stays draft; CI is a separate gate. Next: complete native service ownership and shared app mutation wiring before activation and hosted work. No paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/3220971276706f13510c38541d2645d03df717ab"
+    },
     {
       "label": "App history retention verified",
       "state": "Open",
@@ -1320,8 +1326,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Integrate the app command service and durable outbox; complete native ownership and installed/two-client acceptance.",
-      "verification": "Source 8be80cb: 1,537 shared tests plus 52 final targeted tests, 231 legacy tests, 173 storage tests, 20 source-capture/browser database checks and four deletion/recovery cases pass. Old Trash restores with 41 versions at desktop/phone widths; real-export three runs and 218 prompt/Trash metadata records preserved, original unchanged. Known-field validation remains; full app/native acceptance is incomplete.",
+      "nextAction": "Complete native service ownership and shared app mutation wiring; verify installed and two-client acceptance before activation.",
+      "verification": "Source 3220971: all 189 storage tests, four real-browser durable queue cases, docs and schema checks pass on Dominic. Complete real-export bytes and values survive queue, commit and lost-response recovery on the Mac, original unchanged. Full app integration and native/iCloud acceptance remain open.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
