@@ -1,5 +1,41 @@
 # Library storage contract candidate
 
+## October 29 large journal read verification
+
+Folder histories above the 64 MiB snapshot-cache budget previously discarded
+all cached verification. Every subsequent read parsed, canonically hashed and
+revalidated the full transaction history. Keep bounded byte-digest proofs for
+up to 4,096 files, the verified complete graph identity and up to 128 verified
+transaction states. Every read still loads actual file bytes and checks them;
+changed bytes require canonical address verification again. Missing ancestors,
+conflict copies and invalid preservation still fail. No storage format changes,
+history pruning or trust in timestamps are introduced.
+
+Dominic Node 22.23.4 passes all 381 storage tests. The new regression exceeds
+the real cache budget and fails against the previous implementation with 49
+redundant semantic digest operations on an unchanged read. The corrected read
+reuses those proofs while same-size historical corruption, missing ancestry
+and caller mutation still fail safely. On the same 77,328,236-byte synthetic
+journal, repeated reads improved from 1.795 to 1.864 seconds to 0.341 to 0.350
+seconds. Cold reads were 2.454 and 2.597 seconds respectively; this is an
+improvement to repeated reads, not a cold-start or general scale guarantee.
+
+The identical isolated real-export fixture on Mac Node 22.22.1 passed its
+open, readback and unchanged-save check in 8.407 seconds, previously 33.630.
+All 11 transaction files remained byte-identical. The 217 selected prompts,
+two Trash records, complete prior history, 61 objects and 11 operation receipts
+remain. Original export and browser source copies are unchanged. This does not
+establish native activation, actual two-client iCloud or human acceptance.
+
+A separate copy of that real-data fixture also passed creation, offline intent,
+browser restart, recovery and folder reopen. It retains all prior objects and
+histories, adds exactly two operations and has 218 prompts and 13 receipts.
+Open, create and recovery took 12.231, 20.998 and 22.093 seconds; retaining the
+offline edit took 0.293 seconds. These are observations on a larger fixture,
+not an identical before/after save benchmark. Save and recovery latency still
+need improvement before activation. No private data was uploaded or personal
+Library switched.
+
 ## Connected prompt editor boundary
 
 Connect prompt creation, field edits and Trash lifecycle to the same app

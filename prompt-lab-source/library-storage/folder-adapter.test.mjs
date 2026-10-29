@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, readdir, readFile, writeFile, rename, stat, utimes } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, readdir, readFile, writeFile, rename, stat, utimes } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFolderAdapter } from './folder-adapter.mjs';
-import { createCommandService, inspectPackage, FORMAT, VERSION } from './contract.mjs';
+import { createCommandService, createMemoryAdapter, inspectPackage, canonical, hash, MAX_BYTES, FORMAT, VERSION } from './contract.mjs';
 
 const input = { libraryId: 'test-library', expectedRevision: null, sourceText: JSON.stringify({ library: [{ id: 'p1', versions: Array.from({ length: 40 }, (_, id) => ({ id, content: 'keep' })) }], unknown: { nested: [1, 2] } }) };
 async function fixture(t) { const dir = await mkdtemp(join(tmpdir(), 'promptlab-disposable-')); t.after(() => rm(dir, { recursive: true, force: true })); return dir; }
@@ -86,4 +86,41 @@ test('warm folder reads see external commits and never share mutable state with 
   const receipt = await external.apply({ ...next, idempotencyKey: 'external' });
   assert.equal((await adapter.read()).revision, receipt.revision);
   assert.deepEqual((await adapter.read()).operations.external, receipt);
+});
+
+test('journals above the snapshot cache budget retain verification without trusting stale file metadata', async t => {
+  const dir = await fixture(t), journal = join(dir, 'transactions'); await mkdir(journal);
+  const service = createCommandService(createMemoryAdapter());
+  const sourceText = JSON.stringify({ library: [{ id: 'large', original: 'Keep' }], future: 'x'.repeat(3_500_000) });
+  let revision = null, parent = null, totalBytes = 0, oldest;
+  for (let i = 0; i < 11; i++) {
+    const review = await service.preview({ libraryId: 'large-history', expectedRevision: revision, sourceText });
+    revision = (await service.apply({ ...review, idempotencyKey: `snapshot-${i}` })).revision;
+    const row = { schemaVersion: 2, parents: parent ? [parent] : [], state: await service.read() };
+    parent = await hash(row);
+    const contents = canonical(row), file = join(journal, parent.slice(7) + '.json');
+    totalBytes += Buffer.byteLength(contents); oldest ??= file;
+    await writeFile(file, contents);
+  }
+  assert.ok(totalBytes > MAX_BYTES, 'Exercise the real snapshot cache budget');
+  const adapter = await createFolderAdapter(dir), before = await adapter.read();
+  const originalDigest = globalThis.crypto.subtle.digest;
+  let semanticDigests = 0;
+  globalThis.crypto.subtle.digest = function (...args) { semanticDigests++; return originalDigest.apply(this, args); };
+  try {
+    const warm = await adapter.read();
+    assert.deepEqual(warm, before);
+    assert.equal(semanticDigests, 0, 'Unchanged freshly read bytes reuse their canonical and semantic proof');
+    warm.operations['snapshot-0'].verified = false;
+    assert.equal((await adapter.read()).operations['snapshot-0'].verified, true);
+    const contents = await readFile(oldest, 'utf8'), metadata = await stat(oldest);
+    await writeFile(oldest, contents.replace('Keep', 'LOSS')); await utimes(oldest, metadata.atime, metadata.mtime);
+    await assert.rejects(adapter.read(), { code: 'HASH_MISMATCH' });
+    await writeFile(oldest, contents);
+    assert.equal((await adapter.read()).revision, revision);
+    await rename(oldest, oldest + '.missing');
+    await assert.rejects(adapter.read(), { code: 'MISSING_OBJECT' });
+    await rename(oldest + '.missing', oldest);
+    assert.deepEqual(await adapter.read(), before);
+  } finally { globalThis.crypto.subtle.digest = originalDigest; }
 });
