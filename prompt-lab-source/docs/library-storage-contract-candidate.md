@@ -35,6 +35,9 @@ validation accepted both runtime records, rejected 13 malformed variants and
 confirmed OpenAPI parity. The extension build passed from its package directory.
 The final browser rerun is assigned to CI because Dominic subsequently lost AC
 power. Earlier fixture, module-server and build-command failures are retained.
+After charging resumed, the three final migration browser scenarios passed in
+6.9 seconds on Dominic. Runtime-commit documentation CI also passed. Current-head
+CI remains a separate gate.
 
 On Mac Node 22.22.1, the full export was seeded into a disposable Chrome profile
 and captured through the app's real localStorage and IndexedDB readers. The
