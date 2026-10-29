@@ -159,6 +159,69 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Shared domain read brief
+
+App and agent reads need the same addressable records, not only a raw backup.
+Map every captured content store and workspace section into a versioned domain
+index. Each occurrence retains its original value, object hash, source binding,
+replica, path and source ID. Identical workspace bytes from different origins
+remain different occurrences. Prompt versions are scoped to their parent prompt;
+IndexedDB primary keys remain separate from embedded IDs. Never normalize, cap,
+rewrite IDs, choose a newer replica, fetch external assets or invent references.
+
+The shared command service and read-scoped local API expose this preserved-data
+view at a pinned revision with bounded pagination. It is not the active app
+projection: local mirrors, journal records, fallbacks, exports and historical
+bindings remain identifiable copies. Relationships report missing or ambiguous
+targets. Malformed and absent stores remain distinct, and unknown fields remain
+on their original container records. The migration UI must review conflicting
+copies before activation. Existing import selections remain authoritative for
+that graph and are not replaced by this read index.
+
+Verify every captured family, more than 25 versions and 1,000 traces, origin and
+ID collisions, missing relationships, malformed stores, prototype-named keys,
+revision races, API authorization and complete pagination. Compare values with
+independently built fixtures and the original private export on the Mac. This
+stage changes no existing app writer. The cross-store write barrier, reviewed
+causal conflict resolution and app activation remain required subsequent work.
+
+`domain-map.mjs` now derives this view from verified retained commit ancestry.
+`createCommandService().records()` and `GET /v1/library/records` use that same
+mapping. Each occurrence includes its raw value, value hash and address in an
+immutable source object, including the decoding path for JSON stored as text.
+The index includes current/history variants, embedded legacy cases, evaluation
+candidates, Scratch notes/tombstones, folders, packs, assets, recovery drafts,
+all run stores, journal copies, deletion markers and selected backup evidence.
+Unknown fields remain on their complete owning values. IndexedDB primary keys
+are retained separately from record IDs.
+
+Identities are scoped by source binding; version and candidate IDs also include
+their parent identity. Equal IDs never attach a run to another origin. Current
+version references may target the original prompt itself. Follow-up, golden,
+candidate, Scratch, folder and trace parent/fork references expose every eligible
+target, or an explicit missing/invalid state. Multiple copies remain ambiguous
+even when their value hashes agree. No preferred replica or active selection is
+inferred. The existing import/restore selection graph is unchanged.
+
+Pages require the current revision, recheck it after preparation, allow at most
+100 occurrences and reject responses over 64 MiB without truncation. The complete
+index rejects over 100,000 occurrences. These bounds are explicit capacity
+failures, not history retention limits. Raw reads do not mutate source objects.
+
+October 29 verification on Dominic Node 22.23.4: all 133 storage tests pass,
+including 12 domain-read checks, 1,002 indexed traces, 41 versions, unrelated
+origins with identical workspace bytes, divergent replicas, malformed stores,
+missing references, restored selections, restart, revision races and scoped HTTP
+reads. All 63 runtime schema fixtures validate; six malformed responses reject;
+shared and OpenAPI schemas match. Documentation lint and four consistency checks
+pass. The private export check on Mac Node 22.22.1 enumerates all 353 occurrences
+over four pages after folder reopen, with every value matching its original
+address and the source file hash unchanged. Its 60 unresolved evaluation-run
+references are retained: 45 current prompt results, 12 historical results, two
+golden responses and one trash result. They refer to runs absent from that export;
+this check does not establish whether other app stores contain those runs.
+Personal app-store capture, migration consistency and activation remain open.
+
 ### Reviewed checkpoint restore brief
 
 Restore must publish a new commit and a checkpoint of the current head, keeping

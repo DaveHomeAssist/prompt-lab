@@ -465,6 +465,89 @@
           }
         }
       }
+    },
+    "/v1/library/records": {
+      "get": {
+        "summary": "Read every preserved domain occurrence without choosing an active replica",
+        "operationId": "getV1LibraryRecords",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Verified source-qualified records and relationships at the pinned revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "description": "Invalid transfer inventory, receipt or checkpoint state"
+          }
+        },
+        "parameters": [
+          {
+            "name": "revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "default": "0"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "domain",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Exact domain name. Omit to enumerate all preserved occurrences. Unknown domains produce an empty page."
+          }
+        ],
+        "description": "Requires read scope. Revision must remain current through preparation and on every page. Optional domain filter and decimal offset cursor must remain unchanged while paging a revision. Raw values, source binding, replica and paths are retained. Multiple copies and unresolved references are explicit. This preserved view does not activate a library or authorize migration. Unknown or duplicate query parameters reject. Response limit is 64 MiB; reduce page size on 413. No record truncation."
+      }
     }
   },
   "components": {
@@ -2823,6 +2906,442 @@
           "activationReady",
           "fingerprint"
         ],
+        "additionalProperties": false
+      },
+      "DomainOrigin": {
+        "type": "object",
+        "required": [
+          "binding",
+          "sourceIdentity",
+          "surface",
+          "replica",
+          "object",
+          "path",
+          "decodedPath"
+        ],
+        "properties": {
+          "binding": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceIdentity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "surface": {
+            "enum": [
+              "desktop",
+              "extension",
+              "web",
+              null
+            ]
+          },
+          "replica": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              ]
+            }
+          },
+          "decodedPath": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainReference": {
+        "type": "object",
+        "required": [
+          "path",
+          "domain",
+          "sourceId",
+          "candidates",
+          "status"
+        ],
+        "properties": {
+          "path": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              ]
+            }
+          },
+          "domain": {
+            "type": "string"
+          },
+          "sourceId": {},
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "status": {
+            "enum": [
+              "invalid",
+              "missing",
+              "resolved",
+              "ambiguous"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainRecord": {
+        "type": "object",
+        "required": [
+          "key",
+          "domain",
+          "origin",
+          "parent",
+          "sourceId",
+          "valueHash",
+          "value",
+          "references",
+          "identity"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/DomainOrigin"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sourceId": {},
+          "primaryKey": {},
+          "valueHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "value": {},
+          "references": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainReference"
+            }
+          },
+          "identity": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainIdentity": {
+        "type": "object",
+        "required": [
+          "key",
+          "candidates",
+          "divergent"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "divergent": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainIssue": {
+        "type": "object",
+        "required": [
+          "code",
+          "origin",
+          "key"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/DomainOrigin"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainStore": {
+        "type": "object",
+        "required": [
+          "origin",
+          "state",
+          "domain"
+        ],
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/DomainOrigin"
+          },
+          "state": {
+            "enum": [
+              "present",
+              "absent",
+              "unavailable",
+              "changed",
+              "unreviewed"
+            ]
+          },
+          "domain": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainMap": {
+        "type": "object",
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "revision",
+          "view",
+          "activationReady",
+          "counts",
+          "identities",
+          "issues",
+          "records",
+          "stores"
+        ],
+        "properties": {
+          "format": {
+            "const": "promptlab-domain-map"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "view": {
+            "const": "preserved"
+          },
+          "activationReady": {
+            "const": false
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainIdentity"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainIssue"
+            }
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainRecord"
+            },
+            "maxItems": 100000
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainStore"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "DomainPage": {
+        "type": "object",
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "revision",
+          "view",
+          "activationReady",
+          "counts",
+          "identities",
+          "issues",
+          "domain",
+          "total",
+          "items",
+          "nextCursor",
+          "stores"
+        ],
+        "properties": {
+          "format": {
+            "const": "promptlab-domain-page"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "view": {
+            "const": "preserved"
+          },
+          "activationReady": {
+            "const": false
+          },
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "identities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainIdentity"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainIssue"
+            }
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainRecord"
+            },
+            "maxItems": 100
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainStore"
+            }
+          }
+        },
         "additionalProperties": false
       }
     }

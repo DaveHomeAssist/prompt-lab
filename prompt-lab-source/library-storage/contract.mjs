@@ -238,6 +238,20 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     read: () => adapter.read(),
     previewRead: currentReview,
     transfer: exportTransfer,
+    async records({ libraryId, expectedRevision, domain, cursor = '0', limit = 100, ...options }) {
+      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown record query option.', 400);
+      const { buildDomainMap, pageDomainMap, validateDomainPage } = await import('./domain-map.mjs');
+      validateDomainPage({ domain, cursor, limit });
+      const state = await adapter.read();
+      if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+      if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin record reads to the current revision.', 409);
+      const map = await buildDomainMap(packageFor(state));
+      const page = pageDomainMap(map, { domain, cursor, limit });
+      if (encoder.encode(canonical(page)).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Record page exceeds 64 MiB. Request fewer records.', 413);
+      const current = await adapter.read();
+      if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during record preparation.', 409);
+      return page;
+    },
     async backups({ libraryId, expectedRevision, cursor = '0', limit = 100 }) {
       if (!Number.isInteger(limit) || limit < 1 || limit > 100 || typeof cursor !== 'string'
         || !/^(0|[1-9][0-9]*)$/.test(cursor) || !Number.isSafeInteger(Number(cursor))) throw new LibraryError('INVALID_REQUEST', 'Invalid backup pagination.', 400);
