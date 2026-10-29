@@ -80,14 +80,17 @@ it.each(['workspace', 'side panel'])('%s shows Saving until strict completion, t
   fireEvent.change(editor, { target: { value: 'Retry this durable draft' } });
   await waitFor(() => expect(status()).toHaveTextContent('Saving'), { timeout: 1500 });
   expect(status()).not.toHaveTextContent(/^Saved$/);
+  expect(status()).toHaveAttribute('data-save-state', 'saving');
   expect(idb.rows().get(SCRATCH_JOURNAL_RECORD).entries[SCRATCH_KEY]).not.toContain('Retry this durable draft');
   idb.state.failCommits = true; idb.state.holdCommits = false;
   await act(async () => { idb.transactions.forEach(tx => tx.release?.()); });
   await waitFor(() => expect(status()).toHaveTextContent('Save failed'));
+  expect(status()).toHaveAttribute('data-save-state', 'error');
   expect(editor).toHaveValue('Retry this durable draft');
   idb.state.failCommits = false;
   fireEvent.click(screen.getByRole('button', { name: 'Retry saving', exact: true }));
   await waitFor(() => expect(status()).toHaveTextContent('Saved'));
+  expect(status()).toHaveAttribute('data-save-state', 'saved');
   expect(idb.rows().get(SCRATCH_JOURNAL_RECORD).entries[SCRATCH_KEY]).toContain('Retry this durable draft');
 });
 

@@ -978,7 +978,7 @@ export default function ScratchWorkspace({
               else if (migrationReadFailedRef.current) loadScratchState();
               else commitActiveContent(textRef.current);
             }}>{migrationReadFailedRef.current || durability.bootFailed ? 'Retry loading' : 'Retry saving'}</button>}
-            <div data-testid="scratch-save-status" data-save-state={saveError ? 'error' : localSaveState === 'dirty' ? 'dirty' : durability.status === 'idle' ? saveState : durability.status} role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
+            <div data-testid="scratch-save-status" data-save-state={saveError ? 'error' : saveState} role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
               {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed. Stored data kept.' : 'Save failed. Draft kept.') : saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>
                   : saveState === 'saving' ? <span className={m.textMuted || ''}>Saving…</span>

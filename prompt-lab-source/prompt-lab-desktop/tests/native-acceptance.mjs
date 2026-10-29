@@ -841,7 +841,8 @@ try {
       };
       new MutationObserver(() => {
         const probe = window.__nativeScratchDurability;
-        if (probe.watch && !probe.completed && document.querySelector('[data-testid=scratch-save-status]')?.dataset.saveState === 'saved') probe.prematureSaved = true;
+        const status = document.querySelector('[data-testid=scratch-save-status]');
+        if (probe.watch && !probe.completed && (status?.dataset.saveState === 'saved' || status?.textContent.trim().startsWith('Saved'))) probe.prematureSaved = true;
       }).observe(document.body, { childList: true, subtree: true, attributes: true });
       return true;
     `);
