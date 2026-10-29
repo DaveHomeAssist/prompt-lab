@@ -58,10 +58,11 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       const state = await adapter.read();
       if (state.libraryId && state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Selected folder contains another library.', 409);
       if (req.method === 'GET' && url.pathname === '/v1/library') return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown' });
-      if (req.method === 'GET' && url.pathname === '/v1/library/records') {
+      if (req.method === 'GET' && ['/v1/library/records', '/v1/library/current-records'].includes(url.pathname)) {
         const keys = [...url.searchParams.keys()];
         if (keys.some(key => !['revision', 'domain', 'cursor', 'limit'].includes(key)) || new Set(keys).size !== keys.length) throw new LibraryError('INVALID_REQUEST', 'Invalid record query.', 400);
-        return send(200, await service.records({ libraryId, expectedRevision: url.searchParams.get('revision'),
+        const read = url.pathname === '/v1/library/current-records' ? service.currentRecords : service.records;
+        return send(200, await read({ libraryId, expectedRevision: url.searchParams.get('revision'),
           domain: url.searchParams.get('domain') ?? undefined,
           cursor: url.searchParams.get('cursor') ?? '0', limit: Number(url.searchParams.get('limit') ?? 100) }));
       }
@@ -75,7 +76,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isSafeInteger(offset) || offset < 0) throw new LibraryError('INVALID_REQUEST', 'Invalid pagination.', 400);
         const ids = Object.keys(state.objects).sort();
         const commit = await readObject(state.objects, state.revision, 'commit');
-        const stateKind = ['import', 'restore', 'reconcile'].includes(commit.operation) ? 'library-state' : 'workspace';
+        const stateKind = ['import', 'restore', 'reconcile', 'select'].includes(commit.operation) ? 'library-state' : 'workspace';
         await readObject(state.objects, commit.state, stateKind);
         return send(200, { libraryId, revision: state.revision, stateHash: commit.state, stateKind, objects: ids.slice(offset, offset + limit), nextCursor: offset + limit < ids.length ? String(offset + limit) : null });
       }
@@ -111,6 +112,12 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         const input = await body(req);
         if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Request targets another library.', 409);
         return send(201, await service.previewReconcile(input));
+      }
+      if (req.method === 'POST' && url.pathname === '/v1/library/current-views') {
+        if (!req.headers['content-type']?.startsWith('application/json')) throw new LibraryError('INVALID_REQUEST', 'Use application/json.', 400);
+        const input = await body(req);
+        if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Request targets another library.', 409);
+        return send(201, await service.previewCurrentView(input));
       }
       if (req.method === 'POST' && url.pathname === '/v1/library/restores') {
         if (!req.headers['content-type']?.startsWith('application/json')) throw new LibraryError('INVALID_REQUEST', 'Use application/json.', 400);

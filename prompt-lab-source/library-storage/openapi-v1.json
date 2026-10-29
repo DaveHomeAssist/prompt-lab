@@ -599,6 +599,140 @@
           }
         }
       }
+    },
+    "/v1/library/current-views": {
+      "post": {
+        "summary": "Review the current records without discarding preserved copies",
+        "operationId": "postV1LibraryCurrentViews",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Review with suppressed selections and evidence gaps; commitAvailable is true only when unresolved is zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "description": "Requires write scope. Pin the current revision. Prompt choices remain governed by import/reconciliation and deletion evidence. Differing replicas or absent records require explicit per-group choices naming an occurrence or null for inactive. Unknown sources block commit. Apply through the normal commit route with an idempotency key. This read-view contract does not authorize native activation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CurrentViewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/library/current-records": {
+      "get": {
+        "summary": "Read records from the committed current view",
+        "operationId": "getV1LibraryCurrentRecords",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "200": {
+            "description": "Selected current records and retained occurrence count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentViewPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, or current selection review required"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "description": "Invalid transfer inventory, receipt or checkpoint state"
+          }
+        },
+        "parameters": [
+          {
+            "name": "revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "default": "0"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          },
+          {
+            "name": "domain",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Exact domain name. Omit to enumerate all preserved occurrences. Unknown domains produce an empty page."
+          }
+        ],
+        "description": "Requires read scope and a pinned current revision. Returns exact selected values and source-qualified references, including missing/ambiguous targets; all unselected data remain available through preserved record reads. A later import, restore or reconciliation requires a new selection review. Unknown/duplicate query parameters reject. The response is bounded at 64 MiB without truncation."
+      }
     }
   },
   "components": {
@@ -627,7 +761,8 @@
               "source-binding",
               "restore-plan",
               "reconciliation-plan",
-              "branch-transfer"
+              "branch-transfer",
+              "current-view-plan"
             ]
           },
           "data": {}
@@ -711,7 +846,8 @@
               "snapshot",
               "import",
               "restore",
-              "reconcile"
+              "reconcile",
+              "select"
             ]
           },
           "importPlan": {
@@ -742,6 +878,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "reconciliationPlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "currentViewPlan": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
           }
@@ -896,6 +1036,73 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "select"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "currentViewPlan"
+              ],
+              "properties": {
+                "parents": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "sourceBinding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "selectionPolicy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "inputState"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "importPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restorePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restoredCheckpointId"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "reconciliationPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "incomingBranch"
+                    ]
+                  }
+                ]
+              }
+            }
           }
         ]
       },
@@ -938,7 +1145,8 @@
               "snapshot",
               "import",
               "restore",
-              "reconcile"
+              "reconcile",
+              "select"
             ]
           },
           "commitAvailable": {
@@ -964,6 +1172,9 @@
           },
           "reconciliationPlan": {
             "$ref": "#/components/schemas/ReconciliationPlan"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
           }
         },
         "required": [
@@ -1157,6 +1368,59 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "select"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "currentViewPlan"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "currentViewPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "currentViewPlan"
+                ]
+              }
+            }
           }
         ]
       },
@@ -1214,7 +1478,8 @@
               "snapshot",
               "import",
               "restore",
-              "reconcile"
+              "reconcile",
+              "select"
             ]
           },
           "stateHash": {
@@ -3742,6 +4007,283 @@
           "metadata",
           "operations",
           "checkpoints"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentViewRequest": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expectedRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "resolutions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "libraryId",
+          "expectedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentViewGroup": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "sourceIdentity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "absentBindings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "selected": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "enum": [
+              "import",
+              "deleted",
+              "reviewed",
+              "automatic",
+              "unresolved"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "sourceIdentity",
+          "candidates",
+          "absentBindings",
+          "selected",
+          "decision"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentViewPlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-current-view-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "baseRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "resolutions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrentViewGroup"
+            }
+          },
+          "selected": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "retained": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "uniqueItems": true
+          },
+          "blocked": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "code"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activationReady": {
+            "const": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "baseRevision",
+          "resolutions",
+          "groups",
+          "selected",
+          "retained",
+          "blocked",
+          "unresolved",
+          "activationReady",
+          "fingerprint"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentViewPage": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-current-view-page"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "view": {
+            "const": "reviewed"
+          },
+          "activationReady": {
+            "const": false
+          },
+          "domain": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrentViewGroup"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DomainRecord"
+            },
+            "maxItems": 100
+          },
+          "retainedCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]*)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "revision",
+          "view",
+          "activationReady",
+          "domain",
+          "total",
+          "groups",
+          "items",
+          "retainedCount",
+          "nextCursor"
         ],
         "additionalProperties": false
       }

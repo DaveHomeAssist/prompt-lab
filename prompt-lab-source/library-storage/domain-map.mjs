@@ -33,6 +33,13 @@ const indexedDomains = new Map([['experiments', 'experiments'], ['evaluations', 
 export async function buildDomainMap(pkg) {
   pkg = structuredClone(pkg);
   const verified = await inspectPackage(pkg);
+  return buildVerifiedDomainMap(pkg, verified);
+}
+
+// Internal composition boundary: callers supply the inspection of this exact
+// package, avoiding recursive inspection while verifying selection commits.
+export async function buildVerifiedDomainMap(pkg, verified) {
+  pkg = structuredClone(pkg);
   const records = [], issues = [], stores = [], scopes = new Map();
   const pendingReferences = [], sourcePairs = new Map();
   const issue = (code, origin, key = null) => issues.push({ code, origin, key });
@@ -177,7 +184,7 @@ export async function buildDomainMap(pkg) {
     visited.add(revision);
     const commit = await readObject(pkg.objects, revision, 'commit');
     for (const parent of commit.parents) await ancestry(parent);
-    if (['restore', 'reconcile'].includes(commit.operation)) return;
+    if (['restore', 'reconcile', 'select'].includes(commit.operation)) return;
     const pair = { source: commit.source, workspace: commit.inputState ?? commit.state };
     sourcePairs.set(canonical(pair), pair);
   }

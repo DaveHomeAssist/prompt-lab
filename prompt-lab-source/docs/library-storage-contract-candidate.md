@@ -1,5 +1,24 @@
 # Library storage contract candidate
 
+## Reviewed current domain view
+
+The preserved record index exposes every source occurrence. A separate immutable
+selection review identifies the current records used by shared app/API reads.
+It does not create another store: the review names verified source addresses,
+is committed through the existing command service and is pinned to a revision.
+Prompt choices remain owned by import/reconciliation, including their deletion
+policy. Other domains group source-scoped identities; unequal replicas and
+records absent from another retained capture require explicit choices. An
+inactive choice keeps every source object and historical occurrence.
+
+Acceptance includes all captured domain families, nested history and metadata,
+explicit missing-reference evidence, deletion constraints, stale and expired
+reviews, restart/idempotency, complete transfers and folder publication failure.
+Unknown source coverage or malformed records prevent committing a current view.
+Later imports, restore or reconciliation require a fresh selection review.
+This contract enables shared reads; native activation, app mutation wiring,
+outbox, pairing and real two-client acceptance remain separate required work.
+
 ## App prompt save preservation
 
 The existing app save normalizer still trimmed changed prompts to 25 historical

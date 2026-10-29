@@ -47,7 +47,9 @@ async function verifyState(input) {
     const mode = commit.operation ?? 'snapshot';
     if (receipt.operation != null && receipt.operation !== mode) fail('Operation mode differs from its commit.');
     const resolutions = mode === 'import' ? state.objects[commit.importPlan].data.resolutions : {};
-    const input = mode === 'reconcile'
+    const input = mode === 'select'
+      ? { libraryId: state.libraryId, expectedRevision: parent, resolutions: state.objects[commit.currentViewPlan].data.resolutions, mode }
+      : mode === 'reconcile'
       ? { libraryId: state.libraryId, expectedRevision: parent, incomingManifestHash: state.objects[commit.reconciliationPlan].data.incomingManifestHash, resolutions: state.objects[commit.reconciliationPlan].data.resolutions, mode }
       : mode === 'restore'
       ? { libraryId: state.libraryId, expectedRevision: parent, checkpointId: commit.restoredCheckpointId, mode }
@@ -64,7 +66,7 @@ async function verifyState(input) {
     if (receipt.fingerprint !== current && !(commit.operation == null && receipt.operation == null && receipt.fingerprint === await hash(legacy))) fail('Operation fingerprint differs from its committed input.');
     if ((receipt.sourceHash != null && receipt.sourceHash !== commit.source) || (receipt.stateHash != null && receipt.stateHash !== commit.state)) fail('Receipt object references differ from its commit.');
     if (receipt.counts != null) {
-      const manifest = ['import', 'restore', 'reconcile'].includes(mode) ? state.objects[commit.state].data : null;
+      const manifest = ['import', 'restore', 'reconcile', 'select'].includes(mode) ? state.objects[commit.state].data : null;
       const counts = receipt.counts;
       if (!record(counts) || !Number.isSafeInteger(counts.objects) || counts.objects < 1 || counts.objects > Object.keys(state.objects).length
         || counts.sources !== (manifest?.sources.length ?? 1) || counts.records !== (manifest?.nodes.length ?? null)

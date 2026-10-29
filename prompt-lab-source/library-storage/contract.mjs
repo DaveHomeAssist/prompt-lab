@@ -111,7 +111,7 @@ export async function inspectPackage(pkg) {
     const operation = Object.hasOwn(commit, 'operation') ? commit.operation : 'snapshot';
     const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
     if (Object.hasOwn(commit, 'sourceBinding')) {
-      if (['restore', 'reconcile'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery and reconciliation use retained ancestry evidence only.');
+      if (['restore', 'reconcile', 'select'].includes(operation)) throw new LibraryError('UNSUPPORTED_OPERATION', 'Recovery, reconciliation and selection use retained ancestry evidence only.');
       const { inspectSourceBinding } = await import('./source-binding.mjs');
       await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
       if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
@@ -155,6 +155,15 @@ export async function inspectPackage(pkg) {
       if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)
         || commit.source !== visited.get(commit.parents[0]).sourceObject) throw new LibraryError('RECONCILIATION_MISMATCH', 'Reconciliation differs from its reviewed branches and choices.', 409);
       result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+    } else if (operation === 'select') {
+      if (commit.parents.length !== 1) throw new LibraryError('INVALID_ANCESTRY', 'Selection requires one reviewed parent.', 409);
+      const parent = visited.get(commit.parents[0]);
+      if (commit.state !== parent.stateObject || commit.source !== parent.sourceObject) throw new LibraryError('SELECTION_MISMATCH', 'Selection cannot replace archived content.', 409);
+      const plan = await readObject(pkg.objects, commit.currentViewPlan, 'current-view-plan');
+      const { planCurrentView } = await import('./current-view.mjs');
+      const expected = await planCurrentView({ ...pkg, head: commit.parents[0] }, parent, plan.resolutions);
+      if (expected.unresolved || canonical(expected) !== canonical(plan)) throw new LibraryError('SELECTION_MISMATCH', 'Current view differs from reviewed records and deletion evidence.', 409);
+      result = { stateKind: parent.stateKind, manifest: parent.manifest, workspace: null, sourceText: null, currentView: plan };
     } else if (operation === 'snapshot') {
       if (commit.parents.some(parent => visited.get(parent).stateKind !== 'workspace')) throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
       const workspace = await readObject(pkg.objects, commit.state, 'workspace');
@@ -251,6 +260,35 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     read: () => adapter.read(),
     previewRead: currentReview,
     transfer: exportTransfer,
+    async currentRecords({ libraryId, expectedRevision, domain, cursor = '0', limit = 100, ...options }) {
+      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown current-view query option.', 400);
+      const state = await adapter.read();
+      if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+      if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin current-view reads to the current revision.', 409);
+      const pkg = packageFor(state), inspected = await inspectPackage(pkg);
+      const { pageCurrentView } = await import('./current-view.mjs');
+      const page = await pageCurrentView(pkg, inspected, { domain, cursor, limit });
+      if (encoder.encode(canonical(page)).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Current-view page exceeds 64 MiB.', 413);
+      const current = await adapter.read();
+      if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during current-view preparation.', 409);
+      return page;
+    },
+    async previewCurrentView({ libraryId, expectedRevision, resolutions = {}, ...options }) {
+      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown current-view option.', 400);
+      resolutions = structuredClone(resolutions);
+      const state = await adapter.read();
+      if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+      if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin current-view review to the current revision.', 409);
+      const { reviewCurrentView } = await import('./current-view.mjs');
+      const plan = await reviewCurrentView(packageFor(state), resolutions);
+      const input = { libraryId, expectedRevision, resolutions, mode: 'select' };
+      const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
+      const response = { previewId, libraryId, expectedRevision, sourceHash: state.objects[state.revision].data.source,
+        fingerprint, expiresAt: expires, mode: 'select', commitAvailable: plan.unresolved === 0, currentViewPlan: plan };
+      previews.set(previewId, { input, fingerprint, expires, response });
+      try { return await currentReview(previewId); }
+      catch (error) { previews.delete(previewId); throw error; }
+    },
     async records({ libraryId, expectedRevision, domain, cursor = '0', limit = 100, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown record query option.', 400);
       const { buildDomainMap, pageDomainMap, validateDomainPage } = await import('./domain-map.mjs');
@@ -274,7 +312,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         const commit = transfer.objects[checkpointId].data;
         const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
         return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
-          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile'].includes(commit.operation) ? 'library-state' : 'workspace',
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: ['import', 'restore', 'reconcile', 'select'].includes(commit.operation) ? 'library-state' : 'workspace',
           independentBackup: false };
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
@@ -357,7 +395,17 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
         let pkg;
-        if (preview.input.mode === 'reconcile') {
+        if (preview.input.mode === 'select') {
+          if (preview.response.currentViewPlan.unresolved) throw new LibraryError('UNRESOLVED_SELECTION', 'Resolve current-view choices and source issues before committing.', 409);
+          const { reviewCurrentView } = await import('./current-view.mjs');
+          const plan = await reviewCurrentView(packageFor(state), preview.input.resolutions);
+          if (canonical(plan) !== canonical(preview.response.currentViewPlan)) throw new LibraryError('SELECTION_MISMATCH', 'Current-view records or choices changed.', 409);
+          const planObject = await makeObject('current-view-plan', plan), parent = state.objects[state.revision].data;
+          const commit = await makeObject('commit', { ...identity, operation: 'select', source: parent.source, state: parent.state,
+            currentViewPlan: planObject.hash, createdAt: new Date().toISOString() });
+          pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash,
+            objects: { [planObject.hash]: planObject.object, [commit.hash]: commit.object } };
+        } else if (preview.input.mode === 'reconcile') {
           if (preview.response.reconciliationPlan.unresolved) throw new LibraryError('UNRESOLVED_RECONCILIATION', 'Resolve branch choices and deletion evidence before committing.', 409);
           const { inspectTransfer } = await import('./transfer.mjs');
           const branch = await inspectTransfer(preview.incoming, { expectedManifestHash: preview.input.incomingManifestHash });

@@ -21,7 +21,8 @@
             "source-binding",
             "restore-plan",
             "reconciliation-plan",
-            "branch-transfer"
+            "branch-transfer",
+            "current-view-plan"
           ]
         },
         "data": {}
@@ -105,7 +106,8 @@
             "snapshot",
             "import",
             "restore",
-            "reconcile"
+            "reconcile",
+            "select"
           ]
         },
         "importPlan": {
@@ -136,6 +138,10 @@
           "pattern": "^sha256:[a-f0-9]{64}$"
         },
         "reconciliationPlan": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "currentViewPlan": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
         }
@@ -290,6 +296,73 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "operation"
+            ],
+            "properties": {
+              "operation": {
+                "const": "select"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "currentViewPlan"
+            ],
+            "properties": {
+              "parents": {
+                "minItems": 1,
+                "maxItems": 1
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "sourceBinding"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectionPolicy"
+                  ]
+                },
+                {
+                  "required": [
+                    "inputState"
+                  ]
+                },
+                {
+                  "required": [
+                    "importPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restorePlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "restoredCheckpointId"
+                  ]
+                },
+                {
+                  "required": [
+                    "reconciliationPlan"
+                  ]
+                },
+                {
+                  "required": [
+                    "incomingBranch"
+                  ]
+                }
+              ]
+            }
+          }
         }
       ]
     },
@@ -332,7 +405,8 @@
             "snapshot",
             "import",
             "restore",
-            "reconcile"
+            "reconcile",
+            "select"
           ]
         },
         "commitAvailable": {
@@ -358,6 +432,9 @@
         },
         "reconciliationPlan": {
           "$ref": "#/$defs/ReconciliationPlan"
+        },
+        "currentViewPlan": {
+          "$ref": "#/$defs/CurrentViewPlan"
         }
       },
       "required": [
@@ -551,6 +628,59 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "const": "select"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "currentViewPlan"
+            ],
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "currentViewPlan": {
+                      "properties": {
+                        "unresolved": {
+                          "const": 0
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": true
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "commitAvailable": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "currentViewPlan"
+              ]
+            }
+          }
         }
       ]
     },
@@ -608,7 +738,8 @@
             "snapshot",
             "import",
             "restore",
-            "reconcile"
+            "reconcile",
+            "select"
           ]
         },
         "stateHash": {
@@ -3136,6 +3267,283 @@
         "metadata",
         "operations",
         "checkpoints"
+      ],
+      "additionalProperties": false
+    },
+    "CurrentViewRequest": {
+      "type": "object",
+      "properties": {
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "resolutions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "libraryId",
+        "expectedRevision"
+      ],
+      "additionalProperties": false
+    },
+    "CurrentViewGroup": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "domain": {
+          "type": "string"
+        },
+        "sourceIdentity": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "absentBindings": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "selected": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "decision": {
+          "enum": [
+            "import",
+            "deleted",
+            "reviewed",
+            "automatic",
+            "unresolved"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "domain",
+        "sourceIdentity",
+        "candidates",
+        "absentBindings",
+        "selected",
+        "decision"
+      ],
+      "additionalProperties": false
+    },
+    "CurrentViewPlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-current-view-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "baseRevision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "resolutions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrentViewGroup"
+          }
+        },
+        "selected": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "retained": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "uniqueItems": true
+        },
+        "blocked": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "baseRevision",
+        "resolutions",
+        "groups",
+        "selected",
+        "retained",
+        "blocked",
+        "unresolved",
+        "activationReady",
+        "fingerprint"
+      ],
+      "additionalProperties": false
+    },
+    "CurrentViewPage": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-current-view-page"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "libraryId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "view": {
+          "const": "reviewed"
+        },
+        "activationReady": {
+          "const": false
+        },
+        "domain": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CurrentViewGroup"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DomainRecord"
+          },
+          "maxItems": 100
+        },
+        "retainedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nextCursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "libraryId",
+        "revision",
+        "view",
+        "activationReady",
+        "domain",
+        "total",
+        "groups",
+        "items",
+        "retainedCount",
+        "nextCursor"
       ],
       "additionalProperties": false
     }
