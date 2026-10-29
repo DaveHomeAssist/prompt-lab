@@ -110,6 +110,49 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Lossless import decisions
+
+`library-storage/import-plan.mjs` separates duplicate selection from source preservation.
+Matching uses the existing full canonical body, title and ID rules. It does
+not pass either source through UI normalizers. Each imported prompt remains a
+source-scoped member of a logical prompt group, including its complete current
+record, every history row and unknown metadata. A duplicate joins a group;
+Replace changes that group's selected member; Keep creates a separate group;
+Skip on a nonduplicate excludes it from the active view but retains its source.
+None of these decisions deletes source data.
+
+Association identities are scoped to their source workspace. A run referring to
+an unavailable prompt/version stays unresolved even if a destination happens
+to contain the same ID. Group membership maps known prompt references, while
+the original run, test case, Scratch and provenance fields stay untouched.
+Ambiguous IDs and unlisted replacement targets fail before a plan is accepted.
+Plans are deterministic, content hashed and suitable for preview review; they
+are not activation receipts. Applying the graph, materializing app views and
+mapping the remaining domain references are required before import acceptance.
+
+The planner checks every indexed raw record against its original source path.
+It reports ambiguous current/history version identities and missing references
+instead of selecting an arbitrary record. It also waits when a duplicate's
+earlier incoming target has an unresolved choice. Unknown domains and fields
+remain covered by the complete source hash; their domain-specific reference
+rules are not claimed implemented by this planner.
+
+October 29 read-only verification on the private export preserved the original
+hash and all 246 indexed raw records, including 216 active prompts, two trash
+records and 21 history rows. Matching found three duplicate rows and one
+unresolved conflict. Sixty references were absent from their source workspace. These
+are review evidence, not permission to merge or discard personal records.
+Only aggregate evidence is recorded here; the export and detailed receipt
+remain local. No import was applied and no library location was selected.
+
+Dominic Node 22 passed all 43 storage tests after this change. New cases cover
+83 combined historical versions, colliding source IDs, incoming duplicates,
+explicit Keep/Replace/Skip, legacy body aliases, unresolved dependencies,
+prototype-named IDs, input mutation during hashing and review tampering.
+The shared schema and OpenAPI copies are checked for drift. Repeat the bounded
+private check with `node scripts/verify-import-plan.mjs` and an explicit export
+path; it reads one file and emits aggregate results only.
+
 `library-storage/schema-v1.json` specifies package, object, commit, preview,
 receipt, checkpoint and outbox envelopes. `openapi-v1.json` distinguishes
 candidate routes from proposed recovery routes. These files are draft contracts,
@@ -119,7 +162,8 @@ Preview binds library identity, revision, exact source and resolutions for five
 minutes. The candidate rejects nonempty resolution maps rather than pretending
 to reconcile records. Apply persists operation identity with state; response-loss
 retries return the original receipt and changed-input retries conflict.
-Ordinary app import/duplicate resolution, field-level causal reconciliation,
+The lossless import planner is not yet wired to preview/apply or the app.
+Ordinary app import application, field-level causal reconciliation,
 reviewed fork resolution and permanent-deletion-aware restore remain open.
 
 The local API rejects wrong Host/Origin, absent/expired/revoked credentials,

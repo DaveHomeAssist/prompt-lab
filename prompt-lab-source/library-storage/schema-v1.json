@@ -398,6 +398,285 @@
           }
         }
       ]
+    },
+    "ImportPlan": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-import-plan"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "sources": {
+          "type": "object",
+          "properties": {
+            "existing": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "incoming": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          "required": [
+            "existing",
+            "incoming"
+          ],
+          "additionalProperties": false
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "source": {
+                "enum": [
+                  "existing",
+                  "incoming"
+                ]
+              },
+              "path": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  ]
+                }
+              },
+              "kind": {
+                "type": "string"
+              },
+              "sourceId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              }
+            },
+            "required": [
+              "key",
+              "source",
+              "path",
+              "kind",
+              "sourceId",
+              "hash"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "selected": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "id",
+              "selected",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "member": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "new",
+                  "duplicate",
+                  "conflict"
+                ]
+              },
+              "matches": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "choice": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "enum": [
+                          "keep",
+                          "replace",
+                          "skip"
+                        ]
+                      },
+                      "target": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dependsOn": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "member",
+              "kind",
+              "matches",
+              "choice"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "path": {
+                "type": "array",
+                "items": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  ]
+                }
+              },
+              "sourceId": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "target": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "groupId": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^sha256:[a-f0-9]{64}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reason": {
+                "enum": [
+                  "ambiguous-current-version",
+                  "missing-source-reference",
+                  "prompt-not-selected"
+                ]
+              }
+            },
+            "required": [
+              "from",
+              "path",
+              "sourceId",
+              "kind",
+              "target",
+              "groupId"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "unresolved": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "activationReady": {
+          "const": false
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "resolutions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "enum": [
+                  "keep",
+                  "replace",
+                  "skip"
+                ]
+              }
+            },
+            "required": [
+              "action"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "sources",
+        "nodes",
+        "groups",
+        "rows",
+        "references",
+        "unresolved",
+        "activationReady",
+        "fingerprint",
+        "resolutions"
+      ],
+      "additionalProperties": false
     }
   }
 }
