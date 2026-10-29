@@ -86,7 +86,19 @@ for (const width of [375, 1440]) {
     await dialog.getByRole('button', { name: 'Clear recently used' }).click();
     await expect(dialog.getByRole('button', { name: 'Use recent 🧪' })).toHaveCount(0);
     await expect(dialog.getByLabel('Prompt artwork emoji')).toHaveValue('🧪');
-    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6pTAAAAAASUVORK5CYII=', 'base64');
+    await dialog.getByLabel('Prompt artwork image').setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: pixel });
+    await expect(dialog.locator('img')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await page.reload();
+    await page.getByRole('button', { name: 'Change artwork for Saved draft' }).click();
+    dialog = page.getByRole('dialog', { name: 'Artwork for Saved draft' });
+    await dialog.getByRole('button', { name: 'Use recent image 1' }).click();
+    await expect(dialog.locator('fieldset > .pl-artwork img')).toBeVisible();
+    const box = await dialog.boundingBox(); expect(box.x).toBeGreaterThanOrEqual(0); expect(box.x + box.width).toBeLessThanOrEqual(width);
+    await page.screenshot({ path: test.info().outputPath(`artwork-reuse-${width}.png`) });
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).every(e => e.metadata.artwork.image?.startsWith('data:image/png;base64,')))).toBe(true);
   });
   test(`Search beside Write filters locally and Escape clears at ${width}`, async ({ page }) => {
     await prepare(page, width);

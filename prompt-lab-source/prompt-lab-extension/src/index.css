@@ -1464,3 +1464,9 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-write-prompt-search input { width: 100%; min-width: 0; min-height: 2rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 6px; background: var(--pl-brand-ink); color: var(--pl-brand-paper); padding: 0.4rem 0.5rem; font-size: 0.75rem; }
 .pl-write-prompt-search button { flex: 0 0 auto; font-size: 0.7rem; padding: 0.25rem; }
 .pl-write-prompt-search input:focus-visible { outline: 2px solid var(--pl-brand-ember-bright); outline-offset: 2px; }
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-tab-panel:has(.pl-write-side.is-overlay) { animation: none; }
+  .pl-write-side.is-overlay.is-above-mobile-nav { top: 0.5rem; z-index: 70; height: calc(100dvh - 5.25rem - env(safe-area-inset-bottom)); }
+  .pl-write-side-header, .pl-write-side-subheader { padding: 0.25rem 0.5rem; }
+  .pl-write-side-header > button, .pl-write-side-subheader button, .pl-write-side-tabs button { min-height: 2rem; }
+}
