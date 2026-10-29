@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T20:29:08.671Z",
+  "snapshotAt": "2026-10-29T20:58:24.457Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect app readers and writers through the shared repository, then verify activation and native folder ownership.",
+  "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
   "evidence": [
+    {
+      "label": "Shared app repository with real-data performance hold",
+      "state": "Open",
+      "detail": "2026-10-29: Explicit app repository and constructed experiment store pushed in e86d4d8b4a8a68787ac58021b54739dac1cd2087: https://github.com/DaveHomeAssist/prompt-lab/commit/e86d4d8b4a8a68787ac58021b54739dac1cd2087 . Evaluations, test cases, execution traces and experiments use the shared command service with revision and record checks, strict pending-command storage and response-loss recovery. Default app storage is unchanged. Validated read pages are reused only after a revision check. Folder verification reuses private frozen transactions only after every current file's exact bytes are read and compared; the retained graph is bounded at 64 MiB of serialized input. A normal browser workflow exceeded the former 60-request local limit; the bounded default is now 120, with rejection coverage retained. Dominic Node 22.23.4: 359 storage tests, four browser scenarios, 1,553 app tests, 231 legacy tests, extension build, Markdown lint and four documentation contracts pass. Seven runtime/test files match the runner. The synthetic save/restart observation improved from 23.6 to 8.8 seconds. Mac Node 22.22.1: the retained real-export fixture read the original three runs exactly and recovered/ensured all four synthetic record types. First attempt stopped after more than four minutes; resumed record writes took 67.6 seconds, and a three-minute stop limit interrupted final restart/edit/delete readback. That acceptance remains unverified. Original export bytes unchanged, no private upload or personal activation; fixtures, pending work and failure evidence retained. A1/A2 remain In progress and PR248 draft. Whole-app integration, durable offline intents before preview, native service/picker, performance, actual two-client iCloud and installed/human acceptance remain open. Hosted Phase B remains behind Phase A. Next: reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/e86d4d8b4a8a68787ac58021b54739dac1cd2087"
+    },
     {
       "label": "Recoverable app migration copy",
       "state": "Open",
@@ -1458,8 +1464,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Connect app readers and writers through the shared repository, then verify activation and native folder ownership.",
-      "verification": "2026-10-29: App-owned migration capture and recoverable copy pushed in f56d3bc93ea6c08ea6e354a4ea6ff2ad06b8b2cc: https://github.com/DaveHomeAssist/prompt-lab/commit/f56d3bc93ea6c08ea6e354a4ea6ff2ad06b8b2cc . Actual app stores and cooperating editor buffers are captured together; a strict durable same-origin backup precedes destination publication. Initial empty-destination migration keeps every raw prompt occurrence, including duplicates. Shared import/outbox and full transfer readback recover one operation across restart or lost response. This is a copy boundary, not an active app storage switch or independent off-device backup. Dominic Node 22.23.4: 345 storage tests and 46 browser checks passed before the final duplicate rule, then 35 affected tests passed; schema runtime fixtures, 13 malformed rejections, OpenAPI parity and extension build passed. Seven source files match the runner. Mac Node 22.22.1: the complete real export was seeded into a disposable Chrome profile and captured through actual app readers; backup restart, copy, readback and folder reopen passed with 216 selected prompt occurrences, two Trash entries, three runs and four Scratch notes. Exactly one destination operation; original export and source stores unchanged. No private upload or personal activation. Initial harness and setup failures remain retained. After Dominic returned to AC power (53%, Charging), all three final migration browser scenarios passed in 6.9 seconds. Runtime-commit documentation CI passed. Current-head CI remains separate and is running. A1/A2 remain In progress and PR248 remains draft. Personal-profile migration, fresh source comparison, active app readers/writers, native service/picker, performance, actual two-client iCloud and human acceptance remain open. Hosted Phase B remains behind Phase A. Next: connect app readers and writers through the shared repository, then verify activation and native folder ownership. MUT-7 direct current-session instruction.",
+      "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
+      "verification": "Constructed experiment store: 359 storage tests, four browser scenarios, 1,553 app tests, 231 legacy tests and build pass on Dominic. Full-export final restart/edit/delete readback and save performance remain unverified after the bounded Mac attempt; original export unchanged. Runtime e86d4d8, draft PR248.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
@@ -1506,8 +1512,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Connect app readers and writers through the shared repository, then verify activation and native folder ownership.",
-      "verification": "2026-10-29: App-owned migration capture and recoverable copy pushed in f56d3bc93ea6c08ea6e354a4ea6ff2ad06b8b2cc: https://github.com/DaveHomeAssist/prompt-lab/commit/f56d3bc93ea6c08ea6e354a4ea6ff2ad06b8b2cc . Actual app stores and cooperating editor buffers are captured together; a strict durable same-origin backup precedes destination publication. Initial empty-destination migration keeps every raw prompt occurrence, including duplicates. Shared import/outbox and full transfer readback recover one operation across restart or lost response. This is a copy boundary, not an active app storage switch or independent off-device backup. Dominic Node 22.23.4: 345 storage tests and 46 browser checks passed before the final duplicate rule, then 35 affected tests passed; schema runtime fixtures, 13 malformed rejections, OpenAPI parity and extension build passed. Seven source files match the runner. Mac Node 22.22.1: the complete real export was seeded into a disposable Chrome profile and captured through actual app readers; backup restart, copy, readback and folder reopen passed with 216 selected prompt occurrences, two Trash entries, three runs and four Scratch notes. Exactly one destination operation; original export and source stores unchanged. No private upload or personal activation. Initial harness and setup failures remain retained. After Dominic returned to AC power (53%, Charging), all three final migration browser scenarios passed in 6.9 seconds. Runtime-commit documentation CI passed. Current-head CI remains separate and is running. A1/A2 remain In progress and PR248 remains draft. Personal-profile migration, fresh source comparison, active app readers/writers, native service/picker, performance, actual two-client iCloud and human acceptance remain open. Hosted Phase B remains behind Phase A. Next: connect app readers and writers through the shared repository, then verify activation and native folder ownership. MUT-7 direct current-session instruction.",
+      "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
+      "verification": "Constructed experiment store: 359 storage tests, four browser scenarios, 1,553 app tests, 231 legacy tests and build pass on Dominic. Full-export final restart/edit/delete readback and save performance remain unverified after the bounded Mac attempt; original export unchanged. Runtime e86d4d8, draft PR248.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
