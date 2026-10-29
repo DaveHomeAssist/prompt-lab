@@ -83,3 +83,29 @@ test('HTTP import review commits the retained graph and exposes its state throug
   assert.deepEqual(stateObject.data, preview.importPlan.manifest);
   assert.equal((await request(`/v1/library/previews/${preview.previewId}`)).status, 409);
 });
+
+test('HTTP backup inventory pages verified checkpoints with read scope and rejects stale cursors', async t => {
+  const { api, request } = await fixture(t);
+  const revisions = [];
+  for (let i = 0; i < 3; i++) {
+    const preview = await api.service.preview({ libraryId: 'lib1', expectedRevision: revisions.at(-1) ?? null, sourceText: JSON.stringify({ library: [{ id: 'p', original: `revision${i}` }] }) });
+    revisions.push((await api.service.apply({ ...preview, idempotencyKey: `op${i}` })).revision);
+  }
+  const path = `/v1/library/backups?revision=${encodeURIComponent(revisions[2])}&limit=1`;
+  const response = await request(path, { headers: { Authorization: `Bearer ${readToken}` } });
+  assert.equal(response.status, 200);
+  const first = await response.json();
+  assert.equal(first.items.length, 1); assert.equal(first.nextCursor, '1');
+  assert.equal(first.items[0].checkpointId, revisions[0]);
+  assert.equal(first.items[0].name, 'Before op1');
+  assert.equal(first.items[0].independentBackup, false);
+  const second = await (await request(path + '&cursor=1')).json();
+  assert.equal(second.items[0].checkpointId, revisions[1]); assert.equal(second.nextCursor, null);
+  assert.equal((await request('/v1/library/backups')).status, 409);
+  assert.equal((await request(path + '&cursor=-1')).status, 400);
+  assert.equal((await request(path.replace('limit=1', 'limit=101'))).status, 400);
+  const newer = await api.service.preview({ libraryId: 'lib1', expectedRevision: revisions[2], sourceText: '{"library":[]}' });
+  await api.service.apply({ ...newer, idempotencyKey: 'newer' });
+  assert.equal((await request(path + '&cursor=1')).status, 409);
+  assert.equal((await request('/v1/library/restores', { method: 'POST' })).status, 404);
+});

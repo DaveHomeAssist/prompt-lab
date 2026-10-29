@@ -110,6 +110,57 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Complete portable transfer
+
+The shared contract exports a revision-pinned archive with every immutable
+object, operation receipt, checkpoint and library-owned state field. A versioned
+manifest binds the exact inventory and each component hash. Inspection rejects
+missing or extra components, altered receipts, missing commit ancestry,
+unsupported formats and excluded credential/settings stores. Unknown content
+fields and retained unreachable objects remain in the archive.
+
+Independent backup writing uses an explicitly supplied new destination, refuses
+overwrite, flushes before publication and verifies the published archive against
+the expected manifest hash. Fault cases cover interruption before flush, before
+publication and after publication. No backup health is inferred from iCloud.
+Tests reconstruct a disposable adapter from the verified archive and compare its
+complete state and operation readback. This transfer contract does not authorize
+replacing an existing library; checkpoint restore still needs a new reviewed
+commit with permanent-deletion suppression and a pre-restore checkpoint.
+
+`transfer.mjs` owns the portable manifest and semantic verification.
+`backup-file.mjs` writes bounded JSON records, with a manifest first and an explicit
+completion record last. Each frame holds at most one 64 MiB content object plus
+framing overhead. The file limit is 256 MiB, configurable downward. Oversized
+archives fail without pruning; larger-library capacity remains a separate gate.
+The published file is read back against both its manifest hash and whole-file
+SHA-256 before acknowledgement. Original sources and incomplete pending files
+are retained on failure. Existing destinations and symlink destinations are
+rejected. Callers must also supply known sync roots as excluded directories;
+being outside one package directory alone does not prove physical or cloud
+independence. No automatic backup-health claim is made.
+
+`GET /v1/library/backups` accepts read scope and requires the current `revision`.
+`limit` is 1 to 100 and `cursor` is a nonnegative decimal offset within that pinned
+revision. The response contains `libraryId`, `revision`, bounded `items` and
+`nextCursor`. Items include the checkpoint hash, name, creation time and state
+hash/kind, with `independentBackup: false`. Bad pagination returns 400, invalid
+authorization 401/403, stale revision 409 and invalid archive state 422/503.
+Checkpoint restore still returns 404 until deletion-aware apply is implemented.
+
+For example, an authorized read of
+`/v1/library/backups?revision=sha256:<current revision>&limit=1` returns the first
+checkpoint and `nextCursor: "1"` when another exists. Continuing with `cursor=1`
+and the same revision fails with 409 if a newer commit has been published.
+
+October 29 verification: all 80 storage tests pass on Dominic Node 22.23.4,
+including complete transfer of 84 historical versions, retained opaque objects
+and unknown metadata, legacy receipt compatibility, missing receipts/checkpoints,
+changed manifests, bounded checkpoint pagination, three backup-publication fault
+boundaries, truncated files, unsafe destinations and capacity limits. Documentation
+lint and all four consistency checks pass. These results do not establish a
+public restore workflow, installed-app recovery or actual cloud replication.
+
 ### Durable import state
 
 Import commits reference a versioned state manifest containing every original
@@ -234,7 +285,8 @@ The local API rejects wrong Host/Origin, absent/expired/revoked credentials,
 wrong library and insufficient scope. It binds 127.0.0.1, uses no cookies and
 does not accept URL credentials. Secure pairing, keychain integration, installed
 service ownership and native packaging remain open. It is not automatically
-started. Recovery routes return 404 until their preservation rules are complete.
+started. Checkpoint reads are available; restore writes return 404 until their
+preservation rules are complete.
 
 ## Verification and next gates
 
@@ -244,6 +296,9 @@ private local acceptance harness. Do not put that input into CI or Git.
 Use `node scripts/verify-library-import.mjs` with that explicit path for disposable
 graph import, repeat, reopen and receipt acceptance. It emits aggregate evidence
 and retains the disposable folder locally for inspection.
+Use `node scripts/verify-library-transfer.mjs` with an explicit private export
+path for complete backup-file readback and new disposable adapter reconstruction.
+This harness is not a public restore command or personal-library activation.
 
 Initial tests found an EEXIST reopen error; recursive directory creation fixed
 it and reopen was tested again. The first hostile-Host test used fetch, which

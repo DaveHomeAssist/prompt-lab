@@ -183,9 +183,34 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     }
     return structuredClone(preview.response);
   }
+  async function exportTransfer({ libraryId, expectedRevision }) {
+    const state = await adapter.read();
+    if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
+    if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin transfers to the current library revision.', 409);
+    const { createTransfer } = await import('./transfer.mjs');
+    const transfer = await createTransfer(state);
+    const current = await adapter.read();
+    if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during transfer preparation.', 409);
+    return transfer;
+  }
   return {
     read: () => adapter.read(),
     previewRead: currentReview,
+    transfer: exportTransfer,
+    async backups({ libraryId, expectedRevision, cursor = '0', limit = 100 }) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100 || typeof cursor !== 'string'
+        || !/^(0|[1-9][0-9]*)$/.test(cursor) || !Number.isSafeInteger(Number(cursor))) throw new LibraryError('INVALID_REQUEST', 'Invalid backup pagination.', 400);
+      const transfer = await exportTransfer({ libraryId, expectedRevision });
+      const offset = Number(cursor), ids = transfer.checkpoints;
+      const items = ids.slice(offset, offset + limit).map(checkpointId => {
+        const commit = transfer.objects[checkpointId].data;
+        const next = Object.values(transfer.operations).find(receipt => receipt.checkpointId === checkpointId);
+        return { checkpointId, name: next ? `Before ${next.operationId}` : `Retained ${commit.operationId}`,
+          createdAt: commit.createdAt, stateHash: commit.state, stateKind: commit.operation === 'import' ? 'library-state' : 'workspace',
+          independentBackup: false };
+      });
+      return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
+    },
     async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot' }) {
       if (!['snapshot', 'import'].includes(mode)) throw new LibraryError('INVALID_MODE', 'Select snapshot or import review.');
       canonical(resolutions);

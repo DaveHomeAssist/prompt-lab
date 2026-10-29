@@ -306,12 +306,19 @@
     },
     "/v1/library/backups": {
       "get": {
-        "summary": "Page verified checkpoints",
+        "summary": "Page verified in-library checkpoints; independent backups are separate",
         "operationId": "getV1LibraryBackups",
-        "x-implementation-status": "proposed",
+        "x-implementation-status": "candidate",
         "responses": {
           "200": {
-            "description": "Acknowledged result"
+            "description": "Revision-pinned checkpoint metadata; no content bodies or independent-backup claim",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupPage"
+                }
+              }
+            }
           },
           "400": {
             "description": "Invalid request"
@@ -333,8 +340,41 @@
           },
           "503": {
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "description": "Invalid transfer inventory, receipt or checkpoint state"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "revision",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]*)$",
+              "default": "0"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 100
+            }
+          }
+        ]
       }
     },
     "/v1/library/restores": {
@@ -1684,6 +1724,321 @@
           "stateHash",
           "stateKind",
           "objects",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "RetainedObject": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "data": {}
+        },
+        "required": [
+          "schemaVersion",
+          "kind",
+          "data"
+        ],
+        "additionalProperties": true
+      },
+      "TransferCounts": {
+        "type": "object",
+        "properties": {
+          "objects": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "operations": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "checkpoints": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "commits": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "objects",
+          "operations",
+          "checkpoints",
+          "commits"
+        ],
+        "additionalProperties": false
+      },
+      "TransferManifest": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-transfer-manifest"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "objects": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "hash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 67108864
+                }
+              },
+              "required": [
+                "hash",
+                "kind",
+                "bytes"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "operations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "operationId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "hash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "operationId",
+                "hash"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "checkpointsHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "metadataHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TransferCounts"
+          },
+          "stateKind": {
+            "enum": [
+              "workspace",
+              "library-state"
+            ]
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "libraryId",
+          "revision",
+          "objects",
+          "operations",
+          "checkpointsHash",
+          "metadataHash",
+          "counts",
+          "stateKind"
+        ],
+        "additionalProperties": false
+      },
+      "TransferMetadata": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "libraryId",
+          "revision"
+        ],
+        "additionalProperties": true,
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "objects"
+              ]
+            },
+            {
+              "required": [
+                "operations"
+              ]
+            },
+            {
+              "required": [
+                "checkpoints"
+              ]
+            }
+          ]
+        }
+      },
+      "Transfer": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-library-transfer"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/TransferManifest"
+          },
+          "manifestHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/TransferMetadata"
+          },
+          "objects": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/RetainedObject"
+            }
+          },
+          "operations": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Receipt"
+            }
+          },
+          "checkpoints": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "manifest",
+          "manifestHash",
+          "metadata",
+          "objects",
+          "operations",
+          "checkpoints"
+        ],
+        "additionalProperties": false
+      },
+      "BackupCheckpoint": {
+        "type": "object",
+        "properties": {
+          "checkpointId": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stateHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "stateKind": {
+            "enum": [
+              "workspace",
+              "library-state"
+            ]
+          },
+          "independentBackup": {
+            "const": false
+          }
+        },
+        "required": [
+          "checkpointId",
+          "name",
+          "createdAt",
+          "stateHash",
+          "stateKind",
+          "independentBackup"
+        ],
+        "additionalProperties": false
+      },
+      "BackupPage": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "revision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/BackupCheckpoint"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "libraryId",
+          "revision",
+          "items",
           "nextCursor"
         ],
         "additionalProperties": false

@@ -58,6 +58,10 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       const state = await adapter.read();
       if (state.libraryId && state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Selected folder contains another library.', 409);
       if (req.method === 'GET' && url.pathname === '/v1/library') return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown' });
+      if (req.method === 'GET' && url.pathname === '/v1/library/backups') {
+        return send(200, await service.backups({ libraryId, expectedRevision: url.searchParams.get('revision'),
+          cursor: url.searchParams.get('cursor') ?? '0', limit: Number(url.searchParams.get('limit') ?? 100) }));
+      }
       if (req.method === 'GET' && url.pathname === '/v1/library/snapshot') {
         if (url.searchParams.get('revision') !== state.revision) throw new LibraryError('REVISION_CONFLICT', 'Pin snapshot reads to the current revision.', 409);
         const limit = Number(url.searchParams.get('limit') ?? 100), offset = Number(url.searchParams.get('cursor') ?? 0);
@@ -95,7 +99,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (input.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Request targets another library.', 409);
         return send(201, await service.apply({ ...input, idempotencyKey: req.headers['idempotency-key'] }));
       }
-      // Recovery APIs remain unavailable until permanent-deletion suppression is implemented.
+      // Restore writes remain unavailable until permanent-deletion suppression is implemented.
       throw new LibraryError('NOT_FOUND', 'Operation is not available in this contract candidate.', 404);
     } catch (error) {
       send(error instanceof LibraryError ? error.status : 503, { ok: false, code: error instanceof LibraryError ? error.code : 'STORAGE_UNAVAILABLE', error: error instanceof LibraryError ? error.message : 'Storage unavailable; keep your draft and retry.', retryable: false });
