@@ -38,6 +38,7 @@ import { buildWorkspaceImportPreview, normalizeWorkspaceImportSource, workspaceI
 import { loadPackRegistry, stampPackMembership } from '../lib/packStore.js';
 import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../experimentStore.js';
 import { getNewestSortTimestamp, sortLibraryEntries } from '../lib/librarySort.js';
+import { useRepositoryPromptLibrary } from './useRepositoryPromptLibrary.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
 const LIBRARY_CONFLICT_MESSAGE = 'Library changed in another tab. Latest changes loaded. Review and retry, or save your editor draft as a new prompt.';
@@ -97,11 +98,16 @@ function deriveCollectionsFromLibrary(entries) {
   )];
 }
 
-export default function usePromptLibrary(notify) {
-  const [library, setLibraryState] = useState([]);
-  const [trash, setTrash] = useState([]);
-  const [libReady, setLibReady] = useState(false);
-  const [collections, setCollections] = useState([]);
+export default function usePromptLibrary(notify, { repository = null } = {}) {
+  const connected = useRepositoryPromptLibrary(repository, notify);
+  const [localLibrary, setLibraryState] = useState([]);
+  const library = connected ? connected.library : localLibrary;
+  const [localTrash, setTrash] = useState([]);
+  const trash = connected ? connected.trash : localTrash;
+  const [localLibReady, setLibReady] = useState(false);
+  const libReady = connected ? connected.libReady : localLibReady;
+  const [localCollections, setCollections] = useState([]);
+  const collections = connected ? connected.collections : localCollections;
   const [folderRecords, setFolderRecords] = useState([]);
   const foldersRef = useRef([]);
   const folders = useMemo(() => reconcileFolders(folderRecords, collections), [folderRecords, collections]);
@@ -136,7 +142,7 @@ export default function usePromptLibrary(notify) {
   const [importPreview, setImportPreview] = useState(null);
   const importPreviewRef = useRef(null);
   const [importApplying, setImportApplying] = useState(false);
-  const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => getLoadedPacks());
+  const [loadedStarterPackIds, setLoadedStarterPackIds] = useState(() => repository ? [] : getLoadedPacks());
   const libraryRef = useRef(library);
   const trashRef = useRef(trash);
   const generationRef = useRef('0');
@@ -147,8 +153,10 @@ export default function usePromptLibrary(notify) {
   const librarySnapshotRef = useRef({ raw: undefined, library: [] });
   const libraryConflictRef = useRef('');
   const saveAttemptRef = useRef(null);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const [localSaving, setSaving] = useState(false);
+  const saving = connected ? connected.saving : localSaving;
+  const [localSaveError, setSaveError] = useState('');
+  const saveError = connected ? connected.saveError : localSaveError;
 
   const setLibrary = useCallback((update) => {
     const proposed = typeof update === 'function' ? update(libraryRef.current) : update;
@@ -247,6 +255,7 @@ export default function usePromptLibrary(notify) {
   }, []);
 
   useEffect(() => {
+    if (repository) return undefined;
     try { librarySnapshotRef.current.raw = localStorage.getItem(storageKeys.library); } catch { /* Writes remain unavailable. */ }
     const storedLibrary = loadJson(storageKeys.library, null);
     const hasStoredLibrary = Array.isArray(storedLibrary);
@@ -304,10 +313,10 @@ export default function usePromptLibrary(notify) {
     return () => {
       cancelled = true;
     };
-  }, [applyLegacyPayload, markLegacyLibraryChecked]);
+  }, [applyLegacyPayload, markLegacyLibraryChecked, repository]);
 
   useEffect(() => {
-    if (!libReady) return undefined;
+    if (repository || !libReady) return undefined;
     const expectedRaw = librarySnapshotRef.current.raw;
     const timeoutId = window.setTimeout(() => {
       const ok = persistRecords(storageKeys.library, library, expectedRaw);
@@ -321,24 +330,24 @@ export default function usePromptLibrary(notify) {
       }
     }, 120);
     return () => window.clearTimeout(timeoutId);
-  }, [library, libReady]);
+  }, [library, libReady, repository]);
 
   useEffect(() => {
-    if (!libReady) return undefined;
+    if (repository || !libReady) return undefined;
     const timeoutId = window.setTimeout(() => persistRecords(storageKeys.trash, trash), 120);
     return () => window.clearTimeout(timeoutId);
-  }, [trash, libReady]);
+  }, [trash, libReady, repository]);
 
   useEffect(() => {
-    if (!libReady) return undefined;
+    if (repository || !libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
       saveJson(storageKeys.collections, collections);
     }, 120);
     return () => window.clearTimeout(timeoutId);
-  }, [collections, libReady]);
+  }, [collections, libReady, repository]);
 
   useEffect(() => {
-    if (!libReady) return undefined;
+    if (repository || !libReady) return undefined;
     const handleStorage = (event) => {
       if (![storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.folders].includes(event.key) && !isLibraryDeletionKey(event.key)) return;
       const deletionState = readLibraryDeletionState();
@@ -377,7 +386,7 @@ export default function usePromptLibrary(notify) {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, [libReady]);
+  }, [libReady, repository]);
 
   // `stamp: false` is for bookkeeping that is not an edit (opening a prompt).
   // Those writes keep updatedAt, so the Updated date and Newest order stay true.
@@ -1375,6 +1384,7 @@ export default function usePromptLibrary(notify) {
   };
 
   const recentPrompts = useMemo(() => {
+    if (repository) return library.filter(entry => entry.lastAccessedAt).sort((a, b) => String(b.lastAccessedAt).localeCompare(String(a.lastAccessedAt))).slice(0, 5);
     const ant = getAnticipation();
     const order = ant.lastAccessOrder || [];
     const map = new Map(library.map(entry => [entry.id, entry]));
@@ -1395,5 +1405,6 @@ export default function usePromptLibrary(notify) {
     recoverLegacyWebLibrary, recoveringLegacyLibrary,
     starterLibraries, loadStarterPack,
     allLibTags, filtered, quickInject, recentPrompts, trackRecentAccess,
+    ...(connected || {}),
   };
 }

@@ -150,7 +150,7 @@ function VersionComparison({ entry, onRestore }) {
 
 const GOLDEN_RESPONSE_HINT = 'Pin a golden response from a Create run, or promote one from Evaluate → Compare.';
 
-function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
+function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, setDetailsDraft, detailsDirty, saveDetails, savingDetails, discardDetails, lib, canUseCollections, openBilling, copy, testCasesByPrompt, testCaseControls }) {
   const content = entryText(selected);
   const variableNames = uniqueStrings([
     ...extractVars(selected.original || ''), ...extractVars(selected.enhanced || ''),
@@ -172,7 +172,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
       <label>Tags<input value={detailsDraft.tags} onChange={(event) => setDetailsDraft((current) => ({ ...current, tags: event.target.value }))} placeholder="research, template" disabled={smartView === 'trash'} /></label>
       <label>Collection<select value={detailsDraft.collection} onChange={(event) => setDetailsDraft((current) => ({ ...current, collection: event.target.value }))} disabled={smartView === 'trash' || !canUseCollections}><option value="">None</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label>
       {!canUseCollections && smartView !== 'trash' && <button type="button" className="pl-inline-upgrade" onClick={() => openBilling?.('collections')}>Unlock collections</button>}
-      {smartView !== 'trash' && <button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button>}
+      {smartView !== 'trash' && <button type="button" className="pl-primary-button" disabled={savingDetails || lib.saving || !detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>{savingDetails ? 'Saving details…' : 'Save details'}</button>}
       {smartView !== 'trash' && detailsDirty && <button type="button" className="pl-secondary-button" onClick={discardDetails}>Discard changes</button>}
       <dl className="pl-inspector-audit-metadata">
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
@@ -268,8 +268,12 @@ export default function LibraryWorkspace({
   const [artworkCollection, setArtworkCollection] = useState('');
   const [artworkTarget, setArtworkTarget] = useState(null);
   const [artworkHistoryError, setArtworkHistoryError] = useState('');
-  const recordArtwork = artwork => setArtworkHistoryError(rememberArtwork(artwork).error);
+  const recordArtwork = artwork => { if (!lib.repository) setArtworkHistoryError(rememberArtwork(artwork).error); };
   const [folderSaving, setFolderSaving] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkBusyRef = useRef(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+  const detailsSavingRef = useRef(false);
   const [folderError, setFolderError] = useState('');
   const workspaceRef = useRef(null);
   const folderRecords = useMemo(() => lib.folders || reconcileFolders([], lib.collections), [lib.folders, lib.collections]);
@@ -416,7 +420,7 @@ export default function LibraryWorkspace({
     if (smartView === 'trash') setCheckedIds([]);
   };
   const saveDetails = async () => {
-    if (!selected || smartView === 'trash' || !detailsDraft.title.trim()) return;
+    if (!selected || smartView === 'trash' || !detailsDraft.title.trim() || detailsSavingRef.current || lib.saving) return;
     const update = (entry) => ({
       ...entry,
       title: detailsDraft.title.trim(),
@@ -430,25 +434,63 @@ export default function LibraryWorkspace({
       updatedAt: new Date().toISOString(),
     });
     const savedId = selected.id;
-    const result = lib.saveEntryDetails ? await lib.saveEntryDetails(savedId, update) : lib.updateEntries([savedId], update);
+    let result;
+    detailsSavingRef.current = true; setSavingDetails(true);
+    try { result = await (lib.saveEntryDetails ? lib.saveEntryDetails(savedId, update) : lib.updateEntries([savedId], update)); }
+    catch { setAnnouncement('Details were not saved. Your edits remain in the inspector.'); return; }
+    finally { detailsSavingRef.current = false; setSavingDetails(false); }
     if (result === false || result === 0 || result === null) {
       setAnnouncement('Details were not saved. Your edits remain in the inspector.');
       return;
     }
-    // Saved: drop the kept draft so the inspector shows the stored entry.
+    // A delayed acknowledgement must not discard edits typed while saving.
     recordArtwork(detailsDraft.artwork);
-    pendingDetailsRef.current.delete(savedId);
+    const newer = pendingDetailsRef.current.has(savedId) && pendingDetailsRef.current.get(savedId) !== detailsDraft;
+    if (!newer) pendingDetailsRef.current.delete(savedId);
     setDetailsRevision(revision => revision + 1);
-    setAnnouncement(`Saved details for ${detailsDraft.title.trim()}.`);
+    setAnnouncement(newer ? 'Earlier details saved. Your newer edits are still in the inspector.' : `Saved details for ${detailsDraft.title.trim()}.`);
   };
   const runBulk = (action, message) => {
-    const result = action();
-    if (result === false || result === 0 || result === null) {
-      setAnnouncement('No prompts were changed. Your selection is still active.');
-      return;
-    }
-    setAnnouncement(message);
-    setCheckedIds([]);
+    if (bulkBusyRef.current) return;
+    const requested = [...checkedIds];
+    const finish = result => {
+      const completed = typeof result === 'number' ? result : result?.completed;
+      if (result === false || result === 0 || result === null || (Number.isInteger(completed) && completed < requested.length)) {
+        setAnnouncement(completed > 0 ? `Changed ${completed} of ${requested.length} prompts. Your selection is still active; review and retry the remaining changes.`
+          : 'No prompts were changed. Your selection is still active.');
+        return;
+      }
+      setAnnouncement(message);
+      setCheckedIds(current => current.filter(id => !requested.includes(id)));
+    };
+    const failed = () => setAnnouncement('The change was not confirmed. Your selection is still active.');
+    bulkBusyRef.current = true;
+    try {
+      const result = action();
+      if (result && typeof result.then === 'function') {
+        setBulkBusy(true); setAnnouncement('Saving changes…');
+        void Promise.resolve(result).then(finish, failed).finally(() => { bulkBusyRef.current = false; setBulkBusy(false); });
+      } else { finish(result); bulkBusyRef.current = false; }
+    } catch { bulkBusyRef.current = false; failed(); }
+  };
+  const runEach = (items, action) => {
+    let completed = 0;
+    const next = index => {
+      if (index === items.length) return { completed, requested: items.length };
+      let result;
+      try { result = action(items[index]); } catch { return { completed, requested: items.length }; }
+      const accept = value => value === false || value === null || value === 0
+        ? { completed, requested: items.length } : (completed++, next(index + 1));
+      return result && typeof result.then === 'function' ? result.then(accept, () => ({ completed, requested: items.length })) : accept(result);
+    };
+    return next(0);
+  };
+  const finishSelectedAction = async (id, action) => {
+    try {
+      const result = await action();
+      if (result !== false && result !== null && result !== 0) setSelectedId(current => current === id ? null : current);
+      else setAnnouncement('The change was not confirmed. The prompt remains selected.');
+    } catch { setAnnouncement('The change was not confirmed. The prompt remains selected.'); }
   };
   const exportSelected = () => {
     if (!canExportLibrary) { openBilling?.('export'); return; }
@@ -572,6 +614,8 @@ export default function LibraryWorkspace({
         {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
       </header>
 
+      {lib.repository && lib.saveError && <div className="pl-library-save-feedback" role="alert"><span>{lib.saveError}</span><button type="button" className="pl-secondary-button" disabled={lib.saving} onClick={() => lib.retryPending()}>Retry pending changes</button></div>}
+      {lib.repository && lib.saving && <p className="pl-library-save-feedback" role="status">Saving to the selected Library…</p>}
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">
         <summary className="pl-starter-summary cursor-pointer text-sm font-semibold">Starter Libraries</summary>
@@ -588,22 +632,22 @@ export default function LibraryWorkspace({
         <button type="button" className="pl-library-clear-filters" onClick={clearFilters}>Clear all</button>
       </div>}
 
-      {checkedIds.length > 0 && <div className="pl-bulk-bar" role="toolbar" aria-label="Bulk actions">
+      {checkedIds.length > 0 && <div className="pl-bulk-bar" role="toolbar" aria-label="Bulk actions" aria-busy={bulkBusy || lib.saving || false}>
         <strong>{checkedIds.length} selected</strong>
         {smartView === 'trash' ? <>
-          <button type="button" onClick={() => runBulk(() => checkedEntries.forEach((entry) => lib.restoreDeleted(entry.id)), `Restored ${checkedEntries.length} prompts.`)}>Restore</button>
-          <button type="button" onClick={() => runBulk(() => lib.permanentlyDeleteEntries?.(checkedIds) ?? 0, `Permanently deleted ${checkedEntries.length} ${checkedEntries.length === 1 ? 'prompt' : 'prompts'}.`)}><Ic n="Trash2" size={13} /> Delete forever</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.restoreDeletedEntries ? lib.restoreDeletedEntries(checkedIds) : runEach(checkedEntries, entry => lib.restoreDeleted(entry.id)), `Restored ${checkedEntries.length} prompts.`)}>Restore</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.permanentlyDeleteEntries?.(checkedIds) ?? 0, `Permanently deleted ${checkedEntries.length} ${checkedEntries.length === 1 ? 'prompt' : 'prompts'}.`)}><Ic n="Trash2" size={13} /> Delete forever</button>
         </> : <>
-          {canUseCollections ? <label>Move to<select aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
-          <label>Add tag<input value={bulkTag} onChange={(event) => setBulkTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && bulkTag.trim()) { const tag = bulkTag.trim(); runBulk(() => lib.addTagToEntries(checkedIds, tag), `Added #${tag} to ${checkedIds.length} prompts.`); setBulkTag(''); } }} placeholder="Type + Enter" /></label>
-          <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: true })), `Favorited ${checkedIds.length} prompts.`)}><Ic n="Star" size={13} /> Favorite</button>
-          <button type="button" onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: false })), `Unfavorited ${checkedIds.length} prompts.`)}>Unfavorite</button>
-          <button type="button" onClick={() => runBulk(() => checkedEntries.forEach((entry) => lib.duplicateEntry(entry.id)), `Duplicated ${checkedIds.length} prompts.`)}><Ic n="CopyPlus" size={13} /> Duplicate</button>
-          <button type="button" onClick={() => copy(checkedEntries.map(entryText).join('\n\n---\n\n'))}><Ic n="Copy" size={13} /> Copy</button>
-          <button type="button" onClick={exportSelected}><Ic n="Download" size={13} /> Export selected</button>
-          <button type="button" onClick={() => runBulk(() => lib.deleteEntries(checkedIds), `Moved ${checkedIds.length} prompts to Recently Deleted.`)}><Ic n="Trash2" size={13} /> Move to trash</button>
+          {canUseCollections ? <label>Move to<select disabled={bulkBusy || lib.saving} aria-label="Move selected prompts to collection" value={bulkCollection} onChange={(event) => { const value = event.target.value; setBulkCollection(value); if (value) runBulk(() => lib.moveEntriesToCollection(checkedIds, value), `Moved ${checkedIds.length} prompts to ${value}.`); }}><option value="">Choose…</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label> : <button type="button" disabled={bulkBusy || lib.saving} onClick={() => openBilling?.('collections')}>Collections<ProBadge /></button>}
+          <label>Add tag<input disabled={bulkBusy || lib.saving} value={bulkTag} onChange={(event) => setBulkTag(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && bulkTag.trim()) { const tag = bulkTag.trim(); runBulk(() => lib.addTagToEntries(checkedIds, tag), `Added #${tag} to ${checkedIds.length} prompts.`); setBulkTag(''); } }} placeholder="Type + Enter" /></label>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: true })), `Favorited ${checkedIds.length} prompts.`)}><Ic n="Star" size={13} /> Favorite</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: false })), `Unfavorited ${checkedIds.length} prompts.`)}>Unfavorite</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => runEach(checkedEntries, entry => lib.duplicateEntry(entry.id)), `Duplicated ${checkedIds.length} prompts.`)}><Ic n="CopyPlus" size={13} /> Duplicate</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => copy(checkedEntries.map(entryText).join('\n\n---\n\n'))}><Ic n="Copy" size={13} /> Copy</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={exportSelected}><Ic n="Download" size={13} /> Export selected</button>
+          <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.deleteEntries(checkedIds), `Moved ${checkedIds.length} prompts to Recently Deleted.`)}><Ic n="Trash2" size={13} /> Move to trash</button>
         </>}
-        <button type="button" onClick={() => setCheckedIds([])}>Clear selection</button>
+        <button type="button" disabled={bulkBusy || lib.saving} onClick={() => setCheckedIds([])}>Clear selection</button>
       </div>}
 
       {artworkTarget && smartView !== 'trash' && lib.library.some(entry => entry.id === artworkTarget.id) && <ArtworkPopover key={artworkTarget.id} entry={lib.library.find(entry => entry.id === artworkTarget.id)} trigger={artworkTarget.trigger} onSave={saveCardArtwork} onClose={() => setArtworkTarget(null)} />}
@@ -676,17 +720,17 @@ export default function LibraryWorkspace({
             <h3>Follow-up prompts</h3>
             {lib.library.filter(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id).map(child => <button key={child.id} type="button" className="pl-secondary-button" onClick={() => selectEntry(child)}>{child.title}</button>)}
           </section>}
-          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
+          <InspectorContent m={m} selected={selected} smartView={smartView} inspectorTab={inspectorTab} detailsDraft={detailsDraft} setDetailsDraft={editDetails} detailsDirty={detailsDirty} saveDetails={saveDetails} savingDetails={savingDetails} discardDetails={discardDetails} lib={lib} canUseCollections={canUseCollections} openBilling={openBilling} copy={copy} testCasesByPrompt={testCasesByPrompt} testCaseControls={testCaseControls} />
         </div>
         <footer>
-          {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => { lib.restoreDeleted(selected.id); setSelectedId(null); }}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => { lib.permanentlyDelete(selected.id); setSelectedId(null); }}>Delete forever</button></> : <>
+          {smartView === 'trash' ? <><button type="button" className="pl-primary-button" onClick={() => finishSelectedAction(selected.id, () => lib.restoreDeleted(selected.id))}>Restore prompt</button><button type="button" className="pl-secondary-button" onClick={() => finishSelectedAction(selected.id, () => lib.permanentlyDelete(selected.id))}>Delete forever</button></> : <>
             <button type="button" className="pl-primary-button" onClick={() => loadEntry(selected)}>Open in Editor</button>
             <button type="button" className="pl-secondary-button" onClick={() => addToComposer?.(selected)}>Composer</button>
             <button type="button" className="pl-secondary-button" onClick={() => sendToABTest?.(selected)}>Compare{compareLocked && <ProBadge />}</button>
             <button type="button" className="pl-secondary-button" onClick={() => copy(entryText(selected))}>Copy</button>
             <button type="button" className="pl-icon-button" onClick={() => lib.setFavorite(selected.id)} aria-label={`${selected.favorite ? 'Unfavorite' : 'Favorite'} prompt`} aria-pressed={Boolean(selected.favorite)} title={selected.favorite ? 'Remove from favorites' : 'Add to favorites'}><Ic n="Star" size={14} /></button>
             <button type="button" className="pl-icon-button" onClick={() => lib.duplicateEntry(selected.id)} aria-label="Duplicate prompt" title="Duplicate prompt"><Ic n="CopyPlus" size={14} /></button>
-            <button type="button" className="pl-icon-button" onClick={() => { const deleted = lib.del(selected.id); if (deleted !== false) setSelectedId(null); }} aria-label="Move prompt to Recently Deleted" title="Move to Recently Deleted"><Ic n="Trash2" size={14} /></button>
+            <button type="button" className="pl-icon-button" onClick={() => finishSelectedAction(selected.id, () => lib.del(selected.id))} aria-label="Move prompt to Recently Deleted" title="Move to Recently Deleted"><Ic n="Trash2" size={14} /></button>
           </>}
         </footer>
       </>}

@@ -1,5 +1,66 @@
 # Library storage contract candidate
 
+## Connected Library action integration
+
+The Library inspector, favorites and Trash actions must wait for the shared
+repository's verified receipt before changing visible state or announcing
+success. Bulk controls retain their selection while work is pending and on
+failure, and report partial completion honestly. A failed retained command
+must be recoverable without a new identity or a legacy storage fallback.
+
+Add an explicit repository dependency to the Library hook and exercise the
+actual Library workspace against an isolated command service. Keep original
+browser storage untouched, including background effects. Read and mutate only
+the selected library; reject a different repository supplied to an already
+mounted hook until an explicit activation/remount is implemented. Preserve
+source values hidden by display normalization and every prior prompt version.
+Common prompt commands are the first integration path. Unconnected import,
+pack, folder and whole-library operations must report unavailable instead of
+calling legacy writers. Their completion remains required before activation.
+
+Acceptance includes delayed and failed acknowledgements, exact retries,
+selection retention, offline recovery, stale API changes and unchanged browser
+source bytes. Main App activation, remaining domain ownership and native
+selection/pairing remain separate acceptance gates.
+
+The connected hook now covers inspector details, Favorite, tags, recent access,
+prompt bookkeeping and Trash/restore/deletion commands. It disables legacy
+Library bootstrap and background writers for this explicit dependency. Bulk
+changes capture the originally selected record hashes and stop if a later
+target changes during the batch. The visible retry action reuses the retained
+command or receipt; it cannot silently start a different operation. Delayed
+inspector acknowledgement retains newer edits typed while saving. Unsupported
+actions report unavailable, and the main App has not activated this dependency.
+
+Mac Node 22.22.1 verified these store actions on an isolated copy of the real
+export fixture: offline Favorite, exact retry, Trash and restore, then folder
+reopen. All 218 selected prompts, both original Trash records, all 71 prior
+objects and complete prior versions remain. Exactly three operations were
+added. The original export remains byte-identical and no private content was
+uploaded. Open took 5.582 seconds; Favorite retry, Trash and restore took
+18.135, 20.126 and 21.362 seconds. Interactive latency remains an open gate.
+This check used the direct shared-service transport and a memory test outbox;
+browser persistence and installed-app acceptance are separate evidence.
+
+The requested configuration check confirms Mac Drive sync enabled, sufficient
+cloud storage and an uploaded, unpaused test file. Both Windows clients have
+registered Drive roots and running iCloud processes, but neither sees the Mac
+probe or current export. Their logs report missing parent records and failed
+hierarchy application. Current Windows account and visible warnings remain
+unverified after remote desktop inspection timed out. No settings changed and
+actual two-client propagation remains unaccepted.
+
+Dominic Node 22.23.4 passes all 1,564 application tests across 141 files and
+all 26 app-repository tests, plus the extension build. The final connected
+Library browser scenarios pass at 375, 1440 and 2560 pixels in the existing
+Playwright 1.58.2 container. They exercise delayed confirmation, offline retry,
+complete history and untouched legacy source storage through the actual folder
+service. Light and dark screenshots show the retry message within the layout.
+Initial runner failures (output ownership and missing host browser libraries)
+are retained separately; the container run passes without changing host setup.
+Two initial batch-race fixtures used an outdated other-client snapshot; the
+corrected fixtures read that snapshot after the first action and all 26 pass.
+
 ## October 29 large journal read verification
 
 Folder histories above the 64 MiB snapshot-cache budget previously discarded

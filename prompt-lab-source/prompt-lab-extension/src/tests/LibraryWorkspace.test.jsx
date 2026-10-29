@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LibraryWorkspace from '../LibraryWorkspace.jsx';
 
@@ -69,6 +69,63 @@ function renderLibrary(options = {}) {
   const view = render(<LibraryWorkspace lib={lib} {...callbacks} {...options.props} />);
   return { ...view, lib, callbacks };
 }
+
+it('retains a bulk selection until acknowledgement and keeps it after a failed save', async () => {
+  let acknowledge;
+  const lib = makeLib({ updateEntries: vi.fn(() => new Promise(resolve => { acknowledge = resolve; })) });
+  renderLibrary({ lib });
+  fireEvent.click(screen.getByLabelText('Select Favorite prompt'));
+  fireEvent.click(screen.getByLabelText('Select Incomplete prompt'));
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite', exact: true }));
+  expect(screen.getByRole('toolbar', { name: 'Bulk actions' })).toHaveTextContent('2 selected');
+  expect(screen.getByRole('button', { name: 'Favorite', exact: true })).toBeDisabled();
+  expect(screen.queryByText('Favorited 2 prompts.')).not.toBeInTheDocument();
+  await act(async () => acknowledge(false));
+  expect(screen.getByText('No prompts were changed. Your selection is still active.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Select Favorite prompt')).toBeChecked();
+  lib.updateEntries.mockResolvedValueOnce(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite', exact: true }));
+  await waitFor(() => expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument());
+  expect(screen.getByText('Favorited 2 prompts.')).toBeInTheDocument();
+});
+
+it('reports partial asynchronous restore without claiming every selected prompt was restored', async () => {
+  const lib = makeLib({ trash: entries.map(row => ({ ...row, deletedAt: '2026-10-29T00:00:00Z' })),
+    restoreDeleted: vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false) });
+  renderLibrary({ lib });
+  fireEvent.click(screen.getByRole('button', { name: /Recently Deleted/ }));
+  fireEvent.click(screen.getByLabelText('Select Favorite prompt'));
+  fireEvent.click(screen.getByLabelText('Select Incomplete prompt'));
+  fireEvent.click(within(screen.getByRole('toolbar', { name: 'Bulk actions' })).getByRole('button', { name: 'Restore' }));
+  await waitFor(() => expect(screen.getByText(/Changed 1 of 2 prompts/)).toBeInTheDocument());
+  expect(screen.getByLabelText('Select Favorite prompt')).toBeChecked();
+  expect(screen.getByLabelText('Select Incomplete prompt')).toBeChecked();
+  expect(screen.queryByText('Restored 2 prompts.')).not.toBeInTheDocument();
+});
+
+it('keeps inspector edits typed after a save starts when its acknowledgement arrives', async () => {
+  let acknowledge;
+  const lib = makeLib({ saveEntryDetails: vi.fn(() => new Promise(resolve => { acknowledge = resolve; })) });
+  renderLibrary({ lib });
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+  fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'First edit' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save details' }));
+  expect(screen.getByRole('button', { name: 'Saving details…' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'Newer unsaved edit' } });
+  await act(async () => acknowledge(true));
+  expect(screen.getByLabelText('Owner')).toHaveValue('Newer unsaved edit');
+  expect(screen.getByText('Earlier details saved. Your newer edits are still in the inspector.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Save details' })).toBeEnabled();
+});
+
+it('keeps the inspector selected when asynchronous deletion is rejected', async () => {
+  const lib = makeLib({ del: vi.fn().mockRejectedValue(new Error('Offline')) });
+  renderLibrary({ lib });
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect Favorite prompt' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Move prompt to Recently Deleted' }));
+  await waitFor(() => expect(screen.getByText('The change was not confirmed. The prompt remains selected.')).toBeInTheDocument());
+  expect(screen.getByRole('complementary', { name: 'Favorite prompt' })).toBeInTheDocument();
+});
 
 describe('LibraryWorkspace', () => {
   it('makes starter packs reachable from the canonical Library index', () => {

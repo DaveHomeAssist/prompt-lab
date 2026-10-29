@@ -678,6 +678,8 @@ textarea:disabled {
 .pl-trash-link { margin-top: auto; color: #fb7185; }
 [data-theme='light'] .pl-trash-link { color: #be123c; }
 .pl-library-index { min-width: 0; min-height: 0; overflow-y: auto; }
+.pl-library-save-feedback { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; padding: 0.75rem 1rem; border-bottom: 1px solid color-mix(in srgb, var(--pl-brand-ember) 35%, transparent); background: color-mix(in srgb, var(--pl-brand-ember) 10%, var(--pl-brand-ink)); font-size: 0.8rem; overflow-wrap: anywhere; }
+.pl-library-save-feedback span { flex: 1 1 16rem; }
 .pl-library-toolbar { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid color-mix(in srgb, currentColor 11%, transparent); padding: 0.75rem 1rem; background: color-mix(in srgb, var(--pl-brand-ink) 88%, transparent); backdrop-filter: blur(16px); }
 [data-theme='light'] .pl-library-toolbar { background: rgba(255, 253, 250, 0.92); }
 .pl-library-search { display: flex; min-width: 8rem; flex: 1; align-items: center; gap: 0.45rem; border: 1px solid color-mix(in srgb, currentColor 13%, transparent); border-radius: 0.6rem; padding: 0.45rem 0.62rem; }

@@ -232,7 +232,9 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
         await refresh();
         return { libraryId, revision: snapshot.revision,
           library: snapshot.items.filter(row => row.domain === 'prompts').map(valueOf),
-          trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf) };
+          trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf),
+          collections: snapshot.items.filter(row => row.domain === 'collections').map(row => structuredClone(row.value)),
+          folders: snapshot.items.filter(row => row.domain === 'folders').map(row => structuredClone(row.value)) };
       });
     },
     async createPrompt({ creationId, record, createdAt = new Date(now()).toISOString() }) {

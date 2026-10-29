@@ -48,6 +48,47 @@ async function fixture(promptFields = {}) {
 }
 const read = async (f, domain) => f.service.currentRecords({ libraryId: 'lib', expectedRevision: (await f.service.read()).revision, domain });
 
+for (const action of ['favorite', 'trash']) {
+  test(`Library batch ${action} stops before a later selection changed by another client`, async () => {
+    const f = await fixture();
+    const second = await f.repository.createPrompt({ creationId: 'second', record: { title: 'Second', original: 'Second', favorite: false } });
+    const other = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(commandStore()) }); await other.open();
+    let interrupted = false;
+    const method = action === 'trash' ? 'changePromptLifecycle' : 'editPrompt';
+    const repository = { ...f.repository, [method]: async (...args) => {
+      const result = await f.repository[method](...args);
+      if (!interrupted) { interrupted = true; await other.editPrompt(await other.readRecord('prompts', second.record.id), { notes: 'New API edit' }); }
+      return result;
+    } };
+    const app = createPromptLibraryStore(repository); await app.open();
+    const result = action === 'trash' ? await app.changeLifecycles('trash', ['prompt', second.record.id])
+      : await app.updateEntries(['prompt', second.record.id], entry => ({ ...entry, favorite: true }));
+    assert.deepEqual(result, { completed: 1, requested: 2 });
+    assert.match(app.saveError, /changed during the batch/);
+    const kept = await other.readRecord('prompts', second.record.id);
+    assert.equal(kept.notes, 'New API edit'); assert.equal(kept.favorite, false);
+    assert.equal(app.library.some(row => row.id === second.record.id), true);
+  });
+}
+
+test('a Library lifecycle retry verifies its retained receipt without repeating the command', async () => {
+  const f = await fixture(); let failReadback = false, calls = 0;
+  const repository = { ...f.repository,
+    readPromptLibrary: async () => { if (failReadback) throw new Error('Readback unavailable'); return f.repository.readPromptLibrary(); },
+    changePromptLifecycle: async (...args) => { calls++; return f.repository.changePromptLifecycle(...args); },
+  };
+  const app = createPromptLibraryStore(repository); await app.open();
+  const before = await f.service.read(); failReadback = true;
+  assert.equal(await app.changeLifecycle('trash', 'prompt'), false);
+  assert.equal(app.library.length, 1); assert.match(app.saveError, /Readback unavailable/);
+  failReadback = false; assert.ok(await app.retryPending());
+  assert.equal(calls, 1); assert.equal(app.library.length, 0); assert.equal(app.trash.length, 1);
+  assert.equal(app.trash[0].versions.length, 41);
+  const after = await f.service.read();
+  assert.equal(Object.keys(after.operations).length, 3);
+  for (const [key, value] of Object.entries(before.objects)) assert.deepEqual(after.objects[key], value);
+});
+
 test('unchanged legacy prompts retain the displayed version identity without creating a receipt', async () => {
   const f = await fixture(), app = createPromptLibraryStore(f.repository); await app.open();
   const version = app.library[0].currentVersionId;
