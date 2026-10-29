@@ -27,11 +27,13 @@ async function publish(service, value, operationId) {
   return service.apply({ ...review, idempotencyKey: operationId });
 }
 async function copyJournal(source, destination) {
-  const target = join(destination, 'transactions'); await mkdir(target, { recursive: true });
-  for (const name of (await readdir(join(source, 'transactions'))).filter(name => name.endsWith('.json'))) {
-    const bytes = await readFile(join(source, 'transactions', name));
-    try { await writeFile(join(target, name), bytes, { flag: 'wx' }); }
-    catch (error) { if (error.code !== 'EEXIST') throw error; assert.deepEqual(await readFile(join(target, name)), bytes); }
+  for (const section of ['objects', 'receipts', 'transactions']) {
+    const target = join(destination, section); await mkdir(target, { recursive: true });
+    for (const name of (await readdir(join(source, section))).filter(name => name.endsWith('.json'))) {
+      const bytes = await readFile(join(source, section, name));
+      try { await writeFile(join(target, name), bytes, { flag: 'wx' }); }
+      catch (error) { if (error.code !== 'EEXIST') throw error; assert.deepEqual(await readFile(join(target, name)), bytes); }
+    }
   }
 }
 async function fixture(t) {
@@ -133,7 +135,7 @@ for (const point of ['before-flush', 'before-publication', 'after-publication'])
   assert.equal(Object.keys((await clean.read()).operations).length, 4);
 });
 
-test('legacy transaction bytes remain intact when a version 2 descendant is published', async t => {
+test('legacy transaction bytes remain intact when a version 3 descendant is published', async t => {
   const root = await mkdtemp(join(tmpdir(), 'promptlab-legacy-journal-')); t.after(() => rm(root, { recursive: true, force: true }));
   const service = createCommandService(createMemoryAdapter()); await publish(service, content(), 'base');
   const row = { schemaVersion: 1, parent: null, state: await service.read() }, bytes = canonical(row), id = await hash(row);
@@ -143,7 +145,7 @@ test('legacy transaction bytes remain intact when a version 2 descendant is publ
   assert.equal(await readFile(original, 'utf8'), bytes);
   const head = (await adapter.branches({ libraryId: 'lib' })).items[0];
   const next = JSON.parse(await readFile(join(journal, `${head.transactionId.slice(7)}.json`), 'utf8'));
-  assert.equal(next.schemaVersion, 2); assert.deepEqual(next.parents, [id]);
+  assert.equal(next.schemaVersion, 3); assert.deepEqual(next.parents, [id]);
 });
 
 test('bounded branch pages reject changed graphs, wrong libraries and lost receipt history', async t => {

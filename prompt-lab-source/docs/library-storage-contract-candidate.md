@@ -1,5 +1,59 @@
 # Library storage contract candidate
 
+## Separate immutable folder objects
+
+Ordinary folder transactions currently embed the complete archive, making each
+save grow with retained history and imposing the 64 MiB object limit on an
+aggregate transaction. Introduce generation 3 transaction manifests that name
+only newly retained objects and receipts, inherit both verified parent histories
+and preserve the complete checkpoint ordering and unknown state metadata.
+Store immutable content by hash in separate `objects/` and `receipts/` files.
+Flush and publish those files before publishing the transaction. A failed save
+keeps the earlier head readable; unreferenced files remain available for retry.
+
+Read generation 1 and 2 journals without changing their bytes. A generation 3
+descendant may inherit embedded objects from either earlier format. Keep the
+existing command, revision, reconciliation, transfer and backup contracts.
+Missing files, changed bytes, cloud conflict copies, unsafe paths and lost
+history must fail visibly. Do not trust filenames, timestamps or cached proof
+without reading the required bytes. Verify restart, interrupted publication,
+mixed generations, branch reconciliation and aggregate history over 64 MiB on
+disposable synthetic folders, then verify a fresh isolated real-export copy.
+No native activation, private upload or hosted work is included in this change.
+
+Generation 3 now publishes flushed, content-addressed object and receipt files
+before the manifest, using exclusive hard-link publication to avoid replacing
+existing content. The directory is flushed before acknowledgement. A byte-checked
+existing file can be reused on retry; pending and orphan files remain preserved.
+Manifests inherit parent objects/receipts and add only new references. Reads
+verify every referenced file, reject cloud conflict copies and unsafe paths,
+and preserve generation 1/2 bytes and unknown state metadata. Transaction
+callbacks cannot change captured content after verification starts.
+
+Dominic Node 22.23.4 passes all 405 storage tests. After final regular-file and
+no-follow read guards, all 37 folder format/durability/recovery tests pass again.
+The large-history and per-object-depth regressions fail against the previous
+adapter with `PAYLOAD_TOO_LARGE` and `INVALID_JSON`. A 70 MiB synthetic archive
+saves, reopens, transfers and accepts another save; each transaction stays below
+4 KiB. Both earlier journal generations remain readable and byte identical.
+The old adapter refuses generation 3 with `UNSUPPORTED_TRANSACTION`, preserving
+the new files for a supported reader. The initial targeted run exposed a changed
+cloud-conflict error timing; adapter creation/read behavior was restored before
+the full passing run.
+
+On the Mac with Node 22.22.1, a fresh isolated real-export copy preserves 218
+fixture prompts, both original Trash records, all 71 earlier objects and prior
+versions through offline Favorite/retry, Trash, restore and reopen. Exactly three
+new operations and generation 3 manifests are added; older transaction bytes and
+the original export remain unchanged. Actions take 12.612/12.015/12.372 seconds,
+so interactive latency remains open. A fresh read with the final file guards
+also verifies retained objects and receipts. A separate synthetic folder under
+the existing disposable iCloud test directory passes native Mac filesystem
+publication, interruption and retry. Its first harness attempt reused a preview
+from a stopped service and correctly failed; refreshing that preview passes.
+These checks do not prove provider upload, two-client propagation, an installed
+app, human acceptance or production activation. No private data was uploaded.
+
 ## Shared verification work during saves
 
 The connected Library still takes seconds to acknowledge ordinary changes.
@@ -45,12 +99,13 @@ private upload or personal activation. Open takes 4.391 seconds; Favorite retry,
 Trash and restore improve from 18.135/20.126/21.362 to 11.851/12.589/13.496 seconds.
 This is a direct-service fixture with a memory outbox, not native acceptance.
 
-Interactive performance remains open. The reference adapter still serializes
+Interactive performance remains open. At this earlier increment, the adapter serialized
 the complete accumulated state into each immutable transaction, which repeats
 archive bytes and applies the 64 MiB object limit to an aggregate transaction.
 The production adapter needs the planned separate content-addressed object
 files and small commit manifests, with preserved older generations, interruption
-recovery and complete transfer parity, before activation or scale acceptance.
+recovery and complete transfer parity. The generation 3 increment above addresses
+that aggregate format gap; broader performance and activation acceptance remain open.
 
 ## Connected Library action integration
 

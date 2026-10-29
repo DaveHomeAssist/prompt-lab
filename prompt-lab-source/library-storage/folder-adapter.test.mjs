@@ -46,7 +46,7 @@ test('corrupt cloud file fails read without silently selecting older data', asyn
   await apply(service, await service.preview(input));
   const journal = join(dir, 'transactions'), name = (await readdir(journal)).find(name => name.endsWith('.json'));
   const before = await readFile(join(journal, name), 'utf8');
-  await writeFile(join(journal, name), before.replace('keep', 'LOSS'));
+  await writeFile(join(journal, name), before.replace('test-library', 'lost-library'));
   await assert.rejects((await createFolderAdapter(dir)).read(), { code: 'HASH_MISMATCH' });
 });
 
@@ -67,7 +67,7 @@ test('warm folder reads reject changed historical bytes even at the same size an
   const next = await service.preview({ ...input, expectedRevision: before.revision });
   await service.apply({ ...next, idempotencyKey: 'second' });
   await adapter.read();
-  await writeFile(file, text.replace('keep', 'LOSS')); await utimes(file, metadata.atime, metadata.mtime);
+  await writeFile(file, text.replace('test-library', 'lost-library')); await utimes(file, metadata.atime, metadata.mtime);
   await assert.rejects(adapter.read(), { code: 'HASH_MISMATCH' });
   await writeFile(file, text);
   assert.equal(Object.keys((await adapter.read()).operations).length, 2);

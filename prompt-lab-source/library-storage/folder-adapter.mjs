@@ -1,7 +1,7 @@
-import { mkdir, open, readdir, readFile, rename, lstat } from 'node:fs/promises';
+import { mkdir, lstat, open } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { createHash } from 'node:crypto';
-import { canonical, hash, MAX_BYTES, LibraryError } from './contract.mjs';
+import { canonical, hash, LibraryError } from './contract.mjs';
+import { createFolderFiles } from './folder-files.mjs';
 import { createTransfer } from './transfer.mjs';
 
 const writers = new Map();
@@ -9,8 +9,18 @@ const empty = () => ({ libraryId: null, revision: null, objects: {}, operations:
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 const parentsOf = row => row.schemaVersion === 1 ? (row.parent === null ? [] : [row.parent]) : row.parents;
+const metadataOf = state => Object.fromEntries(Object.entries(state).filter(([key]) => !['objects', 'operations', 'checkpoints'].includes(key)));
+function sameState(left, right) {
+  if (canonical(metadataOf(left)) !== canonical(metadataOf(right)) || canonical(left.checkpoints) !== canonical(right.checkpoints)) return false;
+  for (const section of ['objects', 'operations']) {
+    const keys = Object.keys(left[section]);
+    if (keys.length !== Object.keys(right[section]).length) return false;
+    for (const key of keys) if (!Object.hasOwn(right[section], key) || canonical(left[section][key]) !== canonical(right[section][key])) return false;
+  }
+  return true;
+}
 function freeze(value) {
-  if (!value || typeof value !== 'object') return value;
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) freeze(child);
   return Object.freeze(value);
 }
@@ -18,7 +28,7 @@ function freeze(value) {
 function preserves(next, previous) {
   if (next.libraryId !== previous.libraryId) fail('WRONG_LIBRARY', 'Folder transactions belong to different libraries.');
   for (const section of ['objects', 'operations']) for (const [key, value] of Object.entries(previous[section])) {
-    if (!Object.hasOwn(next[section], key) || canonical(next[section][key]) !== canonical(value)) fail('HISTORY_LOSS', 'A folder transaction cannot replace or omit retained history.');
+    if (!Object.hasOwn(next[section], key) || (next[section][key] !== value && canonical(next[section][key]) !== canonical(value))) fail('HISTORY_LOSS', 'A folder transaction cannot replace or omit retained history.');
   }
   if (previous.checkpoints.some(id => !next.checkpoints.includes(id))) fail('HISTORY_LOSS', 'A folder transaction cannot omit recovery checkpoints.');
 }
@@ -29,76 +39,89 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
   const root = resolve(directory);
   await mkdir(root, { recursive: true, mode: 0o700 });
   if ((await lstat(root)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library directory cannot be a symbolic link.');
-  const journal = join(root, 'transactions');
-  await mkdir(journal, { mode: 0o700, recursive: true });
-  if ((await lstat(journal)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Transaction directory cannot be a symbolic link.');
-  let verifiedGraph;
-  let verifiedFiles = new Map();
+  const transactions = await createFolderFiles(join(root, 'transactions'), '', fault);
+  const objects = await createFolderFiles(join(root, 'objects'), 'object', fault);
+  const receipts = await createFolderFiles(join(root, 'receipts'), 'receipt', fault);
+  const directoryHandle = await open(root, 'r');
+  try { await directoryHandle.sync(); } finally { await directoryHandle.close(); }
+  let verifiedSignature;
   const verifiedTransactions = new Set();
-  async function graph() {
-    const files = (await readdir(journal)).filter(name => name.endsWith('.json')).sort();
-    if (!files.length) return { rows: new Map(), heads: [], libraryId: null };
-    const rows = new Map(), parents = new Set(), bytes = new Map(), proofs = new Map(); let size = 0;
-    for (const name of files) {
-      if (!/^[a-f0-9]{64}\.json$/.test(name)) throw new LibraryError('CLOUD_CONFLICT', 'Unexpected transaction or cloud conflict copy; review required.', 409);
-      const file = join(journal, name);
-      if ((await lstat(file)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Transaction cannot be a symbolic link.');
-      let contents;
-      try { contents = await readFile(file); } catch { throw new LibraryError('INCOMPLETE_STORE', 'Transaction is unreadable; preserve files and retry after recovery.', 503); }
-      // Read and compare the actual bytes, never trust a filename or timestamp.
-      const retained = verifiedGraph?.bytes.get(name);
-      let row = retained?.contents.equals(contents) ? retained.row : null;
-      const id = 'sha256:' + name.slice(0, -5);
-      // A byte digest retains the successful address check without retaining
-      // every historical snapshot in memory. It is computed from fresh bytes,
-      // never from file metadata, and is distinct from the canonical address.
-      const byteDigest = createHash('sha256').update(contents).digest('hex');
-      if (!row) {
-        try { row = JSON.parse(contents.toString('utf8')); } catch { throw new LibraryError('INCOMPLETE_STORE', 'Transaction is unreadable; preserve files and retry after recovery.', 503); }
-        if (verifiedFiles.get(name) !== byteDigest && await hash(row) !== id) throw new LibraryError('HASH_MISMATCH', 'Transaction failed verification.', 503);
-        freeze(row);
+  const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
+  function inherited(parents, rows) {
+    const objects = new Map(), operations = new Map();
+    for (const parent of parents) for (const [key, target] of [['objects', objects], ['operations', operations]]) {
+      for (const [id, value] of Object.entries(rows.get(parent).state[key])) {
+        if (target.has(id) && target.get(id) !== value && canonical(target.get(id)) !== canonical(value)) fail('HISTORY_LOSS', 'Parent histories disagree on retained content.');
+        target.set(id, value);
       }
-      if (proofs.size < 4096) proofs.set(name, byteDigest);
-      size += contents.byteLength;
-      bytes.set(name, { contents, row });
-      if (![1, 2].includes(row.schemaVersion)) fail('UNSUPPORTED_TRANSACTION', 'Preserve this journal generation for explicit recovery.');
+    }
+    return { objects, operations };
+  }
+  async function graph() {
+    if ((await lstat(root)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library directory cannot be a symbolic link.');
+    const files = await transactions.names();
+    await objects.names(); await receipts.names();
+    if (!files.length) return { rows: new Map(), heads: [], libraryId: null };
+    const rows = new Map(), parents = new Set();
+    for (const name of files) {
+      const id = 'sha256:' + name.slice(0, -5), row = await transactions.read(id);
+      if (![1, 2, 3].includes(row?.schemaVersion)) fail('UNSUPPORTED_TRANSACTION', 'Preserve this journal generation for explicit recovery.');
       const ancestry = parentsOf(row);
       if (!Array.isArray(ancestry) || ancestry.some(parent => !address(parent)) || new Set(ancestry).size !== ancestry.length
-        || (row.schemaVersion === 2 && Object.hasOwn(row, 'parent'))) fail('INVALID_ANCESTRY', 'Transaction parents are invalid.');
-      if (!address(row.state?.revision) || typeof row.state?.libraryId !== 'string' || !row.state.libraryId
-        || !row.state.objects || !row.state.operations || !Array.isArray(row.state.checkpoints)) fail('INCOMPLETE_STORE', 'Transaction state is incomplete.');
+        || (row.schemaVersion !== 1 && Object.hasOwn(row, 'parent'))) fail('INVALID_ANCESTRY', 'Transaction parents are invalid.');
+      if (row.schemaVersion === 3) {
+        if (Object.keys(row).some(key => !['schemaVersion', 'parents', 'metadata', 'objects', 'operations', 'checkpoints'].includes(key))) fail('UNSUPPORTED_TRANSACTION', 'Unknown manifest fields require explicit recovery.');
+        if (!record(row.metadata) || ['objects', 'operations', 'checkpoints'].some(key => Object.hasOwn(row.metadata, key))
+          || !Array.isArray(row.objects) || row.objects.some(id => !address(id)) || new Set(row.objects).size !== row.objects.length
+          || !record(row.operations) || Object.values(row.operations).some(id => !address(id)) || !Array.isArray(row.checkpoints)) fail('INCOMPLETE_STORE', 'Transaction manifest is incomplete.');
+      } else if (!address(row.state?.revision) || typeof row.state?.libraryId !== 'string' || !row.state.libraryId
+        || !record(row.state.objects) || !record(row.state.operations) || !Array.isArray(row.state.checkpoints)) fail('INCOMPLETE_STORE', 'Transaction state is incomplete.');
       for (const parent of ancestry) parents.add(parent);
       rows.set(id, row);
-    }
-    // Every row has passed its byte/address check above. An identical complete
-    // set therefore has the same ancestry and preservation proof, even when
-    // the journal is too large to retain parsed snapshots between reads.
-    const signature = files.length <= 4096 ? files.join('\n') : null;
-    if (signature !== null && signature === verifiedGraph?.signature) {
-      return { rows, heads: [...verifiedGraph.heads], libraryId: verifiedGraph.libraryId };
     }
     for (const parent of parents) if (!rows.has(parent)) throw new LibraryError('MISSING_OBJECT', 'Transaction ancestry is incomplete; wait for cloud files.', 503);
     const heads = [...rows.keys()].filter(id => !parents.has(id)).sort();
     if (!heads.length) fail('INVALID_ANCESTRY', 'Transaction history has no head.');
-    const seen = new Set(), visiting = new Set();
-    function visit(id) {
+    const signature = files.length <= 4096 ? files.join('\n') : null;
+    const proven = signature !== null && signature === verifiedSignature;
+    const seen = new Set(), visiting = new Set(), content = new Map(), operations = new Map();
+    async function load(store, cache, id) {
+      if (!cache.has(id)) cache.set(id, await store.read(id));
+      return cache.get(id);
+    }
+    async function visit(id) {
       if (visiting.has(id)) fail('INVALID_ANCESTRY', 'Transaction cycle.');
       if (seen.has(id)) return;
       visiting.add(id);
-      const row = rows.get(id);
-      for (const parent of parentsOf(row)) { visit(parent); preserves(row.state, rows.get(parent).state); }
+      let row = rows.get(id);
+      for (const parent of parentsOf(row)) await visit(parent);
+      if (row.schemaVersion === 3) {
+        const retained = inherited(row.parents, rows);
+        for (const objectId of row.objects) {
+          const value = await load(objects, content, objectId);
+          if (retained.objects.has(objectId) && canonical(retained.objects.get(objectId)) !== canonical(value)) fail('HISTORY_LOSS', 'Object history cannot be replaced.');
+          retained.objects.set(objectId, value);
+        }
+        for (const [operationId, receiptId] of Object.entries(row.operations)) {
+          const value = await load(receipts, operations, receiptId);
+          if (retained.operations.has(operationId) && canonical(retained.operations.get(operationId)) !== canonical(value)) fail('HISTORY_LOSS', 'Operation history cannot be replaced.');
+          retained.operations.set(operationId, value);
+        }
+        const state = freeze({ ...row.metadata, objects: Object.fromEntries(retained.objects), operations: Object.fromEntries(retained.operations), checkpoints: row.checkpoints });
+        if (!address(state.revision) || typeof state.libraryId !== 'string' || !state.libraryId) fail('INCOMPLETE_STORE', 'Transaction identity is incomplete.');
+        row = { ...row, state }; rows.set(id, row);
+      }
+      if (!proven) for (const parent of parentsOf(row)) preserves(row.state, rows.get(parent).state);
       visiting.delete(id); seen.add(id);
     }
-    for (const id of heads) visit(id);
+    for (const id of heads) await visit(id);
     if (seen.size !== rows.size) fail('INVALID_ANCESTRY', 'Unreachable transaction history requires recovery.');
     const libraryId = rows.get(heads[0]).state.libraryId;
     for (const row of rows.values()) if (row.state.libraryId !== libraryId) fail('WRONG_LIBRARY', 'The folder contains transactions from another library.');
-    const value = { rows, heads, libraryId };
-    // Bound both large snapshot retention and compact verification metadata.
-    // Exceeding the snapshot budget must not discard all semantic proofs.
-    verifiedFiles = proofs;
-    verifiedGraph = { bytes: size <= MAX_BYTES ? bytes : new Map(), signature, heads: [...heads], libraryId };
-    return value;
+    // All required object and receipt bytes are read above, including on a
+    // warm graph. Only the unchanged manifest ancestry proof can be reused.
+    verifiedSignature = signature;
+    return { rows, heads, libraryId };
   }
   const graphRevision = value => hash(value.heads);
   function descends(value, head, ancestor) {
@@ -170,9 +193,11 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
       const previous = writers.get(root) ?? Promise.resolve();
       const pending = previous.then(async () => {
         const beforeGraph = await graph(), before = await selected(beforeGraph, context);
-        const state = structuredClone(before.state);
-        const result = await fn(state);
-        if (canonical(state) === canonical(before.state)) return result;
+        const draft = structuredClone(before.state);
+        const result = await fn(draft);
+        // The callback cannot alter the bytes after verification starts.
+        const state = freeze(structuredClone(draft));
+        if (sameState(state, before.state)) return result;
         await createTransfer(state);
         const commit = state.objects[state.revision].data;
         if (context && commit.operation !== 'reconcile') fail('RECOVERY_ONLY', 'A recovery branch permits reviewed reconciliation only.');
@@ -183,21 +208,21 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
         }
         for (const id of consumed) preserves(state, beforeGraph.rows.get(id).state);
         if (canonical((await graph()).heads) !== canonical(beforeGraph.heads)) throw new LibraryError('REVISION_CONFLICT', 'Folder changed during commit.', 409);
-        const row = { schemaVersion: 2, parents: consumed.sort(), state };
+        const retained = inherited(consumed, beforeGraph.rows);
+        const addedObjects = Object.keys(state.objects).filter(id => !retained.objects.has(id)).sort();
+        const addedReceipts = {};
+        for (const operationId of Object.keys(state.operations).filter(id => !retained.operations.has(id)).sort()) {
+          Object.defineProperty(addedReceipts, operationId, { value: await hash(state.operations[operationId]), enumerable: true });
+        }
+        const metadata = metadataOf(state);
+        const row = { schemaVersion: 3, parents: consumed.sort(), metadata, objects: addedObjects, operations: addedReceipts, checkpoints: state.checkpoints };
         const id = await hash(row);
-        const target = join(journal, id.slice(7) + '.json');
-        const temp = join(journal, globalThis.crypto.randomUUID() + '.pending');
-        const handle = await open(temp, 'wx', 0o600);
-        try {
-          await handle.writeFile(canonical(row));
-          await fault('before-flush');
-          await handle.sync();
-        } finally { await handle.close(); }
-        await fault('before-publication');
-        await rename(temp, target);
-        const dir = await open(journal, 'r');
-        try { await dir.sync(); } finally { await dir.close(); }
-        await fault('after-publication');
+        for (const objectId of addedObjects) await objects.publish(objectId, state.objects[objectId]);
+        for (const [operationId, receiptId] of Object.entries(addedReceipts)) await receipts.publish(receiptId, state.operations[operationId]);
+        // Object publication may be slow or interrupted. Recheck the heads
+        // before exposing the manifest that makes these files authoritative.
+        if (canonical((await graph()).heads) !== canonical(beforeGraph.heads)) throw new LibraryError('REVISION_CONFLICT', 'Folder changed during content publication.', 409);
+        await transactions.publish(id, row);
         const afterGraph = await graph(), expectedHeads = [...beforeGraph.heads.filter(head => !consumed.includes(head)), id].sort();
         if (canonical(afterGraph.heads) !== canonical(expectedHeads)) throw new LibraryError('DIVERGENT_HEADS', 'Published commit needs conflict review.', 409);
         const after = await selected(afterGraph, context);
