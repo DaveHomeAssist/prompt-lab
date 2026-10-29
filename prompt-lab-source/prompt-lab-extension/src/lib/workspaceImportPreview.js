@@ -36,7 +36,7 @@ export function normalizeWorkspaceImportSource(parsed) {
 
 export function workspaceImportRevision(context) {
   return JSON.stringify({
-    library: context.library, trash: context.trash, collections: context.collections,
+    library: context.library, trash: context.trash, collections: context.collections, folders: context.folders,
     generation: context.generation, deletedIds: [...context.deletedIds].sort(),
     runs: context.runs, testCases: context.testCases,
     scratch: context.scratch, packs: context.packs,
