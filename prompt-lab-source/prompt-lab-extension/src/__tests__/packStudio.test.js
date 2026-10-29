@@ -19,6 +19,26 @@ function makeEntry(overrides = {}) {
 describe('packStore', () => {
   beforeEach(() => localStorage.clear());
 
+  it('preserves existing pack fields when renaming and accepts explicit metadata changes', () => {
+    const first = upsertPack({ id: 'pack', title: 'Before', version: '7.2.0', source: 'authored', future: { keep: [null, false] } });
+    const renamed = upsertPack({ id: 'pack', title: 'After', extension: { added: 0 } });
+    expect(renamed).toMatchObject({ title: 'After', version: '7.2.0', source: 'authored', createdAt: first.createdAt,
+      future: { keep: [null, false] }, extension: { added: 0 } });
+    expect(upsertPack({ id: 'pack', version: '8.0.0', source: 'imported' })).toMatchObject({
+      title: 'After', version: '8.0.0', source: 'imported', createdAt: first.createdAt, future: first.future });
+    expect(loadPackRegistry().pack.future).toEqual(first.future);
+  });
+
+  it('stores pack IDs as own registry keys without changing the registry prototype', () => {
+    upsertPack({ id: '__proto__', title: 'Own key', future: { preserved: true } });
+    const registry = loadPackRegistry();
+    expect(Object.getPrototypeOf(registry)).toBe(Object.prototype);
+    expect(Object.hasOwn(registry, '__proto__')).toBe(true);
+    expect(registry.__proto__.future).toEqual({ preserved: true });
+    expect(removePack('constructor')).toBe(false);
+    expect(removePack('__proto__')).toBe(true);
+  });
+
   it('upserts, lists, and removes pack records', () => {
     upsertPack({ id: 'my-pack', title: 'My Pack', version: '1.2.0', source: 'authored' });
     expect(loadPackRegistry()['my-pack'].title).toBe('My Pack');

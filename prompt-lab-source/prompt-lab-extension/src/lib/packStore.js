@@ -17,12 +17,15 @@ export function savePackRegistry(registry) {
   saveJson(storageKeys.packs, registry && typeof registry === 'object' ? registry : {});
 }
 
-export function upsertPack({ id, title, version = '1.0.0', source = 'imported' }) {
+export function upsertPack({ id, title, version, source, ...fields }) {
   const packId = ensureString(id).trim();
   if (!packId) return null;
   const registry = loadPackRegistry();
-  const existing = registry[packId] || {};
+  const stored = Object.hasOwn(registry, packId) ? registry[packId] : null;
+  const existing = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
   const record = {
+    ...existing,
+    ...fields,
     id: packId,
     title: ensureString(title).trim() || existing.title || packId,
     version: ensureString(version).trim() || existing.version || '1.0.0',
@@ -30,7 +33,7 @@ export function upsertPack({ id, title, version = '1.0.0', source = 'imported' }
     createdAt: existing.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  registry[packId] = record;
+  Object.defineProperty(registry, packId, { value: record, enumerable: true, configurable: true, writable: true });
   savePackRegistry(registry);
   return record;
 }
@@ -38,7 +41,7 @@ export function upsertPack({ id, title, version = '1.0.0', source = 'imported' }
 export function removePack(packId) {
   const registry = loadPackRegistry();
   const id = ensureString(packId).trim();
-  if (!id || !registry[id]) return false;
+  if (!id || !Object.hasOwn(registry, id)) return false;
   delete registry[id];
   savePackRegistry(registry);
   return true;

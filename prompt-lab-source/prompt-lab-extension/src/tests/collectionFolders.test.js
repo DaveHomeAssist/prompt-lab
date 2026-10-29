@@ -3,6 +3,25 @@ import { reconcileFolders, changeFolder, mergeFolders, folderDescendants } from 
 import { safeArtwork } from '../lib/libraryPresentation.js';
 
 describe('collection folder compatibility', () => {
+  it('retains extension fields through reconciliation, rename and artwork updates', () => {
+    const original = { id: 'root', name: 'Ops', collection: 'Ops', parentId: null,
+      future: { nested: [null, false, 7] }, artwork: { icon: 'Star', emoji: '📁', future: { bytes: 'keep' } } };
+    const folders = reconcileFolders([original]);
+    expect(folders[0].future).toEqual(original.future);
+    expect(folders[0].artwork.future).toEqual(original.artwork.future);
+    const renamed = changeFolder(folders, 'root', { name: 'Production' });
+    const changed = changeFolder(renamed, 'root', { artwork: { image: 'https://example.com/tracker', emoji: '<script>' } });
+    expect(changed[0]).toMatchObject({ future: original.future, collection: 'Production', artwork: { icon: 'Star', image: '', future: original.artwork.future } });
+    expect(changed[0].artwork).not.toHaveProperty('emoji');
+    expect(original.name).toBe('Ops');
+  });
+  it('merges imported folder fields without dropping unrelated destination metadata', () => {
+    const current = reconcileFolders([{ id: 'local', name: 'Ops', collection: 'Ops', future: { keep: true }, artwork: { icon: 'Star', destination: [1] } }]);
+    const imported = [{ id: 'incoming', name: 'Ops', collection: 'Ops', other: { keep: false }, artwork: { image: 'data:image/png;base64,AAAA', incoming: 0 } }];
+    const merged = mergeFolders(current, imported, ['Ops']);
+    expect(merged[0]).toMatchObject({ id: 'local', future: { keep: true }, other: { keep: false }, artwork: { icon: 'Star', destination: [1], incoming: 0, image: 'data:image/png;base64,AAAA' } });
+    expect(current[0].artwork.image).toBe('');
+  });
   it('preserves literal legacy names and deterministic IDs', () => {
     const folders = reconcileFolders([], ['Ops', 'A/B']);
     expect(reconcileFolders([], ['Ops', 'A/B'])).toEqual(folders);

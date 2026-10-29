@@ -1,7 +1,7 @@
 import { canonical, LibraryError } from './contract.mjs';
 
 export const recordDomains = Object.freeze({ evaluations: 'evaluations', 'test-cases': 'testCases',
-  'execution-traces': 'traceRuns', experiments: 'experiments' });
+  'execution-traces': 'traceRuns', experiments: 'experiments', packs: 'packs' });
 export const recordIdField = domain => domain === 'execution-traces' ? 'run_id' : 'id';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);

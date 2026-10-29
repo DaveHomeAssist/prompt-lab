@@ -11,7 +11,7 @@ import { createLocalApi } from './local-api.mjs';
 import { createLoopbackTransport, createServiceTransport } from './command-client.mjs';
 import { createCommandOutbox } from './command-outbox.mjs';
 
-const domains = { evaluations: 'evaluations', 'test-cases': 'testCases', 'execution-traces': 'traceRuns', experiments: 'experiments' };
+const domains = { evaluations: 'evaluations', 'test-cases': 'testCases', 'execution-traces': 'traceRuns', experiments: 'experiments', packs: 'packs' };
 const identity = domain => domain === 'execution-traces' ? 'run_id' : 'id';
 const stamp = '2026-10-29T16:00:00.000Z';
 const fixture = () => ({ library: [{ id: 'prompt', original: 'Prompt', versions: [{ id: 'v1', original: 'Original', unknown: ['retained'] }] }],
@@ -19,6 +19,7 @@ const fixture = () => ({ library: [{ id: 'prompt', original: 'Prompt', versions:
   testCases: [{ id: 'case', input: 'Case', promptId: 'prompt', future: { keep: { bytes: 'unknown' }, edit: 1 } }],
   traceRuns: [{ run_id: 'trace', trace_id: 'parent', outputs: { text: 'Trace' }, future: { keep: { bytes: 'unknown' }, edit: 1 } }],
   experiments: [{ id: 'experiment', variants: [{ id: 'variant', long: 'v'.repeat(5000), unknown: true }], future: { keep: { bytes: 'unknown' }, edit: 1 } }],
+  packs: { pack: { id: 'pack', title: 'Pack', version: '7.2.0', source: 'authored', future: { keep: { bytes: 'unknown' }, edit: 1 } } }, loadedPacks: ['pack'],
   scratch: { pads: [{ id: 'note', content: 'Keep this note', unknown: 9 }], tombstones: {} }, trash: [] });
 const pkg = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId, head: state.revision, objects: state.objects });
 const query = async service => ({ libraryId: 'lib', expectedRevision: (await service.read()).revision });
@@ -59,7 +60,7 @@ for (const [domain, key] of Object.entries(domains)) test(`${domain} create, nes
   const priorView = (await inspectPackage(pkg(before))).currentView;
   const input = await inputFor(service, domain);
   const { receipt } = await mutate(service, input, 'update');
-  const expected = structuredClone(content[key][0]); expected.future.edit = 2;
+  const expected = structuredClone(domain === 'packs' ? content.packs.pack : content[key][0]); expected.future.edit = 2;
   assert.deepEqual((await records(service, domain))[0].value, expected);
   const current = await service.read(), view = (await inspectPackage(pkg(current))).currentView;
   for (const group of priorView.groups.filter(group => group.id !== input.groupId)) assert.equal(view.groups.find(row => row.id === group.id).selected, group.selected);
@@ -188,28 +189,28 @@ test('restoring a bound workspace checkpoint recovers its earlier record selecti
   assert.deepEqual((await records(service, 'evaluations'))[0].value, content.evaluations[0]);
 });
 
-test('interrupted record publication preserves previous state and restart recovers a lost acknowledgement once', async t => {
+for (const domain of ['evaluations', 'packs']) test(`${domain} interrupted publication preserves previous state and restart recovers a lost acknowledgement once`, async t => {
   const directory = await mkdtemp(join(tmpdir(), 'promptlab-record-')); t.after(() => rm(directory, { recursive: true, force: true }));
   let failure; const adapter = await createFolderAdapter(directory, { fault: async point => { if (failure === point) throw new Error('Injected interruption'); } });
   const service = createCommandService(adapter); await publish(service);
-  const before = await service.read(), review = await service.previewRecord(await inputFor(service, 'evaluations'));
+  const before = await service.read(), review = await service.previewRecord(await inputFor(service, domain));
   for (failure of ['before-flush', 'before-publication']) {
     await assert.rejects(service.apply({ ...review, idempotencyKey: 'update' })); assert.deepEqual(await service.read(), before);
   }
   failure = 'after-publication'; await assert.rejects(service.apply({ ...review, idempotencyKey: 'update' }));
   const reopened = createCommandService(await createFolderAdapter(directory)), receipt = await reopened.operation('update');
   assert.equal(receipt.operation, 'record'); assert.deepEqual(await reopened.apply({ ...review, idempotencyKey: 'update' }), receipt);
-  assert.equal((await records(reopened, 'evaluations'))[0].value.future.edit, 2);
+  assert.equal((await records(reopened, domain))[0].value.future.edit, 2);
 });
 
-for (const action of ['create', 'update', 'delete']) test(`record ${action} shares direct/API reviews and recovers a durable queued response loss`, async t => {
+for (const domain of ['evaluations', 'packs']) for (const action of ['create', 'update', 'delete']) test(`${domain} ${action} shares direct/API reviews and recovers a durable queued response loss`, async t => {
   const adapter = createMemoryAdapter(), service = createCommandService(adapter), imported = await publish(service);
   const token = 'synthetic-record-credential-'.repeat(2);
   const api = createLocalApi({ adapter, libraryId: 'lib', credentials: [{ token, scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 }] });
   const url = await api.listen(); t.after(() => api.close());
   const direct = createServiceTransport(service, { libraryId: 'lib' }), transport = createLoopbackTransport({ baseUrl: url, libraryId: 'lib', getToken: () => token });
-  const input = action === 'create' ? { ...await query(service), domain: 'evaluations', action, changedAt: stamp,
-    sourceBinding: imported.sourceBinding, record: { id: 'created', output: 'Complete result', unknown: true } } : await inputFor(service, 'evaluations', action);
+  const input = action === 'create' ? { ...await query(service), domain, action, changedAt: stamp,
+    sourceBinding: imported.sourceBinding, record: { id: 'created', output: 'Complete result', unknown: true } } : await inputFor(service, domain, action);
   const request = { ...input, mode: 'record' }, review = await direct.preview(request), remote = await transport.preview(request);
   assert.deepEqual(remote.recordPlan, review.recordPlan);
   let entry = null; const store = { read: async () => structuredClone(entry), write: async (value, expected) => {
@@ -218,8 +219,63 @@ for (const action of ['create', 'update', 'delete']) test(`record ${action} shar
   const outbox = createCommandOutbox(store); await outbox.enqueue({ request, review, operationId: 'queued-record' });
   await assert.rejects(outbox.replay('lib', 'queued-record', { ...transport, apply: async input => { await transport.apply(input); throw new Error('Lost response'); } }));
   const committed = await createCommandOutbox(store).replay('lib', 'queued-record', transport);
-  assert.equal(committed.state, 'committed'); assert.equal((await records(service, 'evaluations')).length, action === 'create' ? 2 : action === 'delete' ? 0 : 1);
+  assert.equal(committed.state, 'committed'); assert.equal((await records(service, domain)).length, action === 'create' ? 2 : action === 'delete' ? 0 : 1);
   assert.equal(Object.keys((await service.read()).operations).length, 3);
   const denied = await fetch(`${url}/v1/library/record-mutations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
   assert.equal(denied.status, 401);
+});
+
+
+test('pack keys own identity and legacy key-only records keep all fields', async () => {
+  for (const embedded of [undefined, 'conflicting']) {
+    const content = fixture();
+    if (embedded === undefined) delete content.packs.pack.id; else content.packs.pack.id = embedded;
+    const service = createCommandService(createMemoryAdapter()); await publish(service, content);
+    const input = await inputFor(service, 'packs');
+    if (embedded) {
+      await assert.rejects(service.previewRecord(input), { code: 'RECORD_IDENTITY_CONFLICT' });
+      await assert.rejects(service.previewRecord(await inputFor(service, 'packs', 'delete')), { code: 'RECORD_IDENTITY_CONFLICT' });
+      continue;
+    }
+    await mutate(service, input, 'update');
+    const pack = (await records(service, 'packs'))[0].value;
+    assert.equal(Object.hasOwn(pack, 'id'), false);
+    assert.deepEqual(pack, { ...content.packs.pack, future: { ...content.packs.pack.future, edit: 2 } });
+    assert.deepEqual((await records(service, 'loaded-packs'))[0].value, 'pack');
+    assert.deepEqual((await records(service, 'prompts'))[0].value, content.library[0]);
+  }
+});
+
+test('pack changes reconcile per key and checkpoint restore preserves later deletion and all memberships', async () => {
+  const content = fixture(); content.library[0].metadata = { packId: 'pack', packName: 'Pack' };
+  content.packs.other = { ...content.packs.pack, id: 'other' };
+  const service = createCommandService(createMemoryAdapter()); await publish(service, content); const base = await service.read();
+  for (const same of [false, true]) {
+    const left = createCommandService(createMemoryAdapter(base)), right = createCommandService(createMemoryAdapter(base));
+    await mutate(left, await inputFor(left, 'packs', 'update', 'pack'), 'left');
+    const input = await inputFor(right, 'packs', 'update', same ? 'pack' : 'other'); input.updates[0].value = 3;
+    await mutate(right, input, 'right');
+    const incoming = await createTransfer(await right.read());
+    let review = await left.previewReconcile({ ...await query(left), incoming });
+    assert.equal(review.commitAvailable, !same);
+    const conflicts = review.reconciliationPlan.rows.filter(row => row.conflict);
+    assert.equal(conflicts.length, same ? 1 : 0);
+    if (same) review = await left.previewReconcile({ ...await query(left), incoming, resolutions: { [conflicts[0].groupId]: 'incoming' } });
+    await left.apply({ ...review, idempotencyKey: 'reconcile' }); await select(left, 'merged-select');
+    const merged = await records(left, 'packs');
+    assert.equal(merged.find(row => row.sourceId === 'pack').value.future.edit, same ? 3 : 2);
+    assert.equal(merged.find(row => row.sourceId === 'other').value.future.edit, same ? 1 : 3);
+    await mutate(left, await inputFor(left, 'packs', 'delete', 'pack'), 'delete');
+    const restore = await left.previewRestore({ ...await query(left), checkpointId: base.revision });
+    assert.equal(restore.commitAvailable, true); await left.apply({ ...restore, idempotencyKey: 'restore' }); await select(left, 'restored-select');
+    assert.deepEqual((await records(left, 'packs')).map(row => row.value), [content.packs.other]);
+    assert.deepEqual((await records(left, 'loaded-packs')).map(row => row.value), ['pack']);
+    assert.deepEqual((await records(left, 'prompts'))[0].value, content.library[0]);
+    await publish(left, content, 'older-import');
+    assert.equal((await records(left, 'packs')).length, 1);
+    for (const [id, object] of Object.entries(base.objects)) assert.deepEqual((await left.read()).objects[id], object);
+    const otherSource = fixture(); otherSource.library = [{ id: 'other-source', original: 'Other' }];
+    await publish(left, otherSource, 'other-source-import', 'other-origin');
+    assert.equal((await records(left, 'packs')).length, 2);
+  }
 });

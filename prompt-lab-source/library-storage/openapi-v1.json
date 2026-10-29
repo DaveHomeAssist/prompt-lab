@@ -1090,7 +1090,7 @@
     },
     "/v1/library/record-mutations": {
       "post": {
-        "summary": "Preview one evaluation, test case, execution trace or experiment change",
+        "summary": "Preview one evaluation, test case, execution trace, experiment or pack registry change",
         "operationId": "postV1LibraryRecords",
         "x-implementation-status": "candidate",
         "responses": {
@@ -5754,7 +5754,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -5851,7 +5852,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -5962,7 +5964,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -6569,7 +6572,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "sourceIdentity": {
@@ -7101,7 +7105,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -7194,7 +7199,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -7301,7 +7307,8 @@
                   "evaluations",
                   "test-cases",
                   "execution-traces",
-                  "experiments"
+                  "experiments",
+                  "packs"
                 ]
               },
               "action": {
@@ -7350,7 +7357,8 @@
               "evaluations",
               "test-cases",
               "execution-traces",
-              "experiments"
+              "experiments",
+              "packs"
             ]
           },
           "sourceIdentity": {

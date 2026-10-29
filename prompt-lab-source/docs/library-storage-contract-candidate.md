@@ -1,5 +1,26 @@
 # Library storage contract candidate
 
+## Catalog preservation and pack commands
+
+Ordinary folder reconciliation, rename and artwork changes must retain unknown
+folder and artwork metadata. Updating a pack must retain its existing metadata,
+creation time, version and source unless the caller supplies a change. Importing
+folder metadata into a matching path must preserve unrelated destination fields.
+Known artwork display fields still use the existing safe rendering rules.
+
+Pack registry creation, field updates and confirmed deletion use the shared
+record command, verified source scope, revision and exact selected record hash.
+Registry keys own pack identity; reject conflicting embedded IDs. A pack registry
+write does not rewrite prompt membership or uninstall prompts. Preserve the whole
+registry record, prior values, loaded-pack state and every associated prompt.
+Dictionary storage must survive checkpoint restore, concurrent reconciliation,
+source-scoped deletion, folder reopen, API retries and browser queue recovery.
+
+Acceptance uses synthetic runner fixtures and the complete private export on its
+Mac. Shared folder move/rename transactions, collections, Scratch, assets, drafts,
+app activation and native/iCloud acceptance remain required. Catalog preservation
+and one registry command family do not complete those remaining gates.
+
 ## Shared related record commands
 
 Evaluations, test cases, execution traces and experiments need ordinary create,

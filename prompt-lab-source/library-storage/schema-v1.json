@@ -4604,7 +4604,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -4701,7 +4702,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -4812,7 +4814,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -5419,7 +5422,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "sourceIdentity": {
@@ -5951,7 +5955,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -6044,7 +6049,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -6151,7 +6157,8 @@
                 "evaluations",
                 "test-cases",
                 "execution-traces",
-                "experiments"
+                "experiments",
+                "packs"
               ]
             },
             "action": {
@@ -6200,7 +6207,8 @@
             "evaluations",
             "test-cases",
             "execution-traces",
-            "experiments"
+            "experiments",
+            "packs"
           ]
         },
         "sourceIdentity": {

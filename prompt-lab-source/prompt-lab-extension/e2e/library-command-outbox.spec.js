@@ -53,15 +53,16 @@ async function boot(page, options) {
   }, { options, storePath });
 }
 
-for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-create', 'record-update', 'record-delete']) test(`an ordinary ${mode} command survives browser restart and commits through the shared API once`, async () => {
+for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-create', 'record-update', 'record-delete', 'pack-create', 'pack-update', 'pack-delete']) test(`an ordinary ${mode} command survives browser restart and commits through the shared API once`, async () => {
   const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
   const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
   const profile = await mkdtemp(resolve(tmpdir(), 'promptlab-edit-outbox-')); let context;
   try {
     const lifecycle = ['trash', 'restore', 'delete'].includes(mode), initiallyTrashed = ['restore', 'delete'].includes(mode);
-    const recordAction = mode.startsWith('record-') ? mode.slice(7) : null;
-    const workspace = { ...content, library: initiallyTrashed ? [] : content.library, trash: initiallyTrashed ? content.library : [], runs: content.runs.slice(0, 1) };
+    const pack = mode.startsWith('pack-'), recordDomain = pack ? 'packs' : 'evaluations';
+    const recordAction = pack ? mode.slice(5) : mode.startsWith('record-') ? mode.slice(7) : null;
+    const workspace = { ...content, packs: { p0: { id: 'p0', title: 'Before', unknown: 0 } }, library: initiallyTrashed ? [] : content.library, trash: initiallyTrashed ? content.library : [], runs: content.runs.slice(0, 1) };
     const entries = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': JSON.stringify(workspace.trash) };
     const sourceInventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'synthetic-browser-origin',
       localStorage: { length: 2, key: n => Object.keys(entries)[n], getItem: key => entries[key] ?? null },
@@ -70,13 +71,13 @@ for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-crea
     const importedReceipt = await api.service.apply({ ...imported, idempotencyKey: 'import' });
     const selected = await api.service.previewCurrentView({ libraryId: 'lib', expectedRevision: importedReceipt.revision });
     const selectedReceipt = await api.service.apply({ ...selected, idempotencyKey: 'select' });
-    const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: recordAction ? 'evaluations' : initiallyTrashed ? 'trash' : 'prompts' });
+    const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: recordAction ? recordDomain : initiallyTrashed ? 'trash' : 'prompts' });
     const row = records.items[0], group = records.groups.find(group => group.selected === row.key);
-    const request = recordAction ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: 'evaluations', action: recordAction,
+    const request = recordAction ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: recordDomain, action: recordAction,
       changedAt: '2026-10-29T12:00:00.000Z', mode: 'record', ...(recordAction === 'create'
-        ? { sourceBinding: imported.sourceBinding, record: { id: 'created-eval', output: 'Complete record', unknown: 0 } }
+        ? { sourceBinding: imported.sourceBinding, record: { id: 'created-record', [pack ? 'title' : 'output']: 'Complete record', unknown: 0 } }
         : { groupId: group.id, expectedRecordHash: row.valueHash, ...(recordAction === 'delete' ? { confirmPermanentDeletion: true }
-          : { updates: [{ path: ['output'], value: 'Complete record' }] }) }) }
+          : { updates: [{ path: [pack ? 'title' : 'output'], value: 'Complete record' }] }) }) }
       : lifecycle ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
       action: mode, changedAt: '2026-10-29T12:00:00.000Z', confirmPermanentDeletion: mode === 'delete', mode: 'lifecycle' } : mode === 'create' ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, sourceBinding: imported.sourceBinding,
       creationId: 'browser-created', createdAt: '2026-10-29T12:00:00.000Z', record: { original: 'Browser creation with $& {{input}}', unknown: { preserved: true } }, mode }
@@ -93,11 +94,11 @@ for (const mode of ['edit', 'create', 'trash', 'restore', 'delete', 'record-crea
     expect(committed.state).toBe('committed');
     expect(await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport))).toEqual(committed);
     if (recordAction) {
-      const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'evaluations' });
+      const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: recordDomain });
       expect(current.total).toBe(recordAction === 'create' ? 2 : recordAction === 'delete' ? 0 : 1);
       if (recordAction !== 'delete') {
-        const result = current.items.find(item => item.sourceId === (recordAction === 'create' ? 'created-eval' : 'r0'));
-        expect(result.value.output).toBe('Complete record'); expect(result.value.unknown).toBe(0);
+        const result = current.items.find(item => item.sourceId === (recordAction === 'create' ? 'created-record' : pack ? 'p0' : 'r0'));
+        expect(result.value[pack ? 'title' : 'output']).toBe('Complete record'); expect(result.value.unknown).toBe(0);
       }
       const prompts = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'prompts' });
       expect(prompts.items[0].value).toEqual(content.library[0]);

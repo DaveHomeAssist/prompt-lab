@@ -13,7 +13,8 @@ const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 function validateFields(value, keys, domain) {
   const text = domain === 'execution-traces' ? ['name', 'provider', 'model', 'run_type', 'status', 'error', 'reason']
     : domain === 'experiments' ? ['label', 'keyInputSnapshot', 'notes']
-    : domain === 'test-cases' ? ['title', 'input', 'notes'] : ['input', 'output', 'provider', 'model', 'mode', 'status'];
+    : domain === 'test-cases' ? ['title', 'input', 'notes']
+    : domain === 'packs' ? ['title', 'version', 'source'] : ['input', 'output', 'provider', 'model', 'mode', 'status'];
   for (const key of keys) {
     if ((text.includes(key) && typeof value[key] !== 'string')
       || (['variants', 'candidates', 'tags', 'messages', 'assertions'].includes(key) && !Array.isArray(value[key]))
@@ -46,6 +47,9 @@ export async function planRecordMutation(pkg, inspected, value) {
     if (!selected || !object(selected.value) || !selected.origin.binding || !selected.sourceId) fail('RECORD_TARGET_UNAVAILABLE', 'The selected record is inactive or lacks a verified identity.');
     if (selected.valueHash !== request.expectedRecordHash) fail('RECORD_CONFLICT', 'The selected record changed. Keep the draft and review it.');
     ({ sourceIdentity } = selected.origin); sourceId = selected.sourceId; binding = selected.origin.binding; groupId = group.id;
+    if (request.domain === 'packs' && Object.hasOwn(selected.value, 'id') && selected.value.id !== sourceId) {
+      fail('RECORD_IDENTITY_CONFLICT', 'The pack record ID differs from its registry key. Review the source before changing it.');
+    }
     next = structuredClone(selected.value);
     for (const update of request.updates ?? []) {
       let owner = next;
@@ -62,7 +66,9 @@ export async function planRecordMutation(pkg, inspected, value) {
     }
   }
   const recordMutation = { action: request.action, domain: request.domain, sourceIdentity, sourceId, changedAt: request.changedAt };
-  const workspace = { library: [], [recordDomains[request.domain]]: request.action === 'delete' ? [] : [next],
+  const collection = request.domain === 'packs'
+    ? (request.action === 'delete' ? {} : { [sourceId]: next }) : (request.action === 'delete' ? [] : [next]);
+  const workspace = { library: [], [recordDomains[request.domain]]: collection,
     recordMutation: { ...recordMutation, baseRevision: pkg.head, groupId, previousSelection: selected?.key ?? null } };
   const input = await makeObject('workspace', workspace), source = await makeObject('source', canonical(workspace));
   const objects = { ...pkg.objects, [input.hash]: input.object, [source.hash]: source.object };
