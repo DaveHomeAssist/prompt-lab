@@ -103,6 +103,21 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
 
+      // Artwork acceptance uses only this disposable browser's synthetic Library.
+      const artworkTrigger = page.getByRole('button', { name: 'Change artwork for QA Alpha', exact: true });
+      for (const view of ['List view', 'Tile view', 'Compact view', 'Gallery view']) {
+        await page.getByRole('button', { name: view, exact: true }).click();
+        await artworkTrigger.focus(); await artworkTrigger.press('Enter');
+        const artworkDialog = page.getByRole('dialog', { name: 'Artwork for QA Alpha', exact: true });
+        await artworkDialog.getByLabel('Prompt artwork emoji').fill('👩🏽‍💻');
+        await artworkDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+        await expect(artworkDialog).toHaveCount(0); await expect(artworkTrigger).toBeFocused();
+        expect((await storedState(page)).library.find(row => row.id === 'qa-alpha').metadata.artwork.emoji).toBe('👩🏽‍💻');
+        await artworkTrigger.click(); await page.keyboard.press('Escape');
+        await expect(artworkDialog).toHaveCount(0); await expect(artworkTrigger).toBeFocused();
+      }
+      await page.getByRole('button', { name: 'List view', exact: true }).click();
+
       await showLibraryDrawer(page);
       await page.getByRole('button', { name: '#qa-active', exact: true }).click();
       await expect(list.getByRole('listitem')).toHaveCount(1);

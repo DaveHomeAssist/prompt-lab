@@ -576,6 +576,12 @@
       "state": "Running",
       "detail": "2026-10-05: PR #126 (code at 0df32aa) fixes whole-secret capture, bare Bearer tokens, parenthesized phones and overlapping findings in the send-time PII engine. Local Node 22.22.1: 29 of 60 touched-suite tests fail on the base engine and pass with the fix; 132 related Vitest tests and 56 legacy node:test cases pass. CI at snapshot: Extension CI (full suite and build), Docs CI, API Safety and Merge Gate pass; Landing CI fails only at the dependency audit gate (21 high advisories across the four package roots; the same failure occurs on PR #125 and this PR changes no package or lock file); three desktop builds pending. Not merged or deployed, and the redaction was not exercised in a live provider send.",
       "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/126"
+    },
+    {
+      "label": "Prompt artwork Slice 3",
+      "state": "Verified",
+      "detail": "Owning Notion Slice 3 record reports PR258 merged as 1f61cb2, production dpl_5NLSGC5FiDd93QaDndyJppGvdCik READY and signed-in Library run40833036526 passing 4/4. Status Done was read back. This Save UX integration preserves the delivered artwork source; it does not repeat that independent acceptance.",
+      "url": "https://app.notion.com/p/405255fc8f4481d1bc61f4f8984c5840"
     }
   ],
   "issues": [
@@ -1374,8 +1380,8 @@
     {
       "id": "405255fc8f4481d1bc61f4f8984c5840",
       "inPlan": false,
-      "nextAction": "Slice 3: artwork picker on Library cards, more built-in icons and emoji, gallery Add image.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "nextAction": "Retain delivered artwork behavior; older builds may drop emoji on re-save.",
+      "verification": "Owning Notion Slice 3 record reports PR258 merged as 1f61cb2, production dpl_5NLSGC5FiDd93QaDndyJppGvdCik READY and signed-in Library run40833036526 passing 4/4. Status Done was read back. This Save UX integration preserves the delivered artwork source; it does not repeat that independent acceptance.",
       "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
       "status": "Done",
       "severity": "Medium",
