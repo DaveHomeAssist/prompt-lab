@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T10:17:29.454Z",
+  "snapshotAt": "2026-10-29T10:41:06.104Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,22 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "0d481d372166b55296aa9d78f8ac96ae7c4cd96b",
+  "mainSha": "8c8ed89fa7b0c36eb91d35769d61a6c91746f891",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete A1 domain mapping and the cross-store migration write barrier, followed by causal conflict acceptance. Reviewed restore candidate 5df76e5 passes 121 storage tests and the real-export restore/backup check. Native packaging, app activation and real two-client iCloud acceptance remain open. Hosted work follows accepted Phase A; no paid provisioning. The registered Next Steps Board file remains absent.",
+  "nextAction": "Implement the A1 cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance. Shared domain reads dd4491a pass 133 storage tests and exact address/value checks on all 353 occurrences in the private export. Native service ownership, app activation and real two-client iCloud acceptance remain open. Hosted work follows accepted Phase A; no paid provisioning. The registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "Shared domain reads verified",
+      "state": "Open",
+      "detail": "2026-10-29 Shared domain read candidate dd4491a in draft PR248; main 8c8ed89 integrated as 901d9fd. Every captured content family and retained workspace is addressable by immutable source hash, binding, replica and original path through one command-service/HTTP read contract. Raw values, primary keys, full histories, variants, candidates, Scratch, folder/pack links, recovery data and missing references survive. No replica is selected automatically. Dominic Node 22.23.4: all 133 storage tests pass, including 12 mapping/read checks and 1,002 indexed traces/41 versions; 63 runtime schema fixtures and six negative cases pass; docs lint and four consistency checks pass. After main integration, 35 targeted app tests and the extension build pass. Mac Node 22.22.1: all 353 occurrences in the original 1,666,421-byte export match source addresses across four pages after reopen; original SHA-256 unchanged. The 60 evaluation-run references absent from that export remain explicitly unresolved, with no invented data. No personal app stores captured or activated. Prior add1c5d Linux DEB acceptance failed opening a new WebDriver session (POST /session timeout); log retained, cause not established. Other prior extension/landing/Windows/macOS jobs passed. A1 remains In progress. Next: implement the cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance. Main integration 901d9fd retains all storage source bytes. The runner has no Git metadata, so its extension build is not release identity proof.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/dd4491a414fc6639720908faa4258ba04c8f058e"
+    },
+    {
+      "label": "Prior Linux native acceptance failed",
+      "state": "Open",
+      "detail": "Desktop run 40856615964 at add1c5d completed. Extension, Windows and macOS jobs passed. Linux DEB acceptance failed opening a new WebDriver session with POST /session timeout after prior native checks; alternate-package acceptance skipped. Original log preserved; cause unconfirmed. New-head checks must pass before delivery can advance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40856615964/job/123391695245"
+    },
     {
       "label": "Reviewed checkpoint restore verified",
       "state": "Open",
@@ -1260,8 +1272,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Complete domain mapping and the cross-store migration write barrier, then causal conflict acceptance.",
-      "verification": "2026-10-29 Reviewed checkpoint restore candidate 5df76e5 in draft PR248. Restore reviews bind the current revision and a retained ancestor checkpoint, append a new commit and pre-restore checkpoint, and preserve all sources, history and receipts. Permanent deletion IDs and clear generations suppress affected selections; later bound imports cannot revive them. Unbound, ambiguous or malformed evidence blocks apply. Dominic Node 22.23.4: 121 storage tests pass, including 18 restore cases; schema validation passes 41 runtime records and rejects six malformed variants; docs lint and 4/4 consistency pass. All 16 changed runner files hash-match. Private Mac Node 22.22.1 check on the 1,666,421-byte real export restores an edited prompt, suppresses one test-deleted group and reconstructs the complete 10,748,670-byte backup with replay. Both raw sources, 491 indexed records/42 historical version records, 24 objects, three commits/receipts and two checkpoints retained; original SHA-256 unchanged. Counts span retained source versions. Capture/deletion metadata is synthetic; actual app-store state and activation remain unverified. A1 remains In progress. Next: complete domain mapping and the cross-store migration write barrier, followed by causal conflict acceptance.",
+      "nextAction": "Implement the cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance.",
+      "verification": "2026-10-29 Shared domain read candidate dd4491a in draft PR248; main 8c8ed89 integrated as 901d9fd. Every captured content family and retained workspace is addressable by immutable source hash, binding, replica and original path through one command-service/HTTP read contract. Raw values, primary keys, full histories, variants, candidates, Scratch, folder/pack links, recovery data and missing references survive. No replica is selected automatically. Dominic Node 22.23.4: all 133 storage tests pass, including 12 mapping/read checks and 1,002 indexed traces/41 versions; 63 runtime schema fixtures and six negative cases pass; docs lint and four consistency checks pass. After main integration, 35 targeted app tests and the extension build pass. Mac Node 22.22.1: all 353 occurrences in the original 1,666,421-byte export match source addresses across four pages after reopen; original SHA-256 unchanged. The 60 evaluation-run references absent from that export remain explicitly unresolved, with no invented data. No personal app stores captured or activated. Prior add1c5d Linux DEB acceptance failed opening a new WebDriver session (POST /session timeout); log retained, cause not established. Other prior extension/landing/Windows/macOS jobs passed. A1 remains In progress. Next: implement the cross-store migration write barrier and reviewed active app projection, then causal conflict acceptance.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
