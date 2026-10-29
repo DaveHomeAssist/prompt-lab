@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T12:51:00.160Z",
+  "snapshotAt": "2026-10-29T13:12:11.082Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Integrate the reviewed current-record view with app reads, mutations and durable outbox; complete native/legacy ownership, remaining transient forms and retention gaps, service packaging and installed acceptance. Inspect Windows iCloud account and sync warnings when UI access is available, then qualify two-client propagation. Hosted work follows accepted Phase A; no paid provisioning. Registered Next Steps Board file remains absent.",
+  "nextAction": "Integrate app reads and mutations with the reviewed command service and durable outbox. Complete native ownership/packaging, remaining capture gaps and installed acceptance. Inspect the Windows iCloud account and sync warnings when UI access is available, then qualify actual two-client propagation before hosted work. No paid provisioning. Registered Next Steps Board file remains absent.",
   "evidence": [
+    {
+      "label": "App history retention verified",
+      "state": "Open",
+      "detail": "2026-10-29 app history retention pushed in 8be80cbb09496c6ff166b22cd8a6be9169e6185e: https://github.com/DaveHomeAssist/prompt-lab/commit/8be80cbb09496c6ff166b22cd8a6be9169e6185e . Removed automatic 30-day Trash deletion and fallback experiment/run/case count pruning. Supported record saves keep complete text, candidate/trait lists and extension metadata; explicit deletion and known-field validation remain. Import equality now ignores object-key order while detecting changed unknown fields. Dominic Node 22.23.4: all 1,537 shared tests pass, followed by 52 targeted tests after final UI/test changes; 231 legacy tests, 173 storage tests, 20 source-capture/database browser cases, four deletion/recovery browser cases, and two final visible-Restore checks at 1440/375 px pass. Extension/web builds, docs lint and four documentation contracts pass. All 16 task files hash-match the runner. Mac Node 22.22.1: isolated saves/reopen preserve every original field on three exported runs, plus complete result metadata/text/history counts for 216 prompts and two Trash rows; no standalone cases exist in this export. Original SHA-256 unchanged; no private transfer or personal activation. All nine new retention regressions failed before the repair. Earlier test expectations, output-directory/image setup errors and a wrong phone drawer locator are preserved as failed attempts. A1 remains In progress. Full app read/mutation/outbox integration, native service packaging/ownership, remaining capture/normalization gaps, installed and actual two-client iCloud acceptance remain open. Last configuration check at 12:51 UTC found registered Windows clients but no probe propagation; account/warning inspection still requires UI access. No settings changed. PR248 remains draft; exact-head CI is separate. Next: integrate the shared app command/outbox boundary and complete native/two-client acceptance before hosted work. No paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/8be80cbb09496c6ff166b22cd8a6be9169e6185e"
+    },
     {
       "label": "Reviewed current records verified",
       "state": "Open",
@@ -1314,8 +1320,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Integrate reviewed current records with app reads, mutations and durable outbox; complete native ownership and acceptance.",
-      "verification": "Source 8319f00: 173 storage tests, 18 schema/OpenAPI payload checks, five rejection cases, extension/web bundle builds and four documentation contracts pass. All 216 private-export prompts and 21 versions survive selection, transfer and restart with exact values and unchanged source hash. Full app/native acceptance remains incomplete.",
+      "nextAction": "Integrate the app command service and durable outbox; complete native ownership and installed/two-client acceptance.",
+      "verification": "Source 8be80cb: 1,537 shared tests plus 52 final targeted tests, 231 legacy tests, 173 storage tests, 20 source-capture/browser database checks and four deletion/recovery cases pass. Old Trash restores with 41 versions at desktop/phone widths; real-export three runs and 218 prompt/Trash metadata records preserved, original unchanged. Known-field validation remains; full app/native acceptance is incomplete.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
