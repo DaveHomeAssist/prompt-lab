@@ -879,6 +879,37 @@ unconnected service candidate.
 
 ## Verification and next gates
 
+### Atomic folder command brief
+
+Folder changes must publish their folder records, collection paths and affected
+prompt assignments together. Reuse the current app rules: stable folder IDs,
+descendant path updates on rename or move, no cycles or duplicate sibling names,
+and removal only after child folders have moved. Removing a leaf folder keeps its
+prompts in All prompts. Legacy collection names containing slashes remain literal
+root names until explicitly changed.
+
+The shared planner takes a reviewed folder/collection/prompt projection and a
+single explicit create, change or remove request. It pins the complete input by
+hash and, for existing folders, pins the target record. It returns one complete
+successor projection and a reviewable list of changed identities and paths.
+Unknown fields and unrelated records remain unchanged. Existing history is never
+trimmed; malformed or contradictory folder references fail before mutation.
+
+Acceptance covers nested rename/move, leaf removal, literal legacy paths, ID
+and path collisions, stale input, unknown metadata, large histories, and the real
+export on an isolated copy. This pure planning boundary does not acknowledge a
+save. Service publication, causal reconciliation, API/outbox integration and
+app activation remain required follow-up work before the folder command ships.
+
+The [shared planner](../library-storage/folder-transaction.mjs) and its
+[ten focused cases](../library-storage/folder-transaction.test.mjs) are implemented.
+Dominic Node 22 passes all 264 storage tests and documentation checks. The private
+Mac export check renamed each of its 18 folders independently, covering 170
+assigned prompts while retaining all 216 prompts, 21 history records, two Trash
+records, three runs and every other source field. Disposable creation/removal
+also passes. Original bytes and hash remain unchanged; no private data was
+uploaded. These are pure planner results, not publication or activation receipts.
+
 Run `npm run test:library-storage` from the source root under Node 22.
 Use `node scripts/verify-folder-export.mjs` with an explicit export path for the
 private local acceptance harness. Do not put that input into CI or Git.
