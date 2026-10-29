@@ -69,7 +69,8 @@ export async function readObject(objects, id, kind) {
   return structuredClone(object.data);
 }
 
-export async function createPackage(sourceText, { libraryId, operationId, parents = [], createdAt = new Date().toISOString() }) {
+export async function createPackage(sourceText, { libraryId, operationId, parents = [], createdAt = new Date().toISOString(), sourceInventory }) {
+  if (sourceInventory !== undefined) sourceInventory = structuredClone(sourceInventory);
   if (typeof sourceText !== 'string' || encoder.encode(sourceText).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Source must be JSON text up to 64 MiB.', 413);
   let workspace;
   try { workspace = JSON.parse(sourceText); } catch { throw new LibraryError('INVALID_JSON', 'Source is not valid JSON.'); }
@@ -77,8 +78,16 @@ export async function createPackage(sourceText, { libraryId, operationId, parent
   assertCommitIdentity({ libraryId, operationId, parents, createdAt });
   const source = await makeObject('source', sourceText);
   const state = await makeObject('workspace', workspace);
-  const commit = await makeObject('commit', { libraryId, operationId, parents, source: source.hash, state: state.hash, createdAt });
-  return { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash, objects: { [source.hash]: source.object, [state.hash]: state.object, [commit.hash]: commit.object } };
+  const objects = { [source.hash]: source.object, [state.hash]: state.object };
+  let binding;
+  if (sourceInventory !== undefined) {
+    const { createSourceBinding } = await import('./source-binding.mjs');
+    binding = await createSourceBinding({ source: source.hash, workspace: state.hash, inventory: sourceInventory, objects });
+    Object.assign(objects, binding.objects);
+  }
+  const commit = await makeObject('commit', { libraryId, operationId, parents, source: source.hash, state: state.hash, createdAt,
+    ...(binding ? { sourceBinding: binding.hash } : {}) });
+  return { format: FORMAT, schemaVersion: VERSION, libraryId, head: commit.hash, objects: { ...objects, [commit.hash]: commit.object } };
 }
 
 export async function inspectPackage(pkg) {
@@ -123,8 +132,14 @@ export async function inspectPackage(pkg) {
       if (typeof sourceText !== 'string' || canonical(decoded) !== canonical(workspace)) throw new LibraryError('SOURCE_MISMATCH', 'Archived source and workspace disagree.');
       result = { stateKind: 'workspace', manifest: null, workspace, sourceText };
     } else throw new LibraryError('UNSUPPORTED_OPERATION', 'Unsupported commit operation.');
+    const sourceBindings = [...new Set(commit.parents.flatMap(parent => visited.get(parent).sourceBindings))];
+    if (Object.hasOwn(commit, 'sourceBinding')) {
+      const { inspectSourceBinding } = await import('./source-binding.mjs');
+      await inspectSourceBinding(pkg.objects, commit.sourceBinding, { source: commit.source, workspace: operation === 'import' ? commit.inputState : commit.state });
+      if (!sourceBindings.includes(commit.sourceBinding)) sourceBindings.push(commit.sourceBinding);
+    }
     active.delete(id);
-    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source });
+    visited.set(id, { ...result, stateObject: commit.state, sourceObject: commit.source, sourceBindings: sourceBindings.sort() });
   }
   await visit(pkg.head);
   // Retained unreachable objects are part of the archive too; never silently drop them.
@@ -211,17 +226,18 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       });
       return { libraryId, revision: expectedRevision, items, nextCursor: offset + limit < ids.length ? String(offset + limit) : null };
     },
-    async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot' }) {
+    async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot', sourceInventory }) {
       if (!['snapshot', 'import'].includes(mode)) throw new LibraryError('INVALID_MODE', 'Select snapshot or import review.');
       canonical(resolutions);
       // Take ownership before the first await. The caller may keep editing its
       // choices while storage reads or hashes are still in flight.
       resolutions = structuredClone(resolutions);
+      if (sourceInventory !== undefined) sourceInventory = structuredClone(sourceInventory);
       const state = await adapter.read();
       if (state.libraryId && libraryId !== state.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
       if (mode === 'snapshot' && canonical(resolutions) !== '{}') throw new LibraryError('UNSUPPORTED_RESOLUTION', 'Whole-workspace transfers do not resolve record conflicts.');
-      const pkg = await createPackage(sourceText, { libraryId, operationId: 'preview' });
+      const pkg = await createPackage(sourceText, { libraryId, operationId: 'preview', sourceInventory });
       await inspectPackage(pkg);
       let importPlan;
       if (mode === 'import') {
@@ -230,11 +246,12 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
       }
       const previewId = globalThis.crypto.randomUUID();
-      const input = { libraryId, expectedRevision, sourceText, resolutions, mode };
+      const input = { libraryId, expectedRevision, sourceText, resolutions, mode, ...(sourceInventory !== undefined ? { sourceInventory } : {}) };
       const fingerprint = await hash(input);
       const expires = now() + previewLifetimeMs;
       const response = { previewId, libraryId, expectedRevision, sourceHash: pkg.objects[pkg.head].data.source, fingerprint, expiresAt: expires, mode,
-        commitAvailable: mode === 'snapshot' || importPlan.unresolved === 0, ...(importPlan ? { importPlan } : {}) };
+        commitAvailable: mode === 'snapshot' || importPlan.unresolved === 0, ...(importPlan ? { importPlan } : {}),
+        ...(pkg.objects[pkg.head].data.sourceBinding ? { sourceBinding: pkg.objects[pkg.head].data.sourceBinding } : {}) };
       previews.set(previewId, { input, fingerprint, expires, response });
       try { return await currentReview(previewId); }
       catch (error) { previews.delete(previewId); throw error; }
@@ -254,7 +271,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
           if (preview.response.importPlan.unresolved) throw new LibraryError('UNRESOLVED_IMPORT', 'Resolve every import choice and preview again.', 409);
         }
         const identity = { libraryId, operationId: idempotencyKey, parents: state.revision ? [state.revision] : [] };
-        let pkg = await createPackage(preview.input.sourceText, identity);
+        let pkg = await createPackage(preview.input.sourceText, { ...identity, sourceInventory: preview.input.sourceInventory });
         if (preview.input.mode === 'import') {
           const plan = await reviewImport(state, pkg, preview.input.resolutions);
           if (canonical(plan) !== canonical(preview.response.importPlan)) throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import no longer matches its reviewed sources and choices.', 409);
@@ -262,8 +279,10 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
           const planObject = await makeObject('import-plan', plan);
           const manifest = await makeObject('library-state', plan.manifest);
           const commit = await makeObject('commit', { ...identity, operation: 'import', source: incoming.source, inputState: incoming.state,
-            state: manifest.hash, importPlan: planObject.hash, createdAt: incoming.createdAt });
-          pkg = { ...pkg, head: commit.hash, objects: { [incoming.source]: pkg.objects[incoming.source], [incoming.state]: pkg.objects[incoming.state],
+            state: manifest.hash, importPlan: planObject.hash, createdAt: incoming.createdAt,
+            ...(incoming.sourceBinding ? { sourceBinding: incoming.sourceBinding } : {}) });
+          const inputObjects = { ...pkg.objects }; delete inputObjects[pkg.head];
+          pkg = { ...pkg, head: commit.hash, objects: { ...inputObjects,
             [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
         } else if (state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
           throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
@@ -276,6 +295,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         state.revision = pkg.head;
         const receipt = { operationId: idempotencyKey, libraryId, parentRevision: expectedRevision, revision: pkg.head, checkpointId, fingerprint,
           operation: preview.input.mode, stateHash: verified.stateObject, sourceHash: verified.sourceObject,
+          ...(pkg.objects[pkg.head].data.sourceBinding ? { sourceBinding: pkg.objects[pkg.head].data.sourceBinding } : {}),
           counts: { objects: verified.objectCount, sources: verified.manifest?.sources.length ?? 1,
             records: verified.manifest?.nodes.length ?? null, historyRecords: verified.manifest?.nodes.filter(node => node.kind === 'version').length ?? null },
           state: 'committed', verified: true };

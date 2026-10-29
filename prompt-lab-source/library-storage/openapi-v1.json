@@ -470,7 +470,9 @@
               "commit",
               "source-capture",
               "library-state",
-              "import-plan"
+              "import-plan",
+              "source-inventory",
+              "source-binding"
             ]
           },
           "data": {}
@@ -562,6 +564,10 @@
           "inputState": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "sourceBinding": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -639,6 +645,10 @@
           },
           "importPlan": {
             "$ref": "#/components/schemas/LibraryImportPlan"
+          },
+          "sourceBinding": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -808,6 +818,10 @@
               "historyRecords"
             ],
             "additionalProperties": false
+          },
+          "sourceBinding": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
           }
         },
         "required": [
@@ -1342,6 +1356,9 @@
               ],
               "additionalProperties": true
             }
+          },
+          "sourceInventory": {
+            "$ref": "#/components/schemas/SourceCaptureInventory"
           }
         },
         "required": [
@@ -2046,6 +2063,61 @@
           "nextCursor"
         ],
         "additionalProperties": false
+      },
+      "SourceCaptureInventory": {
+        "type": "object",
+        "properties": {
+          "manifest": {
+            "$ref": "#/components/schemas/SourceInventory"
+          },
+          "manifestHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "objects": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Object"
+            }
+          }
+        },
+        "required": [
+          "manifest",
+          "manifestHash",
+          "objects"
+        ],
+        "additionalProperties": false
+      },
+      "SourceBinding": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-source-binding"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "workspace": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inventory": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "source",
+          "workspace",
+          "inventory"
+        ],
+        "additionalProperties": true
       }
     }
   }

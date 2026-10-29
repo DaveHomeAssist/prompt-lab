@@ -48,6 +48,11 @@ async function verifyState(input) {
     if (receipt.operation != null && receipt.operation !== mode) fail('Operation mode differs from its commit.');
     const resolutions = mode === 'import' ? state.objects[commit.importPlan].data.resolutions : {};
     const input = { libraryId: state.libraryId, expectedRevision: parent, sourceText: state.objects[commit.source].data, resolutions, mode };
+    if (Object.hasOwn(commit, 'sourceBinding')) {
+      const { inspectSourceBinding } = await import('./source-binding.mjs');
+      input.sourceInventory = (await inspectSourceBinding(state.objects, commit.sourceBinding)).inventory;
+      if (receipt.sourceBinding !== commit.sourceBinding) fail('Receipt source binding differs from its commit.');
+    } else if (Object.hasOwn(receipt, 'sourceBinding')) fail('Receipt claims an unbound source inventory.');
     const current = await hash(input);
     // Earlier version-one snapshot receipts predate the explicit mode field.
     const legacy = { ...input }; delete legacy.mode;

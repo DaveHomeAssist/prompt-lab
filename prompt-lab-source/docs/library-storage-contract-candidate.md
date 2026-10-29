@@ -159,6 +159,61 @@ not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 
+### Reviewed checkpoint restore brief
+
+Restore must publish a new commit and a checkpoint of the current head, keeping
+every source object, receipt and history object. A bound preview names the current
+revision and selected ancestor checkpoint. Applying it after another write fails;
+retry after response loss returns the original operation receipt.
+
+Deletion evidence comes from a captured source inventory bound to the exact raw
+Library/trash workspace it describes. Store that binding and every capture as
+immutable objects on snapshot/import commits. A source identity scopes legacy
+prompt IDs; identical IDs from unrelated sources must not share tombstones.
+Accumulate append-only markers from the local mirror and Library journal across
+retained ancestry. Unknown or malformed deletion evidence never means empty.
+Historical snapshots without the required source binding remain readable, but
+ordinary restore cannot infer their deletion scope.
+
+The restore graph selects the checkpoint's prompt groups while retaining newer
+source records and histories. Current permanent-deletion IDs and generation
+markers suppress affected selections, with a reviewable reason. Import after
+restore must retain those constraints. No ordinary restore option bypasses them;
+intentional reintroduction remains a separate unimplemented confirmed workflow.
+Unknown domains remain archived without fabricated materialization. Full domain
+mapping, the migration write barrier and native activation are separate A1/A3
+gates. Verify restart/idempotency, stale previews, source-ID collisions, malformed
+markers, rehashed semantic tampering and publication interruption. Use the real
+export only in a new local disposable fixture with test-only deletion markers;
+never infer that its omitted metadata proves the personal library has no markers.
+
+### Bound source evidence
+
+The first restore prerequisite is implemented in `source-binding.mjs`. Snapshot
+and import previews accept an optional `sourceInventory`. A binding requires
+the current inventory format, a stable local observation, exact raw Library and
+trash equality, and exactly the declared capture objects. It retains every
+capture and unavailable-source report as immutable objects alongside the raw
+workspace. Preview fingerprints include the supplied inventory; receipts name
+the binding. Inspection and portable transfer reconstruct and verify that input.
+Legacy unbound receipts retain their original fingerprints and stay readable.
+
+`collectDeletionEvidence` unions permanent IDs and clear generations across
+retained bindings by explicit source identity. It also reads the desktop Library
+journal without selecting it over the local mirror. Malformed markers, unknown
+journal shapes and unavailable journals produce incomplete evidence with stable
+codes. They never become empty deletion sets. A workspace without a binding has
+no inferred deletion scope; equal prompt IDs alone do not join source identities.
+
+This is provenance and evidence collection only. Restore preview/commit and
+selection suppression are still unimplemented, including enforcement on later
+imports. A stable local capture does not prove a cross-store write barrier or
+complete domain materialization. The real-export verifier
+`scripts/verify-library-source-binding.mjs` exercises full transfer, reconstruction
+and replay in fresh disposable folders, with clearly synthetic capture/deletion
+metadata. It does not read the user's actual app stores or establish their
+deletion state.
+
 ### Complete portable transfer
 
 The shared contract exports a revision-pinned archive with every immutable
