@@ -4,6 +4,16 @@ export const VERSION = 1;
 export const MAX_BYTES = 64 * 1024 * 1024;
 const encoder = new TextEncoder();
 const forbidden = new Set(['settings', 'providersettings', 'credentials', 'tokens', 'token', 'apikeys', 'apikey', 'billing', 'telemetry', 'session', 'sessionpl2session']);
+const validId = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
+const validHash = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
+
+function assertCommitIdentity({ libraryId, operationId, parents, createdAt }) {
+  if (!validId(libraryId) || !validId(operationId) || !Array.isArray(parents)
+    || parents.some(parent => !validHash(parent)) || new Set(parents).size !== parents.length
+    || typeof createdAt !== 'string' || !Number.isFinite(Date.parse(createdAt))) {
+    throw new LibraryError('INVALID_IDENTITY', 'Library and operation IDs, unique parent hashes and a valid creation time are required.');
+  }
+}
 
 export class LibraryError extends Error {
   constructor(code, message, status = 422) {
@@ -62,7 +72,7 @@ export async function createPackage(sourceText, { libraryId, operationId, parent
   let workspace;
   try { workspace = JSON.parse(sourceText); } catch { throw new LibraryError('INVALID_JSON', 'Source is not valid JSON.'); }
   assertWorkspace(workspace);
-  if (!libraryId || !operationId || !Array.isArray(parents) || new Set(parents).size !== parents.length) throw new LibraryError('INVALID_IDENTITY', 'Library, operation and unique parent identities are required.');
+  assertCommitIdentity({ libraryId, operationId, parents, createdAt });
   const source = await makeObject('source', sourceText);
   const state = await makeObject('workspace', workspace);
   const commit = await makeObject('commit', { libraryId, operationId, parents, source: source.hash, state: state.hash, createdAt });
@@ -70,13 +80,15 @@ export async function createPackage(sourceText, { libraryId, operationId, parent
 }
 
 export async function inspectPackage(pkg) {
-  if (pkg?.format !== FORMAT || pkg.schemaVersion !== VERSION || !pkg.libraryId || !pkg.head || !pkg.objects || Array.isArray(pkg.objects)) throw new LibraryError('UNSUPPORTED_PACKAGE', 'Unsupported library package.');
+  if (pkg?.format !== FORMAT || pkg.schemaVersion !== VERSION || !validId(pkg.libraryId) || !validHash(pkg.head)
+    || !pkg.objects || Object.getPrototypeOf(pkg.objects) !== Object.prototype) throw new LibraryError('UNSUPPORTED_PACKAGE', 'Unsupported library package.');
   const active = new Set(), visited = new Set();
   async function visit(id) {
     if (active.has(id)) throw new LibraryError('INVALID_ANCESTRY', 'Cyclic commit ancestry.');
     if (visited.has(id)) return;
     active.add(id);
     const commit = await readObject(pkg.objects, id, 'commit');
+    assertCommitIdentity(commit);
     if (commit.libraryId !== pkg.libraryId || !commit.operationId || !Array.isArray(commit.parents) || new Set(commit.parents).size !== commit.parents.length) throw new LibraryError('INVALID_ANCESTRY', 'Invalid commit identity or parents.');
     const workspace = await readObject(pkg.objects, commit.state, 'workspace');
     assertWorkspace(workspace);
@@ -100,9 +112,22 @@ export async function inspectPackage(pkg) {
 // Adapter transaction must atomically publish state and operation receipts, or publish neither.
 export function createMemoryAdapter(initial = { libraryId: null, revision: null, objects: {}, operations: {}, checkpoints: [] }) {
   let state = structuredClone(initial);
+  let queue = Promise.resolve();
   return {
     read: () => structuredClone(state),
-    transact: async fn => { const candidate = structuredClone(state); const result = await fn(candidate); state = candidate; return structuredClone(result); },
+    transact(fn) {
+      // The transaction boundary belongs to the adapter, including when two
+      // command service instances share it during reconstruction or testing.
+      const result = queue.then(async () => {
+        const candidate = structuredClone(state);
+        const result = await fn(candidate);
+        const receipt = structuredClone(result);
+        state = candidate;
+        return receipt;
+      });
+      queue = result.catch(() => {});
+      return result;
+    },
   };
 }
 

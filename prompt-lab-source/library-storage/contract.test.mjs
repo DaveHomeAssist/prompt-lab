@@ -104,3 +104,25 @@ test('prototype-named operation keys are ordinary data and concurrent identical 
   assert.equal((await service.operation('__proto__')).revision, a.revision);
   assert.equal(await service.operation('toString'), null);
 });
+
+test('separate service instances sharing an adapter cannot lose a committed write', async () => {
+  const adapter = createMemoryAdapter();
+  const first = createCommandService(adapter), second = createCommandService(adapter);
+  const p = await first.preview({ libraryId: 'library1', expectedRevision: null, sourceText: source() });
+  const q = await second.preview({ libraryId: 'library1', expectedRevision: null, sourceText: JSON.stringify({ ...workspace(), marker: 'other writer' }) });
+  const results = await Promise.allSettled([apply(first, p, 'first'), apply(second, q, 'second')]);
+  assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+  assert.equal(results.find(result => result.status === 'rejected').reason.code, 'REVISION_CONFLICT');
+  const state = adapter.read();
+  assert.equal(Object.keys(state.operations).length, 1);
+  assert.equal(state.revision, results.find(result => result.status === 'fulfilled').value.revision);
+});
+
+test('commit identities reject schema-invalid types and ancestry before archiving', async () => {
+  for (const override of [
+    { libraryId: 42 }, { operationId: {} }, { operationId: 'x'.repeat(201) },
+    { parents: [null] }, { parents: ['not-a-content-hash'] }, { createdAt: 'not-a-date' },
+  ]) {
+    await assert.rejects(createPackage(source(), { libraryId: 'l', operationId: 'o', ...override }), { code: 'INVALID_IDENTITY' });
+  }
+});

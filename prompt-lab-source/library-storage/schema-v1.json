@@ -13,7 +13,8 @@
           "enum": [
             "source",
             "workspace",
-            "commit"
+            "commit",
+            "source-capture"
           ]
         },
         "data": {}
@@ -36,7 +37,8 @@
         },
         "libraryId": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 200
         },
         "head": {
           "type": "string",
@@ -63,11 +65,13 @@
       "properties": {
         "libraryId": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 200
         },
         "operationId": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 200
         },
         "parents": {
           "type": "array",
@@ -107,7 +111,9 @@
           "type": "string"
         },
         "libraryId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "expectedRevision": {
           "anyOf": [
@@ -146,10 +152,14 @@
       "type": "object",
       "properties": {
         "operationId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "libraryId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "parentRevision": {
           "anyOf": [
@@ -204,7 +214,9 @@
       "type": "object",
       "properties": {
         "libraryId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "revision": {
           "type": "string",
@@ -238,7 +250,9 @@
           "const": 1
         },
         "libraryId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "baseRevision": {
           "anyOf": [
@@ -252,7 +266,9 @@
           ]
         },
         "operationId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
         },
         "sourceHash": {
           "type": "string",
@@ -277,6 +293,111 @@
         "sourceManifest"
       ],
       "additionalProperties": true
+    },
+    "SourceInventory": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "const": "promptlab-source-inventory"
+        },
+        "schemaVersion": {
+          "const": 1
+        },
+        "surface": {
+          "enum": [
+            "desktop",
+            "web",
+            "extension"
+          ]
+        },
+        "sourceIdentity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SourceEvidence"
+          }
+        },
+        "sourceReadComplete": {
+          "type": "boolean"
+        },
+        "activationReady": {
+          "const": false
+        }
+      },
+      "required": [
+        "format",
+        "schemaVersion",
+        "surface",
+        "sourceIdentity",
+        "capturedAt",
+        "sources",
+        "sourceReadComplete",
+        "activationReady"
+      ],
+      "additionalProperties": true
+    },
+    "SourceEvidence": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state": {
+          "enum": [
+            "present",
+            "absent",
+            "unavailable",
+            "changed",
+            "unreviewed"
+          ]
+        },
+        "hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "state"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unavailable"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "not": {
+              "required": [
+                "hash"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "hash"
+            ]
+          }
+        }
+      ]
     }
   }
 }

@@ -54,12 +54,59 @@ expected result is built directly from raw data, independently of UI normalizers
 The private real-export harness compares the entire parsed workspace and exact
 source bytes after close/reopen and retry, then checks the original hash again.
 
-An export cannot prove preservation of data it omitted. A full migration still
-needs an explicit inventory of all source stores, deletion markers, backup
-provenance and unavailable references. No real export is committed as a fixture
+An export cannot prove preservation of data it omitted. The read-only
+`library-storage/source-inventory.mjs` contract now captures the inspected
+source families described below. A full migration still needs an app-owned
+reader, a cross-store write barrier, reviewed backup provenance and unavailable
+references. No real export is committed as a fixture
 or transferred to a runner. The private acceptance script runs locally against
 an explicit input path, writes only to a new disposable directory and emits
 aggregate evidence without prompt text.
+
+### Raw source inventory
+
+The current workspace export reads normalized Library state, Scratch, evaluation
+runs and test cases. It does not export every store. The inventory contract
+captures raw values independently and never chooses between conflicting replicas.
+It has no browser globals or filesystem access; readers are explicitly supplied
+by the caller. It is not yet called by the shipped app.
+
+| Owning source | Captured content |
+| --- | --- |
+| `lib/storage.js`, `hooks/usePromptLibrary.js` | Raw Library/trash, collections/folders, pack registry, loaded-pack state and legacy experiment history |
+| `lib/libraryDeletion.js` | Every individual, batch and generation marker key, including raw malformed values |
+| `lib/scratchSchema.js`, `PadTab.jsx` | Current pads/schema marker and surviving legacy `pl-pad`/`pl2-pad` content and metadata |
+| `experimentStore.js` | All four IndexedDB stores (`experiments`, `eval_runs`, `test_cases`, `runs`) and their local fallback stores, without the existing 1,000-row fallback write cap |
+| `lib/libraryJournal.js` | Desktop durable journal plus local revision marker, retained separately from the local mirror |
+| `App.jsx`, `hooks/useSessionState.js`, `lib/platform.js` | Draft reset recovery and the two explicitly named editor/dual draft session keys. Authentication sessions remain excluded |
+| Explicit archive review | User-selected backup provenance and unavailable-reference evidence, retained without scanning neighboring files |
+
+Local reads never request values of unselected keys. Their names are listed for
+review rather than guessing that an unknown store is safe to copy. Known content
+store strings remain byte-for-byte JavaScript strings, even if their JSON is
+corrupt. IndexedDB readers must return complete raw records; unsupported non-JSON
+values fail visibly instead of being coerced or dropped. Portable artwork data
+embedded in those records survives; missing external bytes remain a gap.
+
+Two differing local observations retain both and mark the source changed.
+Permission failures, absent databases and unreviewed archives are distinct states.
+Each capture has a content hash, and the manifest names every required source for
+its shell. `sourceReadComplete` means the selected source reads were accounted
+for; `activationReady` is always false because this inventory alone proves no
+cross-store write barrier, semantic migration or destination readback.
+
+October 29 verification on Dominic Node22: the complete storage suite passed
+30 tests, including 41 versions, 1,002 trace records, divergent journal/mirror
+content, corrupt JSON, legacy Scratch, inaccessible stores, excluded credentials,
+extension draft scoping and manifest/object tampering. No private source data
+was moved to the runner. Record-level import/conflict and full API schema
+acceptance remain separate A1 work.
+
+The memory adapter now serializes its own transactions, including two distinct
+command-service instances sharing it. The stale writer fails instead of both
+services acknowledging one overwritten state. Commit identities also reject
+invalid types, timestamps and parent hashes before archiving. These checks do
+not establish filesystem process ownership, which remains an A2 requirement.
 
 ## Contracts and remaining A1 proof
 

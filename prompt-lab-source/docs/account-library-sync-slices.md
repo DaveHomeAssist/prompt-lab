@@ -1,8 +1,8 @@
 # Library storage build plan
 
-Status: revised plan only, October 23, 2026. All runtime slices remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
+Status: implementation in progress, acceptance incomplete, October 29, 2026. A1 and an isolated A2 reference candidate are in draft PR248. A3 and hosted implementation remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
 
-Dave requested the plan update before implementation. Do not execute runtime slices or provision services in this documentation task. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) are superseded and retained as history. They assumed Neon selection, omitted run history and applied a 25-version cap; they are unsafe to paste as current instructions.
+The October 23 request covered planning only. Dave subsequently authorized implementation of all phases and real-export verification on October 28, subject to the sequential acceptance gates and no paid provisioning without separate approval. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical. They omitted run history and applied a 25-version cap and do not define current implementation.
 
 ## Sequence and existing work item mapping
 
@@ -74,7 +74,7 @@ Acceptance:
 
 ## B1: hosted decisions and policy
 
-Only after Phase A acceptance, revisit the existing provider candidates. Neon/Clerk remains a candidate, not an approved provisioned stack. Record provider/cost, region, encryption/key recovery and history/backup erasure decisions. Review policy text against verified provider behavior. Do not assume counsel approval or publish drafts as effective terms.
+Only after Phase A acceptance, verify feasibility and policy for the selected Neon/Clerk US East direction. D-016 records the October 28 server-readable encryption-at-rest and retained-history choices. Paid provisioning still requires separate approval. Review policy text against verified provider behavior. Do not assume counsel approval or publish drafts as effective terms.
 
 Acceptance: full preservation contract is funded and feasible; no four-kind/latest-record-only schema or provider restore window substitutes for application history and backups. Authorize provisioning separately before executing it.
 
@@ -94,7 +94,7 @@ Acceptance: two clients converge for complete workspace data; response loss is i
 
 For each later authorized slice: reverify current main and ownership, use disposable fixtures and qualified runners, run scoped tests and failure paths, deliver through required PR gates, then update existing records with the actual evidence. Provider/billing calls and infrastructure changes need their own scope. Documentation delivery is not storage implementation or data migration.
 
-Next action: review the reconciled plan and authorize A1, shared contracts and lossless fixtures. The chosen sequence does not need another vote. Dave selects the actual iCloud folder through the delivered picker later.
+Next action: finish A1 shared contracts and lossless fixtures. The implementation request and storage direction are authorized; sequential acceptance remains required. Dave selects the actual iCloud folder through the delivered picker later.
 
 ## Implementation progress: October 28
 
