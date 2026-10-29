@@ -44,6 +44,21 @@ it('recovers an acknowledged Scratch snapshot when WebView2 loses its localStora
   expect(idb.transactions.filter(tx => tx.mode === 'readwrite').every(tx => tx.options.durability === 'strict')).toBe(true);
 });
 
+it('restores acknowledged notes when only the mirror body rolls back at the committed revision', async () => {
+  seed(); const first = await boot(); const previousBody = localStorage.getItem(SCRATCH_KEY);
+  const saved = persistScratchState(edit('Acknowledged note survives a torn mirror'));
+  await saved.durable;
+  const revision = localStorage.getItem('pl2-scratch-journal-revision');
+  const record = idb.rows().get(SCRATCH_JOURNAL_RECORD);
+  first.stop();
+  localStorage.setItem(SCRATCH_KEY, previousBody);
+  expect(localStorage.getItem('pl2-scratch-journal-revision')).toBe(revision);
+  const restarted = await boot();
+  expect(JSON.parse(localStorage.getItem(SCRATCH_KEY))).toEqual(saved.state);
+  expect(restarted.outcome.action).toBe('restore');
+  expect(idb.rows().get(SCRATCH_JOURNAL_RECORD)).toEqual(record);
+});
+
 it('keeps Library and Scratch records and recovery scopes independent', async () => {
   localStorage.setItem('pl2-library', '[{"id":"library"}]'); seed();
   const library = createLibraryJournal({ storage: localStorage, idb });

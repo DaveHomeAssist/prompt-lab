@@ -60,13 +60,13 @@ function sameEntries(left, right) {
     && keys.every((key) => Object.hasOwn(right, key) && right[key] === left[key]);
 }
 
-// localStorage persists writes in order, and the revision is written after the
-// data it covers. A higher journal revision therefore means localStorage lost
-// writes; a higher local revision, or equal revisions with different contents,
-// means the journal missed writes that localStorage kept.
+// A committed journal owns its revision. WebView2 can retain the revision but
+// lose some mirror data at close, so equal counters do not prove equal content.
+// A higher local revision still carries newer writes that need journaling.
 export function planLibraryJournalBoot(local, record) {
-  if (record && record.revision > local.revision) return 'restore';
-  if (!record || record.revision < local.revision || !sameEntries(local.entries, record.entries)) return 'journal';
+  if (record && (record.revision > local.revision
+    || (record.revision === local.revision && !sameEntries(local.entries, record.entries)))) return 'restore';
+  if (!record || record.revision < local.revision) return 'journal';
   return 'current';
 }
 
