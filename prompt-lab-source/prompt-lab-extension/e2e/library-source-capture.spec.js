@@ -64,6 +64,36 @@ async function joinCapture(page, label) {
   }, label);
 }
 
+test('actual app stores retain complete records across database reopen', async ({ page }) => {
+  await page.evaluate(async () => {
+    const store = await import('/prompt-lab-extension/src/experimentStore.js');
+    const text = 'Complete retained text. '.repeat(1200);
+    await store.saveEvalRun({ id: 'complete-run', input: text, output: text, notes: text,
+      future: { nested: [null, false, 0, 'retained'] },
+      candidates: Array.from({ length: 24 }, (_, i) => ({ id: `c${i}`, content: text, future: i })),
+      selectedCandidateId: 'c23', usage: { input: 1, output: 2, total: 3, future: 7 } });
+    await store.saveTestCase({ id: 'complete-case', promptId: 'p', input: text, notes: text,
+      expectedTraits: Array.from({ length: 24 }, (_, i) => `Trait ${i}`), future: ['retained'] });
+    await store.saveExperiment({ id: 'complete-experiment', keyInputSnapshot: text, future: 7 });
+  });
+  await page.reload();
+  const result = await page.evaluate(async () => {
+    const store = await import('/prompt-lab-extension/src/experimentStore.js');
+    return { run: await store.getEvalRunById('complete-run'),
+      cases: await store.listTestCases({ limit: null }), experiment: await store.getExperimentById('complete-experiment'),
+      fallbackKeys: Object.keys(localStorage).filter(key => key.endsWith('-fallback')) };
+  });
+  const text = 'Complete retained text. '.repeat(1200);
+  expect(result.fallbackKeys).toEqual([]);
+  expect(result.run).toMatchObject({ input: text, output: text, notes: text, selectedCandidateId: 'c23',
+    future: { nested: [null, false, 0, 'retained'] }, usage: { future: 7 } });
+  expect(result.run.candidates).toHaveLength(24);
+  expect(result.run.candidates[23]).toMatchObject({ id: 'c23', content: text, future: 23 });
+  expect(result.cases[0]).toMatchObject({ input: text, notes: text, future: ['retained'] });
+  expect(result.cases[0].expectedTraits).toHaveLength(24);
+  expect(result.experiment).toMatchObject({ keyInputSnapshot: text, future: 7 });
+});
+
 test('two actual windows retain separate unsaved buffers, pause timers and drain real writes', async ({ page, context }) => {
   const other = await context.newPage();
   await joinCapture(page, 'First unsaved draft'); await joinCapture(other, 'Second unsaved draft');

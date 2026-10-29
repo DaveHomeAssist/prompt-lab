@@ -328,11 +328,11 @@ describe('LibraryWorkspace', () => {
     expect(screen.queryByRole('toolbar', { name: 'Bulk actions' })).not.toBeInTheDocument();
   });
 
-  it('keeps Recently Deleted recoverable and shows the 30-day retention contract', () => {
+  it('keeps Recently Deleted recoverable until an explicit deletion', () => {
     const { lib } = renderLibrary();
     fireEvent.click(screen.getByRole('button', { name: /Recently Deleted/ }));
-    expect(screen.getByText('Items are permanently removed after 30 days.')).toBeInTheDocument();
-    expect(screen.getByText(/days left|Removed today/)).toBeInTheDocument();
+    expect(screen.getByText('Items stay here until you restore or permanently delete them.')).toBeInTheDocument();
+    expect(screen.getByText(/^Deleted /, { selector: 'time' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(lib.restoreDeleted).toHaveBeenCalledWith('trash');
     fireEvent.click(screen.getByLabelText('Permanently delete Deleted prompt'));

@@ -1,5 +1,25 @@
 # Library storage contract candidate
 
+## App history retention
+
+Before activation, current app saves and reads must obey the preservation
+contract. Remove age-based Trash deletion and fallback record-count pruning.
+Persist complete experiment, evaluation and case text, candidate lists and
+extension metadata. Display pagination remains independent of storage retention.
+Explicit permanent deletion and existing stale-write checks remain available.
+
+Acceptance exercises the actual stores past their former count limits, long
+content and metadata through save/read/patch/reopen, quota failure without
+discarding old records, and old Trash through startup, import and restore.
+Existing real-export records are checked on their original host using isolated
+storage. This repair does not by itself activate the shared backend or complete
+the pending native service and durable outbox integration.
+
+Known-field validation and canonical candidate roles still apply in app records;
+the raw source archive remains the lossless record of unsupported shapes. Other
+capture boundaries, including shortened chain trace previews and transient forms,
+still require their own acceptance before claiming complete app preservation.
+
 ## Reviewed current domain view
 
 The preserved record index exposes every source occurrence. A separate immutable

@@ -72,12 +72,10 @@ function formatEntryDate(entry) {
     : date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function trashExpiryLabel(entry) {
+function trashRemovalLabel(entry) {
   const deletedAt = timestamp(entry?.deletedAt);
-  if (!deletedAt) return 'Removed after 30 days';
-  const expiresAt = deletedAt + (30 * 24 * 60 * 60 * 1000);
-  const days = Math.max(0, Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
-  return days === 0 ? 'Removed today' : `${days} ${days === 1 ? 'day' : 'days'} left`;
+  if (!deletedAt) return 'In Recently Deleted';
+  return `Deleted ${new Date(deletedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
 function detailsForEntry(entry) {
@@ -546,7 +544,7 @@ export default function LibraryWorkspace({
         {lib.allLibTags.map((tag) => <button key={tag} type="button" aria-pressed={smartView === 'tag' && lib.activeTag === tag} onClick={() => { setSmartView('tag'); setCheckedIds([]); setSelectedId(null); lib.setActiveCollection(null); lib.setActiveTag(tag); if (compact) setDrawerOpen(false); }}>#{tag}</button>)}
       </div></section>
       <button type="button" className="pl-trash-link" aria-current={smartView === 'trash' ? 'page' : undefined} onClick={() => chooseView('trash')}><Ic n="Trash2" size={14} /><span>Recently Deleted</span><small>{lib.trash.length}</small></button>
-      <small className="pl-trash-retention-note">Items are permanently removed after 30 days.</small>
+      <small className="pl-trash-retention-note">Items stay here until you restore or permanently delete them.</small>
     </aside>
 
     {drawerResizable && <PanelResizer
@@ -626,7 +624,7 @@ export default function LibraryWorkspace({
             </div>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
               <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
-              <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
+              <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashRemovalLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
               {lib.sortBy === 'manual' && !['trash', 'recent', 'frequent'].includes(smartView) && <>

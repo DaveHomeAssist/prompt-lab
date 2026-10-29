@@ -99,3 +99,24 @@ it('keeps IDs when reimporting unchanged legacy records without timestamps', () 
   expect(second.runs[0].id).toBe('run');
   expect(second.testCases[0].id).toBe('case');
 });
+
+it('compares complete run and case content independently of object field order', () => {
+  const source = {
+    library: [prompt('prompt')],
+    runs: [{ id: 'run', promptId: 'prompt', output: 'Output', future: { a: 1, b: 2 } }],
+    testCases: [{ id: 'case', promptId: 'prompt', input: 'Input', future: { a: 1, b: 2 } }],
+  };
+  const first = prepareWorkspaceImport(source);
+  const reordered = structuredClone(source);
+  for (const records of [reordered.runs, reordered.testCases]) records[0].future = { b: 2, a: 1 };
+  const same = prepareWorkspaceImport(reordered, first);
+  expect(same.runs[0].id).toBe('run');
+  expect(same.testCases[0].id).toBe('case');
+  reordered.runs[0].future.b = 3;
+  reordered.testCases[0].future.b = 3;
+  const different = prepareWorkspaceImport(reordered, first);
+  expect(different.runs[0].id).not.toBe('run');
+  expect(different.testCases[0].id).not.toBe('case');
+  expect(different.runs[0].future.b).toBe(3);
+  expect(different.testCases[0].future.b).toBe(3);
+});

@@ -40,7 +40,6 @@ import { listEvalRuns, listTestCases, saveEvalRun, saveTestCase } from '../exper
 import { getNewestSortTimestamp, sortLibraryEntries } from '../lib/librarySort.js';
 
 const VALID_SORTS = ['newest', 'oldest', 'most-used', 'a-z', 'z-a', 'group', 'manual'];
-const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const LIBRARY_CONFLICT_MESSAGE = 'Library changed in another tab. Latest changes loaded. Review and retry, or save your editor draft as a new prompt.';
 
 function recordClock(entry) {
@@ -56,9 +55,8 @@ function stampRecordMutation(previous, next) {
   return normalizeEntry({ ...stamped, completeness: null }, updatedAt) || stamped;
 }
 
-export function isTrashEntryRestorable(entry, now = Date.now()) {
-  const deletedAt = new Date(entry?.deletedAt || 0).getTime();
-  return Number.isFinite(deletedAt) && deletedAt >= now - TRASH_RETENTION_MS;
+export function isTrashEntryRestorable(entry) {
+  return Boolean(entry?.id);
 }
 
 function reconcileLibraryRecords(localLibrary, localTrash, storedLibrary, storedTrash) {
@@ -259,10 +257,7 @@ export default function usePromptLibrary(notify) {
     ), deletionState.generation);
     librarySnapshotRef.current.library = initialLibrary;
     const storedTrash = normalizeLibrary(loadJson(storageKeys.trash, []));
-    const expiredIds = storedTrash.filter((entry) => !isTrashEntryRestorable(entry)).map((entry) => entry.id);
-    try { markLibraryDeleted(expiredIds); } catch { notifyRef.current?.('Expired prompt cleanup could not be saved.'); }
-    const initialTrash = stampLibraryGeneration(filterDeletedLibraryRecords(storedTrash)
-      .filter((entry) => isTrashEntryRestorable(entry)), deletionState.generation);
+    const initialTrash = stampLibraryGeneration(filterDeletedLibraryRecords(storedTrash), deletionState.generation);
     const storedCollections = loadJson(storageKeys.collections, null);
     const derivedCollections = deriveCollectionsFromLibrary(initialLibrary);
     const initialCollections = Array.isArray(storedCollections)
@@ -336,23 +331,6 @@ export default function usePromptLibrary(notify) {
 
   useEffect(() => {
     if (!libReady) return undefined;
-    const purgeExpiredTrash = () => {
-      const expiredIds = trashRef.current.filter((entry) => !isTrashEntryRestorable(entry)).map((entry) => entry.id);
-      if (!expiredIds.length) return;
-      try { markLibraryDeleted(expiredIds); } catch {
-        notifyRef.current?.('Expired prompt cleanup could not be saved.');
-        return;
-      }
-      const nextTrash = filterDeletedLibraryRecords(trashRef.current);
-      trashRef.current = nextTrash;
-      setTrash(nextTrash);
-    };
-    const intervalId = window.setInterval(purgeExpiredTrash, 60 * 60 * 1000);
-    return () => window.clearInterval(intervalId);
-  }, [libReady]);
-
-  useEffect(() => {
-    if (!libReady) return undefined;
     const timeoutId = window.setTimeout(() => {
       saveJson(storageKeys.collections, collections);
     }, 120);
@@ -384,7 +362,7 @@ export default function usePromptLibrary(notify) {
       );
       reconciled.library = filterDeletedLibraryRecords(reconciled.library, deletionState);
       libraryRef.current = reconciled.library;
-      const retainedTrash = filterDeletedLibraryRecords(reconciled.trash, deletionState).filter((entry) => isTrashEntryRestorable(entry));
+      const retainedTrash = filterDeletedLibraryRecords(reconciled.trash, deletionState);
       trashRef.current = retainedTrash;
       setLibrary(reconciled.library);
       setTrash(retainedTrash);
@@ -647,17 +625,6 @@ export default function usePromptLibrary(notify) {
   const restoreDeleted = (id) => {
     const entry = trashRef.current.find((item) => item.id === id);
     if (!entry) return null;
-    if (!isTrashEntryRestorable(entry)) {
-      try { markLibraryDeleted([id]); } catch {
-        notify('Expired prompt cleanup could not be saved.');
-        return null;
-      }
-      const nextTrash = trashRef.current.filter((item) => item.id !== id);
-      trashRef.current = nextTrash;
-      setTrash(nextTrash);
-      notify('This prompt has passed the 30-day recovery window and cannot be restored.');
-      return null;
-    }
     const restoredAt = new Date().toISOString();
     const restored = normalizeEntry({
       ...entry,
@@ -1286,10 +1253,7 @@ export default function usePromptLibrary(notify) {
     reader.onload = async (readEvent) => {
       try {
         const parsed = JSON.parse(readEvent.target.result);
-        const retained = Array.isArray(parsed) ? parsed : {
-          ...parsed, trash: Array.isArray(parsed?.trash) ? parsed.trash.filter(entry => isTrashEntryRestorable(entry)) : parsed?.trash,
-        };
-        const source = normalizeWorkspaceImportSource(retained);
+        const source = normalizeWorkspaceImportSource(parsed);
         const context = await readImportContext();
         if (readId !== importReadRef.current) return;
         showImportPreview({ ...buildWorkspaceImportPreview(source, context), fileName: file.name || 'Selected JSON' });

@@ -12,7 +12,7 @@ function normalizeEntityId(value) {
 function normalizeVerdict(value) { return VERDICT_VALUES.includes(value) ? value : null; }
 function normalizeStatus(value) { return EVAL_STATUSES.includes(value) ? value : 'success'; }
 function normalizeTraitStringList(value) {
-  return Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean).slice(0, 12) : [];
+  return Array.isArray(value) ? value.map(item => String(item || '').trim()).filter(Boolean) : [];
 }
 export function normalizeTraitResults(value) {
   if (!value || typeof value !== 'object') return null;
@@ -21,23 +21,24 @@ export function normalizeTraitResults(value) {
   const excludedHits = normalizeTraitStringList(value.excludedHits);
   const verdict = value.verdict === 'pass' || value.verdict === 'fail' ? value.verdict : null;
   if (!verdict && passedTraits.length === 0 && failedTraits.length === 0 && excludedHits.length === 0) return null;
-  return { passedTraits, failedTraits, excludedHits, verdict };
+  return { ...value, passedTraits, failedTraits, excludedHits, verdict };
 }
 
 export function normalizeEvalRunRecord(record) {
   const status = normalizeStatus(record.status);
-  // New budgeted runs must not silently lose their last instructions in history.
-  // Legacy record normalization stays unchanged for existing export contracts.
+  // Storage retains complete content for every supported record generation.
   const modern = record.schemaVersion === 2;
   const budgeted = Number.isFinite(record.requestedOutputTokens) && record.requestedOutputTokens > 0;
-  const retainText = (value, legacyLimit) => modern || budgeted ? String(value || '') : String(value || '').slice(0, legacyLimit);
+  const retainText = value => String(value || '');
   const candidates = Array.isArray(record.candidates)
     ? record.candidates.map((candidate, index) => ({
+      ...candidate,
       id: String(candidate?.id || `candidate-${index + 1}`),
-      label: String(candidate?.label || `Candidate ${index + 1}`).slice(0, 80),
-      content: retainText(candidate?.content, 20000),
-    })).filter(candidate => candidate.content.trim()).slice(0, 8) : [];
+      label: String(candidate?.label || `Candidate ${index + 1}`),
+      content: retainText(candidate?.content),
+    })).filter(candidate => candidate.content.trim()) : [];
   return {
+    ...record,
     id: record.id || crypto.randomUUID(),
     createdAt: record.createdAt || new Date().toISOString(),
     promptId: normalizeEntityId(record.promptId), promptVersionId: normalizeEntityId(record.promptVersionId),
@@ -46,9 +47,9 @@ export function normalizeEvalRunRecord(record) {
     enhanceMode: String(record.enhanceMode || '').trim(),
     provider: String(record.provider || 'unknown').trim() || 'unknown',
     model: String(record.model || 'unknown').trim() || 'unknown', variantLabel: String(record.variantLabel || '').trim(),
-    input: retainText(record.input, 12000), output: retainText(record.output, 20000),
+    input: retainText(record.input), output: retainText(record.output),
     latencyMs: Number.isFinite(record.latencyMs) ? Math.max(0, Math.round(record.latencyMs)) : 0,
-    verdict: normalizeVerdict(record.verdict), notes: String(record.notes || '').slice(0, 2000), status,
+    verdict: normalizeVerdict(record.verdict), notes: String(record.notes || ''), status,
     testCaseId: normalizeEntityId(record.testCaseId),
     goldenScore: Number.isFinite(record.goldenScore) ? Math.max(0, Math.min(1, record.goldenScore)) : null,
     traitResults: normalizeTraitResults(record.traitResults), regression: record.regression === true,
@@ -58,23 +59,24 @@ export function normalizeEvalRunRecord(record) {
     ...(modern ? { schemaVersion: 2, primaryId: String(record.primaryId || candidates[0]?.id || '') } : {}),
     ...(budgeted ? { requestedOutputTokens: Math.round(record.requestedOutputTokens) } : {}),
     ...(record.metadataIncomplete === true ? { metadataIncomplete: true } : {}),
-    changeSummary: String(record.changeSummary || '').slice(0, 500),
+    changeSummary: String(record.changeSummary || ''),
     changes: normalizeSemanticChanges(record.changes), assumptions: normalizeAssumptions(record.assumptions),
     reversibleEdits: normalizeReversibleEdits(record.reversibleEdits || record.reversible_edits, normalizeAssumptions(record.assumptions)),
-    reasoning: String(record.reasoning || '').slice(0, 2000), tags: normalizeTagList(record.tags), usage: normalizeTokenUsage(record.usage),
+    reasoning: String(record.reasoning || ''), tags: normalizeTagList(record.tags), usage: normalizeTokenUsage(record.usage),
   };
 }
 
 export function normalizeTestCaseRecord(record) {
   const now = new Date().toISOString();
   return {
+    ...record,
     id: record.id || crypto.randomUUID(), promptId: normalizeEntityId(record.promptId),
-    title: String(record.title || 'Untitled case').trim() || 'Untitled case', input: String(record.input || '').slice(0, 12000),
+    title: String(record.title || 'Untitled case').trim() || 'Untitled case', input: String(record.input || ''),
     expectedTraits: Array.isArray(record.expectedTraits)
-      ? record.expectedTraits.map(item => String(item || '').trim()).filter(Boolean).slice(0, 12) : [],
+      ? record.expectedTraits.map(item => String(item || '').trim()).filter(Boolean) : [],
     expectedExclusions: Array.isArray(record.expectedExclusions)
-      ? record.expectedExclusions.map(item => String(item || '').trim()).filter(Boolean).slice(0, 12) : [],
-    notes: String(record.notes || '').slice(0, 2000), createdAt: record.createdAt || now, updatedAt: record.updatedAt || now,
+      ? record.expectedExclusions.map(item => String(item || '').trim()).filter(Boolean) : [],
+    notes: String(record.notes || ''), createdAt: record.createdAt || now, updatedAt: record.updatedAt || now,
   };
 }
 

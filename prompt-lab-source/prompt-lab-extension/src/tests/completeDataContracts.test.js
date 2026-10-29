@@ -71,7 +71,7 @@ describe('complete post-enhance data contracts', () => {
       }),
     ]);
     expect(normalized.tags).toEqual(['Code', 'handoff']);
-    expect(normalized.usage).toEqual({ input: 31, output: 17, total: 48 });
+    expect(normalized.usage).toEqual({ inputTokens: 31, outputTokens: 17, input: 31, output: 17, total: 48 });
   });
 
   it('round-trips the selected candidate and structured result fields through run history', () => {

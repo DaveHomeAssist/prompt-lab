@@ -34,7 +34,7 @@ test('normalize applies the current experiment defaults', () => {
   assert.equal(result.notes, '');
 });
 
-test('normalize preserves current arena fields and bounds the input snapshot', () => {
+test('normalize preserves current arena fields and the complete input snapshot', () => {
   const result = normalizeExperimentRecord({
     id: 'exp-1',
     createdAt: '2026-02-20T10:00:00.000Z',
@@ -47,7 +47,7 @@ test('normalize preserves current arena fields and bounds the input snapshot', (
 
   assert.equal(result.id, 'exp-1');
   assert.equal(result.variants.length, 3);
-  assert.equal(result.keyInputSnapshot.length, 1200);
+  assert.equal(result.keyInputSnapshot, 'x'.repeat(2000));
   assert.deepEqual(result.outcome, { winnerVariantId: 'C' });
   assert.equal(result.notes, 'C was strongest');
 });

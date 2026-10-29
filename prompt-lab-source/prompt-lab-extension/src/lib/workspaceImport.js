@@ -4,6 +4,13 @@ import { normalizeEvalRunRecord, normalizeTestCaseRecord } from './evalSchema.js
 import { normalizeFollowUpOrigin } from './followUpProvenance.js';
 import { mergeLibraryEntries } from './libraryMatching.js';
 
+// JSON field order is not a content change. Preserve unknown fields while
+// comparing normalized records from differently ordered exports and stores.
+function recordFingerprint(value) {
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+}
+
 function reference(value, label) {
   if (value == null || value === '') return null;
   if (typeof value !== 'string' || !value.trim()) throw new Error(`${label} must be a nonempty string or null.`);
@@ -84,7 +91,7 @@ export function prepareWorkspaceImport(parsed, {
       updatedAt: record.updatedAt || previous?.updatedAt,
     });
     const existing = testCases.find((row) => row.id === normalized.id);
-    if (existing && JSON.stringify(normalizeTestCaseRecord(existing)) !== JSON.stringify(normalized)) normalized.id = crypto.randomUUID();
+    if (existing && recordFingerprint(normalizeTestCaseRecord(existing)) !== recordFingerprint(normalized)) normalized.id = crypto.randomUUID();
     if (record.id) caseIdMap.set(record.id, normalized.id);
     return normalized;
   });
@@ -110,7 +117,7 @@ export function prepareWorkspaceImport(parsed, {
     const previous = runs.find((row) => row.id === record.id);
     const normalized = normalizeEvalRunRecord({
       ...record, promptId, promptVersionId, testCaseId, createdAt: record.createdAt || previous?.createdAt,
-      // Preserve the source reference even when a long existing note needs truncation.
+      // Preserve the source reference alongside the complete existing note.
       notes: [note, record.notes].filter(Boolean).join('\n'),
     });
     const existing = runs.find((row) => row.id === normalized.id);
@@ -118,7 +125,7 @@ export function prepareWorkspaceImport(parsed, {
       ...normalized, promptId: existing.promptId, promptVersionId: existing.promptVersionId,
       testCaseId: existing.testCaseId || null, notes: existing.notes || '',
     };
-    if (existing && JSON.stringify(normalizeEvalRunRecord(existing)) !== JSON.stringify(originalAssociations)) normalized.id = crypto.randomUUID();
+    if (existing && recordFingerprint(normalizeEvalRunRecord(existing)) !== recordFingerprint(originalAssociations)) normalized.id = crypto.randomUUID();
     if (record.id) runIdMap.set(record.id, normalized.id);
     return normalized;
   });

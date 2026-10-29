@@ -118,7 +118,7 @@ export async function saveRunRecord(record) {
 async function persistRunRecord(record, permit) {
   const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    const next = [record, ...readFallback(RUNS_LS_KEY).filter((row) => row.run_id !== record.run_id)].slice(0, 1000);
+    const next = [record, ...readFallback(RUNS_LS_KEY).filter((row) => row.run_id !== record.run_id)];
     writeFallback(RUNS_LS_KEY, next, permit);
     return record;
   }
@@ -144,11 +144,12 @@ export async function listRunsByTrace(traceId) {
 
 export function normalizeExperimentRecord(record) {
   return {
+    ...record,
     id: record.id || crypto.randomUUID(),
     createdAt: record.createdAt || new Date().toISOString(),
     label: String(record.label || 'Untitled experiment').trim(),
     variants: Array.isArray(record.variants) ? record.variants : [],
-    keyInputSnapshot: String(record.keyInputSnapshot || '').slice(0, 1200),
+    keyInputSnapshot: String(record.keyInputSnapshot || ''),
     outcome: record.outcome || { winnerVariantId: null },
     notes: String(record.notes || ''),
   };
@@ -163,7 +164,7 @@ async function persistExperiment(normalized, permit) {
   const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(EXPERIMENT_LS_KEY).filter((entry) => entry.id !== normalized.id);
-    const next = [normalized, ...existing].slice(0, 500);
+    const next = [normalized, ...existing];
     writeFallback(EXPERIMENT_LS_KEY, next, permit);
     return normalized;
   }
@@ -222,7 +223,7 @@ export async function saveEvalRun(record) {
 async function persistEvalRun(normalized, permit) {
   const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
-    const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY).filter((entry) => entry.id !== normalized.id)].slice(0, 1000);
+    const next = [normalized, ...readFallback(EVAL_RUN_LS_KEY).filter((entry) => entry.id !== normalized.id)];
     writeFallback(EVAL_RUN_LS_KEY, next, permit);
     signalEvalRunsChanged(normalized.id);
     return normalized;
@@ -285,7 +286,7 @@ async function persistTestCase(normalized, permit) {
   const db = await openDb(permit).catch((e) => { logWarn('IndexedDB unavailable', e); return null; });
   if (!db) {
     const existing = readFallback(TEST_CASE_LS_KEY).filter((entry) => entry.id !== normalized.id);
-    const next = [normalized, ...existing].slice(0, 1000);
+    const next = [normalized, ...existing];
     writeFallback(TEST_CASE_LS_KEY, next, permit);
     return normalized;
   }
