@@ -10,7 +10,7 @@ import { captureSourceInventory } from '../../library-storage/source-inventory.m
 
 const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const storePath = '/prompt-lab-extension/src/lib/libraryCommandOutbox.js';
-const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request'].map(name => `/library-storage/${name}.mjs`)];
+const modulePaths = [storePath, ...['command-client', 'command-outbox', 'contract', 'content-keys', 'edit-request', 'create-request'].map(name => `/library-storage/${name}.mjs`)];
 const content = { library: [{ id: 'prompt', original: 'Complete $& {{input}}', unknown: { preserved: true },
   versions: Array.from({ length: 41 }, (_, n) => ({ id: `v${n}`, original: `Version ${n}` })) }],
   runs: Array.from({ length: 1002 }, (_, n) => ({ id: `r${n}`, output: `Run ${n}`, unknown: n })), backups: [{ name: 'Preserved' }] };
@@ -53,7 +53,7 @@ async function boot(page, options) {
   }, { options, storePath });
 }
 
-test('an ordinary prompt edit survives browser restart and commits through the shared API once', async () => {
+for (const mode of ['edit', 'create']) test(`an ordinary prompt ${mode} survives browser restart and commits through the shared API once`, async () => {
   const credential = { token: 'disposable-edit-browser-token-'.repeat(2), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 };
   const adapter = createMemoryAdapter(), api = createLocalApi({ adapter, libraryId: 'lib', credentials: [credential], allowedOrigins: [origin] });
   const baseUrl = await api.listen(), options = { baseUrl, libraryId: 'lib', token: credential.token };
@@ -69,7 +69,9 @@ test('an ordinary prompt edit survives browser restart and commits through the s
     const selectedReceipt = await api.service.apply({ ...selected, idempotencyKey: 'select' });
     const records = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: selectedReceipt.revision, domain: 'prompts' });
     const row = records.items[0], group = records.groups.find(group => group.selected === row.key);
-    const request = { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
+    const request = mode === 'create' ? { libraryId: 'lib', expectedRevision: selectedReceipt.revision, sourceBinding: imported.sourceBinding,
+      creationId: 'browser-created', createdAt: '2026-10-29T12:00:00.000Z', record: { original: 'Browser creation with $& {{input}}', unknown: { preserved: true } }, mode }
+      : { libraryId: 'lib', expectedRevision: selectedReceipt.revision, groupId: group.id, expectedRecordHash: row.valueHash,
       editedAt: '2026-10-29T12:00:00.000Z', updates: [{ path: ['original'], value: 'Browser edit with $& {{input}}' }], mode: 'edit' };
     context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true });
     let page = await context.newPage(); await boot(page, options);
@@ -82,9 +84,12 @@ test('an ordinary prompt edit survives browser restart and commits through the s
     expect(committed.state).toBe('committed');
     expect(await page.evaluate(() => outbox.replay('lib', 'browser-edit', transport))).toEqual(committed);
     const current = await api.service.currentRecords({ libraryId: 'lib', expectedRevision: committed.receipt.revision, domain: 'prompts' });
-    expect(current.items[0].value.original).toBe('Browser edit with $& {{input}}');
-    expect(current.items[0].value.versions).toHaveLength(42);
-    expect(current.items[0].value.unknown).toEqual(content.library[0].unknown);
+    const result = mode === 'create' ? current.items.find(item => item.sourceId !== 'prompt') : current.items[0];
+    expect(current.total).toBe(mode === 'create' ? 2 : 1);
+    expect(result.value.original).toBe(mode === 'create' ? 'Browser creation with $& {{input}}' : 'Browser edit with $& {{input}}');
+    expect(result.value.versions).toHaveLength(mode === 'create' ? 0 : 42);
+    expect(result.value.unknown).toEqual(content.library[0].unknown);
+    if (mode === 'create') expect(current.items.find(item => item.sourceId === 'prompt').value).toEqual(workspace.library[0]);
     expect(Object.keys((await adapter.read()).operations)).toHaveLength(3);
   } finally { await context?.close(); await api.close(); await rm(profile, { recursive: true, force: true }); }
 });

@@ -24,7 +24,7 @@ async function ancestrySources(objects, revision) {
     if (seen.has(id)) continue;
     seen.add(id);
     const commit = await readObject(objects, id, 'commit');
-    if (!['restore', 'reconcile', 'select', 'edit'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
+    if (!['restore', 'reconcile', 'select', 'edit', 'create'].includes(commit.operation)) sources.push({ source: commit.source, workspace: commit.operation === 'import' ? commit.inputState : commit.state });
     pending.push(...commit.parents);
   }
   return sources;

@@ -184,7 +184,7 @@ export async function buildVerifiedDomainMap(pkg, verified) {
     visited.add(revision);
     const commit = await readObject(pkg.objects, revision, 'commit');
     for (const parent of commit.parents) await ancestry(parent);
-    if (['restore', 'reconcile', 'select', 'edit'].includes(commit.operation)) return;
+    if (['restore', 'reconcile', 'select', 'edit', 'create'].includes(commit.operation)) return;
     const pair = { source: commit.source, workspace: commit.inputState ?? commit.state };
     sourcePairs.set(canonical(pair), pair);
   }

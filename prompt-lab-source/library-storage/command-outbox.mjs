@@ -1,17 +1,22 @@
 import { canonical, hash, LibraryError } from './contract.mjs';
+import { normalizeCreateRequest } from './create-request.mjs';
 import { normalizeEditRequest } from './edit-request.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
-const modes = ['snapshot', 'import', 'select', 'restore', 'reconcile', 'edit'];
+const modes = ['snapshot', 'import', 'select', 'restore', 'reconcile', 'edit', 'create'];
 
 export function normalizeCommandRequest(value) {
   if (!object(value) || !modes.includes(value.mode) || !id(value.libraryId)
     || (value.expectedRevision !== null && !address(value.expectedRevision))) fail('INVALID_COMMAND', 'A library, base revision and supported command are required.');
   canonical(value);
   const request = structuredClone(value), mode = request.mode;
+  if (mode === 'create') {
+    const { mode: operation, ...input } = request;
+    return { ...normalizeCreateRequest(input), mode: operation };
+  }
   if (mode === 'edit') {
     const { mode: operation, ...input } = request;
     return { ...normalizeEditRequest(input), mode: operation };

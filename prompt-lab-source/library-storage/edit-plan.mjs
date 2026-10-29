@@ -9,7 +9,7 @@ export { normalizeEditRequest } from './edit-request.mjs';
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
 
-function validateChangedFields(value, updates) {
+export function validateChangedFields(value, updates, code = 'INVALID_EDIT') {
   const strings = new Set(['title', 'original', 'enhanced', 'prompt', 'content', 'notes', 'description', 'collection', 'folderId', 'kind', 'sourceNoteId']);
   for (const key of new Set(updates.map(update => update.path[0]))) {
     const field = value[key];
@@ -20,7 +20,7 @@ function validateChangedFields(value, updates) {
       || (key === 'metadata' && !object(field))
       || (['resultMeta', 'goldenResponse'].includes(key) && field !== null && !object(field))
       || (key === 'goldenThreshold' && (typeof field !== 'number' || field < 0 || field > 1))
-      || (key === 'useCount' && (!Number.isSafeInteger(field) || field < 0))) fail('INVALID_EDIT', 'A changed prompt field has an unsupported value type.');
+      || (key === 'useCount' && (!Number.isSafeInteger(field) || field < 0))) fail(code, 'A changed prompt field has an unsupported value type.');
   }
 }
 

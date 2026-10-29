@@ -975,6 +975,62 @@
           }
         ]
       }
+    },
+    "/v1/library/creations": {
+      "post": {
+        "summary": "Review a new prompt in an explicitly bound source identity",
+        "operationId": "postV1LibraryCreations",
+        "x-implementation-status": "candidate",
+        "responses": {
+          "201": {
+            "description": "Review with suppressed selections and evidence gaps; commitAvailable is true only when unresolved is zero.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Missing, expired or revoked credential"
+          },
+          "403": {
+            "description": "Wrong scope, host or origin"
+          },
+          "409": {
+            "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
+          },
+          "413": {
+            "description": "Payload exceeds 64 MiB; never silently truncate"
+          },
+          "429": {
+            "description": "Request limit; Retry-After in seconds"
+          },
+          "503": {
+            "description": "Missing/corrupt/unavailable store; retain draft"
+          }
+        },
+        "description": "Requires write scope and an existing reviewed library, including a reviewed empty capture. Pin its revision and an existing verified source binding. A stable creationId derives a unique prompt ID; retained or deleted identity reuse is rejected. Draft fields and unknown metadata are preserved; ID, timestamps, generation and initial history are service-owned. No browser capture is fabricated. Commit through the ordinary idempotent route; recovery views reject creation with RECOVERY_ONLY. Native activation remains separately gated.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRequest"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/FolderBranch"
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1005,7 +1061,8 @@
               "reconciliation-plan",
               "branch-transfer",
               "current-view-plan",
-              "prompt-edit-plan"
+              "prompt-edit-plan",
+              "prompt-create-plan"
             ]
           },
           "data": {}
@@ -1091,7 +1148,8 @@
               "restore",
               "reconcile",
               "select",
-              "edit"
+              "edit",
+              "create"
             ]
           },
           "importPlan": {
@@ -1130,6 +1188,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "editPlan": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "createPlan": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
           }
@@ -1419,6 +1481,79 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "operation"
+              ],
+              "properties": {
+                "operation": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "createPlan",
+                "inputState"
+              ],
+              "properties": {
+                "parents": {
+                  "minItems": 1,
+                  "maxItems": 1
+                }
+              },
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "sourceBinding"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "selectionPolicy"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "importPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restorePlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "restoredCheckpointId"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "reconciliationPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "incomingBranch"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "currentViewPlan"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "editPlan"
+                    ]
+                  }
+                ]
+              }
+            }
           }
         ]
       },
@@ -1463,7 +1598,8 @@
               "restore",
               "reconcile",
               "select",
-              "edit"
+              "edit",
+              "create"
             ]
           },
           "commitAvailable": {
@@ -1498,6 +1634,9 @@
           },
           "editPlan": {
             "$ref": "#/components/schemas/EditPlan"
+          },
+          "createPlan": {
+            "$ref": "#/components/schemas/CreatePlan"
           }
         },
         "required": [
@@ -1797,6 +1936,59 @@
                 ]
               }
             }
+          },
+          {
+            "if": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "create"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "createPlan"
+              ],
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "createPlan": {
+                        "properties": {
+                          "unresolved": {
+                            "const": 0
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": true
+                      }
+                    }
+                  },
+                  "else": {
+                    "properties": {
+                      "commitAvailable": {
+                        "const": false
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "createPlan"
+                ]
+              }
+            }
           }
         ]
       },
@@ -1856,7 +2048,8 @@
               "restore",
               "reconcile",
               "select",
-              "edit"
+              "edit",
+              "create"
             ]
           },
           "stateHash": {
@@ -4897,6 +5090,159 @@
               "mode"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "libraryId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "expectedRevision": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sourceBinding": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "creationId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+              },
+              "record": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "original": {
+                    "type": "string"
+                  },
+                  "enhanced": {
+                    "type": "string"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "collection": {
+                    "type": "string"
+                  },
+                  "folderId": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string"
+                  },
+                  "sourceNoteId": {
+                    "type": "string"
+                  },
+                  "favorite": {
+                    "type": "boolean"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "not": {
+                      "required": [
+                        "libraryGeneration"
+                      ]
+                    }
+                  },
+                  "goldenThreshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "useCount": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "variants": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "testCases": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "inputs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object"
+                    }
+                  },
+                  "resultMeta": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  },
+                  "goldenResponse": {
+                    "type": [
+                      "object",
+                      "null"
+                    ]
+                  }
+                },
+                "propertyNames": {
+                  "not": {
+                    "enum": [
+                      "id",
+                      "versions",
+                      "currentVersionId",
+                      "createdAt",
+                      "updatedAt",
+                      "updated_at",
+                      "schema_version",
+                      "schemaVersion",
+                      "version",
+                      "deletedAt",
+                      "tombstoneVersion"
+                    ]
+                  }
+                },
+                "additionalProperties": true
+              },
+              "mode": {
+                "const": "create"
+              }
+            },
+            "required": [
+              "libraryId",
+              "expectedRevision",
+              "sourceBinding",
+              "creationId",
+              "createdAt",
+              "record",
+              "mode"
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -5420,7 +5766,10 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "previousMember": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -5454,7 +5803,18 @@
             "pattern": "^sha256:[a-f0-9]{64}$"
           },
           "derivedSource": {
-            "$ref": "#/components/schemas/DerivedSource"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedSource"
+              },
+              {
+                "properties": {
+                  "previousMember": {
+                    "type": "string"
+                  }
+                }
+              }
+            ]
           },
           "manifest": {
             "$ref": "#/components/schemas/LibraryState"
@@ -5486,6 +5846,227 @@
           "unresolved",
           "activationReady",
           "fingerprint"
+        ],
+        "additionalProperties": false
+      },
+      "CreateRequest": {
+        "type": "object",
+        "properties": {
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expectedRevision": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "sourceBinding": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "creationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+          },
+          "record": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "original": {
+                "type": "string"
+              },
+              "enhanced": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "collection": {
+                "type": "string"
+              },
+              "folderId": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string"
+              },
+              "sourceNoteId": {
+                "type": "string"
+              },
+              "favorite": {
+                "type": "boolean"
+              },
+              "tags": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "metadata": {
+                "type": "object",
+                "not": {
+                  "required": [
+                    "libraryGeneration"
+                  ]
+                }
+              },
+              "goldenThreshold": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "useCount": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "variants": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "testCases": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "resultMeta": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              },
+              "goldenResponse": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            },
+            "propertyNames": {
+              "not": {
+                "enum": [
+                  "id",
+                  "versions",
+                  "currentVersionId",
+                  "createdAt",
+                  "updatedAt",
+                  "updated_at",
+                  "schema_version",
+                  "schemaVersion",
+                  "version",
+                  "deletedAt",
+                  "tombstoneVersion"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "libraryId",
+          "expectedRevision",
+          "sourceBinding",
+          "creationId",
+          "createdAt",
+          "record"
+        ],
+        "additionalProperties": false
+      },
+      "CreatePlan": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "const": "promptlab-prompt-create-plan"
+          },
+          "schemaVersion": {
+            "const": 1
+          },
+          "request": {
+            "$ref": "#/components/schemas/CreateRequest"
+          },
+          "source": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "inputState": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "derivedSource": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DerivedSource"
+              },
+              {
+                "properties": {
+                  "previousMember": {
+                    "const": null
+                  }
+                }
+              }
+            ]
+          },
+          "manifest": {
+            "$ref": "#/components/schemas/LibraryState"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "activationReady": {
+            "const": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "createdId": {
+            "type": "string",
+            "pattern": "^p-[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "format",
+          "schemaVersion",
+          "request",
+          "source",
+          "inputState",
+          "derivedSource",
+          "manifest",
+          "currentViewPlan",
+          "unresolved",
+          "activationReady",
+          "fingerprint",
+          "createdId"
         ],
         "additionalProperties": false
       }

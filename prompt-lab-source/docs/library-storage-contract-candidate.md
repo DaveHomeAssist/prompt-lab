@@ -1,5 +1,30 @@
 # Library storage contract candidate
 
+## Shared prompt creation
+
+Creating a prompt must use the same reviewed command, durable queue and receipt
+as editing one. Bind creation to the current library revision and an existing
+verified source identity, including a reviewed empty app capture. A stable
+creation identity determines the new prompt ID. Reject reuse across retained
+records or deletion evidence; identical content with a distinct identity remains
+a distinct prompt. Do not fabricate a browser capture or infer a destination
+from whichever source happens to be first.
+
+Retain all supplied draft fields and unknown metadata. Identity, timestamps,
+deletion generation and initial history are service-owned. Reject caller-supplied
+values for these fields instead of silently discarding them. Keep every existing
+prompt, related domain selection, source object, backup and receipt unchanged.
+Create a recovery checkpoint before publication. Later edits, branch merges,
+restore and transfer must understand the newly derived source ancestry.
+
+Acceptance covers creation in an empty reviewed library, intentional duplicate
+content, identity collisions, stale or unreviewed input, concurrent creations,
+clear/deletion evidence, interrupted publication, restart/idempotency and actual
+browser queue recovery. Test a disposable copy of the complete private export on
+its Mac and synthetic fixtures on Dominic. Trash, permanent deletion and their
+restore semantics remain the next ordinary command work; native activation,
+app writer integration and actual iCloud acceptance remain separate gates.
+
 ## Shared prompt edit command
 
 The app currently writes prompts directly to its legacy stores. The shared
