@@ -1,5 +1,19 @@
 # Library storage contract candidate
 
+## Complete chain output history
+
+Chain execution passed complete output to the next step but saved only its first
+4,000 characters in the execution trace. Preserve the complete successful output
+through the existing event and persistence path, including when a later step
+fails or is canceled. Keep display limits separate from stored history. This
+changes no provider request, input capture, storage schema or activation policy.
+
+Acceptance compares long Unicode outputs with both trace reads and serialized
+storage, checks later success/failure/cancellation, and imports an isolated trace
+derived from the real export into the shared folder service. Existing private
+records and the original export must remain unchanged. Earlier truncated traces
+cannot recover missing content from this change alone.
+
 ## Shared prompt lifecycle
 
 Move to Trash, restore from Trash and permanent deletion must use the same
