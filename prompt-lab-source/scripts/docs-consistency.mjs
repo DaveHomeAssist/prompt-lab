@@ -118,10 +118,16 @@ async function checkRoutes() {
       fail(contract, `${decisionsPath} As-shipped table has no row for shipped route ${route}`);
       continue;
     }
+    // `canonical` names the route an alias settles on, not a state, so it is
+    // matched as a written route (`/`) rather than as a word token.
+    const { canonical, ...stateFields } = states.get(route) ?? {};
     const expected = [...new Set(
-      Object.values(states.get(route) ?? {}).filter((value) => typeof value === 'string' && value),
+      Object.values(stateFields).filter((value) => typeof value === 'string' && value),
     )];
     const absent = expected.filter((token) => !new RegExp(`\\b${token}\\b`).test(stateCell));
+    if (typeof canonical === 'string' && canonical && !stateCell.includes(`\`${canonical}\``)) {
+      absent.push(`canonical ${canonical}`);
+    }
     if (absent.length > 0) {
       fail(
         contract,

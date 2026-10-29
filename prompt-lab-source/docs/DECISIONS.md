@@ -80,6 +80,7 @@ table can be checked against the registry rather than merely read alongside it.
 | `/pad` | `notebook` | Notebook — legacy alias, accepted but never emitted |
 | `/settings` | `settings` | Dialog route — opens Settings over the current workspace |
 | `/account` | `account` | Dialog route — opens the account profile (signed in) or Settings |
+| `/diff` | `create` · `editor` · `diff` · canonical `/` | Write/Diff result tab — alias, settles on `/` |
 
 Differences from the decision as written:
 

@@ -294,7 +294,7 @@ for (const viewport of viewports) {
         const promptList = page.getByRole('listbox', { name: 'Library prompts' });
         await expect(promptList).toBeVisible();
         await expect(promptList.getByRole('option', { name: /Release verification checklist/ })).toBeVisible();
-        await expect(page.getByTestId('dual-selected-preview')).toContainText('Release verification assistant');
+        await expect(page.getByTestId('dual-selected-preview')).toContainText('You are a release verification assistant.');
 
         if (compact) {
           const mobileViews = page.getByRole('tablist', { name: 'Dual pane mobile view' });
