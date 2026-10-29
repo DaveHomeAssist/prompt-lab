@@ -1425,3 +1425,32 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
   .pl-context-summary { flex-wrap: nowrap; }
   .pl-context-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 }
+
+/* Artwork is a separate control, never nested in the Inspect button. */
+.pl-library-results .pl-library-card { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
+.pl-library-card-artwork { grid-column: 2; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.pl-library-card-artwork > button { padding: 0; border-radius: 7px; }
+.pl-library-results .pl-library-card-open { grid-column: 2; }
+.pl-library-results .pl-library-card-actions { grid-column: 2; }
+.pl-library-card-artwork > button:hover { outline: 1px solid var(--pl-brand-ember); }
+.pl-library-card-artwork > button:focus-visible, .pl-artwork-popover button:focus-visible, .pl-artwork-popover input:focus-visible { outline: 2px solid var(--pl-brand-ember-bright); outline-offset: 3px; }
+.pl-library-results.is-gallery .pl-library-card-artwork { flex-direction: column; align-items: stretch; }
+.pl-library-results.is-gallery .pl-library-card-artwork > button:first-child .pl-artwork { width: 100%; height: 7rem; }
+.pl-library-card-artwork .pl-artwork-add { padding: 0.4rem 0.6rem; text-align: center; border: 1px dashed currentColor; }
+.pl-artwork-emoji { font-size: 1.25rem; line-height: 1; }
+.pl-artwork-emoji-input { display: grid; gap: 0.25rem; }
+.pl-artwork-emoji-input input { min-width: 0; width: 100%; }
+.pl-artwork-popover { position: fixed; margin: 0; width: min(360px, calc(100vw - 16px)); max-width: none; max-height: calc(100dvh - 16px); padding: 0.75rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 12px; background: var(--pl-brand-ink); color: var(--pl-brand-paper); box-shadow: 0 12px 40px #0006; overflow: auto; }
+.pl-artwork-popover::backdrop { background: #0005; }
+.pl-artwork-popover header { display: grid; gap: 0.2rem; margin-bottom: 0.6rem; }
+.pl-artwork-popover header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
+.pl-artwork-popover footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
+.pl-artwork-popover footer button { padding: 0.4rem 0.8rem; border: 1px solid currentColor; border-radius: 6px; }
+.pl-artwork-popover [role='alert'] { font-size: 0.8rem; margin-top: 0.5rem; }
+@media (min-width: 701px) {
+  .pl-library-results.is-list .pl-library-card, .pl-library-results.is-compact .pl-library-card { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-rows: auto; }
+  .pl-library-results.is-list .pl-library-card-open, .pl-library-results.is-compact .pl-library-card-open { grid-column: 3; }
+  .pl-library-results.is-list .pl-library-card-actions, .pl-library-results.is-compact .pl-library-card-actions { grid-column: 4; }
+}
+
+.pl-library-card-artwork.is-empty .pl-artwork { color: var(--pl-muted-text); background: color-mix(in srgb, currentColor 6%, transparent); }

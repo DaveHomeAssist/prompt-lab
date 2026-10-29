@@ -18,7 +18,7 @@ const structuredMeta = {
   reasoning: 'The constraints now have a testable form.', provider: 'anthropic', model: 'claude-test',
   latencyMs: 420, usage: { input: 30, output: 18, total: 48 },
 };
-function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), onEnhance = vi.fn(), initialMeta = structuredMeta, splitWorkspace = false }) {
+function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), onEnhance = vi.fn(), initialMeta = structuredMeta, splitWorkspace = false, lastSaveReceipt }) {
   const [enhanced, setEnhanced] = useState('Improved output with assumed audience.');
   const [meta, setMeta] = useState(initialMeta);
   return <PostEnhanceResults m={m} raw="Original output." enhanced={enhanced} setEnhanced={setEnhanced}
@@ -26,10 +26,41 @@ function Harness({ onSaveAsNew = vi.fn(), onSave = vi.fn(), onCopy = vi.fn(), on
     editingId="prompt-1" lib={{ pinGoldenResponse: vi.fn() }} evalRuns={[]} showInlineSaveBar
     saveTitle="Prompt title" setSaveTitle={vi.fn()} suggestedSaveTitle="Prompt title" canSavePanel
     quickSave={onSave} quickSaveAsNew={onSaveAsNew} openSavePanel={vi.fn()}
-    currentEntry={{ id: 'prompt-1', title: 'Prompt title' }} splitWorkspace={splitWorkspace} />;
+    currentEntry={{ id: 'prompt-1', title: 'Prompt title' }} splitWorkspace={splitWorkspace} lastSaveReceipt={lastSaveReceipt} />;
 }
 
 describe('PostEnhanceResults', () => {
+  it('reconciles a failed button save and later edits with acknowledged saves from another entry point', async () => {
+    const onSave = vi.fn().mockResolvedValue(null);
+    const { container, rerender } = render(<Harness onSave={onSave} />);
+    const bar = container.querySelector('.pl-result-commit-bar');
+    fireEvent.click(screen.getByTestId('save-to-library'));
+    await waitFor(() => expect(bar).toHaveTextContent('Save failed.'));
+    const receipt = { entryId: 'prompt-1', title: 'Prompt title', versionNumber: 2, resultSnapshot: {
+      raw: 'Original output.', content: 'Improved output with assumed audience.', candidateId: 'improved', label: 'Improved', runId: '',
+    } };
+    rerender(<Harness onSave={onSave} lastSaveReceipt={receipt} />);
+    await waitFor(() => expect(bar).toHaveTextContent('Saved Improved to “Prompt title” · version 2.'));
+    expect(bar).not.toHaveTextContent('Save failed.');
+    fireEvent.change(screen.getByLabelText('Improved candidate'), { target: { value: 'Edited result' } });
+    expect(bar).toHaveTextContent('Current result has unsaved changes.');
+    rerender(<Harness onSave={onSave} lastSaveReceipt={{ ...receipt, versionNumber: 3, resultSnapshot: { ...receipt.resultSnapshot, content: 'Edited result' } }} />);
+    await waitFor(() => expect(bar).toHaveTextContent('version 3.'));
+    expect(bar).not.toHaveTextContent('Current result has unsaved changes.');
+    rerender(<Harness onSave={onSave} lastSaveReceipt={null} />);
+    expect(bar).toHaveTextContent('version 3.');
+  });
+
+  it('does not acknowledge a different prompt or a draft-only save as the current result', () => {
+    const receipt = { entryId: 'different-prompt', title: 'Elsewhere', versionNumber: 4, resultSnapshot: {
+      raw: 'Original output.', content: 'Improved output with assumed audience.', candidateId: 'improved', label: 'Improved',
+    } };
+    const { container, rerender } = render(<Harness lastSaveReceipt={receipt} />);
+    const bar = container.querySelector('.pl-result-commit-bar');
+    expect(bar).not.toHaveTextContent('Saved Improved');
+    rerender(<Harness lastSaveReceipt={{ ...receipt, entryId: 'prompt-1', resultSnapshot: null }} />);
+    expect(bar).not.toHaveTextContent('Saved Improved');
+  });
   it('keeps the primary Save before review content and acknowledges the saved candidate only after persistence', async () => {
     let finish;
     const onSave = vi.fn(() => new Promise(resolve => { finish = resolve; }));
