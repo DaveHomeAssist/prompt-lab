@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import ArtworkPopover from './ArtworkPopover.jsx';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
@@ -264,6 +265,7 @@ export default function LibraryWorkspace({
   const [collapsedFolders, setCollapsedFolders] = useState([]);
   const [collectionParent, setCollectionParent] = useState('');
   const [artworkCollection, setArtworkCollection] = useState('');
+  const [artworkTarget, setArtworkTarget] = useState(null);
   const [folderSaving, setFolderSaving] = useState(false);
   const [folderError, setFolderError] = useState('');
   const workspaceRef = useRef(null);
@@ -350,6 +352,20 @@ export default function LibraryWorkspace({
     if (JSON.stringify(next) === JSON.stringify(expectedDetails)) pendingDetailsRef.current.delete(selected.id);
     else pendingDetailsRef.current.set(selected.id, next);
     setDetailsRevision(revision => revision + 1);
+  };
+  const saveCardArtwork = async (id, artwork) => {
+    if (smartView === 'trash' || !lib.library.some(entry => entry.id === id)) return false;
+    const nextArtwork = safeArtwork(artwork);
+    const saved = await lib.saveEntryDetails(id, entry => ({
+      ...entry, metadata: { ...entry.metadata, artwork: nextArtwork }, updatedAt: new Date().toISOString(),
+    }));
+    if (saved !== true) return false;
+    // Keep all other inspector edits, but rebase its artwork after this explicit save.
+    const pending = pendingDetailsRef.current.get(id);
+    if (pending) pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    setDetailsRevision(revision => revision + 1);
+    setAnnouncement('Prompt artwork saved.');
+    return true;
   };
   const discardDetails = () => {
     if (!selected) return;
@@ -583,6 +599,7 @@ export default function LibraryWorkspace({
         <button type="button" onClick={() => setCheckedIds([])}>Clear selection</button>
       </div>}
 
+      {artworkTarget && smartView !== 'trash' && lib.library.some(entry => entry.id === artworkTarget.id) && <ArtworkPopover key={artworkTarget.id} entry={lib.library.find(entry => entry.id === artworkTarget.id)} trigger={artworkTarget.trigger} onSave={saveCardArtwork} onClose={() => setArtworkTarget(null)} />}
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
         <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
@@ -593,8 +610,12 @@ export default function LibraryWorkspace({
         : <div className={`pl-library-results is-${layout}`} role="list" aria-label="Saved prompts">
           {entries.map((entry, index) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
+            <div className={`pl-library-card-artwork${Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) ? '' : ' is-empty'}`}>
+              <button type="button" disabled={smartView === 'trash'} aria-label={`Change artwork for ${entry.title}`} aria-haspopup="dialog" aria-expanded={artworkTarget?.id === entry.id} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}><Artwork value={entry.metadata?.artwork} /></button>
+              {layout === 'gallery' && !Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) && smartView !== 'trash' && <button type="button" className="pl-artwork-add" aria-label={`Add image for ${entry.title}`} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}>Add image</button>}
+            </div>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
-              <span className="pl-library-card-copy"><Artwork value={entry.metadata?.artwork} /><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
+              <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
               <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
