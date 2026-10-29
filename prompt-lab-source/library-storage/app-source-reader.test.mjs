@@ -6,6 +6,16 @@ import { inspectSourceInventory } from './source-inventory.mjs';
 const selected = { database: 'prompt_lab_local', store: 'runs' };
 const draftKeys = ['pl2-session', 'pl2-dual-draft'];
 
+test('coordinated app capture rejects older clients missing raw session recovery before reading other sources', () => {
+  const environment = { get localStorage() { assert.fail('must not read partial source set'); } };
+  const options = { sourceIdentity: 'old-client', archives: { reviewed: true, records: [] } };
+  for (const buffers of [null, {}, [null], [], [{ id: 'editor', value: { raw: 'Only the current draft' } }],
+    [{ id: 'draft-recovery-store', value: { storage: 'sessionStorage', entries: {} } }],
+    [{ id: 'draft-recovery-store', value: { storage: 'sessionStorage', entries: { 'pl2-draft-reset-recovery-v1': 17 } } }]]) {
+    assert.throws(() => captureAppLibrarySources({ ...options, clientBuffers: [{ clientId: 'older', buffers }] }, environment), { code: 'SOURCE_INCOMPLETE' });
+  }
+});
+
 test('unselected databases and stores are rejected before any storage API call', async () => {
   const idb = { databases() { assert.fail('unselected database read'); }, open() { assert.fail('unselected database open'); } };
   for (const descriptor of [{ database: 'credentials', store: 'runs' }, { ...selected, store: 'settings' }]) {

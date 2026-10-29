@@ -2,6 +2,7 @@ import { canonical, LibraryError, MAX_BYTES } from '../../../library-storage/con
 import { captureSourceInventory, EXTENSION_DRAFT_KEYS, INDEXED_SOURCES } from '../../../library-storage/source-inventory.mjs';
 import { libraryWriteCoordinator } from './libraryWriteCoordinator.js';
 import { startAppCaptureParticipant } from './libraryOriginCapture.js';
+import { hasSessionRecoveryCapture } from './draftRecoveryCapture.js';
 
 const sourceError = code => new LibraryError(code, 'Source capture could not complete. Original data is unchanged.');
 const encoder = new TextEncoder();
@@ -126,6 +127,8 @@ export function readExtensionLibraryDrafts(keys, { chromeApi = globalThis.chrome
 // parity before activation; this capture cannot establish that barrier.
 export function captureAppLibrarySources({ sourceIdentity, archives, capturedAt, clientBuffers, timeoutMs = 10_000 }, environment = globalThis) {
   checkTimeout(timeoutMs);
+  if (clientBuffers !== undefined && (!Array.isArray(clientBuffers) || !clientBuffers.length
+    || !clientBuffers.every(hasSessionRecoveryCapture))) throw sourceError('SOURCE_INCOMPLETE');
   const surface = typeof environment.chrome?.runtime?.sendMessage === 'function' ? 'extension'
     : environment.window?.__TAURI_INTERNALS__ ? 'desktop' : 'web';
   return captureSourceInventory({

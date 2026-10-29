@@ -9,7 +9,7 @@ const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const readerPath = '/prompt-lab-extension/src/lib/librarySourceCapture.js';
 const inventoryPath = '/library-storage/source-inventory.mjs';
 const modulePaths = [readerPath, inventoryPath, '/library-storage/contract.mjs', '/library-storage/content-keys.mjs',
-  ...['lib/libraryWriteCoordinator.js', 'lib/libraryOriginCapture.js', 'lib/libraryEditBuffers.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
+  ...['lib/libraryWriteCoordinator.js', 'lib/libraryOriginCapture.js', 'lib/libraryEditBuffers.js', 'lib/draftRecoveryCapture.js', 'lib/storage.js', 'lib/libraryDeletion.js', 'lib/libraryJournal.js',
     'lib/scratchJournal.js', 'lib/writeRecovery.js', 'experimentStore.js', 'lib/logger.js', 'lib/diagnostics.js',
     'constants.js', 'lib/evalSchema.js', 'lib/enhancementResult.js', 'lib/tagSchema.js', 'lib/utils.js',
     'lib/sourceLink.js', 'lib/platform.js', 'lib/providerFixture.js'].map(path => `/prompt-lab-extension/src/${path}`)];
@@ -61,8 +61,39 @@ async function joinCapture(page, label) {
     window.participant = await (await import('/prompt-lab-extension/src/lib/libraryOriginCapture.js')).startAppCaptureParticipant();
     window.draft = { text: label, future: ['$&', '{{input}}'] };
     editBuffers.register('editor', () => window.draft);
+    const { DRAFT_RECOVERY_STORAGE_KEY } = await import('/prompt-lab-extension/src/lib/draftRecoveryCapture.js');
+    sessionStorage.setItem(DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify({ editor: { raw: label + ' previous' }, future: [null, false] }));
   }, label);
 }
+
+test('startup captures raw session recovery before an editor mounts and restart does not duplicate registration', async ({ page }) => {
+  const result = await page.evaluate(async () => {
+    const { startAppCaptureParticipant } = await import('/prompt-lab-extension/src/lib/libraryOriginCapture.js');
+    const { libraryEditBuffers } = await import('/prompt-lab-extension/src/lib/libraryEditBuffers.js');
+    const raw = '{"editor":{"raw":"raw interrupted draft"},';
+    sessionStorage.setItem('pl2-draft-reset-recovery-v1', raw);
+    const first = await startAppCaptureParticipant();
+    const same = await startAppCaptureParticipant();
+    const captured = await first.capture(({ clientBuffers }) => clientBuffers);
+    await first.stop();
+    const stopped = libraryEditBuffers.read();
+    const second = await startAppCaptureParticipant();
+    await first.stop();
+    const restarted = await second.capture(({ clientBuffers }) => clientBuffers);
+    const stillSecond = (await startAppCaptureParticipant()).clientId === second.clientId;
+    await second.stop();
+    return { same: first.clientId === same.clientId, captured: captured.value, stopped, restarted: restarted.value, stillSecond, raw };
+  });
+  expect(result.same).toBe(true);
+  expect(result.stillSecond).toBe(true);
+  expect(result.stopped).toEqual([]);
+  for (const clients of [result.captured, result.restarted]) {
+    expect(clients).toHaveLength(1);
+    expect(clients[0].buffers).toEqual([{ id: 'draft-recovery-store', value: {
+      storage: 'sessionStorage', entries: { 'pl2-draft-reset-recovery-v1': result.raw },
+    } }]);
+  }
+});
 
 test('actual app stores retain complete records across database reopen', async ({ page }) => {
   await page.evaluate(async () => {
@@ -115,7 +146,9 @@ test('two actual windows retain separate unsaved buffers, pause timers and drain
     return { clients: inspected.captures['client-buffers'].records,
       records: inspected.captures['execution-traces'].records, coordination: report.coordination, version: report.value.manifest.schemaVersion };
   });
-  expect(result.clients.map(client => client.buffers[0].value.text).sort()).toEqual(['First unsaved draft', 'Second unsaved draft']);
+  expect(result.clients.map(client => client.buffers.find(row => row.id === 'editor').value.text).sort()).toEqual(['First unsaved draft', 'Second unsaved draft']);
+  expect(result.clients.map(client => JSON.parse(client.buffers.find(row => row.id === 'draft-recovery-store')
+    .value.entries['pl2-draft-reset-recovery-v1']).editor.raw).sort()).toEqual(['First unsaved draft previous', 'Second unsaved draft previous']);
   expect(result.records).toEqual([{ run_id: 'actual-record', trace_id: 'trace' }]);
   expect(result.version).toBe(4);
   expect(result.coordination).toMatchObject({ scope: 'cooperating-origin-clients', activationReady: false });
@@ -148,7 +181,7 @@ test('a new window waits at startup until the existing capture releases membersh
 
 test('a changed peer buffer or refused peer save rejects capture and a clean retry succeeds', async ({ page, context }) => {
   const other = await context.newPage(); await joinCapture(page, 'First'); await joinCapture(other, 'Second');
-  for (const mode of ['buffer', 'write']) {
+  for (const mode of ['buffer', 'write', 'recovery-store']) {
     await page.evaluate(() => {
       window.releaseCapture = null;
       window.capturing = participant.capture(() => new Promise(resolve => { window.releaseCapture = resolve; }), { timeoutMs: 1000 }).catch(error => error.code);
@@ -156,6 +189,7 @@ test('a changed peer buffer or refused peer save rejects capture and a clean ret
     await page.waitForFunction(() => window.releaseCapture);
     await other.evaluate(async mode => {
       if (mode === 'buffer') window.draft = { ...window.draft, text: 'Changed while capturing' };
+      else if (mode === 'recovery-store') sessionStorage.setItem('pl2-draft-reset-recovery-v1', '{"raw":"changed recovery"}');
       else (await import('/prompt-lab-extension/src/lib/storage.js')).saveJson('pl2-library', [{ id: 'refused' }]);
     }, mode);
     expect(await page.evaluate(async () => { window.releaseCapture(); return window.capturing; })).toBe('LIBRARY_CAPTURE_CHANGED');

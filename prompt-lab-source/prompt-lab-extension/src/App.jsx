@@ -67,6 +67,8 @@ import {
 } from './lib/landingAttribution.js';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 import { readGenerationOptions, restoreEditorMode } from './lib/generationOptions.js';
+import { DRAFT_RECOVERY_STORAGE_KEY, useDraftRecoveryCapture } from './hooks/useDraftRecoveryCapture.js';
+import { writeLibraryLocalItem, removeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -95,8 +97,6 @@ function isCurrentPromptRun(run, editingId, ownRunId) {
   return Boolean(ownRunId) && run?.id === ownRunId;
 }
 
-const DRAFT_RECOVERY_STORAGE_KEY = 'pl2-draft-reset-recovery-v1';
-
 function loadDraftRecovery() {
   try {
     if (typeof window === 'undefined') return null;
@@ -110,9 +110,9 @@ function loadDraftRecovery() {
 function persistDraftRecovery(snapshot) {
   try {
     if (snapshot) {
-      window.sessionStorage.setItem(DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify(snapshot));
+      writeLibraryLocalItem(window.sessionStorage, DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify(snapshot));
     } else {
-      window.sessionStorage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+      removeLibraryLocalItem(window.sessionStorage, DRAFT_RECOVERY_STORAGE_KEY);
     }
   } catch (_error) {
     // Recovery still works for the active page when session storage is unavailable.
@@ -164,6 +164,7 @@ export default function App({
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  useDraftRecoveryCapture(draftRecovery);
   const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);

@@ -1,5 +1,38 @@
 # Library storage contract candidate
 
+## Per tab draft recovery preservation
+
+The app keeps its previous-draft recovery copy in session storage, while the
+existing inventory reads the same key from local storage. Preserve the raw
+session value from every participating app window and its current in-memory
+recovery state through the coordinated editor-buffer capture. Keep these as
+separate, client-scoped records: either can contain data absent from the other.
+Do not parse away malformed saved values or capture unrelated session keys.
+Unreadable session storage must fail capture, and recovery writes or dismissal
+during capture must invalidate the barrier rather than silently change its input.
+Register the raw reader before startup announces a participating window. Reject
+coordinated app capture if an older participant lacks that recovery record.
+
+Acceptance covers mounting the real app, recovery after reload, a failed session
+write with a recoverable in-memory draft, raw malformed content, per-client
+isolation, changes during capture, immutable import and backup readback. Earlier
+captures without these buffers remain retained but cannot prove this new
+coverage. This fixes source preservation only; shared draft commands, app
+migration activation and native/iCloud acceptance remain required.
+
+Dominic Node 22.23.4 passed 1,553 app tests and 74 affected storage/capture tests.
+After tightening malformed-participant validation, seven source-reader tests,
+16 focused app/buffer tests, the extension build and documentation checks passed.
+All 21 source-capture browser checks passed in the existing Playwright 1.58.2
+container, including different session recovery in two windows, changes during
+capture, startup before editor mounting and participant restart. The two new
+app regressions fail against the previous App implementation and pass here.
+The new retention fixture covers interrupted publication, response loss, reopen
+and complete transfer of both clients' raw and live recovery copies. Initial
+test-fixture and runner setup failures remain recorded in private evidence.
+No personal browser state was read, and this increment does not repeat the
+earlier full real-export scenario. Its original file remains byte identical.
+
 ## Shared Scratch note commands
 
 Scratch creation, field updates and confirmed deletion must use the shared

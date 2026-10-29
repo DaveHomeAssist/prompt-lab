@@ -123,6 +123,8 @@ vi.mock('../modals/PiiWarningModal.jsx', () => ({ default: () => null }));
 vi.mock('../modals/BillingModal.jsx', () => ({ default: () => null }));
 
 import App from '../App.jsx';
+import { libraryEditBuffers } from '../lib/libraryEditBuffers.js';
+import { registerSessionRecoveryCapture } from '../lib/draftRecoveryCapture.js';
 
 const savedCase = {
   id: 'case-1', promptId: 'alpha', title: 'Executive brevity', input: 'Summarize the Q3 outage report for the board.',
@@ -143,7 +145,9 @@ function openTestsTab() {
 }
 
 describe('App Library workspace test cases', () => {
+  let unregisterRecovery;
   beforeEach(() => {
+    unregisterRecovery = registerSessionRecoveryCapture(libraryEditBuffers);
     vi.clearAllMocks();
     localStorage.clear();
     // App keeps the undo snapshot for a replaced draft in sessionStorage, so a
@@ -154,6 +158,7 @@ describe('App Library workspace test cases', () => {
   });
 
   afterEach(() => {
+    unregisterRecovery();
     localStorage.clear();
     sessionStorage.clear();
   });
@@ -163,6 +168,37 @@ describe('App Library workspace test cases', () => {
 
     expect(screen.getByRole('region', { name: 'Prompt library workspace' })).toBeInTheDocument();
     expect(screen.queryByTestId('library-panel')).not.toBeInTheDocument();
+  });
+
+  it('captures a previous draft loaded from this app tab and preserves its raw unknown fields', () => {
+    const recovery = { reason: 'navigation', editor: { raw: 'Previous draft after reload' }, persistence: {}, future: { bytes: ['kept', null] } };
+    const raw = JSON.stringify(recovery, null, 2);
+    sessionStorage.setItem('pl2-draft-reset-recovery-v1', raw);
+    arrange();
+    const buffers = libraryEditBuffers.read();
+    expect(buffers.find(row => row.id.startsWith('draft-recovery:')).value).toEqual(recovery);
+    expect(buffers.find(row => row.id === 'draft-recovery-store').value.entries['pl2-draft-reset-recovery-v1']).toBe(raw);
+    expect(screen.getByText('Restore previous draft')).toBeInTheDocument();
+  });
+
+  it('captures the recoverable live draft when saving its session copy fails', () => {
+    arrange({
+      useEditorState: { raw: 'Recovery after failed save', resultMeta: null },
+      usePersistenceFlow: { editingId: 'beta', editingVersionId: 'v1', sourceNoteId: '', followUpOrigin: null },
+      useExecutionFlow: { testCasesByPrompt: { alpha: [savedCase] } },
+    });
+    const originalSet = Storage.prototype.setItem;
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+      if (this === sessionStorage && key === 'pl2-draft-reset-recovery-v1') throw new DOMException('Full', 'QuotaExceededError');
+      return originalSet.call(this, key, value);
+    });
+    try {
+      fireEvent.click(within(openTestsTab()).getByRole('button', { name: 'Use' }));
+      const buffers = libraryEditBuffers.read();
+      expect(buffers.find(row => row.id.startsWith('draft-recovery:')).value.editor.raw).toBe('Recovery after failed save');
+      expect(buffers.find(row => row.id === 'draft-recovery-store').value.entries['pl2-draft-reset-recovery-v1']).toBeNull();
+      expect(screen.getByText('Restore previous draft')).toBeInTheDocument();
+    } finally { spy.mockRestore(); }
   });
 
   it('lets a user reach Add Case from the Tests tab of a saved prompt', () => {

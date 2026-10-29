@@ -1,5 +1,6 @@
 import { libraryWriteCoordinator } from './libraryWriteCoordinator.js';
 import { libraryEditBuffers } from './libraryEditBuffers.js';
+import { registerSessionRecoveryCapture } from './draftRecoveryCapture.js';
 
 export const CAPTURE_LOCKS = Object.freeze({
   owner: 'promptlab:capture:v1:owner', membership: 'promptlab:capture:v1:membership',
@@ -141,5 +142,14 @@ export async function createOriginCaptureParticipant({
 let appParticipant;
 export function startAppCaptureParticipant() {
   if (!globalThis.navigator?.locks || typeof globalThis.BroadcastChannel !== 'function') return Promise.resolve(null);
-  return appParticipant ||= createOriginCaptureParticipant().catch(() => { appParticipant = null; return null; });
+  if (appParticipant) return appParticipant;
+  // Register before announcing membership: another window can capture while
+  // this one's React tree is still starting. Raw session recovery already exists.
+  const unregister = registerSessionRecoveryCapture(libraryEditBuffers);
+  return appParticipant = createOriginCaptureParticipant().then(participant => {
+    let stopping;
+    return { ...participant, stop: () => stopping ||= participant.stop().finally(() => {
+      unregister(); appParticipant = null;
+    }) };
+  }).catch(() => { unregister(); appParticipant = null; return null; });
 }
