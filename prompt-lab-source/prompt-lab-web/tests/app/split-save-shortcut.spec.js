@@ -100,6 +100,7 @@ for (const [width, trigger] of [[1440, 'Control+s'], [1440, 'Meta+s'], [375, 'Co
         expect(saved.id).toBe('split-save-fixture');
         expect(saved.versions).toHaveLength(before[0].versions.length + 1);
       }
+      await expect(page.getByRole('region', { name: 'Editing context' })).toContainText('No unsaved changes');
       await page.screenshot({ path: testInfo.outputPath('draft-saved.png') });
       await page.goto('/app/#/library');
       await page.reload();

@@ -159,7 +159,13 @@ export default function usePromptLibrary(notify) {
     generationRef.current = readLibraryDeletionState().generation;
     const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) throw new Error('Library storage is not a prompt list.');
-    const next = filterDeletedLibraryRecords(stampLibraryGeneration(normalizeLibrary(parsed), generationRef.current));
+    const incoming = filterDeletedLibraryRecords(normalizeLibrary(parsed));
+    const presentIds = new Set(incoming.map(entry => entry.id));
+    // Keep independently saved records omitted by a stale whole-library write,
+    // but never carry their old content over a newer record with the same ID.
+    const retained = librarySnapshotRef.current.library.filter(entry => !presentIds.has(entry.id));
+    const reconciled = reconcileLibraryRecords(retained, [], incoming, loadJson(storageKeys.trash, []));
+    const next = stampLibraryGeneration(filterDeletedLibraryRecords(reconciled.library), generationRef.current);
     librarySnapshotRef.current = { raw, library: next };
     setLibrary(next);
   };
@@ -177,7 +183,19 @@ export default function usePromptLibrary(notify) {
     try {
       const stored = localStorage.getItem(storageKeys.library);
       if (expectedRaw === undefined) return false;
-      if (stored !== expectedRaw) return rejectStaleLibrary(stored);
+      if (stored !== expectedRaw) {
+        const parsed = stored ? JSON.parse(stored) : [];
+        if (!Array.isArray(parsed)) return false;
+        const currentRecords = filterDeletedLibraryRecords(normalizeLibrary(parsed));
+        const observedRecords = filterDeletedLibraryRecords(librarySnapshotRef.current.library);
+        // Removing records already invalidated by a clear/deletion marker is
+        // not a concurrent edit. An intentional new save may follow cleanup.
+        if (expectedRaw === librarySnapshotRef.current.raw && JSON.stringify(currentRecords) === JSON.stringify(observedRecords)) {
+          librarySnapshotRef.current.raw = stored;
+          return true;
+        }
+        return rejectStaleLibrary(stored);
+      }
       return true;
     } catch { return false; }
   };
