@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T20:58:24.457Z",
+  "snapshotAt": "2026-10-29T21:11:43.871Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
+  "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
   "evidence": [
+    {
+      "label": "Retained real-data restart verified after performance repair",
+      "state": "Open",
+      "detail": "2026-10-29 verification performance and retained real-data acceptance: runtime 42a70b3ee64430f91c351b7347583ea7506322c6 pushed and remote verified, https://github.com/DaveHomeAssist/prompt-lab/commit/42a70b3ee64430f91c351b7347583ea7506322c6 . A bounded successful-inspection cache reuses semantic proof only after owning and hashing every object, with matching library, revision and complete address set; returned results are independent. Metadata getters are captured once. Dominic Node 22.23.4: all 362 storage tests, four browser scenarios, extension build, Markdown lint and four documentation contracts pass; changed runtime/test hashes match the runner. Synthetic 1.64 MB profile: evaluation save 28.292 to 13.546 seconds; complete sequence 42.913 to 22.522 seconds. This is one observation, not interactive or scale acceptance. Mac Node 22.22.1: retained real-export browser fixture passes final restart, update, deletion and folder reopen in 46.704 seconds, with eight operation receipts, all 14 original archived objects, the original three runs and browser sources preserved. Original 1,666,421-byte export hash unchanged; no private upload, duplicate import or personal activation. Restart/edit/readback remains 29.396 seconds. Earlier interrupted attempts retained; their missing final readback is now verified. A1/A2 remain In progress; PR248 remains draft. Whole-app integration, offline intents before preview, interactive performance, native service/picker, actual two-client iCloud and installed/human acceptance remain open. Hosted Phase B stays behind Phase A with the approved Neon/Clerk US East choices and no paid provisioning. Next: reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/42a70b3ee64430f91c351b7347583ea7506322c6"
+    },
     {
       "label": "Shared app repository with real-data performance hold",
       "state": "Open",
@@ -1464,8 +1470,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
-      "verification": "Constructed experiment store: 359 storage tests, four browser scenarios, 1,553 app tests, 231 legacy tests and build pass on Dominic. Full-export final restart/edit/delete readback and save performance remain unverified after the bounded Mac attempt; original export unchanged. Runtime e86d4d8, draft PR248.",
+      "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
+      "verification": "362 storage tests, four browser scenarios, extension build and docs pass on Dominic. Retained real-export restart/update/delete/reopen passes on Mac in 46.704 seconds; original export and archived objects unchanged. Synthetic save improves 28.292 to 13.546 seconds; interactive performance remains open. Runtime 42a70b3, draft PR248.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
@@ -1512,8 +1518,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Reduce repeated command-service verification cost and complete the retained real-data restart test before whole-app activation.",
-      "verification": "Constructed experiment store: 359 storage tests, four browser scenarios, 1,553 app tests, 231 legacy tests and build pass on Dominic. Full-export final restart/edit/delete readback and save performance remain unverified after the bounded Mac attempt; original export unchanged. Runtime e86d4d8, draft PR248.",
+      "nextAction": "Reduce the remaining save cost before whole-app activation, then connect the remaining app stores and durable offline intents.",
+      "verification": "362 storage tests, four browser scenarios, extension build and docs pass on Dominic. Retained real-export restart/update/delete/reopen passes on Mac in 46.704 seconds; original export and archived objects unchanged. Synthetic save improves 28.292 to 13.546 seconds; interactive performance remains open. Runtime 42a70b3, draft PR248.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
