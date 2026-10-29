@@ -73,6 +73,26 @@ it('does not relink a restored draft when a dismissed durable save completes', a
   expect(result.current.showSave).toBe(false);
 });
 
+it('records the acknowledged result snapshot even if the editor changes while saving', async () => {
+  let settle;
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => new Promise(resolve => { settle = resolve; }) });
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  act(() => result.current.setEnhanced('Later unsaved result'));
+  await act(async () => {
+    settle({ id: 'saved-result', title: 'Saved result', versionNumber: 2 });
+    await pending;
+  });
+  expect(result.current.lastSaveReceipt.resultSnapshot).toMatchObject({ raw: 'Raw draft', content: 'Enhanced draft', candidateId: 'improved' });
+  expect(result.current.enhanced).toBe('Later unsaved result');
+});
+
+it('does not describe a split-pane draft save as an acknowledged result', async () => {
+  const { result } = renderPersistenceFlow();
+  await act(async () => { await result.current.doSave(undefined, { enhancedOverride: 'Raw draft', rawOverride: 'Raw draft' }); });
+  expect(result.current.lastSaveReceipt.resultSnapshot).toBeNull();
+});
+
 function makeEntry(overrides = {}) {
   return normalizeEntry({
     id: 'entry-1',

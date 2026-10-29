@@ -147,10 +147,12 @@ test('@production Create Slice 1 viewport, editing and accessibility acceptance'
   const output = page.getByTestId('output-textarea');
   const save = page.getByTestId('save-to-library');
   await expect(save).toHaveText(/Save as new prompt.*Expanded/);
-  await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+  await page.getByLabel('More result actions', { exact: true }).click();
+  await page.getByRole('button', { name: 'Library details', exact: true }).click();
   await page.getByLabel('Title', { exact: true }).fill('Synthetic custom launch brief');
   await page.getByRole('button', { name: 'Close save panel' }).click();
-  await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+  await page.getByLabel('More result actions', { exact: true }).click();
+  await page.getByRole('button', { name: 'Library details', exact: true }).click();
   await expect(page.getByLabel('Title', { exact: true })).toHaveValue('Synthetic custom launch brief');
   await page.getByRole('button', { name: 'Close save panel' }).click();
   await save.click();

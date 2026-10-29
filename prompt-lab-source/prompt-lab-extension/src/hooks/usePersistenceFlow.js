@@ -8,6 +8,7 @@ import { decodePackShare } from '../lib/packExport.js';
 import { importPresetPack } from '../lib/presetImport.js';
 import { linkEvalRunToPrompt } from '../experimentStore.js';
 import { createSaveReceipt } from '../lib/promptLifecycle.js';
+import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import { normalizeFollowUpOrigin } from '../lib/followUpProvenance.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
@@ -388,6 +389,14 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const resultMetaValue = Object.prototype.hasOwnProperty.call(overrides, 'resultMetaOverride')
       ? overrides.resultMetaOverride
       : (contentSource?.resultMeta ?? resultMeta);
+    const result = normalizeResultMeta(resultMetaValue, { enhanced: contentSource?.enhanced ?? enhanced, variants: variantsValue });
+    const candidate = result.candidates.find(item => item.id === result.selectedCandidateId);
+    // A split-pane draft save can write different text from the reviewed result.
+    // Capture the actual request before awaiting storage, never the later editor.
+    const resultSnapshot = enhancedValue && enhancedValue === candidate?.content ? {
+      raw: originalValue, content: enhancedValue, candidateId: candidate.id,
+      label: candidate.label, runId: result.runId,
+    } : null;
     const tagsValue = Object.prototype.hasOwnProperty.call(overrides, 'tagsOverride')
       ? overrides.tagsOverride
       : saveTags;
@@ -462,7 +471,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
           action: targetId && saved.savedAsNew !== true ? 'version' : 'new',
           sourceNoteId: savedSourceNoteId,
         });
-        setLastSaveReceipt(receipt);
+        setLastSaveReceipt({ ...receipt, resultSnapshot });
         if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
         if (resultMetaValue?.runId) {
           void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
