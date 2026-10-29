@@ -16,7 +16,7 @@ async function openProviders(page) {
 }
 
 for (const width of [1440, 375]) {
-  test(`hosted model choice persists and routes after reload at ${width}px`, async ({ page }) => {
+  test(`hosted model choice persists and routes after reload at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 });
     const sent = [];
     await page.route('**/api/proxy', async route => {
@@ -44,6 +44,6 @@ for (const width of [1440, 375]) {
     expect(sent[0].body).not.toHaveProperty('temperature');
     await expect(page.getByRole('dialog', { name: 'Provider Settings' })).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
-    await page.screenshot({ path: `/work/evidence/hosted-model-${width}.png` });
+    await page.screenshot({ path: testInfo.outputPath(`hosted-model-${width}.png`) });
   });
 }
