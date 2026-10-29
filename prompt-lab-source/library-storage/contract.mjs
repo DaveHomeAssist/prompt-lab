@@ -406,6 +406,7 @@ export function createMemoryAdapter(initial = { libraryId: null, revision: null,
 }
 
 export function createCommandService(adapter, { now = () => Date.now(), previewLifetimeMs = 300_000 } = {}) {
+  const readState = () => typeof adapter.readSnapshot === 'function' ? adapter.readSnapshot() : adapter.read();
   const previews = new Map();
   let queue = Promise.resolve();
   function serialized(fn) {
@@ -416,7 +417,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
   async function currentReview(previewId) {
     const preview = previews.get(previewId);
     if (!preview || preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
-    const state = await adapter.read();
+    const state = await readState();
     if (preview.expires <= now()) throw new LibraryError('PREVIEW_EXPIRED', 'Preview expired; preview again.', 409);
     if (state.revision !== preview.input.expectedRevision || (state.libraryId && state.libraryId !== preview.input.libraryId)) {
       throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
@@ -424,12 +425,12 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     return structuredClone(preview.response);
   }
   async function exportTransfer({ libraryId, expectedRevision }) {
-    const state = await adapter.read();
+    const state = await readState();
     if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
     if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin transfers to the current library revision.', 409);
     const { createTransfer } = await import('./transfer.mjs');
     const transfer = await createTransfer(state);
-    const current = await adapter.read();
+    const current = await readState();
     if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during transfer preparation.', 409);
     return transfer;
   }
@@ -440,7 +441,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewPack(value) {
       value = structuredClone(value);
       const { normalizePackRequest, planPackMutation } = await import('./pack-plan.mjs');
-      const request = normalizePackRequest(value), state = await adapter.read();
+      const request = normalizePackRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Pack change targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin pack changes to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -456,7 +457,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewFolder(value) {
       value = structuredClone(value);
       const { normalizeFolderRequest, planFolderMutation } = await import('./folder-plan.mjs');
-      const request = normalizeFolderRequest(value), state = await adapter.read();
+      const request = normalizeFolderRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Folder change targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin folder changes to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -472,7 +473,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewRecord(value) {
       value = structuredClone(value);
       const { normalizeRecordRequest, planRecordMutation } = await import('./record-plan.mjs');
-      const request = normalizeRecordRequest(value), state = await adapter.read();
+      const request = normalizeRecordRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Record change targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin record changes to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -488,7 +489,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewLifecycle(value) {
       value = structuredClone(value);
       const { normalizeLifecycleRequest, planPromptLifecycle } = await import('./lifecycle-plan.mjs');
-      const request = normalizeLifecycleRequest(value), state = await adapter.read();
+      const request = normalizeLifecycleRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Lifecycle change targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin lifecycle changes to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -504,7 +505,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewCreate(value) {
       value = structuredClone(value);
       const { normalizeCreateRequest, planPromptCreate } = await import('./create-plan.mjs');
-      const request = normalizeCreateRequest(value), state = await adapter.read();
+      const request = normalizeCreateRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Creation targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin creations to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -520,7 +521,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewEdit(value) {
       value = structuredClone(value);
       const { normalizeEditRequest, planPromptEdit } = await import('./edit-plan.mjs');
-      const request = normalizeEditRequest(value), state = await adapter.read();
+      const request = normalizeEditRequest(value), state = await readState();
       if (state.libraryId !== request.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Edit targets another library.', 409);
       if (!state.revision || state.revision !== request.expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin edits to the current library revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
@@ -535,21 +536,21 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     },
     async currentRecords({ libraryId, expectedRevision, domain, cursor = '0', limit = 100, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown current-view query option.', 400);
-      const state = await adapter.read();
+      const state = await readState();
       if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin current-view reads to the current revision.', 409);
       const pkg = packageFor(state), inspected = await inspectPackage(pkg);
       const { pageCurrentView } = await import('./current-view.mjs');
       const page = await pageCurrentView(pkg, inspected, { domain, cursor, limit });
       if (encoder.encode(canonical(page)).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Current-view page exceeds 64 MiB.', 413);
-      const current = await adapter.read();
+      const current = await readState();
       if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during current-view preparation.', 409);
       return page;
     },
     async previewCurrentView({ libraryId, expectedRevision, resolutions = {}, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown current-view option.', 400);
       resolutions = structuredClone(resolutions);
-      const state = await adapter.read();
+      const state = await readState();
       if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin current-view review to the current revision.', 409);
       const { reviewCurrentView } = await import('./current-view.mjs');
@@ -566,13 +567,13 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown record query option.', 400);
       const { buildDomainMap, pageDomainMap, validateDomainPage } = await import('./domain-map.mjs');
       validateDomainPage({ domain, cursor, limit });
-      const state = await adapter.read();
+      const state = await readState();
       if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin record reads to the current revision.', 409);
       const map = await buildDomainMap(packageFor(state));
       const page = pageDomainMap(map, { domain, cursor, limit });
       if (encoder.encode(canonical(page)).length > MAX_BYTES) throw new LibraryError('PAYLOAD_TOO_LARGE', 'Record page exceeds 64 MiB. Request fewer records.', 413);
-      const current = await adapter.read();
+      const current = await readState();
       if (current.libraryId !== libraryId || current.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed during record preparation.', 409);
       return page;
     },
@@ -593,7 +594,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewReconcile({ libraryId, expectedRevision, incoming, resolutions = {}, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Unknown reconciliation option.', 400);
       incoming = structuredClone(incoming); resolutions = structuredClone(resolutions);
-      const state = await adapter.read();
+      const state = await readState();
       if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin reconciliation to the current revision.', 409);
       const { inspectTransfer } = await import('./transfer.mjs');
@@ -614,7 +615,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
     async previewRestore({ libraryId, expectedRevision, checkpointId, ...options }) {
       if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Restore has no deletion bypass or additional options.', 400);
       const input = { libraryId, expectedRevision, checkpointId, mode: 'restore' };
-      const restorePlan = await reviewRestore(await adapter.read(), input);
+      const restorePlan = await reviewRestore(await readState(), input);
       const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
       const response = { previewId, libraryId, expectedRevision, checkpointId, sourceHash: restorePlan.source, fingerprint,
         expiresAt: expires, mode: 'restore', commitAvailable: restorePlan.unresolved === 0, restorePlan };
@@ -629,7 +630,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       // choices while storage reads or hashes are still in flight.
       resolutions = structuredClone(resolutions);
       if (sourceInventory !== undefined) sourceInventory = structuredClone(sourceInventory);
-      const state = await adapter.read();
+      const state = await readState();
       if (state.libraryId && libraryId !== state.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
       if (mode === 'snapshot' && canonical(resolutions) !== '{}') throw new LibraryError('UNSUPPORTED_RESOLUTION', 'Whole-workspace transfers do not resolve record conflicts.');
@@ -812,6 +813,6 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
         return receipt;
       }));
     },
-    async operation(id) { const operations = (await adapter.read()).operations; return Object.hasOwn(operations, id) ? operations[id] : null; },
+    async operation(id) { const operations = (await readState()).operations; return Object.hasOwn(operations, id) ? structuredClone(operations[id]) : null; },
   };
 }

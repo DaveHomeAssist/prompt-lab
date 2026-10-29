@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, rm, readdir, readFile, writeFile, rename, stat, utimes 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFolderAdapter } from './folder-adapter.mjs';
-import { createCommandService, createMemoryAdapter, inspectPackage, canonical, hash, MAX_BYTES, FORMAT, VERSION } from './contract.mjs';
+import { createCommandService, createMemoryAdapter, inspectPackage, readObject, canonical, hash, MAX_BYTES, FORMAT, VERSION } from './contract.mjs';
 
 const input = { libraryId: 'test-library', expectedRevision: null, sourceText: JSON.stringify({ library: [{ id: 'p1', versions: Array.from({ length: 40 }, (_, id) => ({ id, content: 'keep' })) }], unknown: { nested: [1, 2] } }) };
 async function fixture(t) { const dir = await mkdtemp(join(tmpdir(), 'promptlab-disposable-')); t.after(() => rm(dir, { recursive: true, force: true })); return dir; }
@@ -88,6 +88,43 @@ test('warm folder reads see external commits and never share mutable state with 
   assert.deepEqual((await adapter.read()).operations.external, receipt);
 });
 
+test('internal folder snapshots retain immutable proofs while public reads and receipts stay independent', async t => {
+  const dir = await fixture(t), adapter = await createFolderAdapter(dir), service = createCommandService(adapter);
+  const receipt = await apply(service, await service.preview(input));
+  const snapshot = await adapter.readSnapshot();
+  assert.ok(Object.isFrozen(snapshot));
+  assert.throws(() => { snapshot.operations.first.verified = false; }, TypeError);
+  const commit = snapshot.objects[snapshot.revision].data;
+  assert.throws(() => { snapshot.objects[commit.state].data.unknown.nested[0] = 99; }, TypeError);
+  const original = globalThis.crypto.subtle.digest;
+  let digests = 0;
+  globalThis.crypto.subtle.digest = function (...args) { digests++; return original.apply(this, args); };
+  try {
+    const next = await adapter.readSnapshot();
+    await readObject(next.objects, next.revision, 'commit');
+    await readObject(next.objects, commit.state, 'workspace');
+    assert.equal(digests, 0, 'Fresh unchanged file bytes retain owned canonical hash proofs');
+  } finally { globalThis.crypto.subtle.digest = original; }
+  const publicRead = await service.read();
+  publicRead.objects[commit.state].data.unknown.nested[0] = 99;
+  const operation = await service.operation('first'); operation.verified = false;
+  assert.deepEqual(await service.operation('first'), receipt);
+  assert.equal((await service.read()).objects[commit.state].data.unknown.nested[0], 1);
+});
+
+test('internal command reads still reject changed object bytes after a warm snapshot', async t => {
+  const dir = await fixture(t), adapter = await createFolderAdapter(dir), service = createCommandService(adapter);
+  const receipt = await apply(service, await service.preview(input));
+  await service.records({ libraryId: input.libraryId, expectedRevision: receipt.revision });
+  const file = join(dir, 'objects', receipt.stateHash.slice(7) + '.json');
+  const original = await readFile(file, 'utf8'), metadata = await stat(file);
+  await writeFile(file, original.replace('keep', 'loss'));
+  await utimes(file, metadata.atime, metadata.mtime);
+  await assert.rejects(service.records({ libraryId: input.libraryId, expectedRevision: receipt.revision }), { code: 'HASH_MISMATCH' });
+  await writeFile(file, original);
+  assert.equal((await service.read()).revision, receipt.revision);
+});
+
 test('journals above the snapshot cache budget retain verification without trusting stale file metadata', async t => {
   const dir = await fixture(t), journal = join(dir, 'transactions'); await mkdir(journal);
   const service = createCommandService(createMemoryAdapter());
@@ -104,13 +141,18 @@ test('journals above the snapshot cache budget retain verification without trust
   }
   assert.ok(totalBytes > MAX_BYTES, 'Exercise the real snapshot cache budget');
   const adapter = await createFolderAdapter(dir), before = await adapter.read();
-  const originalDigest = globalThis.crypto.subtle.digest;
-  let semanticDigests = 0;
+  const originalDigest = globalThis.crypto.subtle.digest, originalClone = globalThis.structuredClone;
+  let semanticDigests = 0, journalClones = 0;
   globalThis.crypto.subtle.digest = function (...args) { semanticDigests++; return originalDigest.apply(this, args); };
+  globalThis.structuredClone = function (value, ...args) {
+    if (value?.schemaVersion === 2 && value.state?.objects) journalClones++;
+    return originalClone(value, ...args);
+  };
   try {
     const warm = await adapter.read();
     assert.deepEqual(warm, before);
     assert.equal(semanticDigests, 0, 'Unchanged freshly read bytes reuse their canonical and semantic proof');
+    assert.equal(journalClones, 0, 'Evicted legacy journal envelopes are not cloned for canonical cache ownership');
     warm.operations['snapshot-0'].verified = false;
     assert.equal((await adapter.read()).operations['snapshot-0'].verified, true);
     const contents = await readFile(oldest, 'utf8'), metadata = await stat(oldest);
@@ -122,5 +164,5 @@ test('journals above the snapshot cache budget retain verification without trust
     await assert.rejects(adapter.read(), { code: 'MISSING_OBJECT' });
     await rename(oldest + '.missing', oldest);
     assert.deepEqual(await adapter.read(), before);
-  } finally { globalThis.crypto.subtle.digest = originalDigest; }
+  } finally { globalThis.crypto.subtle.digest = originalDigest; globalThis.structuredClone = originalClone; }
 });

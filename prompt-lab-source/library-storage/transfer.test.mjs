@@ -59,6 +59,18 @@ test('transfer input and inspection own their data before asynchronous hashing',
   assert.deepEqual((await read).state, expected);
 });
 
+test('transfers from immutable folder snapshots return independently mutable object content', async t => {
+  const { live } = await directories(t), adapter = await createFolderAdapter(live);
+  const { state } = await fixture(adapter), snapshot = await adapter.readSnapshot();
+  const transfer = await createTransfer(snapshot);
+  const id = Object.keys(transfer.objects).find(key => transfer.objects[key].kind === 'workspace');
+  transfer.objects[id].data.library[0].original = 'Caller edit';
+  transfer.operations.first.verified = false;
+  assert.deepEqual(await adapter.read(), state);
+  assert.deepEqual((await createTransfer(snapshot)).objects, state.objects);
+  await assert.rejects(inspectTransfer(transfer));
+});
+
 test('missing receipts, missing checkpoints and forged receipt fields cannot produce a valid transfer', async () => {
   const { state } = await fixture();
   const mutations = [

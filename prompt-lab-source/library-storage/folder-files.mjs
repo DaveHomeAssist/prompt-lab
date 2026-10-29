@@ -2,7 +2,7 @@ import { mkdir, open, readdir, lstat, link, unlink } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { canonical, hash, LibraryError, MAX_BYTES } from './contract.mjs';
+import { canonical, hash, ownObjectTable, LibraryError, MAX_BYTES } from './contract.mjs';
 
 const nameFor = id => {
   if (typeof id !== 'string' || !/^sha256:[a-f0-9]{64}$/.test(id)) throw new LibraryError('INVALID_REQUEST', 'A complete content hash is required.');
@@ -58,14 +58,18 @@ export async function createFolderFiles(directory, kind, fault) {
     let value;
     try { value = JSON.parse(contents.toString('utf8')); }
     catch { throw new LibraryError('INCOMPLETE_STORE', 'Library content is unreadable; preserve files for recovery.', 503); }
+    // Own individual content objects for repeated command verification. Legacy
+    // journals already contain whole snapshots: duplicating their canonical
+    // strings here would multiply memory and work whenever the cache evicts.
+    if (kind === 'object') value = ownObjectTable({ value }).value;
     if (proofs.get(name) !== digest && await hash(value) !== id) throw new LibraryError('HASH_MISMATCH', 'Library content failed verification.', 503);
     freeze(value);
     if (proofs.size >= 4096) proofs.delete(proofs.keys().next().value);
     proofs.set(name, digest);
     if (known) { cacheBytes -= known.bytes; cache.delete(name); }
-    // Parsed JSON can use more memory than its UTF-8 representation. Retain a
-    // conservative byte estimate, and reread actual bytes even on cache hits.
-    const bytes = contents.byteLength * 3;
+    // Count both parsed JSON and its retained canonical string conservatively.
+    // Reread actual bytes even on cache hits.
+    const bytes = contents.byteLength * (kind === 'object' ? 5 : 3);
     if (bytes <= MAX_BYTES) {
       while (cache.size >= 128 || cacheBytes + bytes > MAX_BYTES) {
         const oldest = cache.keys().next().value;

@@ -1,5 +1,42 @@
 # Library storage contract candidate
 
+## Immutable read snapshots: October 29
+
+The loopback synthetic profile at `8bb4935` spends 4.134 seconds saving one
+evaluation in a 216-prompt library. Repeated cloning and canonical serialization
+discard verification ownership between folder reads and command planning.
+Preserve immutable object identities within internal read stages while keeping
+public adapter reads and transfer results independent and mutable. Every folder
+read must still reread required file bytes and reject changed, missing or
+conflicting content. No filename, timestamp or revision alone certifies bytes.
+
+The bounded change adds an optional immutable adapter snapshot for internal
+command/API reads and reuses owned object tables during transfer verification.
+Mutable adapter transactions, public read isolation, object depth limits,
+receipt verification and retained history remain acceptance requirements.
+Verify hostile mutations and warm-cache corruption, run the complete storage
+suite, then compare the same synthetic and isolated private-export workflows.
+This does not activate personal storage or satisfy two-client iCloud acceptance.
+
+The implementation preserves immutable content through command and loopback reads
+and transfer verification; public state, receipts and transfer objects remain
+independent copies. The final synthetic profile on Dominic Node 22.23.4 saves
+in 2.992 seconds versus 4.134 seconds, with initial open 0.583 versus 0.955
+seconds. These are individual observations, not a performance guarantee.
+All 413 storage tests pass, including unchanged-byte proof reuse, mutable public
+read isolation, warm-file corruption and a guard against copying whole legacy
+journals into the canonical cache.
+
+The first private run revealed that extra legacy-journal copying caused a
+regression, so it was stopped and its evidence retained. Ownership reuse now
+applies only to separately stored content objects. The corrected fresh private
+copy passes all six folder operations and reopen on Mac Node 22.22.1, retaining
+218 fixture prompts, two Trash records, 18 original folders, all prior histories,
+71 previous objects and 13 byte-identical transaction files. Original export
+bytes/hash remain unchanged. Private saves still take 10.517 to 12.436 seconds;
+the older 115 MiB journal fixture shows no material latency improvement. Personal
+activation and latency acceptance remain open; no private content was uploaded.
+
 ## Connected folder controls and confirmed editor deletion
 
 The shared Library must support the existing folder create, rename, parent move,

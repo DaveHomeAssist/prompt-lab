@@ -72,14 +72,14 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
         if (!recovery) {
           if (recoveryServices.size >= 32) throw new LibraryError('RECOVERY_LIMIT', 'Too many active recovery views. Retain pending commands and retry later.', 429);
           const selected = await adapter.selectBranch(selectedBranch);
-          if ((await selected.read()).libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Folder belongs to another library.', 409);
+          if ((await (selected.readSnapshot ? selected.readSnapshot() : selected.read())).libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Folder belongs to another library.', 409);
           recovery = { adapter: selected, service: createCommandService(selected) };
           recoveryServices.set(selectedBranch, recovery);
         }
         recovery.usedAt = Date.now(); service = recovery.service; selectedAdapter = recovery.adapter;
       }
       let state;
-      try { state = await selectedAdapter.read(); }
+      try { state = await (selectedAdapter.readSnapshot ? selectedAdapter.readSnapshot() : selectedAdapter.read()); }
       catch (error) { if (error.code === 'FOLDER_CHANGED' && selectedBranch) recoveryServices.delete(selectedBranch); throw error; }
       if (state.libraryId && state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Selected folder contains another library.', 409);
       if (selectedBranch && req.method !== 'GET' && !['/v1/library/reconciliations', '/v1/library/commits'].includes(url.pathname)) {

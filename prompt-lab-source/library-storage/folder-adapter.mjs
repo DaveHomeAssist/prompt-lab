@@ -135,7 +135,7 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
   async function selected(value, context) {
     if (!value.heads.length) {
       if (context) fail('BRANCH_NOT_FOUND', 'The selected recovery branch is unavailable.');
-      return { state: empty(), transaction: null };
+      return { state: freeze(empty()), transaction: null };
     }
     let transaction;
     if (!context) {
@@ -157,11 +157,14 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
       if (verifiedTransactions.size >= 128) verifiedTransactions.delete(verifiedTransactions.values().next().value);
       verifiedTransactions.add(transaction);
     }
-    return { state: structuredClone(state), transaction };
+    return { state, transaction };
   }
   function access(context = null) { return {
     root,
-    async read() { return (await selected(await graph(), context)).state; },
+    async read() { return structuredClone((await selected(await graph(), context)).state); },
+    // Internal read stages may share immutable content. This still rebuilds
+    // the graph from freshly read bytes, including recovery branch checks.
+    async readSnapshot() { return (await selected(await graph(), context)).state; },
     ...(context ? { async recoveryContext() {
       await selected(await graph(), context);
       return { anchorTransaction: context.anchorTransaction, graphRevision: await hash(context.heads) };

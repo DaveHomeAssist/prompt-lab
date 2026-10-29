@@ -1,4 +1,4 @@
-import { assertWorkspace, canonical, hash, inspectPackage, FORMAT, VERSION, LibraryError } from './contract.mjs';
+import { assertWorkspace, canonical, hash, inspectPackage, ownObjectTable, FORMAT, VERSION, LibraryError } from './contract.mjs';
 
 export const TRANSFER_FORMAT = 'promptlab-library-transfer';
 const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -9,7 +9,8 @@ async function verifyState(input) {
   if (!record(input) || !record(input.objects) || !record(input.operations) || !Array.isArray(input.checkpoints)) fail('Complete library state is required.');
   // Own the input before any asynchronous hash. Do not add an aggregate depth
   // or size limit around otherwise valid individual immutable objects.
-  const state = structuredClone(input);
+  const { objects: inputObjects, ...rest } = input;
+  const state = { ...structuredClone(rest), objects: ownObjectTable(inputObjects) };
   const metadata = Object.fromEntries(Object.entries(state).filter(([key]) => !['objects', 'operations', 'checkpoints'].includes(key)));
   assertWorkspace({ ...metadata, library: [] });
   for (const object of Object.values(state.objects)) {
@@ -110,7 +111,7 @@ export async function createTransfer(input) {
     objects, operations, checkpointsHash: await hash(state.checkpoints), metadataHash: await hash(metadata),
     counts: { objects: objects.length, operations: operations.length, checkpoints: state.checkpoints.length, commits }, stateKind: inspection.stateKind };
   return { format: TRANSFER_FORMAT, schemaVersion: VERSION, manifest, manifestHash: await hash(manifest),
-    metadata, objects: state.objects, operations: state.operations, checkpoints: state.checkpoints };
+    metadata, objects: structuredClone(state.objects), operations: state.operations, checkpoints: state.checkpoints };
 }
 
 export async function inspectTransfer(input, { expectedManifestHash } = {}) {
