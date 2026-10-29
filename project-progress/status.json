@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T18:39:43.085Z",
+  "snapshotAt": "2026-10-29T19:01:54.268Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -13,6 +13,12 @@
   "overall": "Acceptance incomplete",
   "nextAction": "Complete remaining shared writable domains and app migration integration before native activation and actual two-client iCloud acceptance.",
   "evidence": [
+    {
+      "label": "Per tab recovery now retained during capture",
+      "state": "Open",
+      "detail": "2026-10-29: Per-tab draft recovery preservation pushed in 9255731ee4188b11789748a7502eb88936980dbc: https://github.com/DaveHomeAssist/prompt-lab/commit/9255731ee4188b11789748a7502eb88936980dbc . The previous-draft recovery copy lives in session storage and was missing from coordinated app capture. Startup now registers its exact raw value before announcing a window, App registers its independent live recovery buffer, and writes/dismissal respect the capture barrier. Malformed saved text and unknown fields remain retained; denied reads or older participants missing recovery evidence prevent coordinated capture. Dominic Node 22.23.4: 1,553 app tests and 74 affected storage/capture tests passed. After final malformed-participant guards, seven source-reader and 16 focused tests, all 21 browser checks in existing Playwright 1.58.2, extension build, Markdown lint and four documentation contracts passed. Two new app regressions fail on the previous App code. Synthetic retention covers both clients, interrupted publication, lost acknowledgement, reopen and complete transfer. All 11 changed files match the runner. Initial fixture-label and runner setup failures are retained in private evidence. Original real export hash remains unchanged; this increment did not read personal browser state or repeat the earlier full-export test. A1/A2 remain In progress; PR248 remains draft. Native/app migration activation, other writable domains, actual two-client iCloud, scale and human acceptance remain open. Next: complete remaining shared writable domains and app migration integration. MUT-7 direct current-session instruction.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/9255731ee4188b11789748a7502eb88936980dbc"
+    },
     {
       "label": "Shared Scratch commands and four real notes verified",
       "state": "Open",
