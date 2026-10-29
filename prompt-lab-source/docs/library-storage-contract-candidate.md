@@ -161,6 +161,14 @@ boundaries, truncated files, unsafe destinations and capacity limits. Documentat
 lint and all four consistency checks pass. These results do not establish a
 public restore workflow, installed-app recovery or actual cloud replication.
 
+The exact candidate commit `78a951a` passed a private Mac Node 22.22.1 transfer
+check on the supplied export. Its 5,765,177-byte backup retained nine objects,
+two commits/receipts and one checkpoint, including all 246 indexed records,
+21 history rows and 60 missing-reference records. Reopening the file, comparing
+the complete state, reconstructing a new disposable folder and replaying the
+saved operation all passed. The original source SHA-256 remained unchanged.
+No personal library was activated and no private data was transferred off-host.
+
 ### Durable import state
 
 Import commits reference a versioned state manifest containing every original
