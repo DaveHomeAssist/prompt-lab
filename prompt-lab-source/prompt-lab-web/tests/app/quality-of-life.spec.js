@@ -66,3 +66,52 @@ for (const width of [375, 1440]) {
     await page.screenshot({ path: test.info().outputPath(`qol-restored-${width}.png`) });
   });
 }
+
+for (const width of [375, 1440]) {
+  test(`Saved artwork is reusable after reload at ${width}`, async ({ page }) => {
+    await prepare(page, width); await navigate(page, 'Library');
+    await page.getByRole('button', { name: 'Change artwork for Saved draft' }).click();
+    let dialog = page.getByRole('dialog', { name: 'Artwork for Saved draft' });
+    await dialog.getByLabel('Prompt artwork emoji').fill('🧪');
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect(dialog).not.toBeVisible();
+    await page.reload();
+    await page.getByRole('button', { name: 'Change artwork for Assembly block' }).click();
+    dialog = page.getByRole('dialog', { name: 'Artwork for Assembly block' });
+    await dialog.getByRole('button', { name: 'Use recent 🧪' }).click();
+    await expect(dialog.getByLabel('Prompt artwork emoji')).toHaveValue('🧪');
+    await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).every(e => e.metadata.artwork.emoji === '🧪'))).toBe(true);
+    await page.getByRole('button', { name: 'Change artwork for Assembly block' }).click();
+    await dialog.getByRole('button', { name: 'Clear recently used' }).click();
+    await expect(dialog.getByRole('button', { name: 'Use recent 🧪' })).toHaveCount(0);
+    await expect(dialog.getByLabel('Prompt artwork emoji')).toHaveValue('🧪');
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  });
+  test(`Search beside Write filters locally and Escape clears at ${width}`, async ({ page }) => {
+    await prepare(page, width);
+    await page.getByRole('button', { name: 'Prompts', exact: true }).click();
+    const panel = page.getByRole('complementary', { name: 'Prompts beside Write' });
+    const search = panel.getByRole('searchbox', { name: 'Search prompts beside Write' });
+    await search.fill('Creative Writing');
+    await expect(panel.getByRole('button', { name: 'Open Saved draft in Write' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Open Assembly block in Write' })).toHaveCount(0);
+    await search.fill('not found'); await expect(panel.getByText('No prompts match this search in the selected view.')).toBeVisible();
+    await search.press('Escape'); await expect(search).toHaveValue('');
+    await expect(panel.getByRole('button', { name: 'Open Assembly block in Write' })).toBeVisible();
+    await expect(page.getByTestId('prompt-input')).toHaveValue('Current unsaved changes');
+    for (const theme of ['dark', 'light']) { await switchTheme(page, theme); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); }
+  });
+}
+for (const [mode, expected] of [['Insert at cursor', '# Assembly block\nBlock payload'], ['Append to draft', 'Current unsaved changes\n\n# Assembly block\nBlock payload']]) {
+  test(`Composer ${mode} can restore the original draft`, async ({ page }) => {
+    await prepare(page, 1440);
+    const editor = page.getByTestId('prompt-input'); await editor.focus(); await editor.press('ControlOrMeta+a');
+    await navigate(page, 'Compose'); await addBlock(page);
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    await expect(editor).toHaveValue(expected);
+    await page.getByRole('button', { name: 'Restore previous draft', exact: true }).click();
+    await navigate(page, 'Write');
+    await expect(editor).toHaveValue('Current unsaved changes');
+  });
+}
