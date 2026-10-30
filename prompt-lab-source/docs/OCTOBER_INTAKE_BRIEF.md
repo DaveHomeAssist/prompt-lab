@@ -332,3 +332,8 @@ three views. Verify mobile/desktop/both themes and no page overflow. Use synthet
 fixtures on Dominic Node 22, then normal CI/merge/deployment and disposable QA
 production checks. No new dependencies, provider calls, bulk metadata, named
 presets, global search, account sync or packaged release are included.
+
+
+### Artwork decode and Write search retention, October 30
+
+Reject damaged PNG, JPEG and WebP uploads before changing artwork. Keep the previous choice, show a readable failure and allow retry. Validate browser decoding after reading the bounded local file; do not add dependencies, upload services or schema changes. Retain the Write prompt search in the parent workspace while the panel is closed or its Scratch tab is shown. Clear and Escape still clear it; a reload starts an empty query. Acceptance: damaged PNG rejected with unchanged saved artwork, valid PNG retry/export/reload passes, and filtered results/query survive close/reopen at phone and desktop sizes.

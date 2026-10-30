@@ -34,6 +34,10 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
         reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file);
       });
       if (!safeArtwork({ image }).image) throw new Error('Invalid image');
+      const preview = new Image();
+      preview.src = image;
+      await preview.decode();
+      if (!preview.naturalWidth || !preview.naturalHeight) throw new Error('Invalid image');
       if (mounted.current) { onChange({ ...artwork, image, emoji: '' }); setError(''); }
     } catch { if (mounted.current) setError('This image could not be read. Try another file.'); }
     finally { if (mounted.current) setReading(false); }
