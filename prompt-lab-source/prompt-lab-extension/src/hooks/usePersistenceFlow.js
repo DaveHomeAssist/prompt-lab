@@ -4,7 +4,7 @@ import { normalizeEntry } from '../lib/promptSchema.js';
 import { normalizeError } from '../lib/errorTaxonomy.js';
 import { useSessionRestore, useSessionSave } from './useSessionState.js';
 import { ensureString } from '../lib/utils.js';
-import { decodePackShare } from '../lib/packExport.js';
+import { decodePackShare, decodePackShareText } from '../lib/packExport.js';
 import { importPresetPack } from '../lib/presetImport.js';
 import { linkEvalRunToPrompt } from '../experimentStore.js';
 import { createSaveReceipt } from '../lib/promptLifecycle.js';
@@ -91,6 +91,12 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         return;
       }
       sharedHashHandledRef.current = true;
+      if (lib.repository) {
+        if (typeof lib.reviewPackImport !== 'function') { notify('Pack review is unavailable for the selected Library.'); return; }
+        lib.reviewPackImport(decodePackShareText(hash.slice(6)), 'Shared pack');
+        setTab('library');
+        return;
+      }
       void importPresetPack(pack, {
         load: async () => lib.library,
         save: async (library) => {

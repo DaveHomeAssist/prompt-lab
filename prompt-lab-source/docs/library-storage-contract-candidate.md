@@ -1,5 +1,46 @@
 # Library storage contract candidate
 
+## Reviewed pack imports: October 30
+
+Route pack files, shared links and starter libraries into the selected library's
+existing review dialog and atomic installation command. Pin the reviewed revision,
+replacement records and generated identities. Retain exact source text, skipped
+presets, unknown fields and both histories. Never report Loaded or change the
+browser registry before the shared command and readback are acknowledged.
+
+Keep the existing browser behavior when no repository is selected. A selected
+failure retains its source and choices for retry without browser fallback. Verify
+duplicate resolution, stale review, pending acknowledgement, offline restart,
+response loss and malformed input through the real repository/service, then
+exercise the visible file flow and an isolated copy of the complete real export.
+This source integration does not activate personal storage or waive remaining
+workspace import, migration, native, two-client iCloud or hosted acceptance.
+
+Pack installs opt into `folderPolicy: preserve-paths`. Existing folders are
+matched by their complete collection path; new paths get stable local folder
+identities in the same publication. Foreign IDs remain in the archived source.
+Literal slash-containing names stay roots, without inferred hierarchy. Ambiguous
+IDs without a path fail before mutation. Original installation requests retain
+their old derivation and hashes so immutable history remains readable.
+
+Verification on Dominic, Node 22.23.4: all 443 storage tests, 1,635 shared app
+tests across 144 files, 231 legacy tests, extension build and documentation
+checks pass. The pack integration suite contains 26 scenarios, including 12
+import and matching checks. A new regression reproduced the missing folder
+mapping before the fix. The final browser flow passes through the folder adapter
+and local API at 375, 1440 and 2560 pixels, including offline retry, retained
+history, exact source text and imported folder mapping. Screens were inspected
+and page overflow checks pass. Full-body matching also rejects a demonstrated
+collision in the former short-hash duplicate check.
+
+A bounded Mac Node 22.22.1 check used a fresh isolated copy of the complete real
+export, after creating a disposable folder. It replaced one prompt, added one
+and skipped one, preserving all 215 unrelated prompts, both replacement
+histories, three evaluations, four Scratch notes and all 21 objects present
+before installation. The new collection and mapped folder survived reopening.
+The original export hash is unchanged; no private data was uploaded. This is
+shared-store evidence, with real-data UI and installed-app acceptance still open.
+
 ## Pack Studio routing: October 30
 
 Connect Pack Studio's registry, publication, update and uninstall to the selected

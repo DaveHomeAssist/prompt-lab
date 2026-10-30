@@ -163,6 +163,35 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       expect(packResult.view.trash[0].versions.slice(0, 35)).toEqual(workspace.library[0].versions);
       expect(packResult.packs).toBe('{"personal-pack":{"id":"personal-pack","title":"Personal pack"}}');
       expect(Object.keys((await adapter.read()).operations)).toHaveLength(13);
+
+      await page.getByRole('button', { name: 'Close pack studio' }).click();
+      pack.presets[0].collection = 'Imported/Literal'; pack.presets[0].folderId = 'foreign-folder';
+      const rawPack = ' \n' + JSON.stringify(pack, null, 3) + '\n';
+      await page.getByLabel('Import Prompt Lab workspace').setInputFiles({ name: 'retained-pack.json', mimeType: 'application/json', buffer: Buffer.from(rawPack) });
+      await expect(page.getByRole('dialog', { name: 'Review Library import' })).toBeVisible();
+      await expect(page.getByText('Destination: the selected Library.', { exact: false })).toBeVisible();
+      expect(Object.keys((await adapter.read()).operations)).toHaveLength(13);
+      await page.context().setOffline(true);
+      await page.getByRole('button', { name: 'Apply import', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Retry import', exact: true })).toBeVisible();
+      await page.screenshot({ path: test.info().outputPath(`pack-import-offline-${viewport.width}.png`) });
+      expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        height: document.documentElement.scrollHeight <= document.documentElement.clientHeight }))).toEqual({ width: true, height: true });
+      await page.context().setOffline(false);
+      await page.getByRole('button', { name: 'Retry import', exact: true }).click();
+      await expect(page.getByRole('dialog', { name: 'Review Library import' })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Favorite Shared prompt', exact: true })).toBeVisible();
+      const installed = await page.evaluate(() => repository.readPromptLibrary());
+      expect(installed.library[0].versions).toEqual(pack.presets[0].versions);
+      expect(installed.library[0].future).toEqual({ keep: true });
+      expect(installed.folders).toHaveLength(1);
+      expect(installed.folders[0]).toMatchObject({ name: 'Imported/Literal', parentId: null, collection: 'Imported/Literal' });
+      expect(installed.library[0].folderId).toBe(installed.folders[0].id);
+      expect(installed.library[0].folderId).not.toBe('foreign-folder');
+      expect(installed.loadedPacks).toContain(pack.id);
+      const installedState = await adapter.read();
+      expect(Object.values(installedState.objects).some(object => object.kind === 'pack-source' && object.data === rawPack)).toBe(true);
+      expect(Object.keys(installedState.operations)).toHaveLength(14);
     } finally { await api.close(); await rm(directory, { recursive: true, force: true }); }
   });
 }

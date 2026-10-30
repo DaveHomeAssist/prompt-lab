@@ -312,3 +312,37 @@ test('pack source archives retain extensions but exclude credential stores and r
     await assert.rejects(createTransfer({ ...state,objects:{ ...state.objects,[extra.hash]:extra.object } }),error=>['INVALID_TRANSFER','EXCLUDED_STORE'].includes(error.code));
   }
 });
+
+
+test('path-preserving installation owns new folders and retains exact legacy installation requests', async () => {
+  const service = createCommandService(createMemoryAdapter()), imported = await publish(service);
+  const legacy = await requestFor(service, imported.sourceBinding, 'install');
+  const oldReview = await service.previewPack(legacy);
+  assert.equal(Object.hasOwn(oldReview.packPlan.request, 'folderPolicy'), false);
+  const pack = JSON.parse(legacy.sourceText);
+  pack.presets[0].collection = 'Literal/Root'; pack.presets[0].folderId = 'foreign-folder';
+  const input = { ...legacy, sourceText: JSON.stringify(pack), folderPolicy: 'preserve-paths' };
+  const { review, receipt } = await mutate(service, input, 'install-folders');
+  const folders = await records(service, 'folders'), prompts = await records(service, 'prompts');
+  assert.equal(folders.length, 1); assert.notEqual(folders[0].sourceId, 'foreign-folder');
+  assert.deepEqual(folders[0].value, { id: folders[0].sourceId, name: 'Literal/Root', parentId: null, collection: 'Literal/Root' });
+  assert.equal(prompts.find(row => row.sourceId === 'installed').value.folderId, folders[0].sourceId);
+  assert.equal((await service.read()).objects[review.packPlan.archiveSource].data, input.sourceText);
+  assert.deepEqual((await inspectTransfer(await createTransfer(await service.read()))).state, await service.read());
+  const replay = await service.apply({ ...review, idempotencyKey: 'install-folders' });
+  assert.equal(replay.revision, receipt.revision);
+  const restore = await service.previewRestore({ ...await query(service), checkpointId: receipt.checkpointId });
+  assert.equal(restore.commitAvailable, true);
+  await service.apply({ ...restore, idempotencyKey: 'restore-folders' }); await select(service, 'select-restored-folders');
+  assert.equal((await records(service, 'folders')).length, 0);
+  assert.equal((await records(service, 'prompts')).length, 2);
+});
+
+test('path-preserving installation rejects ambiguous foreign folder IDs before mutation', async () => {
+  const service = createCommandService(createMemoryAdapter()), imported = await publish(service);
+  const input = await requestFor(service, imported.sourceBinding, 'install'), before = await service.read();
+  const pack = JSON.parse(input.sourceText); pack.presets[0].folderId = 'foreign-without-path';
+  await assert.rejects(service.previewPack({ ...input, sourceText: JSON.stringify(pack), folderPolicy: 'preserve-paths' }), { code: 'INVALID_FOLDER_REFERENCES' });
+  await assert.rejects(service.previewPack({ ...input, folderPolicy: 'invent-hierarchy' }), { code: 'INVALID_PACK_COMMAND' });
+  assert.deepEqual(await service.read(), before);
+});

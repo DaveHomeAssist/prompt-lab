@@ -81,12 +81,20 @@ export function encodePackShare(pack) {
 }
 
 export function decodePackShare(value) {
+  const text = decodePackShareText(value);
+  if (text === null) return null;
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+export function decodePackShareText(value) {
   try {
     const normalized = ensureString(value).replaceAll('-', '+').replaceAll('_', '/');
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
     const binary = atob(padded);
     const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes));
+    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    JSON.parse(text);
+    return text;
   } catch {
     return null;
   }

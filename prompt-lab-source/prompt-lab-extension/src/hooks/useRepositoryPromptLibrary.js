@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPromptLibraryStore } from '../lib/promptLibraryStore.js';
 import { normalizeTagList } from '../lib/tagSchema.js';
+import { getStarterLibraries, getStarterPackSource } from '../lib/seedTransform.js';
 
 // Selection belongs to the native migration owner. This hook only consumes an
 // explicitly supplied dependency; it cannot activate or switch personal data.
 export function useRepositoryPromptLibrary(repository, notify) {
   const original = useRef(repository), notifyRef = useRef(notify);
+  const fileRead = useRef(0);
   notifyRef.current = notify;
   if (repository !== original.current) throw new Error('Remount the Library after reviewing a storage change.');
   const [, render] = useState(0);
@@ -37,6 +39,26 @@ export function useRepositoryPromptLibrary(repository, notify) {
     refresh: store.refresh, doSave: store.doSave, linkSavedPrompt: store.linkSavedPrompt,
     saveEntryDetails: store.saveEntryDetails, setFavorite: store.setFavorite, updateEntries: store.updateEntries,
     saveFolders: store.saveFolders, deleteCollection: store.deleteCollection, moveEntriesToCollection: store.moveEntriesToCollection,
+    reviewPackImport: store.reviewPackImport,
+    importLib: event => {
+      const input = event.target, file = input.files?.[0], readId = ++fileRead.current;
+      input.value = '';
+      if (!file) return;
+      if (store.pendingImport || store.saving) { notifyRef.current?.('Retry the retained Library change before selecting another file.'); return; }
+      if (file.size > 20_000_000) { notifyRef.current?.('Choose a pack smaller than 20 MB.'); return; }
+      const reader = new FileReader();
+      reader.onload = () => { if (readId === fileRead.current) store.reviewPackImport(reader.result, file.name); };
+      reader.onerror = () => { if (readId === fileRead.current) notifyRef.current?.('The import file could not be read. Your Library is unchanged.'); };
+      reader.readAsText(file);
+    },
+    retryImport: store.retryImport, confirmImport: store.confirmImport,
+    chooseImportResolution: store.chooseImportResolution, cancelImportPreview: store.cancelImportPreview,
+    loadStarterPack: id => {
+      try {
+        if (store.loadedPackIds.includes(id)) { notifyRef.current?.('Pack already loaded.'); return false; }
+        return store.reviewPackImport(getStarterPackSource(id), 'Starter Library');
+      } catch (error) { notifyRef.current?.(error.message); return false; }
+    },
     addTagToEntries: (ids, tag) => store.updateEntries(ids, entry => ({ ...entry, tags: normalizeTagList([...(entry.tags || []), tag]) })),
     del: (id, { skipConfirm = false } = {}) => !skipConfirm && !window.confirm('Move this prompt to Recently Deleted?') ? false : lifecycle('trash', id),
     restoreDeleted: id => lifecycle('restore', id),
@@ -60,6 +82,7 @@ export function useRepositoryPromptLibrary(repository, notify) {
     clearGoldenResponse: id => store.saveEntryDetails(id, entry => ({ ...entry, goldenResponse: null })),
     setGoldenThreshold: (id, threshold) => store.saveEntryDetails(id, entry => ({ ...entry, goldenThreshold: threshold })),
     recordSuiteResult: (id, suite) => store.saveEntryDetails(id, entry => ({ ...entry, metadata: { ...(entry.metadata || {}), suite } })),
-    pendingImport: false, importPreview: null, importApplying: false, recoveringLegacyLibrary: false, starterLibraries: [],
+    pendingImport: store.pendingImport, importPreview: store.importPreview, importApplying: store.importApplying,
+    recoveringLegacyLibrary: false, starterLibraries: getStarterLibraries(store.loadedPackIds),
   };
 }

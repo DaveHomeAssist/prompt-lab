@@ -112,6 +112,12 @@ export default function PresetImportPanel({ m, lib, compact = false, onClose }) 
   const handleImport = async () => {
     if (!readyToImport || importing) return;
     setImportError('');
+    if (lib.repository) {
+      if (typeof lib.reviewPackImport !== 'function' || !lib.reviewPackImport(sourceText, sourceLabel || 'Pasted pack')) {
+        setImportError('Review the original pack in the selected Library before applying it.');
+      }
+      return;
+    }
 
     const adapter = {
       load: async () => lib.library,

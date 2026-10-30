@@ -65,16 +65,14 @@ describe('seedTransform', () => {
       });
     });
 
-    // Bug #3: getStarterLibraries ignores its argument — always reads localStorage
-    it('ignores passed argument and reads localStorage directly (documents Bug #3)', () => {
+    it('uses explicit selected-library loaded IDs without reading the browser marker', () => {
       const allLibs = getStarterLibraries();
       if (allLibs.length === 0) return;
       const firstId = allLibs[0].id;
-      // Pass a loaded pack ID as argument — function should use it but doesn't
       const result = getStarterLibraries([firstId]);
-      // The function ignores the argument, so it reads from localStorage
-      // which doesn't have the pack loaded yet
-      expect(result.find((l) => l.id === firstId).loaded).toBe(false);
+      expect(result.find((l) => l.id === firstId).loaded).toBe(true);
+      localStorage.setItem('pl2-loaded-packs', JSON.stringify([firstId]));
+      expect(getStarterLibraries([]).find((l) => l.id === firstId).loaded).toBe(false);
     });
   });
 

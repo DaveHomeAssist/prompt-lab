@@ -1,6 +1,6 @@
 # Library storage and account sync
 
-Status: implementation in progress, acceptance incomplete. Dave authorized all planned phases on October 28, 2026. Draft PR248 contains isolated A1/A2 candidates; no app or personal folder is connected. The October 23 reconciliation against `main` `faea576` established the folder-first sequence. The [current build status](account-library-sync-slices.md#implementation-progress-october-28) separates implementation from acceptance. No paid provisioning is authorized.
+Status: implementation in progress, acceptance incomplete. Dave authorized all planned phases on October 28, 2026. Draft PR248 contains A1/A2 candidates and A3 integration through an explicitly supplied repository. Shipped startup remains on existing local storage; no personal folder is activated. The October 23 reconciliation against `main` `faea576` established the folder-first sequence. The [current build status](account-library-sync-slices.md#current-implementation-progress-october-30) separates implementation from acceptance. No paid provisioning is authorized.
 
 This remains the canonical proposal at its existing path. [D-016](DECISIONS.md) records the selected sequence and remaining hosted decisions. [Build slices](account-library-sync-slices.md) replace the earlier web-first instructions. The [original proposal](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync.md) and [original slices](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical evidence, not executable instructions.
 
@@ -32,7 +32,7 @@ The current UI may show only recent versions, but the durable store retains all 
 
 Inspected shared source still uses `pl2-library`, trash, collections and folders in browser storage; the desktop adds the IndexedDB durability journal. Runs and test cases have their own store. Import preview and application already handle conflict choices, associations and retryable stages. Reuse their semantics through a storage service rather than adding a competing raw-storage writer.
 
-The shipped app still has no connected external-folder or account library service. Draft PR248 contains an isolated folder/API reference candidate and source inventory contract, described in [candidate boundaries](library-storage-contract-candidate.md). Unimplemented routes and app flows below remain proposed. The existing [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) continues to describe shipped behavior until each phase is implemented and verified.
+The shipped app still has no connected external-folder or account library service. Draft PR248 contains a folder/API service, source inventory contract and app integration in progress, described in [candidate boundaries](library-storage-contract-candidate.md). Unimplemented routes and app flows below remain proposed. The existing [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) continues to describe shipped behavior until each phase is implemented and verified.
 
 ## Phase A: chosen iCloud Drive folder
 
@@ -134,7 +134,7 @@ Use synthetic fixtures, isolated profiles and supported background tooling. Linu
 
 ## Next action and open decisions
 
-Next action: complete A2 packaged macOS lifecycle, crash ownership, credential renewal and explicit pairing. The five original A1 contract criteria pass on the candidate. Mac Keychain source and actual Linux filesystem failure acceptance now pass, while installed app and macOS recovery checks remain open. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
+Next action: complete workspace import and remaining Library actions through the selected repository, followed by reviewed migration and startup activation. The five original A1 criteria and native credential/ownership source checks pass on the candidate. Exact installed macOS lifecycle, real-data UI, actual iCloud concurrency and human acceptance remain open. Dave selects the folder through the delivered picker.
 
 Decided: folder first, hosted second; complete history/backups; shared app/API library. The October 28 hosted choices are recorded above and in D-016. The native service packages the shared JavaScript engine with Node 22; actual iCloud propagation and installed-app acceptance remain unverified. The October 23 planning-only authorization and earlier hosted questions are preserved in Git history and the existing Notion historical sections.
 

@@ -6,6 +6,7 @@ import { applyDeletionPolicy } from './selection-policy.mjs';
 import { collectDeletionEvidence } from './source-binding.mjs';
 import { recordGroupId, selectionForRecord, withRecordGroups } from './record-state.mjs';
 import { appendPromptRevision, validateChangedFields } from './edit-plan.mjs';
+import { assertFolderProjection } from './folder-projection.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && value.trim() && value.length <= 200;
@@ -45,6 +46,31 @@ export async function planPackInstallation(pkg, inspected, request) {
   const selected = domain => inspected.currentView.groups.filter(group => group.domain === domain
     && group.sourceIdentity === scope.sourceIdentity && group.selected !== null).map(group => ({ group, row: byKey.get(group.selected) }));
   const active = selected('prompts'), registry = selected('packs').find(({ row }) => row.sourceId === pack.id);
+  // Opt in so previously published installation plans retain their exact hashes.
+  const preservePaths = request.folderPolicy === 'preserve-paths';
+  const folders = preservePaths ? selected('folders').map(({ row }) => structuredClone(row.value)) : [];
+  const collections = preservePaths ? selected('collections').map(({ row }) => row.value) : [];
+  if (preservePaths) assertFolderProjection({ folders, collections, library: active.map(({ row }) => row.value) });
+  const foldersByPath = new Map(folders.map(folder => [folder.collection, folder])), createdFolders = [];
+  const retainedFolderIds = new Set([...map.records.filter(row => row.domain === 'folders').map(row => row.sourceId),
+    ...(inspected.manifest.recordGroups ?? []).filter(group => group.domain === 'folders').map(group => group.sourceId)]);
+  async function assignFolder(next, incoming) {
+    if (!preservePaths) return;
+    // A foreign ID without a path is ambiguous, even if its bytes match a local ID.
+    if (incoming.folderId && !incoming.collection) fail('INVALID_FOLDER_REFERENCES', 'Review the imported folder path, or skip this preset to retain its original source.');
+    const path = next.collection;
+    if (!path) { if (Object.hasOwn(next, 'folderId')) next.folderId = ''; return; }
+    let folder = foldersByPath.get(path);
+    if (!folder) {
+      let suffix = 0, folderId;
+      do { folderId = `pack-folder-${(await hash({ request, path, suffix: suffix++ })).slice(7)}`; } while (retainedFolderIds.has(folderId));
+      retainedFolderIds.add(folderId);
+      // A slash in a legacy path is literal; hierarchy needs a separate review.
+      folder = { id: folderId, name: path, parentId: null, collection: path };
+      folders.push(folder); createdFolders.push(folder); collections.push(path); foldersByPath.set(path, folder);
+    }
+    next.folderId = folder.id;
+  }
   const retainedRegistry = inspected.manifest.recordGroups?.find(group => group.domain === 'packs'
     && group.sourceIdentity === scope.sourceIdentity && group.sourceId === pack.id);
   const previousRegistry = registry?.row ?? byKey.get(retainedRegistry?.retainedSelection);
@@ -80,6 +106,7 @@ export async function planPackInstallation(pkg, inspected, request) {
     next.id = promptId;
     if (!Object.hasOwn(incoming, 'original') && typeof incoming.prompt === 'string') next.original = incoming.prompt;
     if (!Object.hasOwn(incoming, 'enhanced') && typeof incoming.prompt === 'string') next.enhanced = incoming.prompt;
+    await assignFolder(next, incoming);
     next.metadata = { ...(next.metadata ?? {}), packId: pack.id, packName: pack.title,
       packSource: typeof pack.source === 'string' ? pack.source : 'imported', libraryGeneration: scope.generation };
     if (target) {
@@ -95,13 +122,19 @@ export async function planPackInstallation(pkg, inspected, request) {
     changes.push({ groupId, target, index: library.length }); library.push(next);
   }
   const workspace = { library, packs: { [pack.id]: mergeFields(previousRegistry?.value, pack) }, loadedPacks: [pack.id] };
+  if (preservePaths) {
+    const replaced = new Set(changes.filter(change => change.target).map(change => change.groupId));
+    assertFolderProjection({ folders, collections, library: [...active.filter(({ group }) => !replaced.has(group.id)).map(({ row }) => row.value), ...library] });
+    workspace.folders = createdFolders; workspace.collections = collections;
+  }
   const input = await makeObject('workspace', workspace), source = await makeObject('source', canonical(workspace));
   const archive = await makeObject('pack-source', request.sourceText);
   const objects = { [input.hash]: input.object, [source.hash]: source.object, [archive.hash]: archive.object };
   const groupId = await recordGroupId(pkg.libraryId, 'packs', scope.sourceIdentity, pack.id);
   const derivedSources = [{ source: source.hash, workspace: input.hash, binding: request.sourceBinding,
     baseRevision: pkg.head, groupId, previousMember: previousRegistry?.key ?? null,
-    packMutation: { action: 'install', packId: pack.id, sourceIdentity: scope.sourceIdentity, changedAt: request.changedAt } }];
+    packMutation: { action: 'install', packId: pack.id, sourceIdentity: scope.sourceIdentity, changedAt: request.changedAt,
+      ...(preservePaths ? { folderPolicy: 'preserve-paths' } : {}) } }];
   for (const change of changes) {
     const member = JSON.stringify([input.hash, 'library', change.index]);
     const group = change.target && groups.find(group => group.id === change.groupId);
@@ -120,6 +153,14 @@ export async function planPackInstallation(pkg, inspected, request) {
     const selection = selectionForRecord(row, id), index = owned.findIndex(group => group.id === id);
     if (index < 0) owned.push(selection); else owned[index] = selection;
     delete resolutions[id];
+  }
+  for (const folder of createdFolders) {
+    const row = changedMap.records.find(row => row.domain === 'folders' && row.origin.object === input.hash && row.sourceId === folder.id);
+    const id = await recordGroupId(pkg.libraryId, 'folders', scope.sourceIdentity, folder.id);
+    owned.push(selectionForRecord(row, id)); delete resolutions[id];
+  }
+  if (preservePaths) for (const group of inspected.currentView.groups) {
+    if (group.domain === 'collections' && group.sourceIdentity === scope.sourceIdentity) delete resolutions[group.id];
   }
   manifest = withRecordGroups(manifest, owned);
   const deletion = await applyDeletionPolicy(manifest, allObjects, inspected.sourceBindings, allDerived);

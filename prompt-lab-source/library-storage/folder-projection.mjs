@@ -37,7 +37,8 @@ export function assertFolderProjection({ library, folders, collections }) {
 }
 
 export function folderProjectionSources(inspected) {
-  return new Set((inspected.derivedSources ?? []).flatMap(source => source.folderMutation ? [source.folderMutation.sourceIdentity] : []));
+  return new Set((inspected.derivedSources ?? []).flatMap(source => source.folderMutation ? [source.folderMutation.sourceIdentity]
+    : source.packMutation?.folderPolicy === 'preserve-paths' ? [source.packMutation.sourceIdentity] : []));
 }
 
 /** Collection strings follow selected folder identities, including after restore. */

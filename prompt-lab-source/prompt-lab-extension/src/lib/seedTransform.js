@@ -49,8 +49,8 @@ export function getLoadedPacks() {
 /**
  * Get all available starter libraries with their loaded status.
  */
-export function getStarterLibraries() {
-  const loaded = new Set(getLoadedPacks());
+export function getStarterLibraries(loadedIds = getLoadedPacks()) {
+  const loaded = new Set(loadedIds);
   return (seedData.libraries || [])
     .filter(lib => Array.isArray(lib.prompts) && lib.prompts.length > 0)
     .map(lib => ({
@@ -61,6 +61,17 @@ export function getStarterLibraries() {
       promptCount: lib.prompts.length,
       loaded: loaded.has(lib.id),
     }));
+}
+
+/** Preserve the bundled source fields for reviewed repository installation. */
+export function getStarterPackSource(packId) {
+  const library = seedData.libraries?.find(row => row.id === packId);
+  if (!library?.prompts?.length) throw new Error('This starter library is unavailable.');
+  return JSON.stringify({ ...library, type: 'prompt-pack', title: library.name, version: String(seedData.version || '1.0.0'),
+    source: 'starter-library', presets: library.prompts.map(prompt => ({ ...prompt,
+      collection: library.name,
+      metadata: { ...(prompt.metadata ?? {}), source: 'starter-library', seedPromptId: prompt.id, category: prompt.category ?? null },
+    })) });
 }
 
 /**

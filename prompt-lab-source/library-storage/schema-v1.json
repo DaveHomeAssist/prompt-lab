@@ -5905,6 +5905,9 @@
             },
             "mode": {
               "const": "pack"
+            },
+            "folderPolicy": {
+              "const": "preserve-paths"
             }
           },
           "required": [
@@ -6747,6 +6750,9 @@
               "type": "string",
               "format": "date-time",
               "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+            },
+            "folderPolicy": {
+              "const": "preserve-paths"
             }
           },
           "required": [
@@ -8546,6 +8552,9 @@
               },
               "maxItems": 1000,
               "uniqueItems": true
+            },
+            "folderPolicy": {
+              "const": "preserve-paths"
             }
           },
           "required": [

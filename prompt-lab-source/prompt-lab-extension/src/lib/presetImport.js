@@ -1,13 +1,13 @@
 import presetPackSchema from '../../../docs/preset-pack-schema.json';
 import { createPromptEntry, normalizeLibrary } from './promptSchema.js';
-import { getLibraryEntrySignature } from './libraryMatching.js';
+import { detectDuplicates } from './presetMatching.js';
+export { detectDuplicates } from './presetMatching.js';
 import { ensureString } from './utils.js';
 import { upsertPack } from './packStore.js';
 
 const PACK_REQUIRED_FIELDS = ['version', 'type', 'id', 'title', 'presets'];
 const PRESET_REQUIRED_FIELDS = ['id', 'title', 'prompt'];
 const PRESET_WARNING_FIELDS = ['summary', 'tags', 'category'];
-const TITLE_SIMILARITY_THRESHOLD = 0.65;
 const SOURCE_LABELS = Object.freeze({
   'preset-pack': 'Preset pack',
   'library-export': 'Library export',
@@ -89,34 +89,6 @@ function normalizePresetInputs(value) {
       };
     })
     .filter(Boolean);
-}
-
-function longestCommonSubsequenceLength(left, right) {
-  const a = ensureString(left);
-  const b = ensureString(right);
-  if (!a || !b) return 0;
-  const rows = new Array(b.length + 1).fill(0);
-  for (let i = 1; i <= a.length; i += 1) {
-    let diagonal = 0;
-    for (let j = 1; j <= b.length; j += 1) {
-      const cached = rows[j];
-      if (a.charCodeAt(i - 1) === b.charCodeAt(j - 1)) {
-        rows[j] = diagonal + 1;
-      } else {
-        rows[j] = Math.max(rows[j], rows[j - 1]);
-      }
-      diagonal = cached;
-    }
-  }
-  return rows[b.length];
-}
-
-function similarityRatio(left, right) {
-  const a = normalizePromptText(left).toLowerCase();
-  const b = normalizePromptText(right).toLowerCase();
-  const maxLength = Math.max(a.length, b.length);
-  if (!maxLength) return 1;
-  return longestCommonSubsequenceLength(a, b) / maxLength;
 }
 
 function describeSchemaTitle() {
@@ -560,52 +532,6 @@ export function validatePresetPack(json) {
     errors,
     warnings,
   };
-}
-
-/**
- * Detect likely duplicate presets against an existing library using title similarity
- * and exact prompt-text hashing.
- *
- * @param {Array<object>} incoming
- * @param {Array<object>} existing
- * @returns {Array<{ a: { id: string, title: string }, b: { id: string, title: string }, similarity: number, reason: string }>}
- */
-export function detectDuplicates(incoming, existing) {
-  const conflicts = [];
-  const seen = new Set();
-
-  asArray(incoming).forEach((candidate) => {
-    const incomingTitle = ensureString(candidate?.title);
-    const incomingPromptHash = getLibraryEntrySignature(candidate);
-
-    asArray(existing).forEach((entry) => {
-      const compareTitle = ensureString(entry?.title);
-      const titleSimilarity = similarityRatio(incomingTitle, compareTitle);
-      const comparePromptHash = getLibraryEntrySignature(entry);
-
-      const reasons = [];
-      if (titleSimilarity > TITLE_SIMILARITY_THRESHOLD) {
-        reasons.push({ similarity: Number(titleSimilarity.toFixed(4)), reason: 'title-similar' });
-      }
-      if (incomingPromptHash && comparePromptHash && incomingPromptHash === comparePromptHash) {
-        reasons.push({ similarity: 1, reason: 'prompt-exact-match' });
-      }
-
-      reasons.forEach((item) => {
-        const key = [candidate?.id, entry?.id, item.reason].join('::');
-        if (seen.has(key)) return;
-        seen.add(key);
-        conflicts.push({
-          a: summarizeItem(candidate),
-          b: summarizeItem(entry),
-          similarity: item.similarity,
-          reason: item.reason,
-        });
-      });
-    });
-  });
-
-  return conflicts;
 }
 
 /**

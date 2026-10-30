@@ -6,7 +6,7 @@ import { APP_RECORD_VERSION } from './appRecordVersion.js';
 
 export { APP_RECORD_VERSION } from './appRecordVersion.js';
 const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments', 'scratch-notes']);
-const readable = new Set([...supported, 'prompts', 'trash', 'packs']);
+const readable = new Set([...supported, 'prompts', 'trash', 'packs', 'loaded-packs']);
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
@@ -240,6 +240,7 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
         }
         return { libraryId, revision: snapshot.revision,
           packs,
+          loadedPacks: snapshot.items.filter(row => row.domain === 'loaded-packs').map(row => structuredClone(row.value)),
           library: snapshot.items.filter(row => row.domain === 'prompts').map(valueOf),
           trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf),
           collections: snapshot.items.filter(row => row.domain === 'collections').map(row => structuredClone(row.value)),

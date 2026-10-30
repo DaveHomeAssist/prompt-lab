@@ -5,7 +5,7 @@ export default function StarterPackCard({ pack, m = {}, onLoad }) {
   const handleClick = async () => {
     if (pack.loaded || loading) return;
     setLoading(true);
-    try { onLoad(pack.id); } finally { setLoading(false); }
+    try { await onLoad(pack.id); } finally { setLoading(false); }
   };
   return (
     <div className={`${m.surface} border ${m.border} rounded-lg p-3 flex items-start gap-3`}>

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canonical, createCommandService, createMemoryAdapter, LibraryError } from '../../../library-storage/contract.mjs';
 import { captureSourceInventory } from '../../../library-storage/source-inventory.mjs';
@@ -9,9 +9,15 @@ import { createPromptLibraryStore } from '../lib/promptLibraryStore.js';
 import { useRepositoryPromptLibrary } from '../hooks/useRepositoryPromptLibrary.js';
 import { exportPackFromEntries } from '../lib/packExport.js';
 import PackStudioPanel from '../PackStudioPanel.jsx';
+import WorkspaceImportModal from '../modals/WorkspaceImportModal.jsx';
+import usePersistenceFlow from '../hooks/usePersistenceFlow.js';
+import { encodePackShare } from '../lib/packExport.js';
+import { detectDuplicates } from '../lib/presetMatching.js';
+import { getLibraryEntrySignature } from '../lib/libraryMatching.js';
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear(); window.location.hash = '';
   vi.stubGlobal('URL', class extends URL {
     static createObjectURL = vi.fn(() => 'blob:pack');
     static revokeObjectURL = vi.fn();
@@ -246,4 +252,199 @@ it('exports unknown prompt fields, complete history and the stable existing pack
   expect(pack.id).toBe('starter_pack');
   expect(pack.presets[0].future).toEqual({ keep: ['all'] });
   expect(pack.presets[0].versions).toEqual(f.workspace.library[0].versions);
+});
+
+const importedPack = () => ({ type: 'prompt-pack', id: 'reviewed-pack', title: 'Reviewed pack', version: '3', future: { retained: true },
+  presets: [{ id: 'p', title: 'Existing member', original: 'Replacement body', prompt: 'Replacement body',
+    future: { incoming: true }, versions: Array.from({ length: 43 }, (_, i) => ({ id: `incoming-${i}`, original: `Incoming ${i}`, unknown: i })) },
+  { id: 'new', title: 'Zebra study', prompt: 'New content', metadata: { opaque: [1, 2, 3] } }] });
+
+function ImportSurface({ repository, notify }) {
+  const lib = useRepositoryPromptLibrary(repository, notify);
+  return <><output>{lib.libReady ? 'Library ready' : 'Opening Library'}</output><input aria-label="Pack file" type="file" onChange={lib.importLib} />
+    {lib.starterLibraries.map(pack => <button key={pack.id} onClick={() => lib.loadStarterPack(pack.id)} disabled={pack.loaded}>{pack.name}: {pack.loaded ? 'Loaded' : 'Review'}</button>)}
+    {lib.saveError && <p role="status">{lib.saveError}</p>}
+    {lib.pendingImport && !lib.importPreview && <button onClick={lib.retryImport}>Reopen pending import</button>}
+    {lib.importPreview && <WorkspaceImportModal m={{}} preview={lib.importPreview} applying={lib.importApplying}
+      onChoice={lib.chooseImportResolution} onApply={lib.confirmImport} onRetry={lib.retryImport} onClose={lib.cancelImportPreview} />}
+  </>;
+}
+async function reviewFile(f, pack = importedPack()) {
+  render(<ImportSurface repository={f.repository} notify={f.notify} />);
+  await screen.findByText('Library ready');
+  const text = ' \n' + JSON.stringify(pack, null, 3) + '\n';
+  await act(async () => { await f.repository.readPromptLibrary(); });
+  fireEvent.change(screen.getByLabelText('Pack file'), { target: { files: [new File([text], 'reviewed.json', { type: 'application/json' })] } });
+  await screen.findByRole('dialog');
+  return text;
+}
+
+it('reviews a real pack file without writes, then preserves both histories and exact raw source in one acknowledged import', async () => {
+  const f = await fixture(), before = await f.service.read(), pack = importedPack();
+  const text = await reviewFile(f, pack);
+  expect(await f.service.read()).toEqual(before);
+  expect(screen.getByRole('button', { name: 'Apply import' })).toBeDisabled();
+  fireEvent.change(screen.getByLabelText('Conflict action for Existing member'), { target: { value: 'replace' } });
+  fireEvent.change(screen.getByLabelText('Conflict action for Zebra study'), { target: { value: 'skip' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Apply import' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  const result = await f.repository.readRecord('prompts', 'p');
+  expect(result.original).toBe('Replacement body');
+  expect(result.versions.slice(0, 41)).toEqual(f.workspace.library[0].versions);
+  expect(result.versions.slice(42)).toEqual(pack.presets[0].versions);
+  expect(result.future).toEqual({ keep: ['all'], incoming: true });
+  expect((await f.repository.readPromptLibrary()).loadedPacks).toContain('reviewed-pack');
+  const after = await f.service.read();
+  expect(Object.keys(after.operations)).toHaveLength(Object.keys(before.operations).length + 1);
+  expect(Object.values(after.objects).some(object => object.kind === 'pack-source' && object.data === text)).toBe(true);
+  expect((await f.repository.readRecord('packs', 'reviewed-pack')).presets[1]).toEqual(pack.presets[1]);
+  for (const [key, value] of Object.entries(before.objects)) expect(after.objects[key]).toEqual(value);
+  legacyUnchanged(f);
+});
+
+it('keeps the reviewed file and choices visible until acknowledgement and refuses close while pending', async () => {
+  const f = await fixture(); let release;
+  const pack = importedPack(); pack.presets = [pack.presets[1]];
+  await reviewFile(f, pack);
+  f.beforeApply(() => new Promise(resolve => { release = resolve; }));
+  fireEvent.click(screen.getByRole('button', { name: 'Apply import' }));
+  await waitFor(() => expect(release).toBeTypeOf('function'));
+  expect(screen.getByRole('button', { name: 'Applying import…' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Close import preview' })).toBeDisabled();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  expect(f.notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Pack imported/));
+  await act(async () => release());
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+it('retains an offline import, hides without discarding it and retries exactly once', async () => {
+  const f = await fixture(), pack = importedPack(); pack.presets = [pack.presets[1]];
+  await reviewFile(f, pack); const count = await operationCount(f); f.setOffline(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Apply import' }));
+  await screen.findByRole('button', { name: 'Retry import' });
+  const retained = (await f.repository.pending())[0]; expect(retained.request.action).toBe('install');
+  expect(await operationCount(f)).toBe(count); legacyUnchanged(f);
+  fireEvent.click(screen.getByRole('button', { name: 'Close import preview' }));
+  f.setOffline(false); fireEvent.click(screen.getByRole('button', { name: 'Reopen pending import' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(async () => expect(await operationCount(f)).toBe(count + 1));
+  expect((await f.repository.pending())[0].operationId).toBe(retained.operationId);
+  legacyUnchanged(f);
+});
+
+it('replays the complete reviewed import after restart without losing skipped original records', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  const raw = JSON.stringify(importedPack()); store.reviewPackImport(raw, 'restart.json');
+  store.chooseImportResolution('pack-preset-0', { action: 'skip' });
+  f.setOffline(true); expect(await store.confirmImport()).toBe(false);
+  const retained = (await f.repository.pending())[0], count = await operationCount(f);
+  f.setOffline(false); const restarted = f.client(f.rows); await restarted.open();
+  const pack = await restarted.readRecord('packs', 'reviewed-pack');
+  expect(pack.presets).toEqual(importedPack().presets);
+  expect(await operationCount(f)).toBe(count + 1);
+  expect((await restarted.pending())[0]).toMatchObject({ operationId: retained.operationId, state: 'committed' });
+  legacyUnchanged(f);
+});
+
+it('recovers a lost installation response with no second version or publication', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  store.reviewPackImport(JSON.stringify(importedPack()));
+  store.chooseImportResolution('pack-preset-0', { action: 'replace', existingId: 'p' });
+  const count = await operationCount(f); let failure = true;
+  f.afterApply(async () => { if (failure) { failure = false; throw new Error('Response lost'); } });
+  expect(await store.confirmImport()).toBe(false);
+  expect(await store.retryPending()).toBeTruthy();
+  expect(store.importPreview).toBe(null); expect(await operationCount(f)).toBe(count + 1);
+  expect((await f.repository.readRecord('prompts', 'p')).versions).toHaveLength(85);
+});
+
+it('rejects a stale replacement review without overwriting a competing client or falling back', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  store.reviewPackImport(JSON.stringify(importedPack())); store.chooseImportResolution('pack-preset-0', { action: 'replace', existingId: 'p' });
+  const other = f.client(); await other.open(); await other.editPrompt(await other.readRecord('prompts', 'p'), { original: 'Independent update' });
+  await f.repository.readPromptLibrary(); const count = await operationCount(f);
+  expect(await store.confirmImport()).toBe(false);
+  expect(store.importPreview.error).toMatch(/changed|REVISION|review/i);
+  expect((await other.readRecord('prompts', 'p')).original).toBe('Independent update');
+  expect(await operationCount(f)).toBe(count); legacyUnchanged(f);
+});
+
+it('rejects malformed history before retaining an impossible write and allows explicit skip with original source retention', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  const pack = importedPack(); pack.presets[1].versions = ['future-history'];
+  store.reviewPackImport(JSON.stringify(pack)); store.chooseImportResolution('pack-preset-0', { action: 'skip' });
+  expect(await store.confirmImport()).toBe(false); expect(await f.repository.pending()).toEqual([]);
+  expect(store.pendingImport).toBe(false);
+  store.chooseImportResolution('pack-preset-1', { action: 'skip' });
+  expect(await store.confirmImport()).toBeTruthy();
+  expect((await f.repository.readRecord('packs', 'reviewed-pack')).presets[1].versions).toEqual(['future-history']);
+});
+
+it('requires distinct replacement targets and keeps duplicate preset identities independently reviewable', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  const pack = importedPack(); pack.presets = [pack.presets[0], { ...pack.presets[0], prompt: 'Second incoming', original: 'Second incoming' }];
+  store.reviewPackImport(JSON.stringify(pack));
+  for (const id of ['pack-preset-0', 'pack-preset-1']) store.chooseImportResolution(id, { action: 'replace', existingId: 'p' });
+  expect(await store.confirmImport()).toBe(false); expect(await f.repository.pending()).toEqual([]);
+  store.chooseImportResolution('pack-preset-1', { action: 'keep' });
+  expect(await store.confirmImport()).toBeTruthy(); expect(store.library).toHaveLength(3);
+});
+
+it('opens a shared pack for review instead of using the legacy importer or reporting it loaded', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository); await store.open();
+  const pack = importedPack(); window.location.hash = `#pack=${encodePackShare(pack)}`;
+  const setTab = vi.fn();
+  renderHook(() => usePersistenceFlow({ ui: { notify: f.notify, setTab, setABVariant: vi.fn(), tab: 'editor' },
+    lib: { repository: f.repository, libReady: true, library: store.library, reviewPackImport: store.reviewPackImport, setLibrary: vi.fn() },
+    editor: { raw: '', enhanced: '', variants: [], notes: '', setRaw: vi.fn(), setEnhanced: vi.fn(), setVariants: vi.fn(), setNotes: vi.fn(), setEnhMode: vi.fn(), setComposerBlocks: vi.fn() } }));
+  await waitFor(() => expect(store.importPreview?.fileName).toBe('Shared pack'));
+  expect(await operationCount(f)).toBe(2); expect(setTab).toHaveBeenCalledWith('library');
+  expect(f.notify).not.toHaveBeenCalledWith(expect.stringMatching(/Shared pack loaded/)); legacyUnchanged(f);
+});
+
+it('shows starter loaded state from the selected library only after the reviewed installation is acknowledged', async () => {
+  const f = await fixture(); localStorage.setItem('pl2-loaded-packs', '["lib_notion_formatter"]');
+  render(<ImportSurface repository={f.repository} notify={f.notify} />);
+  await screen.findByText('Library ready');
+  const button = await screen.findByRole('button', { name: /Notion Page Formatter.*Review/i });
+  await act(async () => { await f.repository.readPromptLibrary(); });
+  fireEvent.click(button); await screen.findByRole('dialog');
+  expect(button).toBeEnabled(); expect(await operationCount(f)).toBe(2);
+  fireEvent.click(screen.getByRole('button', { name: 'Apply import' }));
+  await screen.findByRole('button', { name: /Notion Page Formatter.*Loaded/i });
+  expect(await operationCount(f)).toBe(3);
+  expect(localStorage.getItem('pl2-loaded-packs')).toBe('["lib_notion_formatter"]');
+});
+
+it('does not silently skip different prompt bodies that share the old short matching hash', () => {
+  const first = { id: 'one', title: 'Alpha', prompt: 'a~' }, second = { id: 'two', title: 'Zebra', original: 'b]' };
+  expect(getLibraryEntrySignature(first)).toBe(getLibraryEntrySignature(second));
+  expect(detectDuplicates([first], [second]).filter(row => row.reason === 'prompt-exact-match')).toEqual([]);
+});
+
+it('imports collection paths after folder edits and maps foreign folder IDs without changing existing folders', async () => {
+  const f = await fixture(), store = createPromptLibraryStore(f.repository, f.notify); await store.open();
+  expect(await store.saveFolders([{ id: 'local-folder', name: 'Existing', parentId: null, collection: 'Existing' }])).toBe(true);
+  const existingFolder = (await f.repository.readPromptLibrary()).folders[0];
+  const before = await f.service.read();
+  const sourceText = JSON.stringify({ type: 'prompt-pack', id: 'folders-pack', title: 'Folders', version: '1', presets: [
+    { id: 'one', title: 'First imported', prompt: 'First imported content', collection: 'Imported/Literal', folderId: 'foreign-folder' },
+    { id: 'two', title: 'Second imported', prompt: 'Second imported content', collection: 'Existing', folderId: 'another-foreign-folder' },
+  ] });
+  expect(await store.reviewPackImport(sourceText, 'Folders pack')).toBe(true);
+  expect(await store.confirmImport()).toBeTruthy();
+  const view = await f.repository.readPromptLibrary(), created = view.folders.find(row => row.collection === 'Imported/Literal');
+  expect(created).toMatchObject({ name: 'Imported/Literal', parentId: null });
+  expect(created.id).not.toBe('foreign-folder');
+  expect(view.folders.find(row => row.id === 'local-folder')).toEqual(existingFolder);
+  expect(view.library.find(row => row.title === 'First imported').folderId).toBe(created.id);
+  expect(view.library.find(row => row.title === 'Second imported').folderId).toBe('local-folder');
+  expect(view.collections.sort()).toEqual(['Existing', 'Imported/Literal']);
+  const after = await f.service.read();
+  expect(Object.keys(after.operations).length).toBe(Object.keys(before.operations).length + 1);
+  expect(Object.values(after.objects).some(row => row.kind === 'pack-source' && row.data === sourceText)).toBe(true);
+  for (const [key, value] of Object.entries(before.objects)) expect(after.objects[key]).toEqual(value);
+  const reopened = f.client(); await reopened.open();
+  expect((await reopened.readPromptLibrary()).folders).toEqual(view.folders);
 });

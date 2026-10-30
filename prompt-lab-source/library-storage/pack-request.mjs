@@ -12,10 +12,11 @@ export function normalizePackRequest(value) {
     || !Number.isFinite(Date.parse(value.changedAt)) || new Date(value.changedAt).toISOString() !== value.changedAt) fail();
   canonical(value);
   const allowed = ['libraryId', 'expectedRevision', 'sourceBinding', 'packId', 'changedAt', 'action',
-    ...(value.action === 'publish' ? ['pack', 'members'] : value.action === 'install' ? ['sourceText', 'choices'] : ['confirmRemoval'])];
+    ...(value.action === 'publish' ? ['pack', 'members'] : value.action === 'install' ? ['sourceText', 'choices', 'folderPolicy'] : ['confirmRemoval'])];
   if (Object.keys(value).some(key => !allowed.includes(key))) fail();
   if (value.action === 'remove') { if (value.confirmRemoval !== true) fail(); }
   else if (value.action === 'install') {
+    if (Object.hasOwn(value, 'folderPolicy') && value.folderPolicy !== 'preserve-paths') fail();
     if (typeof value.sourceText !== 'string' || !value.sourceText.length || value.sourceText.length > 20_000_000
       || !Array.isArray(value.choices) || value.choices.length > 1000) fail();
     const indexes = new Set(), targets = new Set(), identities = new Set();

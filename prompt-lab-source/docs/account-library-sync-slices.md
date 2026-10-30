@@ -1,6 +1,6 @@
 # Library storage build plan
 
-Status: implementation in progress, Phase A acceptance incomplete, October 29, 2026. The five original A1 contract criteria pass on the candidate; its delivery and the isolated A2 service acceptance remain in draft PR248. A3 and hosted implementation remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
+Status: implementation in progress, Phase A acceptance incomplete, October 30, 2026. The five original A1 contract criteria pass on the candidate. Draft PR248 includes the folder/API service and A3 app integration in progress. Hosted implementation remains Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
 
 The October 23 request covered planning only. Dave subsequently authorized implementation of all phases and real-export verification on October 28, subject to the sequential acceptance gates and no paid provisioning without separate approval. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical. They omitted run history and applied a 25-version cap and do not define current implementation.
 
@@ -94,7 +94,23 @@ Acceptance: two clients converge for complete workspace data; response loss is i
 
 For each later authorized slice: reverify current main and ownership, use disposable fixtures and qualified runners, run scoped tests and failure paths, deliver through required PR gates, then update existing records with the actual evidence. Provider/billing calls and infrastructure changes need their own scope. Documentation delivery is not storage implementation or data migration.
 
-Next action: complete A2 universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection. Native credential renewal passes ordinary Windows source tests and two disposable real Mac Keychain tests; the architecture verifier passes real universal and negative fixtures. Five real Linux filesystem failure scenarios pass. Installed application behavior and macOS failure recovery remain open. The [A1 acceptance audit](library-storage-contract-candidate.md#original-a1-acceptance-audit) records the five passing contract criteria separately from later app, native and actual iCloud gates. The implementation request and storage direction are authorized; sequential acceptance remains required. Dave selects the actual iCloud folder through the delivered picker later.
+Next action: complete workspace import and remaining Library actions through the selected repository, then connect reviewed migration and startup activation. Native picker, credential, ownership and crash source checks are recorded in the [candidate evidence](library-storage-contract-candidate.md); exact installed macOS behavior, real-data UI and actual two-client iCloud acceptance remain open. The [A1 acceptance audit](library-storage-contract-candidate.md#original-a1-acceptance-audit) records the original contract criteria separately. Dave selects the actual folder through the delivered picker.
+
+## Current implementation progress: October 30
+
+| Stage | Evidence state | Remaining acceptance |
+| --- | --- | --- |
+| A1 | Original five contract criteria pass on the draft candidate | Final integrated acceptance and delivery |
+| A2 | Folder/API, retained history, backup/restore, secure ownership and native source checks implemented | Exact installed package and macOS lifecycle acceptance |
+| A3 | Selected repository connects prompt saves, folders, runs, cases, Scratch, Pack Studio and reviewed pack imports | Workspace import, remaining Library actions, reviewed migration and startup activation |
+| A4 | Synthetic and isolated real-export preservation checks pass | Installed app/API parity, real-data UI, actual two-client iCloud, independent recovery and human acceptance |
+| B1 | Neon/Clerk US East, server-readable encrypted storage and retained-history choices recorded | Provider, cost and policy verification after Phase A acceptance |
+| B2 and B3 | Not started | Accepted Phase A, hosted contract and separately approved paid provisioning if needed |
+
+Candidate startup still uses the existing local store. No personal folder has
+been activated. Tests preserve the original export and run on isolated copies.
+The October 28 table below is a historical snapshot; this table owns current
+implementation state. Source progress does not waive any sequential gate.
 
 ## Implementation progress: October 28
 

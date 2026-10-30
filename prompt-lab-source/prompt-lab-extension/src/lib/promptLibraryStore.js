@@ -4,12 +4,14 @@ import { normalizeTagList } from './tagSchema.js';
 import { ensureString } from './utils.js';
 import { canonical } from '../../../library-storage/contract.mjs';
 import { planAppFolderCommand } from './appFolderCommand.js';
+import { reviewRepositoryPack, packImportPresentation, choosePackImport, packImportCommand } from './repositoryPackImport.js';
 
 // An explicit dependency for the editor. Construction never selects storage.
 export function createPromptLibraryStore(repository, { notify = () => {}, newId = () => crypto.randomUUID() } = {}) {
   if (!repository || ['readPromptLibrary', 'createPrompt', 'editPrompt', 'changePromptLifecycle', 'readRecord', 'saveRecord']
     .some(key => typeof repository[key] !== 'function')) throw new TypeError('A shared prompt repository is required.');
   let view = { library: [], trash: [], folders: [], collections: [] }, ready = false, attempt = null, actionAttempt = null, saveError = '';
+  let importReview = null;
   const listeners = new Set();
   const emit = () => { for (const listener of listeners) listener(); };
   const presentation = entry => normalizeEntry({ ...entry,
@@ -142,6 +144,10 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     get collections() { return structuredClone(view.collections ?? []); },
     get folders() { return structuredClone(view.folders ?? []); },
     get packRegistry() { return structuredClone(view.packs ?? {}); },
+    get loadedPackIds() { return [...(view.loadedPacks ?? [])]; },
+    get importPreview() { return importReview && !importReview.hidden ? packImportPresentation(importReview) : null; },
+    get importApplying() { return Boolean(importReview?.pending); },
+    get pendingImport() { return Boolean(importReview?.locked); },
     // Exports use retained values, not the editor's normalized display defaults.
     get packEntries() { return structuredClone(view.library); },
     get revision() { return view.revision; },
@@ -191,6 +197,52 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     setFavorite(id, favorite) {
       return store.saveEntryDetails(id, entry => ({ ...entry, favorite: typeof favorite === 'boolean' ? favorite : !entry.favorite }));
     },
+    reviewPackImport(sourceText, fileName) {
+      try {
+        if (!ready) throw new Error('Open the selected Library before reviewing a pack.');
+        if (attempt || actionAttempt || importReview?.locked) throw new Error('Retry the retained Library change before reviewing another import.');
+        importReview = reviewRepositoryPack(sourceText, view, newId, fileName);
+        saveError = ''; emit(); return true;
+      } catch (error) {
+        if (!importReview?.locked && !attempt && !actionAttempt) importReview = { sourceText, fileName,
+          rows: [], error: error.message, locked: false, hidden: false, pending: null };
+        report(error); return false;
+      }
+    },
+    chooseImportResolution(id, choice) {
+      try { if (!importReview) return false; choosePackImport(importReview, id, choice); emit(); return true; }
+      catch (error) { report(error); return false; }
+    },
+    cancelImportPreview() {
+      if (importReview?.pending) return false;
+      if (importReview?.locked) importReview.hidden = true;
+      else importReview = null;
+      emit(); return true;
+    },
+    confirmImport() {
+      if (!importReview) return Promise.resolve(false);
+      if (importReview.pending) return importReview.pending;
+      const current = importReview; current.hidden = false;
+      try { current.command ??= packImportCommand(current); }
+      catch (error) { current.error = error.message; report(error); return Promise.resolve(false); }
+      current.error = '';
+      const preview = packImportPresentation(current);
+      current.pending = (async () => {
+        const result = await runAction(canonical(['pack-install', current.command, current.expectedRevision]), () => {
+          if (!ready || current.expectedRevision !== view.revision) throw new Error('The Library changed after review. Cancel and review the original pack again.');
+          current.locked = true;
+          return { command: current.command, expectedRevision: current.expectedRevision };
+        }, async value => {
+          const saved = await repository.changePack(value.command, value.expectedRevision);
+          return { ...saved, packRevision: saved.receipt.revision };
+        }, `Pack imported: ${preview.plan.importedCount} added, ${preview.plan.replacedCount} replaced, ${preview.plan.skippedCount} skipped. Original source retained.`);
+        if (result) { if (importReview === current) importReview = null; }
+        else current.error = saveError || 'Import was not confirmed. Keep the source and retry.';
+        current.pending = null; emit(); return result;
+      })();
+      emit(); return current.pending;
+    },
+    retryImport() { return store.confirmImport(); },
     publishPack(pack, ids, expectedRevision) {
       return runAction(canonical(['pack-publish', pack, ids, expectedRevision]), () => {
         if (!ready || expectedRevision !== view.revision) throw new Error('Review the current Library before publishing this pack.');
@@ -258,6 +310,7 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     },
     async retryPending() {
       if (store.saving) return false;
+      if (importReview?.locked) return store.confirmImport();
       if (attempt) return store.doSave(JSON.parse(attempt.signature));
       if (actionAttempt) {
         const current = actionAttempt;
