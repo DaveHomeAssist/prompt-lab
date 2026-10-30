@@ -10,8 +10,8 @@ use tauri::menu::{Menu, MenuItem, MenuItemKind};
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(account_auth::LoopbackState::default())
-        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue, account_auth::account_secret_get, account_auth::account_secret_set, account_auth::account_secret_delete, account_auth::account_oauth_listen, account_auth::account_oauth_wait])
+        .manage(account_auth::SignInState::default())
+        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue, account_auth::account_oauth_begin, account_auth::account_oauth_finish, account_auth::account_access_token, account_auth::account_sign_out])
         .setup(|app| {
             app.manage(diagnostics::initialize(app.handle()));
             let menu = Menu::default(app.handle())?;

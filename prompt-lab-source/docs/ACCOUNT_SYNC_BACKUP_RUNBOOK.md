@@ -20,12 +20,24 @@ pg_dump "$SUPABASE_DB_URL" --data-only --no-owner \
 
 Keep 4 weekly copies, then delete older ones, which matches the privacy note's "[N] weeks". Encrypt at rest, for example `age -r <recipient>`.
 
-Check after each run: the file is non-empty, and `select count(*) from public.sync_items` matches the dump's row count.
+Check after each run: the file is non-empty, and `select count(*) from public.sync_items` matches the dump's row count. Also record `select max(change_seq) from public.sync_items` next to the file; a restore into a new database needs it.
+
+Do not add `-t public.sync_change_seq` to the dump. Restoring an old sequence value into a live database would move the sequence backwards, and new changes would then sort before cursors devices already hold.
 
 ## Restore
 
 1. Turn sync off for everyone: `update sync.settings set value = 'off' where key = 'enabled';`. Clients back off and keep local data.
-2. Restore into a **new** local or scratch database first and check row counts and a few known items.
+2. Restore into a **new** local or scratch database first and check row counts and a few known items. Into a new database:
+
+   ```sh
+   # schema first: the migration (and, locally, the Supabase role shim)
+   psql "$SCRATCH_DB_URL" -v ON_ERROR_STOP=1 -c "truncate sync.settings" \
+     -c "select setval('public.sync_change_seq', <max change_seq recorded with the dump>)"
+   psql "$SCRATCH_DB_URL" -v ON_ERROR_STOP=1 -q -f sync-YYYY-MM-DD.sql
+   ```
+
+   - `truncate sync.settings` first: the migration inserts default settings and the dump's rows would collide on the primary key.
+   - Set the sequence first: the insert trigger gives every restored row a new `change_seq`. Starting above the old maximum puts every restored row after every device's cursor, so devices pull them on their next sync. Versions, clocks and payloads are restored unchanged.
 3. In production, restore the affected users only, or the whole table:
 
    ```sql
@@ -46,9 +58,10 @@ Check after each run: the file is non-empty, and `select count(*) from public.sy
 
 - Before the first sync merge on a device, and before any pull that applies 50 or more items, the app saves a snapshot (`pl2-sync-snapshot:<user>`).
 - Restoring it merges: missing prompts come back, and nothing current is removed.
-- Conflict copies (`sync_conflicts`) hold the losing side of the last 10 conflicts per prompt.
+- Conflict copies (`sync_conflicts`) hold the losing side of the newest 5 conflicts per prompt, up to 200 copies and 2 MiB per account.
 
 ## Tested locally
 
 - Restoring rows into the schema and the device re-upload path: engine e2e test, PGlite.
-- `pg_dump` itself was **not** run. The local Postgres package on the build box ships without `pg_dump`. Do a real dump-and-restore rehearsal into a scratch project before relying on it.
+- `pg_dump` dump and `psql` restore, rehearsed locally (`supabase/tests/concurrency.pg.test.mjs`, "R-06"): the build box's `pg_dump` 17.11 against the embedded Postgres 17.10 server, the exact `pg_dump` command above, restored into a fresh database with the steps above. Every row, version, clock, payload and conflict copy came back; restored rows sorted after the old cursor; a device pulled them and a push worked afterwards. The rehearsal found both pre-load steps (settings collision; sequence position).
+- Not rehearsed: against a real Supabase project (session pooler, `supabase db dump`, role differences). Do that once in a scratch project before relying on it.

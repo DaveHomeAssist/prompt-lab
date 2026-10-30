@@ -1,6 +1,6 @@
 # Account sync design (hosted, Supabase + Clerk)
 
-Status: built on local branch `labbot/account-sync-2026-10-30`, behind a flag that is off by default. Nothing is provisioned. No remote Supabase project, Clerk setting, Vercel env var or Chrome Web Store listing has been created or changed. Written Fri Oct 30 2026, ET.
+Status: built on local branch `labbot/account-sync-2026-10-30`, behind a flag that is off by default. Updated after Fire Watch's re-review (R-01 to R-07); see [section 15](#15-review-status). Nothing is provisioned. No remote Supabase project, Clerk setting, Vercel env var or Chrome Web Store listing has been created or changed. Written Fri Oct 30 2026, ET.
 
 Request: Dave, relayed 6:09 AM ET: real sync for every user. That is, every promptlab.tools user signs in on web, the extension and desktop, their Library follows them across devices automatically, and clearing site data loses nothing.
 
@@ -44,9 +44,9 @@ Migration: [`supabase/migrations/20261030090000_account_sync.sql`](../supabase/m
 
 Folders, collections and loaded packs sync as one `structure` record because the app validates the folder tree as a whole (unique ids, unique paths, acyclic parents).
 
-`public.sync_conflicts` keeps the losing side of each conflict (payload, device, clock, winning version). The newest 10 per item and 500 per user are kept.
+`public.sync_conflicts` keeps the losing side of each conflict (payload, device, clock, winning version). Kept: the newest 5 per item, 200 per user and **2 MiB of payload per user**; older copies are evicted first. Conflict bytes also count against the 10 MiB per-user quota (re-review R-01).
 
-`sync.settings` holds the kill switch, accepted issuer, quotas and rate limits. `sync.rate` holds per-user, per-minute call counters. Neither is reachable from the Data API.
+`sync.settings` holds the kill switch, accepted issuer, quotas, rate limits and download budgets. `sync.rate` holds per-user, per-minute call counters. `sync.egress` holds per-user and project-wide daily download counters. None is reachable from the Data API.
 
 Reuse of the existing storage layer:
 - Reads and writes the same `pl2-library`, `pl2-library-trash`, `pl2-collections`, `pl2-collection-folders` and `pl2-loaded-packs` keys.
@@ -59,15 +59,16 @@ Not synced in v1 (stated in the UI copy and the privacy note): runs and evaluati
 
 ## 3. Protocol
 
-All calls are PostgREST RPCs with `apikey: <publishable key>` and `Authorization: Bearer <Clerk session token>`.
+All calls are PostgREST RPCs with `apikey: <publishable key>` and `Authorization: Bearer <Clerk session token>`. Clients hold **no table privileges at all**, not even SELECT, so `GET /rest/v1/sync_items` is refused (re-review R-01b). Every read is one of the RPCs below, each rate limited, subject to the kill switch, capped at 2 MiB of payload per response and charged against a daily download budget.
 
 | RPC | Purpose |
 | --- | --- |
-| `sync_pull(cursor, limit)` | rows with `change_seq > cursor`, oldest first, up to 1,000 |
+| `sync_pull(cursor, limit)` | rows with `change_seq > cursor`, oldest first, up to 1,000 rows or 2 MiB; a page cut by the byte cap marks its last row `page_truncated` and the client keeps paging |
 | `sync_push(device_id, changes[])` | up to 200 changes and 2 MiB per call |
 | `sync_manifest()` | `(kind, item_id, version, deleted)` for every row, no payloads |
-| `sync_fetch(keys[])` | full rows for up to 500 named items |
-| `sync_status()` | usage, limits, kill-switch state |
+| `sync_fetch(keys[])` | full rows for up to 500 named items, up to 2 MiB; the client asks again for the rest |
+| `sync_list_conflicts(limit)` | the caller's unresolved conflict copies, newest first, up to 200 rows or 2 MiB |
+| `sync_status()` | usage (including conflict bytes and today's download bytes), limits, kill-switch state; works while paused |
 | `sync_delete_my_data()` | erase the caller's rows, conflict copies and counters |
 | `sync_admin_delete_user(user_id)` | service role only, for the Clerk `user.deleted` webhook |
 
@@ -122,14 +123,25 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 - [`extensionAccountAuth.js`](../prompt-lab-extension/src/extensionAccountAuth.js) uses `@clerk/chrome-extension` 3.1.102 with Sync Host `https://clerk.promptlab.tools`. The user signs in on promptlab.tools, and the extension reads that session.
 - That file is injected into `panel.html` only by sync builds (`accountSyncExtensionEntry`), so normal builds do not bundle the SDK.
 - Manifest, sync builds only (`patchExtensionManifest` in `assemble.js`): adds the `cookies` permission and host permissions `https://clerk.promptlab.tools/*` and `https://<ref>.supabase.co/*`. These raise a new Chrome permission warning, which needs a CWS listing and justification update (rollout R9).
+- Token storage (re-review, low): the SDK's client token cache is `chrome.storage.session` (memory only, and by default readable only by trusted extension pages, not content scripts), passed as Clerk's `storageCache` option, instead of the SDK default `chrome.storage.local`. With Sync Host the token is re-read from the promptlab.tools cookie on load, so nothing is lost when the browser closes. See [`clerkSessionStorage.js`](../prompt-lab-extension/src/lib/sync/clerkSessionStorage.js).
 - Side panel: Clerk documents Sync Host as not fully supported in side panels. Handling: the SDK's cookie listener (`__experimental_syncHostListener`) reloads when the promptlab.tools session changes; the panel re-checks the session whenever it becomes visible; if there is still no session it publishes `needsReopen`, so the UI can say "close and reopen the panel". This has not been tested in a real Chrome profile.
 - The published extension id must be added to Clerk `allowed_origins` (Backend API, Dave) and, if the extension will call `/api`, to `PROMPTLAB_PROXY_ALLOWED_ORIGINS`, which `api/_lib/allowedOrigins.js` already supports.
 
 ### Desktop (Tauri)
-- Browser sign-in with OAuth 2.0 authorization code + PKCE (S256) through a one-shot loopback listener on `127.0.0.1` (RFC 8252). JS: [`desktopAuth.js`](../prompt-lab-extension/src/lib/sync/desktopAuth.js). Rust: `src-tauri/src/account_auth.rs` (`account_oauth_listen`, `account_oauth_wait`).
-- The refresh token is kept only in the OS keychain (`keyring` crate: macOS Keychain, Windows Credential Manager, Secret Service), through `account_secret_get/set/delete`, which accept two fixed names only. There is no web-storage fallback. Access tokens stay in memory.
-- Clerk OAuth access tokens are not Clerk session tokens, and Supabase's Clerk integration needs session tokens (with `role: authenticated`). So [`api/sync/desktop-token.js`](../api/sync/desktop-token.js) verifies the OAuth access token at Clerk's `userinfo` endpoint and returns a 5-minute Clerk sign-in ticket for that same user. Off unless `PL_ACCOUNT_SYNC_DESKTOP=on`; CORS limited to Tauri origins.
-- **Not built:** turning the ticket into a session inside the webview (clerk-js in non-browser mode, `standardBrowser: false`, with its client token kept in the keychain under `clerk_client_jwt`). This needs Clerk's Native API setting and a Clerk OAuth application for the desktop (Dave, R7) and a real desktop test.
+- Browser sign-in with OAuth 2.0 authorization code + PKCE (S256) through a loopback listener on `127.0.0.1` (RFC 8252). The whole flow runs in Rust, `src-tauri/src/account_auth.rs` (re-review R-04):
+  - `account_oauth_begin(clientId)` makes the verifier and state, opens the listener, and returns only the authorize URL. The webview opens it with the shell plugin.
+  - `account_oauth_finish(timeoutSeconds)` waits for the redirect, exchanges the code in Rust, puts the refresh token in the OS keychain (`keyring`: macOS Keychain, Windows Credential Manager, Secret Service) and returns only `{access_token, expires_in}`.
+  - `account_access_token(clientId)` refreshes from the keychain (rotating the stored token, one refresh at a time) and returns only a short-lived access token; a refused refresh deletes the stored token and returns null.
+  - `account_sign_out()` deletes the keychain entry.
+  - There is no command that reads the keychain, and the verifier, code and refresh token never reach JavaScript. JS side: [`desktopAuth.js`](../prompt-lab-extension/src/lib/sync/desktopAuth.js).
+  - The app has a single window, `main`, and its only capability file grants core defaults, zoom and `shell:allow-open` to that window. No remote URL capability exists. Gating the new app commands per window through a Tauri app manifest was not done, because it cannot be build-verified on this box (no webkit2gtk); with the keychain read removed, the commands expose nothing beyond a short-lived access token.
+- Loopback listener (re-review R-05): requests on any path other than `/callback`, or with a missing or wrong `state`, get 404 or 400 and are ignored; the listener keeps waiting until the real redirect or the timeout (30 to 900 s). `state` is compared in constant time. An `error=` redirect with the right state ends the sign-in as cancelled.
+- Clerk OAuth access tokens are not Clerk session tokens, and Supabase's Clerk integration needs session tokens (with `role: authenticated`). So [`api/sync/desktop-token.js`](../api/sync/desktop-token.js) checks the access token with Clerk's Backend API (`POST /v1/oauth_applications/access_tokens/verify`, the call behind `@clerk/backend`'s `idPOAuthAccessToken.verify`) and returns a 5-minute Clerk sign-in ticket only if (re-review R-02):
+  - `client_id` equals `PL_DESKTOP_OAUTH_CLIENT_ID`, so a token minted for any other OAuth app on the instance is refused;
+  - its scopes include `PL_DESKTOP_OAUTH_SCOPES` (default `profile email`);
+  - it is not revoked or expired, and `subject` is a Clerk user id.
+  It is rate limited per IP (10 a minute) and per user (5 tickets per 10 minutes), through Vercel KV / Upstash REST when configured and per-instance memory otherwise. Off (503) unless `PL_ACCOUNT_SYNC_DESKTOP=on`, `CLERK_SECRET_KEY` and `PL_DESKTOP_OAUTH_CLIENT_ID` are all set; CORS limited to Tauri origins.
+- **Not built** (open, R-03): turning the ticket into a session inside the webview (clerk-js in non-browser mode, `standardBrowser: false`). Its client token must also stay in Rust, like the refresh token. This needs Clerk's Native API setting and a Clerk OAuth application for the desktop (Dave, R8) and a real desktop test. Whether Clerk matches a loopback redirect URI with a random port exactly or by prefix is also unverified (R-03).
 - CSP and shell scope: `npm run tauri:build:sync` writes a `--config` overlay that adds `https://clerk.promptlab.tools` and the project Supabase origin to `connect-src` and allows the shell to open only `https://clerk.promptlab.tools/oauth/authorize?...` besides promptlab.tools. Normal `tauri build` is unchanged.
 
 ## 8. Authentication rules in the database (review F-02)
@@ -147,12 +159,14 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 - **Different account on the same device:** `pl2-sync-owner` records the account the local Library was merged with. Another account gets status `owner-mismatch` and nothing is uploaded or merged. The choice UI (keep separate, merge or start empty) is not built.
 - **Delete my synced data:** `sync_delete_my_data()` erases the caller's rows, conflict copies and counters, even while sync is paused. Local data stays. UI not built.
 - **Account deletion** (review F-09): [`api/sync/clerk-webhook.js`](../api/sync/clerk-webhook.js) handles Clerk `user.deleted`. It verifies the Svix signature (HMAC-SHA256, 5-minute tolerance, constant-time compare) before parsing, then calls `sync_admin_delete_user` with the server-only secret key. Non-2xx responses make Clerk retry, and the delete is idempotent. Off (503) until its env vars exist.
+  - Raw body (re-review R-07): the deployed Node entry point reads the raw request stream itself and verifies the HMAC over those exact bytes. If a runtime has already drained the stream it accepts only an unparsed Buffer or string body; a framework-parsed object is refused (400), never re-serialized. It also exports `config = { api: { bodyParser: false } }` for runtimes that honor it.
+  - `sync_admin_delete_user` takes the same per-user advisory lock as `sync_push`, so a push in flight cannot land after the erase (re-review, low).
 - **Export:** `exportAccountData()` (account rows plus conflict copies, as JSON) and the device snapshot file (`snapshotFileText`). Buttons not built.
 
 ## 10. Security summary
 
-- Clients have SELECT only, on their own rows. Every write goes through SECURITY DEFINER functions owned by `sync_owner`, a non-superuser role without BYPASSRLS, with `search_path = ''`. Those functions are still subject to owner-only RLS. Clients cannot set `change_seq`, `version`, `lamport` or `write_xid` (review F-04).
-- RLS is enabled and forced on both tables. The CI guard test fails on any `using (true)` policy, any policy for `anon` or `public`, any non-owner predicate, or any client write grant (review F-08). Mutation check: an open SELECT policy plus an INSERT grant failed 9 tests.
+- Clients hold no table privileges (no SELECT either, re-review R-01b). Every read and write goes through SECURITY DEFINER functions owned by `sync_owner`, a non-superuser role without BYPASSRLS, with `search_path = ''`. Those functions are still subject to owner-only RLS. Clients cannot set `change_seq`, `version`, `lamport` or `write_xid` (review F-04).
+- RLS is enabled and forced on both tables, and the only policies are owner-only policies for `sync_owner`. The guard test fails on any `using (true)` policy, any policy reaching a role other than `sync_owner`, any non-owner predicate, any table grant to `anon`, `authenticated` or `PUBLIC`, or any executable function beyond the seven client RPCs (review F-08, R-01b). Mutation check: an open SELECT policy plus an INSERT grant failed 9 tests.
 - Quotas (review F-01), enforced in the push transaction, so the whole batch rolls back:
 
 | Limit | Default |
@@ -162,12 +176,16 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 | Payload bytes per user | 10 MiB |
 | Bytes per push | 2 MiB |
 | Bytes per item | 256 KiB |
-| Conflict copies | 10 per item, 500 per user |
-| Whole-project size guard | refuses growth above 400 MiB (`PT507`) |
+| Conflict copies | 5 per item, 200 per user, 2 MiB of payload per user (oldest evicted); conflict bytes also count toward the 10 MiB |
+| Whole-project size guard | refuses growth above 400 MiB (`PT507`), on item writes and conflict-only writes |
+| Bytes per read response | 2 MiB (client pages) |
+| Downloads per user | 32 MiB per UTC day (`PT429`) |
+| Downloads, whole project | 150 MiB per UTC day, about 4.4 GiB per 30 days, under Free's 5 GB egress (`PT429`) |
 
   A batch that shrinks usage, for example deletes, is always allowed.
-- Rate limits (review F-10): 60 pushes and 120 pulls per user per minute (`PT429`).
-- Kill switch (review F-17): `update sync.settings set value = 'off' where key = 'enabled'` pauses push and pull for everyone immediately (`PT503`); clients back off and keep local data. Erasure still works.
+- Rate limits (review F-10, R-01b): per user per minute, 30 pushes, 12 reads (pull, manifest, fetch and list-conflicts share one counter; a 5-minute poll uses 1 to 3) and 12 status calls (`PT429`).
+- Kill switch (review F-17, R-01b): `update sync.settings set value = 'off' where key = 'enabled'` pauses push and every read RPC for everyone immediately (`PT503`); clients back off and keep local data. Status and erasure still work.
+- The project-wide download budget is a single counter row, so one heavy user can use it up for everyone for the rest of the UTC day. That trades availability for staying inside Free's egress; the per-user budget makes it take many accounts.
 - Secrets: only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` reach clients. `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` are server-only, Sensitive, production only.
 - Not mitigated in code: sybil sign-ups beyond the project size guard (rely on Clerk bot protection and email verification, R5); revocation lag of about 60 s, because Clerk session tokens are short-lived and Supabase does not check revocation.
 
@@ -193,6 +211,7 @@ Estimates, from the payload format and this design's polling. These are not meas
   - Total about 5 MB, which fits about 1,000 active users in 5 GB.
   - Each new device downloads the whole Library once (1 to 2 MB).
   - The daily full re-pull this replaced would have added about 60 MB per user per month at 1 MB × 2 devices (review F-06).
+- **Download budgets** (R-01b) cap the worst case: 32 MiB per user per day and 150 MiB per day for the project, about 4.4 GiB per 30 days, so a scripted client cannot push the project past Free's 5 GB egress. The budget counts payload bytes plus a fixed 128 B per row, not HTTP framing, so real egress is somewhat higher; the margin to 5 GB covers it at these numbers, but watch the Supabase usage page after launch.
 - **Binding limits:** egress first (about 1,000 active syncing users), then database size. MAU (50,000) is not binding. Beyond that, Supabase Pro is $25 per month. That is a Dave decision, not assumed here.
 
 ## 12. Built, stubbed and not built
@@ -203,7 +222,7 @@ Estimates, from the payload format and this design's polling. These are not meas
 | Sync engine: capture, pull, push, conflicts, tombstones, offline queue, manifest check, first run, snapshot, restore, owner guard, oversize | Built and tested (engine e2e against real SQL) |
 | Web wiring (`useAccountSync` in `App`, `/app` CSP) | Built; flag off |
 | Extension Clerk Sync Host bootstrap, manifest additions, side-panel handling | Built; flag off; not run in Chrome |
-| Desktop PKCE, loopback, keychain commands, token bridge, CSP overlay | Built; Rust module compiled and tested standalone (full Tauri build needs webkit2gtk, not on the build box) |
+| Desktop PKCE and token exchange in Rust, loopback state/path checks, keychain, token bridge with client_id/scope checks and rate limit, CSP overlay | Built; Rust module logic compiled and tested standalone with the same crates (the Tauri command wrappers and a full Tauri build need webkit2gtk, not on the build box) |
 | Desktop ticket to Clerk session (clerk-js non-browser mode) | Not built |
 | UI: status line, conflict copies, owner-mismatch choice, delete-my-data, export and restore buttons, "close and reopen the panel" hint | Not built (engine and RPCs exist) |
 | Runs, evals, Scratch, settings | Not synced |
@@ -238,7 +257,7 @@ Worth reusing from #248:
    - `SUPABASE_URL`, `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` (Sensitive, production only).
    - `VITE_PL_ACCOUNT_SYNC=on` last.
 7. **R7.** Clerk webhook endpoint `https://promptlab.tools/api/sync/clerk-webhook` for `user.deleted`.
-8. **R8.** Desktop: a Clerk OAuth application (public client, PKCE, loopback redirect), the Native API setting, `PL_ACCOUNT_SYNC_DESKTOP=on`, then build the session step.
+8. **R8.** Desktop: a Clerk OAuth application (public client, PKCE, loopback redirect), the Native API setting, then Vercel env `PL_DESKTOP_OAUTH_CLIENT_ID` (that app's client id) and `PL_ACCOUNT_SYNC_DESKTOP=on`, then build the session step. Optional: `PL_DESKTOP_OAUTH_SCOPES`.
 9. **R9.** Extension: add the published extension id to Clerk `allowed_origins`; CWS permission justification for `cookies` and the new hosts; then a sync build.
 10. **R10.** Approve the privacy and terms additions in [ACCOUNT_SYNC_PRIVACY_NOTE.md](ACCOUNT_SYNC_PRIVACY_NOTE.md); they are not on the live pages.
 11. **R11.** Backups: set up the weekly export in [ACCOUNT_SYNC_BACKUP_RUNBOOK.md](ACCOUNT_SYNC_BACKUP_RUNBOOK.md).
@@ -255,10 +274,45 @@ Proposed `D-0xx`, for Dave to accept or edit: hosted account sync (Supabase Free
 | Suite | Where | Covers |
 | --- | --- | --- |
 | RLS and protocol | `supabase/tests/account-sync.test.mjs` (PGlite) | isolation, anon denied, no-sub token, private conflict copies, LWW, unchanged, tombstones, limits, erase, pull |
-| Security and review findings | `supabase/tests/security.test.mjs` (PGlite) | open-policy and grant guard, definer ownership, direct-write denial, issuer and claim rules, item, row, byte, request, conflict and project caps, rate limit, kill switch, PT codes, manifest and fetch, admin delete |
-| Concurrency | `supabase/tests/concurrency.pg.test.mjs` (local Postgres 17) | 3 writers × 100 items with slow commits, no cursor skip |
-| Engine end to end | `supabase/tests/sync-engine.e2e.test.mjs` | two devices, first-run merge, dedupe, snapshot and restore, edits, conflicts, delete, offline, fresh device, second user, owner mismatch, manifest repair, paused, quota, oversize |
-| Client units | `prompt-lab-extension/src/tests/accountSync.test.js` (vitest) | flag off by default, hash, backoff, queue, model, transport headers, PKCE, keychain-only refresh token, restore merge, status map, bridge |
-| API and build | `tests/clerk-sync-webhook.test.mjs`, `tests/desktop-token-bridge.test.mjs`, `tests/account-sync-build.test.mjs` | signature verification, bridge, CSP and manifest changes only with the flag |
+| Security and review findings | `supabase/tests/security.test.mjs` (PGlite) | open-policy, table-grant and function-grant guards, definer ownership, direct-write and direct-select denial, issuer and claim rules, item, row, byte, request, conflict and project caps, the 364-copy / 86.8 MiB conflict case, conflict bytes in the quota, size guard on conflict-only writes, read kill switch, list-conflicts RPC, per-user and project download budgets, response byte cap, rate limits, PT codes, manifest and fetch, admin delete |
+| Real Postgres 17 | `supabase/tests/concurrency.pg.test.mjs` (embedded-postgres) | 3 writers × 100 items with slow commits, no cursor skip; admin delete waits for an in-flight push; `pg_dump` / `psql` restore rehearsal per the runbook (skipped if `pg_dump` is not installed) |
+| Engine end to end | `supabase/tests/sync-engine.e2e.test.mjs` | two devices, first-run merge, dedupe, snapshot and restore, edits, conflicts, delete, offline, fresh device, second user, owner mismatch, manifest repair, paused, quota, oversize, paging through byte-capped reads, export via RPC |
+| Client units | `prompt-lab-extension/src/tests/accountSync.test.js` (vitest) | flag off by default, hash, backoff, queue, model, transport headers and list-conflicts RPC, desktop commands never handle secrets, page continuation, extension token cache in session storage, restore merge, status map, bridge |
+| API and build | `tests/clerk-sync-webhook.test.mjs`, `tests/desktop-token-bridge.test.mjs`, `tests/account-sync-build.test.mjs` | signature verification, raw-body Node path, bridge client_id/scope/revocation checks and rate limits, CSP and manifest changes only with the flag |
+| Desktop Rust | `src-tauri/src/account_auth.rs` `#[cfg(test)]` (run standalone) | callback classification, listener ignores bad path/state and keeps waiting, timeout, PKCE vector (RFC 7636), code exchange keeps the refresh token in the store, refresh rotation and forget-on-refusal |
 
 Run: `npm run test:sync` from `prompt-lab-source` (Node 22).
+
+## 15. Review status
+
+Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79`; its re-review (R-01 to R-07) covered `e850e79`. The re-review text was relayed by the parent agent; the appended section was not present in the restored `/workspace/promptlab-review/REVIEW.md` when this was written, so R-titles below are from that relay.
+
+| Finding | Status | Shown by |
+| --- | --- | --- |
+| F-01 per-user storage cap | Fixed | security: item, row, byte, request, conflict and project caps |
+| F-02 any `authenticated` JWT becomes a user | Fixed in SQL; Supabase Auth sign-ups off is R3 (Dave) | security: F-02 claims test |
+| F-03 extension and desktop sign-in undesigned | Built behind the flag; desktop session step open (R-03) | sections 7, 12 |
+| F-04 direct table writes | Fixed | security: F-04 direct-write denial, grants guard |
+| F-05 cursor skip under concurrent pushes | Fixed | concurrency.pg: F-05 |
+| F-06 daily full re-pull egress | Fixed (manifest check) | e2e: daily manifest check |
+| F-07 no backups on Free | Mitigated: device snapshots, weekly export runbook (rehearsed locally, R-06); export not set up (R11, Dave) | e2e snapshot tests; concurrency.pg: R-06 |
+| F-08 no CI guard on RLS | Guard tests exist; wiring `test:sync` into CI not done (no CI runs allowed) | security: F-08, grants guard |
+| F-09 no deletion on Clerk account delete | Fixed; webhook endpoint setup is R7 (Dave) | clerk-sync-webhook tests |
+| F-10 rate limiting | Fixed (tighter after R-01b) | security: F-10, default pull limit |
+| F-11 stale GitHub Pages claim | Not in this branch's scope | - |
+| F-12 www does not redirect | Not in scope (Vercel setting, Dave) | - |
+| F-13 mobile subdomain NXDOMAIN | Not in scope (DNS, Dave) | - |
+| F-14 HSTS, CAA, DMARC | Not in scope (DNS / Vercel, Dave) | - |
+| F-15 Vercel secrets not Sensitive | Not in scope (Vercel env, Dave); new sync secrets listed as Sensitive in R6 | - |
+| F-16 extension id for `/api` | Documented; needs the published id (Dave) | section 7 |
+| F-17 server-side kill switch | Fixed; now covers every read RPC | security: F-17, R-01b kill switch |
+| R-01 conflict copies outside the quota | Fixed: 2 MiB per-user conflict cap with eviction, 5 per item, conflict bytes in the 10 MiB quota, size guard on every conflict write | security: R-01 (364 copies, 86.8 MiB attempted, at most 2 MiB kept), R-01 quota, R-01 size guard |
+| R-01b direct SELECT, read limits, egress | Fixed: no SELECT grants, `sync_list_conflicts` RPC, read kill switch, 2 MiB response cap, per-user and project daily download budgets, reads 12 a minute | security: R-01b tests; e2e: paging; vitest: list-conflicts RPC |
+| R-02 desktop-token accepts any OAuth token | Fixed: client_id and scope checks via Clerk's verify endpoint, revoked/expired refused, per-IP and per-user rate limit, 503 without `PL_DESKTOP_OAUTH_CLIENT_ID`; still off by default | desktop-token-bridge: R-02 tests |
+| R-03 desktop session step, loopback redirect exact-match, real Chrome | Open (needs Dave's Clerk OAuth app and real devices) | - |
+| R-04 keychain commands reachable from the webview | Fixed: refresh token held in Rust only, no keychain read command, webview gets short-lived access tokens; per-window capability gating not added (single `main` window) | Rust: r04 tests; vitest: desktop commands never handle secrets |
+| R-05 loopback takes the first callback | Fixed: wrong path or state ignored, keeps listening until timeout | Rust: r05 tests |
+| R-06 pg_dump rehearsal | Rehearsed locally: box `pg_dump` 17.11 against the embedded Postgres 17.10 server, restored into a fresh database; found and documented two restore steps (truncate `sync.settings`, set the sequence first). Not rehearsed against a real Supabase project. | concurrency.pg: R-06 |
+| R-07 webhook raw body on Vercel | Fixed in code (raw stream read, parsed bodies refused); not run on Vercel itself | clerk-sync-webhook: R-07 tests |
+| Low: account deletion without the per-user lock | Fixed | concurrency.pg: LOW admin delete waits |
+| Low: extension Clerk token in `chrome.storage.local` | Fixed: `chrome.storage.session` with trusted-contexts access, memory fallback | vitest: extension token cache |

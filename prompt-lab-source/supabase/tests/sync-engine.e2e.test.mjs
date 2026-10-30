@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { createSyncEngine } from '../../prompt-lab-extension/src/lib/sync/syncEngine.js';
 import { markLibraryDeleted } from '../../prompt-lab-extension/src/lib/libraryDeletion.js';
 import { readLocalSnapshot, restoreLocalSnapshot } from '../../prompt-lab-extension/src/lib/sync/syncBackup.js';
+import { exportAccountData } from '../../prompt-lab-extension/src/lib/sync/supabaseTransport.js';
 import { asRole, createDb } from './helpers.mjs';
 
 let db;
@@ -22,6 +23,9 @@ class MemoryStorage {
 }
 
 const asUser = (sub, sql, params) => as(sub, async () => (await db.query(sql, params)).rows);
+// Clients cannot select tables (R-01b). Tests inspect a user's rows as the
+// definer role, which still sees only that user's rows through RLS.
+const inspect = (sub, sql, params) => as(sub, async () => (await db.query(sql, params)).rows, 'sync_owner');
 
 // Same calls supabaseTransport.js makes over HTTP, with PostgREST's status mapping.
 function pgTransport(sub) {
@@ -37,6 +41,7 @@ function pgTransport(sub) {
     push: async (device, changes) => (await call('select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)]))[0].r,
     fetchItems: (keys) => call('select * from public.sync_fetch($1::jsonb)', [JSON.stringify(keys)]),
     manifest: () => call('select * from public.sync_manifest()'),
+    listConflicts: () => call('select * from public.sync_list_conflicts(100)'),
   };
 }
 
@@ -57,7 +62,11 @@ const B = 'user_Be2e';
 const a1 = device('a1-laptop', A);
 const a2 = device('a2-desktop', A);
 
-before(async () => { db = await createDb(); as = asRole(db); });
+before(async () => {
+  db = await createDb(); as = asRole(db);
+  // Many syncs run within one minute here; the rate limits have their own tests.
+  await db.query(`update sync.settings set value = '100000' where key in ('push_per_minute', 'pull_per_minute', 'status_per_minute')`);
+});
 
 test('first device uploads its existing Library on first sign-in', async () => {
   write(a1, 'pl2-library', [entry('p1', 'Alpha'), entry('p2', 'Beta')]);
@@ -66,7 +75,7 @@ test('first device uploads its existing Library on first sign-in', async () => {
   const result = await a1.sync();
   assert.equal(result.status, 'synced');
   assert.equal(result.pending, 0);
-  const server = await asUser(A, 'select kind, item_id from public.sync_items order by kind, item_id');
+  const server = await inspect(A, 'select kind, item_id from public.sync_items order by kind, item_id');
   assert.deepEqual(server.map((row) => `${row.kind}:${row.item_id}`), ['prompt:p1', 'prompt:p2', 'prompt:t1', 'structure:main']);
 });
 
@@ -106,7 +115,7 @@ test('concurrent edits: one copy wins on both devices, the other is kept as a co
   const one = read(a1, 'pl2-library').find((item) => item.id === 'p1').title;
   const two = read(a2, 'pl2-library').find((item) => item.id === 'p1').title;
   assert.equal(one, two, 'devices converge');
-  const copies = await asUser(A, `select losing_payload from public.sync_conflicts where item_id = 'p1'`);
+  const copies = await inspect(A, `select losing_payload from public.sync_conflicts where item_id = 'p1'`);
   const kept = copies.map((row) => row.losing_payload.entry.title);
   assert.ok(kept.includes(one === 'Alpha from laptop' ? 'Alpha from desktop' : 'Alpha from laptop'), 'loser is recoverable');
   assert.equal((await a1.sync()).pending, 0);
@@ -120,7 +129,7 @@ test('a permanent delete propagates as a tombstone and is not resurrected', asyn
   await a2.sync();
   assert.ok(!read(a2, 'pl2-library').some((item) => item.id === 'p3'));
   assert.equal(a2.storage.getItem('pl2-library-deleted:p3'), '1');
-  const [row] = await asUser(A, `select deleted, payload from public.sync_items where item_id = 'p3'`);
+  const [row] = await inspect(A, `select deleted, payload from public.sync_items where item_id = 'p3'`);
   assert.deepEqual([row.deleted, row.payload], [true, null]);
 });
 
@@ -154,11 +163,11 @@ test('another user sees none of it, and a device signed in as A does not auto-me
   write(b1, 'pl2-library', [entry('p1', 'B private')]);
   await b1.sync();
   assert.deepEqual(titles(b1), ['B private']);
-  const seenByB = await asUser(B, 'select item_id from public.sync_items');
+  const seenByB = await inspect(B, 'select item_id from public.sync_items');
   assert.deepEqual(seenByB.map((row) => row.item_id).sort(), ['main', 'p1']);
   const wrongUser = createSyncEngine({ storage: a1.storage, transport: pgTransport(B), userId: B, deviceId: 'a1-laptop', now });
   assert.equal((await wrongUser.syncOnce()).status, 'owner-mismatch');
-  const [bRow] = await asUser(B, `select payload from public.sync_items where item_id = 'p1'`);
+  const [bRow] = await inspect(B, `select payload from public.sync_items where item_id = 'p1'`);
   assert.equal(bRow.payload.entry.title, 'B private');
 });
 
@@ -178,9 +187,9 @@ test('restoring the first-sync snapshot brings back a dropped duplicate, and it 
   assert.deepEqual(titles(dev2).filter((title) => title !== 'Beta v2'), titles(a1).filter((title) => title !== 'Beta v2'), 'restore merges; it never removes synced prompts');
   const after = await dev2.sync();
   assert.equal(after.status, 'synced');
-  const [row] = await asUser(A, `select item_id from public.sync_items where item_id = 'copy-of-p2'`);
+  const [row] = await inspect(A, `select item_id from public.sync_items where item_id = 'copy-of-p2'`);
   assert.equal(row.item_id, 'copy-of-p2');
-  const live = await asUser(A, `select count(*)::int as n from public.sync_items where kind = 'prompt' and not deleted`);
+  const live = await inspect(A, `select count(*)::int as n from public.sync_items where kind = 'prompt' and not deleted`);
   assert.ok(live[0].n >= 6, 'nothing was tombstoned by the restore');
 });
 
@@ -202,7 +211,7 @@ test('daily manifest check: catches a missed change and re-uploads what the acco
   const checked = await a2.sync();
   assert.equal(checked.status, 'synced');
   assert.ok(titles(a2).includes('Beta v3'), 'manifest diff fetched the missed row');
-  const [restored] = await asUser(A, `select payload from public.sync_items where item_id = 'p4'`);
+  const [restored] = await inspect(A, `select payload from public.sync_items where item_id = 'p4'`);
   assert.equal(restored.payload.entry.title, 'Offline idea', 're-uploaded from the device');
 });
 
@@ -230,7 +239,28 @@ test('a prompt over the 256 KiB item cap stays local and does not block other ch
   const result = await a1.sync();
   assert.equal(result.status, 'synced');
   assert.equal(result.tooLarge, 1);
-  const ids = (await asUser(A, `select item_id from public.sync_items where item_id in ('huge', 'small')`)).map((row) => row.item_id);
+  const ids = (await inspect(A, `select item_id from public.sync_items where item_id in ('huge', 'small')`)).map((row) => row.item_id);
   assert.deepEqual(ids, ['small']);
   assert.ok(titles(a1).includes('Huge history'), 'still on this device');
+});
+
+test('R-01b: a new device pages through byte-capped pulls and fetches, and export reads conflicts by RPC', async () => {
+  fakeNow += 10 * 60 * 1000;
+  const C = 'user_Cpaging';
+  const c1 = device('c1-laptop', C);
+  const big = (id) => entry(id, `Big ${id}`, undefined, { notes: 'b'.repeat(200000) });
+  write(c1, 'pl2-library', ['k1', 'k2', 'k3', 'k4', 'k5', 'k6'].map(big));
+  assert.equal((await c1.sync()).status, 'synced');
+  // Each read call now stops at ~400 KB, so a full pull needs several pages.
+  await db.query(`update sync.settings set value = '450000' where key = 'max_response_bytes'`);
+  try {
+    const c2 = device('c2-desktop', C);
+    assert.equal((await c2.sync()).status, 'synced');
+    assert.deepEqual(titles(c2), ['Big k1', 'Big k2', 'Big k3', 'Big k4', 'Big k5', 'Big k6']);
+    const exported = await exportAccountData(pgTransport(C));
+    assert.equal(exported.items.filter((row) => row.kind === 'prompt').length, 6);
+    assert.ok(Array.isArray(exported.conflicts));
+  } finally {
+    await db.query(`update sync.settings set value = '2097152' where key = 'max_response_bytes'`);
+  }
 });

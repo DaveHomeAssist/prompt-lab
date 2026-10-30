@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { readSyncConfig } from '../lib/sync/syncConfig.js';
 import { hashValue, stableStringify } from '../lib/sync/syncHash.js';
 import { backoffDelay, createSyncQueue, MAX_DELAY_MS } from '../lib/sync/syncQueue.js';
@@ -105,52 +105,56 @@ describe('sync transport and engine', () => {
   });
 });
 
-import { buildAuthorizeUrl, createKeychain, createPkcePair, parseCallback, resumeDesktopSession, signInWithBrowser } from '../lib/sync/desktopAuth.js';
+import { requestSignInTicket, resumeDesktopSession, signInWithBrowser, signOutDesktop } from '../lib/sync/desktopAuth.js';
 import { readLocalSnapshot, restoreLocalSnapshot, takeLocalSnapshot } from '../lib/sync/syncBackup.js';
-import { statusForError } from '../lib/sync/syncEngine.js';
+import { pageMayContinue, statusForError } from '../lib/sync/syncEngine.js';
 import { publishAccountAuth, readAccountAuth, subscribeAccountAuth } from '../lib/sync/accountAuthBridge.js';
 
-describe('desktop PKCE sign-in', () => {
-  it('uses S256 over a high-entropy verifier and a random state', async () => {
-    const { verifier, challenge, state } = await createPkcePair();
-    expect(verifier).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-    const expected = btoa(String.fromCharCode(...new Uint8Array(digest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    expect(challenge).toBe(expected);
-    expect(state).not.toBe((await createPkcePair()).state);
-    const url = new URL(buildAuthorizeUrl({ clientId: 'cid', redirectUri: 'http://127.0.0.1:5000/callback', challenge, state }));
-    expect(url.origin).toBe('https://clerk.promptlab.tools');
-    expect(Object.fromEntries(url.searchParams)).toMatchObject({ response_type: 'code', code_challenge_method: 'S256', code_challenge: challenge, state });
-  });
-  it('rejects a callback with the wrong state or an error', () => {
-    expect(parseCallback('?code=abc&state=s1', 's1')).toBe('abc');
-    expect(() => parseCallback('?code=abc&state=evil', 's1')).toThrow(/did not match/);
-    expect(() => parseCallback('?error=access_denied&state=s1', 's1')).toThrow(/cancelled/);
-    expect(() => createKeychain(undefined)).toThrow(/keychain/);
-  });
-  it('keeps the refresh token in the keychain only, never in web storage', async () => {
-    const keychain = new Map();
-    let openedUrl = '';
+describe('desktop PKCE sign-in (R-04: secrets stay in Rust)', () => {
+  it('only uses the Rust sign-in commands; the webview never handles the code, verifier or refresh token', async () => {
+    const calls = [];
+    let opened = '';
     const invoke = async (command, args) => {
-      if (command === 'account_oauth_listen') return 50123;
-      if (command === 'account_oauth_wait') return `code=code1&state=${new URL(openedUrl).searchParams.get('state')}`;
-      if (command === 'account_secret_set') { keychain.set(args.name, args.value); return null; }
-      if (command === 'account_secret_get') return keychain.get(args.name) ?? null;
-      if (command === 'account_secret_delete') { keychain.delete(args.name); return null; }
-      throw new Error(command);
+      calls.push([command, args]);
+      if (command === 'account_oauth_begin') return 'https://clerk.promptlab.tools/oauth/authorize?client_id=cid&state=s';
+      if (command === 'account_oauth_finish') return { access_token: 'at1', expires_in: 60 };
+      if (command === 'account_access_token') return null;
+      if (command === 'account_sign_out') return null;
+      throw new Error(`unexpected command ${command}`);
     };
-    const bodies = [];
-    const fetchImpl = async (url, init) => { bodies.push(Object.fromEntries(new URLSearchParams(init.body))); return { ok: true, json: async () => ({ access_token: 'at1', refresh_token: 'rt1', expires_in: 60 }) }; };
     const before = JSON.stringify({ ...localStorage });
-    const session = await signInWithBrowser({ invoke, openUrl: async (url) => { openedUrl = url; }, clientId: 'cid', fetchImpl });
-    expect(session.accessToken).toBe('at1');
-    expect(keychain.get('clerk_refresh_token')).toBe('rt1');
-    expect(bodies[0]).toMatchObject({ grant_type: 'authorization_code', code: 'code1', redirect_uri: 'http://127.0.0.1:50123/callback' });
-    expect(bodies[0].code_verifier).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const session = await signInWithBrowser({ invoke, openUrl: async (url) => { opened = url; }, clientId: 'cid' });
+    expect(session).toEqual({ accessToken: 'at1', expiresIn: 60 });
+    expect(opened).toMatch(/^https:\/\/clerk\.promptlab\.tools\/oauth\/authorize\?/);
+    expect(calls.map(([command]) => command)).toEqual(['account_oauth_begin', 'account_oauth_finish']);
+    expect(calls[0][1]).toEqual({ clientId: 'cid' });
+    expect(JSON.stringify(calls)).not.toMatch(/refresh|verifier|code=/);
     expect(JSON.stringify({ ...localStorage })).toBe(before);
-    const revoked = await resumeDesktopSession({ invoke, clientId: 'cid', fetchImpl: async () => ({ ok: false, status: 400 }) });
-    expect(revoked).toBeNull();
-    expect(keychain.has('clerk_refresh_token')).toBe(false);
+    expect(await resumeDesktopSession({ invoke, clientId: 'cid' })).toBeNull();
+    await signOutDesktop({ invoke });
+    expect(calls.map(([command]) => command).filter((command) => /secret/.test(command))).toEqual([]);
+  });
+  it('maps a refreshed token, and treats a failed refresh as signed out', async () => {
+    expect(await resumeDesktopSession({ invoke: async () => ({ access_token: 'at2', expires_in: 30 }), clientId: 'cid' })).toEqual({ accessToken: 'at2', expiresIn: 30 });
+    expect(await resumeDesktopSession({ invoke: async () => { throw new Error('keychain unavailable'); }, clientId: 'cid' })).toBeNull();
+    await expect(signInWithBrowser({ invoke: undefined, openUrl: async () => {}, clientId: 'cid' })).rejects.toThrow(/unavailable/);
+    await expect(signInWithBrowser({ invoke: async (c) => (c === 'account_oauth_begin' ? 'https://clerk.promptlab.tools/x' : {}), openUrl: async () => {}, clientId: 'cid' })).rejects.toThrow(/no access token/);
+  });
+  it('exchanges the access token for a one-time ticket at the bridge', async () => {
+    const seen = [];
+    const ticket = await requestSignInTicket({ accessToken: 'at1', fetchImpl: async (url, init) => { seen.push([url, init.headers.Authorization]); return { ok: true, json: async () => ({ ticket: 't1' }) }; } });
+    expect(ticket).toBe('t1');
+    expect(seen).toEqual([['https://promptlab.tools/api/sync/desktop-token', 'Bearer at1']]);
+  });
+});
+
+describe('pull paging (R-01b response cap)', () => {
+  it('continues on a full page or a server-truncated page only', () => {
+    expect(pageMayContinue([], 500)).toBe(false);
+    expect(pageMayContinue([{ change_seq: 1 }], 500)).toBe(false);
+    expect(pageMayContinue([{ change_seq: 1, page_truncated: false }], 500)).toBe(false);
+    expect(pageMayContinue([{ change_seq: 1 }, { change_seq: 2, page_truncated: true }], 500)).toBe(true);
+    expect(pageMayContinue(Array.from({ length: 500 }, (_, i) => ({ change_seq: i })), 500)).toBe(true);
   });
 });
 
@@ -176,5 +180,54 @@ describe('sync backup, statuses and auth bridge', () => {
     publishAccountAuth({ userId: '' });
     expect(seen).toEqual(['user_ext']);
     expect(readAccountAuth().userId).toBe('');
+  });
+});
+
+import { createClerkSessionStorageCache } from '../lib/sync/clerkSessionStorage.js';
+
+describe('extension Clerk token cache (re-review LOW)', () => {
+  it('uses chrome.storage.session, restricted to trusted contexts, never chrome.storage.local', async () => {
+    const data = {};
+    const levels = [];
+    const session = {
+      get: async (key) => ({ [key]: data[key] }),
+      set: async (obj) => { Object.assign(data, obj); },
+      remove: async (key) => { delete data[key]; },
+      setAccessLevel: async (opts) => { levels.push(opts.accessLevel); },
+    };
+    const local = { get: vi.fn(), set: vi.fn(), remove: vi.fn() };
+    const previous = globalThis.chrome;
+    globalThis.chrome = { storage: { session, local } };
+    try {
+      const cache = createClerkSessionStorageCache();
+      expect(cache.kind).toBe('session');
+      const key = cache.createKey('clerk.promptlab.tools', '__clerk_client_jwt', 'v2');
+      expect(key).toBe('clerk.promptlab.tools|__clerk_client_jwt|v2');
+      await cache.set(key, 'jwt-1');
+      expect(await cache.get(key)).toBe('jwt-1');
+      await cache.remove(key);
+      expect(await cache.get(key)).toBeUndefined();
+      expect(levels).toEqual(['TRUSTED_CONTEXTS']);
+      expect(local.set).not.toHaveBeenCalled();
+      expect(local.get).not.toHaveBeenCalled();
+    } finally {
+      globalThis.chrome = previous;
+    }
+  });
+  it('falls back to memory, not local storage, without chrome.storage.session', async () => {
+    const cache = createClerkSessionStorageCache(null);
+    expect(cache.kind).toBe('memory');
+    await cache.set('k', 'v');
+    expect(await cache.get('k')).toBe('v');
+  });
+});
+
+describe('supabase transport reads (R-01b)', () => {
+  it('lists conflicts through the RPC, not a table select', async () => {
+    const seen = [];
+    const transport = createSupabaseTransport({ url: 'https://abc.supabase.co', publishableKey: 'k', getToken: async () => 'tok',
+      fetchImpl: async (url, init) => { seen.push([url, init.method, init.body]); return { ok: true, status: 200, json: async () => [] }; } });
+    await transport.listConflicts();
+    expect(seen).toEqual([['https://abc.supabase.co/rest/v1/rpc/sync_list_conflicts', 'POST', JSON.stringify({ p_limit: 100 })]]);
   });
 });

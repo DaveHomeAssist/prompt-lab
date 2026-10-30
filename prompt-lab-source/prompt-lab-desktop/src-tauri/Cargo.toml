@@ -10,6 +10,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # OS keychain for the account-sync refresh token (docs/ACCOUNT_SYNC_DESIGN.md).
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
+# Desktop OAuth (PKCE) runs in Rust so the refresh token never reaches the webview.
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+sha2 = "0.10"
+base64 = "0.22"
+getrandom = "0.2"
+url = "2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

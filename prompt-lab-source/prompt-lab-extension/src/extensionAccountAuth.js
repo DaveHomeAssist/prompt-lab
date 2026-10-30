@@ -8,15 +8,24 @@
 // when the promptlab.tools session cookie changes, (2) re-check the session
 // whenever the panel becomes visible, and (3) if there is still no session,
 // publish needsReopen so the UI can say "close and reopen the panel".
+// The SDK's client token is cached in chrome.storage.session, not .local; see
+// lib/sync/clerkSessionStorage.js.
 import { createClerkClient } from '@clerk/chrome-extension/client';
 import { publishAccountAuth } from './lib/sync/accountAuthBridge.js';
+import { createClerkSessionStorageCache } from './lib/sync/clerkSessionStorage.js';
 
 const SYNC_HOST = 'https://clerk.promptlab.tools';
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 async function start() {
   if (!publishableKey || typeof chrome === 'undefined' || !chrome.runtime?.id) return;
-  const clerk = createClerkClient({ publishableKey, syncHost: SYNC_HOST, __experimental_syncHostListener: true });
+  const clerk = createClerkClient({
+    publishableKey,
+    syncHost: SYNC_HOST,
+    __experimental_syncHostListener: true,
+    // Session-only, extension-pages-only token cache (not chrome.storage.local).
+    storageCache: createClerkSessionStorageCache(),
+  });
   const publish = () => publishAccountAuth({
     surface: 'extension',
     userId: clerk.user?.id || '',

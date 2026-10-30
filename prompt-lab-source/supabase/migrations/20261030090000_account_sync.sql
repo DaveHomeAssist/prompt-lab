@@ -4,11 +4,12 @@
 -- auth integration (not the deprecated JWT template). The Clerk user id is
 -- the JWT `sub` (text, "user_..."), never a uuid.
 --
--- Write path: clients hold SELECT only. Every write goes through the
--- SECURITY DEFINER functions below, which run as the non-superuser role
--- sync_owner, take the caller id from the verified JWT, enforce quotas, rate
--- limits and a kill switch, and are themselves still subject to owner-only
--- row-level security. Nothing in this file has been applied to a remote project.
+-- Access path: clients hold no table privileges at all, neither read nor
+-- write. Every read and write goes through the SECURITY DEFINER functions
+-- below, which run as the non-superuser role sync_owner, take the caller id
+-- from the verified JWT, enforce quotas, rate limits, a daily download budget
+-- and a kill switch, and are themselves still subject to owner-only row-level
+-- security. Nothing in this file has been applied to a remote project.
 
 create schema if not exists sync;
 revoke all on schema sync from public;
@@ -34,10 +35,15 @@ insert into sync.settings (key, value) values
   ('max_bytes_per_user', '10485760'),       -- 10 MiB of payload JSON
   ('max_database_bytes', '419430400'),      -- 400 MiB: stop growth well before Free's 500 MB read-only line
   ('max_request_bytes', '2097152'),         -- 2 MiB per push
-  ('max_conflicts_per_item', '10'),
-  ('max_conflicts_per_user', '500'),
-  ('push_per_minute', '60'),
-  ('pull_per_minute', '120')
+  ('max_conflicts_per_item', '5'),
+  ('max_conflicts_per_user', '200'),
+  ('max_conflict_bytes_per_user', '2097152'), -- 2 MiB of kept conflict copies; oldest evicted first
+  ('max_response_bytes', '2097152'),        -- 2 MiB of payload per read call; clients page
+  ('max_egress_bytes_per_user_day', '33554432'), -- 32 MiB of payload reads per user per UTC day
+  ('max_egress_bytes_per_day', '157286400'),     -- 150 MiB per UTC day for the whole project (~4.4 GiB / 30 days, under Free's 5 GB)
+  ('push_per_minute', '30'),
+  ('pull_per_minute', '12'),                -- reads: a 5-minute poll needs 1-3 per cycle
+  ('status_per_minute', '12')
 on conflict (key) do nothing;
 revoke all on sync.settings from public;
 grant select on sync.settings to sync_owner;
@@ -126,6 +132,16 @@ create table if not exists sync.rate (
 revoke all on sync.rate from public;
 grant select, insert, update, delete on sync.rate to sync_owner;
 
+-- Daily download (egress) counters, per user and for the whole project
+-- (user_id '*'). Reset when the UTC day changes.
+create table if not exists sync.egress (
+  user_id text primary key,
+  day date not null,
+  bytes bigint not null
+);
+revoke all on sync.egress from public;
+grant select, insert, update, delete on sync.egress to sync_owner;
+
 -- The server, never the client, assigns sequence, xid and timestamps.
 create or replace function sync.stamp_item() returns trigger
 language plpgsql set search_path = ''
@@ -143,6 +159,7 @@ begin
   return new;
 end $$;
 alter function sync.stamp_item() owner to sync_owner;
+revoke all on function sync.stamp_item() from public;
 drop trigger if exists sync_items_touch on public.sync_items;
 drop trigger if exists sync_items_stamp on public.sync_items;
 create trigger sync_items_stamp before insert or update on public.sync_items
@@ -154,34 +171,30 @@ alter table public.sync_items force row level security;
 alter table public.sync_conflicts enable row level security;
 alter table public.sync_conflicts force row level security;
 
--- Clients may only read their own rows. Writes go through the functions.
+-- No direct table access for clients (no PostgREST select either): reads and
+-- writes go through the rate-limited, budgeted functions below.
 revoke all on public.sync_items, public.sync_conflicts from public, anon, authenticated;
-grant select on public.sync_items, public.sync_conflicts to authenticated;
 grant select, insert, update, delete on public.sync_items, public.sync_conflicts to sync_owner;
-grant usage on schema sync to authenticated;
+revoke all on schema sync from anon, authenticated;
 
 do $$ declare p record; begin
   for p in select policyname, tablename from pg_policies where schemaname = 'public' and tablename in ('sync_items', 'sync_conflicts') loop
     execute format('drop policy %I on public.%I', p.policyname, p.tablename);
   end loop;
 end $$;
-create policy sync_items_owner_read on public.sync_items for select to authenticated
-  using (user_id = (select sync.current_user_id()));
 create policy sync_items_owner_write on public.sync_items for all to sync_owner
   using (user_id = (select sync.current_user_id())) with check (user_id = (select sync.current_user_id()));
-create policy sync_conflicts_owner_read on public.sync_conflicts for select to authenticated
-  using (user_id = (select sync.current_user_id()));
 create policy sync_conflicts_owner_write on public.sync_conflicts for all to sync_owner
   using (user_id = (select sync.current_user_id())) with check (user_id = (select sync.current_user_id()));
 
 -- Shared guards: signed in, sync switched on, under the per-minute limit.
-create or replace function sync.require_caller(p_action text) returns text
+create or replace function sync.require_caller(p_action text, p_check_enabled boolean default true) returns text
 language plpgsql volatile set search_path = ''
 as $$
 declare uid text := sync.current_user_id(); n integer; lim integer; win timestamptz := date_trunc('minute', now());
 begin
   if uid is null then raise exception 'not authenticated' using errcode = '28000'; end if;
-  if sync.setting('enabled') is distinct from 'on' then
+  if p_check_enabled and sync.setting('enabled') is distinct from 'on' then
     raise exception 'account sync is paused' using errcode = 'PT503';
   end if;
   lim := coalesce(sync.setting(p_action || '_per_minute')::integer, 60);
@@ -193,8 +206,40 @@ begin
   if n > lim then raise exception 'too many sync requests' using errcode = 'PT429'; end if;
   return uid;
 end $$;
-alter function sync.require_caller(text) owner to sync_owner;
-revoke all on function sync.require_caller(text) from public;
+alter function sync.require_caller(text, boolean) owner to sync_owner;
+revoke all on function sync.require_caller(text, boolean) from public;
+
+-- Charge payload bytes about to be returned against the caller's and the
+-- project's daily download budget. A response that would cross either budget
+-- is refused whole (the charge rolls back with it).
+create or replace function sync.charge_egress(p_uid text, p_bytes bigint) returns void
+language plpgsql volatile set search_path = ''
+as $$
+declare d date := (now() at time zone 'utc')::date; u bigint; t bigint;
+begin
+  if coalesce(p_bytes, 0) <= 0 then return; end if;
+  insert into sync.egress as e (user_id, day, bytes) values (p_uid, d, p_bytes)
+    on conflict (user_id) do update set bytes = case when e.day = excluded.day then e.bytes + excluded.bytes else excluded.bytes end, day = excluded.day
+    returning bytes into u;
+  if u > sync.setting('max_egress_bytes_per_user_day')::bigint then
+    raise exception 'daily sync download budget used' using errcode = 'PT429';
+  end if;
+  insert into sync.egress as e (user_id, day, bytes) values ('*', d, p_bytes)
+    on conflict (user_id) do update set bytes = case when e.day = excluded.day then e.bytes + excluded.bytes else excluded.bytes end, day = excluded.day
+    returning bytes into t;
+  if t > sync.setting('max_egress_bytes_per_day')::bigint then
+    raise exception 'account sync download budget for today is used up' using errcode = 'PT429';
+  end if;
+end $$;
+alter function sync.charge_egress(text, bigint) owner to sync_owner;
+revoke all on function sync.charge_egress(text, bigint) from public;
+
+-- Approximate wire size of one returned row: payload text plus fixed overhead.
+create or replace function sync.row_bytes(p jsonb) returns bigint
+language sql immutable set search_path = ''
+as $$ select coalesce(octet_length(p::text), 0)::bigint + 128 $$;
+alter function sync.row_bytes(jsonb) owner to sync_owner;
+revoke all on function sync.row_bytes(jsonb) from public;
 
 -- Push a batch of changes from one device.
 -- Change: {kind, item_id, base_version, lamport, payload, deleted, client_updated_at}
@@ -217,8 +262,8 @@ declare
   results jsonb := '[]'::jsonb;
   c_kind text; c_id text; c_base bigint; c_lamport bigint; c_payload jsonb; c_deleted boolean; c_at timestamptz;
   incoming_wins boolean;
-  before_rows bigint; before_live bigint; before_bytes bigint;
-  after_rows bigint; after_live bigint; after_bytes bigint;
+  before_rows bigint; before_live bigint; before_bytes bigint; before_conflict_bytes bigint;
+  after_rows bigint; after_live bigint; after_bytes bigint; after_conflict_bytes bigint;
   touched_conflicts boolean := false;
 begin
   uid := sync.require_caller('push');
@@ -230,6 +275,8 @@ begin
 
   select count(*), count(*) filter (where not deleted), coalesce(sum(octet_length(payload::text)), 0)
     into before_rows, before_live, before_bytes from public.sync_items where user_id = uid;
+  select coalesce(sum(octet_length(losing_payload::text)), 0) into before_conflict_bytes
+    from public.sync_conflicts where user_id = uid;
 
   for change in select * from jsonb_array_elements(p_changes) loop
     c_kind := change ->> 'kind';
@@ -278,23 +325,37 @@ begin
     end if;
   end loop;
 
+  -- Conflict copies are capped hard per user, by count and by bytes: the
+  -- newest are kept, the oldest evicted. Losing copies are attacker-supplied
+  -- bytes that never touch the live library, so they get their own small cap.
   if touched_conflicts then
-    delete from public.sync_conflicts c where c.user_id = uid
-      and c.id not in (select k.id from public.sync_conflicts k where k.user_id = uid order by k.id desc
-                       limit sync.setting('max_conflicts_per_user')::integer);
+    delete from public.sync_conflicts c where c.user_id = uid and c.id in (
+      select s.id from (
+        select k.id,
+               row_number() over (order by k.id desc) as rn,
+               sum(octet_length(coalesce(k.losing_payload::text, ''))) over (order by k.id desc) as running
+        from public.sync_conflicts k where k.user_id = uid) s
+      where s.rn > sync.setting('max_conflicts_per_user')::integer
+         or s.running > sync.setting('max_conflict_bytes_per_user')::bigint);
   end if;
 
   -- Quotas. A batch that grows a total past its cap is rolled back whole;
-  -- a batch that shrinks usage (deletes) is always allowed.
+  -- a batch that shrinks usage (deletes) is always allowed. Conflict copies
+  -- count against the per-user byte quota as well as their own cap.
   select count(*), count(*) filter (where not deleted), coalesce(sum(octet_length(payload::text)), 0)
     into after_rows, after_live, after_bytes from public.sync_items where user_id = uid;
+  select coalesce(sum(octet_length(losing_payload::text)), 0) into after_conflict_bytes
+    from public.sync_conflicts where user_id = uid;
   if (after_rows > sync.setting('max_rows_per_user')::bigint and after_rows > before_rows)
      or (after_live > sync.setting('max_live_items_per_user')::bigint and after_live > before_live)
-     or (after_bytes > sync.setting('max_bytes_per_user')::bigint and after_bytes > before_bytes) then
+     or (after_bytes + after_conflict_bytes > sync.setting('max_bytes_per_user')::bigint
+         and after_bytes + after_conflict_bytes > before_bytes + before_conflict_bytes) then
     raise exception 'account sync storage quota exceeded' using errcode = 'PT413';
   end if;
-  -- Whole-project guard against many accounts each filling their quota.
-  if after_bytes > before_bytes and pg_database_size(current_database()) > sync.setting('max_database_bytes')::bigint then
+  -- Whole-project guard against many accounts each filling their quota. Runs
+  -- on every write that adds item or conflict bytes.
+  if (after_bytes > before_bytes or after_conflict_bytes > before_conflict_bytes or touched_conflicts)
+     and pg_database_size(current_database()) > sync.setting('max_database_bytes')::bigint then
     raise exception 'account sync storage is full' using errcode = 'PT507';
   end if;
   return results;
@@ -303,22 +364,40 @@ alter function public.sync_push(text, jsonb) owner to sync_owner;
 
 -- Pull changes after a cursor. Rows from transactions that may still overlap
 -- an in-flight writer (xid at or above the snapshot xmin) wait for the next pull.
+-- A page stops at max_response_bytes (always at least one row) and then marks
+-- its last row page_truncated; the client keeps paging from the last
+-- change_seq. Returned bytes count against the daily download budget.
 create or replace function public.sync_pull(p_cursor bigint, p_limit integer default 500)
-returns table (kind text, item_id text, payload jsonb, deleted boolean, version bigint, lamport bigint, device_id text, change_seq bigint)
+returns table (kind text, item_id text, payload jsonb, deleted boolean, version bigint, lamport bigint, device_id text, change_seq bigint, page_truncated boolean)
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare uid text := sync.require_caller('pull');
+declare uid text := sync.require_caller('pull'); r record; total bigint := 0; cap bigint := sync.setting('max_response_bytes')::bigint; have boolean := false;
 begin
-  return query
-    select i.kind, i.item_id, i.payload, i.deleted, i.version, i.lamport, i.device_id, i.change_seq
+  for r in
+    select i.kind, i.item_id, i.payload, i.deleted, i.version, i.lamport, i.device_id, i.change_seq, sync.row_bytes(i.payload) as sz
     from public.sync_items i
     where i.user_id = uid
       and i.change_seq > coalesce(p_cursor, 0)
       and i.write_xid < pg_snapshot_xmin(pg_current_snapshot())
     order by i.change_seq
-    limit least(greatest(coalesce(p_limit, 500), 1), 1000);
+    limit least(greatest(coalesce(p_limit, 500), 1), 1000)
+  loop
+    if have and total + r.sz > cap then
+      page_truncated := true; -- the last row returned says "ask again"
+      return next;
+      have := false;
+      exit;
+    end if;
+    if have then return next; end if;
+    total := total + r.sz;
+    kind := r.kind; item_id := r.item_id; payload := r.payload; deleted := r.deleted;
+    version := r.version; lamport := r.lamport; device_id := r.device_id; change_seq := r.change_seq;
+    page_truncated := false; have := true;
+  end loop;
+  if have then return next; end if;
+  perform sync.charge_egress(uid, total);
 end $$;
 alter function public.sync_pull(bigint, integer) owner to sync_owner;
 
@@ -327,26 +406,63 @@ create or replace function public.sync_manifest()
 returns table (kind text, item_id text, version bigint, deleted boolean)
 language plpgsql security definer set search_path = ''
 as $$
-declare uid text := sync.require_caller('pull');
+declare uid text := sync.require_caller('pull'); n bigint;
 begin
+  select coalesce(sum(char_length(i.item_id) + 64), 0) into n from public.sync_items i where i.user_id = uid;
+  perform sync.charge_egress(uid, n);
   return query select i.kind, i.item_id, i.version, i.deleted from public.sync_items i where i.user_id = uid;
 end $$;
 alter function public.sync_manifest() owner to sync_owner;
 
--- Full rows for up to 500 named items: [{kind, item_id}, ...].
+-- Full rows for up to 500 named items: [{kind, item_id}, ...]. Stops at
+-- max_response_bytes (at least one row); the client asks again for the rest.
 create or replace function public.sync_fetch(p_keys jsonb)
 returns table (kind text, item_id text, payload jsonb, deleted boolean, version bigint, lamport bigint, device_id text, change_seq bigint)
 language plpgsql security definer set search_path = ''
 as $$
-declare uid text := sync.require_caller('pull');
+declare uid text := sync.require_caller('pull'); r record; total bigint := 0; cap bigint := sync.setting('max_response_bytes')::bigint;
 begin
   if p_keys is null or jsonb_typeof(p_keys) <> 'array' or jsonb_array_length(p_keys) > 500 then raise exception 'keys must be an array of at most 500' using errcode = '22023'; end if;
-  return query
-    select i.kind, i.item_id, i.payload, i.deleted, i.version, i.lamport, i.device_id, i.change_seq
+  for r in
+    select distinct on (i.change_seq) i.kind, i.item_id, i.payload, i.deleted, i.version, i.lamport, i.device_id, i.change_seq, sync.row_bytes(i.payload) as sz
     from public.sync_items i
     join jsonb_to_recordset(p_keys) as k(kind text, item_id text) on k.kind = i.kind and k.item_id = i.item_id
-    where i.user_id = uid;
+    where i.user_id = uid
+    order by i.change_seq
+  loop
+    exit when total > 0 and total + r.sz > cap;
+    total := total + r.sz;
+    kind := r.kind; item_id := r.item_id; payload := r.payload; deleted := r.deleted;
+    version := r.version; lamport := r.lamport; device_id := r.device_id; change_seq := r.change_seq;
+    return next;
+  end loop;
+  perform sync.charge_egress(uid, total);
 end $$;
+
+-- Unresolved conflict copies, newest first, through the same guards as every
+-- other read (rate limit, kill switch, response cap, daily budget).
+create or replace function public.sync_list_conflicts(p_limit integer default 100)
+returns table (id bigint, kind text, item_id text, losing_payload jsonb, losing_deleted boolean, created_at timestamptz)
+language plpgsql security definer set search_path = ''
+as $$
+declare uid text := sync.require_caller('pull'); r record; total bigint := 0; cap bigint := sync.setting('max_response_bytes')::bigint;
+begin
+  for r in
+    select c.id, c.kind, c.item_id, c.losing_payload, c.losing_deleted, c.created_at, sync.row_bytes(c.losing_payload) as sz
+    from public.sync_conflicts c
+    where c.user_id = uid and c.resolved_at is null
+    order by c.id desc
+    limit least(greatest(coalesce(p_limit, 100), 1), 200)
+  loop
+    exit when total > 0 and total + r.sz > cap;
+    total := total + r.sz;
+    id := r.id; kind := r.kind; item_id := r.item_id; losing_payload := r.losing_payload;
+    losing_deleted := r.losing_deleted; created_at := r.created_at;
+    return next;
+  end loop;
+  perform sync.charge_egress(uid, total);
+end $$;
+alter function public.sync_list_conflicts(integer) owner to sync_owner;
 alter function public.sync_fetch(jsonb) owner to sync_owner;
 
 -- Usage, limits and the kill switch, for the client's status line.
@@ -354,14 +470,18 @@ create or replace function public.sync_status()
 returns jsonb
 language plpgsql security definer set search_path = ''
 as $$
-declare uid text := sync.current_user_id(); r bigint; l bigint; b bigint;
+declare uid text := sync.require_caller('status', false); r bigint; l bigint; b bigint; cb bigint; eg bigint;
 begin
-  if uid is null then raise exception 'not authenticated' using errcode = '28000'; end if;
   select count(*), count(*) filter (where not deleted), coalesce(sum(octet_length(payload::text)), 0)
     into r, l, b from public.sync_items where user_id = uid;
+  select coalesce(sum(octet_length(losing_payload::text)), 0) into cb from public.sync_conflicts where user_id = uid;
+  select case when e.day = (now() at time zone 'utc')::date then e.bytes else 0 end into eg from sync.egress e where e.user_id = uid;
   return jsonb_build_object('enabled', sync.setting('enabled') = 'on', 'rows', r, 'live_items', l, 'bytes', b,
+    'conflict_bytes', cb, 'egress_bytes_today', coalesce(eg, 0),
     'max_rows', sync.setting('max_rows_per_user')::bigint, 'max_live_items', sync.setting('max_live_items_per_user')::bigint,
-    'max_bytes', sync.setting('max_bytes_per_user')::bigint);
+    'max_bytes', sync.setting('max_bytes_per_user')::bigint,
+    'max_conflict_bytes', sync.setting('max_conflict_bytes_per_user')::bigint,
+    'max_egress_bytes_per_day', sync.setting('max_egress_bytes_per_user_day')::bigint);
 end $$;
 alter function public.sync_status() owner to sync_owner;
 
@@ -378,12 +498,14 @@ begin
   delete from public.sync_items where user_id = uid; get diagnostics n_items = row_count;
   delete from public.sync_conflicts where user_id = uid; get diagnostics n_conflicts = row_count;
   delete from sync.rate where user_id = uid;
+  delete from sync.egress where user_id = uid;
   return jsonb_build_object('items', n_items, 'conflicts', n_conflicts);
 end $$;
 alter function public.sync_delete_my_data() owner to sync_owner;
 
--- Server-side erasure for the Clerk user.deleted webhook (api/clerk-webhook.js).
--- Callable only with the service role key, which bypasses RLS.
+-- Server-side erasure for the Clerk user.deleted webhook (api/sync/clerk-webhook.js).
+-- Callable only with the service role key, which bypasses RLS. Takes the same
+-- per-user lock as sync_push, so an in-flight push cannot land after the erase.
 create or replace function public.sync_admin_delete_user(p_user_id text)
 returns jsonb
 language plpgsql security invoker set search_path = ''
@@ -391,28 +513,30 @@ as $$
 declare n_items bigint; n_conflicts bigint;
 begin
   if coalesce(p_user_id, '') !~ '^user_[A-Za-z0-9]{1,64}$' then raise exception 'invalid user id' using errcode = '22023'; end if;
+  perform pg_advisory_xact_lock(hashtextextended('prompt-lab-sync:' || p_user_id, 0));
   delete from public.sync_items where user_id = p_user_id; get diagnostics n_items = row_count;
   delete from public.sync_conflicts where user_id = p_user_id; get diagnostics n_conflicts = row_count;
   delete from sync.rate where user_id = p_user_id;
+  delete from sync.egress where user_id = p_user_id;
   return jsonb_build_object('items', n_items, 'conflicts', n_conflicts);
 end $$;
 
 do $$ declare f text; begin
   foreach f in array array['public.sync_push(text, jsonb)', 'public.sync_pull(bigint, integer)', 'public.sync_manifest()',
-    'public.sync_fetch(jsonb)', 'public.sync_status()', 'public.sync_delete_my_data()', 'public.sync_admin_delete_user(text)'] loop
+    'public.sync_fetch(jsonb)', 'public.sync_list_conflicts(integer)', 'public.sync_status()', 'public.sync_delete_my_data()', 'public.sync_admin_delete_user(text)'] loop
     execute format('revoke all on function %s from public, anon, authenticated', f);
   end loop;
 end $$;
 grant execute on function public.sync_push(text, jsonb), public.sync_pull(bigint, integer), public.sync_manifest(),
-  public.sync_fetch(jsonb), public.sync_status(), public.sync_delete_my_data() to authenticated;
-grant execute on function sync.current_user_id() to authenticated, sync_owner;
-grant execute on function sync.setting(text), sync.require_caller(text) to sync_owner;
+  public.sync_fetch(jsonb), public.sync_list_conflicts(integer), public.sync_status(), public.sync_delete_my_data() to authenticated;
+grant execute on function sync.current_user_id(), sync.setting(text), sync.require_caller(text, boolean),
+  sync.charge_egress(text, bigint), sync.row_bytes(jsonb) to sync_owner;
 
 do $$ begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
     grant usage on schema sync to service_role;
     grant select, delete on public.sync_items, public.sync_conflicts to service_role;
-    grant select, delete on sync.rate to service_role;
+    grant select, delete on sync.rate, sync.egress to service_role;
     grant execute on function public.sync_admin_delete_user(text) to service_role;
   end if;
 end $$;

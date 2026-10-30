@@ -2,7 +2,7 @@
 // fetch (no new runtime dependency). The Clerk session token is the bearer;
 // Supabase verifies it through Clerk third-party auth and RLS keys rows on its
 // `sub`. Only the publishable key ships in the client.
-import { SyncHttpError } from './syncEngine.js';
+import { SyncHttpError, pageMayContinue } from './syncEngine.js';
 
 export function createSupabaseTransport({ url, publishableKey, getToken, fetchImpl = (...args) => fetch(...args) }) {
   async function request(path, { method = 'POST', body } = {}) {
@@ -28,7 +28,9 @@ export function createSupabaseTransport({ url, publishableKey, getToken, fetchIm
     fetchItems: (keys) => request('rpc/sync_fetch', { body: { p_keys: keys } }),
     manifest: () => request('rpc/sync_manifest', { body: {} }),
     status: () => request('rpc/sync_status', { body: {} }),
-    listConflicts: () => request('sync_conflicts?select=id,kind,item_id,losing_payload,losing_deleted,created_at&resolved_at=is.null&order=created_at.desc&limit=100', { method: 'GET' }),
+    // Tables are not readable directly (no SELECT grant); conflicts come from an RPC
+    // with the same rate limit, kill switch and download budget as every read.
+    listConflicts: () => request('rpc/sync_list_conflicts', { body: { p_limit: 100 } }),
     deleteMyData: () => request('rpc/sync_delete_my_data', { body: {} }),
   };
 }
@@ -40,7 +42,7 @@ export async function exportAccountData(transport) {
   for (;;) {
     const page = await transport.pull(cursor, 1000);
     items.push(...page);
-    if (page.length < 1000) break;
+    if (!pageMayContinue(page, 1000)) break;
     cursor = Math.max(...page.map((row) => Number(row.change_seq)));
   }
   return { format: 'prompt-lab-account-export', version: 1, exportedAt: new Date().toISOString(), items, conflicts: await transport.listConflicts() };

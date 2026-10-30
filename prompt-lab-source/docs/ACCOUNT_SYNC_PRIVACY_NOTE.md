@@ -21,7 +21,7 @@ When you are signed in to Prompt Lab, your Library is copied to your account so 
 
 **Who can see it:** only your signed-in account. Database rules keep each account's data separate. Prompt Lab does not read, sell or use your synced prompts for advertising or model training. Operators may access the database only to keep the service running, investigate abuse or comply with law.
 
-**Conflicts:** if the same prompt is changed on two devices before they sync, the most recent change is kept and the other version is saved as a conflict copy in your account (the latest 10 per prompt), so it can be recovered.
+**Conflicts:** if the same prompt is changed on two devices before they sync, the most recent change is kept and the other version is saved as a conflict copy in your account (the latest few per prompt, up to 2 MiB per account; older copies are removed first), so it can be recovered.
 
 **Retention and deletion:**
 - Synced data is kept while your account exists.

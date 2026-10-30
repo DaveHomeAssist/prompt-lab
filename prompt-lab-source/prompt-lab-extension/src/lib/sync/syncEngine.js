@@ -17,6 +17,10 @@ export const queueKey = (userId) => `pl2-sync-queue:${userId}`;
 const PULL_LIMIT = 500;
 const PUSH_BATCH = 100;
 const FETCH_BATCH = 500;
+// The server ends a pull page at its byte cap (max_response_bytes) and marks
+// the last row page_truncated; a full page (row limit) may also have more.
+/** True when a pull page may have more rows behind it. */
+export const pageMayContinue = (page, limit) => page.length >= limit || page.at(-1)?.page_truncated === true;
 const MANIFEST_EVERY_MS = 24 * 60 * 60 * 1000;
 const BULK_APPLY_SNAPSHOT = 50;
 // Server cap is 256 KiB per item (sync_items_payload_size). Larger prompts
@@ -99,7 +103,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
       const page = await transport.pull(cursor, PULL_LIMIT);
       rows.push(...page);
       if (page.length) cursor = Math.max(cursor, ...page.map((row) => Number(row.change_seq)));
-      if (page.length < PULL_LIMIT) return { rows, cursor };
+      if (!pageMayContinue(page, PULL_LIMIT)) return { rows, cursor };
     }
   }
 
@@ -143,7 +147,19 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
 
   async function fetchRows(keys) {
     const rows = [];
-    for (let start = 0; start < keys.length; start += FETCH_BATCH) rows.push(...await transport.fetchItems(keys.slice(start, start + FETCH_BATCH).map(splitKey)));
+    for (let start = 0; start < keys.length; start += FETCH_BATCH) {
+      // A response can stop at the server's byte cap: ask again for what is left.
+      let pending = keys.slice(start, start + FETCH_BATCH);
+      while (pending.length) {
+        const got = await transport.fetchItems(pending.map(splitKey));
+        if (!got.length) break;
+        rows.push(...got);
+        const gotKeys = new Set(got.map((row) => itemKey(row.kind, row.item_id)));
+        const left = pending.filter((key) => !gotKeys.has(key));
+        if (left.length === pending.length) break;
+        pending = left;
+      }
+    }
     return rows;
   }
 

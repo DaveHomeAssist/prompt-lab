@@ -12,7 +12,10 @@ const B = 'user_Btest';
 
 const push = (sub, device, changes) => as(sub, async () =>
   (await db.query('select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)])).rows[0].r);
-const rows = (sub, sql = 'select * from public.sync_items order by change_seq') => as(sub, async () => (await db.query(sql)).rows);
+// Clients hold no table privileges (R-01b), so the test inspects rows as the
+// local superuser, scoped to one user. Client reads go through the RPCs.
+const rows = async (sub, table = 'sync_items') =>
+  (await db.query(`select * from public.${table} where user_id = $1 order by ${table === 'sync_items' ? 'change_seq' : 'id'}`, [sub])).rows;
 
 before(async () => {
   db = await createDb();
@@ -47,13 +50,13 @@ test('RLS: user B cannot read, change or delete user A rows', async () => {
 });
 
 test('RLS: anonymous callers see nothing and cannot push', async () => {
-  await assert.rejects(rows(null), /permission denied/);
+  await assert.rejects(as(null, () => db.query('select * from public.sync_items')), /permission denied/);
   await assert.rejects(push(null, 'dev', []), /permission denied/);
 });
 
 test('RLS: a token without a sub claim is rejected', async () => {
   await assert.rejects(as({ role: 'authenticated', iss: 'https://clerk.promptlab.tools' }, () => db.query(`select public.sync_push('dev', '[]'::jsonb)`)), /not authenticated/);
-  assert.equal((await as({ role: 'authenticated', iss: 'https://clerk.promptlab.tools' }, () => db.query('select * from public.sync_items'))).rows.length, 0);
+  await assert.rejects(as({ role: 'authenticated', iss: 'https://clerk.promptlab.tools' }, () => db.query('select * from public.sync_pull(0, 10)')), /not authenticated/);
 });
 
 test('RLS: conflict copies are private too', async () => {
@@ -61,10 +64,10 @@ test('RLS: conflict copies are private too', async () => {
   await push(A, 'dev-a1', [{ kind: 'prompt', item_id: 'p1', base_version: 1, lamport: 5, payload: { state: 'active', entry: { id: 'p1', title: 'A one, laptop' } } }]);
   const lost = await push(A, 'dev-a2', [{ kind: 'prompt', item_id: 'p1', base_version: 1, lamport: 3, payload: { state: 'active', entry: { id: 'p1', title: 'A one, phone' } } }]);
   assert.equal(lost[0].status, 'conflict_lost');
-  const aConflicts = await rows(A, 'select * from public.sync_conflicts');
+  const aConflicts = await rows(A, 'sync_conflicts');
   assert.equal(aConflicts.length, 1);
   assert.equal(aConflicts[0].losing_payload.entry.title, 'A one, phone');
-  assert.equal((await rows(B, 'select * from public.sync_conflicts')).length, 0);
+  assert.equal((await rows(B, 'sync_conflicts')).length, 0);
 });
 
 test('push: stale writer with a higher clock wins and the overwritten edit is kept', async () => {
@@ -75,7 +78,7 @@ test('push: stale writer with a higher clock wins and the overwritten edit is ke
   assert.equal(after.payload.entry.title, 'A one, later phone edit');
   assert.equal(Number(after.version), Number(before.version) + 1);
   assert.ok(Number(after.change_seq) > Number(before.change_seq));
-  const kept = (await rows(A, 'select * from public.sync_conflicts order by id')).at(-1);
+  const kept = (await rows(A, 'sync_conflicts')).at(-1);
   assert.equal(kept.losing_payload.entry.title, 'A one, laptop');
 });
 
@@ -89,7 +92,7 @@ test('push: tombstones and pull-since-cursor ordering', async () => {
   const cursor = Math.max(...(await rows(A)).map((row) => Number(row.change_seq)));
   const p2 = (await rows(A)).find((row) => row.item_id === 'p2');
   await push(A, 'dev-a1', [{ kind: 'prompt', item_id: 'p2', base_version: Number(p2.version), lamport: 60, deleted: true }]);
-  const changed = await as(A, async () => (await db.query('select item_id, deleted, payload from public.sync_items where change_seq > $1 order by change_seq', [cursor])).rows);
+  const changed = (await as(A, async () => (await db.query('select item_id, deleted, payload from public.sync_pull($1, 500)', [cursor])).rows));
   assert.deepEqual(changed, [{ item_id: 'p2', deleted: true, payload: null }]);
 });
 
@@ -105,7 +108,7 @@ test('delete my data erases only the caller rows', async () => {
   const result = await as(A, async () => (await db.query('select public.sync_delete_my_data() as r')).rows[0].r);
   assert.ok(result.items >= 2);
   assert.equal((await rows(A)).length, 0);
-  assert.equal((await rows(A, 'select * from public.sync_conflicts')).length, 0);
+  assert.equal((await rows(A, 'sync_conflicts')).length, 0);
   assert.equal((await rows(B)).length, 1);
 });
 
