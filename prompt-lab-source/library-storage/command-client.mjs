@@ -16,6 +16,7 @@ export function createServiceTransport(service, { libraryId }) {
       return service.apply(input);
     },
     currentRecords: input => service.currentRecords({ ...input, libraryId }),
+    backups: input => service.backups({ ...input, libraryId }),
     transfer: expectedRevision => service.transfer({ libraryId, expectedRevision }),
   };
 }
@@ -90,6 +91,10 @@ export function createLoopbackTransport({ baseUrl, libraryId, getToken, folderBr
       return request(`/v1/library/folder-branches?${query}`);
     },
     transfer(expectedRevision) { return request(`/v1/library/transfer?revision=${encodeURIComponent(expectedRevision)}`); },
+    backups({ expectedRevision, cursor = '0', limit = 100 }) {
+      const query = new URLSearchParams({ revision: expectedRevision, cursor, limit: String(limit) });
+      return request(`/v1/library/backups?${query}`);
+    },
     preview(value) {
       const command = normalizeCommandRequest(value); bound(command);
       const { mode, ...input } = command;

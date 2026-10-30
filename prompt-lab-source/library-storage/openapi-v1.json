@@ -565,7 +565,7 @@
             "$ref": "#/components/responses/InvalidContent"
           }
         },
-        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists. Recovery views reject this operation with RECOVERY_ONLY.",
+        "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists. Recovery views reject this operation with RECOVERY_ONLY. Optional currentView: checkpoint restores a previously reviewed checkpoint view in the same commit. Both current and checkpoint views must be complete; otherwise SELECTION_REQUIRED (409). Omit it to preserve the earlier archive-only behavior. This option is part of the retained request fingerprint and cannot bypass deletion policy.",
         "requestBody": {
           "required": true,
           "content": {
@@ -959,7 +959,7 @@
             "$ref": "#/components/parameters/FolderBranch"
           }
         ],
-        "description": "Requires read scope and a pinned current revision. Returns exact selected values and source-qualified references, including missing/ambiguous targets; all unselected data remain available through preserved record reads. A later import, restore or reconciliation requires a new selection review. Unknown/duplicate query parameters reject. The response is bounded at 64 MiB without truncation."
+        "description": "Requires read scope and a pinned current revision. Returns exact selected values and source-qualified references, including missing/ambiguous targets; all unselected data remain available through preserved record reads. A later import, archive-only restore or reconciliation requires a new selection review. Restore with currentView: checkpoint publishes the verified view atomically. Unknown/duplicate query parameters reject. The response is bounded at 64 MiB without truncation."
       }
     },
     "/v1/library/folder-branches": {
@@ -4878,6 +4878,10 @@
           "checkpointId": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "currentView": {
+            "const": "checkpoint",
+            "description": "Restore the previously reviewed checkpoint view in the same commit; both current and checkpoint views must be complete."
           }
         },
         "required": [
@@ -4957,6 +4961,12 @@
           "fingerprint": {
             "type": "string",
             "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "currentView": {
+            "const": "checkpoint"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
           }
         },
         "required": [
@@ -4972,7 +4982,15 @@
           "activationReady",
           "fingerprint"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "dependentRequired": {
+          "currentView": [
+            "currentViewPlan"
+          ],
+          "currentViewPlan": [
+            "currentView"
+          ]
+        }
       },
       "DomainOrigin": {
         "type": "object",
@@ -6130,6 +6148,9 @@
               },
               "mode": {
                 "const": "restore"
+              },
+              "currentView": {
+                "const": "checkpoint"
               }
             },
             "required": [

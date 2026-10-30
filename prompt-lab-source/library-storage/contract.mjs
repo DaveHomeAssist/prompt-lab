@@ -224,11 +224,12 @@ export async function inspectPackage(pkg) {
       const plan = await readObject(pkg.objects, commit.restorePlan, 'restore-plan');
       const { planCheckpointRestore } = await import('./restore-plan.mjs');
       const expected = await planCheckpointRestore({ current: visited.get(commit.parents[0]), checkpoint: visited.get(commit.restoredCheckpointId),
-        baseRevision: commit.parents[0], checkpointId: commit.restoredCheckpointId, objects: pkg.objects });
+        baseRevision: commit.parents[0], checkpointId: commit.restoredCheckpointId, objects: pkg.objects, currentView: plan.currentView });
       if (expected.unresolved || commit.source !== expected.source || canonical(expected) !== canonical(plan) || canonical(manifest) !== canonical(expected.manifest)) {
         throw new LibraryError('RESTORE_PLAN_MISMATCH', 'Restore differs from its current parent, checkpoint or deletion evidence.', 409);
       }
-      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null,
+        ...(plan.currentViewPlan ? { currentView: plan.currentViewPlan } : {}) };
     } else if (operation === 'reconcile') {
       if (commit.parents.length !== 2) throw new LibraryError('INVALID_ANCESTRY', 'Reconciliation requires both reviewed branch parents.', 409);
       const { planReconciliation, readArchivedBranch } = await import('./reconcile-plan.mjs');
@@ -373,14 +374,14 @@ async function reviewImport(state, incomingPackage, resolutions) {
     enforceDeletions: Boolean(incomingCommit.sourceBinding || current?.sourceBindings.length) });
 }
 
-async function reviewRestore(state, { libraryId, expectedRevision, checkpointId }) {
+async function reviewRestore(state, { libraryId, expectedRevision, checkpointId, currentView }) {
   if (state.libraryId !== libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
   if (!state.revision || state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Pin restore review to the current revision.', 409);
   if (!validHash(checkpointId) || !state.checkpoints.includes(checkpointId)) throw new LibraryError('INVALID_CHECKPOINT', 'Select a retained recovery checkpoint.', 409);
   const current = await inspectPackage(packageFor(state));
   const checkpoint = await inspectPackage({ ...packageFor(state), head: checkpointId });
   const { planCheckpointRestore } = await import('./restore-plan.mjs');
-  return planCheckpointRestore({ current, checkpoint, baseRevision: expectedRevision, checkpointId, objects: state.objects });
+  return planCheckpointRestore({ current, checkpoint, baseRevision: expectedRevision, checkpointId, objects: state.objects, currentView });
 }
 
 // Adapter transaction must atomically publish state and operation receipts, or publish neither.
@@ -612,9 +613,9 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       try { return await currentReview(previewId); }
       catch (error) { previews.delete(previewId); throw error; }
     },
-    async previewRestore({ libraryId, expectedRevision, checkpointId, ...options }) {
-      if (Object.keys(options).length) throw new LibraryError('INVALID_REQUEST', 'Restore has no deletion bypass or additional options.', 400);
-      const input = { libraryId, expectedRevision, checkpointId, mode: 'restore' };
+    async previewRestore({ libraryId, expectedRevision, checkpointId, currentView, ...options }) {
+      if (Object.keys(options).length || (currentView !== undefined && currentView !== 'checkpoint')) throw new LibraryError('INVALID_REQUEST', 'Restore accepts only its checkpoint and optional reviewed checkpoint view.', 400);
+      const input = { libraryId, expectedRevision, checkpointId, mode: 'restore', ...(currentView ? { currentView } : {}) };
       const restorePlan = await reviewRestore(await readState(), input);
       const previewId = globalThis.crypto.randomUUID(), fingerprint = await hash(input), expires = now() + previewLifetimeMs;
       const response = { previewId, libraryId, expectedRevision, checkpointId, sourceHash: restorePlan.source, fingerprint,

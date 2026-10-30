@@ -2,6 +2,7 @@ import { canonical, hash, LibraryError, readObject, FORMAT, VERSION } from './co
 import { buildLibrarySelection } from './import-plan.mjs';
 import { applyDeletionPolicy } from './selection-policy.mjs';
 import { effectiveRecordGroup } from './record-state.mjs';
+import { planCurrentView, retainedViewResolutions } from './current-view.mjs';
 
 const sourcesFor = inspection => inspection.manifest?.sources ?? [{ source: inspection.sourceObject, workspace: inspection.stateObject }];
 
@@ -32,7 +33,11 @@ async function ancestrySources(objects, revision) {
 }
 
 /** Restore selections, never rewrite or remove archived sources and history. */
-export async function planCheckpointRestore({ current, checkpoint, baseRevision, checkpointId, objects }) {
+export async function planCheckpointRestore({ current, checkpoint, baseRevision, checkpointId, objects, currentView }) {
+  if (currentView !== undefined && currentView !== 'checkpoint') throw new LibraryError('INVALID_REQUEST', 'Restore currentView must select checkpoint.', 400);
+  if (currentView && (!current.currentView || current.currentView.unresolved || !checkpoint.currentView || checkpoint.currentView.unresolved)) {
+    throw new LibraryError('SELECTION_REQUIRED', 'Choose a checkpoint with a complete reviewed app view.', 409);
+  }
   current = structuredClone(current); checkpoint = structuredClone(checkpoint);
   await assertAncestor(objects, baseRevision, checkpointId);
   const currentManifest = current.manifest ?? await buildLibrarySelection({ sources: sourcesFor(current), objects });
@@ -57,11 +62,22 @@ export async function planCheckpointRestore({ current, checkpoint, baseRevision,
   }
   const selection = await buildLibrarySelection({ sources, groups, recordGroups, objects });
   const { manifest, ...deletionReview } = await applyDeletionPolicy(selection, objects, current.sourceBindings, current.derivedSources);
+  let currentViewPlan = null;
+  if (currentView) {
+    const pkg = { format: FORMAT, schemaVersion: VERSION, libraryId, head: baseRevision, objects }, context = { ...current, manifest };
+    const candidates = await planCurrentView(pkg, context);
+    // Restoring earlier selections must also deactivate records introduced
+    // later. Command-owned groups already carry their restored selections.
+    const resolutions = retainedViewResolutions({ ...context, currentView: candidates });
+    for (const id of Object.keys(resolutions)) resolutions[id] = checkpoint.currentView.groups.find(group => group.id === id)?.selected ?? null;
+    currentViewPlan = await planCurrentView(pkg, context, resolutions);
+  }
   const plan = { format: 'promptlab-library-restore-plan', schemaVersion: 1, baseRevision, checkpointId,
     source: checkpoint.sourceObject, manifest, deletionReview,
     counts: { selectedBefore: currentManifest.groups.filter(group => group.selected !== null).length,
       selectedAfter: manifest.groups.filter(group => group.selected !== null).length,
       suppressed: deletionReview.suppressed.length, retainedRecords: manifest.nodes.length, retainedSources: manifest.sources.length },
-    unresolved: deletionReview.blocked.length, activationReady: false };
+    unresolved: deletionReview.blocked.length + (currentViewPlan?.unresolved ?? 0), activationReady: false,
+    ...(currentView ? { currentView, currentViewPlan } : {}) };
   return { ...plan, fingerprint: await hash(plan) };
 }

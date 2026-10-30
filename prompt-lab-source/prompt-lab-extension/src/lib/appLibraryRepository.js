@@ -1,5 +1,5 @@
 import { canonical, hash, LibraryError } from '../../../library-storage/contract.mjs';
-import { createCommandOutbox } from '../../../library-storage/command-outbox.mjs';
+import { createCommandOutbox, commandReviewHash } from '../../../library-storage/command-outbox.mjs';
 import { recordIdField } from '../../../library-storage/record-request.mjs';
 import { createIndexedCommandStore } from './libraryCommandOutbox.js';
 import { APP_RECORD_VERSION } from './appRecordVersion.js';
@@ -152,6 +152,15 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
     await refresh();
     return committed;
   }
+  async function restoreRequest(review) {
+    const request = { mode: 'restore', libraryId, expectedRevision: review?.expectedRevision,
+      checkpointId: review?.checkpointId, currentView: 'checkpoint' };
+    if (!address(request.expectedRevision) || !address(request.checkpointId) || review.libraryId !== libraryId
+      || review.mode !== 'restore' || review.fingerprint !== await hash(request)
+      || review.restorePlan?.currentView !== 'checkpoint' || review.restorePlan.checkpointId !== request.checkpointId
+      || review.restorePlan.currentViewPlan?.libraryId !== libraryId) fail('REVIEW_CHANGED', 'Review this checkpoint in the selected Library before restoring.');
+    return request;
+  }
   return Object.freeze({
     libraryId,
     async open() { return serial(async () => { await replayPending(); await refresh(); return { libraryId, revision: snapshot.revision }; }); },
@@ -269,6 +278,56 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
         }
         await exportBase(expectedRevision);
         return transfer;
+      });
+    },
+    async readBackups(expectedRevision) {
+      return serial(async () => {
+        await exportBase(expectedRevision);
+        if (typeof transport.backups !== 'function') fail('BACKUPS_UNAVAILABLE', 'Reconnect to a Library service that lists recovery checkpoints.');
+        const items = [], ids = new Set(); let cursor = '0';
+        do {
+          const page = await transport.backups({ expectedRevision, cursor, limit: pageSize });
+          assertConnected();
+          if (page?.libraryId !== libraryId || page.revision !== expectedRevision || !Array.isArray(page.items)
+            || page.items.length > pageSize || items.length + page.items.length > 100_000) fail('INVALID_RESPONSE', 'The checkpoint list is incomplete or changed.');
+          for (const row of page.items) {
+            if (!address(row?.checkpointId) || ids.has(row.checkpointId) || !address(row.stateHash)
+              || typeof row.name !== 'string' || !Number.isFinite(Date.parse(row.createdAt))
+              || !['workspace', 'library-state'].includes(row.stateKind) || row.independentBackup !== false) fail('INVALID_RESPONSE', 'A recovery checkpoint failed validation.');
+            ids.add(row.checkpointId); items.push(structuredClone(row));
+          }
+          if (page.nextCursor !== null && (page.nextCursor !== String(items.length) || !page.items.length)) fail('INVALID_RESPONSE', 'Checkpoint pagination repeated or skipped records.');
+          cursor = page.nextCursor;
+        } while (cursor !== null);
+        await exportBase(expectedRevision);
+        return { libraryId, revision: expectedRevision, items };
+      });
+    },
+    async reviewCheckpointRestore(checkpointId, expectedRevision) {
+      return serial(async () => {
+        if (!address(checkpointId)) fail('INVALID_CHECKPOINT', 'Choose a listed recovery checkpoint.');
+        await exportBase(expectedRevision);
+        const review = structuredClone(await transport.preview({ mode: 'restore', libraryId, expectedRevision, checkpointId, currentView: 'checkpoint' }));
+        if (review?.expectedRevision !== expectedRevision || review.checkpointId !== checkpointId) fail('REVIEW_CHANGED', 'The restore review targets another checkpoint or Library revision.');
+        await restoreRequest(review); assertConnected();
+        return review;
+      });
+    },
+    async restoreCheckpoint(approval) {
+      const review = structuredClone(approval);
+      return serial(async () => {
+        const request = await restoreRequest(review), operationId = `app-restore:${(await hash(request)).slice(7)}`;
+        const retained = await outbox.read(libraryId, operationId);
+        if (retained) {
+          if (retained.fingerprint !== review.fingerprint || retained.reviewHash !== await commandReviewHash(review)) fail('REVIEW_CHANGED', 'The pending restore differs from this review.');
+        } else {
+          if ((await outbox.list(libraryId)).some(row => row.state !== 'committed')) fail('LIBRARY_WRITES_PENDING', 'Retry pending changes before restoring the Library.');
+          await outbox.enqueue({ request, review, operationId });
+        }
+        const committed = await outbox.replay(libraryId, operationId, transport);
+        await refresh();
+        if (snapshot.revision !== committed.receipt.revision) fail('REVISION_CONFLICT', 'Another change followed the restored checkpoint. Review the current Library.');
+        return { receipt: committed.receipt, libraryId, revision: snapshot.revision };
       });
     },
     async exportPromptSelection(ids, expectedRevision) {

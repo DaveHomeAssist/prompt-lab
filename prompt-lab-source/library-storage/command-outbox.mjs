@@ -42,7 +42,7 @@ export function normalizeCommandRequest(value) {
     const { mode: operation, ...input } = request;
     return { ...normalizeEditRequest(input), mode: operation };
   }
-  const allowed = ['mode', 'libraryId', 'expectedRevision', ...(mode === 'restore' ? ['checkpointId']
+  const allowed = ['mode', 'libraryId', 'expectedRevision', ...(mode === 'restore' ? ['checkpointId', 'currentView']
     : mode === 'reconcile' ? ['incoming', 'resolutions'] : mode === 'select' ? ['resolutions'] : ['sourceText', 'sourceInventory', 'resolutions'])];
   if (Object.keys(request).some(key => !allowed.includes(key))) fail('INVALID_COMMAND', 'Unknown command options cannot enter the outbox.');
   if (mode !== 'restore') {
@@ -51,6 +51,7 @@ export function normalizeCommandRequest(value) {
   }
   if (['snapshot', 'import'].includes(mode) && typeof request.sourceText !== 'string') fail('INVALID_COMMAND', 'Complete source text is required.');
   if (mode === 'restore' && !address(request.checkpointId)) fail('INVALID_COMMAND', 'A checkpoint address is required.');
+  if (mode === 'restore' && Object.hasOwn(request, 'currentView') && request.currentView !== 'checkpoint') fail('INVALID_COMMAND', 'Restore currentView must select checkpoint.');
   if (mode === 'reconcile' && !address(request.incoming?.manifestHash)) fail('INVALID_COMMAND', 'A complete incoming transfer is required.');
   return request;
 }

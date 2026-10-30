@@ -80,6 +80,8 @@ export function useRepositoryPromptLibrary(repository, notify) {
     exportEntries: entries => exportFile(() => store.exportEntries(entries.map(entry => entry.id)), 'prompt-lab-selection.json',
       'Selected prompt pack download started. Embedded histories are included; this is not a workspace backup.'),
     refresh: store.refresh, doSave: store.doSave, linkSavedPrompt: store.linkSavedPrompt,
+    readRecoveryCheckpoints: store.readRecoveryCheckpoints, reviewCheckpointRestore: store.reviewCheckpointRestore,
+    restoreCheckpoint: store.restoreCheckpoint,
     saveEntryDetails: store.saveEntryDetails, setFavorite: store.setFavorite, updateEntries: store.updateEntries,
     saveFolders: store.saveFolders, deleteCollection: store.deleteCollection, moveEntriesToCollection: store.moveEntriesToCollection,
     reviewPackImport: store.reviewPackImport,

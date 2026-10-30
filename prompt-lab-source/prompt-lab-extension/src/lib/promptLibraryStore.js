@@ -97,6 +97,9 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
         if (current.completed.packRevision && view.revision !== current.completed.packRevision) {
           throw new Error('Another change followed this pack operation. Review the retained operation and current Library.');
         }
+        if (current.completed.restoredRevision && view.revision !== current.completed.restoredRevision) {
+          throw new Error('Another change followed this restore. Review the retained operation and current Library.');
+        }
         saveError = ''; actionAttempt = null; notify(current.message); return current.completed;
       } catch (error) { report(error); return false; }
       finally { current.pending = null; emit(); }
@@ -162,6 +165,23 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     async open() { try { await repository.open(); return await readback(); } catch (error) { report(error); throw error; } },
     async exportLibrary() { exportReady(); return repository.exportLibrary(view.revision); },
     async exportEntries(ids) { exportReady(); return repository.exportPromptSelection(ids, view.revision); },
+    async readRecoveryCheckpoints() {
+      if (!ready || attempt || actionAttempt || importReview) throw new Error('Finish or close the current Library change before reviewing recovery checkpoints.');
+      return repository.readBackups(view.revision);
+    },
+    async reviewCheckpointRestore(checkpointId, expectedRevision) {
+      if (!ready || attempt || actionAttempt || importReview || expectedRevision !== view.revision) throw new Error('Refresh the Library and finish pending changes before reviewing this checkpoint.');
+      return repository.reviewCheckpointRestore(checkpointId, expectedRevision);
+    },
+    restoreCheckpoint(review) {
+      return runAction(canonical(['checkpoint-restore', review]), () => {
+        if (!ready || importReview || view.revision !== review.expectedRevision) throw new Error('The Library changed after review. Refresh and review the checkpoint again.');
+        return structuredClone(review);
+      }, async value => {
+        const result = await repository.restoreCheckpoint(value);
+        return { ...result, restoredRevision: result.receipt.revision };
+      }, 'Library checkpoint restored. Later history and backups are retained.');
+    },
     doSave(args) {
       if (actionAttempt) { report(new Error('Retry the retained Library change before saving the editor.')); return Promise.resolve(null); }
       const signature = JSON.stringify(args);

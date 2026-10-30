@@ -10,6 +10,7 @@ import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { entryTimestamp as timestamp, filterSmartView, orderSmartView } from './lib/librarySmartViews.js';
 import { reconcileFolders, folderTree, folderDescendants, changeFolder } from './lib/collectionFolders.js';
 import PackStudioPanel from './PackStudioPanel.jsx';
+import LibraryRecoveryModal from './modals/LibraryRecoveryModal.jsx';
 import StarterPackCard from './StarterPackCard.jsx';
 import TestCasesPanel from './TestCasesPanel.jsx';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
@@ -271,6 +272,7 @@ export default function LibraryWorkspace({
   const recordArtwork = artwork => { if (!lib.repository) setArtworkHistoryError(rememberArtwork(artwork).error); };
   const [folderSaving, setFolderSaving] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const bulkBusyRef = useRef(false);
   const [savingDetails, setSavingDetails] = useState(false);
   const detailsSavingRef = useRef(false);
@@ -641,6 +643,7 @@ export default function LibraryWorkspace({
         <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
         <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
         <button type="button" className="pl-secondary-button" disabled={lib.exporting} title={lib.repository ? 'Download a complete saved Library backup' : undefined} onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? (lib.repository ? 'Backup' : 'Export') : 'Export Pro'}</button>
+        {lib.repository && <button type="button" className="pl-secondary-button" disabled={!lib.libReady || lib.saving || lib.exporting} onClick={() => setShowRecovery(true)}>Recovery</button>}
         <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
         {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
       </header>
@@ -648,6 +651,7 @@ export default function LibraryWorkspace({
       {lib.repository && lib.saveError && <div className="pl-library-save-feedback" role="alert"><span>{lib.saveError}</span><button type="button" className="pl-secondary-button" disabled={lib.saving} onClick={retryPendingChanges}>Retry pending changes</button></div>}
       {lib.repository && lib.saving && <p className="pl-library-save-feedback" role="status">Saving to the selected Library…</p>}
       {lib.repository && lib.exporting && <p className="pl-library-save-feedback" role="status">Preparing the saved Library download…</p>}
+      {showRecovery && <LibraryRecoveryModal m={m} lib={lib} onClose={() => setShowRecovery(false)} />}
       {lib.repository && lib.exportError && <div className="pl-library-save-feedback" role="alert"><span>{lib.exportError}</span>{lib.exportNeedsRefresh && <button type="button" className="pl-secondary-button" disabled={lib.saving || lib.exporting} onClick={lib.refreshExport}>Refresh Library</button>}</div>}
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">

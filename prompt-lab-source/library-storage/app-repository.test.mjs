@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { canonical, createCommandService, createMemoryAdapter, LibraryError } from './contract.mjs';
 import { captureSourceInventory } from './source-inventory.mjs';
 import { createCommandOutbox } from './command-outbox.mjs';
-import { createServiceTransport } from './command-client.mjs';
+import { createServiceTransport, createLoopbackTransport } from './command-client.mjs';
+import { createLocalApi } from './local-api.mjs';
 import { createAppLibraryRepository, APP_RECORD_VERSION } from '../prompt-lab-extension/src/lib/appLibraryRepository.js';
 import { createExperimentStore } from '../prompt-lab-extension/src/experimentStore.js';
 import { retryPendingWrites } from '../prompt-lab-extension/src/lib/writeRecovery.js';
@@ -37,7 +38,7 @@ async function fixture(promptFields = {}) {
   const inventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'fixture-origin', capturedAt: stamp,
     localStorage: { length: 3, key: i => Object.keys(entries)[i], getItem: key => entries[key] ?? null },
     readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic fixture' }), archives: { reviewed: true, records: [] } });
-  const service = createCommandService(createMemoryAdapter());
+  const adapter = createMemoryAdapter(), service = createCommandService(adapter);
   const review = await service.preview({ libraryId: 'lib', expectedRevision: null, mode: 'import', sourceText: JSON.stringify(workspace), sourceInventory: inventory });
   const receipt = await service.apply({ ...review, idempotencyKey: 'import' });
   const selection = await service.previewCurrentView({ libraryId: 'lib', expectedRevision: receipt.revision });
@@ -46,9 +47,128 @@ async function fixture(promptFields = {}) {
   const transport = createServiceTransport(service, { libraryId: 'lib' }), store = commandStore();
   const options = { libraryId: 'lib', sourceBinding: receipt.sourceBinding, transport, outbox: createCommandOutbox(store), now: () => Date.parse(stamp), pageSize: 100 };
   const repository = createAppLibraryRepository(options); await repository.open();
-  return { service, transport, store, options, repository, app: createExperimentStore(repository) };
+  return { adapter, service, transport, store, options, repository, app: createExperimentStore(repository) };
 }
 const read = async (f, domain) => f.service.currentRecords({ libraryId: 'lib', expectedRevision: (await f.service.read()).revision, domain });
+
+test('checkpoint restore publishes its reviewed app view atomically and retains later history', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  const originalPrompt = await f.repository.readRecord('prompts', 'prompt');
+  const originalNote = await f.repository.readRecord('scratch-notes', 'note');
+  const originalEval = await f.repository.readRecord('evaluations', 'original-eval');
+  await f.repository.editPrompt(originalPrompt, { notes: 'Later prompt notes' });
+  await f.repository.saveRecord('scratch-notes', { ...await f.repository.readRecord('scratch-notes', 'note'), content: 'Later Scratch text' });
+  await f.repository.saveRecord('evaluations', { ...await f.repository.readRecord('evaluations', 'original-eval'), output: 'Later evaluation' });
+  await f.repository.saveRecord('evaluations', { id: 'later-eval', input: 'Later input', output: 'Retain, but deactivate on restore', createdAt: stamp });
+  const before = await f.service.read();
+  const review = await f.service.previewRestore({ libraryId: 'lib', expectedRevision: before.revision, checkpointId: checkpoint, currentView: 'checkpoint' });
+  assert.equal(review.commitAvailable, true);
+  assert.equal(review.restorePlan.currentViewPlan.unresolved, 0);
+  assert.deepEqual(await f.service.read(), before);
+  const saved = await f.service.apply({ ...review, idempotencyKey: 'restore-reviewed-view' });
+  const reopened = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(commandStore()) });
+  await reopened.open();
+  assert.equal(canonical(await reopened.readRecord('prompts', 'prompt')), canonical(originalPrompt));
+  assert.equal(canonical(await reopened.readRecord('scratch-notes', 'note')), canonical(originalNote));
+  assert.equal(canonical(await reopened.readRecord('evaluations', 'original-eval')), canonical(originalEval));
+  assert.equal(await reopened.readRecord('evaluations', 'later-eval'), null);
+  const after = await f.service.read();
+  assert.equal(Object.keys(after.operations).length, Object.keys(before.operations).length + 1);
+  for (const [id, value] of Object.entries(before.objects)) assert.deepEqual(after.objects[id], value);
+  assert.deepEqual((await inspectTransfer(await f.transport.transfer(saved.revision))).state, after);
+});
+
+test('checkpoint app view cannot resurrect later deleted prompts or Scratch notes', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  await f.repository.changePromptLifecycle('trash', await f.repository.readRecord('prompts', 'prompt'));
+  await f.repository.changePromptLifecycle('delete', await f.repository.readRecord('trash', 'prompt'), { confirmPermanentDeletion: true });
+  const note = await f.repository.readRecord('scratch-notes', 'note');
+  await f.repository.deleteRecord('scratch-notes', 'note', note[APP_RECORD_VERSION]);
+  const before = await f.service.read();
+  const review = await f.service.previewRestore({ libraryId: 'lib', expectedRevision: before.revision, checkpointId: checkpoint, currentView: 'checkpoint' });
+  assert.equal(review.commitAvailable, true);
+  await f.service.apply({ ...review, idempotencyKey: 'restore-with-deletions' });
+  const current = await f.repository.readPromptLibrary();
+  assert.equal(current.library.length, 0); assert.equal(current.trash.length, 0);
+  assert.equal((await f.repository.readDomain('scratch-notes')).length, 0);
+  const after = await f.service.read();
+  for (const [id, value] of Object.entries(before.objects)) assert.deepEqual(after.objects[id], value);
+});
+
+test('checkpoint app view rejects unreviewed checkpoints and unsupported options before writes', async () => {
+  const f = await fixture(), before = await f.service.read();
+  const input = { libraryId: 'lib', expectedRevision: before.revision, checkpointId: before.checkpoints[0] };
+  await assert.rejects(f.service.previewRestore({ ...input, currentView: 'checkpoint' }), { code: 'SELECTION_REQUIRED' });
+  for (const currentView of [false, true, 'latest', null]) {
+    await assert.rejects(f.service.previewRestore({ ...input, currentView }), { code: 'INVALID_REQUEST' });
+  }
+  assert.deepEqual(await f.service.read(), before);
+});
+
+test('reviewed checkpoint restore retries a lost reply after reconstruction without a second write', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'After checkpoint' });
+  const before = await f.service.read();
+  const repository = createAppLibraryRepository({ ...f.options, transport: { ...f.transport,
+    apply: async input => { await f.transport.apply(input); throw new Error('Lost restore reply'); },
+  } });
+  await repository.open();
+  const review = await repository.reviewCheckpointRestore(checkpoint, before.revision);
+  await assert.rejects(repository.restoreCheckpoint(review), /Lost restore reply/);
+  const saved = await f.service.read();
+  assert.equal(Object.keys(saved.operations).length, Object.keys(before.operations).length + 1);
+  const restored = createAppLibraryRepository(f.options); await restored.open();
+  const replayed = await restored.restoreCheckpoint(review);
+  assert.equal(replayed.revision, saved.revision);
+  assert.equal((await restored.readRecord('prompts', 'prompt')).notes, '');
+  assert.deepEqual(await f.service.read(), saved);
+});
+
+test('stale and altered checkpoint reviews preserve the service and retained restore intent', async () => {
+  for (const scenario of ['stale', 'altered']) {
+    const f = await fixture(), checkpoint = (await f.service.read()).revision;
+    await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Newer' });
+    const review = await f.repository.reviewCheckpointRestore(checkpoint, (await f.service.read()).revision);
+    if (scenario === 'stale') await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Competing edit' });
+    else review.restorePlan.currentViewPlan.selected = [];
+    const before = await f.service.read();
+    await assert.rejects(f.repository.restoreCheckpoint(review), { code: scenario === 'stale' ? 'REVISION_CONFLICT' : 'REVIEW_CHANGED' });
+    assert.deepEqual(await f.service.read(), before);
+    assert.equal((await f.repository.pending()).filter(row => row.state !== 'committed').length, 1);
+  }
+});
+
+test('real loopback checkpoint listing and restore use the same durable repository boundary', async t => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Changed through app' });
+  const token = 'synthetic-checkpoint-credential'.repeat(2);
+  const api = createLocalApi({ adapter: f.adapter, libraryId: 'lib', credentials: [{ token, scopes: ['read', 'write'], expiresAt: Date.now() + 60_000 }] });
+  const transport = createLoopbackTransport({ baseUrl: await api.listen(), libraryId: 'lib', getToken: () => token });
+  t.after(() => api.close());
+  const repository = createAppLibraryRepository({ ...f.options, transport, pageSize: 1, outbox: createCommandOutbox(commandStore()) });
+  const { revision } = await repository.open();
+  const backups = await repository.readBackups(revision);
+  assert.equal(backups.items.length, 2); assert.ok(backups.items.some(row => row.checkpointId === checkpoint));
+  assert.ok(backups.items.every(row => row.independentBackup === false));
+  const review = await repository.reviewCheckpointRestore(checkpoint, revision);
+  const restored = await repository.restoreCheckpoint(review);
+  assert.equal(restored.receipt.restoredCheckpointId, checkpoint);
+  assert.equal((await repository.readRecord('prompts', 'prompt')).notes, '');
+  assert.equal((await repository.exportLibrary(restored.revision)).manifest.revision, restored.revision);
+});
+
+test('restore never reaches the service when its durable outbox write fails or review expires', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Retained current state' });
+  const before = await f.service.read(), review = await f.repository.reviewCheckpointRestore(checkpoint, before.revision);
+  const repository = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox({
+    async read() { return null; }, async list() { return []; }, async write() { throw new Error('Durable storage full'); },
+  }) });
+  await repository.open();
+  await assert.rejects(repository.restoreCheckpoint(review), /Durable storage full/);
+  await assert.rejects(f.repository.restoreCheckpoint({ ...review, expiresAt: Date.now() - 1 }), { code: 'REVIEW_REQUIRED' });
+  assert.deepEqual(await f.service.read(), before);
+});
 
 test('app backup retains the complete saved graph after edits and deletion and independently reopens', async () => {
   const f = await fixture(), initial = await f.service.read();

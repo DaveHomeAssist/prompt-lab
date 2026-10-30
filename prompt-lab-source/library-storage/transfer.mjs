@@ -71,7 +71,8 @@ async function verifyState(input) {
       : mode === 'reconcile'
       ? { libraryId: state.libraryId, expectedRevision: parent, incomingManifestHash: state.objects[commit.reconciliationPlan].data.incomingManifestHash, resolutions: state.objects[commit.reconciliationPlan].data.resolutions, mode }
       : mode === 'restore'
-      ? { libraryId: state.libraryId, expectedRevision: parent, checkpointId: commit.restoredCheckpointId, mode }
+      ? { libraryId: state.libraryId, expectedRevision: parent, checkpointId: commit.restoredCheckpointId, mode,
+        ...(state.objects[commit.restorePlan].data.currentView ? { currentView: state.objects[commit.restorePlan].data.currentView } : {}) }
       : { libraryId: state.libraryId, expectedRevision: parent, sourceText: state.objects[commit.source].data, resolutions, mode };
     if (mode === 'restore' && (receipt.restoredCheckpointId !== commit.restoredCheckpointId || !state.checkpoints.includes(commit.restoredCheckpointId))) fail('Restore receipt or checkpoint differs from the committed review.');
     if (Object.hasOwn(commit, 'sourceBinding')) {

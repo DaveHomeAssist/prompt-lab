@@ -3365,6 +3365,10 @@
         "checkpointId": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "currentView": {
+          "const": "checkpoint",
+          "description": "Restore the previously reviewed checkpoint view in the same commit; both current and checkpoint views must be complete."
         }
       },
       "required": [
@@ -3444,6 +3448,12 @@
         "fingerprint": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "currentView": {
+          "const": "checkpoint"
+        },
+        "currentViewPlan": {
+          "$ref": "#/$defs/CurrentViewPlan"
         }
       },
       "required": [
@@ -3459,7 +3469,15 @@
         "activationReady",
         "fingerprint"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "dependentRequired": {
+        "currentView": [
+          "currentViewPlan"
+        ],
+        "currentViewPlan": [
+          "currentView"
+        ]
+      }
     },
     "DomainOrigin": {
       "type": "object",
@@ -4617,6 +4635,9 @@
             },
             "mode": {
               "const": "restore"
+            },
+            "currentView": {
+              "const": "checkpoint"
             }
           },
           "required": [

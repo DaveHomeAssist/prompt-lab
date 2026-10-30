@@ -70,7 +70,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Verify app owned preservation readers in real browser storage
-        run: npx playwright test e2e/library-source-capture.spec.js e2e/library-command-outbox.spec.js e2e/library-app-migration.spec.js e2e/repository-library-actions.spec.js
+        run: npx playwright test e2e/library-source-capture.spec.js e2e/library-command-outbox.spec.js e2e/library-app-migration.spec.js e2e/repository-library-actions.spec.js e2e/repository-library-recovery.spec.js
 
       - name: Verify native scenario logic, Library layout and overlap, and Library test cases
         run: node --test ../prompt-lab-desktop/tests/native-script-syntax.test.mjs ../prompt-lab-desktop/tests/native-webview-readiness.test.mjs && npx playwright test e2e/native-webview-readiness.spec.js e2e/native-acceptance-development.spec.js e2e/scratch-durability.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js e2e/save-state-visibility.spec.js e2e/library-artwork.spec.js

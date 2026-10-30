@@ -199,6 +199,70 @@ const downloaded = () => new Promise((resolve, reject) => {
   reader.readAsText(URL.createObjectURL.mock.calls.at(-1)[0]);
 });
 
+it('checkpoint review makes no writes and restore waits for its receipt before showing recovered content', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite Shared prompt' }));
+  await screen.findByRole('button', { name: 'Unfavorite Shared prompt' });
+  const before = await f.service.read();
+  fireEvent.click(screen.getByRole('button', { name: 'Recovery', exact: true }));
+  await screen.findByLabelText('Recovery checkpoint');
+  fireEvent.change(screen.getByLabelText('Recovery checkpoint'), { target: { value: checkpoint } });
+  fireEvent.click(screen.getByRole('button', { name: 'Review checkpoint', exact: true }));
+  await screen.findByText('1 active prompts after restore');
+  expect(await f.service.read()).toEqual(before);
+  const release = f.hold();
+  fireEvent.click(screen.getByRole('button', { name: 'Restore this checkpoint', exact: true }));
+  await screen.findByText('Restoring the Library…');
+  expect(f.notify).not.toHaveBeenCalledWith('Library checkpoint restored. Later history and backups are retained.');
+  fireEvent.keyDown(document, { key: 'Escape' });
+  expect(screen.getByRole('dialog', { name: 'Library recovery' })).toBeInTheDocument();
+  await act(async () => release());
+  await screen.findByText('Checkpoint restored. Later history and backups are retained.');
+  fireEvent.click(screen.getByRole('button', { name: 'Close recovery' }));
+  await screen.findByRole('button', { name: 'Favorite Shared prompt' });
+  const after = await f.service.read();
+  expect(Object.keys(after.operations)).toHaveLength(Object.keys(before.operations).length + 1);
+  for (const [id, value] of Object.entries(before.objects)) expect(after.objects[id]).toEqual(value);
+  for (const [key, value] of Object.entries(f.legacy)) expect(localStorage.getItem(key)).toBe(value);
+});
+
+it('offline checkpoint restore retains the exact review for visible retry without false success', async () => {
+  const f = await fixture(), checkpoint = (await f.service.read()).revision;
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite Shared prompt' }));
+  await screen.findByRole('button', { name: 'Unfavorite Shared prompt' });
+  fireEvent.click(screen.getByRole('button', { name: 'Recovery', exact: true }));
+  await screen.findByLabelText('Recovery checkpoint');
+  fireEvent.change(screen.getByLabelText('Recovery checkpoint'), { target: { value: checkpoint } });
+  fireEvent.click(screen.getByRole('button', { name: 'Review checkpoint', exact: true }));
+  await screen.findByText('1 active prompts after restore');
+  const before = await f.service.read(); f.setOffline(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Restore this checkpoint', exact: true }));
+  await screen.findByRole('button', { name: 'Retry this restore' });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Retry this restore' })).toBeEnabled());
+  expect(await f.service.read()).toEqual(before);
+  expect(screen.queryByText('Checkpoint restored. Later history and backups are retained.')).not.toBeInTheDocument();
+  const pending = (await f.repository.pending()).filter(row => row.state !== 'committed');
+  expect(pending).toHaveLength(1); expect(pending[0].request.currentView).toBe('checkpoint');
+  f.setOffline(false); fireEvent.click(screen.getByRole('button', { name: 'Retry this restore' }));
+  await screen.findByText('Checkpoint restored. Later history and backups are retained.');
+  expect((await f.repository.pending()).find(row => row.operationId === pending[0].operationId).state).toBe('committed');
+  expect(Object.keys((await f.service.read()).operations)).toHaveLength(Object.keys(before.operations).length + 1);
+});
+
+it('checkpoint listing failures can refresh and closing a reviewed checkpoint changes no data', async () => {
+  const f = await fixture();
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite Shared prompt' }));
+  await screen.findByRole('button', { name: 'Unfavorite Shared prompt' });
+  const before = await f.service.read(); f.setOffline(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Recovery', exact: true }));
+  await screen.findByRole('button', { name: 'Refresh checkpoints' });
+  expect(screen.queryByRole('button', { name: 'Restore this checkpoint' })).not.toBeInTheDocument();
+  f.setOffline(false); fireEvent.click(screen.getByRole('button', { name: 'Refresh checkpoints' }));
+  await screen.findByLabelText('Recovery checkpoint');
+  fireEvent.click(screen.getByRole('button', { name: 'Close recovery' }));
+  expect(await f.service.read()).toEqual(before);
+});
+
 it('the visible Backup action waits for verification and downloads the complete saved archive', async () => {
   const f = await fixture(), before = await f.service.read(), release = f.holdTransfer();
   fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));

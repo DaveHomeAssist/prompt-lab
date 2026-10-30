@@ -1,5 +1,42 @@
 # Library storage contract candidate
 
+## Reviewed checkpoint restore: October 30
+
+The existing restore preserves the archive but leaves a selected app without a
+reviewed current view. Add an explicit `currentView: "checkpoint"` option to the
+existing authenticated restore preview and publish its verified current view in
+the same commit. Keep older requests and historical commit hashes unchanged.
+The checkpoint must already have a complete reviewed view. Retained deletion
+markers still suppress records; unknown fields, sources, objects, receipts and
+later history survive. A stale review or unavailable checkpoint makes no writes.
+
+Use the same preview, durable outbox, idempotency and receipt contracts for the
+app and API. Verify prompt, Scratch and evaluation changes, later deletions,
+fresh reopen, a complete transfer and response-loss retry. No second selection
+commit is required. The selected Library's Recovery dialog lists checkpoints,
+reviews the resulting counts and applies only the explicit reviewed restore.
+Pending acknowledgement disables dismissal; failed attempts retain their review
+for retry. Later history stays retained, and deletion markers still apply.
+Canceling a preview makes no Library writes. Checkpoints are distinguished from
+independent downloaded backups. Complete backup file import, workspace import,
+personal activation and installed/two-client acceptance remain open.
+
+Verification on Dominic, Node 22.23.4: 455 storage tests, 74 Library UI
+regressions, extension build and documentation checks pass. The broader app
+suite passed 1,640 tests across 144 files and 231 legacy tests before the final
+UI addition. Three real Chromium restore scenarios pass at 375, 1440 and 2560
+pixels, covering offline retry, delayed acknowledgement, keyboard dismissal,
+page fit and reload. The final dark capture waits for the existing color
+transition. JSON Schema validation accepts actual request/plan fixtures and
+rejects invalid options and incomplete plans.
+
+A bounded Mac Node 22.22.1 restore of an isolated full real-data backup recovers
+all 216 original prompts exactly, two Trash records, three evaluations and four
+Scratch notes. It publishes one operation, retains all 26 prior objects, reopens
+identically from disk and creates no extra write on retry. The original export
+hash is unchanged and no private content is uploaded. Real-data UI and installed
+application acceptance remain separate.
+
 ## Saved library backup and selected export: October 30
 
 Connect Export to the selected repository. A full backup uses the complete
