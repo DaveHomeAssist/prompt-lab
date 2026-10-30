@@ -1,13 +1,13 @@
 import { useRef } from 'react';
 import Ic from './icons';
-import TagChip from './TagChip';
-import { ALL_TAGS } from './constants';
+import SaveTagsField from './SaveTagsField.jsx';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { getPrimarySaveLabel, SAVE_LABELS } from './lib/promptLifecycle.js';
 
 export default function SavePanel({
   m, primaryModKey, saveTargetId, saveTitle, setSaveTitle,
   saveCollection, setSaveCollection, saveTags, setSaveTags,
+  libraryTags = [], tagSourceText = '',
   changeNote, setChangeNote, collections,
   showNewColl, setShowNewColl, newCollName, setNewCollName,
   commitNewCollection, doSave, doSaveAsNew, closeSavePanel, canSavePanel,
@@ -137,19 +137,7 @@ export default function SavePanel({
             )}
           </div>
 
-          <div>
-            <p className={`mb-2 text-xs font-semibold uppercase tracking-wider ${m.textSub}`}>Tags</p>
-            <div className="flex flex-wrap gap-1.5">
-              {ALL_TAGS.map((t) => (
-                <TagChip
-                  key={t}
-                  tag={t}
-                  selected={saveTags.includes(t)}
-                  onClick={() => setSaveTags((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))}
-                />
-              ))}
-            </div>
-          </div>
+          <SaveTagsField m={m} saveTags={saveTags} setSaveTags={setSaveTags} libraryTags={libraryTags} sourceText={tagSourceText} />
 
           {saveTargetId && (
             <div>
