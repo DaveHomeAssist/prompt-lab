@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T03:35:15.800Z",
+  "snapshotAt": "2026-10-30T03:59:52.173365Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection.",
+  "nextAction": "Verify the exact packaged macOS lifecycle and helper ownership under app identity, then explicit pairing and the reviewed A3 picker/connection.",
   "evidence": [
+    {
+      "label": "Native ownership across app crash",
+      "state": "Open",
+      "detail": "Candidate 7367f19 pushed in draft PR248. Mac exact-source harness: 15 service tests pass, including killed disposable owner, helper drain exclusion and restart. Parent-only ownership negative control fails at competing credential access. Initial concurrent failed-spawn cleanup assertion retained; observed release is required within five seconds and production refuses while busy. Duncan full crate: 16 ordinary tests pass; Windows secure-store tests explicitly skipped. Dominic docs and four runtime checks pass. Prior 4c87181 macOS packaging passed; exact new candidate CI and installed acceptance remain separate. No personal library activated; original export unchanged. Walter SSH timeout and missing expected export on Duncan leave actual iCloud propagation unverified.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/7367f195a79b61f3f7bbd48c5b53f1ff0dae3a70"
+    },
     {
       "label": "Native credential renewal and runtime packaging",
       "state": "Open",
@@ -1602,8 +1608,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Verify universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection.",
-      "verification": "Native renewal: 16 ordinary tests on Duncan and two real Mac Keychain tests pass. Real Mac universal architecture check passes positive and negative fixtures; macOS minimum now 11. Full updated packaging, installed lifecycle/permissions, crash ownership, explicit pairing, native recovery UX and actual two-client iCloud remain open.",
+      "nextAction": "Verify installed macOS lifecycle and helper ownership, then explicit pairing and reviewed A3 picker/connection.",
+      "verification": "7367f19 pushed: 15 Mac service tests including killed-owner drain and restart, negative control fails as expected; 16 ordinary full-crate tests on Duncan; docs and runtime checks on Dominic. Installed app identity, real two-client iCloud and complete A2 acceptance remain open.",
       "title": "PRJ | PromptLab | Durable Folder Service and Local API | A2",
       "status": "In progress",
       "severity": "Medium",
