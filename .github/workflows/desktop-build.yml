@@ -13,6 +13,7 @@ on:
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/verify-folder-environment.mjs
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/verify-folder-environment.mjs
       - .github/workflows/desktop-build.yml
 
 permissions:
@@ -50,6 +52,16 @@ jobs:
 
       - name: Run extension tests
         run: npm test
+
+      - name: Verify real filesystem failures and retained folder operations
+        timeout-minutes: 2
+        run: |
+          docker run --rm --network none --read-only --memory 256m --cpus 1 --pids-limit 64 \
+            --user 1000:1000 \
+            --tmpfs /fixture:rw,size=16m,uid=1000,gid=1000,mode=0700 \
+            -v "$GITHUB_WORKSPACE:/work:ro" \
+            node:22-bookworm-slim \
+            node /work/prompt-lab-source/scripts/verify-folder-environment.mjs /fixture
 
       - name: Build shared UI for native scenario development checks
         run: npm run build

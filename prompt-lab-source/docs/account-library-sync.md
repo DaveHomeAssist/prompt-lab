@@ -134,9 +134,9 @@ Use synthetic fixtures, isolated profiles and supported background tooling. Linu
 
 ## Next action and open decisions
 
-Next action: finish A1 preservation, import/conflict and schema/API acceptance, then complete the production A2 service. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
+Next action: complete A2 packaged macOS lifecycle, crash ownership, credential renewal and explicit pairing. The five original A1 contract criteria pass on the candidate. Mac Keychain source and actual Linux filesystem failure acceptance now pass, while installed app and macOS recovery checks remain open. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
 
-Decided: folder first, hosted second; complete history/backups; shared app/API library. The October 28 hosted choices are recorded above and in D-016. Native service packaging remains an open implementation decision; actual iCloud propagation and installed-app acceptance remain unverified. The October 23 planning-only authorization and earlier hosted questions are preserved in Git history and the existing Notion historical sections.
+Decided: folder first, hosted second; complete history/backups; shared app/API library. The October 28 hosted choices are recorded above and in D-016. The native service packages the shared JavaScript engine with Node 22; actual iCloud propagation and installed-app acceptance remain unverified. The October 23 planning-only authorization and earlier hosted questions are preserved in Git history and the existing Notion historical sections.
 
 ## Sources and prior design
 

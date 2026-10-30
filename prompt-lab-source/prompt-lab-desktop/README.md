@@ -59,6 +59,24 @@ and removes a disposable credential only when explicitly selected with
 logon on Windows can return `ERROR_NO_SUCH_LOGON_SESSION` before a write. Keep
 that failure separate from ordinary unit checks and installed app acceptance.
 
+The Linux filesystem acceptance uses an unprivileged helper on a dedicated
+16 MiB in-memory filesystem. It exercises actual full-disk and permission
+errors, retained commits, restart and idempotent retry. From the repository
+root on a qualified Linux Docker runner:
+
+```bash
+docker run --rm --network none --read-only --memory 256m --cpus 1 --pids-limit 64 \
+  --user 1000:1000 \
+  --tmpfs /fixture:rw,size=16m,uid=1000,gid=1000,mode=0700 \
+  -v "$PWD:/work:ro" node:22-bookworm-slim \
+  node /work/prompt-lab-source/scripts/verify-folder-environment.mjs /fixture
+```
+
+The script refuses root, nonempty directories, ordinary filesystems and
+filesystems larger than 32 MiB. It never uses a personal library. This check
+does not establish macOS permissions, browser draft recovery or installed
+application behavior.
+
 ## Desktop Controls
 
 - Zoom with `Command +` / `Command -` on macOS or `Ctrl +` / `Ctrl -` on Windows and Linux. Reset with `Command 0` or `Ctrl 0`.

@@ -11,7 +11,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const appModules = ['libraryAppMigration', 'libraryCommandOutbox', 'librarySourceCapture', 'libraryWriteCoordinator',
   'libraryOriginCapture', 'libraryEditBuffers', 'draftRecoveryCapture', 'libraryMatching', 'promptSchema',
   'utils', 'tagSchema', 'enhancementResult', 'followUpProvenance', 'collectionFolders', 'libraryPresentation',
-  'appLibraryRepository', 'promptLibraryStore', 'appRecordVersion', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
+  'appLibraryRepository', 'promptLibraryStore', 'appFolderCommand', 'appRecordVersion', 'logger', 'diagnostics', 'writeRecovery', 'evalSchema'];
 let server, origin;
 test.use({ channel: 'chromium' });
 test.beforeAll(async () => {

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T02:53:56.537Z",
+  "snapshotAt": "2026-10-30T03:15:47.927Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the packaged macOS native boundary and complete secure pairing and failure acceptance before enabling the reviewed folder picker.",
+  "nextAction": "Complete packaged macOS lifecycle, crash ownership and credential renewal/pairing before enabling the reviewed picker and app connection.",
   "evidence": [
+    {
+      "label": "Native credentials and real filesystem failures verified",
+      "state": "Open",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/248",
+      "detail": "## Native credential and filesystem acceptance\n\n2026-10-29: the current [draft PR248](https://github.com/DaveHomeAssist/prompt-lab/pull/248) candidate adds real filesystem failure acceptance and repairs the browser migration fixture. A2 remains In progress.\n\nThe exact native credential source passed a disposable Mac Keychain create/readback/expiry rotation/delete check in an isolated Rust harness. The test first verifies absence, cleans up on failure, and does not print credentials. This proves current-login source behavior, not installed app identity or permissions.\n\nDominic Node 22.23.4 passed all five real filesystem scenarios through the helper process and HTTP API: ENOSPC, denied object writes, denied receipt writes, denied transaction writes and denied object reads. Each case retained every prior file hash, restarted, recovered the original receipt and published the retained operation exactly once. A further restart and replay returned the same receipt. The dedicated 16 MiB tmpfs and unprivileged read-only container contain synthetic data only. The existing desktop workflow now runs this gate.\n\nThe previous candidate 99bb14f passed 1,571 application tests but its browser batch failed because the migration fixture omitted appFolderCommand. The allowlist is repaired without changing assertions; all 52 browser preservation cases pass on Dominic, including all six affected cases, with application assertions and test timeouts unchanged. An initial local full run timed out near its 256-process container cap and was stopped; a fresh run with init, a 512-process cap and failure tracing passes in 2.3 minutes. The original [failed CI job](https://github.com/DaveHomeAssist/prompt-lab/actions/runs/40994461677/job/123864234983) remains recorded. New-head CI and desktop packaging are separate gates.\n\nConfiguration remains folder first, Neon with existing Clerk in US East after Phase A, server-readable/provider encryption at rest, retained history/backups and separately confirmed erasure. No paid provisioning. The native owner packages the existing JavaScript engine with Node 22; stale planning text is reconciled.\n\nRemaining: packaged macOS lifecycle and secure-store access, crash ownership, credential renewal/pairing, macOS filesystem failure and native recovery UX, the reviewed app connection policy and picker/activation, actual two-client iCloud, installed artifacts and human acceptance. The original 1,666,421-byte export still matches its recorded SHA256. No personal activation, private upload or phase-completion claim.\n\nFresh configuration check at 03:15 UTC October 30 (October 29 local): Walter SSH times out. Duncan's iCloud Drive root and process are present, with 160.94 GiB free, but the October 28 export is still absent there. Account identity, warning UI and actual two-client propagation remain unverified. No settings changed.\n\nNext: complete packaged macOS lifecycle and native credential renewal/pairing before enabling the reviewed picker and app connection. MUT-7 direct current-session instruction exception. The registered Next Steps Board remains absent; no replacement is created."
+    },
     {
       "label": "Native owner and packaged runtime verified",
       "state": "Open",
@@ -1181,7 +1187,7 @@
     },
     {
       "id": "3d2255fc8f44814bb93cf90f2931876e",
-      "title": "Workspace import fails to remap run associations",
+      "title": "BUG | PromptLab | Workspace Import Run Associations",
       "status": "In progress",
       "severity": "High",
       "area": "Import",
@@ -1529,7 +1535,7 @@
     },
     {
       "id": "d39b7b5b076041de8718e4c2f1134422",
-      "title": "Finish desktop stabilization and cross-platform packaging proof",
+      "title": "RUN | PromptLab | Desktop Stabilization and Packaging Proof",
       "status": "In progress",
       "severity": "High",
       "area": "Background",
@@ -1544,7 +1550,7 @@
       "inPlan": false,
       "nextAction": "Complete A1 delivery review alongside the A2 service acceptance audit; do not conflate later native and iCloud gates with the original contract audit.",
       "verification": "The five original A1 contract criteria pass on candidate f44d565. All 423 storage tests and actual HTTP schemas pass on Dominic: 52 responses, 11 requests, 16 rejected malformed variants and 81 definitions. Delivery and later Phase A gates remain incomplete.",
-      "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
+      "title": "PRJ | PromptLab | Shared Contracts and Lossless Fixtures | A1",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
@@ -1590,9 +1596,9 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Verify the packaged macOS native boundary and complete secure pairing and failure acceptance before enabling the reviewed folder picker.",
-      "verification": "Native owner and packaged helper verified on remote runners. macOS installed/Keychain acceptance, Windows durable writes, pairing, failure paths and actual iCloud remain open.",
-      "title": "Build durable folder service and local API A2 (sync slice 2)",
+      "nextAction": "Complete packaged macOS lifecycle, crash ownership and credential renewal/pairing before enabling the reviewed picker and app connection.",
+      "verification": "Exact native source passes disposable Mac Keychain readback, expiry rotation and removal. Five real Linux filesystem failures and all 52 browser preservation cases pass on Dominic. Installed macOS lifecycle/permissions, credential renewal/pairing, native recovery UX and actual two-client iCloud remain open.",
+      "title": "PRJ | PromptLab | Durable Folder Service and Local API | A2",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
@@ -1625,7 +1631,7 @@
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
-      "title": "Clarify prompt lifecycle and keep New Prompt in one place",
+      "title": "PRJ | PromptLab | Prompt Lifecycle and New Prompt Placement",
       "status": "Done",
       "severity": "Medium",
       "area": "Editor",
@@ -1877,7 +1883,7 @@
     },
     {
       "id": "408255fc8f4481a78adcf3b63de7de3f",
-      "title": "Windows NSIS drops Scratch content after restart",
+      "title": "BUG | PromptLab | Windows NSIS Scratch Retention",
       "status": "Done",
       "severity": "High",
       "area": "Background",

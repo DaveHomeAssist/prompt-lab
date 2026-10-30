@@ -661,15 +661,23 @@ for await (const line of input) {
             &new_credential("fixture", now().unwrap()).unwrap().token[..16]
         );
         let entry = keyring::Entry::new(CREDENTIAL_SERVICE, &name).unwrap();
+        assert!(matches!(entry.get_secret(), Err(keyring::Error::NoEntry)));
+        struct Cleanup<'a>(&'a keyring::Entry);
+        impl Drop for Cleanup<'_> {
+            fn drop(&mut self) {
+                let _ = self.0.delete_credential();
+            }
+        }
+        let _cleanup = Cleanup(&entry);
         let first = desktop_credential(&name).unwrap();
-        assert_eq!(first.token, desktop_credential(&name).unwrap().token);
+        assert!(first.token == desktop_credential(&name).unwrap().token);
         let mut expired = first.clone();
         expired.expires_at = 0;
         entry
             .set_secret(&serde_json::to_vec(&expired).unwrap())
             .unwrap();
         let next = desktop_credential(&name).unwrap();
-        assert_ne!(first.token, next.token);
+        assert!(first.token != next.token);
         assert!(valid_credential(&next, &name, now().unwrap()));
         entry.delete_credential().unwrap();
         assert!(matches!(entry.get_secret(), Err(keyring::Error::NoEntry)));

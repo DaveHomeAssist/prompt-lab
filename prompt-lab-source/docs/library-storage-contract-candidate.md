@@ -1,5 +1,39 @@
 # Library storage contract candidate
 
+## Native credentials and filesystem failure acceptance: October 29
+
+The exact native credential source passed a real Mac Keychain round trip in
+a small isolated Rust harness. A fresh disposable entry was created, read back,
+expired, rotated and deleted, with absence confirmed afterward. Cleanup also
+runs if an assertion fails, and token comparisons cannot print credentials.
+This verifies the native source under the current Mac login. It does not prove
+the installed application's identity, permissions or lifecycle.
+
+On Dominic, Node 22.23.4 passed five actual filesystem failure scenarios through
+the real helper process and HTTP API: a full 16 MiB tmpfs, denied object,
+receipt and transaction writes, and a denied object read. The kernel returned
+`ENOSPC` or `EACCES`. Each scenario retained every prior file hash, restarted
+the helper, recovered the original receipt and committed the retained operation
+once. Another restart and replay returned the same receipt, with exactly two
+published transactions. The isolated source includes 41 versions and unknown
+metadata. No personal data or ordinary host filesystem is used.
+
+The desktop workflow now runs this unprivileged acceptance in a read-only
+container with a dedicated small tmpfs. The harness rejects unsafe roots.
+Linux results do not establish macOS filesystem permissions or native recovery
+UX. All 52 browser preservation cases pass after adding a missing module to
+the migration test server's explicit allowlist; their assertions are unchanged.
+The original CI failure remains recorded at candidate `99bb14f`. A first local
+full run timed out near its container's 256-process limit and was stopped;
+the passing run uses an init process, a 512-process limit and failure tracing.
+Application assertions and test timeouts are unchanged.
+
+The folder-first configuration and deferred Neon/Clerk US East choices remain
+unchanged. A2 is still in progress. Packaged macOS lifecycle, crash ownership,
+credential renewal and explicit pairing, the reviewed app connection policy,
+the picker and active-library switch, and actual two-client iCloud acceptance
+remain separate gates. No paid provisioning or personal activation occurred.
+
 ## Native service owner and packaged runtime: October 29
 
 The private helper needs a real native owner and a shipped runtime. Retain the
@@ -55,7 +89,8 @@ same preservation contract. Linux also remains unavailable for native activation
 until secure storage is qualified. Its packaged helper passed all nine process
 cases on Dominic, separate from desktop activation.
 
-macOS Keychain, universal packaging, window close/reopen/quit, crash ownership,
+The Mac Keychain source acceptance now passes as recorded above. Universal
+packaging, installed Keychain access, window close/reopen/quit, crash ownership,
 credential renewal and explicit pairing still require acceptance. The Node 22
 sidecar requires macOS 11 or later; the older shell minimum is not evidence of
 folder-service compatibility. The app's current network policy still needs the
@@ -109,14 +144,15 @@ write completed. Both now pass without timing sleeps.
 | --- | --- | --- |
 | Verified atomic publication | Folder tests cover temporary publication, flush, hash verification and interruption. API shutdown now drains accepted writes. | Exact native helper shutdown and installed failure acceptance. |
 | Immutable causal forks | Folder graph and reconciliation tests retain competing histories without a cloud-wide lock. | Native single-process ownership on each device and actual two-client iCloud. |
-| Failure and restart preservation | Corrupt/missing content, injected interruption, restart and receipt replay are covered. | Actual disk-full and permission-denied cases plus native recovery UX. |
+| Failure and restart preservation | Corrupt/missing content, injected interruption, restart and receipt replay are covered. Five actual Linux filesystem failure cases preserve prior hashes and recover one operation across restart. | macOS filesystem failures and native draft/recovery UX. |
 | Retain all history and backups | Existing contract and folder suites retain versions, checkpoints, receipts and unknown fields. No pruning is added. | Installed app activation and real-data acceptance of the connected flow. |
-| Scoped local authentication | Helper enforces expiring credentials, origin binding, revocation and private parent control. Existing HTTP tests reject hostile Host and missing/wrong scope. | Native secure storage, explicit pairing, one owner and packaged network boundary. |
+| Scoped local authentication | Helper enforces expiring credentials, origin binding, revocation and private parent control. Existing HTTP tests reject hostile Host and missing/wrong scope. Exact native source passes a disposable Mac Keychain round trip and expiry rotation. | Installed secure storage, credential renewal, explicit pairing, crash ownership and packaged network boundary. |
 | Service independent of app window | A real helper remains available after an HTTP app client disconnects; parent loss and stop remove its listener. | A real app window close while its enabled native owner remains alive. |
 
-A2 remains In progress. The helper is not yet launched by the desktop. Next:
-connect a single native owner, secure credential storage and packaged helper
-before exposing enable/pairing controls. These process tests do not establish
+A2 remains In progress. The native owner and packaging are implemented, but
+the app does not yet activate a library. Next: complete packaged macOS lifecycle,
+crash ownership, credential renewal and pairing before enabling the reviewed
+picker and app connection. These process tests do not establish
 installed app behavior or actual iCloud replication.
 
 ## A1 HTTP contract reconciliation: October 29
