@@ -920,6 +920,8 @@ textarea:disabled {
 .pl-saved-notes,
 .pl-saved-tests,
 .pl-version-workspace { display: grid; gap: 0.75rem; }
+.pl-inspector-details-actions { position: sticky; top: 0; z-index: 1; background: var(--pl-brand-ink); padding: 0.5rem 0.9rem; flex: 0 0 auto; }
+.pl-inspector-details-actions > button { width: 100%; }
 .pl-inspector-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
 .pl-inspector-audit-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); padding-top: 0.7rem; }
 .pl-inspector-audit-metadata div { display: grid; gap: 0.1rem; }
@@ -1500,4 +1502,9 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
   .pl-app-shell.is-compact .pl-write-side-header button, .pl-app-shell.is-compact .pl-write-side-subheader button, .pl-app-shell.is-compact .pl-write-search-recovery button { min-height: 2rem; min-width: 2rem; }
   .pl-app-shell.is-compact .pl-write-side .pl-segmented { padding: 0.1rem; }
   .pl-app-shell.is-compact .pl-write-prompt-search input { min-height: 2rem; }
+}
+
+@media (max-height: 350px) {
+  .pl-library-inspector { display: block; }
+  .pl-library-inspector .pl-inspector-content { overflow-y: visible; }
 }

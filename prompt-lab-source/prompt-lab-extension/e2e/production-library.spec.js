@@ -103,6 +103,28 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await expect(list.getByRole('listitem')).toHaveCount(4);
       await expect(list.getByRole('listitem').first()).toContainText('QA Beta');
 
+      // Verify the deployed inspector using only this disposable synthetic profile.
+      await page.getByRole('button', { name: 'Inspect QA Alpha', exact: true }).click();
+      const details = page.locator('#library-inspector-panel');
+      const saveDetails = page.locator('.pl-library-inspector').getByRole('button', { name: 'Save details', exact: true });
+      const saveBox = await saveDetails.boundingBox();
+      const titleBox = await details.getByLabel('Title', { exact: true }).boundingBox();
+      expect(saveBox.y + saveBox.height).toBeLessThanOrEqual(titleBox.y);
+      await details.getByLabel('Purpose', { exact: true }).fill('Navigation and inspector placement');
+      await details.evaluate(node => { node.scrollTop = node.scrollHeight; });
+      expect(await saveDetails.evaluate(node => {
+        const action = node.getBoundingClientRect(), panel = node.closest('aside').getBoundingClientRect();
+        return action.top >= panel.top - 1 && action.bottom <= panel.bottom + 1;
+      })).toBe(true);
+      await saveDetails.click();
+      await expect(saveDetails).toBeDisabled();
+      await page.reload();
+      await expect(page.getByTestId('global-new-prompt')).toBeVisible();
+      await page.getByRole('button', { name: 'Inspect QA Alpha', exact: true }).click();
+      await expect(page.locator('#library-inspector-panel').getByLabel('Purpose', { exact: true })).toHaveValue('Navigation and inspector placement');
+      await page.getByRole('button', { name: 'Close prompt inspector', exact: true }).click();
+      console.info(`[production-library ${viewport.width}] top Save details, sticky reachability and metadata reload passed`);
+
       // Artwork acceptance uses only this disposable browser's synthetic Library.
       const artworkTrigger = page.getByRole('button', { name: 'Change artwork for QA Alpha', exact: true });
       for (const view of ['List view', 'Tile view', 'Compact view', 'Gallery view']) {

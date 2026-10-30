@@ -50,7 +50,7 @@ async function withLibrary({ width, layout, mode = 'dark' }, run) {
     await context.addInitScript((seed) => {
       localStorage.setItem('pl2-telemetry', JSON.stringify({ consent: 'denied' }));
       localStorage.setItem('pl_telemetry_consent', 'denied');
-      localStorage.setItem('pl2-library', JSON.stringify(seed.entries));
+      if (!localStorage.getItem('pl2-library')) localStorage.setItem('pl2-library', JSON.stringify(seed.entries));
       localStorage.setItem('pl2-collections', JSON.stringify(['Operations']));
       localStorage.setItem('pl2-library-layout', JSON.stringify(seed.layout));
       localStorage.setItem('pl2-mode', JSON.stringify(seed.mode));
@@ -127,6 +127,40 @@ for (const mode of ['dark', 'light']) {
         return context.getImageData(0, 0, 1, 1).data[3];
       });
       expect(alpha, `inspector background is opaque in ${mode} mode`).toBe(255);
+    });
+  });
+}
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }, { width: 844, height: 390 }, { width: 320, height: 256 }, { width: 3840, height: 1080 }]) {
+  test(`Save details stays above the metadata and reachable while scrolling at ${viewport.width}px`, async () => {
+    await withLibrary({ width: viewport.width, layout: 'list' }, async (page) => {
+      await page.setViewportSize(viewport);
+      await page.getByRole('button', { name: `Inspect ${entries[1].title}` }).click();
+      const panel = page.locator('#library-inspector-panel');
+      const save = page.locator('.pl-library-inspector').getByRole('button', { name: 'Save details', exact: true });
+      await expect(save).toBeDisabled();
+      const action = await save.boundingBox();
+      const title = await panel.getByLabel('Title', { exact: true }).boundingBox();
+      expect(action.y + action.height).toBeLessThanOrEqual(title.y);
+      await panel.getByLabel('Owner', { exact: true }).fill('Inspector placement fixture');
+      await expect(save).toBeEnabled();
+      await panel.evaluate(node => {
+        const scroller = getComputedStyle(node).overflowY === 'visible' ? node.closest('aside') : node;
+        scroller.scrollTop = scroller.scrollHeight;
+      });
+      const visible = await save.evaluate(node => {
+        const action = node.getBoundingClientRect();
+        const panel = node.closest('aside').getBoundingClientRect();
+        return { fits: action.top >= panel.top - 1 && action.bottom <= panel.bottom + 1, action: { top: action.top, bottom: action.bottom }, panel: { top: panel.top, bottom: panel.bottom } };
+      });
+      if (screenshotDir) await page.screenshot({ path: path.join(screenshotDir, `inspector-save-${viewport.width}.png`) });
+      expect(visible.fits, JSON.stringify(visible)).toBe(true);
+      await save.click();
+      await expect(save).toBeDisabled();
+      await page.reload();
+      await page.getByRole('button', { name: `Inspect ${entries[1].title}` }).click();
+      await expect(page.locator('#library-inspector-panel').getByLabel('Owner', { exact: true })).toHaveValue('Inspector placement fixture');
+      expect(await page.evaluate(() => document.documentElement.scrollHeight <= document.documentElement.clientHeight && document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
     });
   });
 }
