@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T04:52:01.757Z",
+  "snapshotAt": "2026-10-30T05:18:19.244Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
+  "mainSha": "a04f91eda3a6097d32d88402b2f5dad0d0ca6eac",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect Scratch and pack writers to the selected app library, then complete reviewed migration, installed app/API parity and two real iCloud clients.",
+  "nextAction": "Connect pack writers and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
   "evidence": [
+    {
+      "label": "Scratch library routing and retained drafts",
+      "state": "Open",
+      "detail": "Candidate 8e97149 pushed in draft PR248. Both Scratch screens use the selected repository with durable acknowledgement, raw-field preservation, observed-version conflict checks, stable creation retries and retained drafts. Dominic Node22.23.4: full 1,608 shared tests pass; final refinements pass 62 focused tests including 25 selected-repository cases, 55 record/Scratch command tests, extension build and docs. Eight source inputs match. The reopened-panel negative control attempted to save empty text; restored guard passes without a write. Mac isolated complete real export: 216 prompts, three evaluations, four notes and all 16 initial objects preserved through Scratch edits and disposable creation/deletion; original hash unchanged. Walter times out; Duncan registered iCloud root and processes exist but expected export is absent. Exact new-head CI is pending beyond successful preview. Packs, remaining Library actions, reviewed activation, installed and two-client acceptance remain open. No personal activation, private upload or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/8e971496ff6abd0845906ffa83e92c9d21a03315"
+    },
     {
       "label": "App record routing and save acknowledgement",
       "state": "Open",
@@ -1602,8 +1608,8 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": "Connect Scratch and pack writers to the selected app library, then complete reviewed migration and activation.",
-      "verification": "A3 source integration started: actual App and record consumers use the selected repository. Source tests and isolated real-export store checks pass. Scratch, packs, migration, startup activation and installed/two-client acceptance remain open.",
+      "nextAction": "Connect pack writers and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
+      "verification": "Candidate 8e97149 pushed in draft PR248. Both Scratch screens use the selected repository with durable acknowledgement, raw-field preservation, observed-version conflict checks, stable creation retries and retained drafts. Dominic Node22.23.4: full 1,608 shared tests pass; final refinements pass 62 focused tests including 25 selected-repository cases, 55 record/Scratch command tests, extension build and docs. Eight source inputs match. The reopened-panel negative control attempted to save empty text; restored guard passes without a write. Mac isolated complete real export: 216 prompts, three evaluations, four notes and all 16 initial objects preserved through Scratch edits and disposable creation/deletion; original hash unchanged. Walter times out; Duncan registered iCloud root and processes exist but expected export is absent. Exact new-head CI is pending beyond successful preview. Packs, remaining Library actions, reviewed activation, installed and two-client acceptance remain open. No personal activation, private upload or paid provisioning.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
       "status": "In progress",
       "severity": "Medium",
