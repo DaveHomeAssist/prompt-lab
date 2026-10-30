@@ -110,7 +110,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       const saveBox = await saveDetails.boundingBox();
       const titleBox = await details.getByLabel('Title', { exact: true }).boundingBox();
       expect(saveBox.y + saveBox.height).toBeLessThanOrEqual(titleBox.y);
-      await details.getByLabel('Purpose', { exact: true }).fill('Navigation and inspector placement');
+      await details.getByRole('textbox', { name: 'Purpose', exact: true }).fill('Navigation and inspector placement');
       await details.evaluate(node => { node.scrollTop = node.scrollHeight; });
       expect(await saveDetails.evaluate(node => {
         const action = node.getBoundingClientRect(), panel = node.closest('aside').getBoundingClientRect();
@@ -121,7 +121,7 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await page.reload();
       await expect(page.getByTestId('global-new-prompt')).toBeVisible();
       await page.getByRole('button', { name: 'Inspect QA Alpha', exact: true }).click();
-      await expect(page.locator('#library-inspector-panel').getByLabel('Purpose', { exact: true })).toHaveValue('Navigation and inspector placement');
+      await expect(page.locator('#library-inspector-panel').getByRole('textbox', { name: 'Purpose', exact: true })).toHaveValue('Navigation and inspector placement');
       await page.getByRole('button', { name: 'Close prompt inspector', exact: true }).click();
       console.info(`[production-library ${viewport.width}] top Save details, sticky reachability and metadata reload passed`);
 
