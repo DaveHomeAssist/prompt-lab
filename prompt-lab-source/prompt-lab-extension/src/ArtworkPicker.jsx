@@ -17,6 +17,8 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
   const [emojiInput, setEmojiInput] = useState(artwork.emoji || '');
   const [reading, setReading] = useState(false);
   const mounted = useRef(true);
+  const pickerRef = useRef(null);
+  const focusRecentChoice = () => requestAnimationFrame(() => (pickerRef.current?.querySelector('[data-artwork-choice]') || pickerRef.current?.querySelector('.pl-artwork-emoji-input input'))?.focus());
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   useEffect(() => { setEmojiInput(artwork.emoji || ''); }, [artwork.emoji, artwork.icon, artwork.image]);
   useEffect(() => { onReadyChange?.(!reading && (!emojiInput || Boolean(safeEmoji(emojiInput)))); }, [reading, emojiInput, onReadyChange]);
@@ -42,12 +44,20 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
     } catch { if (mounted.current) setError('This image could not be read. Try another file.'); }
     finally { if (mounted.current) setReading(false); }
   };
-  return <fieldset className="pl-artwork-picker" disabled={disabled || reading}>
+  return <fieldset ref={pickerRef} className="pl-artwork-picker" disabled={disabled || reading}>
     <legend>{label}</legend>
     {recent.entries.length > 0 && <div className="pl-artwork-recents">
-      <div className="pl-artwork-recents-heading"><strong>Recently used</strong><button type="button" onClick={recent.clear}>Clear recently used</button></div>
-      <div className="pl-artwork-options" role="group" aria-label={`${label} recently used`}>
-        {recent.entries.map((item, index) => <button type="button" key={item.image || item.emoji || item.icon} aria-label={`Use recent ${item.image ? `image ${index + 1}` : item.emoji || item.icon}`} onClick={() => { onChange(item); setError(''); }}><Artwork value={item} /></button>)}
+      <div className="pl-artwork-recents-heading"><strong>Recently used</strong>{recent.entries.some(item => !item.pinned) && <button type="button" onClick={() => { if (recent.clear()) focusRecentChoice(); }}>Clear recently used</button>}</div>
+      {recent.entries.some(item => item.pinned) && <small>Pinned choices stay when history is cleared.</small>}
+      <div className="pl-artwork-recent-list" role="group" aria-label={`${label} recently used`}>
+        {recent.entries.map((item, index) => {
+          const name = item.image ? `image ${index + 1}` : item.emoji || item.icon;
+          return <div className="pl-artwork-recent-choice" data-pinned={Boolean(item.pinned)} key={item.image || item.emoji || item.icon}>
+            <button type="button" className="ui-control" data-artwork-choice aria-label={`Use recent ${name}`} title={`Use ${name}`} onClick={() => { onChange(safeArtwork(item)); setError(''); }}><Artwork value={item} /></button>
+            <button type="button" className="ui-control" aria-label={`${item.pinned ? 'Unpin' : 'Pin'} recent ${name}`} aria-pressed={Boolean(item.pinned)} title={item.pinned ? 'Unpin artwork' : 'Pin artwork'} onClick={event => { const button = event.currentTarget; if (recent.togglePin(item)) requestAnimationFrame(() => { if (button.isConnected) { button.focus(); button.scrollIntoView?.({ block: 'nearest' }); } }); }}><Ic n="Pin" size={14} /></button>
+            <button type="button" className="ui-control" aria-label={`Remove recent ${name}`} title="Remove from artwork history" onClick={() => { if (recent.remove(item)) focusRecentChoice(); }}><Ic n="X" size={14} /></button>
+          </div>;
+        })}
       </div>
     </div>}
     {recent.error && <p role="alert">{recent.error}</p>}

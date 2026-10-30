@@ -119,9 +119,17 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await page.getByRole('button', { name: 'List view', exact: true }).click();
       await page.getByRole('button', { name: 'Change artwork for QA Beta', exact: true }).click();
       const reuseDialog = page.getByRole('dialog', { name: 'Artwork for QA Beta', exact: true });
+      await reuseDialog.getByRole('button', { name: 'Pin recent 👩🏽‍💻', exact: true }).click();
+      await expect(reuseDialog.getByRole('button', { name: 'Unpin recent 👩🏽‍💻', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await reuseDialog.getByRole('button', { name: 'Use recent 👩🏽‍💻', exact: true }).click();
       await reuseDialog.getByRole('button', { name: 'Apply', exact: true }).click();
       await expect(reuseDialog).toHaveCount(0);
+      expect((await storedState(page)).library.find(row => row.id === 'qa-beta').metadata.artwork.emoji).toBe('👩🏽‍💻');
+      expect((await storedState(page)).library.find(row => row.id === 'qa-beta').metadata.artwork).not.toHaveProperty('pinned');
+      await page.getByRole('button', { name: 'Change artwork for QA Beta', exact: true }).click();
+      await reuseDialog.getByRole('button', { name: 'Remove recent 👩🏽‍💻', exact: true }).click();
+      await expect(reuseDialog.getByRole('button', { name: 'Use recent 👩🏽‍💻', exact: true })).toHaveCount(0);
+      await reuseDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
       expect((await storedState(page)).library.find(row => row.id === 'qa-beta').metadata.artwork.emoji).toBe('👩🏽‍💻');
       await openView(page, 'Write', viewport.width);
       const promptsToggle = page.getByRole('button', { name: 'Prompts', exact: true });
@@ -130,6 +138,15 @@ for (const viewport of [{ width: 375, height: 812 }, { width: 1440, height: 900 
       await promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' }).fill('avery navigation');
       await expect(promptPanel.getByRole('button', { name: 'Open QA Alpha in Write', exact: true })).toBeVisible();
       await expect(promptPanel.getByRole('button', { name: 'Open QA Beta in Write', exact: true })).toHaveCount(0);
+      await expect(promptPanel.getByRole('button', { name: 'Open QA Alpha in Write', exact: true })).toContainText('👩🏽‍💻');
+      await promptPanel.getByRole('button', { name: 'Favorites', exact: true }).click();
+      await promptPanel.getByRole('button', { name: 'Search All prompts', exact: true }).click();
+      await expect(promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' })).toHaveValue('avery navigation');
+      await expect(promptPanel.getByRole('button', { name: 'Open QA Alpha in Write', exact: true })).toBeVisible();
+      await promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' }).fill('unmatched synthetic search');
+      await promptPanel.getByRole('button', { name: 'Clear search', exact: true }).click();
+      await expect(promptPanel.getByRole('searchbox', { name: 'Search prompts beside Write' })).toBeFocused();
+      await expect(promptPanel.getByRole('button', { name: /^Open QA .* in Write$/ })).toHaveCount(4);
       await promptPanel.getByRole('button', { name: 'Close side panel', exact: true }).click();
       await openView(page, 'Library', viewport.width);
 

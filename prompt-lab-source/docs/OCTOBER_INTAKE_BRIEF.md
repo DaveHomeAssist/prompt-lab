@@ -337,3 +337,12 @@ presets, global search, account sync or packaged release are included.
 ### Artwork decode and Write search retention, October 30
 
 Reject damaged PNG, JPEG and WebP uploads before changing artwork. Keep the previous choice, show a readable failure and allow retry. Validate browser decoding after reading the bounded local file; do not add dependencies, upload services or schema changes. Retain the Write prompt search in the parent workspace while the panel is closed or its Scratch tab is shown. Clear and Escape still clear it; a reload starts an empty query. Acceptance: damaged PNG rejected with unchanged saved artwork, valid PNG retry/export/reload passes, and filtered results/query survive close/reopen at phone and desktop sizes.
+
+
+### Artwork reuse controls and Write search recovery, October 30
+
+User outcome: recognize prompts by the same artwork beside Write, keep useful artwork available, remove individual history choices, and recover from an empty search without retyping. Use the existing Artwork renderer for icon, emoji, image and failed-image fallback inside each prompt's open button. Keep the title and insertion/favorite actions readable on phone and desktop.
+
+Recent artwork remains a local array with an optional pinned boolean, at most12 choices and256KiB serialized. Pins sort before unpinned recency, survive new selections and Clear recently used, and remain individually removable. Removing a history choice never edits assigned prompt or collection artwork. Reusing a pin preserves its pin. If pins fill the cache, leave them intact and explain how to make room. Legacy unpinned arrays continue to work; same-tab and cross-tab updates remain shared. No hosted sync, library export schema change or new dependency.
+
+Empty searches offer Clear search. Favorites and Recent additionally offer Search All prompts, preserving the query. Explicit Clear and Escape still clear it. Query retention across panel close and Scratch switching remains unchanged. Acceptance includes pin/reuse/unpin/remove/reload/cross-tab/limits/write failure; thumbnails and fallback; empty-search recovery with keyboard focus; light/dark phone, short-window, desktop and ultrawide layout checks.
