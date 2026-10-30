@@ -1,4 +1,5 @@
-import { copyFileSync, mkdirSync, existsSync, readdirSync, statSync } from 'fs';
+import { copyFileSync, mkdirSync, existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs';
+import { patchExtensionManifest } from '../../scripts/account-sync-build.mjs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -56,6 +57,12 @@ export function assemble(outName = 'dist') {
     const source = resolveExtensionSource(f);
     if (!source) continue;
     copyFileSync(source, join(dist, f));
+    if (f === 'manifest.json') {
+      // Account sync builds only (VITE_PL_ACCOUNT_SYNC=on): cookies + Clerk/Supabase hosts.
+      const manifest = JSON.parse(readFileSync(source, 'utf8'));
+      const patched = patchExtensionManifest(manifest);
+      if (patched !== manifest) writeFileSync(join(dist, f), `${JSON.stringify(patched, null, 2)}\n`);
+    }
     console.log(`  ✓ ${f}`);
   }
 
