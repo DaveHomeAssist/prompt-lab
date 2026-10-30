@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T02:10:25.165447Z",
+  "snapshotAt": "2026-10-30T02:25:34.388263Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Audit A2 service ownership, pairing and failure paths against its six original criteria before A3 activation. Keep actual two-client iCloud and hosted gates explicit.",
+  "nextAction": "Connect the native owner, secure credential storage and packaged helper before exposing enable/pairing controls. Keep actual two-client iCloud and hosted gates explicit.",
   "evidence": [
+    {
+      "label": "A2 private helper boundary verified",
+      "state": "Open",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/3ad6c372dcd8aec6884a0a8e1c82b3092b897288",
+      "detail": "## A2 private helper boundary verified\n\n2026-10-29: [Runtime 3ad6c37](https://github.com/DaveHomeAssist/prompt-lab/commit/3ad6c372dcd8aec6884a0a8e1c82b3092b897288) is pushed and remote verified in [draft PR248](https://github.com/DaveHomeAssist/prompt-lab/pull/248).\n\nA real child process now owns one folder API through a bounded private parent channel. Credentials arrive through inherited pipes, bind to their approved browser origin or originless agent, and can be replaced or revoked atomically. Parent loss, broken output and stop close the listener. API shutdown waits for accepted writes after client disconnect. No credentials are written into library files, response logs or process arguments.\n\nDominic Node 22.23.4: all 434 storage tests, Markdown lint and four documentation contracts pass. Nine child-process cases cover disconnect, stop/restart receipt readback, owner loss, origin/scope checks, replacement/revocation, wrong-library preservation and malformed input. Both new API regressions fail on the previous code. Six source files match the runner.\n\nThe [A2 audit](https://github.com/DaveHomeAssist/prompt-lab/blob/3ad6c372dcd8aec6884a0a8e1c82b3092b897288/prompt-lab-source/docs/library-storage-contract-candidate.md#original-a2-acceptance-audit) separates this boundary from native ownership, secure credential storage, packaging, pairing, disk-full/permission failures and installed behavior. A2 remains In progress. The desktop does not launch the helper yet; no personal library was activated. Original export bytes/hash remain unchanged. This increment uses synthetic fixtures and does not repeat real-export acceptance.\n\nConfiguration at 02:20 UTC October 30 (October 29 local): Mac Drive shows On. Duncan runs iCloud 15.10.39.0 with 164.63 GiB free but still lacks the Mac test folder and October 28 export. Walter SSH times out. Windows account/warning UI and actual two-client replication remain unverified. A subsequent Mac settings read failed at the computer-access layer; no settings changed.\n\nNext: connect the native owner, secure credential storage and packaged helper before exposing enable/pairing controls. A3, A4 and hosted acceptance remain open. Hosted follows accepted Phase A; no paid provisioning. PR248 stays draft and unmerged. Current-head CI is a separate gate. MUT-7 direct current-session instruction exception. The existing Next Steps Board remains absent.\n\nRuntime CI snapshot: seven checks pass and six are running; Vercel reports preview success. Final tracking-head CI is separate."
+    },
     {
       "label": "A1 original contract criteria verified",
       "state": "Open",
@@ -1578,8 +1584,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Audit the six original A2 criteria and finish production service ownership, pairing and failure-path acceptance before A3 activation.",
-      "verification": "A1 contract audit passes on candidate f44d565. Shared folder/API tests pass, including restarted restore idempotency and all 423 storage tests. Production service ownership, pairing and remaining A2 acceptance remain open.",
+      "nextAction": "Connect the native owner, secure credential storage and packaged helper before exposing enable/pairing controls.",
+      "verification": "Private helper process boundary verified on candidate 3ad6c37. Dominic Node 22.23.4 passes all 434 storage tests, including nine child-process cases and two failed-before API regressions. Native owner, secure storage, packaging, pairing and full A2 acceptance remain open.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
