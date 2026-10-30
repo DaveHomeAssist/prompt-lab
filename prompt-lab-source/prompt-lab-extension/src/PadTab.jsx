@@ -1,3 +1,6 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
+import { writeLibraryLocalItem, removeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import MarkdownPreview from './MarkdownPreview.jsx';
@@ -104,7 +107,7 @@ function migratePadStorage() {
     // Recover if pads payload exists but version flag was never written.
     const existingPayload = readPadsPayload();
     if (existingPayload) {
-      localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+      writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
       return { migrated: true, payload: existingPayload, error: null };
     }
 
@@ -128,14 +131,14 @@ function migratePadStorage() {
     );
 
     // Write new schema first.
-    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+    writeLibraryLocalItem(localStorage, PADS_KEY, JSON.stringify(payload));
+    writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
 
     // Only remove legacy keys after successful write.
-    localStorage.removeItem(LEGACY_PAD_KEY);
-    localStorage.removeItem(LEGACY_PAD_META_KEY);
-    localStorage.removeItem('pl-pad');
-    localStorage.removeItem('pl-pad_meta');
+    removeLibraryLocalItem(localStorage, LEGACY_PAD_KEY);
+    removeLibraryLocalItem(localStorage, LEGACY_PAD_META_KEY);
+    removeLibraryLocalItem(localStorage, 'pl-pad');
+    removeLibraryLocalItem(localStorage, 'pl-pad_meta');
 
     return { migrated: true, payload, error: null };
   } catch (error) {
@@ -197,8 +200,8 @@ function persistPadsState(nextState, { lastKnownRevision = 0, preferLocalIds = [
       ...candidate,
       revision: Math.max(stored?.revision || 0, lastKnownRevision) + 1,
     };
-    localStorage.setItem(PADS_KEY, JSON.stringify(payload));
-    localStorage.setItem(PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
+    writeLibraryLocalItem(localStorage, PADS_KEY, JSON.stringify(payload));
+    writeLibraryLocalItem(localStorage, PADS_SCHEMA_VERSION_KEY, PADS_SCHEMA_VERSION);
     return { ok: true, state: payload };
   } catch (e) {
     logWarn('persist pads state (quota exceeded?)', e);
@@ -355,7 +358,7 @@ function LegacyPadTab({
   };
 
   const flushActivePad = ({ silent = false } = {}) => {
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     if (!activePad || text === activePad.content) {
       return { state: padsState, ok: true };
     }
@@ -445,6 +448,8 @@ function LegacyPadTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notify]);
 
+  useLibraryEditBuffer('legacy-pad', { padsState, text, padNameDialog, tagDraft });
+
   const buildFilename = () => {
     const now = new Date();
     const yyyy = String(now.getFullYear());
@@ -461,9 +466,9 @@ function LegacyPadTab({
     setText(v);
     setSaveError('');
     setSaveState('pending');
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setLibraryBufferTimeout(() => {
       commitSave(v);
     }, 600);
   };
@@ -478,7 +483,7 @@ function LegacyPadTab({
     setText(next);
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = pos + entry.length; ta.focus(); }, 0);
     try {
-      clearTimeout(timerRef.current);
+      clearLibraryBufferTimeout(timerRef.current);
       commitSave(next);
     } catch (e) { logWarn('pad insert date', e); }
     notify('Date separator inserted');
@@ -495,7 +500,7 @@ function LegacyPadTab({
     setText(next);
     const cursorPos = selected ? start + insert.length : start + prefix.length;
     setTimeout(() => { ta.selectionStart = ta.selectionEnd = cursorPos; ta.focus(); }, 0);
-    try { clearTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
+    try { clearLibraryBufferTimeout(timerRef.current); commitSave(next); } catch (e) { logWarn('pad format', e); }
   };
 
   const insertHeading = () => insertAtCursor('\n## ', '\n');
@@ -698,7 +703,7 @@ function LegacyPadTab({
     setSaveError('');
     setLastSavedAt('');
     setRelativeSavedAt('');
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
     setPadsState(result.state);
     notify('Pad cleared');
@@ -718,7 +723,7 @@ function LegacyPadTab({
   // Fix 3: Flush pending content on unmount before clearing timers.
   useEffect(() => () => {
     flushRef.current({ silent: true });
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
   }, []);
 

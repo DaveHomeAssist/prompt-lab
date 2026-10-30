@@ -4,9 +4,10 @@ import { callModel } from './api.js';
 import { extractTextFromAnthropic } from './promptUtils.js';
 import { runChain } from './lib/chainRunner.js';
 import { isChainEntry } from './lib/chainSchema.js';
-import { initRunPersistence } from './lib/runPersistence.js';
+import { createRunPersistence } from './lib/runPersistence.js';
+import { newTraceId } from './lib/runEmitter.js';
 import { scanSensitiveData } from './piiScanner.js';
-import { listRunsByTrace } from './experimentStore.js';
+import { useAppRecords } from './lib/AppLibraryContext.jsx';
 import { buildGraphDataset } from './runs/buildGraphDataset.js';
 
 const STEP_BADGE = {
@@ -22,6 +23,7 @@ const STEP_BADGE = {
  * the trace layer, and hand the final output back to the editor.
  */
 export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEditor, onClose }) {
+  const { listRunsByTrace, saveRunRecord } = useAppRecords();
   const chains = useMemo(() => library.filter(isChainEntry), [library]);
   const [chainId, setChainId] = useState('');
   const [chainInput, setChainInput] = useState('');
@@ -32,7 +34,7 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
   const [traceGraph, setTraceGraph] = useState(null);
   const abortRef = useRef(null);
 
-  useEffect(() => { initRunPersistence(); }, []);
+  useEffect(() => () => abortRef.current?.abort(), []);
   useEffect(() => {
     if (!chainId && chains.length > 0) setChainId(chains[0].id);
   }, [chains, chainId]);
@@ -63,40 +65,53 @@ export default function ChainRunnerPanel({ m, library, notify, copy, onSendToEdi
     setRunStatus('');
     setTraceGraph(null);
 
-    const result = await runChain({
-      chainEntry: selected,
-      resolveEntry: (id) => library.find((entry) => entry.id === id) || null,
-      input: chainInput,
-      execute,
-      scan: scanSensitiveData,
-      signal: controller?.signal,
-      onStepUpdate: (index, update) => {
-        setSteps((prev) => prev.map((row) => (row.index === index ? { ...row, ...update } : row)));
-      },
-    });
+    const traceId = newTraceId();
+    const persistence = createRunPersistence({ traceId, saveRecord: saveRunRecord });
+    let result;
+    let historyError = null;
+    try {
+      result = await runChain({
+        traceId,
+        chainEntry: selected,
+        resolveEntry: (id) => library.find((entry) => entry.id === id) || null,
+        input: chainInput,
+        execute,
+        scan: scanSensitiveData,
+        signal: controller?.signal,
+        onStepUpdate: (index, update) => {
+          setSteps((prev) => prev.map((row) => (row.index === index ? { ...row, ...update } : row)));
+        },
+      });
+    } catch (error) {
+      result = { status: 'error', error: error?.message || 'Chain failed.', traceId };
+    } finally {
+      try { await persistence.finish(); } catch (error) { historyError = error; }
+    }
 
     setRunning(false);
     abortRef.current = null;
     setRunStatus(result.status);
-    if (result.traceId) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      const traceRuns = await listRunsByTrace(result.traceId);
-      const root = traceRuns.find((record) => record.parent_run_id == null) || traceRuns[0];
-      if (root) {
-        setTraceGraph(buildGraphDataset(traceRuns, {
-          traceId: result.traceId,
-          rootRunId: root.run_id,
-        }));
-      }
+    if (result.traceId && !historyError) {
+      try {
+        const traceRuns = await listRunsByTrace(result.traceId);
+        const root = traceRuns.find((record) => record.parent_run_id == null) || traceRuns[0];
+        if (root) {
+          setTraceGraph(buildGraphDataset(traceRuns, {
+            traceId: result.traceId,
+            rootRunId: root.run_id,
+          }));
+        }
+      } catch (error) { historyError = error; }
     }
     if (result.status === 'success') {
       setFinalOutput(result.output || '');
-      notify?.(`Chain finished: ${result.results.length} steps.`);
+      if (!historyError) notify?.(`Chain finished: ${result.results.length} steps.`);
     } else if (result.status === 'canceled') {
       notify?.('Chain canceled.');
     } else {
       notify?.(result.error || 'Chain failed.');
     }
+    if (historyError) notify?.(`Chain history could not be confirmed: ${historyError.message || 'Unable to save or read history.'}`);
   };
 
   const cancel = () => {

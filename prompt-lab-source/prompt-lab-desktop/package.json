@@ -10,6 +10,8 @@
     "check:node": "node ../scripts/require-node.mjs",
     "dev": "npm run check:node && vite",
     "build": "npm run check:node && vite build",
+    "prepare:library": "npm run check:node && node scripts/prepare-library-helper.mjs",
+    "verify:library": "npm run check:node && node --test scripts/verify-universal-runtime.test.mjs && node scripts/verify-library-helper.mjs",
     "tauri": "npm run check:node && tauri",
     "tauri:dev": "npm run check:node && tauri dev",
     "tauri:build": "npm run check:node && tauri build"

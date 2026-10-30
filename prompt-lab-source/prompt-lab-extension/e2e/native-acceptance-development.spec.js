@@ -61,7 +61,11 @@ for (const width of [400, 480, 1180]) test(`native scenario browser development 
         if (selector.includes(' option[')) await locator.locator('..').selectOption(await locator.getAttribute('value'));
         else await locator.click();
       },
-      uploadJson: (selector, data) => page.locator(selector).setInputFiles({ name: 'native-workspace.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(data)) }),
+      // Native transports may return object fields in another order. Exercise
+      // those imports without changing array order or any stored value.
+      uploadJson: (selector, data) => page.locator(selector).setInputFiles({ name: 'native-workspace.json', mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(data, (_key, value) => value && typeof value === 'object' && !Array.isArray(value)
+          ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value)) }),
       screenshot: name => page.screenshot({ path: testInfo.outputPath(`${name}.png`) }),
       checkpoint: async label => testInfo.annotations.push({ type: 'browser development only', description: label }),
     };

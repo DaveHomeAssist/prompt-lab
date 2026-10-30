@@ -1,4 +1,5 @@
 import { logWarn } from './logger.js';
+import { runLibraryWrite } from './libraryWriteCoordinator.js';
 
 export const RECORDS_CHANGED_EVENT = 'pl:records-changed';
 
@@ -31,10 +32,11 @@ export function writeWithRecovery(key, operation) {
   const job = { operation };
   latest.set(key, job);
   const previous = running.get(key) || Promise.resolve();
-  const attempt = previous.catch(() => {}).then(async () => {
+  const attempt = runLibraryWrite(async permit => {
+    await previous.catch(() => {});
     let result;
     try {
-      result = await operation();
+      result = await operation(permit);
     } catch (error) {
       if (latest.get(key) === job) {
         pending.set(key, job);
@@ -47,6 +49,14 @@ export function writeWithRecovery(key, operation) {
       window.dispatchEvent(new CustomEvent(RECORDS_CHANGED_EVENT));
     }
     return result;
+  }, { key: `records:${key}` }).catch(error => {
+    // A pause can reject before the queued operation starts. Retain it using
+    // the same retry path as a storage failure, without invoking it early.
+    if (latest.get(key) === job && pending.get(key) !== job) {
+      pending.set(key, job);
+      publish();
+    }
+    throw error;
   });
   const completion = attempt.finally(() => {
     if (running.get(key) === completion) running.delete(key);

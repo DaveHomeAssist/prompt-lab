@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createDesktopFixtureServer } from '../../scripts/desktop-fixture-server.mjs';
 import { exerciseLibrary, checkLibraryPersisted } from './native-library-acceptance.mjs';
 import { exerciseWorkspace, checkWorkspacePersisted } from './native-workspace-acceptance.mjs';
+import { probeNativeWebView } from './native-webview-readiness.mjs';
 
 // Runs only on disposable CI runners, against an installed application binary.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Use the operator checklist outside disposable CI.');
@@ -365,9 +366,10 @@ async function openCreate() {
   await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
 }
 async function openSession() {
+  launchNumber++;
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
-    const privilegesFile = path.join(evidenceDir, `${phase}-launch-${++launchNumber}-privileges.json`);
+    const privilegesFile = path.join(evidenceDir, `${phase}-launch-${launchNumber}-privileges.json`);
     nativeApp = spawn('powershell.exe', ['-NoProfile', '-File', fileURLToPath(new URL('./windows-native-standard-user.ps1', import.meta.url))], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, PL_NATIVE_PROCESS_EVIDENCE: privilegesFile, TAURI_WEBVIEW_AUTOMATION: 'true', WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS: '--remote-debugging-port=9222' },
@@ -381,14 +383,19 @@ async function openSession() {
     assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
     nativeAppPid = privileges.childPid;
     (evidence.nativeProcessPrivileges ||= []).push(privileges);
+    const readiness = { launch: launchNumber, attempts: 0 };
+    (evidence.rendererReadiness ||= []).push(readiness);
     await waitFor(async () => {
       if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
-      const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
-      if (!response.ok) return false;
-      const version = await response.json();
-      evidence.debuggingVersion = version;
-      return Boolean(version.webSocketDebuggerUrl);
-    }, 'installed WebView2 debugging endpoint');
+      readiness.attempts++;
+      try {
+        const result = await probeNativeWebView();
+        evidence.debuggingVersion = result.version;
+        readiness.first ??= result;
+        readiness.last = result;
+        return result.ready;
+      } catch (error) { readiness.firstError ??= error.message; readiness.lastError = error.message; throw error; }
+    }, 'installed WebView2 renderer and app controls ready');
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
   const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });

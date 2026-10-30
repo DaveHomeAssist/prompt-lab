@@ -18,5 +18,8 @@ export function createSaveReceipt(saved, { action, sourceNoteId = '' } = {}) {
     action: action || (saved.savedAsNew ? 'new' : 'version'),
     sourceNoteId,
     savedAt: new Date().toISOString(),
+    ...(saved.libraryId && saved.revision ? {
+      libraryId: saved.libraryId, revision: saved.revision, operationId: saved.operationId || null,
+    } : {}),
   };
 }

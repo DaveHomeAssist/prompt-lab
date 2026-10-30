@@ -175,3 +175,58 @@ test('bulk deletion at real storage quota preserves all prompts, then succeeds a
     fs.rmSync(profile, { recursive: true, force: true });
   }
 });
+
+for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 }]) {
+  test(`old Trash remains recoverable after reopen at ${viewport.width}px`, async ({}, testInfo) => {
+    const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'prompt-lab-retained-trash-'));
+    const context = await chromium.launchPersistentContext(profile, {
+      channel: 'chromium', headless: true, viewport,
+      args: [`--disable-extensions-except=${extensionPath}`, `--load-extension=${extensionPath}`],
+    });
+    context.setDefaultTimeout(10_000);
+    try {
+      const worker = await test.step('Wait for extension worker', () => context.serviceWorkers()[0] || context.waitForEvent('serviceworker'));
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        if (localStorage.getItem('retained-trash-seeded')) return;
+        localStorage.setItem('retained-trash-seeded', '1');
+        localStorage.setItem('pl_telemetry_consent', 'denied');
+        localStorage.setItem('pl2-library', '[]');
+        localStorage.setItem('pl2-library-trash', JSON.stringify([{
+          id: 'old', title: 'Retained old prompt', original: 'Complete old content', enhanced: 'Complete old content',
+          deletedAt: '2020-01-01T00:00:00Z', future: { retained: true },
+          versions: Array.from({ length: 41 }, (_, i) => ({ id: `v${i}`, original: `History ${i}`, future: i })),
+        }]));
+      });
+      await test.step('Open the app', () => page.goto(`chrome-extension://${new URL(worker.url()).host}/panel.html#/library`));
+      for (let launch = 0; launch < 2; launch += 1) {
+        await test.step(`Open old Trash on launch ${launch + 1}`, async () => {
+          if (launch) await page.reload();
+          if (viewport.width < 720) {
+            await page.getByRole('navigation', { name: 'Primary mobile navigation' }).getByRole('button', { name: 'Library', exact: true }).click();
+          } else {
+            await page.getByRole('tablist', { name: 'Workspaces' }).getByRole('tab', { name: 'Library', exact: true }).click();
+          }
+          const drawer = page.getByRole('button', { name: 'Show Library drawer' });
+          if (await drawer.isVisible()) await drawer.click();
+          await page.getByRole('button', { name: /Recently Deleted/ }).click();
+          await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeVisible();
+          await expect(page.getByText(/^Deleted .*2020$/)).toBeVisible();
+        });
+      }
+      await page.getByRole('button', { name: 'Restore', exact: true }).scrollIntoViewIfNeeded();
+      await expect(page.getByRole('button', { name: 'Restore', exact: true })).toBeInViewport();
+      await page.screenshot({ path: testInfo.outputPath(`old-trash-${viewport.width}.png`) });
+      const layout = await page.evaluate(() => ({ width: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        height: document.documentElement.scrollHeight <= document.documentElement.clientHeight }));
+      expect(layout).toEqual({ width: true, height: true });
+      await page.getByRole('button', { name: 'Restore', exact: true }).click();
+      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]').some(row => row.id === 'old'))).toBe(true);
+      await page.reload();
+      const record = await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library')).find(row => row.id === 'old'));
+      expect(record.original).toBe('Complete old content'); expect(record.versions).toHaveLength(41);
+      expect(record.versions[40].future).toBe(40); expect(record.future).toEqual({ retained: true });
+      expect(await page.evaluate(() => localStorage.getItem('pl2-library-deleted:old'))).toBeNull();
+    } finally { await context.close(); fs.rmSync(profile, { recursive: true, force: true }); }
+  });
+}

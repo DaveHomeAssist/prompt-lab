@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { prepareWorkspaceImport } from '../lib/workspaceImport.js';
+import { normalizeLibrary } from '../lib/promptSchema.js';
 
 const prompt = (id, body = 'Shared body', extra = {}) => ({
   id, title: id, original: body, enhanced: body, currentVersionId: `${id}-version`, ...extra,
@@ -15,6 +16,32 @@ it('maps deduplicated prompt, version and test-case references to the survivor',
   expect(plan.testCases[0].promptId).toBe('local');
   expect(plan.runs[0]).toMatchObject({ promptId: 'local', promptVersionId: 'local-version', testCaseId: 'case' });
   expect(plan.warnings).toEqual([]);
+});
+
+it('preserves version and follow-up associations when exported metadata fields have a different order', () => {
+  const [local] = normalizeLibrary([prompt('local', 'Shared body', {
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+    resultMeta: { provider: 'ollama', model: 'fixture', future: { first: 1, second: 2 },
+      candidates: [{ id: 'improved', content: 'Shared body', future: { first: 1, second: 2 } }] },
+  })]);
+  const reorder = value => Array.isArray(value) ? value.map(reorder) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.keys(value).reverse().map(key => [key, reorder(value[key])])) : value;
+  const source = { ...reorder(local), id: 'imported', currentVersionId: 'imported-version' };
+  const imported = {
+    library: [source, prompt('child', 'Follow-up body', { metadata: { followUpOrigin: {
+      sourceKind: 'run-output', sourcePromptId: 'imported', sourcePromptVersionId: 'imported-version', sourceRunId: 'run',
+    } } })],
+    runs: [{ id: 'run', promptId: 'imported', promptVersionId: 'imported-version', output: 'Complete output' }],
+  };
+  const plan = prepareWorkspaceImport(imported, { library: [local] });
+  expect(plan.runs[0].promptVersionId).toBe(local.currentVersionId);
+  expect(plan.library.find(row => row.id === 'child').metadata.followUpOrigin.sourcePromptVersionId).toBe(local.currentVersionId);
+  expect(plan.library.find(row => row.id === local.id)).toEqual(local);
+  expect(plan.warnings).toEqual([]);
+  source.resultMeta.future.second = 3;
+  const changed = prepareWorkspaceImport(imported, { library: [local] });
+  expect(changed.runs[0].promptVersionId).toBeNull();
+  expect(changed.library.find(row => row.id === 'child').metadata.followUpOrigin.unresolvedReferences.promptVersionId).toBe('imported-version');
 });
 
 it('keeps new prompts and intentionally unscoped legacy history', () => {
@@ -98,4 +125,25 @@ it('keeps IDs when reimporting unchanged legacy records without timestamps', () 
   const second = prepareWorkspaceImport(source, first);
   expect(second.runs[0].id).toBe('run');
   expect(second.testCases[0].id).toBe('case');
+});
+
+it('compares complete run and case content independently of object field order', () => {
+  const source = {
+    library: [prompt('prompt')],
+    runs: [{ id: 'run', promptId: 'prompt', output: 'Output', future: { a: 1, b: 2 } }],
+    testCases: [{ id: 'case', promptId: 'prompt', input: 'Input', future: { a: 1, b: 2 } }],
+  };
+  const first = prepareWorkspaceImport(source);
+  const reordered = structuredClone(source);
+  for (const records of [reordered.runs, reordered.testCases]) records[0].future = { b: 2, a: 1 };
+  const same = prepareWorkspaceImport(reordered, first);
+  expect(same.runs[0].id).toBe('run');
+  expect(same.testCases[0].id).toBe('case');
+  reordered.runs[0].future.b = 3;
+  reordered.testCases[0].future.b = 3;
+  const different = prepareWorkspaceImport(reordered, first);
+  expect(different.runs[0].id).not.toBe('run');
+  expect(different.testCases[0].id).not.toBe('case');
+  expect(different.runs[0].future.b).toBe(3);
+  expect(different.testCases[0].future.b).toBe(3);
 });

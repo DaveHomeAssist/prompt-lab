@@ -35,6 +35,7 @@ Use these to understand the repo shape, live surfaces, and current issue log.
 - `LIBRARY_COMPATIBILITY_CONTRACT.md`
 - `account-library-sync.md`
 - `account-library-sync-slices.md`
+- `library-storage-contract-candidate.md`
 - `DAVELLM_EVAL.md`
 - `glossary.md`
 

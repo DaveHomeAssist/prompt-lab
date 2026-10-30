@@ -37,3 +37,6 @@ jobs:
 
       - name: Run production API safety gates
         run: npm run test:api
+
+      - name: Verify library storage contract candidate
+        run: npm run test:library-storage

@@ -1,3 +1,5 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import ScratchNoteRow from './ScratchNoteRow.jsx';
@@ -56,6 +58,7 @@ export default function ScratchSidePanel({
   const textareaRef = useRef(null);
 
   const activePad = padsState.pads.find((pad) => pad.id === padsState.activePadId) || padsState.pads[0];
+  useLibraryEditBuffer('scratch-side', { padsState, text, selection });
   const orderedPads = useMemo(() => orderPads(padsState.pads), [padsState.pads]);
   const isDark = colorMode === 'dark';
 
@@ -108,7 +111,7 @@ export default function ScratchSidePanel({
   };
 
   const flush = () => {
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     return commit(textRef.current);
   };
 
@@ -193,8 +196,8 @@ export default function ScratchSidePanel({
     textRef.current = value;
     setText(value);
     setSaveState('dirty');
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => commit(value), AUTOSAVE_MS);
+    clearLibraryBufferTimeout(timerRef.current);
+    timerRef.current = setLibraryBufferTimeout(() => commit(value), AUTOSAVE_MS);
   };
 
   const selectPad = (padId) => {

@@ -12,6 +12,8 @@ prompt-lab-source/prompt-lab-extension/playwright-report/
 prompt-lab-source/prompt-lab-web/dist/
 prompt-lab-source/prompt-lab-desktop/dist/
 prompt-lab-source/prompt-lab-desktop/src-tauri/target/
+prompt-lab-source/prompt-lab-desktop/src-tauri/binaries/
+prompt-lab-source/prompt-lab-desktop/src-tauri/library-helper/
 
 # Archive
 prompt-lab-source/_archive/

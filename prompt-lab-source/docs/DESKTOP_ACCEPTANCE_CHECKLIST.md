@@ -137,6 +137,30 @@ Stop the owned fixture with Ctrl-C, then restart it with `slow` for a 30-second 
 
 ## Per-platform operator procedure
 
+The CI display and renderer must remain available across every app restart.
+Linux DEB and AppImage checks use Xvfb with `-noreset`, preserving the display
+server while the final app connection closes, and save separate display logs for
+exercise and retention. X server reset is distinct from the required full app
+exit. A bounded X11 probe confirms that the previous display resets between
+clients and the configured display retains its state. See the
+[X server manual](https://xorg.freedesktop.org/releases/X11R6.9.0/doc/html/Xserver.1.html).
+
+Windows first probes the installed app's renderer through its existing loopback
+debugging socket. HTTP availability alone is insufficient: the renderer must
+answer that its document and native app controls are ready before the one
+WebDriver session is created. The read-only probe has a deadline, closes its
+socket, rejects targets outside the owned endpoint, and records each launch's
+readiness attempts. It does not restart the app or replay a failed acceptance
+scenario. Microsoft's [WebView2 attachment procedure](https://learn.microsoft.com/en-us/microsoft-edge/webview2/how-to/webdriver)
+requires the WebView instance to be activated before attachment.
+
+These precondition repairs address evidence from run `40908292879`: Linux GTK
+initialization failed on a later launch, and Windows attachment failed while its
+target still reported `about:blank`, although the later desktop screenshot showed
+the app rendered. The display reset and early attachment are supported causes;
+the exact installed packages must pass the revised checks before those platform
+lanes can be accepted. Synthetic readiness tests are not installed-app evidence.
+
 Native acceptance also exercises follow-up generation from a synthetic saved run in the real IndexedDB store. The loopback fixture returns a suggestion derived from that selected output. The test verifies visible generation failure, a rejected Library write, successful retry without another provider call, an unchanged parent, and independent child identity/provenance after native restart and OS uninstall/reinstall. Only upstream synthetic data is seeded; generation and saving use native UI interactions. This does not replace the broader Library import/export matrix or previous-version upgrade/restore checks.
 
 The `Desktop Build` workflow also runs an installed-binary smoke on disposable Windows and Linux runners. It installs the freshly built MSI/DEB, uses Linux's native WebDriver through `tauri-driver` and Windows Edge WebDriver attached to the directly launched app, captures Tauri-window screenshots, exercises fixture Enhance/Save/Scratch/quit/relaunch/Cancel/error, then uninstalls and reinstalls to check retained data. `native-acceptance-<runner>` artifacts contain the observed results and installer hashes. A failing native job is not installer acceptance. This initial automation does not prove previous-version upgrades, NSIS/AppImage lifecycle, macOS acceptance, or every Library/follow-up scenario.

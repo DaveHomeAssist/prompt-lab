@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem, runLibraryWrite } from './libraryWriteCoordinator.js';
 /**
  * Platform abstraction layer.
  *
@@ -203,9 +204,9 @@ function extSessionGet(key, cb) {
 
 function extSessionSet(obj) {
   if (!chrome.storage?.session) return Promise.resolve(false);
-  return new Promise((resolve) => {
+  return runLibraryWrite(() => new Promise((resolve) => {
     chrome.storage.session.set(obj, () => resolve(!chrome.runtime?.lastError));
-  });
+  }), { key: 'extension-drafts' }).catch(() => false);
 }
 
 function extOpenSettings() {
@@ -227,7 +228,7 @@ function desktopSessionSet(obj) {
   let ok = true;
   for (const [k, v] of Object.entries(obj)) {
     try {
-      localStorage.setItem(SESSION_PREFIX + k, JSON.stringify(v));
+      writeLibraryLocalItem(localStorage, SESSION_PREFIX + k, JSON.stringify(v));
     } catch {
       ok = false;
     }

@@ -1,3 +1,4 @@
+import { startAppCaptureParticipant } from '../../prompt-lab-extension/src/lib/libraryOriginCapture.js';
 import '../../prompt-lab-extension/src/lib/diagnosticsStart.js';
 import { redirectAppPathToHash } from '../../prompt-lab-extension/src/lib/appPathRoute.js';
 import React from 'react';
@@ -174,6 +175,7 @@ function AuthGate() {
   );
 }
 
+startAppCaptureParticipant().then(() => {
 if (!CLERK_KEY) {
   if (import.meta.env.DEV) {
     console.warn('[PromptLab] Clerk key missing - running unauthenticated in dev mode');
@@ -207,3 +209,4 @@ if (!CLERK_KEY) {
     </ErrorBoundary>
   );
 }
+});

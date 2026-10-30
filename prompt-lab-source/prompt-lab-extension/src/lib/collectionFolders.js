@@ -1,5 +1,13 @@
 import { safeArtwork } from './libraryPresentation.js';
 
+// Sanitize display fields without discarding future storage metadata.
+function storedArtwork(value) {
+  const fields = value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {};
+  const safe = safeArtwork(fields);
+  delete fields.emoji;
+  return { ...fields, ...safe };
+}
+
 // Collection strings remain the compatibility projection. IDs and parent links
 // own folder identity; legacy names (including literal slashes) remain roots.
 export function reconcileFolders(value = [], collections = []) {
@@ -10,8 +18,8 @@ export function reconcileFolders(value = [], collections = []) {
       || !folder.name.trim() || typeof folder.collection !== 'string' || !folder.collection.trim()
       || ids.has(folder.id) || paths.has(folder.collection)) throw new Error('Folders require unique IDs and collection paths.');
     ids.add(folder.id); paths.add(folder.collection);
-    return { id: folder.id, name: folder.name.trim(), parentId: folder.parentId || null,
-      collection: folder.collection, artwork: safeArtwork(folder.artwork) };
+    return { ...folder, id: folder.id, name: folder.name.trim(), parentId: folder.parentId || null,
+      collection: folder.collection, artwork: storedArtwork(folder.artwork) };
   });
   const byId = new Map(folders.map(folder => [folder.id, folder]));
   for (const folder of folders) {
@@ -54,7 +62,8 @@ export function changeFolder(folders, id, patch) {
   if (parentId && !parent) throw new Error('Parent folder no longer exists.');
   if (folders.some(folder => folder.id !== id && folder.parentId === parentId && folder.name.toLowerCase() === name.toLowerCase())) throw new Error('That parent already has a folder with this name.');
   const paths = new Map();
-  const next = folders.map(folder => folder.id === id ? { ...folder, ...patch, name, parentId, artwork: safeArtwork(patch.artwork ?? folder.artwork) } : { ...folder });
+  const next = folders.map(folder => folder.id === id ? { ...folder, ...patch, name, parentId,
+    artwork: storedArtwork({ ...folder.artwork, ...patch.artwork }) } : { ...folder });
   const byId = new Map(next.map(folder => [folder.id, folder]));
   const pathFor = folder => { if (!paths.has(folder.id)) paths.set(folder.id, folder.parentId ? `${pathFor(byId.get(folder.parentId))}/${folder.name}` : folder.name); return paths.get(folder.id); };
   const affected = folderDescendants(folders, id);
@@ -65,6 +74,7 @@ export function changeFolder(folders, id, patch) {
 
 export function mergeFolders(current, incoming, collections) {
   const imported = reconcileFolders(incoming);
+  const incomingArtwork = new Map(incoming.map(folder => [folder.id, folder.artwork]));
   const byPath = new Map(current.map(folder => [folder.collection, folder]));
   const ids = new Set(current.map(folder => folder.id)); const mapping = new Map();
   for (const folder of imported) {
@@ -72,6 +82,11 @@ export function mergeFolders(current, incoming, collections) {
     if (!byPath.has(folder.collection) && ids.has(id)) id = crypto.randomUUID();
     ids.add(id); mapping.set(folder.id, id);
   }
-  for (const folder of imported) byPath.set(folder.collection, { ...folder, id: mapping.get(folder.id), parentId: folder.parentId ? mapping.get(folder.parentId) : null });
+  for (const folder of imported) {
+    const existing = byPath.get(folder.collection);
+    byPath.set(folder.collection, { ...existing, ...folder, id: mapping.get(folder.id),
+      parentId: folder.parentId ? mapping.get(folder.parentId) : null,
+      artwork: storedArtwork({ ...existing?.artwork, ...incomingArtwork.get(folder.id) }) });
+  }
   return reconcileFolders([...byPath.values()], collections);
 }

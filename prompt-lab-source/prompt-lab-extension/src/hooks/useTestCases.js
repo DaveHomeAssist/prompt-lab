@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { saveTestCase, listTestCases, deleteTestCase } from '../experimentStore';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useAppRecords } from '../lib/AppLibraryContext.jsx';
 import { logWarn } from '../lib/logger.js';
 import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 export default function useTestCases({ notify }) {
+  const { saveTestCase, listTestCases, deleteTestCase } = useAppRecords();
   const [testCasesByPrompt, setTestCasesByPrompt] = useState({});
   const [caseFormPromptId, setCaseFormPromptId] = useState(null);
   const [editingCaseId, setEditingCaseId] = useState(null);
@@ -14,8 +15,10 @@ export default function useTestCases({ notify }) {
   const [caseNotes, setCaseNotes] = useState('');
   const [runningCases, setRunningCases] = useState(false);
   const draftIdRef = useRef(null);
+  const observedCaseRef = useRef(null);
+  const caseAttemptRef = useRef(null);
 
-  const refreshTestCases = async () => {
+  const refreshTestCases = useCallback(async () => {
     try {
       const rows = await listTestCases();
       const next = rows.reduce((acc, row) => {
@@ -29,16 +32,18 @@ export default function useTestCases({ notify }) {
       logWarn('refresh test cases', e);
       setTestCasesByPrompt({});
     }
-  };
+  }, [listTestCases]);
 
   useEffect(() => {
     refreshTestCases();
     window.addEventListener(RECORDS_CHANGED_EVENT, refreshTestCases);
     return () => window.removeEventListener(RECORDS_CHANGED_EVENT, refreshTestCases);
-  }, []);
+  }, [refreshTestCases]);
 
   const resetCaseForm = () => {
     draftIdRef.current = null;
+    observedCaseRef.current = null;
+    caseAttemptRef.current = null;
     setCaseFormPromptId(null);
     setEditingCaseId(null);
     setCaseTitle('');
@@ -54,6 +59,8 @@ export default function useTestCases({ notify }) {
     .filter(Boolean);
 
   const openCaseForm = (promptId, existingCase = null) => {
+    observedCaseRef.current = existingCase;
+    caseAttemptRef.current = null;
     draftIdRef.current = existingCase?.id || crypto.randomUUID();
     setCaseFormPromptId(promptId);
     if (existingCase) {
@@ -76,6 +83,7 @@ export default function useTestCases({ notify }) {
   const saveCaseForPrompt = async (promptId) => {
     try {
       const payload = {
+        ...observedCaseRef.current,
         id: editingCaseId || (draftIdRef.current ??= crypto.randomUUID()),
         promptId,
         title: caseTitle,
@@ -84,13 +92,20 @@ export default function useTestCases({ notify }) {
         expectedExclusions: parseCaseList(caseExclusions),
         notes: caseNotes,
       };
-      if (editingCaseId) {
-        payload.id = editingCaseId;
-        payload.updatedAt = new Date().toISOString();
+      const signature = JSON.stringify(payload);
+      if (caseAttemptRef.current?.signature !== signature) {
+        const now = new Date().toISOString();
+        caseAttemptRef.current = { signature, payload: { ...payload, createdAt: payload.createdAt || now, updatedAt: now } };
       }
-      const record = await saveTestCase(payload);
+      const attempt = caseAttemptRef.current;
+      const record = await saveTestCase(attempt.payload);
       await refreshTestCases();
-      resetCaseForm();
+      if (caseAttemptRef.current === attempt) resetCaseForm();
+      else if (draftIdRef.current === attempt.payload.id) {
+        // Keep newer text, but base its next save on this acknowledged version.
+        observedCaseRef.current = record;
+        setEditingCaseId(record.id);
+      }
       notify(editingCaseId ? `Updated test case: ${record.title}` : `Saved test case: ${record.title}`);
     } catch (e) {
       notify(e?.message || 'Unable to save test case');
@@ -100,23 +115,28 @@ export default function useTestCases({ notify }) {
   const removeCase = async (testCase) => {
     if (!window.confirm(`Delete test case "${testCase.title}"?`)) return;
     try {
-      await deleteTestCase(testCase.id);
+      await deleteTestCase(testCase.id, testCase);
       await refreshTestCases();
       notify('Test case deleted');
-    } catch {
-      notify('Unable to delete test case');
+    } catch (error) {
+      notify(error?.message || 'Unable to delete test case');
     }
+  };
+
+  const edit = setter => value => {
+    caseAttemptRef.current = null;
+    setter(value);
   };
 
   return {
     testCasesByPrompt,
     caseFormPromptId,
     editingCaseId,
-    caseTitle, setCaseTitle,
-    caseInput, setCaseInput,
-    caseTraits, setCaseTraits,
-    caseExclusions, setCaseExclusions,
-    caseNotes, setCaseNotes,
+    caseTitle, setCaseTitle: edit(setCaseTitle),
+    caseInput, setCaseInput: edit(setCaseInput),
+    caseTraits, setCaseTraits: edit(setCaseTraits),
+    caseExclusions, setCaseExclusions: edit(setCaseExclusions),
+    caseNotes, setCaseNotes: edit(setCaseNotes),
     runningCases, setRunningCases,
     openCaseForm,
     resetCaseForm,

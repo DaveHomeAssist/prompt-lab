@@ -236,6 +236,49 @@ describe('runChain', () => {
 });
 
 describe('runPersistence', () => {
+  it.each(['success', 'error', 'canceled'])('preserves complete step outputs when the chain finishes with %s', async (status) => {
+    localStorage.clear();
+    removeAllListeners();
+    const { resetRunPersistenceForTests, initRunPersistence } = await import('../lib/runPersistence.js');
+    const { listRunsByTrace } = await import('../experimentStore.js');
+    resetRunPersistenceForTests();
+    initRunPersistence();
+    const firstOutput = `${'First result. '.repeat(4000)}\nRetain this ending: 🧪 漢字 e\u0301`;
+    const lastOutput = `${'Last result. '.repeat(3000)}\nFinal complete ending.`;
+    const controller = new AbortController();
+    const execute = vi.fn().mockResolvedValueOnce(firstOutput).mockImplementationOnce(async () => {
+      if (status === 'error') throw new Error('Second step failed');
+      if (status === 'canceled') {
+        controller.abort();
+        throw new DOMException('Canceled', 'AbortError');
+      }
+      return lastOutput;
+    });
+    const result = await runChain({
+      chainEntry: chainEntry([
+        { label: 'First', template: '{{input}}' },
+        { label: 'Last', template: '{{prev}}' },
+      ]),
+      resolveEntry: () => null,
+      input: 'Produce a complete result',
+      execute,
+      signal: controller.signal,
+    });
+    expect(result.status).toBe(status);
+    expect(execute.mock.calls[1][0].prompt).toBe(firstOutput);
+    await vi.waitFor(async () => expect(await listRunsByTrace(result.traceId)).toHaveLength(3));
+    const persisted = await listRunsByTrace(result.traceId);
+    expect(persisted.find(row => row.name === 'First').outputs.text).toBe(firstOutput);
+    const last = persisted.find(row => row.name === 'Last');
+    expect(last.status).toBe(status);
+    if (status === 'success') expect(last.outputs.text).toBe(lastOutput);
+    else expect(last.outputs).toBeUndefined();
+    // Read the serialized store independently, so an intact in-memory result
+    // cannot stand in for preserved history.
+    const stored = JSON.parse(localStorage.getItem('pl2-run-fallback'));
+    expect(stored.find(row => row.name === 'First').outputs.text).toBe(firstOutput);
+  });
+
   it('persists terminal run events into the runs fallback store', async () => {
     localStorage.clear();
     removeAllListeners();

@@ -56,6 +56,9 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   const pendingSaveRef = useRef(null);
   const saveContextRef = useRef(0);
   const editorTitleBeforeDetailsRef = useRef(null);
+  const currentEditorRef = useRef(null);
+  currentEditorRef.current = { editingId, raw, enhanced, variants, notes, resultMeta,
+    saveTitle, saveTags, saveCollection, changeNote, sourceNoteId, followUpOrigin, showSave };
 
   const setVarVals = (valueOrUpdater) => {
     const next = typeof valueOrUpdater === 'function'
@@ -304,24 +307,34 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   };
 
   const deleteEntry = (entryId) => {
+    if (typeof lib.del !== 'function') return false;
+    const context = saveContextRef.current, editorBefore = currentEditorRef.current;
     const deletedSource = activeEntryRef.current?.id === entryId
       ? activeEntryRef.current
       : lib.library.find(entry => entry.id === entryId) || null;
-    if (typeof lib.del !== 'function' || !lib.del(entryId)) return false;
-    if (editingId !== entryId) return true;
-    saveContextRef.current += 1;
-
-    // Preserve the visible draft so it can be saved as a new prompt, but never
-    // leave a deleted record ID as the active save target. The ID-less source
-    // snapshot keeps versions, test cases, and metadata available to recovery.
-    activeEntryRef.current = deletedSource ? { ...deletedSource, id: null } : null;
-    setEditingId(null);
-    setEditingVersionId(null);
-    setSaveTargetId(current => current === entryId ? null : current);
-    setSaveSourceEntry(current => current?.id === entryId ? null : current);
-    setShowSave(false);
-    setChangeNote('');
-    return true;
+    const complete = deleted => {
+      if (!deleted) return false;
+      const current = currentEditorRef.current;
+      if (current.editingId !== entryId) return true;
+      const unchanged = context === saveContextRef.current
+        && Object.keys(editorBefore).every(key => Object.is(editorBefore[key], current[key]));
+      saveContextRef.current += 1;
+      // Only confirmed deletion detaches the editor. Keep all visible draft
+      // content and an ID-less source for recovery, including edits made while
+      // waiting. A newer save panel keeps its fields and remains open.
+      activeEntryRef.current = deletedSource ? { ...deletedSource, id: null } : null;
+      setEditingId(null);
+      setEditingVersionId(null);
+      setSaveTargetId(value => value === entryId ? null : value);
+      setSaveSourceEntry(value => value?.id === entryId ? null : value);
+      if (unchanged) { setShowSave(false); setChangeNote(''); }
+      return true;
+    };
+    const failed = () => { notify('Prompt removal was not confirmed. Your draft is still available.'); return false; };
+    try {
+      const deleted = lib.del(entryId);
+      return deleted && typeof deleted.then === 'function' ? Promise.resolve(deleted).then(complete, failed) : complete(deleted);
+    } catch { return failed(); }
   };
 
   const restoreEntryVersion = (entryId, version) => {
@@ -472,12 +485,18 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
           sourceNoteId: savedSourceNoteId,
         });
         setLastSaveReceipt({ ...receipt, resultSnapshot });
-        if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
-        if (resultMetaValue?.runId) {
+        if (lib.repository) {
+          // Connected records must never acquire backlinks in legacy storage.
+          void Promise.resolve().then(() => lib.linkSavedPrompt(saved, { runId: resultMetaValue?.runId, sourceNoteId: savedSourceNoteId }))
+            .then(() => typeof onSaved === 'function' && onSaved(saved.id))
+            .catch(() => notify('Prompt saved to the selected Library. Related run or Scratch links need retry.'));
+        } else if (resultMetaValue?.runId) {
+          if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
           void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
             .then(() => typeof onSaved === 'function' && onSaved(saved.id));
-        } else if (typeof onSaved === 'function') {
-          onSaved(saved.id);
+        } else {
+          if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
+          if (typeof onSaved === 'function') onSaved(saved.id);
         }
       }
       restoreEditorTitle();

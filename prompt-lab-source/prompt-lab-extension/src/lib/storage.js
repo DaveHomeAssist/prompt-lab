@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem, removeLibraryLocalItem } from './libraryWriteCoordinator.js';
 import { logWarn } from './logger.js';
 
 export const storageKeys = Object.freeze({
@@ -48,7 +49,7 @@ export function loadJson(key, fallback = null) {
 
 export function saveJson(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    writeLibraryLocalItem(localStorage, key, JSON.stringify(value));
     notifyLocalWrite(key);
     return true;
   } catch (e) {
@@ -71,7 +72,7 @@ export function setAnticipation(data) {
 
 export function removeKey(key) {
   try {
-    localStorage.removeItem(key);
+    removeLibraryLocalItem(localStorage, key);
     notifyLocalWrite(key);
     return true;
   } catch (e) {

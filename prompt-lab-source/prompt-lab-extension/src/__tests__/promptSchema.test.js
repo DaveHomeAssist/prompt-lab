@@ -374,7 +374,7 @@ describe('appendVersionSnapshot', () => {
     expect(second.versions.length).toBe(first.versions.length);
   });
 
-  it('caps versions at MAX_PROMPT_VERSIONS (25)', () => {
+  it('retains every version beyond the former 25-version cap', () => {
     let entry = makeEntry();
     for (let i = 0; i < 30; i++) {
       entry = {
@@ -383,7 +383,8 @@ describe('appendVersionSnapshot', () => {
       };
       entry = appendVersionSnapshot(entry, { savedAt: new Date(Date.now() + i * 1000).toISOString() });
     }
-    expect(entry.versions.length).toBeLessThanOrEqual(25);
+    expect(entry.versions).toHaveLength(30);
+    expect(entry.versions.map(version => version.enhanced)).toEqual(Array.from({ length: 30 }, (_, i) => `Version ${i}`));
   });
 });
 

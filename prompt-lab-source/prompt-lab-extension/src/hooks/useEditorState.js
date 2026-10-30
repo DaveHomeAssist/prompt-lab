@@ -1,3 +1,4 @@
+import { useLibraryEditBuffer } from './useLibraryEditBuffer.js';
 import { useEffect, useRef, useState } from 'react';
 import { lintPrompt, applyLintQuickFixAtSelection } from '../promptLint';
 import { normalizeError } from '../lib/errorTaxonomy.js';
@@ -18,6 +19,7 @@ export default function useEditorState() {
   const [editorLayout, setEditorLayout] = useState('editor');
   const [composerBlocks, setComposerBlocks] = useState([]);
   const [cursor, setCursor] = useState({ start: 0, end: 0 });
+  useLibraryEditBuffer('editor', { raw, enhanced, variants, notes, resultMeta, composerBlocks, cursor });
 
   useEffect(() => { setEnhMode(generationOptions.strategy); }, [generationOptions.strategy]);
 

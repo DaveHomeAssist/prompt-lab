@@ -1,3 +1,4 @@
+import { writeLibraryLocalItem } from './libraryWriteCoordinator.js';
 import { useEffect, useState } from 'react';
 import { safeArtwork } from './libraryPresentation.js';
 
@@ -32,7 +33,7 @@ export function readRecentArtwork() {
 }
 function writeHistory(artwork) {
   try {
-    localStorage.setItem(RECENT_ARTWORK_KEY, JSON.stringify(normalizeRecentArtwork(artwork)));
+    writeLibraryLocalItem(localStorage, RECENT_ARTWORK_KEY, JSON.stringify(normalizeRecentArtwork(artwork)));
     window.dispatchEvent(new CustomEvent(RECENT_ARTWORK_EVENT));
     return { ok: true, error: '' };
   } catch {

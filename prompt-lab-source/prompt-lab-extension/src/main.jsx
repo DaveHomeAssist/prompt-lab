@@ -1,3 +1,4 @@
+import { startAppCaptureParticipant } from './lib/libraryOriginCapture.js';
 import './lib/diagnosticsStart.js';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -19,5 +20,6 @@ const render = () => ReactDOM.createRoot(document.getElementById('root')).render
 
 // Restore the desktop Library and Scratch mirrors before components read them.
 // Both startup routines report recovery failures without rejecting.
-if (libraryJournalSupported()) Promise.all([startLibraryJournal(), startScratchJournal()]).then(render);
-else render();
+startAppCaptureParticipant().then(() => {
+  if (libraryJournalSupported()) return Promise.all([startLibraryJournal(), startScratchJournal()]);
+}).then(render);

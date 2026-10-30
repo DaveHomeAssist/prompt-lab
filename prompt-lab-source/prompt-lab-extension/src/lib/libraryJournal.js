@@ -1,6 +1,7 @@
 import { logWarn } from './logger.js';
 import { isLibraryDeletionKey } from './libraryDeletion.js';
 import { onLocalWrite, storageKeys } from './storage.js';
+import { runLibraryWrite } from './libraryWriteCoordinator.js';
 
 // WebView2 batches localStorage commits in its storage service and can drop a
 // pending batch when the desktop window closes, so a Library save the UI has
@@ -90,7 +91,8 @@ function openJournal(idb) {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Library journal open blocked.'));
+    // The caller has a bounded UI timeout, but the request can still create or
+    // upgrade this database later. Keep tracking it until it actually settles.
   });
 }
 
@@ -99,7 +101,6 @@ function readRecord(db, recordId) {
     const transaction = db.transaction(LIBRARY_JOURNAL_STORE, 'readonly');
     const request = transaction.objectStore(LIBRARY_JOURNAL_STORE).get(recordId);
     transaction.oncomplete = () => resolve(request.result || null);
-    transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error || new Error('Library journal read aborted.'));
   });
 }
@@ -119,7 +120,6 @@ function writeRecord(db, storage, wanted, recordId, readState) {
       store.put({ id: recordId, revision, entries: readState(storage), savedAt: new Date().toISOString() });
     };
     transaction.oncomplete = () => resolve(revision);
-    transaction.onerror = () => reject(transaction.error);
     transaction.onabort = () => reject(transaction.error || new Error('Library journal write aborted.'));
   });
 }
@@ -150,6 +150,7 @@ export function createLibraryJournal({
 }) {
   let dbPromise = null;
   let queued = false;
+  let queuedPermit;
   let chain = Promise.resolve();
   let pending = chain;
   let revision = 0;
@@ -170,19 +171,22 @@ export function createLibraryJournal({
     }
   };
 
-  const commit = () => {
+  const commit = (parent = queuedPermit) => {
     queued = false;
-    // Written after the data it covers. Another window may have advanced it.
-    revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
-    const wanted = revision;
-    setLocalRevision(wanted);
-    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState)).then((committed) => {
-      // The journal was ahead (for example after a boot read timed out), so
-      // the commit took a higher revision. Keep localStorage in step with it.
-      if (committed > revision) revision = committed;
-      if (committed > readLocalRevision(storage, revisionKey)) setLocalRevision(committed);
-      return committed;
-    });
+    queuedPermit = undefined;
+    const write = runLibraryWrite(() => {
+      // Written after the data it covers. Another window may have advanced it.
+      revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
+      const wanted = revision;
+      setLocalRevision(wanted);
+      return chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState)).then((committed) => {
+        // The journal was ahead (for example after a boot read timed out), so
+        // the commit took a higher revision. Keep localStorage in step with it.
+        if (committed > revision) revision = committed;
+        if (committed > readLocalRevision(storage, revisionKey)) setLocalRevision(committed);
+        return committed;
+      });
+    }, { parent, key: `journal:${recordId}` });
     pending = write;
     // Settles with null on failure; localStorage still holds the write.
     chain = write.catch((error) => {
@@ -195,24 +199,32 @@ export function createLibraryJournal({
   // Writes in one synchronous turn share one snapshot, taken after the turn.
   const note = (key) => {
     if (!isKey(key) || queued) return;
-    queued = true;
-    queueMicrotask(() => { if (queued) commit(); });
+    // Register now, not when the microtask starts. A capture called immediately
+    // after saveJson must wait for this already-scheduled durable write.
+    runLibraryWrite(permit => new Promise((resolve, reject) => {
+      queued = true;
+      queuedPermit = permit;
+      queueMicrotask(() => {
+        if (queued) commit(permit);
+        pending.then(resolve, reject);
+      });
+    })).catch(error => { logWarn('library journal scheduled write', error); });
   };
 
-  const restore = async () => {
+  const restore = () => runLibraryWrite(async permit => {
     const local = { revision: readLocalRevision(storage, revisionKey), entries: readState(storage) };
     revision = local.revision;
-    const record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs);
+    const record = await withTimeout(runLibraryWrite(() => database().then(db => readRecord(db, recordId)), { parent: permit }), timeoutMs);
     const action = planLibraryJournalBoot(local, record);
     if (action === 'restore') {
       applyRecord(storage, record);
       revision = record.revision;
     } else if (action === 'journal') {
       revision = Math.max(revision, record?.revision || 0);
-      commit();
+      commit(permit);
     }
     return { action, localRevision: local.revision, journalRevision: record?.revision ?? null };
-  };
+  }, { key: `journal-boot:${recordId}` });
 
   return { note, restore, commit, flush: () => {
     if (queued) commit();

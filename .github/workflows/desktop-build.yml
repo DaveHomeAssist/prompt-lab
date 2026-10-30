@@ -8,19 +8,23 @@ on:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/library-storage/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/verify-folder-environment.mjs
       - .github/workflows/desktop-build.yml
   pull_request:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/library-storage/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
       - prompt-lab-source/scripts/verify-library-interchange.mjs
+      - prompt-lab-source/scripts/verify-folder-environment.mjs
       - .github/workflows/desktop-build.yml
 
 permissions:
@@ -49,14 +53,27 @@ jobs:
       - name: Run extension tests
         run: npm test
 
+      - name: Verify real filesystem failures and retained folder operations
+        timeout-minutes: 2
+        run: |
+          docker run --rm --network none --read-only --memory 256m --cpus 1 --pids-limit 64 \
+            --user 1000:1000 \
+            --tmpfs /fixture:rw,size=16m,uid=1000,gid=1000,mode=0700 \
+            -v "$GITHUB_WORKSPACE:/work:ro" \
+            node:22-bookworm-slim \
+            node /work/prompt-lab-source/scripts/verify-folder-environment.mjs /fixture
+
       - name: Build shared UI for native scenario development checks
         run: npm run build
 
       - name: Install Chromium for scenario development checks
         run: npx playwright install --with-deps chromium
 
+      - name: Verify app owned preservation readers in real browser storage
+        run: npx playwright test e2e/library-source-capture.spec.js e2e/library-command-outbox.spec.js e2e/library-app-migration.spec.js e2e/repository-library-actions.spec.js
+
       - name: Verify native scenario logic, Library layout and overlap, and Library test cases
-        run: node ../prompt-lab-desktop/tests/native-script-syntax.test.mjs && npx playwright test e2e/native-acceptance-development.spec.js e2e/scratch-durability.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js e2e/save-state-visibility.spec.js e2e/library-artwork.spec.js
+        run: node --test ../prompt-lab-desktop/tests/native-script-syntax.test.mjs ../prompt-lab-desktop/tests/native-webview-readiness.test.mjs && npx playwright test e2e/native-webview-readiness.spec.js e2e/native-acceptance-development.spec.js e2e/scratch-durability.spec.js e2e/library-compatibility.spec.js e2e/library-artifact.spec.js e2e/library-test-cases.spec.js e2e/library-deletion.spec.js e2e/persistence-recovery.spec.js e2e/import-preview.spec.js e2e/follow-up-provenance.spec.js e2e/library-layout-overlap.spec.js e2e/library-workspace-controls.spec.js e2e/save-state-visibility.spec.js e2e/library-artwork.spec.js
 
   desktop-build:
     needs: extension-tests
@@ -108,7 +125,11 @@ jobs:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
 
-      - name: Test native diagnostic contracts
+      - name: Verify bundled library helper resources and qualified process contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop
+        run: npm run verify:library
+
+      - name: Test native diagnostic and library owner contracts
         working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
         run: cargo test --release --bin prompt-lab-desktop
 
@@ -201,11 +222,11 @@ jobs:
           sudo apt-get install -y "$deb"
           export PL_NATIVE_APP=$(dpkg -L "$package" | grep '^/usr/bin/[^/]*$' | head -1)
           test -x "$PL_NATIVE_APP"
-          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/exercise-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           sudo apt-get remove -y "$package"
           test ! -e "$PL_NATIVE_APP"
           sudo apt-get install -y "$deb"
-          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          PL_NATIVE_PHASE=retention xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/retention-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
 
       - name: Upload native acceptance evidence
         if: always() && matrix.platform != 'macos-latest'
@@ -307,12 +328,12 @@ jobs:
           mkdir "$RUNNER_TEMP/promptlab-portable"
           export PL_NATIVE_APP="$RUNNER_TEMP/promptlab-portable/PromptLab.AppImage"
           install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
-          xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/exercise-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
           # Portable removal/replacement: preserve the entire application profile.
           rm -- "$PL_NATIVE_APP"
           test ! -e "$PL_NATIVE_APP"
           install -m 755 "${candidates[0]}" "$PL_NATIVE_APP"
-          PL_NATIVE_PHASE=retention xvfb-run -a node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
+          PL_NATIVE_PHASE=retention xvfb-run -a --server-args="-screen 0 1280x1024x24 -noreset" -e "$PL_NATIVE_EVIDENCE/retention-xvfb.log" node prompt-lab-source/prompt-lab-desktop/tests/native-acceptance.mjs
       - name: Upload alternate package evidence
         if: always()
         uses: actions/upload-artifact@v4

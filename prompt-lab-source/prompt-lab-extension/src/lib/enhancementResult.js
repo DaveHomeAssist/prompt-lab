@@ -21,7 +21,7 @@ export function normalizeTokenUsage(value) {
   const total = Number.isFinite(totalValue) && totalValue >= 0 ? Math.round(totalValue)
     : safeInput !== null || safeOutput !== null ? (safeInput || 0) + (safeOutput || 0) : null;
   if (safeInput === null && safeOutput === null && total === null) return null;
-  return { input: safeInput, output: safeOutput, total };
+  return { ...value, input: safeInput, output: safeOutput, total };
 }
 export function normalizeAssumptions(value) {
   if (!Array.isArray(value)) return [];
@@ -35,9 +35,9 @@ export function normalizeAssumptions(value) {
     if (!text) return null;
     const addedText = ensureString(item.added_text || item.addedText || item.revert_text || item.revertText);
     const candidateId = ensureString(item.candidateId || item.candidate_id).trim();
-    return { id: ensureString(item.id).trim() || `assumption-${index + 1}-${safeIdPart(text, 'item')}`, text,
+    return { ...item, id: ensureString(item.id).trim() || `assumption-${index + 1}-${safeIdPart(text, 'item')}`, text,
       addedText: addedText.trim() ? addedText : '', ...(candidateId ? { candidateId } : {}) };
-  }).filter(Boolean).slice(0, 12);
+  }).filter(Boolean);
 }
 export function normalizeSemanticChanges(value) {
   if (!Array.isArray(value)) return [];
@@ -51,10 +51,10 @@ export function normalizeSemanticChanges(value) {
     if (!label) return null;
     const rawType = ensureString(item.type).trim().toLowerCase();
     const candidateId = ensureString(item.candidateId || item.candidate_id).trim();
-    return { id: ensureString(item.id).trim() || `change-${index + 1}-${safeIdPart(label, 'item')}`,
+    return { ...item, id: ensureString(item.id).trim() || `change-${index + 1}-${safeIdPart(label, 'item')}`,
       type: ['added', 'removed', 'changed'].includes(rawType) ? rawType : 'changed', label,
       ...(candidateId ? { candidateId } : {}) };
-  }).filter(Boolean).slice(0, 16);
+  }).filter(Boolean);
 }
 export function normalizeReversibleEdits(value, assumptions = []) {
   const source = Array.isArray(value) ? value : [];
@@ -65,6 +65,7 @@ export function normalizeReversibleEdits(value, assumptions = []) {
     const label = ensureString(item.label || item.text || item.reason).trim() || `Reversible edit ${index + 1}`;
     if (!before.trim() && !after.trim()) return null;
     return {
+      ...item,
       id: ensureString(item.id).trim() || `edit-${index + 1}-${safeIdPart(label, 'change')}`, label,
       operation: ['add', 'remove', 'replace'].includes(ensureString(item.operation).toLowerCase())
         ? ensureString(item.operation).toLowerCase() : before.trim() && after.trim() ? 'replace' : before.trim() ? 'remove' : 'add',
@@ -78,7 +79,7 @@ export function normalizeReversibleEdits(value, assumptions = []) {
     normalized.push({ id: `edit-${assumption.id}`, label: assumption.text, operation: 'add', before: '',
       after: assumption.addedText, candidateId, reverted: false });
   });
-  return normalized.slice(0, 20);
+  return normalized;
 }
 function candidateIdentity(candidate, index, modern = false) {
   const explicit = ensureString(candidate?.id || candidate?.role).trim();
@@ -93,9 +94,9 @@ export function buildResultCandidates(enhanced, variants = [], primaryId = 'impr
   const modern = Boolean(MODERN_LABELS[primaryId]);
   const rows = ensureString(enhanced).trim() ? [{ ...candidateIdentity({ id: primaryId }, 0, modern), content: enhanced }] : [];
   (Array.isArray(variants) ? variants : []).forEach((variant, index) => {
-    if (ensureString(variant?.content).trim()) rows.push({ ...candidateIdentity(variant, index + 1, modern), content: variant.content });
+    if (ensureString(variant?.content).trim()) rows.push({ ...variant, ...candidateIdentity(variant, index + 1, modern), content: variant.content });
   });
-  return rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index).slice(0, modern ? 5 : 3);
+  return rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index);
 }
 export function normalizeResultMeta(value = {}, content = {}) {
   const source = value && typeof value === 'object' ? value : {};
@@ -105,8 +106,8 @@ export function normalizeResultMeta(value = {}, content = {}) {
   const modern = source.schemaVersion === 2 || source.schema_version === 2 || Boolean(MODERN_LABELS[primaryId])
     || (Array.isArray(source.candidates) && source.candidates.some(item => isModernId(item?.id)));
   const rows = Array.isArray(source.candidates) && source.candidates.length > 0
-    ? source.candidates.map((candidate, index) => ({ ...candidateIdentity(candidate, index, modern), content: ensureString(candidate?.content) }))
-      .filter(candidate => candidate.content.trim()).slice(0, modern ? 5 : 3)
+    ? source.candidates.map((candidate, index) => ({ ...candidate, ...candidateIdentity(candidate, index, modern), content: ensureString(candidate?.content) }))
+      .filter(candidate => candidate.content.trim())
     : buildResultCandidates(fallbackContent.enhanced, fallbackContent.variants, primaryId);
   const candidates = rows.filter((row, index) => rows.findIndex(item => item.id === row.id) === index);
   const resolvedPrimaryId = candidates.some(item => item.id === primaryId) ? primaryId : candidates[0]?.id || primaryId;
@@ -122,6 +123,7 @@ export function normalizeResultMeta(value = {}, content = {}) {
       ? { ...item, candidateId: resolvedPrimaryId } : item;
   }) : rawEdits;
   return {
+    ...source,
     ...(modern ? { schemaVersion: 2, primaryId: resolvedPrimaryId } : {}), candidates, selectedCandidateId,
     ...(Number.isFinite(source.requestedOutputTokens) ? { requestedOutputTokens: source.requestedOutputTokens } : {}),
     ...(source.metadataIncomplete === true ? { metadataIncomplete: true } : {}),

@@ -1,3 +1,4 @@
+import { AppLibraryProvider, useAppLibrary } from './lib/AppLibraryContext.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   scorePrompt,
@@ -67,6 +68,8 @@ import {
 } from './lib/landingAttribution.js';
 import { getPrimarySaveLabel } from './lib/promptLifecycle.js';
 import { readGenerationOptions, restoreEditorMode } from './lib/generationOptions.js';
+import { DRAFT_RECOVERY_STORAGE_KEY, useDraftRecoveryCapture } from './hooks/useDraftRecoveryCapture.js';
+import { writeLibraryLocalItem, removeLibraryLocalItem } from './lib/libraryWriteCoordinator.js';
 
 const EVALUATE_QUICK_START_PROMPT = `Write a concise product update about Prompt Lab's Evaluate workspace.
 
@@ -95,8 +98,6 @@ function isCurrentPromptRun(run, editingId, ownRunId) {
   return Boolean(ownRunId) && run?.id === ownRunId;
 }
 
-const DRAFT_RECOVERY_STORAGE_KEY = 'pl2-draft-reset-recovery-v1';
-
 function loadDraftRecovery() {
   try {
     if (typeof window === 'undefined') return null;
@@ -110,9 +111,9 @@ function loadDraftRecovery() {
 function persistDraftRecovery(snapshot) {
   try {
     if (snapshot) {
-      window.sessionStorage.setItem(DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify(snapshot));
+      writeLibraryLocalItem(window.sessionStorage, DRAFT_RECOVERY_STORAGE_KEY, JSON.stringify(snapshot));
     } else {
-      window.sessionStorage.removeItem(DRAFT_RECOVERY_STORAGE_KEY);
+      removeLibraryLocalItem(window.sessionStorage, DRAFT_RECOVERY_STORAGE_KEY);
     }
   } catch (_error) {
     // Recovery still works for the active page when session storage is unavailable.
@@ -122,7 +123,11 @@ function persistDraftRecovery(snapshot) {
 const TELEMETRY_PROMPT_DEFER_KEY = 'pl2-telemetry-prompt-deferred';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function App({
+export default function App({ libraryRepository = null, ...props } = {}) {
+  return <AppLibraryProvider repository={libraryRepository}><AppContent {...props} /></AppLibraryProvider>;
+}
+
+function AppContent({
   clerkUser,
   clerkGetToken,
   clerkUserButton,
@@ -164,6 +169,7 @@ export default function App({
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  useDraftRecoveryCapture(draftRecovery);
   const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
@@ -253,7 +259,8 @@ export default function App({
   };
 
   // ── Library hook ──
-  const lib = useLibrary(notify);
+  const { repository } = useAppLibrary();
+  const lib = useLibrary(notify, { repository });
   const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──

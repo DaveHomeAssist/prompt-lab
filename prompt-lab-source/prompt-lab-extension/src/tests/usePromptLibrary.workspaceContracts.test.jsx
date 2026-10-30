@@ -113,7 +113,7 @@ const deletedPrompt = {
   id: 'prompt-deleted',
   title: 'Deleted checklist',
   currentVersionId: 'deleted-version-1',
-  deletedAt: '2026-08-20T09:00:00.000Z',
+  deletedAt: '2020-08-20T09:00:00.000Z',
   updatedAt: '2026-08-20T09:00:00.000Z',
   tombstoneVersion: 3,
 };
@@ -182,7 +182,7 @@ class ImmediateFileReader {
 
 describe('workspace export and import contract', () => {
   beforeEach(() => {
-    // Keep the dated trash fixture inside its 30-day recovery window.
+    // Use a stable clock for workspace timestamps.
     vi.setSystemTime(new Date('2026-08-20T12:00:00.000Z'));
     localStorage.clear();
     vi.clearAllMocks();
@@ -466,9 +466,9 @@ describe('workspace export and import contract', () => {
     });
   });
 
-  it('enforces the 30-day recovery cutoff', () => {
+  it('keeps old Trash recoverable without an age cutoff', () => {
     const now = new Date('2026-08-20T12:00:00.000Z').getTime();
-    expect(isTrashEntryRestorable({ deletedAt: '2026-07-22T12:00:00.000Z' }, now)).toBe(true);
-    expect(isTrashEntryRestorable({ deletedAt: '2026-07-20T11:59:59.000Z' }, now)).toBe(false);
+    expect(isTrashEntryRestorable({ id: 'recent', deletedAt: '2026-07-22T12:00:00.000Z' }, now)).toBe(true);
+    expect(isTrashEntryRestorable({ id: 'old', deletedAt: '2020-07-20T11:59:59.000Z' }, now)).toBe(true);
   });
 });

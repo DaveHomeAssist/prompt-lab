@@ -1,8 +1,8 @@
 # Library storage build plan
 
-Status: revised plan only, October 23, 2026. All runtime slices remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
+Status: implementation in progress, Phase A acceptance incomplete, October 29, 2026. The five original A1 contract criteria pass on the candidate; its delivery and the isolated A2 service acceptance remain in draft PR248. A3 and hosted implementation remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
 
-Dave requested the plan update before implementation. Do not execute runtime slices or provision services in this documentation task. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) are superseded and retained as history. They assumed Neon selection, omitted run history and applied a 25-version cap; they are unsafe to paste as current instructions.
+The October 23 request covered planning only. Dave subsequently authorized implementation of all phases and real-export verification on October 28, subject to the sequential acceptance gates and no paid provisioning without separate approval. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical. They omitted run history and applied a 25-version cap and do not define current implementation.
 
 ## Sequence and existing work item mapping
 
@@ -74,7 +74,7 @@ Acceptance:
 
 ## B1: hosted decisions and policy
 
-Only after Phase A acceptance, revisit the existing provider candidates. Neon/Clerk remains a candidate, not an approved provisioned stack. Record provider/cost, region, encryption/key recovery and history/backup erasure decisions. Review policy text against verified provider behavior. Do not assume counsel approval or publish drafts as effective terms.
+Only after Phase A acceptance, verify feasibility and policy for the selected Neon/Clerk US East direction. D-016 records the October 28 server-readable encryption-at-rest and retained-history choices. Paid provisioning still requires separate approval. Review policy text against verified provider behavior. Do not assume counsel approval or publish drafts as effective terms.
 
 Acceptance: full preservation contract is funded and feasible; no four-kind/latest-record-only schema or provider restore window substitutes for application history and backups. Authorize provisioning separately before executing it.
 
@@ -94,4 +94,36 @@ Acceptance: two clients converge for complete workspace data; response loss is i
 
 For each later authorized slice: reverify current main and ownership, use disposable fixtures and qualified runners, run scoped tests and failure paths, deliver through required PR gates, then update existing records with the actual evidence. Provider/billing calls and infrastructure changes need their own scope. Documentation delivery is not storage implementation or data migration.
 
-Next action: review the reconciled plan and authorize A1, shared contracts and lossless fixtures. The chosen sequence does not need another vote. Dave selects the actual iCloud folder through the delivered picker later.
+Next action: complete A2 universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection. Native credential renewal passes ordinary Windows source tests and two disposable real Mac Keychain tests; the architecture verifier passes real universal and negative fixtures. Five real Linux filesystem failure scenarios pass. Installed application behavior and macOS failure recovery remain open. The [A1 acceptance audit](library-storage-contract-candidate.md#original-a1-acceptance-audit) records the five passing contract criteria separately from later app, native and actual iCloud gates. The implementation request and storage direction are authorized; sequential acceptance remains required. Dave selects the actual iCloud folder through the delivered picker later.
+
+## Implementation progress: October 28
+
+Dave authorized all planned phases, real-export verification and the reported
+save-state UX repair. Sequential acceptance still applies. Hosted decisions
+are recorded in the D-016 follow-up; no paid provisioning is authorized.
+
+| Stage | Evidence state | Remaining acceptance |
+| --- | --- | --- |
+| A1 | Source-bound import, reviewed restore, shared domain reads and current-context write drain; raw preservation and real-export address parity tested | Cross-client migration barrier and editor buffer flush, reviewed causal conflicts, active app projection and full schema/API acceptance |
+| A2 | Isolated folder/API, backup transfer and reviewed restore candidate tested | Production service ownership, secure pairing, native recovery integration and complete failure matrix |
+| A3 | Not started | Native picker, packaging, app connection and reviewed migration |
+| A4 | Not accepted | Actual two-client iCloud, installed artifacts, independent recovery and human acceptance |
+| B1 | Provider, region, encryption direction and retention decisions made | Verify provider constraints, costs and policy facts after Phase A |
+| B2 | Not started | Accepted Phase A and hosted contract, authorized provisioning |
+| B3 | Not started | Hosted parity, policy approval, deployment/runtime/native acceptance |
+
+The private real export passed an isolated source-byte and full JSON round trip,
+reopen and duplicate retry. Its original remained unchanged. That proves
+preservation of the supplied export only, not app integration, absent source
+stores, actual iCloud replication or release readiness. No private fixture is
+stored in the repository or runner workspace.
+
+The first folder reopen exposed an EEXIST error, fixed before the passing
+readback. A synthetic iCloud propagation probe was not visible on either
+qualified Windows SSH host during the bounded checks. This is an open cloud
+qualification result; it does not establish the cause or justify changing
+account settings.
+
+The candidate and remaining limitations are described in
+[library-storage-contract-candidate.md](library-storage-contract-candidate.md).
+Next: complete A1 acceptance before advancing the production folder service.

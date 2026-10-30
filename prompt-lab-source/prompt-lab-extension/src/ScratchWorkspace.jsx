@@ -1,3 +1,5 @@
+import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/libraryEditBuffers.js';
+import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
@@ -216,6 +218,7 @@ export default function ScratchWorkspace({
   const lastOpenNoteIdRef = useRef('');
 
   const activePad = padsState.pads.find((pad) => pad.id === padsState.activePadId) || padsState.pads[0];
+  useLibraryEditBuffer('scratch-workspace', { padsState, text, tagDraft, nameDialog, promotionDraft, selection });
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const readingMinutes = words === 0 ? 0 : Math.max(1, Math.ceil(words / 225));
   const hasSelection = selection.end > selection.start && Boolean(selection.text.trim());
@@ -297,7 +300,7 @@ export default function ScratchWorkspace({
   };
 
   const flushActivePad = ({ silent = false } = {}) => {
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     const current = padsStateRef.current;
     const storedPad = current.pads.find((pad) => pad.id === current.activePadId);
     if (!storedPad || textRef.current === storedPad.content) return { ok: true, state: current };
@@ -412,7 +415,7 @@ export default function ScratchWorkspace({
 
   useEffect(() => () => {
     flushRef.current({ silent: true });
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
   }, []);
 
@@ -432,9 +435,9 @@ export default function ScratchWorkspace({
     setText(value);
     setSaveError('');
     setSaveState('dirty');
-    clearTimeout(timerRef.current);
+    clearLibraryBufferTimeout(timerRef.current);
     clearTimeout(savedStateTimerRef.current);
-    timerRef.current = setTimeout(() => commitActiveContent(value), 600);
+    timerRef.current = setLibraryBufferTimeout(() => commitActiveContent(value), 600);
   };
 
   const restoreSelection = (start, end = start) => {
@@ -641,7 +644,7 @@ export default function ScratchWorkspace({
         notify?.('Note cleared.');
       } else reportSaveFailure();
     } else if (confirmDialog.action === 'delete' && padsStateRef.current.pads.length > 1) {
-      clearTimeout(timerRef.current);
+      clearLibraryBufferTimeout(timerRef.current);
       const currentIndex = padsStateRef.current.pads.findIndex((pad) => pad.id === activePad.id);
       const remaining = padsStateRef.current.pads.filter((pad) => pad.id !== activePad.id);
       const replacement = remaining[Math.max(0, currentIndex - 1)] || remaining[0];

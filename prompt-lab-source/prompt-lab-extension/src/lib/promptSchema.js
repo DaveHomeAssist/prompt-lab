@@ -4,7 +4,6 @@ import { normalizeResultMeta } from './enhancementResult.js';
 import { normalizeFollowUpOrigin } from './followUpProvenance.js';
 import { DEFAULT_GOLDEN_THRESHOLD } from '../constants.js';
 
-const MAX_PROMPT_VERSIONS = 25;
 export const PROMPT_STATUS = Object.freeze(['draft', 'active', 'deprecated']);
 
 const DEFAULT_PROMPT_METADATA = Object.freeze({
@@ -42,6 +41,7 @@ function normalizeCompleteness(value, entry) {
   if (!ensureString(entry?.metadata?.purpose).trim()) missing.push('purpose');
   if (!ensureString(entry?.metadata?.status).trim()) missing.push('status');
   return {
+    ...explicit,
     complete: missing.length === 0,
     missing,
     updatedAt: safeDate(explicit.updatedAt || entry?.updatedAt || entry?.createdAt || new Date().toISOString()),
@@ -71,6 +71,7 @@ function normalizePromptInputOptions(value) {
       const rawValue = ensureString(option.value).trim() || ensureString(option.label).trim();
       if (!rawValue) return null;
       return {
+        ...option,
         label: ensureString(option.label).trim() || rawValue,
         value: rawValue,
       };
@@ -85,6 +86,7 @@ function normalizePromptInput(input) {
   const type = ensureString(input.type).trim().toLowerCase();
   const normalizedType = PROMPT_INPUT_TYPES.has(type) ? type : 'text';
   return {
+    ...input,
     key,
     label: ensureString(input.label).trim() || key,
     type: normalizedType,
@@ -105,7 +107,8 @@ function normalizeGoldenResponse(value) {
   const text = ensureString(value.text);
   if (!text.trim()) return null;
   return {
-    text: text.slice(0, 20000),
+    ...value,
+    text,
     pinnedAt: safeDate(value.pinnedAt || new Date().toISOString()),
     pinnedFromRunId: ensureString(value.pinnedFromRunId),
     provider: ensureString(value.provider),
@@ -118,7 +121,7 @@ function normalizeContentShape(value) {
     original: ensureString(value?.original),
     enhanced: ensureString(value?.enhanced) || ensureString(value?.prompt) || ensureString(value?.original),
     variants: Array.isArray(value?.variants)
-      ? value.variants.map(normalizeVariant).filter(item => item.content.trim())
+      ? value.variants.map(variant => ({ ...variant, ...normalizeVariant(variant) })).filter(item => item.content.trim())
       : [],
     notes: ensureString(value?.notes) || ensureString(value?.description),
   };
@@ -133,13 +136,20 @@ function variantsEqual(left = [], right = []) {
   return left.every((item, index) => item.label === right[index]?.label && item.content === right[index]?.content);
 }
 
+function resultMetadataFingerprint(value) {
+  // Exporters and native transports may reorder object fields. Keep array order
+  // and every metadata value significant when matching retained versions.
+  return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+    ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
+}
+
 export function arePromptSnapshotsEqual(left, right) {
   const a = normalizeContentShape(left);
   const b = normalizeContentShape(right);
   return a.original === b.original
     && a.enhanced === b.enhanced
     && a.notes === b.notes
-    && JSON.stringify(a.resultMeta) === JSON.stringify(b.resultMeta)
+    && resultMetadataFingerprint(a.resultMeta) === resultMetadataFingerprint(b.resultMeta)
     && variantsEqual(a.variants, b.variants);
 }
 
@@ -209,6 +219,7 @@ export function normalizeVersion(version, fallbackTs = new Date().toISOString())
   const content = normalizeContentShape(version);
   if (!content.enhanced.trim() && !content.original.trim()) return null;
   return {
+    ...version,
     id: ensureString(version.id) || randomId(),
     original: content.original,
     enhanced: content.enhanced,
@@ -228,6 +239,7 @@ export function normalizeTestCase(testCase, fallbackTs = new Date().toISOString(
   const createdAt = safeDate(testCase.createdAt || fallbackTs);
   const updatedAt = testCase.updatedAt ? safeDate(testCase.updatedAt) : createdAt;
   return {
+    ...testCase,
     id: ensureString(testCase.id) || randomId(),
     name: ensureString(testCase.name).trim() || suggestTitleFromText(input),
     input,
@@ -240,7 +252,11 @@ export function normalizeTestCase(testCase, fallbackTs = new Date().toISOString(
 }
 
 export function getPromptSnapshot(entry, options = {}) {
+  // Prior history already lives beside this snapshot. Embedding it again
+  // would duplicate the entire graph on every save.
+  const { versions: _history, ...record } = entry || {};
   return normalizeVersion({
+    ...record,
     id: options.id || entry?.currentVersionId || randomId(),
     original: entry?.original,
     enhanced: entry?.enhanced,
@@ -266,7 +282,7 @@ export function appendVersionSnapshot(entry, options = {}) {
   versions.push(snapshot);
   return {
     ...normalized,
-    versions: versions.slice(-MAX_PROMPT_VERSIONS),
+    versions,
   };
 }
 
@@ -415,6 +431,7 @@ export function normalizeEntry(entry, fallbackTs = new Date().toISOString()) {
   const normalizedMetadata = normalizePromptMetadata(entry.metadata);
   const normalizedTags = normalizeTagList(entry.tags);
   const normalized = {
+    ...entry,
     id: ensureString(entry.id) || randomId(),
     title: ensureString(entry.title).trim() || suggestTitleFromText(content.enhanced),
     original: content.original,

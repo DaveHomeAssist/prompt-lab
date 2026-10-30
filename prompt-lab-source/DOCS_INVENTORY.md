@@ -27,6 +27,7 @@ Updated: 2026-09-05
 | `DOCS_INVENTORY.md` | Docs map and source-of-truth rules | Active | Inventory of major docs, public-doc authoring rules, and maintenance notes. |
 | `docs/LIBRARY_COMPATIBILITY_CONTRACT.md` | Library shell and transfer contract | Active | Canonical search/sort, local storage, explicit export/import synchronization, field compatibility, and runtime proof boundaries. |
 | `docs/account-library-sync.md` | Account library sync proposal | Draft | Reconciled plan: chosen iCloud Drive folder first, hosted second; complete history/backups and shared app/API library. Runtime and hosted provider pending. |
+| `docs/library-storage-contract-candidate.md` | Library storage implementation candidate | Draft | Raw preservation and isolated folder/API reference; app integration, full phase acceptance and hosted activation remain open. |
 | `docs/account-library-sync-slices.md` | Account library sync build plan | Draft | Revised gated stages A1 to A4 for folder storage, then B1 to B3 for hosted storage. Supersedes web-first execution prompts; no implementation authorized. |
 | `docs/DESKTOP_ACCEPTANCE_CHECKLIST.md` | Desktop operator acceptance | Active | Candidate/artifact provenance, local fixture, native lifecycle checks, rollback, and explicit unresolved platform gates. |
 | `docs/release-versioning.md` | Release versioning contract | Canonical | Defines the next release, version source of truth, required bump/check tooling, release tag guard, and development build identity. |

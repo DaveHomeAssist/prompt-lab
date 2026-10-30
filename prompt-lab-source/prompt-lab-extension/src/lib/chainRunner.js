@@ -1,5 +1,5 @@
 /**
- * Chain runner — sequential multi-step prompt execution wired into the
+ * Chain runner: sequential multi-step prompt execution wired into the
  * (previously dormant) run-emitter trace layer. Each chain run is one parent
  * RunRecord (run_type 'chain') with one child span per step (run_type 'llm').
  */
@@ -7,7 +7,6 @@ import { startRun, recordBlockedRun } from './runEmitter.js';
 import { validateChain } from './chainSchema.js';
 import { ensureString } from './utils.js';
 
-const PREVIEW_LIMIT = 4000;
 const INLINE_PLACEHOLDER = /\{\{\s*(prev|input)\s*\}\}/gi;
 
 function escapeRegExp(value) {
@@ -51,6 +50,7 @@ function fillTemplate(template, { varMap = {}, prevOutput, chainInput, stepIndex
  * @param {(req: {prompt, provider, model, signal}) => Promise<string>} opts.execute
  * @param {(payload: {prompt?, variables?}) => {matches: Array}} [opts.scan]  PII gate
  * @param {AbortSignal} [opts.signal]
+ * @param {string} [opts.traceId] trace owned by the caller's record store
  * @param {(index: number, update: object) => void} [opts.onStepUpdate]
  */
 export async function runChain({
@@ -60,6 +60,7 @@ export async function runChain({
   execute,
   scan,
   signal,
+  traceId,
   onStepUpdate,
 }) {
   const chain = validateChain(chainEntry?.metadata?.chain);
@@ -71,6 +72,7 @@ export async function runChain({
   }
 
   const parent = startRun({
+    trace_id: traceId,
     run_type: 'chain',
     provider: 'chain',
     model: ensureString(chainEntry.title) || 'chain',
@@ -146,7 +148,7 @@ export async function runChain({
         model: step.model,
         signal,
       }));
-      stepRun.end({ name: label, outputs: { text: output.slice(0, PREVIEW_LIMIT) } });
+      stepRun.end({ name: label, outputs: { text: output } });
       onStepUpdate?.(index, { status: 'success', label, output });
       results.push({ index, label, status: 'success', prompt, output });
       prevOutput = output;

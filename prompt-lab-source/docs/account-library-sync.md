@@ -1,6 +1,6 @@
 # Library storage and account sync
 
-Status: revised plan, implementation not started. Reconciled October 23, 2026 against `main` `faea576`. Dave selected both storage modes: a folder he chooses in iCloud Drive first, hosted storage second. This update records the plan before implementation; it authorizes no provisioning, migration, production activation or policy publication.
+Status: implementation in progress, acceptance incomplete. Dave authorized all planned phases on October 28, 2026. Draft PR248 contains isolated A1/A2 candidates; no app or personal folder is connected. The October 23 reconciliation against `main` `faea576` established the folder-first sequence. The [current build status](account-library-sync-slices.md#implementation-progress-october-28) separates implementation from acceptance. No paid provisioning is authorized.
 
 This remains the canonical proposal at its existing path. [D-016](DECISIONS.md) records the selected sequence and remaining hosted decisions. [Build slices](account-library-sync-slices.md) replace the earlier web-first instructions. The [original proposal](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync.md) and [original slices](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical evidence, not executable instructions.
 
@@ -32,7 +32,7 @@ The current UI may show only recent versions, but the durable store retains all 
 
 Inspected shared source still uses `pl2-library`, trash, collections and folders in browser storage; the desktop adds the IndexedDB durability journal. Runs and test cases have their own store. Import preview and application already handle conflict choices, associations and retryable stages. Reuse their semantics through a storage service rather than adding a competing raw-storage writer.
 
-No external-folder adapter, local library service or account library routes exist on the inspected main. All names, routes and package layout below are proposed. The existing [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) continues to describe shipped behavior until each phase is implemented and verified.
+The shipped app still has no connected external-folder or account library service. Draft PR248 contains an isolated folder/API reference candidate and source inventory contract, described in [candidate boundaries](library-storage-contract-candidate.md). Unimplemented routes and app flows below remain proposed. The existing [compatibility contract](LIBRARY_COMPATIBILITY_CONTRACT.md) continues to describe shipped behavior until each phase is implemented and verified.
 
 ## Phase A: chosen iCloud Drive folder
 
@@ -106,7 +106,7 @@ Local access is opt-in, loopback only, with exact Host/Origin checks, narrow COR
 
 ## Phase B: optional hosted storage
 
-Begin only after Phase A's folder/recovery/API acceptance passes. Add a hosted adapter using the same `libraryId`, object/history format, revisions, validation and command semantics. Provider selection, provisioning cost, region, encryption/key recovery and retention/deletion policy remain explicit decisions. Neon with existing Clerk identity is a candidate retained from the original proposal, not a selected or provisioned service.
+Begin only after Phase A's folder/recovery/API acceptance passes. Add a hosted adapter using the same `libraryId`, object/history format, revisions, validation and command semantics. On October 28 Dave selected Neon with existing Clerk identity in US East, server-readable content with provider encryption at rest, retained history/backups and separately confirmed permanent erasure. No paid provisioning is authorized. Provider feasibility, limits, costs and retention facts still require verification before activation.
 
 Hosted mode remains opt-in. Preview upload of the complete workspace, history and backup inventory, apply with revision checks, read back object/hash parity, then switch active backend. Preserve the folder package as a recovery checkpoint. The app and API must select the same backend for that library; never leave API writes pointed at the old folder while the UI edits a hosted fork. Backend switching requires a write barrier, flush or preservation of the outbox, verified transfer and one recorded activation commit. Failure keeps the previous backend active.
 
@@ -134,9 +134,9 @@ Use synthetic fixtures, isolated profiles and supported background tooling. Linu
 
 ## Next action and open decisions
 
-Next action: review this reconciled contract, then authorize slice A1 before runtime work. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
+Next action: complete A2 packaged macOS lifecycle, crash ownership, credential renewal and explicit pairing. The five original A1 contract criteria pass on the candidate. Mac Keychain source and actual Linux filesystem failure acceptance now pass, while installed app and macOS recovery checks remain open. The folder path will be selected by Dave through the delivered picker, not requested as a secret or hardcoded now.
 
-Decided: folder first, hosted second; complete history/backups; shared app/API library. Proposed defaults: desktop/local-service first, immutable file package, no automatic history pruning and explicit backend switching. Hosted provider/cost, encryption/key recovery and backup erasure policy remain open before Phase B. This document does not mark those choices approved.
+Decided: folder first, hosted second; complete history/backups; shared app/API library. The October 28 hosted choices are recorded above and in D-016. The native service packages the shared JavaScript engine with Node 22; actual iCloud propagation and installed-app acceptance remain unverified. The October 23 planning-only authorization and earlier hosted questions are preserved in Git history and the existing Notion historical sections.
 
 ## Sources and prior design
 

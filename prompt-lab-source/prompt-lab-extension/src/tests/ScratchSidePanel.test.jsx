@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ScratchSidePanel from '../ScratchSidePanel.jsx';
 import { SCRATCH_KEY, SCRATCH_SCHEMA_VERSION_KEY } from '../lib/scratchSchema.js';
 import { clearUnsavedScratchDraft } from '../lib/scratchUnsavedDraft.js';
+import { libraryEditBuffers } from '../lib/libraryEditBuffers.js';
 
 const NOW = Date.now();
 
@@ -65,6 +66,22 @@ describe('ScratchSidePanel', () => {
     expect(storedPad('a').content).toBe('First idea');
     act(() => { vi.advanceTimersByTime(600); });
     expect(storedPad('a').content).toBe('First idea, expanded');
+  });
+
+  it('preserves the live note separately while capture pauses its autosave', () => {
+    vi.useFakeTimers();
+    renderPanel();
+    fireEvent.change(editor(), { target: { value: 'Pending note $& {{input}}' } });
+    const resume = libraryEditBuffers.suspend();
+    try {
+      const buffer = libraryEditBuffers.read().find(row => row.id.startsWith('scratch-side:'));
+      expect(buffer.value.text).toBe('Pending note $& {{input}}');
+      expect(buffer.value.padsState.activePadId).toBe('a');
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(storedPad('a').content).toBe('First idea');
+    } finally { resume(); }
+    act(() => { vi.advanceTimersByTime(601); });
+    expect(storedPad('a').content).toBe('Pending note $& {{input}}');
   });
 
   it('saves pending text before switching notes and remembers the active note', () => {
