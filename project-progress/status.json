@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T06:10:44.067Z",
+  "snapshotAt": "2026-10-30T06:42:32.203Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "a04f91eda3a6097d32d88402b2f5dad0d0ca6eac",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect workspace import/export and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
+  "nextAction": "Connect workspace import and backup restore through the selected repository, then finish remaining Library actions and reviewed activation.",
   "evidence": [
+    {
+      "label": "Verified Library backups and device configuration",
+      "state": "Open",
+      "detail": "Candidate e2dd1d3 is pushed in draft PR248. Complete saved Library backups validate every retained object, operation and checkpoint before download; selected packs preserve raw records and embedded histories without Library writes. Failures retain selection and show accurate retry guidance. Dominic Node22.23.4: 448 storage tests, 1,639 shared tests across 144 files and 231 legacy tests passed; later message refinements passed 49 focused tests, then all 11 repository UI cases. Final six Chromium scenarios at 375/1440/2560 pixels, extension build and docs pass. Nine changed inputs match the runner and final screenshots were inspected. Mac isolated full export: a 6,360,899-byte backup independently reopens identically with 26 objects, four operations, three checkpoints and four commits; 215 unrelated prompts, changed history, three evaluations, four Scratch notes and original Trash retained. All 215 selected active records match exactly; original export unchanged. Walter SSH times out. Duncan iCloud root is registered under HKLM and processes run, but disposable files did not propagate in either direction after approximately 22 minutes. Candidate startup still uses the existing local store. Source-head checks show successful Vercel preview only; required Actions acceptance remains unverified. Workspace import, backup restore UI, large transfers, remaining actions, reviewed activation, installed and two-client acceptance remain open. No personal activation, device settings changes, private upload or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/e2dd1d315b7fb93fd7ac90f7b2b2d4044ba1078c"
+    },
     {
       "label": "Reviewed pack imports and preserved folder paths",
       "state": "Open",
@@ -1620,8 +1626,8 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": "Connect workspace import/export and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
-      "verification": "Candidate 7af094a pushed in draft PR248. Reviewed file, shared-link and starter-pack imports use the selected library with retained retries, exact source text, complete histories and one atomic command. New collection paths map to local folders without changing historical plan hashes. Dominic Node22.23.4: all 443 storage tests, 1,635 app tests across 144 files, 231 legacy tests, extension build and docs pass. Twenty-six pack integration tests include 12 import/matching checks; a new regression reproduced missing folder mapping before the fix. Real Chromium through the local API passes at 375/1440/2560 pixels, with inspected screens and no page overflow. All 25 changed inputs match the runner. Mac isolated complete real export after a folder edit: one replaced, one added, one skipped; 215 unrelated prompts, both histories, three evaluations, four Scratch notes and all 21 prior objects retained; original hash unchanged. Walter times out; Duncan iCloud 15.10.39.0, processes, root and inbox are present but expected export is absent. Candidate startup remains on the existing local store. Exact-source CI shows successful Vercel preview checks only; required Actions acceptance is unverified. Workspace import/export, remaining Library actions, reviewed activation, installed and actual two-client acceptance remain open. No personal activation, device changes, private upload or paid provisioning.",
+      "nextAction": "Connect workspace import and backup restore through the selected repository, then finish remaining Library actions and reviewed activation.",
+      "verification": "Candidate e2dd1d3 source, browser and isolated real-export backup checks pass; migration, activation, installed and actual iCloud acceptance remain open.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
       "status": "In progress",
       "severity": "Medium",
