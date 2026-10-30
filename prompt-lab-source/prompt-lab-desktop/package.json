@@ -12,7 +12,8 @@
     "build": "npm run check:node && vite build",
     "tauri": "npm run check:node && tauri",
     "tauri:dev": "npm run check:node && tauri dev",
-    "tauri:build": "npm run check:node && tauri build"
+    "tauri:build": "npm run check:node && tauri build",
+    "tauri:build:sync": "npm run check:node && node scripts/write-sync-tauri-config.mjs && tauri build --config src-tauri/tauri.sync.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod account_auth;
 mod diagnostics;
 mod diagnostics_store;
 use tauri::{Emitter, Manager};
@@ -9,7 +10,8 @@ use tauri::menu::{Menu, MenuItem, MenuItemKind};
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue])
+        .manage(account_auth::LoopbackState::default())
+        .invoke_handler(tauri::generate_handler![diagnostics::diagnostics_record, diagnostics::diagnostics_heartbeat, diagnostics::diagnostics_read, diagnostics::diagnostics_prepare, diagnostics::diagnostics_export, diagnostics::diagnostics_open_issue, account_auth::account_secret_get, account_auth::account_secret_set, account_auth::account_secret_delete, account_auth::account_oauth_listen, account_auth::account_oauth_wait])
         .setup(|app| {
             app.manage(diagnostics::initialize(app.handle()));
             let menu = Menu::default(app.handle())?;

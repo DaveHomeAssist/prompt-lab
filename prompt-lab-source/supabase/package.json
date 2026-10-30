@@ -1,0 +1,18 @@
+{
+  "name": "prompt-lab-account-sync-db",
+  "private": true,
+  "type": "module",
+  "description": "Account sync schema, RLS policies and local Postgres tests (PGlite, plus a throwaway local Postgres 17 for concurrency). Nothing here talks to a remote Supabase project.",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "pretest": "node scripts/prepare-embedded-postgres.mjs",
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.13",
+    "embedded-postgres": "17.10.0-beta.17",
+    "pg": "8.23.1"
+  }
+}

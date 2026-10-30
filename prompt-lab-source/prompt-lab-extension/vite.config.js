@@ -2,6 +2,7 @@ import { checkVersions } from '../scripts/check-version-consistency.mjs';
 import { buildIdentity } from '../scripts/build-identity.mjs';
 import { diagnosticSourceMaps } from '../scripts/diagnostic-sourcemaps.mjs';
 import { billingUiDefine } from './scripts/billing-ui-define.mjs';
+import { accountSyncExtensionEntry } from '../scripts/account-sync-build.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -12,7 +13,8 @@ if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 // Extension production builds hide billing UI; see scripts/billing-ui-define.mjs.
 export default defineConfig(({ command }) => ({
   define: { ...buildIdentity(), ...billingUiDefine(command) },
-  plugins: [react(), diagnosticSourceMaps('extension')],
+  // No-op unless VITE_PL_ACCOUNT_SYNC=on: then the panel also loads the Clerk Sync Host bootstrap.
+  plugins: [react(), diagnosticSourceMaps('extension'), accountSyncExtensionEntry()],
   build: {
     sourcemap: 'hidden',
     outDir: 'dist',
