@@ -1,5 +1,62 @@
 # Library storage contract candidate
 
+## A2 owned helper boundary: October 29
+
+The desktop currently has no owner for the JavaScript folder service. Existing
+tests instantiate the API directly and supply credentials in memory. The
+in-process writer queue cannot prevent a second desktop process from owning the
+same folder. Native single-instance ownership, secure credential storage,
+packaging and user pairing are still required before activation.
+
+Use the existing shared JavaScript engine in a desktop-owned helper. Its private
+stdin/stdout channel receives one explicit folder/library binding and scoped
+credentials from the native owner. No secret enters arguments, environment,
+stdout responses, logs, the folder package or backups. Parent EOF or explicit
+stop closes the API and waits for in-flight writes; an app window may detach
+without ending that owner. Browser credentials bind to one exact approved
+origin; agent credentials reject browser origins. Replacement/revocation occurs
+through the private owner channel, never an unauthenticated HTTP pairing route.
+
+The version 1 channel has bounded JSON-line requests with request IDs and
+`start`, `status`, `credentials` and `stop` operations. It starts once, has a
+bounded startup wait, reports sanitized errors, and returns only service identity
+and endpoint information. The native owner must obtain credentials from the
+platform secure store and enforce one process before invoking it. The helper
+does not write a credential file or claim native ownership by itself.
+
+Acceptance for this boundary uses actual child processes: startup, app-client
+disconnect while another client continues, origin/scope rejection, credential
+replacement, wrong-library rejection, parent loss, stop/restart and persisted
+operation readback. Direct API shutdown must wait for an already accepted write
+even when its response connection closes. Invalid/oversized control frames must
+not expose input or create a library. Keep the production enable/picker flow
+unavailable until native ownership, secure storage and packaging are verified.
+
+The child-process checks pass on Dominic with Node 22.23.4. They exercise
+app-client disconnect, exact origin/scope checks, atomic credential replacement
+and revocation, stop/restart receipt readback, owner EOF, broken owner output,
+wrong-library refusal with unchanged files, invalid startup and bounded control
+frames. No credential appears in stored files, responses, stderr or process
+arguments. The two API regression tests fail on the prior runtime: a browser
+credential worked without its origin, and shutdown returned before the blocked
+write completed. Both now pass without timing sleeps.
+
+### Original A2 acceptance audit
+
+| Original criterion | Current evidence | Remaining acceptance |
+| --- | --- | --- |
+| Verified atomic publication | Folder tests cover temporary publication, flush, hash verification and interruption. API shutdown now drains accepted writes. | Exact native helper shutdown and installed failure acceptance. |
+| Immutable causal forks | Folder graph and reconciliation tests retain competing histories without a cloud-wide lock. | Native single-process ownership on each device and actual two-client iCloud. |
+| Failure and restart preservation | Corrupt/missing content, injected interruption, restart and receipt replay are covered. | Actual disk-full and permission-denied cases plus native recovery UX. |
+| Retain all history and backups | Existing contract and folder suites retain versions, checkpoints, receipts and unknown fields. No pruning is added. | Installed app activation and real-data acceptance of the connected flow. |
+| Scoped local authentication | Helper enforces expiring credentials, origin binding, revocation and private parent control. Existing HTTP tests reject hostile Host and missing/wrong scope. | Native secure storage, explicit pairing, one owner and packaged network boundary. |
+| Service independent of app window | A real helper remains available after an HTTP app client disconnects; parent loss and stop remove its listener. | A real app window close while its enabled native owner remains alive. |
+
+A2 remains In progress. The helper is not yet launched by the desktop. Next:
+connect a single native owner, secure credential storage and packaged helper
+before exposing enable/pairing controls. These process tests do not establish
+installed app behavior or actual iCloud replication.
+
 ## A1 HTTP contract reconciliation: October 29
 
 Audit the original A1 acceptance separately from later native activation and

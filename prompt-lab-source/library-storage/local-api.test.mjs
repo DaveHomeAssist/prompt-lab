@@ -49,6 +49,38 @@ test('expires and revokes credentials without deleting stored data', async t => 
   assert.equal((await request('/v1/library')).status, 401);
 });
 
+test('origin-bound browser credentials cannot be used by another origin or an originless client', async t => {
+  const origin = 'https://approved.invalid';
+  const { request } = await fixture(t, { allowedOrigins: [origin, 'https://other.invalid'],
+    credentials: [{ token, scopes: ['read'], expiresAt: Date.now() + 60_000, origin }] });
+  assert.equal((await request('/v1/library')).status, 403);
+  assert.equal((await request('/v1/library', { headers: { Origin: 'https://other.invalid' } })).status, 403);
+  assert.equal((await request('/v1/library', { headers: { Origin: origin } })).status, 200);
+});
+
+test('shutdown drains an accepted write after response loss before returning', { timeout: 10_000 }, async t => {
+  const memory = createMemoryAdapter();
+  let release, entered;
+  const blocked = new Promise(resolve => { release = resolve; });
+  const writing = new Promise(resolve => { entered = resolve; });
+  t.after(() => release());
+  const { api, request } = await fixture(t, { adapter: { ...memory, transact: fn => memory.transact(async state => {
+    entered(); await blocked; return fn(state);
+  }) } });
+  const preview = await api.service.preview({ libraryId: 'lib1', expectedRevision: null, sourceText: '{"library":[]}' });
+  const response = request('/v1/library/commits', { method: 'POST', headers: { 'Idempotency-Key': 'drained' }, body: JSON.stringify(preview) }).catch(error => error);
+  await writing;
+  let closed = false;
+  const closing = api.close().then(() => { closed = true; });
+  assert.ok(await response instanceof Error);
+  // A real connection failure precedes the assertion, so it does not depend on a sleep.
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(closed, false);
+  release(); await closing;
+  assert.equal((await memory.read()).operations.drained.state, 'committed');
+  await api.close();
+});
+
 test('malformed JSON bodies fail without publication and request limits are explicit', async t => {
   const { request, api } = await fixture(t, { requestsPerMinute: 2 });
   assert.equal((await request('/v1/library/previews', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'null' })).status, 400);

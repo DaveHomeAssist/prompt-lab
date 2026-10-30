@@ -6,7 +6,10 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
   if (!libraryId || !Array.isArray(credentials) || !credentials.length || credentials.some(c => typeof c.token !== 'string' || c.token.length < 32 || !Array.isArray(c.scopes) || !Number.isFinite(c.expiresAt))) throw new Error('A bound library and expiring scoped credentials are required.');
   const rootService = createCommandService(adapter), recoveryServices = new Map();
   const windows = new Map();
+  let activeRequests = 0, closing;
+  const drained = [];
   function credential(authorization) {
+    for (const key of windows.keys()) if (!credentials.includes(key)) windows.delete(key);
     const candidate = Buffer.from((authorization ?? '').replace(/^Bearer /, ''));
     return credentials.find(c => {
       const expected = Buffer.from(c.token);
@@ -26,6 +29,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
     return value;
   }
   const server = createServer(async (req, res) => {
+    activeRequests++;
     const send = (status, payload) => {
       res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
       res.end(JSON.stringify(payload));
@@ -48,6 +52,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       }
       const user = credential(req.headers.authorization);
       if (!user || (user.expiresAt != null && Date.now() >= user.expiresAt) || user.revoked === true) throw new LibraryError('UNAUTHORIZED', 'Valid scoped authorization is required.', 401);
+      if (Object.hasOwn(user, 'origin') && (user.origin ?? undefined) !== origin) throw new LibraryError('FORBIDDEN_ORIGIN', 'Credential is not paired with this origin.', 403);
       const write = req.method !== 'GET';
       if (!user.scopes.includes(write ? 'write' : 'read')) throw new LibraryError('FORBIDDEN', 'Credential scope does not permit this operation.', 403);
       const window = windows.get(user) ?? { start: Date.now(), count: 0 };
@@ -203,6 +208,9 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       throw new LibraryError('NOT_FOUND', 'Operation is not available in this contract candidate.', 404);
     } catch (error) {
       send(error instanceof LibraryError ? error.status : 503, { ok: false, code: error instanceof LibraryError ? error.code : 'STORAGE_UNAVAILABLE', error: error instanceof LibraryError ? error.message : 'Storage unavailable; keep your draft and retry.', retryable: false });
+    } finally {
+      activeRequests--;
+      if (activeRequests === 0) for (const resolve of drained.splice(0)) resolve();
     }
   });
   server.requestTimeout = 30_000;
@@ -210,6 +218,14 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
   return {
     service: rootService,
     async listen(port = 0) { await new Promise((resolve, reject) => { server.once('error', reject); server.listen(port, '127.0.0.1', resolve); }); return `http://127.0.0.1:${server.address().port}`; },
-    async close() { server.closeAllConnections(); await new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())); },
+    async close() {
+      closing ??= (async () => {
+        const stopped = new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+        server.closeAllConnections();
+        await stopped;
+        if (activeRequests) await new Promise(resolve => drained.push(resolve));
+      })();
+      return closing;
+    },
   };
 }
