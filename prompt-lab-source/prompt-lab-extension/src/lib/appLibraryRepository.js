@@ -6,7 +6,7 @@ import { APP_RECORD_VERSION } from './appRecordVersion.js';
 
 export { APP_RECORD_VERSION } from './appRecordVersion.js';
 const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments', 'scratch-notes']);
-const readable = new Set([...supported, 'prompts', 'trash']);
+const readable = new Set([...supported, 'prompts', 'trash', 'packs']);
 const address = value => typeof value === 'string' && /^sha256:[a-f0-9]{64}$/.test(value);
 const object = value => value !== null && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
@@ -230,11 +230,33 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
     async readPromptLibrary() {
       return serial(async () => {
         await refresh();
+        const packs = {};
+        for (const row of snapshot.items.filter(row => row.domain === 'packs')) {
+          if (!object(row.value) || typeof row.sourceId !== 'string' || !row.sourceId
+            || Object.hasOwn(packs, row.sourceId) || (Object.hasOwn(row.value, 'id') && row.value.id !== row.sourceId)) {
+            fail('AMBIGUOUS_RECORD_IDENTITY', 'Review the pack registry identities before editing this Library.');
+          }
+          Object.defineProperty(packs, row.sourceId, { value: structuredClone(row.value), enumerable: true });
+        }
         return { libraryId, revision: snapshot.revision,
+          packs,
           library: snapshot.items.filter(row => row.domain === 'prompts').map(valueOf),
           trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf),
           collections: snapshot.items.filter(row => row.domain === 'collections').map(row => structuredClone(row.value)),
           folders: snapshot.items.filter(row => row.domain === 'folders').map(row => structuredClone(row.value)) };
+      });
+    },
+    async changePack(command, expectedRevision) {
+      const input = structuredClone(command); canonical(input);
+      if (!address(expectedRevision)) fail('REVISION_CONFLICT', 'Review the current pack before changing it.');
+      return serial(async () => {
+        if (!snapshot) await refresh();
+        const operationId = 'app-pack:' + (await hash({ libraryId, sourceBinding, expectedRevision, input })).slice(7);
+        const retained = await outbox.read(libraryId, operationId);
+        if (!retained && snapshot.revision !== expectedRevision) fail('REVISION_CONFLICT', 'The Library changed. Keep your pack choices and review its current records.');
+        const committed = await publish(retained?.request ?? { ...input, mode: 'pack', libraryId, sourceBinding,
+          expectedRevision, changedAt: new Date(now()).toISOString() }, operationId);
+        return { receipt: structuredClone(committed.receipt) };
       });
     },
     async changeFolder(command, expectedRevision) {

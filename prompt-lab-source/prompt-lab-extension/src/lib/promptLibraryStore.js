@@ -92,6 +92,9 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
             throw new Error('Another folder change followed this save. Review the retained operation and current folders.');
           }
         }
+        if (current.completed.packRevision && view.revision !== current.completed.packRevision) {
+          throw new Error('Another change followed this pack operation. Review the retained operation and current Library.');
+        }
         saveError = ''; actionAttempt = null; notify(current.message); return current.completed;
       } catch (error) { report(error); return false; }
       finally { current.pending = null; emit(); }
@@ -138,6 +141,10 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     get trash() { return view.trash.map(presentation).filter(Boolean); },
     get collections() { return structuredClone(view.collections ?? []); },
     get folders() { return structuredClone(view.folders ?? []); },
+    get packRegistry() { return structuredClone(view.packs ?? {}); },
+    // Exports use retained values, not the editor's normalized display defaults.
+    get packEntries() { return structuredClone(view.library); },
+    get revision() { return view.revision; },
     get libReady() { return ready; },
     get saving() { return Boolean(attempt?.pending || actionAttempt?.pending); },
     get saveError() { return saveError; },
@@ -183,6 +190,30 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     },
     setFavorite(id, favorite) {
       return store.saveEntryDetails(id, entry => ({ ...entry, favorite: typeof favorite === 'boolean' ? favorite : !entry.favorite }));
+    },
+    publishPack(pack, ids, expectedRevision) {
+      return runAction(canonical(['pack-publish', pack, ids, expectedRevision]), () => {
+        if (!ready || expectedRevision !== view.revision) throw new Error('Review the current Library before publishing this pack.');
+        const members = [...new Set(ids)].map(id => {
+          const version = observed(id)[APP_RECORD_VERSION];
+          return { groupId: version.groupId, expectedRecordHash: version.valueHash };
+        });
+        if (!members.length) throw new Error('Select at least one prompt for the pack.');
+        return { command: { action: 'publish', packId: pack.id, pack: structuredClone(pack), members }, expectedRevision };
+      }, async value => {
+        const result = await repository.changePack(value.command, value.expectedRevision);
+        return { ...result, packRevision: result.receipt.revision };
+      }, 'Pack saved to the selected Library.');
+    },
+    uninstallPack(packId, expectedRevision) {
+      return runAction(canonical(['pack-remove', packId, expectedRevision]), () => {
+        if (!ready || expectedRevision !== view.revision) throw new Error('Review the current Library before removing this pack.');
+        return { command: { action: 'remove', packId, confirmRemoval: true }, expectedRevision,
+          count: view.library.filter(row => row.metadata?.packId === packId).length };
+      }, async value => {
+        const result = await repository.changePack(value.command, value.expectedRevision);
+        return { ...result, removed: value.count, packRevision: result.receipt.revision };
+      }, 'Pack removed. Its prompts are in Recently Deleted.');
     },
     async saveFolders(next) {
       try {

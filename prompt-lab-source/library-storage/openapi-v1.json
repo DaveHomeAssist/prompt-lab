@@ -7437,7 +7437,7 @@
       },
       "DurableOutbox": {
         "type": "object",
-        "description": "App-owned pending command. Version 3 retains explicit record, prompt and folder intents before review. A matching review must be durably stored before publication. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime; completed records are retained.",
+        "description": "App-owned pending command. Version 3 retains explicit record, prompt, folder and pack intents before review. A matching review must be durably stored before publication. Strict transaction completion acknowledges local persistence only. Hash and receipt bindings are verified by the shared runtime; completed records are retained.",
         "properties": {
           "format": {
             "const": "promptlab-command-outbox"
@@ -7653,7 +7653,8 @@
                         "create",
                         "edit",
                         "lifecycle",
-                        "folder"
+                        "folder",
+                        "pack"
                       ]
                     }
                   },

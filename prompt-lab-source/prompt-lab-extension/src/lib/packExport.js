@@ -13,7 +13,7 @@ function slugify(value, fallback = 'pack') {
 export function exportPackFromEntries(entries, { id, title, version = '1.0.0', description = '' } = {}) {
   const list = (Array.isArray(entries) ? entries : []).filter(Boolean);
   const packTitle = ensureString(title).trim() || 'Untitled Pack';
-  const packId = slugify(id || packTitle);
+  const packId = ensureString(id).trim() || slugify(packTitle);
   const stamp = new Date().toISOString().slice(0, 10);
   const usedIds = new Set();
 
@@ -28,6 +28,7 @@ export function exportPackFromEntries(entries, { id, title, version = '1.0.0', d
     usedIds.add(presetId);
     const promptText = ensureString(entry.enhanced).trim() || ensureString(entry.original);
     return {
+      ...entry,
       id: presetId,
       title: ensureString(entry.title).trim() || 'Untitled',
       category: ensureString(entry.collection),

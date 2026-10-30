@@ -71,8 +71,7 @@ export function stampPackMembership(entries, entryIds, { id, title, source = 'au
  * present on library entries that the registry does not know yet (e.g. starter
  * packs loaded before the registry existed).
  */
-export function reconcilePacks(entries) {
-  const registry = loadPackRegistry();
+export function reconcilePacks(entries, registry = loadPackRegistry()) {
   const counts = new Map();
   (Array.isArray(entries) ? entries : []).forEach((entry) => {
     const packId = ensureString(entry?.metadata?.packId).trim();
@@ -82,7 +81,7 @@ export function reconcilePacks(entries) {
 
   const rows = [];
   counts.forEach((entryCount, packId) => {
-    const known = registry[packId];
+    const known = Object.hasOwn(registry, packId) ? registry[packId] : null;
     rows.push({
       id: packId,
       title: known?.title || packId,
@@ -93,9 +92,9 @@ export function reconcilePacks(entries) {
   });
   // Registry rows whose entries were all deleted still appear with a zero count
   // so the user can clean them up explicitly.
-  Object.values(registry).forEach((record) => {
-    if (!counts.has(record.id)) {
-      rows.push({ ...record, entryCount: 0 });
+  Object.entries(registry).forEach(([id, record]) => {
+    if (!counts.has(id)) {
+      rows.push({ ...record, id, title: record?.title || id, entryCount: 0 });
     }
   });
   return rows.sort((left, right) => left.title.localeCompare(right.title, undefined, { sensitivity: 'base' }));

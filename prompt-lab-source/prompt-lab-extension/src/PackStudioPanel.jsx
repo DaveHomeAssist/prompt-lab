@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import { reconcilePacks, removePack, upsertPack } from './lib/packStore.js';
 import { buildPackShareUrl, exportPackFromEntries } from './lib/packExport.js';
@@ -10,7 +10,7 @@ function nextPatchVersion(value) {
 }
 
 /**
- * Pack Studio — list installed/authored packs, publish selected prompts as a
+ * Pack Studio lists installed/authored packs, publishes selected prompts as a
  * schema-valid pack file, and uninstall a pack's entries in one action.
  */
 export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
@@ -18,12 +18,16 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [refreshTick, setRefreshTick] = useState(0);
   const [statusLine, setStatusLine] = useState('');
+  const [pending, setPending] = useState(false);
+  const [retry, setRetry] = useState(false);
+  const operation = useRef(null);
+  const locked = pending || retry || lib.saving || (lib.repository && !lib.libReady);
 
   const packs = useMemo(
-    () => reconcilePacks(lib.library),
+    () => reconcilePacks(lib.library, lib.repository ? (lib.packRegistry ?? {}) : undefined),
     // refreshTick forces a registry re-read after uninstall/publish.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [lib.library, refreshTick],
+    [lib.library, lib.packRegistry, lib.repository, refreshTick],
   );
 
   const toggleSelected = (id) => {
@@ -36,27 +40,61 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
   };
 
   const downloadPack = (pack) => {
-    upsertPack({ id: pack.id, title: pack.title, version: pack.version, source: 'authored' });
     const url = URL.createObjectURL(new Blob([JSON.stringify(pack, null, 2)], { type: 'application/json' }));
     const anchor = Object.assign(document.createElement('a'), { href: url, download: `${pack.id}-v${pack.version}.json` });
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
+  const runOperation = async (next) => {
+    if (operation.current?.pending) return;
+    if (!operation.current) operation.current = next;
+    const current = operation.current;
+    if (!current) return;
+    current.pending = true;
+    setPending(true); setRetry(false); setStatusLine('Saving pack change…');
+    try {
+      if (!current.committed) { await current.execute(); current.committed = true; }
+      current.finish();
+      operation.current = null;
+      setRefreshTick(tick => tick + 1);
+    } catch (error) {
+      setStatusLine(current.committed ? 'Pack saved, but the download failed. Retry the download.'
+        : `Pack change was not confirmed. ${error.message || 'Your choices are retained for retry.'}`);
+      setRetry(true);
+    } finally { current.pending = false; setPending(false); }
+  };
+
+  const commitPublication = async (pack, entries) => {
+    const record = { id: pack.id, title: pack.title, version: pack.version, source: 'authored' };
+    if (lib.repository) {
+      if (typeof lib.publishPack !== 'function' || !await lib.publishPack(record, entries.map(entry => entry.id), lib.revision)) {
+        throw new Error('Keep these choices and retry the selected Library.');
+      }
+    } else {
+      await lib.assignEntriesToPack?.(entries.map(entry => entry.id), pack.id, pack.title);
+      upsertPack(record);
+    }
+  };
+
   const publishPack = () => {
-    const entries = lib.library.filter((entry) => selectedIds.has(entry.id));
+    if (locked) return;
+    const entries = (lib.packEntries ?? lib.library).filter((entry) => selectedIds.has(entry.id));
     if (entries.length === 0 || !packTitle.trim()) return;
     const pack = exportPackFromEntries(entries, { title: packTitle });
-    lib.assignEntriesToPack?.(entries.map((entry) => entry.id), pack.id, pack.title);
-    downloadPack(pack);
-    setStatusLine(`Exported ${entries.length} prompts as ${pack.title}.`);
-    setPackTitle('');
-    setSelectedIds(new Set());
-    setRefreshTick((tick) => tick + 1);
+    if (lib.repository && packs.some(row => row.id === pack.id)) {
+      setStatusLine('A pack with this name already exists. Use Update, or choose a different name.');
+      return;
+    }
+    void runOperation({ execute: () => commitPublication(pack, entries), finish: () => {
+      downloadPack(pack);
+      setStatusLine(`Exported ${entries.length} prompts as ${pack.title}.`);
+      setPackTitle(''); setSelectedIds(new Set());
+    } });
   };
 
   const buildInstalledPack = (pack, version = pack.version || '1.0.0') => {
-    const entries = lib.library.filter((entry) => entry?.metadata?.packId === pack.id);
+    const entries = (lib.packEntries ?? lib.library).filter((entry) => entry?.metadata?.packId === pack.id);
     return exportPackFromEntries(entries, {
       id: pack.id,
       title: pack.title,
@@ -65,11 +103,17 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
   };
 
   const updatePack = (pack) => {
+    if (locked) return;
     const next = buildInstalledPack(pack, nextPatchVersion(pack.version));
     if (next.presets.length === 0) return;
-    downloadPack(next);
-    setStatusLine(`Updated ${pack.title} to v${next.version} with ${next.presets.length} prompts.`);
-    setRefreshTick((tick) => tick + 1);
+    const entries = lib.library.filter(entry => entry?.metadata?.packId === pack.id);
+    void runOperation({ execute: async () => {
+      if (lib.repository) await commitPublication(next, entries);
+      else upsertPack({ id: next.id, title: next.title, version: next.version, source: 'authored' });
+    }, finish: () => {
+      downloadPack(next);
+      setStatusLine(`Updated ${pack.title} to v${next.version} with ${next.presets.length} prompts.`);
+    } });
   };
 
   const sharePack = async (pack) => {
@@ -85,11 +129,21 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
   };
 
   const uninstallPack = (pack) => {
+    if (locked) return;
     if (!window.confirm(`Remove pack "${pack.title}" and its ${pack.entryCount} prompts from your library?`)) return;
-    const removed = lib.removeEntriesByPackId?.(pack.id) ?? 0;
-    removePack(pack.id);
-    setStatusLine(removed > 0 ? `Removed ${removed} prompts from ${pack.title}.` : `Removed pack ${pack.title}.`);
-    setRefreshTick((tick) => tick + 1);
+    let removed = 0;
+    void runOperation({ execute: async () => {
+      if (lib.repository) {
+        const result = await lib.uninstallPack?.(pack.id, lib.revision);
+        if (!result) throw new Error('Keep this removal and retry the selected Library.');
+        removed = result.removed;
+      } else {
+        removed = await lib.removeEntriesByPackId?.(pack.id) ?? 0;
+        removePack(pack.id);
+      }
+    }, finish: () => {
+      setStatusLine(removed > 0 ? `Moved ${removed} prompts from ${pack.title} to Recently Deleted.` : `Removed pack ${pack.title}.`);
+    } });
   };
 
   return (
@@ -98,9 +152,12 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
         <p className={`text-xs font-semibold ${m.textSub} uppercase tracking-wider flex items-center gap-1.5`}>
           <Ic n="Layers" size={12} />Pack Studio
         </p>
-        <button type="button" onClick={onClose} aria-label="Close pack studio" className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors`}>Close</button>
+        <button type="button" onClick={onClose} disabled={pending} aria-label="Close pack studio" className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} transition-colors`}>Close</button>
       </div>
       {statusLine && <p className={`text-xs ${m.textSub}`} role="status">{statusLine}</p>}
+      {retry && <button type="button" onClick={() => runOperation()} className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt}`}>
+        {operation.current?.committed ? 'Retry pack download' : 'Retry pack change'}
+      </button>}
 
       <section>
         <p className={`text-xs font-semibold ${m.text} mb-1.5`}>Installed packs</p>
@@ -115,11 +172,11 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
                 <span className={m.textMuted}>{pack.entryCount} prompts · {pack.source}{pack.version ? ` · v${pack.version}` : ''}</span>
               </div>
               <div className="flex flex-wrap justify-end gap-1 shrink-0">
-                <button type="button" onClick={() => sharePack(pack)} disabled={pack.entryCount === 0}
+                <button type="button" onClick={() => sharePack(pack)} disabled={locked || pack.entryCount === 0}
                   className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 transition-colors`}>Share</button>
-                <button type="button" onClick={() => updatePack(pack)} disabled={pack.entryCount === 0}
+                <button type="button" onClick={() => updatePack(pack)} disabled={locked || pack.entryCount === 0}
                   className={`ui-control px-2 py-1 rounded-lg text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 transition-colors`}>Update</button>
-                <button type="button" onClick={() => uninstallPack(pack)}
+                <button type="button" onClick={() => uninstallPack(pack)} disabled={locked}
                   className="ui-control px-2 py-1 rounded-lg text-xs bg-red-500/10 text-red-300 hover:bg-red-500/20 transition-colors">
                   Uninstall
                 </button>
@@ -136,6 +193,7 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
           onChange={(e) => setPackTitle(e.target.value)}
           placeholder="Pack name…"
           aria-label="New pack name"
+          disabled={locked}
           className={`w-full ${m.input} border rounded-lg px-2 py-1.5 text-xs focus:outline-none mb-2 ${m.text}`}
         />
         <div className={`flex flex-col gap-1 max-h-40 overflow-y-auto border ${m.border} rounded-lg p-2`}>
@@ -145,6 +203,7 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
               <input
                 type="checkbox"
                 checked={selectedIds.has(entry.id)}
+                disabled={locked}
                 onChange={() => toggleSelected(entry.id)}
               />
               <span className="truncate">{entry.title}</span>
@@ -154,7 +213,7 @@ export default function PackStudioPanel({ m, lib, compact = false, onClose }) {
         <button
           type="button"
           onClick={publishPack}
-          disabled={selectedIds.size === 0 || !packTitle.trim()}
+          disabled={locked || selectedIds.size === 0 || !packTitle.trim()}
           className="ui-control mt-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-orange-500/90 hover:bg-orange-400 disabled:opacity-40 text-white transition-colors">
           Export {selectedIds.size > 0 ? `${selectedIds.size} prompts` : 'pack'} as JSON
         </button>

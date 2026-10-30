@@ -1,5 +1,45 @@
 # Library storage contract candidate
 
+## Pack Studio routing: October 30
+
+Connect Pack Studio's registry, publication, update and uninstall to the selected
+library. Commit registry metadata and prompt membership in one shared command;
+retain the original revision and operation identity through a failed response.
+Download the reviewed export only after acknowledgement. A failure keeps the
+pack name, selected prompts and retry action available without browser fallback.
+Uninstall moves members to Recently Deleted and retains immutable history.
+
+Preserve the existing browser path and interface. Use real repository/service
+tests for offline retry, competing edits, readback races, unknown fields and
+history. Check an isolated copy of the complete real export on its original
+Mac. This slice does not activate personal storage or close the pack import,
+remaining Library actions, native, two-client iCloud or hosted acceptance gates.
+
+Verification: Dominic Node 22.23.4 passed all 441 storage tests and 1,623 shared
+app tests across 144 files, including 14 new Pack Studio integration scenarios.
+The first storage run caught an unsynchronized OpenAPI copy of the expanded
+outbox intent schema; both published contracts now agree and the full suite
+passes. Pack exports retain unknown prompt fields and existing pack identities.
+Removing the acknowledgement wait in a controlled negative test cleared the pack
+name before the pending save completed. The regression fails in that state and
+all 25 focused tests pass after restoring the exact source bytes.
+
+Real Chromium checks through the local API pass at 375, 1440 and 2560 pixels,
+covering pending saves, offline retry, downloaded JSON, uninstall and viewport
+fit. They exposed display-normalized history in exported packs. The selected
+store now supplies retained records directly; the unchanged history assertion
+passes in the browser and in an additional isolated real-export check. The
+browser fixture also now supplies the same theme input as the app. Dominic's
+cached Playwright container supplies its browser libraries; no host packages
+or settings were changed.
+
+A bounded Mac Node 22.22.1 check published, updated and uninstalled a disposable
+pack in a fresh isolated copy of the complete real export. Two selected prompts
+moved to Trash; their history and unknown fields, all 214 unrelated prompts,
+three evaluations, four Scratch notes and all 16 initial immutable objects
+were retained. The original export hash is unchanged. This is shared-store
+evidence on real data, not real-data UI, installed-app or iCloud acceptance.
+
 ## Scratch record routing: October 30
 
 Connect the existing Scratch workspace and Write side panel to the same selected

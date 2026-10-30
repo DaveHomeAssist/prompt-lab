@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createServer } from 'vite';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { createCommandService } from '../../library-storage/contract.mjs';
@@ -38,6 +38,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       await page.addInitScript(options => {
         window.fixtureOptions = options;
         localStorage.setItem('pl2-library', '[{"id":"personal-source","original":"Untouched"}]');
+        localStorage.setItem('pl2-packs', '{"personal-pack":{"id":"personal-pack","title":"Personal pack"}}');
       }, options);
       await page.goto(`${origin}/e2e/fixtures/repository-library.html`);
       await expect(page.getByRole('button', { name: 'Favorite Shared prompt', exact: true })).toBeVisible();
@@ -51,7 +52,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       await page.getByRole('button', { name: 'Unfavorite Shared prompt', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Retry pending changes' })).toBeVisible();
       await page.screenshot({ path: test.info().outputPath(`offline-${viewport.width}.png`) });
-      await page.locator('main').evaluate(node => node.setAttribute('data-theme', 'dark'));
+      await page.evaluate(() => window.setFixtureTheme('dark'));
       await page.screenshot({ path: test.info().outputPath(`offline-dark-${viewport.width}.png`) });
       const fits = await page.evaluate(() => ({ width: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
         height: document.documentElement.scrollHeight <= document.documentElement.clientHeight }));
@@ -123,6 +124,45 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       expect(final.library.library[0].versions.slice(0, 35)).toEqual(workspace.library[0].versions);
       expect(final.source).toBe(saved.original);
       expect(Object.keys((await adapter.read()).operations)).toHaveLength(10);
+
+      await closeDrawer();
+      await page.getByRole('button', { name: 'Open pack studio', exact: true }).click();
+      await expect(page.getByRole('textbox', { name: 'New pack name' })).toBeVisible();
+      await expect(page.getByText('Personal pack', { exact: true })).toHaveCount(0);
+      await page.getByRole('textbox', { name: 'New pack name' }).fill('Confirmed pack');
+      await page.getByRole('checkbox', { name: 'Shared prompt', exact: true }).check();
+      let downloads = 0; page.on('download', () => downloads++);
+      await page.evaluate(() => window.holdSave());
+      await page.getByRole('button', { name: 'Export 1 prompts as JSON' }).click();
+      await expect(page.getByText('Saving pack change…', { exact: true })).toBeVisible();
+      await expect(page.getByRole('textbox', { name: 'New pack name' })).toHaveValue('Confirmed pack');
+      expect(downloads).toBe(0);
+      const firstDownload = page.waitForEvent('download');
+      await page.evaluate(() => window.releaseSave());
+      const pack = JSON.parse(await readFile(await (await firstDownload).path(), 'utf8'));
+      expect(pack.presets[0].future).toEqual({ keep: true });
+      expect(pack.presets[0].versions.slice(0, 35)).toEqual(workspace.library[0].versions);
+      await expect(page.getByText('Exported 1 prompts as Confirmed pack.')).toBeVisible();
+      await page.context().setOffline(true);
+      await page.getByRole('button', { name: 'Update', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Retry pack change' })).toBeVisible();
+      expect(downloads).toBe(1);
+      await page.screenshot({ path: test.info().outputPath(`pack-offline-${viewport.width}.png`) });
+      expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        height: document.documentElement.scrollHeight <= document.documentElement.clientHeight }))).toEqual({ width: true, height: true });
+      await page.context().setOffline(false);
+      const nextDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Retry pack change' }).click();
+      expect(JSON.parse(await readFile(await (await nextDownload).path(), 'utf8')).version).toBe('1.0.1');
+      await expect(page.getByText('Updated Confirmed pack to v1.0.1 with 1 prompts.')).toBeVisible();
+      page.once('dialog', dialog => dialog.accept());
+      await page.getByRole('button', { name: 'Uninstall', exact: true }).click();
+      await expect(page.getByText('Moved 1 prompts from Confirmed pack to Recently Deleted.')).toBeVisible();
+      const packResult = await page.evaluate(async () => ({ view: await repository.readPromptLibrary(), packs: localStorage.getItem('pl2-packs') }));
+      expect(packResult.view.library).toHaveLength(0); expect(packResult.view.trash).toHaveLength(1);
+      expect(packResult.view.trash[0].versions.slice(0, 35)).toEqual(workspace.library[0].versions);
+      expect(packResult.packs).toBe('{"personal-pack":{"id":"personal-pack","title":"Personal pack"}}');
+      expect(Object.keys((await adapter.read()).operations)).toHaveLength(13);
     } finally { await api.close(); await rm(directory, { recursive: true, force: true }); }
   });
 }

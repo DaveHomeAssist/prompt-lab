@@ -31,6 +31,8 @@ export function useRepositoryPromptLibrary(repository, notify) {
   return {
     ...unconnected, repository, library: store.library, trash: store.trash,
     collections: store.collections, folders: store.folders, libReady: store.libReady,
+    packRegistry: store.packRegistry, packEntries: store.packEntries, revision: store.revision,
+    publishPack: store.publishPack, uninstallPack: store.uninstallPack,
     saving: store.saving, saveError: store.saveError, retryPending: store.retryPending,
     refresh: store.refresh, doSave: store.doSave, linkSavedPrompt: store.linkSavedPrompt,
     saveEntryDetails: store.saveEntryDetails, setFavorite: store.setFavorite, updateEntries: store.updateEntries,
