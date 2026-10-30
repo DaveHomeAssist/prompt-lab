@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T07:09:03.155268+00:00",
+  "snapshotAt": "2026-10-30T09:14:51.673016+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "6582ca603fe69dfa8c531667c55dccde626775e7",
+  "mainSha": "8de528c2b6933ca0e9765a13a58f45160b4b7f3c",
   "overall": "Acceptance incomplete",
   "nextAction": "PR272 artwork pins, thumbnails and Write empty-search recovery are live; production acceptance passed4/4. Reload open tabs. Prior project actions remain historical: Artwork decode validation and retained Write search are live in PR270. Reload open tabs. The registered board has been restored; current private portfolio synchronization is tracked separately. Other project next actions below are historical and remain subject to their current owners: Undo receipt, result feedback/save target and Windows Scratch restart repairs are live with scoped acceptance passed. Retain regression coverage. Registered Next Steps Board HTML remains missing. Earlier unrelated project actions are retained as history: Workbench quality of life is live and scoped production acceptance passed. Reload open tabs to use Recent artwork and search beside Write. Earlier next actions retained as history: Finish combined quality of life candidate checks, merge and production acceptance. Earlier next actions retained as history: Deliver the PR247 Save UX follow-up after exact-head CI and deployed acceptance. Complete A1 source preservation and import/conflict semantics in draft PR248. Two-client iCloud propagation and the native packaging decision remain open. Hosted choices are settled: Neon with Clerk, US East, server-readable encrypted-at-rest storage, retained history/backups and separate erasure. No paid provisioning without separate approval. Registered Next Steps Board HTML remains missing. Earlier unrelated project actions are retained as history: Hosted model choice PR256 is live and scoped acceptance passed. Choose a model in Settings > Provider Settings. Review the separate intermittent Windows NSIS Scratch restart finding and the existing Undo receipt finding before any new repair. Registered Next Steps Board file remains absent. Previous snapshot next actions, preserved as history: Review the confirmed stale save receipt after Undo reset before authorizing a narrow repair. Actual provider, shortcuts, versions, reload, run-history and stale-tab acceptance passed. Earlier unrelated next actions remain historical: Retain the delivered save repair. Reload open tabs and reopen legacy saved editing sessions; broader native/human acceptance remains separate. Local board synchronization unavailable because registered file is missing. Prior snapshot actions, preserved as historical: Finish main verification and deliver PR252 test harness plus these records. Reload all open tabs; legacy edit sessions must reopen the prompt or save separately. Earlier unrelated next actions retained as historical, not re-audited in this repair: Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Inspector Save details placement live",
+      "state": "Verified",
+      "detail": "October30 PR275 merged8de528c after all13 checks passed. Production dpl_2z2k1AMxsXJPA2GH55Eq3WPaQLTM READY at exact merge. Dedicated signed-in Production Smoke41031608352 passed4/4, including top action, scrolling, metadata save/reload at375/1440px. Disposable sessions revoked; no provider or billing calls. Dominic Node22.23.4 passed42 inspector/artwork tests, extension build and five viewport regressions at1440x900,375x812,844x390,320x256 and3840x1080. First run41031133480 retained: placement passed but the new exact-label selector missed the populated Purpose textarea. Test-only3533555 uses accessible textbox role; a separate probe confirms the mismatch and save/reload. No real user data or browser state touched. No version/tag change or broader human/device acceptance claim.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/actions/runs/41031608352"
+    },
     {
       "label": "Artwork pins and Write recovery live",
       "state": "Verified",
@@ -1210,18 +1216,6 @@
       "url": "https://app.notion.com/402255fc8f4481d5a67febbb7b34f26a"
     },
     {
-      "id": "402255fc8f4481f1840fd1440a7dcb35",
-      "inPlan": false,
-      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
-      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
-      "title": "Verify iCloud recovery and API acceptance A4 (sync slice 5)",
-      "status": "Not started",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
-    },
-    {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
       "nextAction": "Accept A1, then complete native service ownership, pairing and recovery APIs.",
@@ -1234,28 +1228,16 @@
       "url": "https://app.notion.com/402255fc8f4481f494ced6b248f38c8c"
     },
     {
-      "id": "402255fc8f448100b411f4a4a101b4a9",
-      "title": "Make bug reports and feature requests easy to find",
+      "id": "402255fc8f4481f1840fd1440a7dcb35",
+      "inPlan": false,
+      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
+      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
+      "title": "Verify iCloud recovery and API acceptance A4 (sync slice 5)",
       "status": "Not started",
       "severity": "Medium",
-      "area": "Layout",
+      "area": "Library",
       "type": "Feature",
-      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
-      "inPlan": false,
-      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
-      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
-    },
-    {
-      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
-      "title": "Review prompt naming upgrades and remaining title quality gaps",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Editor",
-      "type": "UX",
-      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
-      "inPlan": false,
-      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
-      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
+      "url": "https://app.notion.com/402255fc8f4481f1840fd1440a7dcb35"
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
@@ -1304,6 +1286,30 @@
       "inPlan": false,
       "nextAction": "Verify whether the General task and General target options already deliver a General enhance mode (D-INT-4 A).",
       "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f448100b411f4a4a101b4a9",
+      "title": "Make bug reports and feature requests easy to find",
+      "status": "Not started",
+      "severity": "Medium",
+      "area": "Layout",
+      "type": "Feature",
+      "url": "https://app.notion.com/402255fc8f448100b411f4a4a101b4a9",
+      "inPlan": false,
+      "nextAction": "Slice 4: local Feedback dialog that appends to a Scratch note or copies Markdown (D-INT-3 A).",
+      "verification": "October 23 user intake; backlog only, implementation and acceptance not started."
+    },
+    {
+      "id": "402255fc8f4481249cb0e9dd7aa1b4ac",
+      "title": "Review prompt naming upgrades and remaining title quality gaps",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "UX",
+      "url": "https://app.notion.com/402255fc8f4481249cb0e9dd7aa1b4ac",
+      "inPlan": false,
+      "nextAction": "Retain local naming; await Dave selection before further upgrades.",
+      "verification": "PR212 merged/deployed. All11 exact-main workflows and production2/2 pass; local task suggestions and custom title preservation verified."
     },
     {
       "id": "402255fc8f44813faf3ae58a8b002426",
@@ -1366,6 +1372,30 @@
       "url": "https://app.notion.com/405255fc8f4481c78d80ce2e49b6fab8"
     },
     {
+      "id": "405255fc8f4481d1bc61f4f8984c5840",
+      "inPlan": false,
+      "nextAction": "Retain delivered artwork; older builds may drop emoji when re-saving.",
+      "verification": "2026-10-29: PR258 merged1f61cb2 after16/16 checks on3ca0377; identical source tree. Production dpl_5NLSGC5FiDd93QaDndyJppGvdCik READY exactmerge and promptlab.tools alias verified. Signed-in production40833036526 passes4/4 at375/1440px, including artwork picker, emoji, Apply and Escape/focus in all four views; four disposable sessions revoked. CI shared1483/130 files, legacy231, landing25 and hosted78 pass with1existing authenticated skip. Candidate Desktop40830951052 passes all six jobs including MSI/NSIS/DEB/AppImage and macOS universal. Dominic final focused30 and browser18 pass; extension build, docs and progress render/check pass. No inference/purchase; image formats and64KB limit unchanged. Notion issue Done and acceptance read back. Exact-merge main CI still running at this snapshot. Existing Scratch, Undo receipt, signing/physical/human gates remain separate. Registered local Next Steps Board file absent; no board synchronization.",
+      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
+      "status": "Done",
+      "severity": "Medium",
+      "area": "Library",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
+    },
+    {
+      "id": "405255fc8f4481d4824bfa1e91474ef0",
+      "inPlan": false,
+      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
+      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
+      "title": "Notify when a long prompt run finishes",
+      "status": "Not started",
+      "severity": "Low",
+      "area": "Background",
+      "type": "Feature",
+      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
+    },
+    {
       "id": "405255fc8f4481e0998dcf99824e8bd2",
       "inPlan": false,
       "nextAction": "Start after Scratch beside Write is accepted; send Dual Pane routes to Write (D-INT-2 B).",
@@ -1412,30 +1442,6 @@
       "area": "Layout",
       "type": "UX",
       "url": "https://app.notion.com/405255fc8f44815689b6d0ade1bda5eb"
-    },
-    {
-      "id": "405255fc8f4481d1bc61f4f8984c5840",
-      "inPlan": false,
-      "nextAction": "Retain delivered artwork; older builds may drop emoji when re-saving.",
-      "verification": "2026-10-29: PR258 merged1f61cb2 after16/16 checks on3ca0377; identical source tree. Production dpl_5NLSGC5FiDd93QaDndyJppGvdCik READY exactmerge and promptlab.tools alias verified. Signed-in production40833036526 passes4/4 at375/1440px, including artwork picker, emoji, Apply and Escape/focus in all four views; four disposable sessions revoked. CI shared1483/130 files, legacy231, landing25 and hosted78 pass with1existing authenticated skip. Candidate Desktop40830951052 passes all six jobs including MSI/NSIS/DEB/AppImage and macOS universal. Dominic final focused30 and browser18 pass; extension build, docs and progress render/check pass. No inference/purchase; image formats and64KB limit unchanged. Notion issue Done and acceptance read back. Exact-merge main CI still running at this snapshot. Existing Scratch, Undo receipt, signing/physical/human gates remain separate. Registered local Next Steps Board file absent; no board synchronization.",
-      "title": "Make prompt artwork pickable from Library cards, with more icons and emoji",
-      "status": "Done",
-      "severity": "Medium",
-      "area": "Library",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d1bc61f4f8984c5840"
-    },
-    {
-      "id": "405255fc8f4481d4824bfa1e91474ef0",
-      "inPlan": false,
-      "nextAction": "Slice 5: opt-in hosted web notification for long runs plus a title marker on every shell.",
-      "verification": "Backlog row created 2026-10-26 from the October intake brief; not started.",
-      "title": "Notify when a long prompt run finishes",
-      "status": "Not started",
-      "severity": "Low",
-      "area": "Background",
-      "type": "Feature",
-      "url": "https://app.notion.com/405255fc8f4481d4824bfa1e91474ef0"
     },
     {
       "id": "405255fc8f44814e998fdf193173cfe8",
@@ -1532,6 +1538,66 @@
       "area": "Library",
       "type": "Feature",
       "url": "https://app.notion.com/408255fc8f44816cabccedbb6b06e7f5"
+    },
+    {
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "id": "409255fc8f4481e78dfff5b0abd252e8",
+      "title": "SF-01 Preserve shared prompt identity and displaced draft",
+      "status": "In progress",
+      "severity": "High",
+      "area": "Import",
+      "type": "Bug",
+      "url": "https://app.notion.com/409255fc8f4481e78dfff5b0abd252e8"
+    },
+    {
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "id": "409255fc8f4481349b10d5ccdc40e13c",
+      "title": "SF-02 Preserve incoming authentication destinations",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Background",
+      "type": "Bug",
+      "url": "https://app.notion.com/409255fc8f4481349b10d5ccdc40e13c"
+    },
+    {
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "id": "409255fc8f448189a6c6e63df67e8155",
+      "title": "SF-03 Cancel test case batches with partial completion",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/409255fc8f448189a6c6e63df67e8155"
+    },
+    {
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "Notion disposition only; not independently re-audited in this snapshot.",
+      "id": "409255fc8f44816b9c0ac1cb28ae0c80",
+      "title": "SF-04 Recover draft checkpoints across exit and storage failure",
+      "status": "In progress",
+      "severity": "Medium",
+      "area": "Editor",
+      "type": "Bug",
+      "url": "https://app.notion.com/409255fc8f44816b9c0ac1cb28ae0c80"
+    },
+    {
+      "inPlan": false,
+      "nextAction": null,
+      "verification": "PR275 merged8de528c;13 candidate checks pass. Production41031608352 passed4/4 with top action, scroll, save and reload at375/1440px; sessions revoked. Test-only3533555 corrects the populated-textarea locator. Prior failed run41031133480 retained.",
+      "id": "409255fc8f44813fa294fd1d392240e6",
+      "title": "Keep Library Save details reachable above inspector metadata",
+      "status": "Done",
+      "severity": "Low",
+      "area": "Library",
+      "type": "UX",
+      "url": "https://app.notion.com/409255fc8f44813fa294fd1d392240e6"
     }
   ]
 }
