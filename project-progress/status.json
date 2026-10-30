@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T23:57:40.938Z",
+  "snapshotAt": "2026-10-30T02:10:25.165447Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Audit original A1 acceptance, then complete remaining Phase A app integration and native acceptance. Inspect the active account and sync warnings on a reachable Windows client for the unresolved iCloud gate.",
+  "nextAction": "Audit A2 service ownership, pairing and failure paths against its six original criteria before A3 activation. Keep actual two-client iCloud and hosted gates explicit.",
   "evidence": [
+    {
+      "label": "A1 original contract criteria verified",
+      "state": "Open",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/f44d565cbe909ec83fec8610a814456b505949f8",
+      "detail": "## A1 original contract criteria verified\n\n2026-10-29: [Runtime f44d565](https://github.com/DaveHomeAssist/prompt-lab/commit/f44d565cbe909ec83fec8610a814456b505949f8) is pushed and remote verified in [draft PR248](https://github.com/DaveHomeAssist/prompt-lab/pull/248).\n\nThe [original A1 acceptance audit](https://github.com/DaveHomeAssist/prompt-lab/blob/f44d565cbe909ec83fec8610a814456b505949f8/prompt-lab-source/docs/library-storage-contract-candidate.md#original-a1-acceptance-audit) now records passing evidence for all five contract criteria: complete content/history, unknown and missing-reference preservation with excluded credentials/settings, precise HTTP contracts, bound review and durable idempotency, and existing matching semantics with all source histories. This separates A1 from later native and iCloud gates.\n\nThe HTTP contract now describes object/receipt/error bodies, minimal four-field commits, limits and the acknowledged revision ETag. Full-preview callers remain supported. Dominic Node 22.23.4: all 423 storage tests, extension build/assembly, Markdown lint and four documentation contracts pass. Fifty-two actual synthetic HTTP responses across 13 routes and 11 successful request bodies validate; 16 malformed variants reject. All 81 standalone definitions match OpenAPI. Restarted folder restore replays the same receipt without adding another operation. Both new regression tests fail on the previous code. Initial harness failures were unreviewed current selection and malformed synthetic variants; the corrected harness follows the existing contract without relaxing runtime checks.\n\nThis increment did not repeat the earlier private export tests or activate a personal library. Original data and retained acceptance evidence remain preserved. The original A1 contract audit is closed; delivery and broader Phase A acceptance are incomplete. A1 and A2 remain In progress, PR248 remains draft. A2 production service ownership/pairing and its remaining failure paths, A3 app/native activation, A4 actual two-client iCloud and installed/human acceptance remain open. Hosted follows accepted Phase A, with no paid provisioning.\n\nConfiguration rechecked at 00:06 UTC October 30 (October 29 local): Mac Sync this Mac is on, 194.5 GB of 2 TB used. Duncan iCloud 15.10.39.0 is running with 165.15 GiB free but still lacks the Mac test folder and October 28 export. Walter SSH times out. Current Windows account and visible warnings remain unverified; no settings changed.\n\nNext: audit A2 against its six original acceptance criteria and complete the production service boundary before A3 activation. MUT-7 direct current-session instruction exception. The registered Next Steps Board is still absent. Current-head CI is separate; no merge, deployment or release is claimed.\n\nRuntime CI snapshot: seven checks pass, six remain running; Vercel reports preview success. Final tracking-head CI remains separate."
+    },
     {
       "label": "Legacy read cache and transaction contracts verified",
       "state": "Open",
@@ -1524,8 +1530,8 @@
     {
       "id": "402255fc8f4481819654d33c8453c6d7",
       "inPlan": false,
-      "nextAction": "Audit the original A1 contract criteria and record any remaining gaps separately from later native and iCloud gates.",
-      "verification": "Published transaction schema corrected for generations 1/2/3. All 79 definitions match OpenAPI; seven positive fixtures and 19 rejected malformed variants per validator pass. All 421 storage tests pass on Dominic. Full original A1 acceptance audit remains open.",
+      "nextAction": "Complete A1 delivery review alongside the A2 service acceptance audit; do not conflate later native and iCloud gates with the original contract audit.",
+      "verification": "The five original A1 contract criteria pass on candidate f44d565. All 423 storage tests and actual HTTP schemas pass on Dominic: 52 responses, 11 requests, 16 rejected malformed variants and 81 definitions. Delivery and later Phase A gates remain incomplete.",
       "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
       "status": "In progress",
       "severity": "Medium",
@@ -1572,8 +1578,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Complete remaining Phase A app integration and native acceptance; verify actual two-client iCloud sync.",
-      "verification": "Runtime f35acb45891b5d7b1944ea6b970f741c916ed104 is pushed and remote verified in draft PR248. A bounded legacy read cache now shares verified immutable content across retained generation 1/2 journals. It keeps the existing memory and entry limits, rereads and hashes actual file bytes on every access, and preserves every historical file.\n\nDominic Node 22.23.4: all 421 storage tests, extension build/assembly, Markdown lint and four documentation contracts pass. The old implementation reparses 11 legacy journals in the regression; the new cache reparses none. Both published schemas validate seven positive cases, including three actual generation 3 manifests and both earlier formats, and reject 19 malformed variants each. All 79 definitions match OpenAPI. Eight task files match the runner. An initial build command used a nonexistent directory; the corrected documented directory passes.\n\nMac Node 22.22.1: six folder operations, offline retry and reopen on a fresh isolated real-export copy retain 218 fixture prompts, two original Trash rows, 18 original folders, all prior histories, 71 objects and 13 byte-identical earlier transaction files. Exactly six operations are added. Original export bytes/hash remain unchanged; no private upload or personal activation. Saves take 3.488 to 4.452 seconds versus 10.517 to 12.436 seconds; open takes 0.931 versus 4.260 seconds. These are observations, not a latency guarantee. The modern synthetic save remains comparable at 2.965 seconds.\n\nConfiguration check at 23:55 UTC: the Mac settings are accessible, Sync this Mac is on, and storage use is 194.5 GB of 2 TB. Both Windows devices appear in the Apple Account device list, and the Mac probe reports uploaded with sync unpaused. Duncan iCloud 15.10.39.0 is registered and running with 165.15 GiB free, but lacks the Mac test folder and October 28 export. Its bounded 256 KiB log sample has 340 missing-parent matches and 252 ancestor-not-found matches. These are matching lines, not unique failures or root-cause proof. Walter SSH times out. Current Windows account/warning UI and actual two-client sync remain unverified. No settings changed.\n\nA1 and A2 remain In progress; PR248 remains draft. Remaining app integration, native ownership/pairing, real two-client iCloud and installed/human acceptance remain open. Hosted follows accepted Phase A, with no paid provisioning. Next: audit A1 against its original contract acceptance criteria, then complete the remaining Phase A integration. MUT-7 direct current-session instruction exception. The registered Next Steps Board remains absent.",
+      "nextAction": "Audit the six original A2 criteria and finish production service ownership, pairing and failure-path acceptance before A3 activation.",
+      "verification": "A1 contract audit passes on candidate f44d565. Shared folder/API tests pass, including restarted restore idempotency and all 423 storage tests. Production service ownership, pairing and remaining A2 acceptance remain open.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
