@@ -73,6 +73,7 @@ async function resetDocsDir() {
     join(docsDir, 'privacy'),
     join(docsDir, 'fonts'),
     join(docsDir, '.nojekyll'),
+    // promptlab.tools is served by Vercel; remove any stale Pages CNAME.
     join(docsDir, 'CNAME'),
   ];
 
@@ -156,9 +157,6 @@ async function writeNoJekyll() {
   await writeFile(join(docsDir, '.nojekyll'), '', 'utf8');
 }
 
-async function writeCname() {
-  await writeFile(join(docsDir, 'CNAME'), 'promptlab.tools\n', 'utf8');
-}
 
 async function writeLegacyPrivacyRedirect() {
   await writeFile(
@@ -269,7 +267,6 @@ async function main() {
   }
 
   await writeNoJekyll();
-  await writeCname();
   await writeLegacyPrivacyRedirect();
   await writePrivacyPrettyRoute();
   await instrumentGoogleAnalytics(docsDir);
