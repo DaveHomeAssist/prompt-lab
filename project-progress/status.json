@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T04:33:50.436Z",
+  "snapshotAt": "2026-10-30T04:52:01.757Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect the reviewed native selection to app-owned migration and activation, then verify the exact installed app and two real iCloud clients.",
+  "nextAction": "Connect Scratch and pack writers to the selected app library, then complete reviewed migration, installed app/API parity and two real iCloud clients.",
   "evidence": [
+    {
+      "label": "App record routing and save acknowledgement",
+      "state": "Open",
+      "detail": "Candidate 863a9c2 pushed in draft PR248. A3 source integration is In progress: one App dependency routes Library, Evaluate, Compare, test cases, provenance and chain history. Stale edits reject, exact retries remain stable and save acknowledgement preserves newer typing. Dominic: 1,584 shared tests, 231 legacy tests, 26 repository tests, extension build and docs pass; 14 changed inputs match. Mac isolated complete real export: 216 prompts, three evaluations and four Scratch notes read; disposable record edits retain all 16 initial objects and original hash. Exact-head CI is running. Scratch, packs, reviewed migration, startup activation and installed/two-client acceptance remain open. No private upload, personal activation or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/863a9c2efd70c1b01d54b116cf416b4f0bb735b8"
+    },
     {
       "label": "Native folder review and client consent",
       "state": "Open",
@@ -1596,10 +1602,10 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
-      "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
+      "nextAction": "Connect Scratch and pack writers to the selected app library, then complete reviewed migration and activation.",
+      "verification": "A3 source integration started: actual App and record consumers use the selected repository. Source tests and isolated real-export store checks pass. Scratch, packs, migration, startup activation and installed/two-client acceptance remain open.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
-      "status": "Not started",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
