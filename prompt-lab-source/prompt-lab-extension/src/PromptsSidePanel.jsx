@@ -32,11 +32,15 @@ export default function PromptsSidePanel({
   sortBy = 'newest',
   view = 'all',
   onViewChange,
+  query: controlledQuery,
+  onQueryChange,
   onOpen,
   onInsert,
   onToggleFavorite,
 }) {
-  const [query, setQuery] = useState('');
+  const [localQuery, setLocalQuery] = useState('');
+  const query = controlledQuery ?? localQuery;
+  const setQuery = onQueryChange ?? setLocalQuery;
   const allEntries = useMemo(() => smartViewEntries(library, view, sortBy), [library, view, sortBy]);
   const entries = useMemo(() => allEntries.filter(entry => matchesLibrarySearch(entry, query)), [allEntries, query]);
   const label = WRITE_PROMPT_VIEWS.find((item) => item.id === view)?.label || 'All';

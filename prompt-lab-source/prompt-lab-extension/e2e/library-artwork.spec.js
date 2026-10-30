@@ -73,7 +73,10 @@ test('artwork image limits, failed Apply retry, inspector preservation and expor
   await expect(picker.getByRole('alert')).toContainText('up to 64 KB');
   await upload.setInputFiles({ name: 'big.png', mimeType: 'image/png', buffer: Buffer.alloc(65537) });
   await expect(picker.getByRole('alert')).toContainText('up to 64 KB');
-  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6pTAAAAAASUVORK5CYII=', 'base64');
+  await upload.setInputFiles({ name: 'damaged.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
+  await expect(picker.getByRole('alert')).toContainText('could not be read');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library'))[0].metadata.artwork?.image || '')).toBe('');
+  const pixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAQklEQVR4nGP4v08DK5LLu4MVkaqeYdSCUQuGgAXUMgiX+lELRi0YChZQyyBc6kctGLVgKFhALYNwqR+1YNSCIWABADaYmluVENWtAAAAAElFTkSuQmCC', 'base64');
   await upload.setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: pixel });
   await expect(picker.locator('img')).toBeVisible();
   await page.evaluate(() => {

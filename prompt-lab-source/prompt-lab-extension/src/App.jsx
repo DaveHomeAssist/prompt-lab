@@ -158,6 +158,7 @@ export default function App({
   const [writeSideView, setWriteSideView] = usePersistedState('pl2-write-side-view', 'scratch', {
     validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
   });
+  const [writePromptsQuery, setWritePromptsQuery] = useState('');
   const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
   // The prompt list last shown, so Prompts reopens where it was left.
   const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
@@ -1287,6 +1288,8 @@ export default function App({
                   sortBy={lib.sortBy}
                   view={writeSideView}
                   onViewChange={chooseWritePromptsView}
+                  query={writePromptsQuery}
+                  onQueryChange={setWritePromptsQuery}
                   onOpen={openPromptFromSide}
                   onInsert={(text, entry) => {
                     insertIntoPrompt(text);

@@ -196,3 +196,22 @@ test('the Library drawer resizes by pointer and keyboard, persists, and resets o
   expect(await page.evaluate(() => localStorage.getItem('pl2-library-drawer-width'))).toBe('null');
   await page.screenshot({ path: testInfo.outputPath('library-drawer.png') });
 });
+
+for (const width of [375, 1440]) {
+  test(`Write search survives closing and switching tabs at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 812 }); await seed(page); await page.goto('/app/');
+    const toggle = page.getByRole('button', { name: 'Prompts', exact: true });
+    await toggle.click();
+    const panel = page.getByRole('complementary', { name: 'Prompts beside Write' });
+    const search = panel.getByRole('searchbox');
+    await search.fill('weekly ops');
+    await expect.poll(() => sideTitles(page)).toEqual(['Weekly status update']);
+    await panel.getByRole('button', { name: 'Close side panel' }).click(); await toggle.click();
+    await expect(search).toHaveValue('weekly ops');
+    await expect.poll(() => sideTitles(page)).toEqual(['Weekly status update']);
+    await panel.getByRole('tab', { name: 'Scratch', exact: true }).click();
+    await page.getByRole('complementary', { name: 'Scratch notes beside Write' }).getByRole('tab', { name: 'Prompts', exact: true }).click();
+    await expect(search).toHaveValue('weekly ops');
+    await search.press('Escape'); await expect(search).toHaveValue(''); await expect(panel).toBeVisible();
+  });
+}
