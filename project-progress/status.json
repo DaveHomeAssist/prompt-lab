@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T03:59:52.173365Z",
+  "snapshotAt": "2026-10-30T04:18:28.875739Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Verify the exact packaged macOS lifecycle and helper ownership under app identity, then explicit pairing and the reviewed A3 picker/connection.",
+  "nextAction": "Connect native consent and reviewed folder selection, then verify the exact installed package and real two-client iCloud behavior.",
   "evidence": [
+    {
+      "label": "Native agent access and device setup",
+      "state": "Open",
+      "detail": "Candidate f7f3ebe pushed in draft PR248. Scoped agent credentials persist outside the library with 24-hour expiry, verified grants/revocations and renewal that preserves access. Duncan: 23 full-crate tests pass. Mac: 23 bounded native tests and one disposable Keychain test pass; actual helper HTTP checks cover scope, Origin rejection, renewal, restart and revocation. Desktop-only renewal negative control fails with 401 as expected. Dominic documentation checks pass. Explicit consent, reviewed folder activation, installed acceptance and actual two-client iCloud remain incomplete. Duncan iCloud runs but lacks the supplied export; Walter SSH times out. No personal activation or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/f7f3ebe8a35c859434910ea57c7aed63c8de35bd"
+    },
     {
       "label": "Native ownership across app crash",
       "state": "Open",
