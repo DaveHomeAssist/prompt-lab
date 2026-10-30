@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-29T11:54:12.091Z",
+  "snapshotAt": "2026-10-30T05:04:07.112092+00:00",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -9,10 +9,16 @@
     "complete": true,
     "runUrl": "https://app.notion.com/p/3d2255fc8f44810a85d4e3fec5ddc6f2"
   },
-  "mainSha": "35bfb9e35903e2f0edbb98746d8879c9a580549c",
+  "mainSha": "e4ba19b78188371ea933fcca670da30af41598c3",
   "overall": "Acceptance incomplete",
   "nextAction": "Undo receipt, result feedback/save target and Windows Scratch restart repairs are live with scoped acceptance passed. Retain regression coverage. Registered Next Steps Board HTML remains missing. Earlier unrelated project actions are retained as history: Workbench quality of life is live and scoped production acceptance passed. Reload open tabs to use Recent artwork and search beside Write. Earlier next actions retained as history: Finish combined quality of life candidate checks, merge and production acceptance. Earlier next actions retained as history: Deliver the PR247 Save UX follow-up after exact-head CI and deployed acceptance. Complete A1 source preservation and import/conflict semantics in draft PR248. Two-client iCloud propagation and the native packaging decision remain open. Hosted choices are settled: Neon with Clerk, US East, server-readable encrypted-at-rest storage, retained history/backups and separate erasure. No paid provisioning without separate approval. Registered Next Steps Board HTML remains missing. Earlier unrelated project actions are retained as history: Hosted model choice PR256 is live and scoped acceptance passed. Choose a model in Settings > Provider Settings. Review the separate intermittent Windows NSIS Scratch restart finding and the existing Undo receipt finding before any new repair. Registered Next Steps Board file remains absent. Previous snapshot next actions, preserved as history: Review the confirmed stale save receipt after Undo reset before authorizing a narrow repair. Actual provider, shortcuts, versions, reload, run-history and stale-tab acceptance passed. Earlier unrelated next actions remain historical: Retain the delivered save repair. Reload open tabs and reopen legacy saved editing sessions; broader native/human acceptance remains separate. Local board synchronization unavailable because registered file is missing. Prior snapshot actions, preserved as historical: Finish main verification and deliver PR252 test harness plus these records. Reload all open tabs; legacy edit sessions must reopen the prompt or save separately. Earlier unrelated next actions retained as historical, not re-audited in this repair: Retain the deployed local naming slice; no AI naming calls. Review the reconciled D-016 storage plan: chosen iCloud folder first, hosted second, complete history/backups and one shared app/API library. Runtime implementation remains Not started; hosted provider/cost, encryption and retention are open. Choose whether to purchase Clerk Pro (USD25/month or USD240/year) to unlock MFA, backup codes and custom session controls. Free production settings hardened and PR204 pending-session guard deployed; finish disposable MFA/recovery acceptance after plan decision. Account/billing hardening PR200/202 is released and scoped acceptance is complete; retain regression coverage and route intentional customer transfers through support. Retain the delivered October 23 prompt lifecycle (PR199, production verified); observe remaining exact-main CI. October intake Slice 2 (Prompts beside Write, Library drawer resizer, 960 px inspector) merged as c36862c and is live; signed-in production check open. Scratch space PR205/209 is released and scoped production acceptance passed. October intake (D-017) approved with every recommended option: Slice 0 (draft title fix) and Slice 1 (Scratch beside Write) merged and deployed; Slice 2 next (Write panel Recent and Favorites, wider inspector, Library drawer resizer). Signed-in production checks for both slices remain open. Retain25/1000 public request ceilings,180USD cycle spending cap and auto-reload off. Verify actual next promotional-credit renewal before changing the current day14 cycle alignment; Nov17 is the displayed expiration, not a proven renewal. PR190 merged5ab64c5 with Dave approval; all nine workflows pass on64fb1dc and production Library/restart4/4 pass. Reload old tabs for atomic deletion markers. Retain the strict audit gate after PR214 removed the withdrawn braces exception; no November 5 waiver deadline remains. Keep terms draft and not in effect. Obtain counsel review of operator identity, jurisdiction, tax, consent, retention/deletion and remaining flagged legal clauses before any separate approval to make terms effective. Complete the existing human/physical, disposable macOS installed interaction/signing, prior-version upgrade/snapshot restore and tagged-release acceptance gates. PR183 hosted pricing is verified released. Preserve CNAME PR179 ownership; no later feature scope inferred. Private Next Steps Board mapping remains absent. PR217 keeps failed enhance runs out of the draft title and golden comparison; force a signed-in production Enhance failure to finish its check.",
   "evidence": [
+    {
+      "label": "Artwork decode and retained Write search",
+      "state": "Verified",
+      "detail": "PR270 merged e4ba19b78188371ea933fcca670da30af41598c3. Browser decode required before accepting PNG/JPEG/WebP. Damaged file preserves artwork and allows retry. Write query survives panel close and Scratch switching; Clear/Escape still clear it and reload starts empty. Dominic Node22:39 focused tests,11 artwork browser cases and11 Write cases pass. GitHub1519 shared tests/134 files and231 legacy tests pass. Deployment dpl_2gou6TFJfd2cNz5FrKeuFeKabTJq READY. This scoped release does not close broader storage, platform or human acceptance.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/270"
+    },
     {
       "label": "Undo and Scratch scoped repair acceptance",
       "state": "Verified",
@@ -803,8 +809,8 @@
     },
     {
       "id": "3d2255fc8f44814bb93cf90f2931876e",
-      "title": "Workspace import fails to remap run associations",
-      "status": "Done",
+      "title": "BUG | PromptLab | Workspace Import Run Associations",
+      "status": "In progress",
       "severity": "High",
       "area": "Import",
       "type": "Bug",
@@ -1151,7 +1157,7 @@
     },
     {
       "id": "d39b7b5b076041de8718e4c2f1134422",
-      "title": "Finish desktop stabilization and cross-platform packaging proof",
+      "title": "RUN | PromptLab | Desktop Stabilization and Packaging Proof",
       "status": "In progress",
       "severity": "High",
       "area": "Background",
@@ -1166,7 +1172,7 @@
       "inPlan": false,
       "nextAction": "Finish the A1 source inventory, lossless import/conflict semantics and schema/API acceptance.",
       "verification": "Draft PR248 at8189de4; fresh private Mac export verification passed exact bytes and parsed JSON equality, original unchanged.216 Library,2 trash,21 stored versions. Full A1 incomplete.",
-      "title": "Define shared contracts and lossless fixtures A1 (sync slice 3)",
+      "title": "PRJ | PromptLab | Shared Contracts and Lossless Fixtures | A1",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
@@ -1191,7 +1197,7 @@
       "nextAction": "Review the reconciled folder-first plan before A1; hosted implementation follows Phase A acceptance and provider decisions.",
       "verification": "2026-10-23: current scope appended and read back in existing Notion row. iCloud folder first, hosted second; complete history/backups and one shared app/API library. Runtime Not started; previous web-first checklist superseded.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
-      "status": "Not started",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
@@ -1214,7 +1220,7 @@
       "inPlan": false,
       "nextAction": "Accept A1, then complete native service ownership, pairing and recovery APIs.",
       "verification": "Draft PR248 at8189de4 is an isolated reference candidate. Mac/Walter/Duncan synthetic iCloud propagation remains unverified; production service and app connection incomplete.",
-      "title": "Build durable folder service and local API A2 (sync slice 2)",
+      "title": "PRJ | PromptLab | Durable Folder Service and Local API | A2",
       "status": "In progress",
       "severity": "Medium",
       "area": "Library",
@@ -1247,7 +1253,7 @@
     },
     {
       "id": "402255fc8f44812cabebf92f0e4f9104",
-      "title": "Clarify prompt lifecycle and keep New Prompt in one place",
+      "title": "PRJ | PromptLab | Prompt Lifecycle and New Prompt Placement",
       "status": "Done",
       "severity": "Medium",
       "area": "Editor",
@@ -1499,7 +1505,7 @@
     },
     {
       "id": "408255fc8f4481a78adcf3b63de7de3f",
-      "title": "Windows NSIS drops Scratch content after restart",
+      "title": "BUG | PromptLab | Windows NSIS Scratch Retention",
       "status": "Done",
       "severity": "High",
       "area": "Background",
@@ -1512,8 +1518,8 @@
     {
       "id": "408255fc8f44816cabccedbb6b06e7f5",
       "inPlan": false,
-      "nextAction": "None for this scope. Use Recently used artwork and search beside Write.",
-      "verification": "Source PR261 mergedd82ac3a after all16 checks. Records PR263 mergedd1b853d after all6. Separate Undo context repair PR262 preserved. Readiness PR264 mergedfb0a527 after all7 checks onaa40fd2; it changes test setup and records only. Combined Dominic Node22 browser45/45 pass, in addition to1516 shared tests/134 files and231 legacy tests. Current hosted95 pass/one existing skip and landing25 pass. Final production dpl_9J5SdkWK3m9M5CG2UY5x4ENKRoXg READY atfb0a527; signed-in production40853024393 passes4/4 at375/1440px with all four disposable sessions revoked. No paid model calls. Separate result-save feedback follow-up PR265 remains open; signing, upgrade and human acceptance remain separate. Registered local board file absent at last check.",
+      "nextAction": "Use saved artwork and reopen the Write prompt panel with its search retained.",
+      "verification": "Original PR261 shipped. October30 PR270 follows up with browser decode validation and session query retention; Dominic39 focused tests,11 artwork and11 Write browser checks pass. Full GitHub1519 shared and231 legacy tests pass. Deployment dpl_2gou6TFJfd2cNz5FrKeuFeKabTJq READY; live damaged upload/retry and retained search checked separately in delivery notes.",
       "title": "Workbench quality of life and reuse",
       "status": "Done",
       "severity": "Medium",
