@@ -1,5 +1,41 @@
 # Library storage contract candidate
 
+## Native agent access: October 30
+
+The native owner now retains agent credentials alongside its desktop credential.
+The lifecycle under that same owner supports named read-only or explicitly
+write-enabled clients, 24-hour expiry, secure-store persistence, listing without
+secrets, and acknowledged revocation. Agent credentials reject every browser
+Origin. Browser pairing remains subject to the later secure-context acceptance.
+
+Keep the existing platform credential store and random-token primitive. Store
+the library binding and bounded client registry outside the library. Validate
+stored values before startup and compare the previous registry before writing.
+Persist and verify grants/revocations before installing the complete credential
+set through the helper's private channel. Desktop renewal must preserve agents.
+If acknowledgement is uncertain, stop accepting native connections and drain
+the helper without returning a new token or claiming successful revocation.
+
+The eventual native consent UI must name the library, client, scope and expiry
+and pass the reviewed library identity back to the owner. This boundary adds no
+public pairing endpoint or invokable grant command before that review is wired.
+It does not protect against a compromised trusted native app or local account.
+No new dependency, browser policy change or personal-library activation is needed.
+
+Acceptance covers scope, expiry, malformed and wrong-library stores, denial and
+readback failure, stale registry rejection, concurrent grants, renewal retaining
+clients, revocation and restart, and uncertain helper acknowledgement. Exercise
+real helper authorization and a disposable Mac Keychain entry separately from
+native consent UI and installed-application acceptance.
+
+Source acceptance: 23 native tests passed on Duncan, and 23 tests passed in the
+bounded Mac owner harness, including real-helper HTTP authorization, renewal,
+restart and revocation. A disposable Mac Keychain grant/revoke/readback test
+passed and removed its entry. Restoring desktop-only credential replacement in
+the isolated harness made the real-helper renewal test fail with HTTP 401, as
+expected. Native consent UI, installed activation, and two-client iCloud
+propagation remain unverified; these source checks do not close A2.
+
 ## Native ownership after app crash: October 29
 
 The app's single-instance guard ends when its process dies, while its helper

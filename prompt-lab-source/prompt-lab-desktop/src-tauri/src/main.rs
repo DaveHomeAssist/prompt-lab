@@ -3,6 +3,7 @@
 
 mod diagnostics;
 mod diagnostics_store;
+pub mod library_access;
 pub mod library_native;
 pub mod library_service;
 use tauri::menu::{Menu, MenuItem, MenuItemKind};

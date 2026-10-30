@@ -1,3 +1,4 @@
+use crate::library_access::{self, AccessStore, AgentConnection, AgentRequest, AgentSummary};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
@@ -357,9 +358,47 @@ impl Drop for Helper {
 struct Running {
     helper: Helper,
     credential: DesktopCredential,
+    agents: AccessStore,
     base_url: String,
     stopping: bool,
     error: Option<String>,
+}
+
+fn access_credentials(
+    desktop: &DesktopCredential,
+    agents: &AccessStore,
+) -> Result<Vec<Value>, String> {
+    let mut credentials = vec![desktop_access(desktop)];
+    credentials.extend(agents.credentials(now()?));
+    Ok(credentials)
+}
+
+impl Running {
+    fn unavailable(&mut self, error: &str) {
+        self.stopping = true;
+        self.error = Some(error.into());
+        self.helper.input.take();
+    }
+
+    fn install_access(
+        &mut self,
+        desktop: &DesktopCredential,
+        agents: &AccessStore,
+    ) -> Result<(), String> {
+        let credentials = access_credentials(desktop, agents)?;
+        let ids: Vec<_> = credentials.iter().map(|item| item["id"].clone()).collect();
+        let confirmed = self
+            .helper
+            .request("credentials", json!({ "credentials": credentials }));
+        if !matches!(confirmed, Ok(ref response)
+            if response["state"] == "running" && response["credentialIds"] == json!(ids))
+        {
+            // Preserve ownership while an uncertain helper drains; never expose a grant.
+            self.unavailable("CREDENTIAL_UPDATE_FAILED");
+            return Err("CREDENTIAL_UPDATE_FAILED".into());
+        }
+        Ok(())
+    }
 }
 
 pub struct LibraryService {
@@ -395,8 +434,11 @@ impl LibraryService {
         if !directory.is_absolute() || !valid_id(&library_id) {
             return Err("INVALID_LIBRARY".into());
         }
-        self.start_owned_with(node, entry, directory, Some(&ownership), || {
-            desktop_credential(&library_id)
+        self.start_bound(node, entry, directory, Some(&ownership), || {
+            Ok((
+                desktop_credential(&library_id)?,
+                library_access::load(&library_id, now()?)?,
+            ))
         })
     }
 
@@ -411,6 +453,7 @@ impl LibraryService {
         self.start_owned_with(node, entry, directory, None, load_credential)
     }
 
+    #[cfg(test)]
     fn start_owned_with(
         &self,
         node: PathBuf,
@@ -418,6 +461,21 @@ impl LibraryService {
         directory: PathBuf,
         ownership: Option<&Path>,
         load_credential: impl FnOnce() -> Result<DesktopCredential, String>,
+    ) -> Result<ServiceStatus, String> {
+        self.start_bound(node, entry, directory, ownership, || {
+            let credential = load_credential()?;
+            let agents = AccessStore::empty(&credential.library_id);
+            Ok((credential, agents))
+        })
+    }
+
+    fn start_bound(
+        &self,
+        node: PathBuf,
+        entry: PathBuf,
+        directory: PathBuf,
+        ownership: Option<&Path>,
+        load_credential: impl FnOnce() -> Result<(DesktopCredential, AccessStore), String>,
     ) -> Result<ServiceStatus, String> {
         let mut running = self
             .running
@@ -430,7 +488,7 @@ impl LibraryService {
         let owner = ownership.map(acquire_owner).transpose()?;
         self.active.store(true, Ordering::SeqCst);
         // Serialize platform credential access with ownership, including startup races.
-        let credential = match load_credential() {
+        let (credential, agents) = match load_credential() {
             Ok(value) => value,
             Err(error) => {
                 self.active.store(false, Ordering::SeqCst);
@@ -446,7 +504,7 @@ impl LibraryService {
             let response = helper.request(
                 "start",
                 json!({ "directory": directory, "libraryId": credential.library_id,
-                "credentials": [desktop_access(&credential)] }),
+                "credentials": access_credentials(&credential, &agents)? }),
             )?;
             let base_url = response["baseUrl"]
                 .as_str()
@@ -465,6 +523,7 @@ impl LibraryService {
             Ok(Running {
                 helper,
                 credential,
+                agents,
                 base_url,
                 stopping: false,
                 error: None,
@@ -571,21 +630,7 @@ impl LibraryService {
                 value.error = Some("SECURE_STORE_INVALID".into());
                 return Err("SECURE_STORE_INVALID".into());
             }
-            let confirmed = value.helper.request(
-                "credentials",
-                json!({ "credentials": [desktop_access(&next)] }),
-            );
-            if !matches!(confirmed, Ok(ref response)
-                if response["state"] == "running" && response["credentialIds"] == json!(["desktop"]))
-            {
-                // The helper may have applied the credential even if its reply was
-                // lost. Do not return either token or allow a second owner. EOF
-                // drains accepted writes while we retain the uncertain child.
-                value.stopping = true;
-                value.error = Some("CREDENTIAL_UPDATE_FAILED".into());
-                value.helper.input.take();
-                return Err("CREDENTIAL_UPDATE_FAILED".into());
-            }
+            value.install_access(&next, &value.agents.clone())?;
             value.credential = next;
         }
         value.error = None;
@@ -595,6 +640,93 @@ impl LibraryService {
             token: value.credential.token.clone(),
             expires_at: value.credential.expires_at,
         })
+    }
+
+    pub fn agent_access(&self, library_id: &str) -> Result<Vec<AgentSummary>, String> {
+        let mut running = self
+            .running
+            .lock()
+            .map_err(|_| "SERVICE_UNAVAILABLE".to_string())?;
+        let value = running.as_mut().ok_or("SERVICE_UNAVAILABLE")?;
+        if value.stopping || value.helper.exited()? {
+            return Err("SERVICE_UNAVAILABLE".into());
+        }
+        if value.credential.library_id != library_id {
+            return Err("WRONG_LIBRARY".into());
+        }
+        Ok(value.agents.summaries(now()?))
+    }
+
+    // Only a native consent flow may call this with the library identity it reviewed.
+    // No Tauri grant command is exposed before that consent flow is connected.
+    pub fn grant_agent(
+        &self,
+        library_id: &str,
+        request: AgentRequest,
+    ) -> Result<AgentConnection, String> {
+        self.grant_agent_with(library_id, request, library_access::save)
+    }
+
+    fn grant_agent_with(
+        &self,
+        library_id: &str,
+        request: AgentRequest,
+        save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
+    ) -> Result<AgentConnection, String> {
+        let mut running = self
+            .running
+            .lock()
+            .map_err(|_| "SERVICE_UNAVAILABLE".to_string())?;
+        let value = running.as_mut().ok_or("SERVICE_UNAVAILABLE")?;
+        if value.stopping || value.helper.exited()? {
+            return Err("SERVICE_UNAVAILABLE".into());
+        }
+        if value.credential.library_id != library_id {
+            return Err("WRONG_LIBRARY".into());
+        }
+        let at = now()?;
+        let (next, id) = value.agents.grant(request, at)?;
+        if let Err(error) = save(&value.agents, &next, at) {
+            value.unavailable(&error);
+            return Err(error);
+        }
+        value.install_access(&value.credential.clone(), &next)?;
+        value.agents = next;
+        value.error = None;
+        value.agents.connection(&id, &value.base_url, now()?)
+    }
+
+    pub fn revoke_agent(&self, library_id: &str, client_id: &str) -> Result<(), String> {
+        self.revoke_agent_with(library_id, client_id, library_access::save)
+    }
+
+    fn revoke_agent_with(
+        &self,
+        library_id: &str,
+        client_id: &str,
+        save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let mut running = self
+            .running
+            .lock()
+            .map_err(|_| "SERVICE_UNAVAILABLE".to_string())?;
+        let value = running.as_mut().ok_or("SERVICE_UNAVAILABLE")?;
+        if value.stopping || value.helper.exited()? {
+            return Err("SERVICE_UNAVAILABLE".into());
+        }
+        if value.credential.library_id != library_id {
+            return Err("WRONG_LIBRARY".into());
+        }
+        let next = value.agents.revoke(client_id)?;
+        if let Err(error) = save(&value.agents, &next, now()?) {
+            // A write or readback may be uncertain. Do not leave old access live.
+            value.unavailable(&error);
+            return Err(error);
+        }
+        value.install_access(&value.credential.clone(), &next)?;
+        value.agents = next;
+        value.error = None;
+        Ok(())
     }
 
     pub fn stop(&self) -> Result<(), String> {
@@ -1035,6 +1167,269 @@ clearTimeout(deadline);
             0
         };
         value.credential.clone()
+    }
+
+    fn agent_request(access: crate::library_access::AgentAccess) -> AgentRequest {
+        AgentRequest {
+            label: "Disposable acceptance client".into(),
+            access,
+        }
+    }
+
+    #[test]
+    fn agent_grants_serialize_and_reject_a_different_reviewed_library() {
+        use crate::library_access::AgentAccess;
+        use std::sync::{Arc, Barrier};
+        let fixture = Fixture::new(WORKER);
+        let service = Arc::new(LibraryService::default());
+        fixture.start(&service).unwrap();
+        let wrong = service.grant_agent_with(
+            "foreign",
+            agent_request(AgentAccess::ReadWrite),
+            |_, _, _| panic!("wrong library must not persist"),
+        );
+        assert_eq!(wrong.err().as_deref(), Some("WRONG_LIBRARY"));
+        assert!(service.agent_access("foreign").is_err());
+        assert!(service
+            .revoke_agent_with("foreign", "missing", |_, _, _| panic!(
+                "wrong library must not persist"
+            ))
+            .is_err());
+        let stored = Arc::new(Mutex::new(AccessStore::empty("fixture")));
+        let barrier = Arc::new(Barrier::new(4));
+        let callers: Vec<_> = (0..4)
+            .map(|_| {
+                let (service, stored, barrier) = (service.clone(), stored.clone(), barrier.clone());
+                thread::spawn(move || {
+                    barrier.wait();
+                    service
+                        .grant_agent_with(
+                            "fixture",
+                            agent_request(AgentAccess::ReadOnly),
+                            |previous, next, _| {
+                                let mut current = stored.lock().unwrap();
+                                assert!(*current == *previous);
+                                *current = next.clone();
+                                Ok(())
+                            },
+                        )
+                        .unwrap()
+                })
+            })
+            .collect();
+        let grants: Vec<_> = callers
+            .into_iter()
+            .map(|caller| caller.join().unwrap())
+            .collect();
+        assert_eq!(stored.lock().unwrap().summaries(now().unwrap()).len(), 4);
+        let metadata = serde_json::to_string(&service.agent_access("fixture").unwrap()).unwrap();
+        for grant in grants {
+            assert!(!metadata.contains(&grant.token));
+        }
+        service.stop().unwrap();
+    }
+
+    #[test]
+    fn uncertain_agent_changes_drain_without_returning_success() {
+        use crate::library_access::AgentAccess;
+        let ack = "credentialIds:frame.args.credentials.map(item=>item.id)";
+        for revoke in [false, true] {
+            for denied in [false, true] {
+                // A revoke needs a successful grant before deliberately broken acknowledgement.
+                let script = WORKER.replace(ack, if revoke {
+                    "credentialIds:frame.args.credentials.length === 2 ? frame.args.credentials.map(item=>item.id) : ['wrong']"
+                } else { "credentialIds:['wrong']" });
+                let fixture = Fixture::new(&script);
+                let service = LibraryService::default();
+                fixture.start(&service).unwrap();
+                let result = if revoke {
+                    let grant = service
+                        .grant_agent_with(
+                            "fixture",
+                            agent_request(AgentAccess::ReadWrite),
+                            |_, _, _| Ok(()),
+                        )
+                        .unwrap();
+                    service.revoke_agent_with("fixture", &grant.client.id, |_, _, _| {
+                        if denied {
+                            Err("SECURE_STORE_UNVERIFIED".into())
+                        } else {
+                            Ok(())
+                        }
+                    })
+                } else {
+                    service
+                        .grant_agent_with(
+                            "fixture",
+                            agent_request(AgentAccess::ReadWrite),
+                            |_, _, _| {
+                                if denied {
+                                    Err("SECURE_STORE_UNVERIFIED".into())
+                                } else {
+                                    Ok(())
+                                }
+                            },
+                        )
+                        .map(|_| ())
+                };
+                assert!(result.is_err());
+                let owner = service.running.lock().unwrap();
+                assert!(owner.as_ref().unwrap().stopping);
+                assert!(owner.as_ref().unwrap().helper.input.is_none());
+                drop(owner);
+                assert!(service.connection().is_err());
+                service.stop().unwrap();
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn agent_access_reaches_real_helper_and_survives_renewal_and_restart() {
+        use crate::library_access::AgentAccess;
+        use std::net::TcpStream;
+        fn request(
+            base: &str,
+            token: &str,
+            method: &str,
+            path: &str,
+            origin: Option<&str>,
+            body: &str,
+        ) -> u16 {
+            let address = base.strip_prefix("http://").unwrap();
+            let mut stream = TcpStream::connect(address).unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            stream
+                .set_write_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let origin = origin
+                .map(|value| format!("Origin: {value}\r\n"))
+                .unwrap_or_default();
+            let bytes = format!("{method} {path} HTTP/1.1\r\nHost: {address}\r\nAuthorization: Bearer {token}\r\n{origin}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}", body.len());
+            stream.write_all(bytes.as_bytes()).unwrap();
+            let mut line = String::new();
+            BufReader::new(stream).read_line(&mut line).unwrap();
+            line.split_whitespace().nth(1).unwrap().parse().unwrap()
+        }
+        let fixture = Fixture::new(WORKER);
+        let helper = std::env::var_os("PL_TEST_LIBRARY_HELPER")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../library-storage/service-worker.mjs")
+            });
+        assert!(
+            helper.is_file(),
+            "real helper source required for acceptance"
+        );
+        let stored = Mutex::new(AccessStore::empty("fixture"));
+        let service = LibraryService::default();
+        let start = || {
+            service
+                .start_bound(
+                    fixture.node.clone(),
+                    helper.clone(),
+                    fixture.root.join("library"),
+                    None,
+                    || {
+                        Ok((
+                            new_credential("fixture", now()?)?,
+                            stored.lock().unwrap().clone(),
+                        ))
+                    },
+                )
+                .unwrap()
+        };
+        let save = |previous: &AccessStore, next: &AccessStore, _: u64| {
+            let mut current = stored.lock().unwrap();
+            assert!(*current == *previous);
+            *current = next.clone();
+            Ok(())
+        };
+        let base = start().base_url.unwrap();
+        let reader = service
+            .grant_agent_with("fixture", agent_request(AgentAccess::ReadOnly), save)
+            .unwrap();
+        let writer = service
+            .grant_agent_with("fixture", agent_request(AgentAccess::ReadWrite), save)
+            .unwrap();
+        assert_eq!(
+            request(&base, &reader.token, "GET", "/v1/library", None, ""),
+            200
+        );
+        assert_eq!(
+            request(
+                &base,
+                &reader.token,
+                "POST",
+                "/v1/library/previews",
+                None,
+                "{}"
+            ),
+            403
+        );
+        assert_eq!(
+            request(
+                &base,
+                &writer.token,
+                "GET",
+                "/v1/library",
+                Some("tauri://localhost"),
+                ""
+            ),
+            403
+        );
+        let preview =
+            r#"{"libraryId":"fixture","expectedRevision":null,"sourceText":"{\"library\":[]}"}"#;
+        assert_eq!(
+            request(
+                &base,
+                &writer.token,
+                "POST",
+                "/v1/library/previews",
+                None,
+                preview
+            ),
+            201
+        );
+        expire_connection(&service, false);
+        service
+            .connection_with(|id| new_credential(id, now()?))
+            .unwrap();
+        assert_eq!(
+            request(&base, &reader.token, "GET", "/v1/library", None, ""),
+            200
+        );
+        service.stop().unwrap();
+        let restarted = start().base_url.unwrap();
+        assert_eq!(
+            request(&restarted, &writer.token, "GET", "/v1/library", None, ""),
+            200
+        );
+        service
+            .revoke_agent_with("fixture", &writer.client.id, save)
+            .unwrap();
+        assert_eq!(
+            request(&restarted, &writer.token, "GET", "/v1/library", None, ""),
+            401
+        );
+        assert_eq!(
+            request(&restarted, &reader.token, "GET", "/v1/library", None, ""),
+            200
+        );
+        service.stop().unwrap();
+        let final_base = start().base_url.unwrap();
+        assert_eq!(
+            request(&final_base, &writer.token, "GET", "/v1/library", None, ""),
+            401
+        );
+        assert_eq!(
+            request(&final_base, &reader.token, "GET", "/v1/library", None, ""),
+            200
+        );
+        service.stop().unwrap();
     }
 
     #[test]
