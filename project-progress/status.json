@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T05:45:57.297Z",
+  "snapshotAt": "2026-10-30T06:10:44.067Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "a04f91eda3a6097d32d88402b2f5dad0d0ca6eac",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect pack imports and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
+  "nextAction": "Connect workspace import/export and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
   "evidence": [
+    {
+      "label": "Reviewed pack imports and preserved folder paths",
+      "state": "Open",
+      "detail": "Candidate 7af094a pushed in draft PR248. Reviewed file, shared-link and starter-pack imports use the selected library with retained retries, exact source text, complete histories and one atomic command. New collection paths map to local folders without changing historical plan hashes. Dominic Node22.23.4: all 443 storage tests, 1,635 app tests across 144 files, 231 legacy tests, extension build and docs pass. Twenty-six pack integration tests include 12 import/matching checks; a new regression reproduced missing folder mapping before the fix. Real Chromium through the local API passes at 375/1440/2560 pixels, with inspected screens and no page overflow. All 25 changed inputs match the runner. Mac isolated complete real export after a folder edit: one replaced, one added, one skipped; 215 unrelated prompts, both histories, three evaluations, four Scratch notes and all 21 prior objects retained; original hash unchanged. Walter times out; Duncan iCloud 15.10.39.0, processes, root and inbox are present but expected export is absent. Candidate startup remains on the existing local store. Exact-source CI shows successful Vercel preview checks only; required Actions acceptance is unverified. Workspace import/export, remaining Library actions, reviewed activation, installed and actual two-client acceptance remain open. No personal activation, device changes, private upload or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/7af094a299009045f06c53327d75061b97d86b62"
+    },
     {
       "label": "Pack Studio routing and preserved export history",
       "state": "Open",
@@ -1614,8 +1620,8 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": "Connect pack imports and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
-      "verification": "Candidate d76ae8c pushed in draft PR248. Pack Studio reads the selected registry and publishes, updates and uninstalls with durable acknowledgement, retained retries and one atomic command. Downloads preserve raw history and unknown fields. Dominic Node22.23.4: final 1,623 app tests across 144 files, all 441 storage tests, extension build and docs pass. Twenty-five focused tests include 14 Pack Studio integration scenarios. A negative control reproduces premature clearing without the acknowledgement wait. Real Chromium through the local API passes at 375/1440/2560 pixels; the failed-before history assertion passes after using retained records. All 13 changed inputs match. Mac isolated complete real export: two selected prompts moved to Trash; 214 unrelated prompts, three evaluations, four Scratch notes and all 16 initial objects preserved; original hash unchanged. Walter times out; Duncan iCloud root and processes exist but expected export is absent. Candidate startup still uses the existing local store. Exact-source CI shows preview checks only; required Actions acceptance is unverified. Pack imports, remaining Library actions, reviewed activation, installed and two-client acceptance remain open. No personal activation, private upload or paid provisioning.",
+      "nextAction": "Connect workspace import/export and remaining Library actions to the selected repository before reviewed migration, activation and installed/two-client acceptance.",
+      "verification": "Candidate 7af094a pushed in draft PR248. Reviewed file, shared-link and starter-pack imports use the selected library with retained retries, exact source text, complete histories and one atomic command. New collection paths map to local folders without changing historical plan hashes. Dominic Node22.23.4: all 443 storage tests, 1,635 app tests across 144 files, 231 legacy tests, extension build and docs pass. Twenty-six pack integration tests include 12 import/matching checks; a new regression reproduced missing folder mapping before the fix. Real Chromium through the local API passes at 375/1440/2560 pixels, with inspected screens and no page overflow. All 25 changed inputs match the runner. Mac isolated complete real export after a folder edit: one replaced, one added, one skipped; 215 unrelated prompts, both histories, three evaluations, four Scratch notes and all 21 prior objects retained; original hash unchanged. Walter times out; Duncan iCloud 15.10.39.0, processes, root and inbox are present but expected export is absent. Candidate startup remains on the existing local store. Exact-source CI shows successful Vercel preview checks only; required Actions acceptance is unverified. Workspace import/export, remaining Library actions, reviewed activation, installed and actual two-client acceptance remain open. No personal activation, device changes, private upload or paid provisioning.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
       "status": "In progress",
       "severity": "Medium",
