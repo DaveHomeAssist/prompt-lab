@@ -3703,6 +3703,9 @@
           },
           "sourceInventory": {
             "$ref": "#/components/schemas/SourceCaptureInventory"
+          },
+          "currentView": {
+            "$ref": "#/components/schemas/ImportCurrentView"
           }
         },
         "required": [
@@ -3710,7 +3713,26 @@
           "expectedRevision",
           "sourceText"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "required": [
+                "currentView"
+              ]
+            },
+            "then": {
+              "required": [
+                "mode"
+              ],
+              "properties": {
+                "mode": {
+                  "const": "import"
+                }
+              }
+            }
+          }
+        ]
       },
       "LibrarySource": {
         "type": "object",
@@ -4097,6 +4119,18 @@
           },
           "deletionReview": {
             "$ref": "#/components/schemas/DeletionReview"
+          },
+          "currentView": {
+            "$ref": "#/components/schemas/ImportCurrentView"
+          },
+          "currentViewPlan": {
+            "$ref": "#/components/schemas/CurrentViewPlan"
+          },
+          "recordReview": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportRecordReview"
+            }
           }
         },
         "required": [
@@ -4112,7 +4146,21 @@
           "activationReady",
           "fingerprint"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "dependentRequired": {
+          "currentView": [
+            "currentViewPlan",
+            "recordReview"
+          ],
+          "currentViewPlan": [
+            "currentView",
+            "recordReview"
+          ],
+          "recordReview": [
+            "currentView",
+            "currentViewPlan"
+          ]
+        }
       },
       "Snapshot": {
         "type": "object",
@@ -6079,6 +6127,9 @@
               },
               "sourceInventory": {
                 "$ref": "#/components/schemas/SourceCaptureInventory"
+              },
+              "currentView": {
+                "$ref": "#/components/schemas/ImportCurrentView"
               }
             },
             "required": [
@@ -6087,7 +6138,26 @@
               "expectedRevision",
               "sourceText"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "allOf": [
+              {
+                "if": {
+                  "required": [
+                    "currentView"
+                  ]
+                },
+                "then": {
+                  "required": [
+                    "mode"
+                  ],
+                  "properties": {
+                    "mode": {
+                      "const": "import"
+                    }
+                  }
+                }
+              }
+            ]
           },
           {
             "type": "object",
@@ -9307,7 +9377,8 @@
               "permanent-deletion",
               "checkpoint-not-selected",
               "folder-removed",
-              "pack-uninstalled"
+              "pack-uninstalled",
+              "import-not-selected"
             ]
           }
         },
@@ -10543,6 +10614,120 @@
         ],
         "additionalProperties": true,
         "description": "Four fields identify the reviewed input. Full Preview responses remain accepted; extra response fields do not override the stored review. Idempotency-Key is required separately in the HTTP header. A committed retry uses its retained fingerprint and revision even after restart."
+      },
+      "ImportCurrentView": {
+        "type": "object",
+        "properties": {
+          "resolutions": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "resolutions"
+        ],
+        "additionalProperties": false
+      },
+      "ImportRecordReview": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previousHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "valueHash": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                },
+                "incoming": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "key",
+                "valueHash",
+                "incoming"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "selected": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "decision": {
+            "enum": [
+              "reviewed",
+              "deleted",
+              "choice-required"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "domain",
+          "previous",
+          "previousHash",
+          "candidates",
+          "selected",
+          "decision"
+        ],
+        "additionalProperties": false
       }
     },
     "parameters": {

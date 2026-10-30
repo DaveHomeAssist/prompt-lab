@@ -1,5 +1,43 @@
 # Library storage contract candidate
 
+## Reviewed import continuity: October 30
+
+An archive import currently drops the selected app view, even when the app has
+already reviewed every incoming record. Add optional `currentView.resolutions`
+to the existing import request. For an already selected Library, preview both
+the archive and its resulting app view, then publish them in one operation.
+Keep requests without that option and historical fingerprints unchanged.
+
+Retain existing selections unless a reviewed choice changes them. Changed or
+missing incoming replicas of an existing related record require an explicit
+choice, including records previously changed by commands. New records use the
+existing complete-view conflict rules. Prompt choices remain in the import
+review. Deletion markers still apply and every original object survives.
+
+Acceptance: previews make no writes; incomplete choices cannot commit; one
+acknowledged operation retains the selected view; command-owned related records
+accept only listed occurrences; stale review, transfer verification, durable
+outbox retry and fresh folder reopen preserve the contract. This is the shared
+service prerequisite for workspace file import. A plain export is not a live
+device inventory. File provenance, complete backup file import, initial
+migration, app UI, two-client iCloud and hosted acceptance remain separate.
+
+Dominic Node 22.23.4 passes all 466 storage tests, the extension build and
+four documentation consistency contracts. Eleven import regressions cover app
+continuity, related record choices, deletion retention, stale review, forged
+plans, interrupted publication and authenticated API response-loss retry.
+Actual request and plan fixtures pass JSON Schema validation; invalid options
+and incomplete plans are rejected. A duplicate source capture found during
+verification is now indexed once, matching immutable commit inspection.
+
+An isolated Mac Node 22.22.1 check uses the complete real export as test data,
+with fixture inventories explicitly separate from the personal app stores.
+One reviewed import changes a disposable prompt and preserves the other 215
+prompts exactly, both Trash records, three evaluations, four Scratch notes and
+all 29 prior objects. The resulting 42-object backup verifies, a fresh folder
+reopens identically, retry creates no extra write, and the original export hash
+is unchanged. No private data is uploaded or personal Library activated.
+
 ## Reviewed checkpoint restore: October 30
 
 The existing restore preserves the archive but leaves a selected app without a

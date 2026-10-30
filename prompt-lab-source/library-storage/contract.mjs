@@ -213,11 +213,12 @@ export async function inspectPackage(pkg) {
       const { planLibraryImport } = await import('./import-plan.mjs');
       const expected = await planLibraryImport({ base: parent?.manifest ?? (parent ? { sources: [{ source: parent.sourceObject, workspace: parent.stateObject }] } : null),
         baseRevision: commit.parents[0] ?? null, incoming: { source: commit.source, workspace: commit.inputState }, objects: pkg.objects, resolutions: plan.resolutions,
-        sourceBindings, derivedSources, enforceDeletions: commit.selectionPolicy === 'preserve-deletions-v1' });
+        sourceBindings, derivedSources, enforceDeletions: commit.selectionPolicy === 'preserve-deletions-v1', current: parent, currentView: plan.currentView });
       if (expected.unresolved || canonical(expected) !== canonical(plan) || canonical(expected.manifest) !== canonical(manifest)) {
         throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import commit does not match its complete sources, parent and reviewed choices.', 409);
       }
-      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null };
+      result = { stateKind: 'library-state', manifest, workspace: null, sourceText: null,
+        ...(plan.currentViewPlan ? { currentView: plan.currentViewPlan } : {}) };
     } else if (operation === 'restore') {
       if (commit.parents.length !== 1 || !visited.has(commit.restoredCheckpointId)) throw new LibraryError('INVALID_CHECKPOINT', 'Restore must name an ancestor checkpoint and one current parent.', 409);
       const manifest = await readObject(pkg.objects, commit.state, 'library-state');
@@ -362,13 +363,13 @@ export async function inspectPackage(pkg) {
 const packageFor = state => ({ format: FORMAT, schemaVersion: VERSION, libraryId: state.libraryId,
   head: state.revision, objects: ownObjectTable(state.objects) });
 
-async function reviewImport(state, incomingPackage, resolutions) {
+async function reviewImport(state, incomingPackage, resolutions, currentView) {
   const current = state.revision ? await inspectPackage(packageFor(state)) : null;
   const incomingCommit = incomingPackage.objects[incomingPackage.head].data;
   const { planLibraryImport } = await import('./import-plan.mjs');
   return planLibraryImport({ base: current?.manifest ?? (current ? { sources: [{ source: current.sourceObject, workspace: current.stateObject }] } : null),
     baseRevision: state.revision, incoming: { source: incomingCommit.source, workspace: incomingCommit.state },
-    objects: { ...state.objects, ...incomingPackage.objects }, resolutions,
+    objects: { ...state.objects, ...incomingPackage.objects }, resolutions, current, currentView,
     sourceBindings: [...(current?.sourceBindings ?? []), ...(incomingCommit.sourceBinding ? [incomingCommit.sourceBinding] : [])],
     derivedSources: current?.derivedSources ?? [],
     enforceDeletions: Boolean(incomingCommit.sourceBinding || current?.sourceBindings.length) });
@@ -624,13 +625,18 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       try { return await currentReview(previewId); }
       catch (error) { previews.delete(previewId); throw error; }
     },
-    async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot', sourceInventory }) {
+    async preview({ libraryId, expectedRevision, sourceText, resolutions = {}, mode = 'snapshot', sourceInventory, currentView }) {
       if (!['snapshot', 'import'].includes(mode)) throw new LibraryError('INVALID_MODE', 'Select snapshot or import review.');
       canonical(resolutions);
-      // Take ownership before the first await. The caller may keep editing its
-      // choices while storage reads or hashes are still in flight.
+      // Own all caller input before asynchronous validation or storage reads.
       resolutions = structuredClone(resolutions);
       if (sourceInventory !== undefined) sourceInventory = structuredClone(sourceInventory);
+      if (currentView !== undefined) {
+        if (mode !== 'import') throw new LibraryError('INVALID_REQUEST', 'A reviewed current view is available only for import.', 400);
+        currentView = structuredClone(currentView);
+        const { validateImportCurrentView } = await import('./import-current-view.mjs');
+        validateImportCurrentView(currentView);
+      }
       const state = await readState();
       if (state.libraryId && libraryId !== state.libraryId) throw new LibraryError('WRONG_LIBRARY', 'Library identity differs.', 409);
       if (state.revision !== expectedRevision) throw new LibraryError('REVISION_CONFLICT', 'Library changed; preview again.', 409);
@@ -639,12 +645,13 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
       await inspectPackage(pkg);
       let importPlan;
       if (mode === 'import') {
-        importPlan = await reviewImport(state, pkg, resolutions);
+        importPlan = await reviewImport(state, pkg, resolutions, currentView);
       } else if (state.revision && (await inspectPackage(packageFor(state))).stateKind === 'library-state') {
         throw new LibraryError('UNSUPPORTED_OPERATION', 'Snapshot replacement cannot discard an imported library graph.');
       }
       const previewId = globalThis.crypto.randomUUID();
-      const input = { libraryId, expectedRevision, sourceText, resolutions, mode, ...(sourceInventory !== undefined ? { sourceInventory } : {}) };
+      const input = { libraryId, expectedRevision, sourceText, resolutions, mode, ...(sourceInventory !== undefined ? { sourceInventory } : {}),
+        ...(currentView !== undefined ? { currentView } : {}) };
       const fingerprint = await hash(input);
       const expires = now() + previewLifetimeMs;
       const response = { previewId, libraryId, expectedRevision, sourceHash: pkg.objects[pkg.head].data.source, fingerprint, expiresAt: expires, mode,
@@ -782,7 +789,7 @@ export function createCommandService(adapter, { now = () => Date.now(), previewL
             objects: { [planObject.hash]: planObject.object, [manifest.hash]: manifest.object, [commit.hash]: commit.object } };
         } else pkg = await createPackage(preview.input.sourceText, { ...identity, sourceInventory: preview.input.sourceInventory });
         if (preview.input.mode === 'import') {
-          const plan = await reviewImport(state, pkg, preview.input.resolutions);
+          const plan = await reviewImport(state, pkg, preview.input.resolutions, preview.input.currentView);
           if (canonical(plan) !== canonical(preview.response.importPlan)) throw new LibraryError('IMPORT_PLAN_MISMATCH', 'Import no longer matches its reviewed sources and choices.', 409);
           const incoming = pkg.objects[pkg.head].data;
           const planObject = await makeObject('import-plan', plan);

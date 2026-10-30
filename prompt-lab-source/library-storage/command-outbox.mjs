@@ -5,6 +5,7 @@ import { normalizePackRequest } from './pack-request.mjs';
 import { normalizeRecordRequest } from './record-request.mjs';
 import { normalizeCreateRequest } from './create-request.mjs';
 import { normalizeEditRequest } from './edit-request.mjs';
+import { validateImportCurrentView } from './import-current-view.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const id = value => typeof value === 'string' && value.length > 0 && value.length <= 200;
@@ -43,7 +44,7 @@ export function normalizeCommandRequest(value) {
     return { ...normalizeEditRequest(input), mode: operation };
   }
   const allowed = ['mode', 'libraryId', 'expectedRevision', ...(mode === 'restore' ? ['checkpointId', 'currentView']
-    : mode === 'reconcile' ? ['incoming', 'resolutions'] : mode === 'select' ? ['resolutions'] : ['sourceText', 'sourceInventory', 'resolutions'])];
+    : mode === 'reconcile' ? ['incoming', 'resolutions'] : mode === 'select' ? ['resolutions'] : ['sourceText', 'sourceInventory', 'resolutions', ...(mode === 'import' ? ['currentView'] : [])])];
   if (Object.keys(request).some(key => !allowed.includes(key))) fail('INVALID_COMMAND', 'Unknown command options cannot enter the outbox.');
   if (mode !== 'restore') {
     request.resolutions ??= {};
@@ -52,6 +53,7 @@ export function normalizeCommandRequest(value) {
   if (['snapshot', 'import'].includes(mode) && typeof request.sourceText !== 'string') fail('INVALID_COMMAND', 'Complete source text is required.');
   if (mode === 'restore' && !address(request.checkpointId)) fail('INVALID_COMMAND', 'A checkpoint address is required.');
   if (mode === 'restore' && Object.hasOwn(request, 'currentView') && request.currentView !== 'checkpoint') fail('INVALID_COMMAND', 'Restore currentView must select checkpoint.');
+  if (mode === 'import' && Object.hasOwn(request, 'currentView')) validateImportCurrentView(request.currentView);
   if (mode === 'reconcile' && !address(request.incoming?.manifestHash)) fail('INVALID_COMMAND', 'A complete incoming transfer is required.');
   return request;
 }

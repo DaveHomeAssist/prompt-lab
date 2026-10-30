@@ -240,7 +240,7 @@ export async function verifyImportPlan(plan, existing, incoming, resolutions = {
 }
 
 /** Build the complete library state, retaining all raw object pairs from ancestry. */
-export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {}, sourceBindings = [], derivedSources = [], enforceDeletions = false }) {
+export async function planLibraryImport({ base = null, baseRevision = null, incoming, objects, resolutions = {}, sourceBindings = [], derivedSources = [], enforceDeletions = false, current, currentView }) {
   if (!record(resolutions)) throw new LibraryError('INVALID_RESOLUTIONS', 'Import choices must be an object.');
   canonical(resolutions);
   resolutions = structuredClone(resolutions);
@@ -271,9 +271,15 @@ export async function planLibraryImport({ base = null, baseRevision = null, inco
     const { applyDeletionPolicy } = await import('./selection-policy.mjs');
     ({ manifest, ...deletionReview } = await applyDeletionPolicy(manifest, objects, sourceBindings, derivedSources));
   }
+  let appView;
+  if (currentView !== undefined) {
+    const { planImportedCurrentView } = await import('./import-current-view.mjs');
+    appView = await planImportedCurrentView({ current, manifest, baseRevision, objects, sourceBindings, derivedSources, incoming, currentView });
+  }
   const plan = { format: 'promptlab-library-import-plan', schemaVersion: 1, baseRevision, incoming, resolutions,
-    sources: review.sources, rows: review.rows, unresolved: review.unresolved + (deletionReview?.blocked.length ?? 0), manifest, activationReady: false,
-    ...(deletionReview ? { deletionReview } : {}) };
+    sources: review.sources, rows: review.rows, unresolved: review.unresolved + (deletionReview?.blocked.length ?? 0) + (appView?.unresolved ?? 0), manifest, activationReady: false,
+    ...(deletionReview ? { deletionReview } : {}),
+    ...(appView ? { currentView: structuredClone(currentView), currentViewPlan: appView.currentViewPlan, recordReview: appView.recordReview } : {}) };
   return { ...plan, fingerprint: await hash(plan) };
 }
 
