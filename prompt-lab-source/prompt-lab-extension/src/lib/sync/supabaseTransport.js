@@ -18,8 +18,15 @@ export function createSupabaseTransport({ url, publishableKey, getToken, fetchIm
     } catch (error) {
       throw Object.assign(new Error('Network unavailable.'), { status: 0, cause: error });
     }
-    // PostgREST maps the migration's PT413 / PT429 / PT503 errors to those HTTP codes.
-    if (!response.ok) throw new SyncHttpError(response.status);
+    // Refusals arrive as HTTP status codes either way: PostgREST maps raised
+    // PTnnn errors (not signed in, paused, too many) to nnn, and the RPCs set
+    // response.status for refusals they return as data (R-08), with the message
+    // in the JSON body. Only that short server message is surfaced.
+    if (!response.ok) {
+      let message;
+      try { const body = await response.json(); message = typeof body?.error === 'string' ? body.error : typeof body?.message === 'string' ? body.message : undefined; } catch { /* no body */ }
+      throw new SyncHttpError(response.status, message ? String(message).slice(0, 200) : undefined);
+    }
     return response.status === 204 ? null : response.json();
   }
   return {

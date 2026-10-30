@@ -36,7 +36,10 @@ function respond(request, body, status = 200, extra = {}) {
 
 /**
  * Fixed-window counter. Upstash/Vercel KV REST when configured (shared across
- * instances), otherwise an in-memory map (per instance, best effort).
+ * instances), otherwise an in-memory map (per instance, best effort, local
+ * development only). When KV is configured but fails, the limiter fails closed
+ * (re-review 2, R-02 low): a KV outage briefly blocks desktop sign-in instead
+ * of silently dropping to per-instance limits.
  */
 export function createRateLimiter({ env = process.env, fetchImpl = fetch, now = () => Date.now() } = {}) {
   const memory = new Map();
@@ -49,11 +52,12 @@ export function createRateLimiter({ env = process.env, fetchImpl = fetch, now = 
     if (redisUrl && redisToken) {
       try {
         const response = await fetchImpl(`${redisUrl}/incr/${encodeURIComponent(name)}`, { headers: { Authorization: `Bearer ${redisToken}` } });
+        if (response.ok === false) throw new Error('KV unavailable');
         count = Number((await response.json())?.result);
         if (count === 1) await fetchImpl(`${redisUrl}/expire/${encodeURIComponent(name)}/${windowSeconds * 2}`, { headers: { Authorization: `Bearer ${redisToken}` } });
       } catch { count = NaN; }
-    }
-    if (!Number.isFinite(count)) {
+      if (!Number.isFinite(count)) return { limited: true, retryAfterSeconds: 30, unavailable: true };
+    } else {
       for (const [k, v] of memory) if (Math.floor(now() / 1000 / v.windowSeconds) !== v.bucket) memory.delete(k);
       const entry = memory.get(name) || { bucket, windowSeconds, count: 0 };
       entry.count += 1;
@@ -82,6 +86,7 @@ export async function desktopTokenHandler(request, { env = process.env, fetchImp
   const requiredScopes = String(env.PL_DESKTOP_OAUTH_SCOPES || DEFAULT_SCOPES).split(/\s+/).filter(Boolean);
 
   const ipHit = await rateLimit(`ip:${clientIp(request)}`, RATE_LIMITS.ip);
+  if (ipHit.unavailable) return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 503, { 'Retry-After': String(ipHit.retryAfterSeconds) });
   if (ipHit.limited) return respond(request, { error: 'Too many sign-in attempts. Try again shortly.' }, 429, { 'Retry-After': String(ipHit.retryAfterSeconds) });
 
   const accessToken = (request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '');
@@ -111,6 +116,7 @@ export async function desktopTokenHandler(request, { env = process.env, fetchImp
   }
 
   const userHit = await rateLimit(`user:${userId}`, RATE_LIMITS.user);
+  if (userHit.unavailable) return respond(request, { error: 'Sign-in service unavailable.', retryable: true }, 503, { 'Retry-After': String(userHit.retryAfterSeconds) });
   if (userHit.limited) return respond(request, { error: 'Too many sign-in attempts. Try again shortly.' }, 429, { 'Retry-After': String(userHit.retryAfterSeconds) });
 
   try {

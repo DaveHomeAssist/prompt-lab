@@ -79,14 +79,18 @@ test('R-02: rate limited per IP and per user (429 with Retry-After)', async () =
   assert.equal(bad.calls.length, RATE_LIMITS.ip.limit, 'no Clerk call once limited');
 });
 
-test('R-02: the shared limiter uses KV REST when configured and falls back to memory on errors', async () => {
+test('R-02: the shared limiter uses KV REST when configured and fails closed on KV errors', async () => {
   const seen = [];
   const kv = createRateLimiter({ env: { KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 'kv-placeholder' }, fetchImpl: async (url) => { seen.push(url); return { json: async () => ({ result: 3 }) }; } });
   assert.deepEqual(await kv('ip:1', { limit: 2, windowSeconds: 60 }), { limited: true, retryAfterSeconds: 60 });
   assert.match(seen[0], /^https:\/\/kv\.example\.test\/incr\/promptlab%3Adesktop-token%3Aip%3A1%3A\d+$/);
   const broken = createRateLimiter({ env: { KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 't' }, fetchImpl: async () => { throw new Error('down'); } });
-  assert.equal((await broken('ip:1', { limit: 1, windowSeconds: 60 })).limited, false);
-  assert.equal((await broken('ip:1', { limit: 1, windowSeconds: 60 })).limited, true);
+  assert.deepEqual(await broken('ip:1', { limit: 100, windowSeconds: 60 }), { limited: true, retryAfterSeconds: 30, unavailable: true });
+  const refused = createRateLimiter({ env: { KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 't' }, fetchImpl: async () => ({ ok: false, status: 500, json: async () => ({ error: 'x' }) }) });
+  assert.equal((await refused('ip:1', { limit: 100, windowSeconds: 60 })).limited, true, 'a KV error response also fails closed');
+  const local = createRateLimiter({ env: {} });
+  assert.equal((await local('ip:1', { limit: 1, windowSeconds: 60 })).limited, false, 'without KV: in-memory counter');
+  assert.equal((await local('ip:1', { limit: 1, windowSeconds: 60 })).limited, true);
 });
 
 test('other origins refused, missing tokens refused, Clerk outage is retryable, secret never echoed', async () => {
@@ -99,3 +103,15 @@ test('other origins refused, missing tokens refused, Clerk outage is retryable, 
   assert.equal(response.status, 502);
   assert.doesNotMatch(await response.text(), /clerk-secret-placeholder/);
 });
+
+test('R-02 low: a KV outage answers 503 (retryable) before any Clerk call', async () => {
+  let clerkCalls = 0;
+  const env = { PL_ACCOUNT_SYNC_DESKTOP: 'on', CLERK_SECRET_KEY: 'sk_test_placeholder', PL_DESKTOP_OAUTH_CLIENT_ID: 'client_x' };
+  const rateLimit = createRateLimiter({ env: { KV_REST_API_URL: 'https://kv.example.test', KV_REST_API_TOKEN: 't' }, fetchImpl: async () => { throw new Error('down'); } });
+  const request = new Request('https://promptlab.tools/api/sync/desktop-token', { method: 'POST', headers: { Authorization: 'Bearer oat_x' } });
+  const response = await desktopTokenHandler(request, { env, rateLimit, fetchImpl: async () => { clerkCalls += 1; throw new Error('no'); } });
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).retryable, true);
+  assert.equal(clerkCalls, 0);
+});
+

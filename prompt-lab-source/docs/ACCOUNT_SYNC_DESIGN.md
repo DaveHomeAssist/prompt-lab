@@ -140,7 +140,7 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
   - `client_id` equals `PL_DESKTOP_OAUTH_CLIENT_ID`, so a token minted for any other OAuth app on the instance is refused;
   - its scopes include `PL_DESKTOP_OAUTH_SCOPES` (default `profile email`);
   - it is not revoked or expired, and `subject` is a Clerk user id.
-  It is rate limited per IP (10 a minute) and per user (5 tickets per 10 minutes), through Vercel KV / Upstash REST when configured and per-instance memory otherwise. Off (503) unless `PL_ACCOUNT_SYNC_DESKTOP=on`, `CLERK_SECRET_KEY` and `PL_DESKTOP_OAUTH_CLIENT_ID` are all set; CORS limited to Tauri origins.
+  It is rate limited per IP (10 a minute) and per user (5 tickets per 10 minutes), through Vercel KV / Upstash REST when configured (failing closed with a retryable 503 if KV errors) and per-instance memory only when KV is not configured. Off (503) unless `PL_ACCOUNT_SYNC_DESKTOP=on`, `CLERK_SECRET_KEY` and `PL_DESKTOP_OAUTH_CLIENT_ID` are all set; CORS limited to Tauri origins.
 - **Not built** (open, R-03): turning the ticket into a session inside the webview (clerk-js in non-browser mode, `standardBrowser: false`). Its client token must also stay in Rust, like the refresh token. This needs Clerk's Native API setting and a Clerk OAuth application for the desktop (Dave, R8) and a real desktop test. Whether Clerk matches a loopback redirect URI with a random port exactly or by prefix is also unverified (R-03).
 - CSP and shell scope: `npm run tauri:build:sync` writes a `--config` overlay that adds `https://clerk.promptlab.tools` and the project Supabase origin to `connect-src` and allows the shell to open only `https://clerk.promptlab.tools/oauth/authorize?...` besides promptlab.tools. Normal `tauri build` is unchanged.
 
@@ -179,13 +179,13 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 | Conflict copies | 5 per item, 200 per user, 2 MiB of payload per user (oldest evicted); conflict bytes also count toward the 10 MiB |
 | Whole-project size guard | refuses growth above 400 MiB (`PT507`), on item writes and conflict-only writes |
 | Bytes per read response | 2 MiB (client pages) |
-| Downloads per user | 32 MiB per UTC day (`PT429`) |
+| Downloads per user | the smallest of 8 MiB, 4 MiB while the account is under 7 days old, and 3 × the user's stored bytes + 1 MiB, per UTC day (`PT429`; re-review 2, R-09) |
 | Downloads, whole project | 150 MiB per UTC day, about 4.4 GiB per 30 days, under Free's 5 GB egress (`PT429`) |
 
   A batch that shrinks usage, for example deletes, is always allowed.
-- Rate limits (review F-10, R-01b): per user per minute, 30 pushes, 12 reads (pull, manifest, fetch and list-conflicts share one counter; a 5-minute poll uses 1 to 3) and 12 status calls (`PT429`).
+- Rate limits (review F-10, R-01b, R-08): per user per minute, 30 pushes, 12 reads (pull, manifest, fetch and list-conflicts share one counter; a 5-minute poll uses 1 to 3) and 12 status calls (`PT429`). Failing calls count too: each RPC takes the counter first and runs its work in an inner exception block, and a refusal after that point is returned as data (no rows or an `{error, code, status}` body, with `response.status` and `X-Sync-Error` / `X-Sync-Code` headers) so PostgREST commits the counter. Only the three guards (not signed in, paused, too many) still raise.
 - Kill switch (review F-17, R-01b): `update sync.settings set value = 'off' where key = 'enabled'` pauses push and every read RPC for everyone immediately (`PT503`); clients back off and keep local data. Status and erasure still work.
-- The project-wide download budget is a single counter row, so one heavy user can use it up for everyone for the rest of the UTC day. That trades availability for staying inside Free's egress; the per-user budget makes it take many accounts.
+- The project-wide download budget is a single counter row, so enough accounts together can use it up for everyone for the rest of the UTC day. That trades availability for staying inside Free's egress. Since re-review 2 (R-09) it takes about 19 established accounts or 37 new ones, each with a library big enough to earn the budget, instead of 5. `sync_status` reports `project_download_budget_low` once the project has used 70% of the day's budget; the operator check is `select bytes from sync.egress where user_id = '*'`. Clerk bot protection and email verification (R5) remain the main defence against scripted sign-ups.
 - Secrets: only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` reach clients. `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` are server-only, Sensitive, production only.
 - Not mitigated in code: sybil sign-ups beyond the project size guard (rely on Clerk bot protection and email verification, R5); revocation lag of about 60 s, because Clerk session tokens are short-lived and Supabase does not check revocation.
 
@@ -211,7 +211,7 @@ Estimates, from the payload format and this design's polling. These are not meas
   - Total about 5 MB, which fits about 1,000 active users in 5 GB.
   - Each new device downloads the whole Library once (1 to 2 MB).
   - The daily full re-pull this replaced would have added about 60 MB per user per month at 1 MB × 2 devices (review F-06).
-- **Download budgets** (R-01b) cap the worst case: 32 MiB per user per day and 150 MiB per day for the project, about 4.4 GiB per 30 days, so a scripted client cannot push the project past Free's 5 GB egress. The budget counts payload bytes plus a fixed 128 B per row, not HTTP framing, so real egress is somewhat higher; the margin to 5 GB covers it at these numbers, but watch the Supabase usage page after launch.
+- **Download budgets** (R-01b, R-09) cap the worst case: at most 8 MiB per user per day (4 MiB for new accounts) and 150 MiB per day for the project, about 4.4 GiB per 30 days, so a scripted client cannot push the project past Free's 5 GB egress. The budget counts payload bytes plus a fixed 128 B per row, not HTTP framing, so real egress is somewhat higher; the margin to 5 GB covers it at these numbers, but watch the Supabase usage page after launch.
 - **Binding limits:** egress first (about 1,000 active syncing users), then database size. MAU (50,000) is not binding. Beyond that, Supabase Pro is $25 per month. That is a Dave decision, not assumed here.
 
 ## 12. Built, stubbed and not built
@@ -285,7 +285,7 @@ Run: `npm run test:sync` from `prompt-lab-source` (Node 22).
 
 ## 15. Review status
 
-Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79`; its re-review (R-01 to R-07) covered `e850e79`. The re-review text was relayed by the parent agent; the appended section was not present in the restored `/workspace/promptlab-review/REVIEW.md` when this was written, so R-titles below are from that relay.
+Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79`; its re-review (R-01 to R-07) covered `e850e79`; re-review 2 (R-08, R-09 and lows, in `/workspace/promptlab-review/REVIEW.md` under "Re-review 2 (36b08d6)") covered `36b08d6`. This table reflects the follow-up commit on top of `36b08d6`. Earlier versions of this table marked F-10 and R-01b as fixed; re-review 2 showed both held only for well-behaved clients until R-08 and R-09 were fixed.
 
 | Finding | Status | Shown by |
 | --- | --- | --- |
@@ -298,7 +298,7 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | F-07 no backups on Free | Mitigated: device snapshots, weekly export runbook (rehearsed locally, R-06); export not set up (R11, Dave) | e2e snapshot tests; concurrency.pg: R-06 |
 | F-08 no CI guard on RLS | Guard tests exist; wiring `test:sync` into CI not done (no CI runs allowed) | security: F-08, grants guard |
 | F-09 no deletion on Clerk account delete | Fixed; webhook endpoint setup is R7 (Dave) | clerk-sync-webhook tests |
-| F-10 rate limiting | Fixed (tighter after R-01b) | security: F-10, default pull limit |
+| F-10 rate limiting | Fixed after re-review 2: before R-08 a failing call rolled its counter back, so failing calls were never limited | security: F-10, default pull limit, R-08 tests |
 | F-11 stale GitHub Pages claim | Not in this branch's scope | - |
 | F-12 www does not redirect | Not in scope (Vercel setting, Dave) | - |
 | F-13 mobile subdomain NXDOMAIN | Not in scope (DNS, Dave) | - |
@@ -307,12 +307,15 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | F-16 extension id for `/api` | Documented; needs the published id (Dave) | section 7 |
 | F-17 server-side kill switch | Fixed; now covers every read RPC | security: F-17, R-01b kill switch |
 | R-01 conflict copies outside the quota | Fixed: 2 MiB per-user conflict cap with eviction, 5 per item, conflict bytes in the 10 MiB quota, size guard on every conflict write | security: R-01 (364 copies, 86.8 MiB attempted, at most 2 MiB kept), R-01 quota, R-01 size guard |
-| R-01b direct SELECT, read limits, egress | Fixed: no SELECT grants, `sync_list_conflicts` RPC, read kill switch, 2 MiB response cap, per-user and project daily download budgets, reads 12 a minute | security: R-01b tests; e2e: paging; vitest: list-conflicts RPC |
-| R-02 desktop-token accepts any OAuth token | Fixed: client_id and scope checks via Clerk's verify endpoint, revoked/expired refused, per-IP and per-user rate limit, 503 without `PL_DESKTOP_OAUTH_CLIENT_ID`; still off by default | desktop-token-bridge: R-02 tests |
-| R-03 desktop session step, loopback redirect exact-match, real Chrome | Open (needs Dave's Clerk OAuth app and real devices) | - |
-| R-04 keychain commands reachable from the webview | Fixed: refresh token held in Rust only, no keychain read command, webview gets short-lived access tokens; per-window capability gating not added (single `main` window) | Rust: r04 tests; vitest: desktop commands never handle secrets |
-| R-05 loopback takes the first callback | Fixed: wrong path or state ignored, keeps listening until timeout | Rust: r05 tests |
+| R-01b direct SELECT, read limits, egress | Fixed after re-review 2 (was partly fixed in `36b08d6`): no SELECT grants, `sync_list_conflicts` RPC, read kill switch, 2 MiB response cap, reads 12 a minute that now also count failing reads (R-08), and per-user budgets that no longer let 5 accounts drain the project (R-09) | security: R-01b, R-08 and R-09 tests; e2e: paging; vitest: list-conflicts RPC |
+| R-02 desktop-token accepts any OAuth token | Fixed: client_id and scope checks via Clerk's verify endpoint, revoked/expired refused, per-IP and per-user rate limit, 503 without `PL_DESKTOP_OAUTH_CLIENT_ID`; still off by default. Low (re-review 2): the limiter now fails closed (503, retryable) when KV is configured but errors, instead of falling back to per-instance memory | desktop-token-bridge: R-02 tests, KV-outage test |
+| R-03 desktop session step, loopback redirect exact-match, real Chrome | Open (needs Dave's Clerk OAuth app and real devices). Fixed part (re-review 2): the sync-build desktop CSP now allows `https://promptlab.tools` in `connect-src`, so the webview can reach the desktop-token bridge | account-sync-build: desktop CSP includes the bridge origin |
+| R-04 keychain commands reachable from the webview | Fixed for the token: refresh token held in Rust only, no keychain read command, webview gets short-lived access tokens. Still open (Low): no `AppManifest` in `build.rs` and no app-command entries in `capabilities/desktop.json`, so the commands are not restricted to the `main` window; needs a full Tauri build to verify, not possible on the build box | Rust: r04 tests; vitest: desktop commands never handle secrets |
+| R-05 loopback takes the first callback | Fixed: wrong path or state ignored, keeps listening until timeout. Low (re-review 2) fixed: the timeout is checked on every loop iteration, and each connection gets at most 1 s to send its request head | Rust: r05 tests, r05_low flood and silent-connection tests |
 | R-06 pg_dump rehearsal | Rehearsed locally: box `pg_dump` 17.11 against the embedded Postgres 17.10 server, restored into a fresh database; found and documented two restore steps (truncate `sync.settings`, set the sequence first). Not rehearsed against a real Supabase project. | concurrency.pg: R-06 |
 | R-07 webhook raw body on Vercel | Fixed in code (raw stream read, parsed bodies refused); not run on Vercel itself | clerk-sync-webhook: R-07 tests |
 | Low: account deletion without the per-user lock | Fixed | concurrency.pg: LOW admin delete waits |
 | Low: extension Clerk token in `chrome.storage.local` | Fixed: `chrome.storage.session` with trusted-contexts access, memory fallback | vitest: extension token cache |
+| R-08 failing calls never rate limited (High) | Fixed: the counter is taken first; the work runs in an inner exception block and refusals are returned as data with `response.status`, so the counter commits. Repeated failing pushes and reads get 429 | security: R-08 tests (mutation check: re-raising in the wrappers fails all four) |
+| R-09 5 accounts drain the project download budget (Medium) | Fixed: per-user budget 8 MiB (was 32), new accounts 4 MiB for 7 days, both also capped at 3 × stored bytes + 1 MiB; `project_download_budget_low` in `sync_status` at 70% | security: R-09 tests; e2e: paging (a full second-device sync plus export still fits) |
+| R-06 on a real Supabase project; R-07 on a real Vercel deploy | Not run (no project, no deploy allowed) | - |

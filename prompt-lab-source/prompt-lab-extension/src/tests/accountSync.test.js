@@ -231,3 +231,16 @@ describe('supabase transport reads (R-01b)', () => {
     expect(seen).toEqual([['https://abc.supabase.co/rest/v1/rpc/sync_list_conflicts', 'POST', JSON.stringify({ p_limit: 100 })]]);
   });
 });
+
+describe('supabase transport refusals (R-08)', () => {
+  const make = (response) => createSupabaseTransport({ url: 'https://abc.supabase.co', publishableKey: 'k', getToken: async () => 'tok', fetchImpl: async () => response });
+  it('turns a refusal returned as data into a status error with the server message', async () => {
+    const transport = make({ ok: false, status: 429, json: async () => ({ error: 'daily sync download budget used', code: 'PT429', status: 429 }) });
+    await expect(transport.push('dev', [])).rejects.toMatchObject({ status: 429, message: 'daily sync download budget used' });
+  });
+  it('treats an empty refused read page as an error, not as "no changes"', async () => {
+    const transport = make({ ok: false, status: 429, json: async () => [] });
+    await expect(transport.pull(0, 500)).rejects.toMatchObject({ status: 429 });
+  });
+});
+

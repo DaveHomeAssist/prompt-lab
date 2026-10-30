@@ -194,13 +194,24 @@ fn respond(stream: &mut std::net::TcpStream, status: u16, body: &str) {
     );
 }
 
-/// Read an HTTP request head (up to the blank line, at most 8 KiB, 5 s).
-fn read_request_head(stream: &mut std::net::TcpStream) -> String {
+/// Per-connection budget for reading a request head. A browser sends the
+/// redirect in one packet; anything slower is not the callback (R-05 low).
+const REQUEST_HEAD_BUDGET: Duration = Duration::from_secs(1);
+
+/// Read an HTTP request head (up to the blank line, at most 8 KiB). Stops at
+/// `REQUEST_HEAD_BUDGET` or at `deadline`, whichever comes first, so a silent
+/// or trickling connection cannot hold the listener.
+fn read_request_head(stream: &mut std::net::TcpStream, deadline: Instant) -> String {
     let _ = stream.set_nonblocking(false);
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    let until = (Instant::now() + REQUEST_HEAD_BUDGET).min(deadline);
     let mut buffer = vec![0u8; 8192];
     let mut total = 0;
     while total < buffer.len() {
+        let left = until.saturating_duration_since(Instant::now());
+        if left.is_zero() {
+            break;
+        }
+        let _ = stream.set_read_timeout(Some(left));
         match stream.read(&mut buffer[total..]) {
             Ok(0) => break,
             Ok(n) => {
@@ -220,11 +231,16 @@ fn read_request_head(stream: &mut std::net::TcpStream) -> String {
 /// on other paths and requests with a missing or wrong state.
 pub fn wait_for_code(listener: &TcpListener, expected_state: &str, timeout: Duration) -> Result<String, String> {
     listener.set_nonblocking(true).map_err(|_| "listener error".to_string())?;
-    let started = Instant::now();
+    let deadline = Instant::now() + timeout;
     loop {
+        // Checked on every iteration, busy or idle (R-05 low): a stream of bad
+        // requests cannot keep the wait alive past the timeout.
+        if Instant::now() >= deadline {
+            return Err("sign-in timed out".into());
+        }
         match listener.accept() {
             Ok((mut stream, _)) => {
-                let request = read_request_head(&mut stream);
+                let request = read_request_head(&mut stream, deadline);
                 match classify_request(&request, expected_state) {
                     Callback::Code(code) => {
                         respond(&mut stream, 200, "<!doctype html><meta charset=utf-8><title>Prompt Lab</title><p>Signed in. You can close this tab and return to Prompt Lab.</p>");
@@ -238,9 +254,6 @@ pub fn wait_for_code(listener: &TcpListener, expected_state: &str, timeout: Dura
                 }
             }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                if started.elapsed() > timeout {
-                    return Err("sign-in timed out".into());
-                }
                 std::thread::sleep(Duration::from_millis(50));
             }
             Err(_) => return Err("listener error".into()),
@@ -490,5 +503,49 @@ mod tests {
         assert!(refresh(&url, "client_1", &failing).is_err());
         server.join().unwrap();
         assert_eq!(failing.get().unwrap(), Some("rt-keep".into()), "an outage does not sign the user out");
+    }
+
+    #[test]
+    fn r05_low_a_flood_of_bad_requests_cannot_outlive_the_timeout() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let flag = stop.clone();
+        let flood = std::thread::spawn(move || {
+            while !flag.load(std::sync::atomic::Ordering::Relaxed) {
+                if let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) {
+                    let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+                    let _ = write!(stream, "GET /nope HTTP/1.1\r\n\r\n");
+                    let mut sink = String::new();
+                    let _ = stream.read_to_string(&mut sink);
+                }
+            }
+        });
+        let started = Instant::now();
+        let result = wait_for_code(&listener, "s1", Duration::from_millis(500));
+        let waited = started.elapsed();
+        stop.store(true, std::sync::atomic::Ordering::Relaxed);
+        drop(listener);
+        flood.join().unwrap();
+        assert_eq!(result, Err("sign-in timed out".to_string()));
+        assert!(waited < Duration::from_millis(1500), "waited {waited:?}");
+    }
+
+    #[test]
+    fn r05_low_a_silent_connection_delays_the_real_callback_by_at_most_about_a_second() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let silent = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        let caller = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(100));
+            get(port, "/callback?code=real&state=s1")
+        });
+        let started = Instant::now();
+        let result = wait_for_code(&listener, "s1", Duration::from_secs(10));
+        let waited = started.elapsed();
+        assert_eq!(result, Ok("real".to_string()));
+        assert!(caller.join().unwrap().contains("200"));
+        assert!(waited < Duration::from_millis(2500), "waited {waited:?}");
+        drop(silent);
     }
 }

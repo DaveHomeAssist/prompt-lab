@@ -40,3 +40,27 @@ export function asRole(db) {
     return next;
   };
 }
+
+// Call a client RPC the way PostgREST does (R-08): one transaction that
+// commits even when the RPC answers with a refusal. A refusal is the
+// response.status / X-Sync-Error / X-Sync-Code the function set; it is thrown
+// as an error carrying `code` (for example PT429) and `status`, like a raised one.
+export function rpcRunner(db, as = asRole(db)) {
+  return (claims, sql, params) => as(claims, async () => {
+    await db.exec('begin');
+    let open = true;
+    try {
+      const result = await db.query(sql, params);
+      const [guc] = (await db.query(`select current_setting('response.status', true) as status, current_setting('response.headers', true) as headers`)).rows;
+      await db.exec('commit'); open = false;
+      const status = Number(guc.status || 0);
+      if (status >= 400) {
+        const headers = Object.assign({}, ...JSON.parse(guc.headers || '[]'));
+        throw Object.assign(new Error(headers['X-Sync-Error'] || `status ${status}`), { code: headers['X-Sync-Code'], status, refusal: true });
+      }
+      return result.rows;
+    } finally {
+      if (open) await db.exec('rollback').catch(() => {});
+    }
+  });
+}

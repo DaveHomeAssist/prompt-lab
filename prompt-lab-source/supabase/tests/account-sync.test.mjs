@@ -2,16 +2,17 @@
 // the push protocol and account erasure. No network, no remote project.
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { asRole, createDb } from './helpers.mjs';
+import { asRole, createDb, rpcRunner } from './helpers.mjs';
 
 let db;
 let as;
+let call;
 
 const A = 'user_Atest';
 const B = 'user_Btest';
 
-const push = (sub, device, changes) => as(sub, async () =>
-  (await db.query('select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)])).rows[0].r);
+const push = async (sub, device, changes) =>
+  (await call(sub, 'select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)]))[0].r;
 // Clients hold no table privileges (R-01b), so the test inspects rows as the
 // local superuser, scoped to one user. Client reads go through the RPCs.
 const rows = async (sub, table = 'sync_items') =>
@@ -20,6 +21,7 @@ const rows = async (sub, table = 'sync_items') =>
 before(async () => {
   db = await createDb();
   as = asRole(db);
+  call = rpcRunner(db, as);
 });
 
 test('a signed-in user creates items owned by their Clerk id', async () => {

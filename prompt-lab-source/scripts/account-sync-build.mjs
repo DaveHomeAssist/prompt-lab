@@ -5,8 +5,11 @@
 // What the flag adds, and only the exact origins needed:
 //   web /app meta CSP   connect-src += the project's Supabase origin
 //   extension manifest  permissions += cookies; host_permissions += Clerk FAPI and Supabase
-//   desktop (Tauri)     connect-src += Clerk FAPI and Supabase; shell open += Clerk OAuth authorize
+//   desktop (Tauri)     connect-src += Clerk FAPI, Supabase and the promptlab.tools desktop-token
+//                       bridge origin (R-03); shell open += Clerk OAuth authorize
 export const CLERK_ORIGIN = 'https://clerk.promptlab.tools';
+// Origin of BRIDGE_URL in prompt-lab-extension/src/lib/sync/desktopAuth.js.
+export const DESKTOP_BRIDGE_ORIGIN = 'https://promptlab.tools';
 const SUPABASE_ORIGIN = /^https:\/\/[a-z0-9-]+\.supabase\.co$/;
 
 export function accountSyncBuild(env = process.env) {
@@ -70,7 +73,7 @@ export function patchExtensionManifest(manifest, env = process.env) {
 export function desktopSyncOverlay(baseConfig, env = process.env) {
   const sync = accountSyncBuild(env);
   if (!sync.enabled) return null;
-  const csp = addCspSources(baseConfig.app.security.csp, 'connect-src', [sync.clerkOrigin, sync.supabaseOrigin]);
+  const csp = addCspSources(baseConfig.app.security.csp, 'connect-src', [sync.clerkOrigin, sync.supabaseOrigin, DESKTOP_BRIDGE_ORIGIN]);
   const open = baseConfig.plugins?.shell?.open || '^https://promptlab\\.tools/';
   return {
     app: { security: { csp } },

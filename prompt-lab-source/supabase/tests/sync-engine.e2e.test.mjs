@@ -7,7 +7,7 @@ import { createSyncEngine } from '../../prompt-lab-extension/src/lib/sync/syncEn
 import { markLibraryDeleted } from '../../prompt-lab-extension/src/lib/libraryDeletion.js';
 import { readLocalSnapshot, restoreLocalSnapshot } from '../../prompt-lab-extension/src/lib/sync/syncBackup.js';
 import { exportAccountData } from '../../prompt-lab-extension/src/lib/sync/supabaseTransport.js';
-import { asRole, createDb } from './helpers.mjs';
+import { asRole, createDb, rpcRunner } from './helpers.mjs';
 
 let db;
 let as;
@@ -22,7 +22,8 @@ class MemoryStorage {
   removeItem(key) { this.map.delete(key); }
 }
 
-const asUser = (sub, sql, params) => as(sub, async () => (await db.query(sql, params)).rows);
+let runner;
+const asUser = (sub, sql, params) => runner(sub, sql, params);
 // Clients cannot select tables (R-01b). Tests inspect a user's rows as the
 // definer role, which still sees only that user's rows through RLS.
 const inspect = (sub, sql, params) => as(sub, async () => (await db.query(sql, params)).rows, 'sync_owner');
@@ -32,7 +33,7 @@ function pgTransport(sub) {
   const call = async (sql, params) => {
     if (networkDown) throw Object.assign(new Error('Network unavailable.'), { status: 0 });
     try { return await asUser(sub, sql, params); } catch (error) {
-      const status = /^PT\d{3}$/.test(error.code || '') ? Number(error.code.slice(2)) : error.code === '28000' ? 401 : 400;
+      const status = error.status || (/^PT\d{3}$/.test(error.code || '') ? Number(error.code.slice(2)) : error.code === '28000' ? 401 : 400);
       throw Object.assign(new Error(error.message), { status });
     }
   };
@@ -63,7 +64,7 @@ const a1 = device('a1-laptop', A);
 const a2 = device('a2-desktop', A);
 
 before(async () => {
-  db = await createDb(); as = asRole(db);
+  db = await createDb(); as = asRole(db); runner = rpcRunner(db, as);
   // Many syncs run within one minute here; the rate limits have their own tests.
   await db.query(`update sync.settings set value = '100000' where key in ('push_per_minute', 'pull_per_minute', 'status_per_minute')`);
 });

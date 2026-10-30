@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { BRIDGE_URL } from '../prompt-lab-extension/src/lib/sync/desktopAuth.js';
 import { accountSyncBuild, accountSyncExtensionEntry, accountSyncWebCsp, addCspSources, desktopSyncOverlay, patchExtensionManifest } from '../scripts/account-sync-build.mjs';
 
 const ON = { VITE_PL_ACCOUNT_SYNC: 'on', VITE_SUPABASE_URL: 'https://abcd.supabase.co' };
@@ -39,9 +40,13 @@ test('extension: cookies plus exact Clerk and Supabase host permissions, nothing
   assert.match(runHtml(accountSyncExtensionEntry(ON), '<head></head>'), /extensionAccountAuth\.js/);
 });
 
-test('desktop: connect-src adds Clerk and Supabase; shell open adds only the Clerk authorize URL', () => {
+test('desktop: connect-src adds Clerk, Supabase and the bridge origin; shell open adds only the Clerk authorize URL', () => {
   const overlay = desktopSyncOverlay(tauri, ON);
-  assert.equal(overlay.app.security.csp, addCspSources(tauri.app.security.csp, 'connect-src', ['https://clerk.promptlab.tools', 'https://abcd.supabase.co']));
+  assert.equal(overlay.app.security.csp, addCspSources(tauri.app.security.csp, 'connect-src', ['https://clerk.promptlab.tools', 'https://abcd.supabase.co', 'https://promptlab.tools']));
+  // R-03: the webview fetch to the desktop-token bridge must be allowed by connect-src.
+  const connect = overlay.app.security.csp.split('; ').find((d) => d.startsWith('connect-src')).split(' ');
+  assert.ok(connect.includes(new URL(BRIDGE_URL).origin), 'connect-src allows the bridge origin');
+  assert.ok(!connect.some((src) => src === 'https:' || src === '*' || src.includes('*.')), 'no wildcard sources');
   assert.match(overlay.app.security.csp, /script-src 'self'$/);
   const open = new RegExp(overlay.plugins.shell.open);
   assert.ok(open.test('https://promptlab.tools/pricing'));

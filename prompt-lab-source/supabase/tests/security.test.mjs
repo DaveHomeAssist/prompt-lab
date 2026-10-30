@@ -3,27 +3,27 @@
 // local Postgres (PGlite).
 import { test, before, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { asRole, claimsFor, createDb } from './helpers.mjs';
+import { asRole, claimsFor, createDb, rpcRunner } from './helpers.mjs';
 
-let db; let as;
+let db; let as; let call;
 const U = 'user_Quota1';
 const V = 'user_Other2';
 const prompt = (id, extra = {}) => ({ kind: 'prompt', item_id: id, base_version: 0, lamport: 1, payload: { state: 'active', entry: { id, title: id, ...extra } } });
-const push = (claims, changes, device = 'dev-1') => as(claims, async () => (await db.query('select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)])).rows[0].r);
+const push = async (claims, changes, device = 'dev-1') => (await call(claims, 'select public.sync_push($1, $2::jsonb) as r', [device, JSON.stringify(changes)]))[0].r;
 const setting = (key, value) => db.query('update sync.settings set value = $2 where key = $1', [key, String(value)]);
 // Inspection as the local superuser, scoped to one user (clients cannot select).
 const count = async (sub) => Number((await db.query('select count(*)::int as n from public.sync_items where user_id = $1', [sub])).rows[0].n);
 const adminRows = async (sql, params) => (await db.query(sql, params)).rows;
-const rpc = (claims, sql, params) => as(claims, async () => (await db.query(sql, params)).rows);
+const rpc = (claims, sql, params) => call(claims, sql, params);
 let defaults;
 
 before(async () => {
-  db = await createDb(); as = asRole(db);
+  db = await createDb(); as = asRole(db); call = rpcRunner(db, as);
   defaults = (await db.query('select key, value from sync.settings')).rows;
 });
 beforeEach(async () => {
   await db.exec('reset role');
-  await db.exec('delete from public.sync_items; delete from public.sync_conflicts; delete from sync.rate; delete from sync.egress;');
+  await db.exec('delete from public.sync_items; delete from public.sync_conflicts; delete from sync.rate; delete from sync.egress; delete from sync.accounts;');
   for (const { key, value } of defaults) await setting(key, value);
 });
 
@@ -159,7 +159,7 @@ test('F-17: the server-side kill switch pauses push and pull but not erasure', a
   await push(U, [prompt('a')]);
   await setting('enabled', 'off');
   await assert.rejects(push(U, [prompt('b')]), /paused/);
-  await assert.rejects(as(U, () => db.query('select * from public.sync_pull(0, 10)')), /paused/);
+  await assert.rejects(rpc(U, 'select * from public.sync_pull(0, 10)'), /paused/);
   const status = (await as(U, () => db.query('select public.sync_status() as s'))).rows[0].s;
   assert.equal(status.enabled, false);
   const erased = (await as(U, () => db.query('select public.sync_delete_my_data() as r'))).rows[0].r;
@@ -316,4 +316,108 @@ test('R-01b: the default pull limit suits a 5-minute poll (12 reads a minute)', 
   for (let i = 0; i < 12; i += 1) await rpc(U, 'select * from public.sync_pull(0, 10)');
   await assert.rejects(rpc(U, 'select * from public.sync_manifest()'), (error) => error.code === 'PT429');
   assert.equal((await rpc(V, 'select * from public.sync_pull(0, 10)')).length, 0);
+});
+
+// ---- Re-review 2: R-08 (failing calls must still count) and R-09 (budgets) ----
+const rateCalls = async (sub, action) => Number((await adminRows('select calls from sync.rate where user_id = $1 and action = $2', [sub, action]))[0]?.calls ?? 0);
+
+test('R-08: repeated failing pushes are rate limited (429) and the counter keeps every call', async () => {
+  await setting('push_per_minute', 3);
+  const bad = [{ ...prompt('clock'), lamport: 9007199254740991 }];
+  for (let i = 0; i < 3; i += 1) {
+    await assert.rejects(push(U, bad), (error) => error.refusal && error.status === 400 && error.code === '22023' && /invalid lamport/.test(error.message));
+  }
+  assert.equal(await rateCalls(U, 'push'), 3, 'failed calls are counted, not rolled back');
+  for (let i = 0; i < 5; i += 1) {
+    await assert.rejects(push(U, bad), (error) => error.code === 'PT429' && /too many sync requests/.test(error.message));
+  }
+  await assert.rejects(push(U, [prompt('good')]), (error) => error.code === 'PT429', 'a valid push is refused too until the window rolls');
+  assert.equal(await count(U), 0, 'refused work wrote nothing');
+  assert.equal((await push(V, [prompt('good')]))[0].status, 'applied', 'the limit is per user');
+});
+
+test('R-08: quota and storage refusals count against the push limit too', async () => {
+  await setting('push_per_minute', 2);
+  await setting('max_live_items_per_user', 0);
+  await assert.rejects(push(U, [prompt('a')]), /quota exceeded/);
+  await setting('max_live_items_per_user', 5000);
+  await setting('max_database_bytes', 1);
+  await assert.rejects(push(U, [prompt('a')]), (error) => error.code === 'PT507');
+  await assert.rejects(push(U, [prompt('a')]), (error) => error.code === 'PT429');
+});
+
+test('R-08: repeated reads that fail on the download budget are rate limited (429)', async () => {
+  await push(U, [prompt('a', { original: 'r'.repeat(50000) })]);
+  await setting('pull_per_minute', 3);
+  await setting('max_egress_bytes_per_user_day', 1000);
+  for (let i = 0; i < 3; i += 1) {
+    await assert.rejects(rpc(U, 'select * from public.sync_pull(0, 500)'), (error) => error.refusal && error.status === 429 && /download budget/.test(error.message));
+  }
+  assert.equal(await rateCalls(U, 'pull'), 3);
+  await assert.rejects(rpc(U, 'select * from public.sync_pull(0, 500)'), (error) => error.code === 'PT429' && /too many sync requests/.test(error.message));
+  await assert.rejects(rpc(U, 'select * from public.sync_manifest()'), /too many sync requests/, 'every read RPC shares the pull limit');
+  await assert.rejects(rpc(U, `select * from public.sync_fetch('[{"kind":"prompt","item_id":"a"}]'::jsonb)`), /too many sync requests/);
+  await assert.rejects(rpc(U, 'select * from public.sync_list_conflicts(10)'), /too many sync requests/);
+});
+
+test('R-08: a refusal is data: no rows for reads, an error body for push, a status and headers for PostgREST', async () => {
+  const [{ r, status, headers }] = await as(U, async () => {
+    await db.exec('begin');
+    try {
+      return (await db.query(`select public.sync_push('', '[]'::jsonb) as r, current_setting('response.status', true) as status, current_setting('response.headers', true) as headers`)).rows;
+    } finally { await db.exec('commit'); }
+  });
+  assert.deepEqual(r, { error: 'invalid device id', code: '22023', status: 400 });
+  assert.equal(status, '400');
+  assert.deepEqual(JSON.parse(headers), [{ 'X-Sync-Error': 'invalid device id' }, { 'X-Sync-Code': '22023' }]);
+  await setting('max_egress_bytes_per_user_day', 1);
+  await push(U, [prompt('a')]);
+  const rows = await as(U, async () => { await db.exec('begin'); try { return (await db.query('select * from public.sync_pull(0, 10)')).rows; } finally { await db.exec('commit'); } });
+  assert.deepEqual(rows, [], 'a refused read returns no rows');
+});
+
+test('R-09: per-user budgets are far below the project budget; new accounts get less', async () => {
+  const s = Object.fromEntries(defaults.map(({ key, value }) => [key, Number(value)]));
+  assert.ok(s.max_egress_bytes_per_day / s.max_egress_bytes_per_user_day >= 18, 'at least 18 established accounts to drain the project');
+  assert.ok(s.max_egress_bytes_per_day / s.max_egress_bytes_new_user_day >= 36, 'at least 36 new accounts to drain the project');
+  // A brand-new, empty account may read about 1 MiB today.
+  await push(U, [prompt('tiny')]);
+  const budget = async (sub) => (await rpc(sub, 'select public.sync_status() as s'))[0].s.max_egress_bytes_per_day;
+  const small = await budget(U);
+  assert.ok(small > 1048576 && small < 1048576 + 2000, String(small));
+  // A big library raises the budget, up to the new-account cap...
+  const blob = 'n'.repeat(200000);
+  for (const batch of [['a', 'b', 'c', 'd', 'e', 'f', 'g'], ['h', 'i', 'j', 'k', 'l', 'm', 'n']]) await push(U, batch.map((id) => prompt(id, { original: blob })));
+  assert.equal(await budget(U), s.max_egress_bytes_new_user_day);
+  // ...and to the per-user cap once the account is older than new_account_days.
+  await db.query(`update sync.accounts set first_seen = now() - interval '8 days' where user_id = $1`, [U]);
+  assert.equal(await budget(U), s.max_egress_bytes_per_user_day);
+});
+
+test('R-09: the new-account budget is enforced on reads', async () => {
+  await setting('max_egress_bytes_new_user_day', 150000);
+  await push(U, [prompt('a', { original: 'q'.repeat(100000) })]);
+  assert.equal((await rpc(U, 'select * from public.sync_pull(0, 500)')).length, 1);
+  await assert.rejects(rpc(U, 'select * from public.sync_pull(0, 500)'), /daily sync download budget/);
+  await db.query(`update sync.accounts set first_seen = now() - interval '8 days' where user_id = $1`, [U]);
+  assert.equal((await rpc(U, 'select * from public.sync_pull(0, 500)')).length, 1, 'an established account gets the larger budget');
+});
+
+test('R-09: sync_status flags project_download_budget_low at 70% of the project budget', async () => {
+  await setting('max_egress_bytes_per_day', 1000);
+  const low = async () => (await rpc(U, 'select public.sync_status() as s'))[0].s.project_download_budget_low;
+  assert.equal(await low(), false);
+  await db.query(`insert into sync.egress (user_id, day, bytes) values ('*', (now() at time zone 'utc')::date, 699)`);
+  assert.equal(await low(), false);
+  await db.query(`update sync.egress set bytes = 700 where user_id = '*'`);
+  assert.equal(await low(), true);
+  await db.query(`update sync.egress set day = day - 1 where user_id = '*'`);
+  assert.equal(await low(), false, 'a new UTC day clears it');
+});
+
+test('R-09: erasure also removes the first-seen record', async () => {
+  await push(U, [prompt('a')]);
+  assert.equal((await adminRows('select 1 from sync.accounts where user_id = $1', [U])).length, 1);
+  await rpc(U, 'select public.sync_delete_my_data() as r');
+  assert.equal((await adminRows('select 1 from sync.accounts where user_id = $1', [U])).length, 0);
 });
