@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T06:42:32.203Z",
+  "snapshotAt": "2026-10-30T07:03:23.158Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "a04f91eda3a6097d32d88402b2f5dad0d0ca6eac",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect workspace import and backup restore through the selected repository, then finish remaining Library actions and reviewed activation.",
+  "nextAction": "Connect complete backup file and workspace import review, then remaining Library actions before reviewed activation and installed/two-client acceptance.",
   "evidence": [
+    {
+      "label": "Reviewed checkpoint restore and recovery UI",
+      "state": "Open",
+      "detail": "Candidate 3c7a608 is pushed in draft PR248. Reviewed checkpoint restoration now publishes the restored app view in one command, retains later history and deletion markers, and exposes a Recovery dialog with preview, cancel, pending acknowledgement and retry. Dominic Node22.23.4: final 455 storage tests, 74 Library UI regressions, extension build and documentation checks pass; three Chromium scenarios pass at 375/1440/2560 pixels. Actual JSON Schema fixtures pass with invalid options and incomplete plans rejected. The broader pre-UI suite passed 1,640 tests across 144 files plus 231 legacy tests. Seventeen changed inputs match the runner. Mac Node22.22.1 isolated full real-backup restore recovers 216 original prompts exactly, two Trash records, three evaluations and four Scratch notes in one operation; all 26 prior objects are retained, disk reopen is identical and retry creates no extra write. Original export unchanged, no private upload. Earlier device checks found Duncan iCloud registered and running, but disposable files did not propagate in either direction after approximately 22 minutes; Walter SSH timed out. Complete backup file import, workspace import, remaining actions, reviewed activation, installed/two-client acceptance and main reconciliation remain open. No personal activation or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/3c7a608d3302ff997e3795fa16ec6cda51cc5923"
+    },
     {
       "label": "Verified Library backups and device configuration",
       "state": "Open",
@@ -1626,8 +1632,8 @@
     {
       "id": "402255fc8f4481d5a67febbb7b34f26a",
       "inPlan": false,
-      "nextAction": "Connect workspace import and backup restore through the selected repository, then finish remaining Library actions and reviewed activation.",
-      "verification": "Candidate e2dd1d3 source, browser and isolated real-export backup checks pass; migration, activation, installed and actual iCloud acceptance remain open.",
+      "nextAction": "Connect complete backup file and workspace import review, then remaining Library actions before reviewed activation and installed/two-client acceptance.",
+      "verification": "Candidate 3c7a608: final 455 storage tests, 74 Library UI tests, three browser viewports, build/docs and isolated real-data checkpoint restore pass. Full acceptance remains open.",
       "title": "Connect desktop folder picker and app A3 (sync slice 4)",
       "status": "In progress",
       "severity": "Medium",
@@ -1953,7 +1959,7 @@
       "nextAction": "None for this scope. Use Recently used artwork and search beside Write.",
       "verification": "Source PR261 mergedd82ac3a after all16 checks. Records PR263 mergedd1b853d after all6. Separate Undo context repair PR262 preserved. Readiness PR264 mergedfb0a527 after all7 checks onaa40fd2; it changes test setup and records only. Combined Dominic Node22 browser45/45 pass, in addition to1516 shared tests/134 files and231 legacy tests. Current hosted95 pass/one existing skip and landing25 pass. Final production dpl_9J5SdkWK3m9M5CG2UY5x4ENKRoXg READY atfb0a527; signed-in production40853024393 passes4/4 at375/1440px with all four disposable sessions revoked. No paid model calls. Separate result-save feedback follow-up PR265 remains open; signing, upgrade and human acceptance remain separate. Registered local board file absent at last check.",
       "title": "Workbench quality of life and reuse",
-      "status": "Done",
+      "status": "In progress",
       "severity": "Medium",
       "area": "Library",
       "type": "Feature",
