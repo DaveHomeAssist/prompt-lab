@@ -3,7 +3,7 @@
   "info": {
     "title": "PromptLab local library contract candidate",
     "version": "1.0.0",
-    "description": "Unconnected candidate with reviewed import, checkpoint restore and branch reconciliation. Pairing, complete domain activation and installed desktop support remain open. Folder recovery uses explicit verified head selection and bounded graph-pinned inspection. New generation 3 transactions contain metadata and added immutable object/receipt references; generations 1 and 2 retain their full snapshot formats and unchanged historical bytes. Older runtimes may not read generation 3 descendants; rollback must preserve the full folder for recovery."
+    "description": "Unconnected candidate with reviewed import, checkpoint restore and branch reconciliation. Pairing, complete domain activation and installed desktop support remain open. Folder recovery uses explicit verified head selection and bounded graph-pinned inspection. New generation 3 transactions contain metadata and added immutable object/receipt references; generations 1 and 2 retain their full snapshot formats and unchanged historical bytes. Older runtimes may not read generation 3 descendants; rollback must preserve the full folder for recovery. All requests use the runtime-provided loopback origin and scoped Bearer header. JSON requests and content objects are limited to 64 MiB; object-list pages contain at most 100 hashes. Reviews expire after five minutes and are process-local; committed receipts persist indefinitely with the folder. The default request rate is 120 per credential per minute. Do not put credentials in URLs or saved library content."
   },
   "security": [
     {
@@ -25,28 +25,47 @@
                   "$ref": "#/components/schemas/LibraryIdentity"
                 }
               }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Quoted acknowledged revision; absent before the first commit. Use the revision body field as expectedRevision for writes. This endpoint does not implement conditional GET.",
+                "schema": {
+                  "type": "string",
+                  "pattern": "^\"sha256:[a-f0-9]{64}\"$"
+                }
+              }
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "parameters": [
@@ -73,25 +92,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "parameters": [
@@ -135,28 +164,48 @@
         "x-implementation-status": "candidate",
         "responses": {
           "200": {
-            "description": "Acknowledged result"
+            "description": "Acknowledged result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Object"
+                }
+              }
+            }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "parameters": [
@@ -165,7 +214,8 @@
             "name": "hash",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
             }
           },
           {
@@ -191,25 +241,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "requestBody": {
@@ -237,28 +297,45 @@
         "x-implementation-status": "candidate",
         "responses": {
           "201": {
-            "description": "Acknowledged result"
+            "description": "Acknowledged result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale or expired preview, unresolved choices, incomplete deletion evidence or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "parameters": [
@@ -281,7 +358,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Preview"
+                "$ref": "#/components/schemas/CommitRequest"
               }
             }
           }
@@ -295,28 +372,48 @@
         "x-implementation-status": "candidate",
         "responses": {
           "200": {
-            "description": "Acknowledged result"
+            "description": "Acknowledged result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Receipt"
+                }
+              }
+            }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "parameters": [
@@ -325,7 +422,9 @@
             "name": "operationId",
             "required": true,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
             }
           },
           {
@@ -351,27 +450,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
           },
           "422": {
+            "$ref": "#/components/responses/InvalidContent",
             "description": "Invalid transfer inventory, receipt or checkpoint state"
           }
         },
@@ -427,25 +534,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Review an earlier retained ancestor checkpoint against the pinned current revision and all retained source-scoped deletion evidence. Requires write scope. Apply the returned preview through POST /v1/library/commits with an idempotency key. Unknown deletion evidence returns a review with commitAvailable false; no bypass option exists. Recovery views reject this operation with RECOVERY_ONLY.",
@@ -496,13 +613,31 @@
             }
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Preview expired or library revision changed"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
           }
         }
       }
@@ -524,27 +659,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
           },
           "422": {
+            "$ref": "#/components/responses/InvalidContent",
             "description": "Invalid transfer inventory, receipt or checkpoint state"
           }
         },
@@ -610,25 +753,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Review two verified branches against their common ancestor, retain both complete histories and require explicit concurrent-edit choices. Requires write scope. In a folder recovery view, the response also binds folderRecovery to the current head set; changed graphs require fresh review. Apply through POST /v1/library/commits with an idempotency key. A committed folder reconciliation consumes only its reviewed parent heads; other heads remain for review.",
@@ -666,25 +819,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Requires write scope. Pin the current revision. Prompt choices remain governed by import/reconciliation and deletion evidence. Differing replicas or absent records require explicit per-group choices naming an occurrence or null for inactive. Unknown sources block commit. Apply through the normal commit route with an idempotency key. This read-view contract does not authorize native activation. Recovery views reject this operation with RECOVERY_ONLY.",
@@ -722,27 +885,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, or current selection review required"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
           },
           "422": {
+            "$ref": "#/components/responses/InvalidContent",
             "description": "Invalid transfer inventory, receipt or checkpoint state"
           }
         },
@@ -842,25 +1013,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         }
       }
@@ -897,25 +1078,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, fork, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         }
       }
@@ -937,25 +1128,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Requires write scope and an existing reviewed current view. Supply non-overlapping object-field updates and an ISO UTC millisecond timestamp. Identity, history, generation and version fields are service-owned. Retain all original versions and source objects. Commit through the normal idempotent route; changed revisions or records fail before publication. The successor inherits verified source provenance without a new browser capture. Native activation remains separately gated. Recovery views reject ordinary edits with RECOVERY_ONLY.",
@@ -993,25 +1194,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Requires write scope and an existing reviewed library, including a reviewed empty capture. Pin its revision and an existing verified source binding. A stable creationId derives a unique prompt ID; retained or deleted identity reuse is rejected. Draft fields and unknown metadata are preserved; ID, timestamps, generation and initial history are service-owned. No browser capture is fabricated. Commit through the ordinary idempotent route; recovery views reject creation with RECOVERY_ONLY. Native activation remains separately gated.",
@@ -1049,25 +1260,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Requires write scope, a reviewed current record, exact revision and record hash. Trash accepts active prompts; restore and delete accept Trash, including imported Trash. Permanent deletion requires explicit confirmation and suppresses the source-scoped identity across imports, branches and checkpoint restores. Every original object, history, backup and receipt remains retained; physical erasure is separate. The ordinary idempotent commit and durable outbox apply. Recovery views reject lifecycle commands with RECOVERY_ONLY.",
@@ -1105,25 +1326,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Review a source-scoped record creation, field update or confirmed deletion. Scratch notes use per-note commandGroupId values from current reads and retain prior values, container metadata and deletion evidence. No personal app activation is implied.",
@@ -1161,25 +1392,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Publish changed folder identities, descendant paths and affected prompt revisions together. Removing a leaf folder keeps its prompts. Complete verified source evidence is required. Earlier values remain retained; the shared commit endpoint applies this preview with an idempotency key.",
@@ -1217,25 +1458,35 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/BadRequest",
             "description": "Invalid request"
           },
           "401": {
+            "$ref": "#/components/responses/Unauthorized",
             "description": "Missing, expired or revoked credential"
           },
           "403": {
+            "$ref": "#/components/responses/Forbidden",
             "description": "Wrong scope, host or origin"
           },
           "409": {
+            "$ref": "#/components/responses/Conflict",
             "description": "Wrong library, stale revision, invalid or unrelated checkpoint, expired preview or idempotency mismatch"
           },
           "413": {
+            "$ref": "#/components/responses/PayloadTooLarge",
             "description": "Payload exceeds 64 MiB; never silently truncate"
           },
           "429": {
+            "$ref": "#/components/responses/RateLimited",
             "description": "Request limit; Retry-After in seconds"
           },
           "503": {
+            "$ref": "#/components/responses/Unavailable",
             "description": "Missing/corrupt/unavailable store; retain draft"
+          },
+          "422": {
+            "$ref": "#/components/responses/InvalidContent"
           }
         },
         "description": "Publish reviewed prompt membership and pack metadata together, or move active members to Trash and deactivate the registry and loaded marker together. Retain every prior value and history. Apply the reviewed change through the shared commit endpoint with one idempotency key.",
@@ -10197,6 +10448,70 @@
           "checkpoints"
         ],
         "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "error": {
+            "type": "string",
+            "minLength": 1
+          },
+          "retryable": {
+            "const": false
+          }
+        },
+        "required": [
+          "ok",
+          "code",
+          "error",
+          "retryable"
+        ],
+        "additionalProperties": false,
+        "description": "Stable machine code and safe user message. Preserve pending work; the caller explicitly reviews or retries instead of assuming an automatic retry is safe."
+      },
+      "CommitRequest": {
+        "type": "object",
+        "properties": {
+          "previewId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "libraryId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "previewId",
+          "libraryId",
+          "expectedRevision",
+          "fingerprint"
+        ],
+        "additionalProperties": true,
+        "description": "Four fields identify the reviewed input. Full Preview responses remain accepted; extra response fields do not override the stored review. Idempotency-Key is required separately in the HTTP header. A committed retry uses its retained fingerprint and revision even after restart."
       }
     },
     "parameters": {
@@ -10208,6 +10523,113 @@
         "schema": {
           "type": "string",
           "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Malformed request or invalid transport/pagination.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Missing, expired or revoked credential.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Wrong scope, Host or Origin.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Unknown operation or object.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Wrong library, stale revision, conflicting heads, expired review, unresolved choices or mismatched idempotency input.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "ok": false,
+              "code": "REVISION_CONFLICT",
+              "error": "Library changed; preview again.",
+              "retryable": false
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "A bounded input or response exceeds the 64 MiB limit; preserve input without truncation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InvalidContent": {
+        "description": "Well-formed JSON violates the identity, source, content or operation contract.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "RateLimited": {
+        "description": "Local request or recovery-view limit. Retry-After is present for the request rate limit.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "description": "Seconds before retrying the request rate limit; may be absent for a recovery-view limit.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "Missing, corrupt or unavailable store; retain pending work and recover access.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
         }
       }
     }

@@ -8935,6 +8935,70 @@
         "checkpoints"
       ],
       "additionalProperties": false
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "const": false
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "error": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "const": false
+        }
+      },
+      "required": [
+        "ok",
+        "code",
+        "error",
+        "retryable"
+      ],
+      "additionalProperties": false,
+      "description": "Stable machine code and safe user message. Preserve pending work; the caller explicitly reviews or retries instead of assuming an automatic retry is safe."
+    },
+    "CommitRequest": {
+      "type": "object",
+      "properties": {
+        "previewId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "libraryId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "expectedRevision": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "previewId",
+        "libraryId",
+        "expectedRevision",
+        "fingerprint"
+      ],
+      "additionalProperties": true,
+      "description": "Four fields identify the reviewed input. Full Preview responses remain accepted; extra response fields do not override the stored review. Idempotency-Key is required separately in the HTTP header. A committed retry uses its retained fingerprint and revision even after restart."
     }
   }
 }

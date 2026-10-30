@@ -1,5 +1,55 @@
 # Library storage contract candidate
 
+## A1 HTTP contract reconciliation: October 29
+
+Audit the original A1 acceptance separately from later native activation and
+actual iCloud gates. The lossless archive, source inventory, import matching,
+causal history and restart/idempotency suites already exercise the preservation
+boundary. The published HTTP description still omits object and receipt bodies,
+untyped error bodies and several runtime error statuses. Its commit request
+incorrectly requires the full preview response although the service accepts the
+four review identity fields. Library identity also lacks the specified ETag.
+
+Describe every existing success/error body, publish the minimal commit request
+without breaking full-preview callers, expose the acknowledged revision ETag,
+and verify actual loopback requests/responses against the published schemas.
+Keep routes, authorization, domain semantics, storage, personal activation and
+hosted gates unchanged. Use synthetic captures on the remote runner and retain
+failed-before evidence. No new dependency is needed for the installed JSON
+Schema 2020-12 validator used during acceptance.
+
+### Original A1 acceptance audit
+
+All five contract criteria pass on the candidate. Dominic Node 22.23.4 passes
+all 423 storage tests. Actual synthetic loopback traffic validates against the
+published JSON Schema 2020-12 definitions: 52 responses across 13 routes and
+11 successful request bodies; 16 malformed contract variants reject. All 81
+standalone definitions match OpenAPI. The capture script is
+`scripts/verify-library-http-contract.mjs`; it uses a disposable folder, omits
+authorization headers from captures and never reads the personal library.
+
+| Original criterion | Inspected and executed evidence | Result |
+| --- | --- | --- |
+| Complete history and all content families | `contract.test.mjs` checks exact raw round trip with 41 versions. `domain-map.test.mjs` compares every mapped value with its source, including variants, usage, assets, Scratch, markers and 1,004 traces. | Pass |
+| Unknown fields, missing references and excluded settings | `source-inventory.test.mjs` verifies named stores, never reads credential/billing values, retains corrupt raw input and detects omitted sources. `domain-map.test.mjs` retains source-scoped missing/ambiguous references without fabricating targets. | Pass |
+| Precise HTTP reads, pagination, review, commits, receipts, backups and restore | Typed response/error schemas and minimal commit request; actual object pagination, reviewed selection, backup/restore, identity ETag and all 11 exercised HTTP status codes validate. | Pass |
+| Bound reviews, stale rejection and durable idempotency | `contract.test.mjs`, `library-import.test.mjs` and `local-api.test.mjs` verify library, revision, source and resolution binding. The HTTP capture reopens a real folder and replays restore without adding a fifth operation. | Pass |
+| Existing matching semantics and complete source histories | `import-plan.mjs` imports shared `libraryMatching.js`. `library-import.test.mjs` retains 126 versions across three imports, exact source bytes, associations, Keep/Replace choices and ambiguous duplicate evidence through restart. | Pass |
+
+The two new regression tests fail against the previous contract/runtime for
+missing error declarations and the missing ETag. Initial acceptance harness
+failures came from reading an unselected view and using string variants instead
+of record-shaped variants; the harness now follows the existing review contract.
+No runtime validation or acceptance assertion was weakened.
+
+This closes the original A1 contract audit, not delivery or Phase A acceptance.
+The draft still needs A2 service ownership, credential/pairing and failure-path
+acceptance, A3 app activation and native picker integration, then A4 actual
+two-client iCloud and installed/human proof. Keep those gates separate from A1
+and keep PR248 draft. Next: audit A2 against its six original criteria and finish
+its production service boundary before A3 activation. Hosted work stays gated
+on complete Phase A acceptance.
+
 ## Shared legacy read cache: October 29
 
 Retained generation 1/2 journals duplicate their full object tables. A real-data

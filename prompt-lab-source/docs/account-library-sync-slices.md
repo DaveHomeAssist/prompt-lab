@@ -1,6 +1,6 @@
 # Library storage build plan
 
-Status: implementation in progress, acceptance incomplete, October 29, 2026. A1 and an isolated A2 reference candidate are in draft PR248. A3 and hosted implementation remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
+Status: implementation in progress, Phase A acceptance incomplete, October 29, 2026. The five original A1 contract criteria pass on the candidate; its delivery and the isolated A2 service acceptance remain in draft PR248. A3 and hosted implementation remain Not started. Implements the sequence in [Library storage and account sync](account-library-sync.md): chosen iCloud Drive folder first, optional hosted storage second, complete history/backups and one shared app/API library.
 
 The October 23 request covered planning only. Dave subsequently authorized implementation of all phases and real-export verification on October 28, subject to the sequential acceptance gates and no paid provisioning without separate approval. The [former web-first instructions](https://github.com/DaveHomeAssist/prompt-lab/blob/7a1ad40/prompt-lab-source/docs/account-library-sync-slices.md) remain historical. They omitted run history and applied a 25-version cap and do not define current implementation.
 
@@ -94,7 +94,7 @@ Acceptance: two clients converge for complete workspace data; response loss is i
 
 For each later authorized slice: reverify current main and ownership, use disposable fixtures and qualified runners, run scoped tests and failure paths, deliver through required PR gates, then update existing records with the actual evidence. Provider/billing calls and infrastructure changes need their own scope. Documentation delivery is not storage implementation or data migration.
 
-Next action: finish A1 shared contracts and lossless fixtures. The implementation request and storage direction are authorized; sequential acceptance remains required. Dave selects the actual iCloud folder through the delivered picker later.
+Next action: audit A2 against its six original criteria and complete its production service ownership, pairing and failure paths. The [A1 acceptance audit](library-storage-contract-candidate.md#original-a1-acceptance-audit) records the five passing contract criteria separately from later app, native and actual iCloud gates. The implementation request and storage direction are authorized; sequential acceptance remains required. Dave selects the actual iCloud folder through the delivered picker later.
 
 ## Implementation progress: October 28
 

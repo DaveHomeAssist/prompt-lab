@@ -38,6 +38,7 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       if (origin && !allowedOrigins.includes(origin)) throw new LibraryError('FORBIDDEN_ORIGIN', 'Origin is not paired.', 403);
       if (origin) {
         res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Expose-Headers', 'ETag, Retry-After');
         res.setHeader('Vary', 'Origin');
       }
       if (req.method === 'OPTIONS') {
@@ -85,8 +86,11 @@ export function createLocalApi({ adapter, libraryId, credentials, allowedOrigins
       if (selectedBranch && req.method !== 'GET' && !['/v1/library/reconciliations', '/v1/library/commits'].includes(url.pathname)) {
         throw new LibraryError('RECOVERY_ONLY', 'Recovery views accept reviewed reconciliation only.', 409);
       }
-      if (req.method === 'GET' && url.pathname === '/v1/library') return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown',
-        ...(selectedBranch ? { folderRecovery: await selectedAdapter.recoveryContext() } : {}) });
+      if (req.method === 'GET' && url.pathname === '/v1/library') {
+        if (state.revision) res.setHeader('ETag', JSON.stringify(state.revision));
+        return send(200, { libraryId, revision: state.revision, backend: 'folder', cloudReplication: 'unknown', independentBackup: 'unknown',
+          ...(selectedBranch ? { folderRecovery: await selectedAdapter.recoveryContext() } : {}) });
+      }
       if (req.method === 'GET' && url.pathname === '/v1/library/transfer') {
         if ([...url.searchParams.keys()].some(key => key !== 'revision') || url.searchParams.getAll('revision').length !== 1) throw new LibraryError('INVALID_REQUEST', 'Pin the complete transfer to one revision.', 400);
         const transfer = await service.transfer({ libraryId, expectedRevision: url.searchParams.get('revision') });
