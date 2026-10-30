@@ -118,6 +118,8 @@ describe('useTestCases', () => {
       expectedTraits: ['clear', 'concise'],
       expectedExclusions: ['hedging'],
       notes: 'Ship it',
+      createdAt: expect.any(String),
+      updatedAt: expect.any(String),
     });
     expect(listTestCases).toHaveBeenCalledTimes(2);
     expect(result.current.testCasesByPrompt).toEqual({
@@ -170,6 +172,7 @@ describe('useTestCases', () => {
       expectedTraits: ['specific', 'measurable'],
       expectedExclusions: ['fluff', 'jargon'],
       notes: 'After edit',
+      createdAt: '2026-03-13T12:00:00.000Z',
       updatedAt: '2026-03-13T12:00:00.000Z',
     });
     expect(notify).toHaveBeenCalledWith('Updated test case: Updated case');

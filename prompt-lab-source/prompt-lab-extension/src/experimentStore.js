@@ -242,10 +242,11 @@ async function persistEvalRun(normalized, permit) {
   return normalized;
 }
 
-export async function patchEvalRun(id, patch, repository = null) {
+export async function patchEvalRun(id, patch, repository = null, observed) {
   if (!id) return null;
-  const existing = repository ? await repository.readObservedRecord('evaluations', id) : await getEvalRunById(id);
+  const existing = repository ? (observed === undefined ? await repository.readObservedRecord('evaluations', id) : observed) : await getEvalRunById(id);
   if (!existing) return null;
+  if (existing.id !== id) throw new Error('Review the selected run before updating it.');
   return saveEvalRun({ ...existing, ...(patch && typeof patch === 'object' ? patch : {}) }, repository);
 }
 
@@ -368,7 +369,7 @@ export function createExperimentStore(repository) {
     listExperiments: filters => listExperiments(filters, repository),
     getExperimentById: id => getExperimentById(id, repository),
     saveEvalRun: record => saveEvalRun(record, repository),
-    patchEvalRun: (id, patch) => patchEvalRun(id, patch, repository),
+    patchEvalRun: (id, patch, observed) => patchEvalRun(id, patch, repository, observed),
     linkEvalRunToPrompt: (id, promptId, versionId) => linkEvalRunToPrompt(id, promptId, versionId, repository),
     listEvalRuns: filters => listEvalRuns(filters, repository),
     getEvalRunById: id => getEvalRunById(id, repository),

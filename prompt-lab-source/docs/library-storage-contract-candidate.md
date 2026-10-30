@@ -1,5 +1,45 @@
 # Library storage contract candidate
 
+## App record routing: October 30
+
+The desktop owner cannot activate a folder while app record writers still use
+the browser store. Supply one immutable library dependency at the App boundary
+and route evaluations, comparisons, test cases, provenance and chain history
+through its repository. Keep the existing browser behavior when no repository
+has been selected. A selected repository failure must never write to that old
+store. Library changes require a drained remount after reviewed migration.
+
+Test case forms must retain unknown fields and the version actually opened for
+editing or deletion. A concurrent change must preserve the draft and reject the
+stale command. Chain persistence belongs to the individual trace and selected
+store, survives its panel closing until terminal records are acknowledged, and
+must finish before reading the graph or reporting saved history.
+
+Verify these paths with the real repository and command service, including
+legacy-store sentinels, an independent competing client and failed writes.
+Keep legacy app tests passing. This integration is necessary source work toward
+A3; Scratch, packs, migration and startup activation still need their own
+integration and acceptance. A2 and A3 source work may overlap to exercise the
+native lifecycle, but no acceptance gate or folder-before-hosted order changes.
+
+Verification: Dominic Node 22.23.4 passed all 1,584 shared app tests across 142
+files. Thirteen new integration cases use the actual repository and command
+service, including a real App mount, competing-client edits, offline recovery,
+typing during pending save, comparisons, execution, provenance and chain history.
+The first integration pass exposed changing retry timestamps; retaining the exact
+attempt fixes that failure. An acknowledged older save now retains newer typing
+and supplies its saved version for the next edit.
+
+A bounded Mac Node 22.22.1 check imported an isolated copy of the complete
+1,666,421-byte real export using the existing initial-migration keep-all policy.
+The repository read 216 prompts, three evaluations and four Scratch notes.
+Disposable test-case creation, editing and deletion, plus an evaluation edit,
+retained all 16 initial immutable objects. The original export hash is unchanged;
+no private data was uploaded. Two initial harness attempts correctly rejected
+snapshot-only state and unresolved import choices before the harness followed
+the existing import review contract. This is shared-store evidence on real data,
+not real-data UI, installed-app or two-client iCloud acceptance.
+
 ## Native selection and consent: October 30
 
 Add supported native folder selection and client consent to the desktop owner.

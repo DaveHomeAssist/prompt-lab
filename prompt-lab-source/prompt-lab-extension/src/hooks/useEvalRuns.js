@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  EVAL_RUN_SIGNAL_KEY,
-  listEvalRuns,
-  patchEvalRun,
-} from '../experimentStore';
+import { EVAL_RUN_SIGNAL_KEY } from '../experimentStore';
+import { useAppRecords } from '../lib/AppLibraryContext.jsx';
 import { logWarn } from '../lib/logger.js';
 import { RECORDS_CHANGED_EVENT } from '../lib/writeRecovery.js';
 
 export default function useEvalRuns(optionsOrLegacy) {
+  const { listEvalRuns, patchEvalRun } = useAppRecords();
   const opts = optionsOrLegacy || {};
   const promptId = opts.promptId ?? opts.editingId ?? null;
   const tab = opts.tab ?? null;
@@ -79,7 +77,7 @@ export default function useEvalRuns(optionsOrLegacy) {
         setLoading(false);
       }
     }
-  }, [promptId, defaultMode, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
+  }, [listEvalRuns, promptId, defaultMode, modeFilter, providerFilter, modelFilter, statusFilter, verdictFilter, regressionFilter, searchFilter, dateRangeFilter]);
 
   const loadMore = useCallback(() => {
     displayLimit.current = Math.min(displayLimit.current + 20, 200);
@@ -88,7 +86,7 @@ export default function useEvalRuns(optionsOrLegacy) {
 
   const updateRun = useCallback(async (id, patch) => {
     try {
-      const saved = await patchEvalRun(id, patch);
+      const saved = await patchEvalRun(id, patch, evalRuns.find(row => row.id === id) || null);
       if (!saved) {
         logWarn('update eval run', `Run ${id} not found — may have been deleted`);
         return false;
@@ -99,7 +97,7 @@ export default function useEvalRuns(optionsOrLegacy) {
       logWarn('update eval run', e);
       return false;
     }
-  }, [refreshEvalRuns]);
+  }, [refreshEvalRuns, patchEvalRun, evalRuns]);
 
   useEffect(() => {
     const handleStorage = (event) => {

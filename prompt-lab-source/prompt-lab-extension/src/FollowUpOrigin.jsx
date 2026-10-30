@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { getEvalRunById } from './experimentStore.js';
+import { useAppRecords } from './lib/AppLibraryContext.jsx';
 import { describeFollowUpSource } from './lib/followUpProvenance.js';
 
 export default function FollowUpOrigin({ origin, library = [], onOpenParent, m = {} }) {
+  const { getEvalRunById } = useAppRecords();
   const [sourceOutput, setSourceOutput] = useState(null);
   const [sourceError, setSourceError] = useState('');
   const identity = JSON.stringify(origin);

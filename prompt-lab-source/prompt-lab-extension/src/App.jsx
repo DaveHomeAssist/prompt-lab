@@ -1,3 +1,4 @@
+import { AppLibraryProvider, useAppLibrary } from './lib/AppLibraryContext.jsx';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   scorePrompt,
@@ -122,7 +123,11 @@ function persistDraftRecovery(snapshot) {
 const TELEMETRY_PROMPT_DEFER_KEY = 'pl2-telemetry-prompt-deferred';
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-export default function App({
+export default function App({ libraryRepository = null, ...props } = {}) {
+  return <AppLibraryProvider repository={libraryRepository}><AppContent {...props} /></AppLibraryProvider>;
+}
+
+function AppContent({
   clerkUser,
   clerkGetToken,
   clerkUserButton,
@@ -254,7 +259,8 @@ export default function App({
   };
 
   // ── Library hook ──
-  const lib = useLibrary(notify);
+  const { repository } = useAppLibrary();
+  const lib = useLibrary(notify, { repository });
   const abTest = useABTest({ notify });
 
   // ── Editor controllers (state + execution + persistence) ──

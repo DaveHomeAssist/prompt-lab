@@ -6,7 +6,7 @@ import {
 } from '../promptUtils';
 import { ALL_TAGS, DEFAULT_ENHANCE_MODEL, DEFAULT_ENHANCE_TEMPERATURE } from '../constants';
 import { isGoldenRegression, resolveGoldenThreshold } from '../lib/goldenVerdict.js';
-import { saveEvalRun } from '../experimentStore';
+import { useAppRecords } from '../lib/AppLibraryContext.jsx';
 import { scanSensitiveData } from '../piiScanner';
 import useSensitivePreflight from './useSensitivePreflight.js';
 import { openSettings, getConfiguredProviders } from '../lib/platform.js';
@@ -29,6 +29,7 @@ const nowMs = () => typeof performance !== 'undefined' && typeof performance.now
 
 /** Execution controller for enhance and evaluate flows. */
 export default function useExecutionFlow({ ui, lib, editor, persistence }) {
+  const { saveEvalRun } = useAppRecords();
   const { notify, setTab, tab } = ui;
   const { options: generationOptions } = useGenerationOptions();
   const {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { callModel } from '../api.js';
 import { extractTextFromAnthropic, isTransientError } from '../promptUtils.js';
-import { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } from '../experimentStore.js';
+import { useAppRecords } from '../lib/AppLibraryContext.jsx';
 import { logWarn } from '../lib/logger.js';
 import { hashText } from '../lib/utils.js';
 import useSensitivePreflight from './useSensitivePreflight.js';
@@ -12,6 +12,7 @@ const EMPTY_VARIANT = { prompt: '', response: '', loading: false, error: false }
 const EXTRA_LABELS = ['C', 'D', 'E'];
 
 export default function useABTest({ notify }) {
+  const { listEvalRuns, listExperiments, saveEvalRun, saveExperiment } = useAppRecords();
   const [outputBudget, setOutputBudgetState] = useState(() => {
     try {
       const stored = Number(globalThis.localStorage?.getItem(COMPARE_BUDGET_KEY));
@@ -86,7 +87,7 @@ export default function useABTest({ notify }) {
     refresh();
     window.addEventListener(RECORDS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(RECORDS_CHANGED_EVENT, refresh);
-  }, []);
+  }, [listExperiments, listEvalRuns]);
 
   const nowMs = () => typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
   const refreshEvalRuns = async () => {
