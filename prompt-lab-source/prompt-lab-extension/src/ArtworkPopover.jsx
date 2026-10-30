@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ArtworkControls } from './ArtworkPicker.jsx';
 import { safeArtwork } from './lib/libraryPresentation.js';
+import { suggestArtwork } from './lib/artworkSuggestions.js';
 
 export default function ArtworkPopover({ entry, trigger, onSave, onClose }) {
   const dialogRef = useRef(null);
@@ -10,6 +11,7 @@ export default function ArtworkPopover({ entry, trigger, onSave, onClose }) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [error, setError] = useState('');
+  const suggestions = useMemo(() => suggestArtwork({ title: entry.title, text: entry.enhanced || entry.original, tags: entry.tags, collection: entry.collection }, { current: draft }), [entry.title, entry.enhanced, entry.original, entry.tags, entry.collection, draft]);
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     dialog.showModal();
@@ -36,7 +38,7 @@ export default function ArtworkPopover({ entry, trigger, onSave, onClose }) {
   };
   return createPortal(<dialog ref={dialogRef} className="pl-artwork-popover" aria-label={`Artwork for ${entry.title}`} onKeyDown={event => { event.stopPropagation(); if (event.key === 'Escape') { event.preventDefault(); if (!savingRef.current) onClose(); } }} onCancel={event => { event.preventDefault(); if (!savingRef.current) onClose(); }}>
     <header><strong>Prompt artwork</strong><span>{entry.title}</span></header>
-    <ArtworkControls value={draft} onChange={setDraft} onReadyChange={setReady} disabled={saving} label="Prompt artwork" />
+    <ArtworkControls value={draft} onChange={setDraft} onReadyChange={setReady} disabled={saving} label="Prompt artwork" suggestions={suggestions} />
     {error && <p role="alert">{error}</p>}
     <footer><button type="button" disabled={saving} onClick={onClose}>Cancel</button><button type="button" disabled={saving || !ready} onClick={apply}>{saving ? 'Saving…' : 'Apply'}</button></footer>
   </dialog>, trigger.closest('.pl-app-shell') || document.body);

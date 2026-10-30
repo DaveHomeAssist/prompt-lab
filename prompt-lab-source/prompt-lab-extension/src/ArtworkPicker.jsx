@@ -10,7 +10,7 @@ export function Artwork({ value, fallback = 'FileText' }) {
     ? <img src={artwork.image} alt="" onError={() => setFailedImage(artwork.image)} /> : artwork.emoji ? <span className="pl-artwork-emoji">{artwork.emoji}</span> : <Ic n={artwork.icon === 'Code' ? 'Braces' : artwork.icon || fallback} size={18} />}</span>;
 }
 
-export function ArtworkControls({ value, onChange, disabled = false, label = 'Artwork', onReadyChange }) {
+export function ArtworkControls({ value, onChange, disabled = false, label = 'Artwork', onReadyChange, suggestions = [] }) {
   const [error, setError] = useState('');
   const recent = useRecentArtwork();
   const artwork = safeArtwork(value);
@@ -61,6 +61,15 @@ export function ArtworkControls({ value, onChange, disabled = false, label = 'Ar
       </div>
     </div>}
     {recent.error && <p role="alert">{recent.error}</p>}
+    {suggestions.length > 0 && <div className="pl-artwork-suggestions">
+      <strong>Suggested for this prompt</strong>
+      <div className="pl-artwork-recent-list" role="group" aria-label={`${label} suggestions`}>
+        {suggestions.map(item => {
+          const name = item.emoji || item.icon;
+          return <button key={name} type="button" className="ui-control pl-artwork-suggestion" data-artwork-suggestion aria-label={`Use suggested ${name}`} title={`Use ${name}`} onClick={() => { onChange(safeArtwork(item)); setError(''); }}><Artwork value={item} /></button>;
+        })}
+      </div>
+    </div>}
     <div className="pl-artwork-options">{ARTWORK_ICONS.map(icon => <button key={icon} type="button" aria-label={`${label}: ${icon}`} aria-pressed={!artwork.image && !artwork.emoji && artwork.icon === icon} title={icon} onClick={() => { onChange({ icon, image: '' }); setError(''); }}><Ic n={icon === 'Code' ? 'Braces' : icon} size={16} /></button>)}</div>
     <label className="pl-artwork-emoji-input">Emoji<input aria-label={`${label} emoji`} value={emojiInput} placeholder="Paste one emoji" onChange={event => {
       const input = event.target.value; setEmojiInput(input);
