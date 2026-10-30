@@ -2,6 +2,7 @@
 name = "prompt-lab-desktop"
 version = "1.9.0"
 edition = "2021"
+rust-version = "1.89"
 
 [dependencies]
 tauri = { version = "2", features = [] }

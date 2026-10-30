@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
+    fs::File,
     io::{BufRead, BufReader, Read, Write},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -138,6 +139,58 @@ pub struct Connection {
 
 type WriteRequest = (Vec<u8>, mpsc::SyncSender<Result<(), ()>>);
 
+#[cfg(unix)]
+fn acquire_owner(path: &Path) -> Result<File, String> {
+    use std::{
+        fs,
+        io::ErrorKind,
+        os::unix::fs::{MetadataExt, OpenOptionsExt},
+    };
+    let unavailable = || "OWNERSHIP_UNAVAILABLE".to_string();
+    if !path.is_absolute() {
+        return Err(unavailable());
+    }
+    // Never truncate, replace or unlink this file. Its live descriptor owns the lock.
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+    {
+        Ok(file) => drop(file),
+        Err(error) if error.kind() == ErrorKind::AlreadyExists => {}
+        Err(_) => return Err(unavailable()),
+    }
+    let before = fs::symlink_metadata(path).map_err(|_| unavailable())?;
+    if !before.is_file() || before.nlink() != 1 || before.len() != 0 {
+        return Err(unavailable());
+    }
+    // The helper inherits this as stderr. A read-only descriptor cannot log secrets.
+    let file = File::open(path).map_err(|_| unavailable())?;
+    let opened = file.metadata().map_err(|_| unavailable())?;
+    if (before.dev(), before.ino()) != (opened.dev(), opened.ino()) {
+        return Err(unavailable());
+    }
+    file.try_lock().map_err(|error| match error {
+        fs::TryLockError::WouldBlock => "OWNER_BUSY".to_string(),
+        fs::TryLockError::Error(_) => unavailable(),
+    })?;
+    let current = fs::symlink_metadata(path).map_err(|_| unavailable())?;
+    if !current.is_file()
+        || current.nlink() != 1
+        || current.len() != 0
+        || (current.dev(), current.ino()) != (opened.dev(), opened.ino())
+    {
+        return Err(unavailable());
+    }
+    Ok(file)
+}
+
+#[cfg(not(unix))]
+fn acquire_owner(_path: &Path) -> Result<File, String> {
+    Err("PLATFORM_NOT_QUALIFIED".into())
+}
+
 struct Helper {
     child: Option<Child>,
     input: Option<mpsc::SyncSender<WriteRequest>>,
@@ -147,7 +200,7 @@ struct Helper {
 }
 
 impl Helper {
-    fn spawn(node: &Path, entry: &Path) -> Result<Self, String> {
+    fn spawn(node: &Path, entry: &Path, owner: Option<File>) -> Result<Self, String> {
         if !node.is_absolute() || !entry.is_absolute() {
             return Err("INVALID_RUNTIME".into());
         }
@@ -157,7 +210,7 @@ impl Helper {
             .env_clear()
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::null());
+            .stderr(owner.map(Stdio::from).unwrap_or_else(Stdio::null));
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -337,18 +390,33 @@ impl LibraryService {
         entry: PathBuf,
         directory: PathBuf,
         library_id: String,
+        ownership: PathBuf,
     ) -> Result<ServiceStatus, String> {
         if !directory.is_absolute() || !valid_id(&library_id) {
             return Err("INVALID_LIBRARY".into());
         }
-        self.start_with(node, entry, directory, || desktop_credential(&library_id))
+        self.start_owned_with(node, entry, directory, Some(&ownership), || {
+            desktop_credential(&library_id)
+        })
     }
 
+    #[cfg(test)]
     fn start_with(
         &self,
         node: PathBuf,
         entry: PathBuf,
         directory: PathBuf,
+        load_credential: impl FnOnce() -> Result<DesktopCredential, String>,
+    ) -> Result<ServiceStatus, String> {
+        self.start_owned_with(node, entry, directory, None, load_credential)
+    }
+
+    fn start_owned_with(
+        &self,
+        node: PathBuf,
+        entry: PathBuf,
+        directory: PathBuf,
+        ownership: Option<&Path>,
         load_credential: impl FnOnce() -> Result<DesktopCredential, String>,
     ) -> Result<ServiceStatus, String> {
         let mut running = self
@@ -358,6 +426,8 @@ impl LibraryService {
         if running.is_some() {
             return Err("ALREADY_RUNNING".into());
         }
+        // Acquire before credential access or helper startup, including after app crash.
+        let owner = ownership.map(acquire_owner).transpose()?;
         self.active.store(true, Ordering::SeqCst);
         // Serialize platform credential access with ownership, including startup races.
         let credential = match load_credential() {
@@ -372,7 +442,7 @@ impl LibraryService {
             }
         };
         let result: Result<Running, String> = (|| {
-            let mut helper = Helper::spawn(&node, &entry)?;
+            let mut helper = Helper::spawn(&node, &entry, owner)?;
             let response = helper.request(
                 "start",
                 json!({ "directory": directory, "libraryId": credential.library_id,
@@ -607,6 +677,253 @@ for await (const line of input) {
 }
 "#;
 
+    #[cfg(unix)]
+    fn owned_start(fixture: &Fixture, service: &LibraryService) -> Result<ServiceStatus, String> {
+        service.start_owned_with(
+            fixture.node.clone(),
+            fixture.entry.clone(),
+            fixture.root.join("library"),
+            Some(&fixture.root.join("owner.lock")),
+            || new_credential("fixture", now()?),
+        )
+    }
+
+    #[cfg(unix)]
+    fn wait_until(mut condition: impl FnMut() -> bool) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        while !condition() {
+            assert!(
+                Instant::now() < deadline,
+                "disposable process did not settle"
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[cfg(unix)]
+    fn reject_competitor(fixture: &Fixture) {
+        let service = LibraryService::default();
+        let result = service.start_owned_with(
+            fixture.node.clone(),
+            fixture.entry.clone(),
+            fixture.root.join("library"),
+            Some(&fixture.root.join("owner.lock")),
+            || panic!("competing owner must not read or rotate credentials"),
+        );
+        assert_eq!(result.err().as_deref(), Some("OWNER_BUSY"));
+        assert!(!service.active());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn owner_lock_is_read_only_and_rejects_invalid_paths() {
+        use std::os::unix::fs::symlink;
+        let fixture = Fixture::new(WORKER);
+        let path = fixture.root.join("owner.lock");
+        let mut first = acquire_owner(&path).unwrap();
+        assert!(first
+            .write_all(b"private content must not persist")
+            .is_err());
+        assert_eq!(fs::metadata(&path).unwrap().len(), 0);
+        assert_eq!(acquire_owner(&path).err().as_deref(), Some("OWNER_BUSY"));
+        drop(first);
+        drop(acquire_owner(&path).unwrap());
+        let alias = fixture.root.join("alias");
+        symlink(&path, &alias).unwrap();
+        assert_eq!(
+            acquire_owner(&alias).err().as_deref(),
+            Some("OWNERSHIP_UNAVAILABLE")
+        );
+        assert!(acquire_owner(Path::new("relative.lock")).is_err());
+        assert!(acquire_owner(&fixture.root).is_err());
+        let retained = fixture.root.join("retained");
+        fs::write(&retained, "existing content").unwrap();
+        assert!(acquire_owner(&retained).is_err());
+        assert_eq!(fs::read_to_string(&retained).unwrap(), "existing content");
+        assert!(acquire_owner(&fixture.root.join("missing/owner.lock")).is_err());
+        let hard_link = fixture.root.join("hard-link");
+        fs::hard_link(&path, &hard_link).unwrap();
+        assert!(acquire_owner(&path).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn native_lock_releases_after_stop_or_failed_spawn_without_touching_library() {
+        let fixture = Fixture::new(WORKER);
+        fs::create_dir(fixture.root.join("library")).unwrap();
+        fs::write(fixture.root.join("library/original"), "preserved").unwrap();
+        let service = LibraryService::default();
+        owned_start(&fixture, &service).unwrap();
+        reject_competitor(&fixture);
+        service.stop().unwrap();
+        wait_until(|| acquire_owner(&fixture.root.join("owner.lock")).is_ok());
+        let failed = service.start_owned_with(
+            fixture.root.join("missing-node"),
+            fixture.entry.clone(),
+            fixture.root.join("library"),
+            Some(&fixture.root.join("owner.lock")),
+            || new_credential("fixture", now()?),
+        );
+        assert_eq!(failed.err().as_deref(), Some("SERVICE_UNAVAILABLE"));
+        // Concurrent process creation can briefly inherit a descriptor before exec.
+        // Observe release; never bypass the production busy result during that interval.
+        wait_until(|| acquire_owner(&fixture.root.join("owner.lock")).is_ok());
+        let denied = service.start_owned_with(
+            fixture.node.clone(),
+            fixture.entry.clone(),
+            fixture.root.join("library"),
+            Some(&fixture.root.join("owner.lock")),
+            || Err("SECURE_STORE_UNAVAILABLE".into()),
+        );
+        assert_eq!(denied.err().as_deref(), Some("SECURE_STORE_UNAVAILABLE"));
+        owned_start(&fixture, &service).unwrap();
+        service.stop().unwrap();
+        assert_eq!(
+            fs::read_to_string(fixture.root.join("library/original")).unwrap(),
+            "preserved"
+        );
+        assert_eq!(
+            fs::metadata(fixture.root.join("owner.lock")).unwrap().len(),
+            0
+        );
+    }
+
+    #[cfg(unix)]
+    const DRAIN_WORKER: &str = r#"
+import { createInterface } from 'node:readline';
+import { existsSync, writeFileSync, writeSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const root = fileURLToPath(new URL('.', import.meta.url));
+try { writeSync(2, 'must not persist'); throw Error('stderr is writable'); }
+catch (error) { if (error.code !== 'EBADF') throw error; }
+const deadline = setTimeout(() => process.exit(2), 20000);
+for await (const line of createInterface({input:process.stdin})) {
+  const frame = JSON.parse(line);
+  process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'running',libraryId:frame.args.libraryId,baseUrl:'http://127.0.0.1:23456'}})+'\n');
+}
+writeFileSync(root+'drain.started', 'owner input closed');
+while (!existsSync(root+'drain.release')) await new Promise(resolve => setTimeout(resolve, 10));
+writeFileSync(root+'drain.completed', 'accepted work settled');
+clearTimeout(deadline);
+"#;
+
+    #[cfg(unix)]
+    struct DrainCleanup {
+        root: PathBuf,
+        owner: Option<Child>,
+    }
+
+    #[cfg(unix)]
+    impl Drop for DrainCleanup {
+        fn drop(&mut self) {
+            if let Some(owner) = self.owner.as_mut() {
+                let _ = owner.kill();
+                let _ = owner.wait();
+            }
+            let _ = fs::write(self.root.join("drain.release"), "release");
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while Instant::now() < deadline {
+                if acquire_owner(&self.root.join("owner.lock")).is_ok() {
+                    break;
+                }
+                thread::sleep(Duration::from_millis(10));
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    #[ignore = "disposable child process invoked by crash ownership acceptance"]
+    fn crash_owner_fixture() {
+        let root = PathBuf::from(std::env::var_os("PROMPTLAB_CRASH_OWNER_ROOT").unwrap());
+        let node = PathBuf::from(std::env::var_os("PROMPTLAB_CRASH_OWNER_NODE").unwrap());
+        let service = LibraryService::default();
+        service
+            .start_owned_with(
+                node,
+                root.join("worker.mjs"),
+                root.join("library"),
+                Some(&root.join("owner.lock")),
+                || new_credential("fixture", now()?),
+            )
+            .unwrap();
+        fs::write(root.join("owner.ready"), "started").unwrap();
+        // Parent acceptance kills this owned disposable process, never the real app.
+        thread::sleep(Duration::from_secs(20));
+        panic!("parent acceptance did not terminate its disposable owner");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn app_crash_keeps_helper_ownership_through_drain_and_allows_restart() {
+        let fixture = Fixture::new(DRAIN_WORKER);
+        fs::create_dir(fixture.root.join("library")).unwrap();
+        fs::write(fixture.root.join("library/original"), "preserved").unwrap();
+        let owner = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "library_service::tests::crash_owner_fixture",
+                "--ignored",
+            ])
+            .env("PROMPTLAB_CRASH_OWNER_ROOT", &fixture.root)
+            .env("PROMPTLAB_CRASH_OWNER_NODE", &fixture.node)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let mut cleanup = DrainCleanup {
+            root: fixture.root.clone(),
+            owner: Some(owner),
+        };
+        wait_until(|| fixture.root.join("owner.ready").is_file());
+        reject_competitor(&fixture);
+        cleanup.owner.as_mut().unwrap().kill().unwrap();
+        assert!(!cleanup.owner.as_mut().unwrap().wait().unwrap().success());
+        cleanup.owner = None;
+        wait_until(|| fixture.root.join("drain.started").is_file());
+        reject_competitor(&fixture);
+        assert!(!fixture.root.join("drain.completed").exists());
+        fs::write(fixture.root.join("drain.release"), "release").unwrap();
+        wait_until(|| acquire_owner(&fixture.root.join("owner.lock")).is_ok());
+        assert_eq!(
+            fs::read_to_string(fixture.root.join("drain.completed")).unwrap(),
+            "accepted work settled"
+        );
+        assert_eq!(
+            fs::metadata(fixture.root.join("owner.lock")).unwrap().len(),
+            0
+        );
+        assert_eq!(
+            fs::read_to_string(fixture.root.join("library/original")).unwrap(),
+            "preserved"
+        );
+        fs::write(&fixture.entry, WORKER).unwrap();
+        let restarted = LibraryService::default();
+        owned_start(&fixture, &restarted).unwrap();
+        restarted.stop().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_start_keeps_ownership_until_helper_exits() {
+        let fixture = Fixture::new(&DRAIN_WORKER.replace("state:'running'", "state:'invalid'"));
+        let _cleanup = DrainCleanup {
+            root: fixture.root.clone(),
+            owner: None,
+        };
+        let service = LibraryService::default();
+        assert_eq!(
+            owned_start(&fixture, &service).err().as_deref(),
+            Some("CONTROL_INVALID")
+        );
+        wait_until(|| fixture.root.join("drain.started").is_file());
+        reject_competitor(&fixture);
+        fs::write(fixture.root.join("drain.release"), "release").unwrap();
+        wait_until(|| acquire_owner(&fixture.root.join("owner.lock")).is_ok());
+        assert!(fixture.root.join("drain.completed").is_file());
+    }
+
     #[test]
     fn native_owner_retains_one_child_and_waits_for_stop() {
         let fixture = Fixture::new(WORKER);
@@ -665,7 +982,7 @@ for await (const line of input) {
     #[test]
     fn unresponsive_child_cannot_hold_private_control_call() {
         let fixture = Fixture::new("setInterval(() => {}, 1000);");
-        let mut helper = Helper::spawn(&fixture.node, &fixture.entry).unwrap();
+        let mut helper = Helper::spawn(&fixture.node, &fixture.entry, None).unwrap();
         helper.wait = Duration::from_millis(200);
         let started = Instant::now();
         let result = helper.request("start", json!({ "synthetic": "x".repeat(60_000) }));

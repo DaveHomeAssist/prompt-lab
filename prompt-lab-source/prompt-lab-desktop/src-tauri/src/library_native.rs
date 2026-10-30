@@ -39,7 +39,18 @@ impl NativeLibrary {
                 tauri::path::BaseDirectory::Resource,
             )
             .map_err(|_| "RUNTIME_UNAVAILABLE".to_string())?;
-        self.service.start(node, entry, directory, library_id)
+        let local = app
+            .path()
+            .app_local_data_dir()
+            .map_err(|_| "OWNERSHIP_UNAVAILABLE".to_string())?;
+        std::fs::create_dir_all(&local).map_err(|_| "OWNERSHIP_UNAVAILABLE".to_string())?;
+        self.service.start(
+            node,
+            entry,
+            directory,
+            library_id,
+            local.join("library-service.lock"),
+        )
     }
 }
 

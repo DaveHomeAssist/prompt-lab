@@ -1,5 +1,58 @@
 # Library storage contract candidate
 
+## Native ownership after app crash: October 29
+
+The app's single-instance guard ends when its process dies, while its helper
+may still be draining an accepted write. A restarted app must not start a
+second writer in that interval. Acquire a nonblocking OS file lock in the
+app's local data directory before reading credentials or launching the helper.
+Keep the same lock held by the helper until process exit. This is local process
+ownership, never an iCloud lock or cross-device transaction.
+
+Use the otherwise unused stderr descriptor to inherit a read-only lock file
+through the standard process API. This avoids unsafe descriptor manipulation
+and makes accidental stderr writes fail instead of recording private data.
+Never delete or replace the lock file during normal use. Retained file presence
+is not a busy signal; only the live OS lock is authoritative. macOS is the
+only enabled native target; installed acceptance is still required. Windows
+and Linux activation remain unavailable.
+
+Acceptance uses disposable processes and local files: a killed owner leaves
+the helper holding the lock through a controlled drain; a competing owner is
+refused before credentials or library mutation; release occurs after helper
+exit and permits restart. Also verify normal stop, failed spawn/startup, a
+read-only descriptor, invalid lock paths and preservation of the selected
+folder. Source process tests remain separate from installed-app acceptance.
+
+### Crash ownership verification
+
+The exact source passed all 15 ordinary native service tests in a small Mac
+harness, including a real disposable owner killed while its helper waited to
+finish a controlled drain. A competing owner was refused before credential
+access both before and after the kill; after drain completion a fresh owner
+started and stopped successfully. Four new cases also cover read-only stderr,
+retained lock files, symlink/hard-link refusal, normal stop, failed spawn,
+denied credentials and failed-start cleanup. The selected fixture file survived.
+The ignored child fixture is explicitly invoked by the crash test; the two
+real credential-store tests retain their separate opt-in acceptance boundary.
+
+A negative control retained the lock only in the disposable parent and removed
+helper inheritance. The same crash test then failed because a second owner
+reached credential access while the first helper was draining. This verifies
+the regression assertion without pretending the modified harness is shipped
+code. The first concurrent test run also retained a transient `OWNER_BUSY`
+failure immediately after failed spawn. Cleanup now observes lock release with
+a five-second deadline; production continues to refuse ownership while busy.
+
+Duncan compiled the full native crate and passed all 16 ordinary tests under
+Rust 1.95.0 and Node 22.23.4. Windows credential tests remain explicitly skipped,
+and Unix ownership tests do not claim Windows qualification. Rust 1.89 is now
+the declared minimum for the standard library
+[file lock API](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock).
+No dependency version changed. Installed macOS close/reopen/quit, actual helper
+integration under app identity, explicit pairing and the A3 connection/picker
+remain required. The original export remains untouched.
+
 ## Native desktop credential renewal: October 29
 
 The current owner refuses connection after its desktop credential expires,
