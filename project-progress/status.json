@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T03:15:47.927Z",
+  "snapshotAt": "2026-10-30T03:35:15.800Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Complete packaged macOS lifecycle, crash ownership and credential renewal/pairing before enabling the reviewed picker and app connection.",
+  "nextAction": "Verify universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection.",
   "evidence": [
+    {
+      "label": "Native credential renewal and runtime packaging",
+      "state": "Open",
+      "detail": "Working candidate: 16 ordinary native tests pass on Duncan; two explicit disposable Mac Keychain tests pass after the public connection reproduced CREDENTIAL_EXPIRED before the fix. Exact native source SHA256 b499de50ed9bdf1e5f20f94bad11d566a048ca57ee7b6796d3350babed8ee8dc. Real Mac architecture verification accepts both CPU slices and rejects missing slices, invalid content and missing files. Shell minimum corrected to macOS 11. Previous candidate 1c28162 failed universal packaging; updated full CI and installed acceptance remain pending. Explicit pairing, crash ownership, A3, actual iCloud and hosted phases remain open. Original export and personal libraries are not modified.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/pull/248"
+    },
     {
       "label": "Native credentials and real filesystem failures verified",
       "state": "Open",
@@ -1596,8 +1602,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Complete packaged macOS lifecycle, crash ownership and credential renewal/pairing before enabling the reviewed picker and app connection.",
-      "verification": "Exact native source passes disposable Mac Keychain readback, expiry rotation and removal. Five real Linux filesystem failures and all 52 browser preservation cases pass on Dominic. Installed macOS lifecycle/permissions, credential renewal/pairing, native recovery UX and actual two-client iCloud remain open.",
+      "nextAction": "Verify universal packaging, installed macOS lifecycle, crash ownership and explicit pairing before enabling the reviewed picker and app connection.",
+      "verification": "Native renewal: 16 ordinary tests on Duncan and two real Mac Keychain tests pass. Real Mac universal architecture check passes positive and negative fixtures; macOS minimum now 11. Full updated packaging, installed lifecycle/permissions, crash ownership, explicit pairing, native recovery UX and actual two-client iCloud remain open.",
       "title": "PRJ | PromptLab | Durable Folder Service and Local API | A2",
       "status": "In progress",
       "severity": "Medium",

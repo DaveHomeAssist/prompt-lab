@@ -14,6 +14,8 @@ use std::{
 
 const CONTROL_LIMIT: u64 = 64 * 1024;
 const WAIT: Duration = Duration::from_secs(30);
+const CREDENTIAL_LIFETIME_MS: u64 = 86_400_000;
+const RENEW_BEFORE_MS: u64 = 300_000;
 #[cfg(any(target_os = "macos", windows))]
 const CREDENTIAL_SERVICE: &str = "com.promptlab.desktop.folder-service";
 
@@ -41,7 +43,21 @@ fn valid_credential(value: &DesktopCredential, library_id: &str, at: u64) -> boo
         && value.token.len() == 64
         && value.token.bytes().all(|byte| byte.is_ascii_hexdigit())
         && value.expires_at > at
-        && value.expires_at <= at + 86_400_000
+        && value.expires_at <= at.saturating_add(CREDENTIAL_LIFETIME_MS)
+}
+
+fn credential_ready(value: &DesktopCredential, library_id: &str, at: u64) -> bool {
+    valid_credential(value, library_id, at) && value.expires_at.saturating_sub(at) > RENEW_BEFORE_MS
+}
+
+fn desktop_access(value: &DesktopCredential) -> Value {
+    let origin = if cfg!(windows) {
+        "http://tauri.localhost"
+    } else {
+        "tauri://localhost"
+    };
+    json!({ "id": "desktop", "token": value.token, "expiresAt": value.expires_at,
+        "scopes": ["read", "write"], "origin": origin })
 }
 
 #[cfg(any(target_os = "macos", windows, test))]
@@ -51,7 +67,7 @@ fn new_credential(library_id: &str, at: u64) -> Result<DesktopCredential, String
     Ok(DesktopCredential {
         library_id: library_id.into(),
         token: bytes.iter().map(|byte| format!("{byte:02x}")).collect(),
-        expires_at: at + 86_400_000,
+        expires_at: at.saturating_add(CREDENTIAL_LIFETIME_MS),
     })
 }
 
@@ -70,10 +86,10 @@ fn desktop_credential(library_id: &str) -> Result<DesktopCredential, String> {
             if previous.library_id != library_id {
                 return Err("SECURE_STORE_INVALID".into());
             }
-            if valid_credential(&previous, library_id, at) {
+            if credential_ready(&previous, library_id, at) {
                 return Ok(previous);
             }
-            if previous.expires_at > at {
+            if previous.expires_at > at && !valid_credential(&previous, library_id, at) {
                 return Err("SECURE_STORE_INVALID".into());
             }
         }
@@ -290,6 +306,7 @@ struct Running {
     credential: DesktopCredential,
     base_url: String,
     stopping: bool,
+    error: Option<String>,
 }
 
 pub struct LibraryService {
@@ -356,13 +373,11 @@ impl LibraryService {
         };
         let result: Result<Running, String> = (|| {
             let mut helper = Helper::spawn(&node, &entry)?;
-            let origin = if cfg!(windows) {
-                "http://tauri.localhost"
-            } else {
-                "tauri://localhost"
-            };
-            let response = helper.request("start", json!({ "directory": directory, "libraryId": credential.library_id,
-                "credentials": [{ "id": "desktop", "token": credential.token, "expiresAt": credential.expires_at, "scopes": ["read", "write"], "origin": origin }] }))?;
+            let response = helper.request(
+                "start",
+                json!({ "directory": directory, "libraryId": credential.library_id,
+                "credentials": [desktop_access(&credential)] }),
+            )?;
             let base_url = response["baseUrl"]
                 .as_str()
                 .ok_or("CONTROL_INVALID")?
@@ -382,6 +397,7 @@ impl LibraryService {
                 credential,
                 base_url,
                 stopping: false,
+                error: None,
             })
         })();
         match result {
@@ -420,7 +436,7 @@ impl LibraryService {
                     },
                     library_id: Some(value.credential.library_id.clone()),
                     base_url: Some(value.base_url.clone()),
-                    error: None,
+                    error: value.error.clone(),
                 });
             }
             *running = None;
@@ -449,21 +465,60 @@ impl LibraryService {
     }
 
     pub fn connection(&self) -> Result<Connection, String> {
+        self.connection_with(desktop_credential)
+    }
+
+    fn connection_with(
+        &self,
+        load_credential: impl FnOnce(&str) -> Result<DesktopCredential, String>,
+    ) -> Result<Connection, String> {
         let status = self.status()?;
+        if status.state == "stopping" {
+            return Err("STOP_PENDING".into());
+        }
         if status.state != "running" {
             return Err("SERVICE_UNAVAILABLE".into());
         }
-        let running = self
+        let mut running = self
             .running
             .lock()
             .map_err(|_| "SERVICE_UNAVAILABLE".to_string())?;
-        let value = running.as_ref().ok_or("SERVICE_UNAVAILABLE")?;
+        let value = running.as_mut().ok_or("SERVICE_UNAVAILABLE")?;
         if value.stopping {
             return Err("STOP_PENDING".into());
         }
-        if !valid_credential(&value.credential, &value.credential.library_id, now()?) {
-            return Err("CREDENTIAL_EXPIRED".into());
+        if !credential_ready(&value.credential, &value.credential.library_id, now()?) {
+            let next = match load_credential(&value.credential.library_id) {
+                Ok(next) => next,
+                Err(error) => {
+                    value.error = Some(error.clone());
+                    return Err(error);
+                }
+            };
+            if !credential_ready(&next, &value.credential.library_id, now()?)
+                || next.token == value.credential.token
+            {
+                value.error = Some("SECURE_STORE_INVALID".into());
+                return Err("SECURE_STORE_INVALID".into());
+            }
+            let confirmed = value.helper.request(
+                "credentials",
+                json!({ "credentials": [desktop_access(&next)] }),
+            );
+            if !matches!(confirmed, Ok(ref response)
+                if response["state"] == "running" && response["credentialIds"] == json!(["desktop"]))
+            {
+                // The helper may have applied the credential even if its reply was
+                // lost. Do not return either token or allow a second owner. EOF
+                // drains accepted writes while we retain the uncertain child.
+                value.stopping = true;
+                value.error = Some("CREDENTIAL_UPDATE_FAILED".into());
+                value.helper.input.take();
+                return Err("CREDENTIAL_UPDATE_FAILED".into());
+            }
+            value.credential = next;
         }
+        value.error = None;
         Ok(Connection {
             library_id: value.credential.library_id.clone(),
             base_url: value.base_url.clone(),
@@ -546,6 +601,8 @@ for await (const line of input) {
     await writeFile(join(directory,'stop.completed'),'accepted work settled');
     process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'stopped'}})+'\n');
     input.close(); break;
+  } else if (frame.command === 'credentials') {
+    process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'running',credentialIds:frame.args.credentials.map(item=>item.id)}})+'\n');
   }
 }
 "#;
@@ -652,6 +709,220 @@ for await (const line of input) {
         assert!(!valid_credential(&invalid, "library-one", at));
     }
 
+    fn expire_connection(service: &LibraryService, near: bool) -> DesktopCredential {
+        let mut owner = service.running.lock().unwrap();
+        let value = owner.as_mut().unwrap();
+        value.credential.expires_at = if near {
+            now().unwrap() + RENEW_BEFORE_MS
+        } else {
+            0
+        };
+        value.credential.clone()
+    }
+
+    #[test]
+    fn native_connection_renews_before_expiry_and_reuses_confirmed_token() {
+        for near in [false, true] {
+            let fixture = Fixture::new(WORKER);
+            let service = LibraryService::default();
+            fixture.start(&service).unwrap();
+            let original = service
+                .connection_with(|_| panic!("fresh credentials need no store access"))
+                .unwrap();
+            expire_connection(&service, near);
+            let next = service
+                .connection_with(|id| new_credential(id, now()?))
+                .unwrap();
+            assert!(original.token != next.token);
+            assert_eq!(next.library_id, original.library_id);
+            assert_eq!(next.base_url, original.base_url);
+            let repeated = service
+                .connection_with(|_| panic!("confirmed renewal must be reused"))
+                .unwrap();
+            assert!(repeated.token == next.token);
+            let status = serde_json::to_string(&service.status().unwrap()).unwrap();
+            assert!(!status.contains(&next.token));
+            service.stop().unwrap();
+        }
+    }
+
+    #[test]
+    fn renewal_store_failure_preserves_owner_and_can_retry() {
+        let fixture = Fixture::new(WORKER);
+        let service = LibraryService::default();
+        fixture.start(&service).unwrap();
+        let previous = expire_connection(&service, false);
+        let failed = service.connection_with(|_| Err("SECURE_STORE_UNAVAILABLE".into()));
+        assert_eq!(failed.err().as_deref(), Some("SECURE_STORE_UNAVAILABLE"));
+        assert_eq!(
+            service.status().unwrap().error.as_deref(),
+            Some("SECURE_STORE_UNAVAILABLE")
+        );
+        assert!(service.active());
+        assert!(
+            service
+                .running
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .credential
+                .token
+                == previous.token
+        );
+        let recovered = service
+            .connection_with(|id| new_credential(id, now()?))
+            .unwrap();
+        assert!(recovered.token != previous.token);
+        assert!(service.status().unwrap().error.is_none());
+        service.stop().unwrap();
+    }
+
+    #[test]
+    fn invalid_renewals_cannot_change_the_running_credential() {
+        let fixture = Fixture::new(WORKER);
+        let service = LibraryService::default();
+        fixture.start(&service).unwrap();
+        let previous = expire_connection(&service, false);
+        let mut reused = previous.clone();
+        reused.expires_at = now().unwrap() + CREDENTIAL_LIFETIME_MS;
+        let mut near = new_credential("fixture", now().unwrap()).unwrap();
+        near.expires_at = now().unwrap() + RENEW_BEFORE_MS;
+        let mut malformed = new_credential("fixture", now().unwrap()).unwrap();
+        malformed.token = "invalid".into();
+        for next in [
+            new_credential("foreign", now().unwrap()).unwrap(),
+            reused,
+            near,
+            malformed,
+        ] {
+            let result = service.connection_with(|_| Ok(next));
+            assert_eq!(result.err().as_deref(), Some("SECURE_STORE_INVALID"));
+            let owner = service.running.lock().unwrap();
+            assert!(owner.as_ref().unwrap().credential.token == previous.token);
+            assert!(!owner.as_ref().unwrap().stopping);
+        }
+        service.stop().unwrap();
+    }
+
+    #[test]
+    fn concurrent_connections_perform_one_confirmed_renewal() {
+        use std::sync::{atomic::AtomicUsize, Arc, Barrier};
+        let fixture = Fixture::new(WORKER);
+        let service = Arc::new(LibraryService::default());
+        fixture.start(&service).unwrap();
+        expire_connection(&service, false);
+        let count = Arc::new(AtomicUsize::new(0));
+        let barrier = Arc::new(Barrier::new(4));
+        let callers: Vec<_> = (0..4)
+            .map(|_| {
+                let service = service.clone();
+                let count = count.clone();
+                let barrier = barrier.clone();
+                thread::spawn(move || {
+                    barrier.wait();
+                    service
+                        .connection_with(|id| {
+                            count.fetch_add(1, Ordering::SeqCst);
+                            new_credential(id, now()?)
+                        })
+                        .unwrap()
+                })
+            })
+            .collect();
+        let results: Vec<_> = callers
+            .into_iter()
+            .map(|caller| caller.join().unwrap())
+            .collect();
+        assert_eq!(count.load(Ordering::SeqCst), 1);
+        assert!(results
+            .iter()
+            .all(|result| result.token == results[0].token));
+        service.stop().unwrap();
+    }
+
+    #[test]
+    fn uncertain_renewal_drains_the_child_without_returning_a_token() {
+        let acknowledgement = "process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'running',credentialIds:frame.args.credentials.map(item=>item.id)}})+'\\n');";
+        for replacement in [
+            "process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'stopped',credentialIds:['desktop']}})+'\\n');",
+            "process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:true,result:{state:'running',credentialIds:['foreign']}})+'\\n');",
+            "process.stdout.write(JSON.stringify({protocol:1,id:frame.id,ok:false,error:{code:'INVALID_CREDENTIALS'}})+'\\n');",
+            "process.stdout.write('{bad}\\n');",
+            "",
+        ] {
+            assert!(WORKER.contains(acknowledgement));
+            let fixture = Fixture::new(&WORKER.replace(acknowledgement, replacement));
+            let service = LibraryService::default();
+            fixture.start(&service).unwrap();
+            let previous = expire_connection(&service, false);
+            service.running.lock().unwrap().as_mut().unwrap().helper.wait = Duration::from_millis(200);
+            let result = service.connection_with(|id| new_credential(id, now()?));
+            assert_eq!(result.err().as_deref(), Some("CREDENTIAL_UPDATE_FAILED"));
+            {
+                let owner = service.running.lock().unwrap();
+                let value = owner.as_ref().unwrap();
+                assert!(value.stopping); assert!(value.helper.input.is_none());
+                assert!(value.credential.token == previous.token);
+                assert!(service.active());
+            }
+            let second = fixture.start(&service);
+            assert_eq!(second.err().as_deref(), Some("ALREADY_RUNNING"));
+            service.stop().unwrap();
+            assert!(!service.active());
+            fixture.start(&service).unwrap(); service.stop().unwrap();
+        }
+    }
+
+    #[cfg(any(target_os = "macos", windows))]
+    #[test]
+    #[ignore = "requires explicit acceptance against the real platform credential store"]
+    fn native_connection_renews_with_real_keychain() {
+        let name = format!(
+            "disposable-renewal-{}",
+            &new_credential("fixture", now().unwrap()).unwrap().token[..16]
+        );
+        let entry = keyring::Entry::new(CREDENTIAL_SERVICE, &name).unwrap();
+        assert!(matches!(entry.get_secret(), Err(keyring::Error::NoEntry)));
+        struct Cleanup<'a>(&'a keyring::Entry);
+        impl Drop for Cleanup<'_> {
+            fn drop(&mut self) {
+                let _ = self.0.delete_credential();
+            }
+        }
+        let _cleanup = Cleanup(&entry);
+        let fixture = Fixture::new(WORKER);
+        let service = LibraryService::default();
+        service
+            .start_with(
+                fixture.node.clone(),
+                fixture.entry.clone(),
+                fixture.root.clone(),
+                || desktop_credential(&name),
+            )
+            .unwrap();
+        let previous = {
+            let mut owner = service.running.lock().unwrap();
+            let value = owner.as_mut().unwrap();
+            value.credential.expires_at = 0;
+            entry
+                .set_secret(&serde_json::to_vec(&value.credential).unwrap())
+                .unwrap();
+            value.credential.clone()
+        };
+        let result = service.connection();
+        service.stop().unwrap();
+        let stored: DesktopCredential =
+            serde_json::from_slice(&entry.get_secret().unwrap()).unwrap();
+        entry.delete_credential().unwrap();
+        assert!(matches!(entry.get_secret(), Err(keyring::Error::NoEntry)));
+        let connection = result.unwrap();
+        assert!(connection.token != previous.token);
+        assert!(connection.token == stored.token);
+        assert_eq!(connection.library_id, name);
+        assert!(valid_credential(&stored, &name, now().unwrap()));
+    }
+
     #[cfg(any(target_os = "macos", windows))]
     #[test]
     #[ignore = "requires explicit acceptance against the real platform credential store"]
@@ -679,6 +950,14 @@ for await (const line of input) {
         let next = desktop_credential(&name).unwrap();
         assert!(first.token != next.token);
         assert!(valid_credential(&next, &name, now().unwrap()));
+        let mut near = next.clone();
+        near.expires_at = now().unwrap() + RENEW_BEFORE_MS;
+        entry
+            .set_secret(&serde_json::to_vec(&near).unwrap())
+            .unwrap();
+        let renewed = desktop_credential(&name).unwrap();
+        assert!(renewed.token != next.token);
+        assert!(credential_ready(&renewed, &name, now().unwrap()));
         entry.delete_credential().unwrap();
         assert!(matches!(entry.get_secret(), Err(keyring::Error::NoEntry)));
     }

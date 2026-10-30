@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyUniversalRuntime } from './verify-universal-runtime.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const resource = join(desktop, 'src-tauri/library-helper');
@@ -33,7 +34,7 @@ const runtime = join(desktop, 'src-tauri/binaries', `promptlab-node-${manifest.h
 assert.equal(execFileSync(runtime, ['--version'], { encoding: 'utf8' }).trim(), process.version);
 if (process.platform === 'darwin') {
   const universal = join(desktop, 'src-tauri/binaries/promptlab-node-universal-apple-darwin');
-  execFileSync('lipo', ['-verify_arch', 'arm64', 'x86_64', universal]);
+  verifyUniversalRuntime(universal);
   assert.equal(execFileSync(universal, ['--version'], { encoding: 'utf8' }).trim(), process.version);
 }
 console.log(`Verified ${files.length} helper resources and ${Object.keys(manifest.runtimes).length} runtime hashes.`);

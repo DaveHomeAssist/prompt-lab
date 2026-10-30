@@ -1,5 +1,56 @@
 # Library storage contract candidate
 
+## Native desktop credential renewal: October 29
+
+The current owner refuses connection after its desktop credential expires,
+requiring a service restart. Renew the trusted desktop credential when a native
+connection is requested within five minutes of expiry. Read and verify the new
+value in the platform secure store, replace the helper's credential through its
+private channel, validate the acknowledgement, and only then return it to the
+trusted app. Keep the existing library binding, exact desktop origin, scopes and
+24-hour lifetime. No library files, URLs or diagnostics receive credentials.
+
+Secure-store failure keeps the previous runtime state and reports the failure;
+it never returns an expired credential or silently changes storage. A malformed,
+lost or rejected helper acknowledgement makes connection unavailable and closes
+the private input so accepted writes drain. Retain the child until it exits.
+Connection retries after a secure-store failure may recover; an uncertain helper
+requires a confirmed stop and restart. Concurrent native callers serialize one
+renewal and reuse its confirmed result. No new dependency or transport is needed.
+
+Verify current public connection behavior against a disposable real Mac Keychain
+entry, then test early renewal, expiry, concurrent callers, denied storage,
+wrong-library values, rejected acknowledgement and recovery. Preserve existing
+stop/ownership tests and actual helper origin/revocation checks. This closes the
+desktop credential renewal boundary only. Explicit agent/browser pairing, crash
+ownership, installed lifecycle and the A3 picker remain required.
+
+### Renewal and packaging verification
+
+The public native connection reproduced `CREDENTIAL_EXPIRED` before the fix
+against a disposable real Mac Keychain entry. The exact updated Rust source
+passed 16 ordinary native tests on Duncan (Rust 1.95.0, Node 22.23.4), including
+early/expired renewal, one renewal for concurrent callers, rejected credentials,
+denied storage and uncertain helper acknowledgement. Both explicit Keychain
+tests then passed on the Mac in an isolated exact-source harness. Disposable
+entries were deleted and their absence confirmed. These tests use a controlled
+helper fixture; installed application identity and real-helper integration
+remain separate acceptance requirements.
+
+The macOS job at candidate `1c28162` failed because `lipo -verify_arch` treated
+the trailing binary path as another architecture. Moving the path first still
+failed with the local tool. Both packaging scripts now share a `lipo -archs`
+check that requires exactly `arm64` and `x86_64`. A real Mac test compiles both
+slices, accepts the combined binary and rejects either thin binary, invalid
+content and a missing file. Paths with spaces are covered. The same test runs
+in the existing macOS packaging workflow; other platforms explicitly skip it.
+
+The shell minimum is now macOS 11.0, matching the bundled official Node 22
+runtime's minimum. This corrects the package declaration; actual installation
+on the oldest supported OS is not yet verified. Full universal packaging on
+the updated candidate remains a CI gate. No new dependencies, private data,
+personal-library activation or hosted provisioning are part of this change.
+
 ## Native credentials and filesystem failure acceptance: October 29
 
 The exact native credential source passed a real Mac Keychain round trip in

@@ -5,6 +5,7 @@ import { chmod, copyFile, mkdir, readFile, readdir, writeFile } from 'node:fs/pr
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { verifyUniversalRuntime } from './verify-universal-runtime.mjs';
 
 const desktop = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -54,7 +55,7 @@ export async function prepareLibraryHelper() {
     await copyFile(join(cache, 'bin', 'node'), otherBinary); await chmod(otherBinary, 0o755);
     const universal = join(binaries, 'promptlab-node-universal-apple-darwin');
     execFileSync('lipo', ['-create', nativeBinary, otherBinary, '-output', universal]);
-    execFileSync('lipo', ['-verify_arch', 'arm64', 'x86_64', universal]);
+    verifyUniversalRuntime(universal);
     runtimeFiles.push(otherBinary, universal);
   }
   const license = await download(`https://raw.githubusercontent.com/nodejs/node/${process.version}/LICENSE`);
