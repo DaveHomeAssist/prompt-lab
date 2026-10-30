@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T02:25:34.388263Z",
+  "snapshotAt": "2026-10-30T02:53:56.537Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect the native owner, secure credential storage and packaged helper before exposing enable/pairing controls. Keep actual two-client iCloud and hosted gates explicit.",
+  "nextAction": "Verify the packaged macOS native boundary and complete secure pairing and failure acceptance before enabling the reviewed folder picker.",
   "evidence": [
+    {
+      "label": "Native owner and packaged runtime verified",
+      "state": "Open",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/be01b7dcaf317a50a844ee12e726ba31c5760ad8",
+      "detail": "## Native service owner and configuration verified\n\n2026-10-29: [Native runtime be01b7d](https://github.com/DaveHomeAssist/prompt-lab/commit/be01b7dcaf317a50a844ee12e726ba31c5760ad8) is pushed and remote verified in [draft PR248](https://github.com/DaveHomeAssist/prompt-lab/pull/248).\n\nThe native owner serializes private pipe requests, bounds input/output waits, retains the helper through graceful stop, and uses an expiring library-bound platform credential. Single-instance handling focuses the existing window. Closing an active service window hides it; explicit quit waits for accepted writes. The shared engine now ships with its own Node 22 runtime, license and hash manifest. The future native picker must still provide an explicit reviewed binding. No personal library is activated.\n\nDuncan Rust 1.95.0 and Node 22.23.4: eleven ordinary native tests and the desktop frontend build pass. Nine source/config hashes match. The compatible single-instance 2.4.5 pin preserves every existing crate version, including Tauri 2.10.3. The real credential-store test was explicitly run and failed before a write; a fresh nonexistent credential probe returns Windows error 1312. [Microsoft documents that network logon sessions have no associated credential set](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credreadw). Interactive credential acceptance remains open.\n\nBoth runners verify thirty packaged resource hashes and the runtime hash. Dominic passes all nine packaged helper process cases, Markdown lint and four documentation contracts. The full Windows attempt passes five and fails four because directory fsync returns EPERM. Preserve the failed durability gate; Windows native activation explicitly refuses until fixed. Linux native activation also awaits qualified secure storage. Existing import/export is retained. The existing CI workflow now verifies packaged resources and qualified process contracts.\n\nOriginal 1,666,421-byte export SHA256 remains unchanged. This increment uses synthetic fixtures and does not repeat earlier real-export acceptance or upload private data. macOS Keychain/universal package acceptance, actual window lifecycle/crash ownership, renewal/pairing, disk-full/permission failures, A3 activation, actual two-client iCloud and installed/human acceptance remain open. A2 remains In progress. Hosted remains behind accepted Phase A, with no paid provisioning. PR248 stays draft and unmerged; current-head CI is a separate gate.\n\nNext: verify the packaged macOS native boundary and complete secure pairing and failure acceptance before enabling the reviewed folder picker. MUT-7 direct current-session instruction exception. The registered Next Steps Board is absent; no replacement or synchronization is claimed."
+    },
     {
       "label": "A2 private helper boundary verified",
       "state": "Open",
@@ -1584,8 +1590,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Connect the native owner, secure credential storage and packaged helper before exposing enable/pairing controls.",
-      "verification": "Private helper process boundary verified on candidate 3ad6c37. Dominic Node 22.23.4 passes all 434 storage tests, including nine child-process cases and two failed-before API regressions. Native owner, secure storage, packaging, pairing and full A2 acceptance remain open.",
+      "nextAction": "Verify the packaged macOS native boundary and complete secure pairing and failure acceptance before enabling the reviewed folder picker.",
+      "verification": "Native owner and packaged helper verified on remote runners. macOS installed/Keychain acceptance, Windows durable writes, pairing, failure paths and actual iCloud remain open.",
       "title": "Build durable folder service and local API A2 (sync slice 2)",
       "status": "In progress",
       "severity": "Medium",
