@@ -15,6 +15,7 @@ export function createDefaultTelemetryState() {
     pendingEvents: [],
     lastSyncedAt: '',
     lastError: '',
+    deletionPending: false,
   };
 }
 
@@ -41,6 +42,7 @@ export function normalizeTelemetryState(value = {}) {
       : [],
     lastSyncedAt: typeof value?.lastSyncedAt === 'string' ? value.lastSyncedAt : '',
     lastError: typeof value?.lastError === 'string' ? value.lastError : '',
+    deletionPending: value?.deletionPending === true,
   };
 }
 
@@ -101,6 +103,21 @@ export function buildTelemetryIdentityPayload(state, sessionId, overrides = {}) 
     sessionId,
     telemetryEnabled: overrides.telemetryEnabled ?? state.telemetryEnabled,
     contactEmail: normalizeEmail(overrides.contactEmail ?? state.contactEmail),
+  };
+}
+
+// PRIV-02: sent when the user withdraws insights consent. The server deletes
+// this device's profile, the contact record written by this device, and this
+// device's queued events. The email is only a lookup hint; the server checks
+// that the contact record belongs to the same device id before deleting it.
+export function buildTelemetryWithdrawalPayload(state) {
+  const contactEmail = normalizeEmail(state?.contactEmail);
+  return {
+    kind: 'withdraw',
+    surface: getTelemetrySurface(),
+    deviceId: state?.deviceId,
+    telemetryEnabled: false,
+    ...(contactEmail ? { contactEmail } : {}),
   };
 }
 

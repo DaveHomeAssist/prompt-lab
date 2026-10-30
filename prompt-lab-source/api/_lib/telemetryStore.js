@@ -268,6 +268,67 @@ export async function persistTelemetryEvent(event, config = buildTelemetryConfig
   return { ok: true, mode };
 }
 
+// PRIV-02: withdrawing consent deletes what the server holds for this device:
+// the device profile, the contact record linked to it, and this device's entries
+// in the shared event list. A contact record is deleted only when it was written
+// by the same device id, so an email address alone cannot delete someone
+// else's record. Aggregate counters hold no device or contact data and stay.
+export async function deleteTelemetryRecords({ deviceId, contactEmail } = {}, config = buildTelemetryConfig()) {
+  const normalizedDeviceId = normalizeShortString(deviceId, 120);
+  if (!normalizedDeviceId) {
+    throw new TelemetryRequestError('A device id is required to delete telemetry records.', 400);
+  }
+  if (!hasRedis(config)) {
+    return { ok: true, mode: 'noop', deleted: { profile: false, contact: false, events: 0 } };
+  }
+
+  const prefix = `${config.prefix}:telemetry`;
+  const profileKey = `${prefix}:profile:${normalizedDeviceId}`;
+  const eventListKey = `${prefix}:${DEFAULT_EVENT_LIST_KEY}`;
+
+  const storedProfile = parseJsonOrNull(await redisCommand(config, 'get', [profileKey]));
+  const candidateEmails = new Set(
+    [normalizeEmail(storedProfile?.contactEmail), normalizeEmail(contactEmail)].filter(Boolean),
+  );
+
+  let contactDeleted = false;
+  for (const email of candidateEmails) {
+    const contactKey = `${prefix}:contact:${email}`;
+    const contactRecord = parseJsonOrNull(await redisCommand(config, 'get', [contactKey]));
+    if (contactRecord && contactRecord.deviceId === normalizedDeviceId) {
+      await redisCommand(config, 'del', [contactKey]);
+      contactDeleted = true;
+    }
+  }
+
+  const profileDeleted = Number(await redisCommand(config, 'del', [profileKey])) > 0;
+
+  let eventsDeleted = 0;
+  const listed = await redisCommand(config, 'lrange', [eventListKey, 0, -1]);
+  const matching = new Set(
+    (Array.isArray(listed) ? listed : []).filter((entry) => parseJsonOrNull(entry)?.deviceId === normalizedDeviceId),
+  );
+  for (const entry of matching) {
+    // Upstash appends the POST body as the last argument: LREM key 0 <entry>.
+    eventsDeleted += Number(await redisCommand(config, 'lrem', [eventListKey, 0], entry)) || 0;
+  }
+
+  return {
+    ok: true,
+    mode: 'redis',
+    deleted: { profile: profileDeleted, contact: contactDeleted, events: eventsDeleted },
+  };
+}
+
+function parseJsonOrNull(value) {
+  if (typeof value !== 'string' || !value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
 function hasRedis(config) {
   return Boolean(config.redisUrl && config.redisToken);
 }
