@@ -3,6 +3,8 @@ import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import { useAppLibrary } from './lib/AppLibraryContext.jsx';
+import { afterScratchResult } from './lib/scratchRepositoryStore.js';
 import MarkdownPreview from './MarkdownPreview.jsx';
 import useDialogA11y, { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import { logWarn } from './lib/logger.js';
@@ -87,16 +89,16 @@ function DialogFrame({ m, titleId, title, description, onClose, initialFocusRef,
   );
 }
 
-function NameDialog({ m, dialog, setDialog, onSubmit }) {
+function NameDialog({ m, dialog, setDialog, onSubmit, busy = false }) {
   const inputRef = useRef(null);
   return (
-    <DialogFrame m={m} titleId="scratch-name-dialog-title" title={dialog.mode === 'create' ? 'Create a scratch note' : 'Rename scratch note'} description="Names are searchable and stay with the note across Prompt Lab surfaces." onClose={() => setDialog(null)} initialFocusRef={inputRef}>
+    <DialogFrame m={m} titleId="scratch-name-dialog-title" title={dialog.mode === 'create' ? 'Create a scratch note' : 'Rename scratch note'} description="Names are searchable and stay with the note across Prompt Lab surfaces." onClose={() => { if (!busy) setDialog(null); }} initialFocusRef={inputRef}>
       <form className="mt-4" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
         <label className="block text-xs font-semibold" htmlFor="scratch-note-name">Note name</label>
-        <input ref={inputRef} id="scratch-note-name" value={dialog.value} onChange={(event) => setDialog((current) => current ? { ...current, value: event.target.value } : current)} className={`mt-2 min-h-11 w-full rounded-lg border px-3 py-2 text-sm ${m.input || ''}`} />
+        <input ref={inputRef} id="scratch-note-name" disabled={busy} value={dialog.value} onChange={(event) => setDialog((current) => current ? { ...current, value: event.target.value } : current)} className={`mt-2 min-h-11 w-full rounded-lg border px-3 py-2 text-sm ${m.input || ''}`} />
         <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={() => setDialog(null)} className={`ui-control rounded-lg px-3 py-2 text-sm ${m.btn || ''}`}>Cancel</button>
-          <button type="submit" className="ui-control pl-primary-button rounded-lg px-3 py-2 text-sm font-semibold">{dialog.mode === 'create' ? 'Create' : 'Rename'}</button>
+          <button type="button" disabled={busy} onClick={() => setDialog(null)} className={`ui-control rounded-lg px-3 py-2 text-sm ${m.btn || ''}`}>Cancel</button>
+          <button type="submit" disabled={busy} className="ui-control pl-primary-button rounded-lg px-3 py-2 text-sm font-semibold">{dialog.mode === 'create' ? 'Create' : 'Rename'}</button>
         </div>
       </form>
     </DialogFrame>
@@ -173,7 +175,11 @@ export default function ScratchWorkspace({
   onSendToABTest,
   compareLocked = false,
 }) {
-  const initialPayload = readScratchPayload() || buildDefaultScratchPayload('', Date.now());
+  const { scratch } = useAppLibrary();
+  const initialPayload = scratch ? scratch.initial() : readScratchPayload() || buildDefaultScratchPayload('', Date.now());
+  const pendingCommitRef = useRef(null);
+  const pendingCreateRef = useRef(null);
+  const pendingDuplicateRef = useRef(null);
   const [padsState, setPadsState] = useState(initialPayload);
   const initialPad = initialPayload.pads.find((pad) => pad.id === initialPayload.activePadId) || initialPayload.pads[0];
   const [text, setText] = useState(initialPad?.content || '');
@@ -260,9 +266,13 @@ export default function ScratchWorkspace({
 
   const persistPads = (nextState, options = {}) => {
     if (migrationReadFailedRef.current) return { ok: false, state: nextState };
-    const result = persistScratchState(nextState, { lastKnownRevision: revisionRef.current, ...options });
-    if (result.ok) applyState(result.state);
-    return result;
+    const result = scratch
+      ? scratch.persist(nextState, { previousState: padsStateRef.current, ...options })
+      : persistScratchState(nextState, { lastKnownRevision: revisionRef.current, ...options });
+    return afterScratchResult(result, saved => {
+      if (saved.ok) applyState(saved.state);
+      return saved;
+    });
   };
 
   const scheduleIdleStatus = () => {
@@ -270,43 +280,56 @@ export default function ScratchWorkspace({
     savedStateTimerRef.current = setTimeout(() => setSaveState('idle'), 2200);
   };
 
-  const reportSaveFailure = () => {
+  const reportSaveFailure = (error) => {
     setSaveState('error');
-    setSaveError('Save failed. Storage may be full. Your draft remains in this editor for retry.');
+    setSaveError(error?.message ? `Save failed. ${error.message}` : 'Save failed. Storage may be full. Your draft remains in this editor for retry.');
   };
 
   const commitActiveContent = (value) => {
-    const current = padsStateRef.current;
-    const activeId = current.activePadId;
-    const updatedAt = Date.now();
-    const nextState = {
-      ...current,
-      pads: current.pads.map((pad) => pad.id === activeId
-        ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
-        : pad),
+    const activeId = padsStateRef.current.activePadId;
+    const write = () => {
+      const current = padsStateRef.current;
+      if (current.activePadId !== activeId) return false;
+      const stored = current.pads.find(pad => pad.id === activeId);
+      if (!stored) return !value;
+      const updatedAt = Date.now();
+      const nextState = {
+        ...current,
+        pads: current.pads.map((pad) => pad.id === activeId
+          ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
+          : pad),
+      };
+      setSaveState('saving');
+      return afterScratchResult(persistPads(nextState, { preferLocalIds: [activeId] }), result => {
+        if (!result.ok) { reportSaveFailure(result.error); return false; }
+        setLastSavedAt(updatedAt);
+        setRelativeSavedAt(formatRelativeTime(updatedAt));
+        setSaveError('');
+        const unchanged = textRef.current === value;
+        setSaveState(unchanged ? 'saved' : 'dirty');
+        if (unchanged) { scratch?.clearDraft(activeId, value); scheduleIdleStatus(); }
+        else if (scratch) scratch.keepDraft(result.state.pads.find(pad => pad.id === activeId), textRef.current);
+        return true;
+      });
     };
-    setSaveState('saving');
-    const result = persistPads(nextState, { preferLocalIds: [activeId] });
-    if (!result.ok) {
-      reportSaveFailure();
-      return false;
+    const result = pendingCommitRef.current ? pendingCommitRef.current.then(write) : write();
+    if (result && typeof result.then === 'function') {
+      pendingCommitRef.current = result;
+      result.finally(() => { if (pendingCommitRef.current === result) pendingCommitRef.current = null; });
     }
-    setLastSavedAt(updatedAt);
-    setRelativeSavedAt(formatRelativeTime(updatedAt));
-    setSaveError('');
-    setSaveState('saved');
-    scheduleIdleStatus();
-    return true;
+    return result;
   };
 
   const flushActivePad = ({ silent = false } = {}) => {
     clearLibraryBufferTimeout(timerRef.current);
     const current = padsStateRef.current;
     const storedPad = current.pads.find((pad) => pad.id === current.activePadId);
-    if (!storedPad || textRef.current === storedPad.content) return { ok: true, state: current };
-    const ok = commitActiveContent(textRef.current);
-    if (ok && silent) setSaveState('idle');
-    return { ok, state: padsStateRef.current };
+    if (!pendingCommitRef.current && (!storedPad || textRef.current === storedPad.content)) return { ok: true, state: current };
+    const value = textRef.current;
+    return afterScratchResult(commitActiveContent(value), ok => {
+      if (ok && silent && value === textRef.current) setSaveState('idle');
+      return { ok: ok && value === textRef.current, state: padsStateRef.current };
+    });
   };
 
   const flushRef = useRef(flushActivePad);
@@ -327,22 +350,30 @@ export default function ScratchWorkspace({
   };
 
   const loadScratchState = () => {
-    if (getScratchDurability().bootFailed) return;
-    const { payload, error, errorStage, migrated } = migrateScratchStorage();
-    migrationReadFailedRef.current = Boolean(error && errorStage === 'read');
-    if (migrationReadFailedRef.current) {
-      setSaveState('error');
-      setSaveError('Notes could not be read. Stored data has not been overwritten. Retry loading before editing.');
-      return;
-    }
-    applyState(payload);
-    const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
-    loadPadView(active, { focus: false });
-    if (error) {
-      reportSaveFailure();
-      notify?.('Scratch upgrade could not be saved. Your readable notes are still here for retry.');
-    }
-    else if (migrated) notify?.('Scratch notes upgraded to schema v4.');
+    if (!scratch && getScratchDurability().bootFailed) return;
+    return afterScratchResult(scratch ? scratch.load() : migrateScratchStorage(), ({ payload, error, errorStage, migrated }) => {
+      migrationReadFailedRef.current = Boolean(error && errorStage === 'read');
+      if (migrationReadFailedRef.current) {
+        setSaveState('error');
+        setSaveError('Notes could not be read. Stored data has not been overwritten. Retry loading before editing.');
+        return;
+      }
+      const unsaved = scratch?.readDraft();
+      if (unsaved) {
+        applyState({ ...payload, pads: [...payload.pads.filter(pad => pad.id !== unsaved.pad.id), unsaved.pad], activePadId: unsaved.pad.id });
+        loadPadView({ ...unsaved.pad, content: unsaved.text }, { focus: false });
+        setSaveState('dirty');
+        return;
+      }
+      applyState(payload);
+      const active = payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0];
+      loadPadView(active, { focus: false });
+      if (error) {
+        reportSaveFailure();
+        notify?.('Scratch upgrade could not be saved. Your readable notes are still here for retry.');
+      }
+      else if (migrated) notify?.('Scratch notes upgraded to schema v4.');
+    });
   };
 
   useEffect(() => {
@@ -364,6 +395,7 @@ export default function ScratchWorkspace({
   }, []);
 
   useEffect(() => {
+    if (scratch) return;
     const onStorage = (event) => {
       if (event.key !== SCRATCH_KEY || !event.newValue) return;
       let incoming;
@@ -431,6 +463,8 @@ export default function ScratchWorkspace({
   }, []);
 
   const scheduleSave = (value) => {
+    if (migrationReadFailedRef.current || durability.bootFailed || !activePad) return;
+    scratch?.keepDraft(activePad, value);
     textRef.current = value;
     setText(value);
     setSaveError('');
@@ -517,48 +551,53 @@ export default function ScratchWorkspace({
 
   const updatePadMetadataById = (padId, patch) => {
     if (!padId) return false;
-    if (padId === padsStateRef.current.activePadId && !flushActivePad({ silent: true }).ok) return false;
-    const current = padsStateRef.current;
-    const updatedAt = Date.now();
-    const nextState = {
-      ...current,
-      pads: current.pads.map((pad) => pad.id === padId
-        ? normalizeScratchPad({ ...pad, ...patch, updatedAt, timestamp: updatedAt })
-        : pad),
-    };
-    const result = persistPads(nextState, { preferLocalIds: [padId] });
-    if (!result.ok) {
-      notify?.('Could not update scratch metadata. Storage may be full.');
-      return false;
-    }
-    if (padId === padsStateRef.current.activePadId) {
-      setLastSavedAt(updatedAt);
-      setRelativeSavedAt(formatRelativeTime(updatedAt));
-    }
-    return true;
+    return afterScratchResult(padId === padsStateRef.current.activePadId ? flushActivePad({ silent: true }) : { ok: true }, flushed => {
+      if (!flushed.ok) return false;
+      const current = padsStateRef.current;
+      const updatedAt = Date.now();
+      const nextState = {
+        ...current,
+        pads: current.pads.map((pad) => pad.id === padId
+          ? normalizeScratchPad({ ...pad, ...patch, updatedAt, timestamp: updatedAt })
+          : pad),
+      };
+      return afterScratchResult(persistPads(nextState, { preferLocalIds: [padId] }), result => {
+        if (!result.ok) {
+          reportSaveFailure(result.error);
+          notify?.('Could not update scratch metadata. Your changes have not been confirmed.');
+          return false;
+        }
+        if (padId === padsStateRef.current.activePadId) {
+          setLastSavedAt(updatedAt);
+          setRelativeSavedAt(formatRelativeTime(updatedAt));
+          if (scratch && textRef.current !== result.state.pads.find(pad => pad.id === padId)?.content) {
+            scratch.keepDraft(result.state.pads.find(pad => pad.id === padId), textRef.current);
+          }
+        }
+        return true;
+      });
+    });
   };
 
   const updatePadMetadata = (patch) => updatePadMetadataById(activePad?.id, patch);
 
   const selectPad = (padId) => {
+    if (scratch?.getStatus().status === 'saving') return;
     if (padId === padsStateRef.current.activePadId) {
       if (isCompact) setCompactPane('editor');
       return;
     }
-    const flushed = flushActivePad({ silent: true });
-    if (!flushed.ok) {
-      notify?.('This note could not be saved. Free storage or copy it before switching.');
-      return;
-    }
-    const nextState = { ...padsStateRef.current, activePadId: padId };
-    const result = persistPads(nextState);
-    if (!result.ok) {
-      reportSaveFailure();
-      return;
-    }
-    const nextPad = result.state.pads.find((pad) => pad.id === padId) || result.state.pads[0];
-    loadPadView(nextPad);
-    if (isCompact) setCompactPane('editor');
+    return afterScratchResult(flushActivePad({ silent: true }), flushed => {
+      if (!flushed.ok) { notify?.('This note could not be saved. Keep its text before switching.'); return; }
+      const value = textRef.current;
+      return afterScratchResult(persistPads({ ...padsStateRef.current, activePadId: padId }), result => {
+        if (!result.ok) { reportSaveFailure(result.error); return; }
+        if (value !== textRef.current) return;
+        const nextPad = result.state.pads.find((pad) => pad.id === padId) || result.state.pads[0];
+        loadPadView(nextPad);
+        if (isCompact) setCompactPane('editor');
+      });
+    });
   };
 
   useEffect(() => {
@@ -572,96 +611,110 @@ export default function ScratchWorkspace({
   // `openNoteId` is an imperative navigation signal; state changes should not
   // re-trigger it or overwrite the selected note's content.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openNoteId]);
+  }, [openNoteId, padsState.pads.length]);
 
   const submitNameDialog = () => {
+    if (scratch?.getStatus().status === 'saving') return;
     if (!nameDialog) return;
     const name = nameDialog.value.trim();
     if (!name) return;
-    if (nameDialog.mode === 'create') {
-      if (!flushActivePad({ silent: true }).ok) return;
+    if (nameDialog.mode !== 'create') {
+      return afterScratchResult(activePad && name !== activePad.name ? updatePadMetadata({ name }) : true, ok => {
+        if (!ok) return;
+        notify?.(`Renamed note: ${name}`);
+        setNameDialog(current => current === nameDialog ? null : current);
+      });
+    }
+    return afterScratchResult(flushActivePad({ silent: true }), flushed => {
+      if (!flushed.ok) return;
+      const current = padsStateRef.current, value = textRef.current;
       const now = Date.now();
-      const pad = normalizeScratchPad({ id: buildPadId(), name, content: '', createdAt: now, updatedAt: now });
-      const result = persistPads({
-        ...padsStateRef.current,
-        pads: [...padsStateRef.current.pads, pad],
-        activePadId: pad.id,
-      }, { preferLocalIds: [pad.id] });
-      if (!result.ok) {
-        reportSaveFailure();
+      if (pendingCreateRef.current && pendingCreateRef.current.name !== name) {
+        reportSaveFailure(new Error('Retry creating the original note before changing its name. Your new name is still here.'));
         return;
       }
-      loadPadView(pad);
-      setCompactPane('editor');
-      notify?.(`Created note: ${name}`);
-    } else if (activePad && name !== activePad.name) {
-      updatePadMetadata({ name });
-      notify?.(`Renamed note: ${name}`);
-    }
-    setNameDialog(null);
+      const pad = pendingCreateRef.current || normalizeScratchPad({ id: buildPadId(), name, content: '', createdAt: now, updatedAt: now });
+      pendingCreateRef.current = pad;
+      return afterScratchResult(persistPads({ ...current, pads: [...current.pads, pad], activePadId: pad.id }, { preferLocalIds: [pad.id] }), result => {
+        if (!result.ok) { reportSaveFailure(result.error); return; }
+        pendingCreateRef.current = null;
+        if (textRef.current === value) { loadPadView(result.state.pads.find(item => item.id === pad.id)); setCompactPane('editor'); }
+        else {
+          applyState({ ...result.state, activePadId: current.activePadId });
+          scratch?.keepDraft(result.state.pads.find(item => item.id === current.activePadId), textRef.current);
+          setSaveState('dirty');
+        }
+        notify?.(`Created note: ${pad.name}`);
+        setNameDialog(currentDialog => currentDialog === nameDialog ? null : currentDialog);
+      });
+    });
   };
 
   const duplicatePad = () => {
-    if (!activePad || !flushActivePad({ silent: true }).ok) return;
-    const source = padsStateRef.current.pads.find((pad) => pad.id === activePad.id) || activePad;
-    const now = Date.now();
-    const duplicate = normalizeScratchPad({
-      ...source,
-      id: buildPadId(),
-      name: `${source.name} copy`,
-      createdAt: now,
-      updatedAt: now,
-      timestamp: now,
-      pinned: false,
+    if (scratch?.getStatus().status === 'saving') return;
+    if (!activePad) return;
+    return afterScratchResult(flushActivePad({ silent: true }), flushed => {
+      if (!flushed.ok) return;
+      const current = padsStateRef.current, value = textRef.current;
+      const source = current.pads.find((pad) => pad.id === activePad.id) || activePad;
+      const now = Date.now();
+      if (pendingDuplicateRef.current && pendingDuplicateRef.current.sourceId !== source.id) {
+        reportSaveFailure(new Error('Retry the pending duplicate from its original note first.'));
+        return;
+      }
+      const duplicate = pendingDuplicateRef.current?.pad || normalizeScratchPad({
+        ...source, id: buildPadId(), name: `${source.name} copy`, createdAt: now, updatedAt: now, timestamp: now, pinned: false,
+      });
+      pendingDuplicateRef.current = { sourceId: source.id, pad: duplicate };
+      return afterScratchResult(persistPads({ ...current, pads: [...current.pads, duplicate], activePadId: duplicate.id }, { preferLocalIds: [duplicate.id] }), result => {
+        if (!result.ok) {
+          if (result.error?.code === 'INVALID_RECORD_COMMAND') pendingDuplicateRef.current = null;
+          reportSaveFailure(result.error);
+          return;
+        }
+        pendingDuplicateRef.current = null;
+        if (textRef.current === value) { loadPadView(result.state.pads.find(item => item.id === duplicate.id)); setCompactPane('editor'); }
+        else {
+          applyState({ ...result.state, activePadId: current.activePadId });
+          scratch?.keepDraft(result.state.pads.find(item => item.id === current.activePadId), textRef.current);
+          setSaveState('dirty');
+        }
+        notify?.(`Duplicated note: ${source.name}`);
+      });
     });
-    const result = persistPads({
-      ...padsStateRef.current,
-      pads: [...padsStateRef.current.pads, duplicate],
-      activePadId: duplicate.id,
-    }, { preferLocalIds: [duplicate.id] });
-    if (!result.ok) {
-      reportSaveFailure();
-      return;
-    }
-    loadPadView(duplicate);
-    setCompactPane('editor');
-    notify?.(`Duplicated note: ${source.name}`);
   };
 
   const confirmDestructiveAction = () => {
+    if (scratch?.getStatus().status === 'saving') return;
     if (!confirmDialog || !activePad) return;
-    if (confirmDialog.action === 'clear') {
-      const now = Date.now();
-      const nextState = {
-        ...padsStateRef.current,
-        pads: padsStateRef.current.pads.map((pad) => pad.id === activePad.id
-          ? normalizeScratchPad({ ...pad, content: '', updatedAt: now, timestamp: now })
-          : pad),
-      };
-      const result = persistPads(nextState, { preferLocalIds: [activePad.id] });
-      if (result.ok) {
-        loadPadView(result.state.pads.find((pad) => pad.id === activePad.id));
-        notify?.('Note cleared.');
-      } else reportSaveFailure();
-    } else if (confirmDialog.action === 'delete' && padsStateRef.current.pads.length > 1) {
-      clearLibraryBufferTimeout(timerRef.current);
-      const currentIndex = padsStateRef.current.pads.findIndex((pad) => pad.id === activePad.id);
-      const remaining = padsStateRef.current.pads.filter((pad) => pad.id !== activePad.id);
-      const replacement = remaining[Math.max(0, currentIndex - 1)] || remaining[0];
-      const now = Date.now();
-      const result = persistPads({
-        ...padsStateRef.current,
-        pads: remaining,
-        activePadId: replacement.id,
-        tombstones: { ...(padsStateRef.current.tombstones || {}), [activePad.id]: now },
-      }, { removedIds: [activePad.id] });
-      if (result.ok) {
-        loadPadView(replacement);
-        if (isCompact) setCompactPane('index');
-        notify?.(`Deleted note: ${activePad.name}`);
-      } else reportSaveFailure();
-    }
-    setConfirmDialog(null);
+    clearLibraryBufferTimeout(timerRef.current);
+    const current = padsStateRef.current, value = textRef.current;
+    const now = Date.now();
+    const clearing = confirmDialog.action === 'clear';
+    if (!clearing && current.pads.length <= 1) return;
+    const remaining = current.pads.filter(pad => pad.id !== activePad.id);
+    const replacement = remaining[Math.max(0, current.pads.findIndex(pad => pad.id === activePad.id) - 1)] || remaining[0];
+    const nextState = clearing ? {
+      ...current, pads: current.pads.map(pad => pad.id === activePad.id
+        ? normalizeScratchPad({ ...pad, content: '', updatedAt: now, timestamp: now }) : pad),
+    } : { ...current, pads: remaining, activePadId: replacement.id,
+      tombstones: { ...(current.tombstones || {}), [activePad.id]: now } };
+    return afterScratchResult(persistPads(nextState, clearing ? { preferLocalIds: [activePad.id] } : { removedIds: [activePad.id] }), result => {
+      if (!result.ok) { reportSaveFailure(result.error); return; }
+      if (textRef.current !== value) {
+        // Keep newer text attached to its original identity for explicit recovery.
+        const retained = clearing ? result.state.pads.find(pad => pad.id === activePad.id) : activePad;
+        applyState({ ...result.state, pads: [...result.state.pads.filter(pad => pad.id !== activePad.id), retained], activePadId: activePad.id });
+        scratch?.keepDraft(retained, textRef.current);
+        setSaveState('dirty');
+      } else {
+        scratch?.clearDraft(activePad.id);
+        loadPadView(clearing ? result.state.pads.find(pad => pad.id === activePad.id) : replacement);
+        if (!clearing && isCompact) setCompactPane('index');
+      }
+      notify?.(clearing ? 'Note cleared.' : `Deleted note: ${activePad.name}`);
+      setConfirmDialog(null);
+    });
   };
 
   const copyText = async (value, label = 'Note') => {
@@ -773,7 +826,10 @@ export default function ScratchWorkspace({
         return;
       }
       const link = typeof response === 'string' ? { id: response } : response;
-      if (link?.id) options.onLinked({ ...link, title: link.title || promotionDraft.title });
+      if (link?.id && !await options.onLinked({ ...link, title: link.title || promotionDraft.title })) {
+        setPromotionError('The prompt was saved, but its note link could not be saved. Your note is still here.');
+        return;
+      }
       setPromotionDraft(null);
       notify?.(link?.id ? 'Prompt saved and linked to this note.' : 'Prompt prepared for saving. The source note was preserved.');
     } catch (error) {
@@ -814,7 +870,7 @@ export default function ScratchWorkspace({
       return;
     }
     const entry = library.find((item) => item.id === promptId);
-    linkPromptToPad(activePad.id, { id: promptId, title: entry?.title || '' });
+    linkPromptToPad(activePad?.id, { id: promptId, title: entry?.title || '' });
   };
 
   const jumpToHeading = (item) => {
@@ -863,7 +919,7 @@ export default function ScratchWorkspace({
       aria-label="Scratchpad"
       placeholder={'Capture notes, prompt fragments, and reusable ideas…\n\nMarkdown is supported.'}
       value={text}
-      readOnly={migrationReadFailedRef.current || durability.bootFailed}
+      readOnly={migrationReadFailedRef.current || durability.bootFailed || !activePad}
       onChange={(event) => scheduleSave(event.target.value)}
       onKeyDown={handleEditorKeyDown}
       onSelect={(event) => setSelection(getSelection(event.currentTarget, textRef.current))}
@@ -878,7 +934,7 @@ export default function ScratchWorkspace({
           <div className="flex items-center justify-between gap-2">
             <div>
               <p className="text-sm font-semibold">Scratch</p>
-              <p className={`text-[10px] ${m.textMuted || ''}`}>{padsState.pads.length} note{padsState.pads.length === 1 ? '' : 's'} · local and offline</p>
+              <p className={`text-[10px] ${m.textMuted || ''}`}>{padsState.pads.length} note{padsState.pads.length === 1 ? '' : 's'} · {scratch ? 'selected library' : 'local and offline'}</p>
             </div>
             <button type="button" title="New note" onClick={() => setNameDialog({ mode: 'create', value: `Note ${padsState.pads.length + 1}` })} className="ui-control pl-primary-button flex min-h-11 items-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold"><Ic n="Plus" size={12} /> New</button>
           </div>
@@ -984,12 +1040,12 @@ export default function ScratchWorkspace({
 
           <footer className="pl-scratch-footer shrink-0 flex flex-wrap items-center justify-between gap-2">
             {saveError && <button type="button" className={`ui-control rounded-lg px-3 py-2 text-xs ${m.btn || ''}`} onClick={async () => {
-              if (durability.bootFailed) { await startScratchJournal(); loadScratchState(); }
+              if (durability.bootFailed) { if (!scratch) await startScratchJournal(); loadScratchState(); }
               else if (migrationReadFailedRef.current) loadScratchState();
               else commitActiveContent(textRef.current);
             }}>{migrationReadFailedRef.current || durability.bootFailed ? 'Retry loading' : 'Retry saving'}</button>}
             <div data-testid="scratch-save-status" data-save-state={saveError ? 'error' : saveState} role="status" aria-live="polite" aria-atomic="true" className="min-h-5 text-xs font-mono">
-              {saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed. Stored data kept.' : 'Save failed. Draft kept.') : saveError}</span>
+              {durability.status === 'loading' ? <span className={m.textMuted || ''}>Loading notes…</span> : saveError ? <span title={saveError} className="flex items-center gap-1 text-red-400"><Ic n="X" size={11} />{noteFocused ? (migrationReadFailedRef.current ? 'Load failed. Stored data kept.' : 'Save failed. Draft kept.') : saveError}</span>
                 : saveState === 'dirty' ? <span className={m.textMuted || ''}>Unsaved changes</span>
                   : saveState === 'saving' ? <span className={m.textMuted || ''}>Saving…</span>
                     : saveState === 'saved' ? <span className="flex items-center gap-1 text-green-500"><Ic n="Check" size={11} />Saved</span>
@@ -1010,7 +1066,7 @@ export default function ScratchWorkspace({
         </div>
       </section>
 
-      {nameDialog && <NameDialog m={m} dialog={nameDialog} setDialog={setNameDialog} onSubmit={submitNameDialog} />}
+      {nameDialog && <NameDialog m={m} busy={durability.status === 'saving'} dialog={nameDialog} setDialog={setNameDialog} onSubmit={submitNameDialog} />}
       {confirmDialog && <ConfirmDialog m={m} dialog={confirmDialog} onClose={() => setConfirmDialog(null)} onConfirm={confirmDestructiveAction} />}
       {promotionDraft && <PromotionDialog m={m} draft={promotionDraft} setDraft={setPromotionDraft} selectionAvailable={hasSelection} collections={collections} busy={promotionBusy} error={promotionError} onClose={() => { if (!promotionBusy) setPromotionDraft(null); }} onSubmit={submitPromotion} />}
     </div>

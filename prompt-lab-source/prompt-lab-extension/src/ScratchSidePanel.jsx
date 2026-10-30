@@ -2,6 +2,8 @@ import { setLibraryBufferTimeout, clearLibraryBufferTimeout } from './lib/librar
 import { useLibraryEditBuffer } from './hooks/useLibraryEditBuffer.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
+import { useAppLibrary } from './lib/AppLibraryContext.jsx';
+import { afterScratchResult } from './lib/scratchRepositoryStore.js';
 import ScratchNoteRow from './ScratchNoteRow.jsx';
 import useScratchDurability from './hooks/useScratchDurability.js';
 import { getScratchDurability, startScratchJournal } from './lib/scratchJournal.js';
@@ -41,8 +43,14 @@ export default function ScratchSidePanel({
   onOpenInScratch,
   width = 360,
 }) {
-  const [padsState, setPadsState] = useState(() => buildDefaultScratchPayload('', Date.now()));
-  const [text, setText] = useState('');
+  const { scratch } = useAppLibrary();
+  const [padsState, setPadsState] = useState(() => scratch ? scratch.initial() : buildDefaultScratchPayload('', Date.now()));
+  const drafts = scratch ? { keep: scratch.keepDraft, read: scratch.readDraft, clear: scratch.clearDraft }
+    : { keep: keepUnsavedScratchDraft, read: readUnsavedScratchDraft, clear: clearUnsavedScratchDraft };
+  const getDurability = scratch?.getStatus || getScratchDurability;
+  const pendingCommitRef = useRef(null);
+  const pendingCreateRef = useRef(null);
+  const [text, setText] = useState(() => (padsState.pads.find(pad => pad.id === padsState.activePadId) || padsState.pads[0])?.content || '');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
   const durability = useScratchDurability();
   const [localSaveState, setSaveState] = useState('idle');
@@ -53,7 +61,7 @@ export default function ScratchSidePanel({
   const padsRef = useRef(padsState);
   const readFailedRef = useRef(false);
   const revisionRef = useRef(0);
-  const textRef = useRef('');
+  const textRef = useRef(text);
   const timerRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -76,38 +84,53 @@ export default function ScratchSidePanel({
 
   const persist = (nextState, preferLocalIds = []) => {
     if (readFailedRef.current) return { ok: false };
-    const result = persistScratchState(nextState, { lastKnownRevision: revisionRef.current, preferLocalIds });
-    if (result.ok) applyState(result.state);
-    return result;
+    const result = scratch
+      ? scratch.persist(nextState, { previousState: padsRef.current, preferLocalIds })
+      : persistScratchState(nextState, { lastKnownRevision: revisionRef.current, preferLocalIds });
+    return afterScratchResult(result, saved => {
+      if (saved.ok) applyState(saved.state);
+      return saved;
+    });
   };
 
   const commit = (value) => {
-    const current = padsRef.current;
-    const activeId = current.activePadId;
-    const stored = current.pads.find((pad) => pad.id === activeId);
-    if (!stored) return true;
-    if (stored.content === value && !['saving', 'error'].includes(getScratchDurability().status)) {
-      clearUnsavedScratchDraft(activeId);
-      return true;
-    }
-    const updatedAt = Date.now();
-    setSaveState('saving');
-    const result = persist({
-      ...current,
-      pads: current.pads.map((pad) => pad.id === activeId
-        ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
-        : pad),
-    }, [activeId]);
-    if (result.ok && result.durable) {
-      result.durable.then(() => {
-        const kept = readUnsavedScratchDraft();
-        if (kept && result.state.pads.some(pad => pad.id === kept.pad.id && pad.content === kept.text)) clearUnsavedScratchDraft(kept.pad.id);
-      }, () => {
-        if (getScratchDurability().status === 'error') keepUnsavedScratchDraft(stored, value);
+    const activeId = padsRef.current.activePadId;
+    const write = () => {
+      const current = padsRef.current;
+      if (current.activePadId !== activeId) return false;
+      const stored = current.pads.find((pad) => pad.id === activeId);
+      if (!stored) return !value;
+      if (stored.content === value && (scratch || !['saving', 'error'].includes(getDurability().status))) {
+        drafts.clear(activeId, value);
+        return true;
+      }
+      const updatedAt = Date.now();
+      setSaveState('saving');
+      return afterScratchResult(persist({
+        ...current,
+        pads: current.pads.map((pad) => pad.id === activeId
+          ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
+          : pad),
+      }, [activeId]), result => {
+        if (result.ok && result.durable) {
+          result.durable.then(() => {
+            const kept = drafts.read();
+            if (kept && result.state.pads.some(pad => pad.id === kept.pad.id && pad.content === kept.text)) drafts.clear(kept.pad.id, kept.text);
+          }, () => { if (getDurability().status === 'error') drafts.keep(stored, value); });
+        } else if (result.ok) {
+          drafts.clear(activeId, value);
+          if (scratch && textRef.current !== value) drafts.keep(result.state.pads.find(pad => pad.id === activeId), textRef.current);
+        }
+        setSaveState(result.ok ? (textRef.current === value ? 'saved' : 'dirty') : 'error');
+        return result.ok;
       });
-    } else if (result.ok) clearUnsavedScratchDraft(activeId);
-    setSaveState(result.ok ? 'saved' : 'error');
-    return result.ok;
+    };
+    const result = pendingCommitRef.current ? pendingCommitRef.current.then(write) : write();
+    if (result && typeof result.then === 'function') {
+      pendingCommitRef.current = result;
+      result.finally(() => { if (pendingCommitRef.current === result) pendingCommitRef.current = null; });
+    }
+    return result;
   };
 
   const flush = () => {
@@ -119,35 +142,40 @@ export default function ScratchSidePanel({
   // outside the panel so reopening it brings the text back instead of the
   // older note.
   const saveOrKeep = () => {
-    if (flush()) return true;
     const current = padsRef.current;
     const pad = current.pads.find((item) => item.id === current.activePadId);
-    if (pad && keepUnsavedScratchDraft(pad, textRef.current)) notify?.(KEPT_UNSAVED_MESSAGE);
-    return false;
+    const value = textRef.current;
+    // Retain immediately: a panel can reopen before an asynchronous write ends.
+    if (scratch && pad && value !== pad.content) drafts.keep(pad, value);
+    return afterScratchResult(flush(), ok => {
+      if (ok) return true;
+      if (pad && (scratch || drafts.keep(pad, value))) notify?.(KEPT_UNSAVED_MESSAGE);
+      return false;
+    });
   };
 
   const load = () => {
-    if (getScratchDurability().bootFailed) return;
-    const { payload, error, errorStage } = migrateScratchStorage();
-    readFailedRef.current = Boolean(error && errorStage === 'read');
-    setReadFailed(readFailedRef.current);
-    if (readFailedRef.current) {
-      setSaveState('error');
-      return;
-    }
-    const unsaved = readUnsavedScratchDraft();
-    if (unsaved) {
-      // Bring back text that could not be saved when the panel last closed,
-      // on its own note (restored if another tab removed it), and retry.
-      const pads = payload.pads.some((pad) => pad.id === unsaved.pad.id) ? payload.pads : [...payload.pads, unsaved.pad];
-      applyState({ ...payload, pads, activePadId: unsaved.pad.id });
-      showPad(pads.find((pad) => pad.id === unsaved.pad.id), unsaved.text);
-      commit(unsaved.text);
-      return;
-    }
-    applyState(payload);
-    showPad(payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0]);
-    setSaveState(error ? 'error' : 'idle');
+    if (!scratch && getDurability().bootFailed) return;
+    return afterScratchResult(scratch ? scratch.load() : migrateScratchStorage(), ({ payload, error, errorStage }) => {
+      readFailedRef.current = Boolean(error && errorStage === 'read');
+      setReadFailed(readFailedRef.current);
+      if (readFailedRef.current) { setSaveState('error'); return; }
+      const unsaved = drafts.read();
+      if (unsaved) {
+        // A selected-library draft keeps the version it was actually based on.
+        // A removed note is shown for recovery, never silently recreated.
+        const pads = scratch
+          ? [...payload.pads.filter(pad => pad.id !== unsaved.pad.id), unsaved.pad]
+          : payload.pads.some(pad => pad.id === unsaved.pad.id) ? payload.pads : [...payload.pads, unsaved.pad];
+        applyState({ ...payload, pads, activePadId: unsaved.pad.id });
+        showPad(unsaved.pad, unsaved.text);
+        commit(unsaved.text);
+        return;
+      }
+      applyState(payload);
+      showPad(payload.pads.find((pad) => pad.id === payload.activePadId) || payload.pads[0]);
+      setSaveState(error ? 'error' : 'idle');
+    });
   };
 
   useEffect(() => {
@@ -163,6 +191,7 @@ export default function ScratchSidePanel({
   useEffect(() => () => { saveOrKeepRef.current(); }, []);
 
   useEffect(() => {
+    if (scratch) return;
     const onStorage = (event) => {
       if (event.key !== SCRATCH_KEY || !event.newValue) return;
       let incoming = null;
@@ -193,6 +222,7 @@ export default function ScratchSidePanel({
   const onChange = (event) => {
     if (readFailed) return;
     const value = event.target.value;
+    if (scratch && activePad) drafts.keep(activePad, value);
     textRef.current = value;
     setText(value);
     setSaveState('dirty');
@@ -201,22 +231,41 @@ export default function ScratchSidePanel({
   };
 
   const selectPad = (padId) => {
+    if (scratch?.getStatus().status === 'saving') return;
     if (padId === padsRef.current.activePadId) return;
-    if (!flush()) return;
-    const result = persist({ ...padsRef.current, activePadId: padId });
-    if (!result.ok) { setSaveState('error'); return; }
-    showPad(result.state.pads.find((pad) => pad.id === padId));
+    const value = textRef.current;
+    return afterScratchResult(flush(), ok => {
+      if (!ok || value !== textRef.current) return;
+      return afterScratchResult(persist({ ...padsRef.current, activePadId: padId }), result => {
+        if (!result.ok) { setSaveState('error'); return; }
+        showPad(result.state.pads.find((pad) => pad.id === padId));
+      });
+    });
   };
 
   const createPad = () => {
-    if (!flush()) return;
-    const now = Date.now();
-    const current = padsRef.current;
-    const pad = normalizeScratchPad({ id: buildPadId(), name: `Note ${current.pads.length + 1}`, content: '', createdAt: now, updatedAt: now });
-    const result = persist({ ...current, pads: [...current.pads, pad], activePadId: pad.id }, [pad.id]);
-    if (!result.ok) { setSaveState('error'); return; }
-    showPad(pad);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    if (scratch?.getStatus().status === 'saving') return;
+    const value = textRef.current;
+    return afterScratchResult(flush(), ok => {
+      if (!ok || value !== textRef.current) return;
+      const now = Date.now();
+      const current = padsRef.current;
+      const pad = pendingCreateRef.current || normalizeScratchPad({ id: buildPadId(), name: `Note ${current.pads.length + 1}`, content: '', createdAt: now, updatedAt: now });
+      pendingCreateRef.current = pad;
+      return afterScratchResult(persist({ ...current, pads: [...current.pads, pad], activePadId: pad.id }, [pad.id]), result => {
+        if (!result.ok) { setSaveState('error'); return; }
+        pendingCreateRef.current = null;
+        if (textRef.current !== value) {
+          // Keep the editor on its earlier note if typing continued during creation.
+          applyState({ ...result.state, activePadId: current.activePadId });
+          scratch?.keepDraft(result.state.pads.find(item => item.id === current.activePadId), textRef.current);
+          setSaveState('dirty');
+          return;
+        }
+        showPad(result.state.pads.find(item => item.id === pad.id));
+        setTimeout(() => textareaRef.current?.focus(), 0);
+      });
+    });
   };
 
   const selectedText = selection.end > selection.start ? text.slice(selection.start, selection.end) : '';
@@ -228,8 +277,11 @@ export default function ScratchSidePanel({
   };
 
   const openInScratch = () => {
-    if (!flush()) return;
-    onOpenInScratch?.(padsRef.current.activePadId);
+    if (scratch?.getStatus().status === 'saving') return;
+    const value = textRef.current;
+    return afterScratchResult(flush(), ok => {
+      if (ok && value === textRef.current) onOpenInScratch?.(padsRef.current.activePadId);
+    });
   };
 
   const trackSelection = (event) => {
@@ -237,13 +289,13 @@ export default function ScratchSidePanel({
     setSelection({ start: selectionStart, end: selectionEnd });
   };
 
-  const status = readFailed
+  const status = durability.status === 'loading' ? 'Loading notes…' : readFailed
     ? 'Notes could not be read. Stored data has not been overwritten.'
     : saveState === 'saving' ? 'Saving…'
       : saveState === 'saved' ? 'Saved'
         : saveState === 'error' ? 'Save failed. Your text is still here; keep typing or retry.'
           : saveState === 'dirty' ? 'Unsaved changes'
-          : 'Saved locally';
+          : scratch ? (activePad ? 'Saved to library' : 'Create a note to get started') : 'Saved locally';
 
   return (
     <div className="pl-write-scratch">
@@ -265,8 +317,8 @@ export default function ScratchSidePanel({
           <p className="min-w-0 truncate text-xs font-semibold" title={activePad?.name}>{activePad?.name || 'Scratch note'}</p>
           <p role="status" data-testid="scratch-side-save-status" data-save-state={saveState} className={`shrink-0 text-[10px] ${saveState === 'error' || readFailed ? 'text-red-500' : m.textMuted || ''}`}>{status}</p>
         </div>
-        {readFailed && <button type="button" className="pl-text-button self-start text-xs" onClick={async () => {
-          if (durability.bootFailed) await startScratchJournal();
+        {readFailed && durability.status !== 'loading' && <button type="button" className="pl-text-button self-start text-xs" onClick={async () => {
+          if (!scratch && durability.bootFailed) await startScratchJournal();
           load();
         }}>Retry loading notes</button>}
         {!readFailed && saveState === 'error' && <button type="button" className="pl-text-button self-start text-xs" onClick={() => commit(textRef.current)}>Retry saving</button>}
@@ -278,7 +330,7 @@ export default function ScratchSidePanel({
           onKeyUp={trackSelection}
           onMouseUp={trackSelection}
           onBlur={() => flush()}
-          readOnly={readFailed}
+          readOnly={readFailed || !activePad}
           aria-label="Scratch note text"
           data-side-autofocus
           spellCheck

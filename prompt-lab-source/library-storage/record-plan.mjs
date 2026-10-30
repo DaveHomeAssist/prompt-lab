@@ -11,7 +11,7 @@ export { normalizeRecordRequest } from './record-request.mjs';
 
 const object = value => value && Object.getPrototypeOf(value) === Object.prototype;
 const fail = (code, message) => { throw new LibraryError(code, message, 409); };
-function validateFields(value, keys, domain) {
+export function validateRecordFields(value, keys, domain) {
   if (valueRecordDomains.includes(domain)) return;
   const text = domain === 'execution-traces' ? ['name', 'provider', 'model', 'run_type', 'status', 'error', 'reason']
     : domain === 'experiments' ? ['label', 'keyInputSnapshot', 'notes']
@@ -53,7 +53,7 @@ export async function planRecordMutation(pkg, inspected, value) {
     if (map.records.some(row => row.domain === request.domain && row.origin.sourceIdentity === sourceIdentity && row.sourceId === sourceId)
       || inspected.currentView.groups.some(group => group.id === groupId)
       || inspected.manifest.recordGroups?.some(group => group.id === groupId)) fail('IDENTITY_CONFLICT', 'This record identity is already retained. Use a new ID for a new record.');
-    next = structuredClone(request.record); validateFields(next, Object.keys(next ?? {}), request.domain);
+    next = structuredClone(request.record); validateRecordFields(next, Object.keys(next ?? {}), request.domain);
     if (request.domain === 'scratch-notes') {
       if (typeof next.name !== 'string' || !next.name.trim() || typeof next.content !== 'string') fail('INVALID_RECORD_COMMAND', 'A new Scratch note needs a name and complete content.');
       next.createdAt = Date.parse(request.changedAt);
@@ -83,7 +83,7 @@ export async function planRecordMutation(pkg, inspected, value) {
       Object.defineProperty(owner, update.path.at(-1), { value: structuredClone(update.value), enumerable: true, writable: true, configurable: true });
     }
     if (request.action === 'update') {
-      validateFields(next, request.updates.map(update => update.path[0]), request.domain);
+      validateRecordFields(next, request.updates.map(update => update.path[0]), request.domain);
     }
     if (['update', 'replace'].includes(request.action) && canonical(next) === canonical(selected.value)) fail('NO_CHANGE', 'This command does not change the selected record.');
   }

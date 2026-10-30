@@ -1,5 +1,42 @@
 # Library storage contract candidate
 
+## Scratch record routing: October 30
+
+Connect the existing Scratch workspace and Write side panel to the same selected
+repository as prompts and evaluations. Keep browser persistence when no library
+is selected. A selected library failure must retain the draft without falling
+back to browser storage. Report Saved only after durable acknowledgement.
+
+Preserve raw note fields, unknown metadata and the version opened by the editor;
+presentation defaults must not silently rewrite older records. Reject competing
+changes and deletions without discarding text. Keep unsaved panel drafts scoped
+to their selected library, retain creation identity across retries, and preserve
+new typing when an earlier save completes. Selection is local view state.
+
+Exercise the real repository and command service through both existing screens,
+including stale edits, failure and retry, pending acknowledgement, creation,
+unknown fields and legacy storage sentinels. Test the unchanged browser paths.
+This source integration does not activate a personal folder or close the native,
+real-data UI, two-client iCloud or installed-app acceptance gates. Packs and
+remaining library actions still require integration before activation.
+
+Verification: Dominic Node 22.23.4 passed the full 1,608-test shared suite
+across 143 files after restoring the explicit Save failed label exposed by the
+legacy audit regression. Final creation preflight and reopened-panel refinements
+then passed 62 focused tests, including 25 selected-repository scenarios, all
+55 record/Scratch command tests, and the extension build. Unsupported future
+values remain preserved; copies that cannot represent them reject before an
+impossible command enters the outbox. New records use service-owned timestamps.
+
+A bounded Mac Node 22.22.1 check on a fresh isolated complete export retained
+216 prompts, three evaluations, four Scratch notes and all 16 initial immutable
+objects through a note edit and disposable note creation/deletion. Original
+note fields and the original export hash are unchanged. This is shared-store
+real-data evidence, not real-data UI, installed-app or iCloud acceptance.
+Walter SSH still times out. Duncan's registered iCloud root and interactive
+processes exist, but the expected export is absent and account/folder parity
+is unverified. No personal activation, private upload or paid provisioning.
+
 ## App record routing: October 30
 
 The desktop owner cannot activate a folder while app record writers still use

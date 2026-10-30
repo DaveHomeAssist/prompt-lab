@@ -1,5 +1,6 @@
 import { createContext, useContext, useRef } from 'react';
 import * as legacyRecords from '../experimentStore.js';
+import { createScratchRepositoryStore } from './scratchRepositoryStore.js';
 
 const browserRecords = {
   ...legacyRecords,
@@ -8,7 +9,7 @@ const browserRecords = {
   deleteTestCase: id => legacyRecords.deleteTestCase(id),
   patchEvalRun: (id, patch) => legacyRecords.patchEvalRun(id, patch),
 };
-const AppLibraryContext = createContext({ repository: null, records: browserRecords });
+const AppLibraryContext = createContext({ repository: null, records: browserRecords, scratch: null });
 
 // The startup owner must review migration before supplying this dependency.
 // Changing libraries requires a drained, remounted app, never a render-time swap.
@@ -18,6 +19,7 @@ export function AppLibraryProvider({ repository = null, children }) {
     selected.current = {
       repository,
       records: repository ? legacyRecords.createExperimentStore(repository) : browserRecords,
+      scratch: repository ? createScratchRepositoryStore(repository) : null,
     };
   }
   if (selected.current.repository !== repository) {
