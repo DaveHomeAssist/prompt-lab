@@ -72,14 +72,31 @@ const LANDING_BASE_FIELDS = Object.freeze({
 
 export const TELEMETRY_EVENT_SCHEMAS = Object.freeze({
   'app.opened': schema({ section: SECTION, surface: SURFACE, libraryCount: integerField(100_000), plan: PLAN }),
-  'billing.checkout_started': schema({ period: enumField('monthly', 'annual'), source: CHECKOUT_SOURCE, surface: SURFACE }),
+  // AN-01: the return from Stripe Checkout (?billing=success|cancelled).
+  // entitlement is 'pro' once the license check confirms Pro and 'pending'
+  // when the webhook has not landed yet. Stripe sessions stay the source of
+  // truth for paid counts; this is the consented client-side signal.
+  'billing.checkout_returned': schema({
+    outcome: enumField('success', 'cancelled'),
+    plan: enumField('pro', 'pending'),
+  }, ['outcome']),
+  // AN-03: tabBlocked records the popup-blocked fallback (AUD-009).
+  'billing.checkout_started': schema({
+    period: enumField('monthly', 'annual'),
+    source: CHECKOUT_SOURCE,
+    surface: SURFACE,
+    tabBlocked: booleanField,
+  }),
   'billing.feature_blocked': schema({ featureId: FEATURE, plan: PLAN }),
+  // AN-06: license_activated fires when someone presses Sync in Billing (a
+  // manual re-check), not when a purchase completes. Count purchases from
+  // billing.checkout_returned (outcome success) or Stripe sessions instead.
   'billing.license_activated': schema({ plan: PLAN, status: BILLING_STATUS, billingPeriod: BILLING_PERIOD }),
   'billing.license_deactivated': schema({ plan: PLAN }),
   'billing.license_validated': schema({ plan: PLAN, status: BILLING_STATUS, billingPeriod: BILLING_PERIOD }),
   'billing.modal_opened': schema({ featureId: FEATURE, plan: PLAN, section: SECTION }),
   'billing.owner_access_activated': schema({ plan: PLAN, status: BILLING_STATUS }),
-  'billing.portal_opened': schema({ plan: PLAN }),
+  'billing.portal_opened': schema({ plan: PLAN, tabBlocked: booleanField }),
   'composer.block_added': schema({ source: enumField('library', 'follow-up'), plan: PLAN }),
   'editor.enhance_requested': schema({
     mode: enumField('balanced', 'claude', 'chatgpt', 'image', 'code', 'concise', 'detailed'),
@@ -111,7 +128,7 @@ export const TELEMETRY_EVENT_SCHEMAS = Object.freeze({
   'library.prompt_loaded': schema({ source: enumField('library', 'create'), hasCollection: booleanField, plan: PLAN }),
   'library.prompt_saved': schema({
     plan: PLAN,
-    via: enumField('inline', 'save-panel'),
+    via: enumField('inline', 'save-panel', 'result-save-as-new'),
     isVersion: booleanField,
     hasCollection: booleanField,
   }),

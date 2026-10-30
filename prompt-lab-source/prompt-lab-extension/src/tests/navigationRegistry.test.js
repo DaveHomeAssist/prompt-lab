@@ -99,6 +99,10 @@ describe('navigationRegistry', () => {
     expect(resolveRouteState('/compare')).toEqual({ primaryView: 'runs', runsView: 'compare' });
     expect(resolveRouteState('/scratch')).toEqual({ primaryView: 'notebook' });
     expect(resolveRouteState('/pad')).toEqual({ primaryView: 'notebook' });
+    // V-04: /diff is an alias for Write's Diff tab, not a dead link.
+    expect(resolveRouteState('/diff')).toEqual({
+      primaryView: 'create', workspaceView: 'editor', resultTab: 'diff', canonical: '/',
+    });
     expect(resolveRouteState('/unknown')).toBe(null);
 
     expect(stateToRoute('create', 'editor', 'history')).toBe('/');

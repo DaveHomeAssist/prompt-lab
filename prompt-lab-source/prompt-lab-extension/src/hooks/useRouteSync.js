@@ -36,6 +36,7 @@ export default function useRouteSync({
   preserveSharedHash = false,
   onUnknownRoute,
   onRouteModal,
+  onRouteResultTab,
 }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ export default function useRouteSync({
   useEffect(() => { onUnknownRouteRef.current = onUnknownRoute; }, [onUnknownRoute]);
   const onRouteModalRef = useRef(onRouteModal);
   useEffect(() => { onRouteModalRef.current = onRouteModal; }, [onRouteModal]);
+  const onRouteResultTabRef = useRef(onRouteResultTab);
+  useEffect(() => { onRouteResultTabRef.current = onRouteResultTab; }, [onRouteResultTab]);
   const currentRouteRef = useRef('/');
   currentRouteRef.current = stateToRoute(primaryView, workspaceView, runsView, { compact, splitPane });
   // L-2 loop guard: remembers the pathname we already recovered from so an
@@ -92,6 +95,15 @@ export default function useRouteSync({
     if (mapping.workspaceView) setWorkspaceView(mapping.workspaceView);
     if (mapping.runsView) setRunsView(mapping.runsView);
     if (mapping.splitPane && typeof setSplitPane === 'function') setSplitPane(mapping.splitPane);
+    if (mapping.resultTab && typeof onRouteResultTabRef.current === 'function') {
+      onRouteResultTabRef.current(mapping.resultTab);
+    }
+    if (mapping.canonical) {
+      // Alias routes (e.g. /diff) replace themselves with their canonical
+      // route so history holds one entry and no recovery notice fires.
+      replaceRoute(mapping.canonical);
+      return;
+    }
 
     // Allow the state update to settle before re-enabling URL push
     requestAnimationFrame(() => { suppressPush.current = false; });

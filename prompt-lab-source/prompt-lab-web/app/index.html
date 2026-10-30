@@ -51,10 +51,13 @@
               <div style="color:#94a3b8;line-height:1.6;margin-bottom:16px">
                 A startup error occurred before React finished mounting.
               </div>
-              <pre style="white-space:pre-wrap;word-break:break-word;background:#020617;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:12px;font-size:13px;line-height:1.5;margin:0">${String(message || 'Unknown startup error')}</pre>
+              <pre style="white-space:pre-wrap;word-break:break-word;background:#020617;color:#f8fafc;border:1px solid #334155;border-radius:8px;padding:12px;font-size:13px;line-height:1.5;margin:0" data-boot-error-detail></pre>
             </div>
           </div>
         `;
+        // SEC-A09: the error text is set as text, never parsed as HTML.
+        const detail = root.querySelector('[data-boot-error-detail]');
+        if (detail) detail.textContent = String(message || 'Unknown startup error');
       }
 
       window.addEventListener('error', function (event) {

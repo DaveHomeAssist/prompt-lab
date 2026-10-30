@@ -1,4 +1,5 @@
 import { fetchWithTimeout, readBoundedIntEnv } from './runtimeSafety.js';
+import { CHROME_EXTENSION_ORIGIN, getAllowedRequestOrigins } from './allowedOrigins.js';
 
 const STRIPE_API_BASE = 'https://api.stripe.com/v1';
 const DEFAULT_SUCCESS_URL = 'https://promptlab.tools/app/?billing=success';
@@ -14,6 +15,12 @@ const REDIS_TIMEOUT_MS = 2000;
 // Waits after an in-flight 409: about 3.75s in total, which covers a slow
 // winning create while staying inside the billing routes' 10s limit.
 const CUSTOMER_CREATE_RETRY_DELAYS_MS = [250, 500, 1000, 2000];
+// INT-03 / SEC-A05: webhook records hold customer emails and Stripe ids. They
+// are write-only audit data (nothing reads them back), so they expire and the
+// arrival log is capped instead of growing forever.
+const DEFAULT_WEBHOOK_RECORD_TTL_DAYS = 180;
+const DEFAULT_WEBHOOK_EVENT_LIST_LIMIT = 1000;
+const DAY_SECONDS = 24 * 60 * 60;
 
 function readStringEnv(...names) {
   for (const name of names) {
@@ -50,7 +57,13 @@ export function isAllowedCorsOrigin(origin) {
   if (!value) return true;
   const productionOrigin = readStringEnv('PROMPTLAB_WEB_ORIGIN', 'VITE_PROMPTLAB_WEB_ORIGIN') || 'https://promptlab.tools';
   if (value === productionOrigin) return true;
-  if (value.startsWith('chrome-extension://')) return true;
+  // INT-07 / SEC-A07: share the exact allow-list used by /api/proxy and
+  // /api/telemetry. Any well-formed extension id is still accepted here (a
+  // Clerk bearer is required on every billing route) until the Chrome Web
+  // Store id is known and listed in PROMPTLAB_PROXY_ALLOWED_ORIGINS; malformed
+  // chrome-extension:// origins are refused.
+  if (getAllowedRequestOrigins().has(value)) return true;
+  if (CHROME_EXTENSION_ORIGIN.test(value)) return true;
   if (process.env.NODE_ENV !== 'production' && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(value)) return true;
   return false;
 }
@@ -108,6 +121,14 @@ function buildStripeStorageConfig() {
     redisToken: readStringEnv('KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN'),
     storagePrefix: readStringEnv('PROMPTLAB_BILLING_PREFIX') || DEFAULT_STORAGE_PREFIX,
     consoleFallback: readBooleanEnv('PROMPTLAB_BILLING_CONSOLE_FALLBACK', false),
+    recordTtlSeconds: readBoundedIntEnv('PROMPTLAB_BILLING_RECORD_TTL_DAYS', DEFAULT_WEBHOOK_RECORD_TTL_DAYS, {
+      min: 1,
+      max: 730,
+    }) * DAY_SECONDS,
+    eventListLimit: readBoundedIntEnv('PROMPTLAB_BILLING_EVENT_LIST_LIMIT', DEFAULT_WEBHOOK_EVENT_LIST_LIMIT, {
+      min: 100,
+      max: 10_000,
+    }),
   };
 }
 
@@ -166,9 +187,22 @@ async function redisCommand(config, command, args = [], bodyValue = null) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.error) {
-    throw new Error(payload?.error || `Redis ${command} failed.`);
+    const error = new Error(payload?.error || `Redis ${command} failed.`);
+    error.upstream = 'redis';
+    throw error;
   }
   return payload?.result;
+}
+
+// SEC-A10: text safe to return to a browser. Stripe and Redis failures are
+// logged on the server and replaced with the route's generic message; errors
+// the billing code raises on purpose (identity, conflicts) keep their text.
+export function clientErrorMessage(error, fallback) {
+  if (error?.upstream) {
+    console.error(`[promptlab.billing] ${error.upstream} error`, error?.status || '', error?.message || '');
+    return fallback;
+  }
+  return error?.message || fallback;
 }
 
 async function parseJsonSafe(response) {
@@ -210,6 +244,9 @@ async function stripeRequest(config, path, { method = 'GET', body = null, idempo
   if (!response.ok) {
     const error = new Error(extractStripeError(payload, 'Stripe request failed.'));
     error.status = response.status;
+    // SEC-A10: routes show a generic message for upstream failures instead of
+    // Stripe's own text (see clientErrorMessage).
+    error.upstream = 'stripe';
     throw error;
   }
   return payload;
@@ -391,6 +428,22 @@ async function createStripeCustomer(config, { clerkUserId = '', clerkEmail = '' 
   }
 }
 
+// INT-06: a license check only looks the customer up (binding an existing
+// email customer to the Clerk id as before). Free users who never start
+// checkout are no longer created as Stripe customers.
+export async function findStripeCustomerForClerk(config, { clerkUserId = '', clerkEmail = '' } = {}) {
+  const id = String(clerkUserId || '').trim();
+  const email = normalizeEmail(clerkEmail);
+  if (!id) {
+    throw new Error('A verified Clerk identity is required for billing.');
+  }
+  const metadataCustomer = await findCustomerByClerkUserId(config, id);
+  if (metadataCustomer) return metadataCustomer;
+  if (!email) return null;
+  const emailCustomer = await findCustomerByEmail(config, email);
+  return emailCustomer ? updateCustomerClerkMetadata(config, emailCustomer, id) : null;
+}
+
 export async function getOrCreateStripeCustomer(config, { clerkUserId = '', clerkEmail = '' } = {}) {
   const id = String(clerkUserId || '').trim();
   const email = normalizeEmail(clerkEmail);
@@ -512,7 +565,8 @@ export async function lookupBilling(config, { customerId = '', customerEmail = '
 }
 
 export async function lookupBillingForClerk(config, { clerkUserId = '', clerkEmail = '' } = {}) {
-  const customer = await getOrCreateStripeCustomer(config, { clerkUserId, clerkEmail });
+  const customer = await findStripeCustomerForClerk(config, { clerkUserId, clerkEmail });
+  if (!customer) return normalizeBillingRecord({ customer: null, subscriptions: [], config });
   const subscriptions = await listSubscriptions(config, customer.id);
   return normalizeBillingRecord({ customer, subscriptions, config });
 }
@@ -590,7 +644,33 @@ export async function verifyStripeSignature(rawBody, signatureHeader, secret, to
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('');
 
-  return signatures.some((value) => value.toLowerCase() === digest.toLowerCase());
+  return signatures.some((value) => timingSafeHexEqual(value.toLowerCase(), digest));
+}
+
+// SEC-A08: compares without an early exit on the first differing character.
+function timingSafeHexEqual(a, b) {
+  const left = String(a);
+  const right = String(b);
+  if (left.length !== right.length) return false;
+  let diff = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    diff |= left.charCodeAt(index) ^ right.charCodeAt(index);
+  }
+  return diff === 0;
+}
+
+// INT-04: the Stripe object's own id is only a customer or subscription id
+// when the object is that type; other objects (sessions, invoices, charges,
+// disputes) carry those ids in their own fields, or not at all.
+function webhookCustomerId(object) {
+  if (object?.object === 'customer') return objectId(object);
+  return objectId(object?.customer);
+}
+
+function webhookSubscriptionId(object) {
+  if (object?.object === 'subscription') return objectId(object);
+  if (object?.object === 'invoice') return invoiceSubscriptionId(object);
+  return objectId(object?.subscription);
 }
 
 export function buildStripeWebhookRecord(payload = {}, config = buildStripeConfig()) {
@@ -611,9 +691,10 @@ export function buildStripeWebhookRecord(payload = {}, config = buildStripeConfi
     '',
   );
   return {
+    eventId: String(payload?.id || '').trim(),
     type: eventType,
     occurredAt: new Date().toISOString(),
-    customerId: String(object?.customer || object?.id || '').trim(),
+    customerId: webhookCustomerId(object),
     customerEmail,
     customerName: String(
       object?.customer_details?.name ||
@@ -621,7 +702,7 @@ export function buildStripeWebhookRecord(payload = {}, config = buildStripeConfi
       object?.metadata?.customer_name ||
       '',
     ).trim(),
-    subscriptionId: String(object?.subscription || object?.id || '').trim(),
+    subscriptionId: webhookSubscriptionId(object),
     status: String(object?.status || '').trim().toLowerCase(),
     billingPeriod: allowedPriceMap.get(priceId) || String(object?.metadata?.billing_period || '').trim().toLowerCase(),
     priceId,
@@ -766,12 +847,14 @@ export async function applyWebhookAccessPolicy(payload = {}, config = buildStrip
 }
 
 export async function persistStripeWebhookRecord(record, config = buildStripeConfig()) {
+  // INT-03: the customer's name is not needed for any billing decision and is
+  // no longer stored.
   const serialized = JSON.stringify({
+    eventId: record.eventId || '',
     type: record.type,
     occurredAt: record.occurredAt,
     customerId: record.customerId,
     customerEmail: record.customerEmail,
-    customerName: record.customerName,
     subscriptionId: record.subscriptionId,
     status: record.status,
     billingPeriod: record.billingPeriod,
@@ -781,19 +864,32 @@ export async function persistStripeWebhookRecord(record, config = buildStripeCon
 
   if (hasRedis(config)) {
     const prefix = config.storagePrefix;
-    await redisCommand(config, 'rpush', [`${prefix}:events`], serialized);
+    const ttl = String(config.recordTtlSeconds || DEFAULT_WEBHOOK_RECORD_TTL_DAYS * DAY_SECONDS);
+    const eventListLimit = config.eventListLimit || DEFAULT_WEBHOOK_EVENT_LIST_LIMIT;
 
-    if (record.customerId) {
-      await redisCommand(config, 'set', [`${prefix}:customer:${record.customerId}`], serialized);
-      await redisCommand(config, 'sadd', [`${prefix}:customers`, record.customerId]);
+    // INT-02: Stripe redelivers an event after a non-2xx answer. The first
+    // delivery claims the event id; later deliveries store nothing new (the
+    // access policy still runs again in the route).
+    if (record.eventId) {
+      const claimed = await redisCommand(config, 'set', [`${prefix}:event:${record.eventId}`, '1', 'NX', 'EX', ttl]);
+      if (claimed !== 'OK') return { ok: true, mode: 'redis', duplicate: true };
     }
-    if (record.customerEmail) {
-      await redisCommand(config, 'set', [`${prefix}:email:${record.customerEmail}`], serialized);
-      await redisCommand(config, 'sadd', [`${prefix}:emails`, record.customerEmail]);
-    }
-    if (record.subscriptionId) {
-      await redisCommand(config, 'set', [`${prefix}:subscription:${record.subscriptionId}`], serialized);
-      await redisCommand(config, 'sadd', [`${prefix}:subscriptions`, record.subscriptionId]);
+
+    const eventListKey = `${prefix}:events`;
+    await redisCommand(config, 'rpush', [eventListKey], serialized);
+    await redisCommand(config, 'ltrim', [eventListKey, -eventListLimit, -1]);
+    await redisCommand(config, 'expire', [eventListKey, ttl]);
+
+    // Latest record per customer, email and subscription. Each key expires;
+    // the never-expiring index sets that listed them are no longer written.
+    const latestKeys = [
+      record.customerId ? `${prefix}:customer:${record.customerId}` : '',
+      record.customerEmail ? `${prefix}:email:${record.customerEmail}` : '',
+      record.subscriptionId ? `${prefix}:subscription:${record.subscriptionId}` : '',
+    ].filter(Boolean);
+    for (const key of latestKeys) {
+      await redisCommand(config, 'set', [key], serialized);
+      await redisCommand(config, 'expire', [key, ttl]);
     }
     return { ok: true, mode: 'redis' };
   }
