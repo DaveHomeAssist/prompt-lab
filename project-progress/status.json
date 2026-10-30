@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "PromptLab",
-  "snapshotAt": "2026-10-30T04:18:28.875739Z",
+  "snapshotAt": "2026-10-30T04:33:50.436Z",
   "scope": "Complete Notion issue-table snapshot; selected 14-issue implementation sprint.",
   "source": {
     "databaseUrl": "https://app.notion.com/p/46a2b403f9594bbd8b5f0d7642d81d3f",
@@ -11,8 +11,14 @@
   },
   "mainSha": "b772b85b52d12769ebee963eeb6af5d87f1e9c5f",
   "overall": "Acceptance incomplete",
-  "nextAction": "Connect native consent and reviewed folder selection, then verify the exact installed package and real two-client iCloud behavior.",
+  "nextAction": "Connect the reviewed native selection to app-owned migration and activation, then verify the exact installed app and two real iCloud clients.",
   "evidence": [
+    {
+      "label": "Native folder review and client consent",
+      "state": "Open",
+      "detail": "Candidate ce62597 pushed in draft PR248. Native folder selection performs read-only inspection before any activation; incomplete or unrelated content rejects with actionable errors. Native client consent binds scope, expiry and the exact service instance. Dominic: 441 storage tests, 10 packaged-helper tests, resource hashes and docs pass. Duncan: 26 native tests pass, three credential tests ignored. Mac: 25 source tests pass, four explicit acceptance entry points ignored. The new rejection regression fails before repair. Complete real-export isolated inspection preserves every file and the original hash; no private upload. Settings migration, actual OS dialogs, installed acceptance and two-client iCloud remain open. No personal activation or paid provisioning.",
+      "url": "https://github.com/DaveHomeAssist/prompt-lab/commit/ce62597b2f0041b7a13badb972533dcd99bb5b6a"
+    },
     {
       "label": "Native agent access and device setup",
       "state": "Open",
@@ -1614,8 +1620,8 @@
     {
       "id": "402255fc8f4481f494ced6b248f38c8c",
       "inPlan": false,
-      "nextAction": "Verify installed macOS lifecycle and helper ownership, then explicit pairing and reviewed A3 picker/connection.",
-      "verification": "7367f19 pushed: 15 Mac service tests including killed-owner drain and restart, negative control fails as expected; 16 ordinary full-crate tests on Duncan; docs and runtime checks on Dominic. Installed app identity, real two-client iCloud and complete A2 acceptance remain open.",
+      "nextAction": "Connect the reviewed native selection to app-owned migration and activation, then verify the exact installed app and two real iCloud clients.",
+      "verification": "Candidate ce62597 pushed in draft PR248. Native folder selection performs read-only inspection before any activation; incomplete or unrelated content rejects with actionable errors. Native client consent binds scope, expiry and the exact service instance. Dominic: 441 storage tests, 10 packaged-helper tests, resource hashes and docs pass. Duncan: 26 native tests pass, three credential tests ignored. Mac: 25 source tests pass, four explicit acceptance entry points ignored. The new rejection regression fails before repair. Complete real-export isolated inspection preserves every file and the original hash; no private upload. Settings migration, actual OS dialogs, installed acceptance and two-client iCloud remain open. No personal activation or paid provisioning.",
       "title": "PRJ | PromptLab | Durable Folder Service and Local API | A2",
       "status": "In progress",
       "severity": "Medium",
