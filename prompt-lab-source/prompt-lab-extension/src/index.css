@@ -1470,3 +1470,34 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
   .pl-write-side-header, .pl-write-side-subheader { padding: 0.25rem 0.5rem; }
   .pl-write-side-header > button, .pl-write-side-subheader button, .pl-write-side-tabs button { min-height: 2rem; }
 }
+
+
+/* Artwork reuse controls share the Library visual language. */
+.pl-artwork-recent-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.pl-artwork-recent-choice { display: grid; grid-template-columns: repeat(3, 2.75rem); gap: 2px; padding: 2px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 7px; }
+.pl-artwork-recent-choice button { display: grid; min-width: 2.75rem; min-height: 2.75rem; padding: 0; place-items: center; border-radius: 5px; }
+.pl-artwork-recent-choice[data-pinned='true'] { border-color: var(--pl-brand-ember-bright); }
+.pl-artwork-recent-choice button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 20%, transparent); }
+.pl-artwork-recent-choice button:hover, .pl-artwork-recent-choice button:focus-visible { background: color-mix(in srgb, currentColor 10%, transparent); }
+.pl-write-prompt-open { display: flex; align-items: center; gap: 0.5rem; }
+.pl-write-prompt-copy { min-width: 0; flex: 1; }
+.pl-write-search-recovery { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.pl-write-search-recovery button { min-height: 2.25rem; padding: 0.4rem 0.6rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 6px; }
+@media (pointer: coarse) {
+  .pl-artwork-recent-choice { grid-template-columns: repeat(3, 2.75rem); }
+  .pl-artwork-recent-choice button, .pl-write-search-recovery button { min-height: 2.75rem; }
+}
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-write-prompts-empty { padding: 0.25rem 0.5rem; }
+  .pl-write-search-recovery { margin-top: 0; gap: 0.25rem; }
+  .pl-write-search-recovery button { min-height: 2rem; padding: 0.25rem 0.4rem; font-size: 0.65rem; }
+  /* The zero-result count and actions remain visible; keep the explanation for assistive technology. */
+  .pl-write-prompts-empty:has(.pl-write-search-recovery) > p { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-app-shell.is-compact .pl-write-side-header, .pl-app-shell.is-compact .pl-write-side-subheader { padding: 0.125rem 0.5rem; }
+  .pl-app-shell.is-compact .pl-write-side-header button, .pl-app-shell.is-compact .pl-write-side-subheader button, .pl-app-shell.is-compact .pl-write-search-recovery button { min-height: 2rem; min-width: 2rem; }
+  .pl-app-shell.is-compact .pl-write-side .pl-segmented { padding: 0.1rem; }
+  .pl-app-shell.is-compact .pl-write-prompt-search input { min-height: 2rem; }
+}

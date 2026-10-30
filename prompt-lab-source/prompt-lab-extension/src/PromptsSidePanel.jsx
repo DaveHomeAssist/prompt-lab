@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Ic from './icons';
+import { Artwork } from './ArtworkPicker.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
 import { formatRelativeTime } from './ScratchNoteRow.jsx';
 import { smartViewEntries } from './lib/librarySmartViews.js';
@@ -39,8 +40,10 @@ export default function PromptsSidePanel({
   onToggleFavorite,
 }) {
   const [localQuery, setLocalQuery] = useState('');
+  const searchRef = useRef(null);
   const query = controlledQuery ?? localQuery;
   const setQuery = onQueryChange ?? setLocalQuery;
+  const clearSearch = () => { setQuery(''); searchRef.current?.focus(); };
   const allEntries = useMemo(() => smartViewEntries(library, view, sortBy), [library, view, sortBy]);
   const entries = useMemo(() => allEntries.filter(entry => matchesLibrarySearch(entry, query)), [allEntries, query]);
   const label = WRITE_PROMPT_VIEWS.find((item) => item.id === view)?.label || 'All';
@@ -57,11 +60,17 @@ export default function PromptsSidePanel({
       </div>
       <div className="pl-write-prompt-search">
         <label className="sr-only" htmlFor="write-prompt-search">Search prompts beside Write</label>
-        <input id="write-prompt-search" type="search" value={query} placeholder="Search prompts…" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape' && query) { event.preventDefault(); event.stopPropagation(); setQuery(''); } }} />
-        {query && <button type="button" className={`ui-control ${m.btn || ''}`} onClick={() => setQuery('')}>Clear search</button>}
+        <input ref={searchRef} id="write-prompt-search" type="search" value={query} placeholder="Search prompts…" onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Escape' && query) { event.preventDefault(); event.stopPropagation(); setQuery(''); } }} />
+        {query && (entries.length > 0 || !query.trim()) && <button type="button" className={`ui-control ${m.btn || ''}`} onClick={clearSearch}>Clear search</button>}
       </div>
       {entries.length === 0
-        ? <p className={`pl-write-prompts-empty text-xs ${m.textMuted || ''}`}>{query.trim() ? 'No prompts match this search in the selected view.' : EMPTY_MESSAGES[view] || EMPTY_MESSAGES.all}</p>
+        ? <div className={`pl-write-prompts-empty text-xs ${m.textMuted || ''}`}>
+          <p role="status">{query.trim() ? 'No prompts match this search in the selected view.' : EMPTY_MESSAGES[view] || EMPTY_MESSAGES.all}</p>
+          {query.trim() && <div className="pl-write-search-recovery">
+            <button type="button" className={`ui-control ${m.btn || ''}`} onClick={clearSearch}>Clear search</button>
+            {view !== 'all' && onViewChange && <button type="button" className={`ui-control ${m.btn || ''}`} onClick={() => { onViewChange('all'); searchRef.current?.focus(); }}>Search All prompts</button>}
+          </div>}
+        </div>
         : (
           <ul className="pl-write-prompts-list" aria-label={`${label} prompts`}>
             {entries.map((entry) => {
@@ -70,8 +79,11 @@ export default function PromptsSidePanel({
               return (
                 <li key={entry.id} className="pl-write-prompt-row">
                   <button type="button" className={`pl-write-prompt-open ui-control ${m.btn || ''}`} onClick={() => onOpen?.(entry)} aria-label={`Open ${title} in Write`} title={title}>
-                    <span className={`block truncate text-xs font-semibold ${m.text || ''}`}>{title}</span>
-                    {meta && <span className={`block truncate text-[10px] ${m.textMuted || ''}`}>{meta}</span>}
+                    <Artwork value={entry.metadata?.artwork} />
+                    <span className="pl-write-prompt-copy">
+                      <span className={`block truncate text-xs font-semibold ${m.text || ''}`}>{title}</span>
+                      {meta && <span className={`block truncate text-[10px] ${m.textMuted || ''}`}>{meta}</span>}
+                    </span>
                   </button>
                   <button type="button" className="pl-write-prompt-action ui-control" onClick={() => onInsert?.(entryText(entry), entry)} disabled={!entryText(entry).trim()} aria-label={`Insert ${title} into prompt`} title="Insert into prompt at the cursor">
                     <Ic n="CopyPlus" size={12} />

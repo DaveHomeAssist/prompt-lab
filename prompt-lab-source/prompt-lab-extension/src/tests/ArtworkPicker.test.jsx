@@ -72,3 +72,18 @@ it('keeps existing artwork and reports a damaged image decode failure', async ()
   expect(document.querySelector('output')).toHaveTextContent('Star');
   expect(screen.getByLabelText('Prompt artwork image')).not.toBeDisabled();
 });
+
+it('pins and removes individual recent choices without selecting or clearing assigned artwork', async () => {
+  rememberArtwork({ icon: 'Clock' }); rememberArtwork({ emoji: '🧪' });
+  render(<Picker />); fireEvent.click(document.querySelector('summary'));
+  fireEvent.click(screen.getByRole('button', { name: 'Pin recent 🧪' }));
+  expect(screen.getByRole('button', { name: 'Unpin recent 🧪' })).toHaveAttribute('aria-pressed', 'true');
+  expect(document.querySelector('output')).toHaveTextContent('Star');
+  fireEvent.click(screen.getByRole('button', { name: 'Clear recently used' }));
+  expect(screen.getByRole('button', { name: 'Use recent 🧪' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Use recent Clock' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove recent 🧪' }));
+  expect(screen.queryByRole('button', { name: 'Use recent 🧪' })).not.toBeInTheDocument();
+  expect(document.querySelector('output')).toHaveTextContent('Star');
+  await waitFor(() => expect(screen.getByLabelText('Prompt artwork emoji')).toHaveFocus());
+});

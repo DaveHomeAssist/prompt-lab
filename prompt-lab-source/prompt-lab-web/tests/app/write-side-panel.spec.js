@@ -215,3 +215,49 @@ for (const width of [375, 1440]) {
     await search.press('Escape'); await expect(search).toHaveValue(''); await expect(panel).toBeVisible();
   });
 }
+
+for (const size of [{ width: 375, height: 812 }, { width: 844, height: 390 }, { width: 1440, height: 900 }, { width: 3840, height: 1080 }, { width: 320, height: 256 }]) {
+  test(`Write artwork thumbnails and empty-search actions at ${size.width}x${size.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(size); await seed(page);
+    await page.addInitScript(() => localStorage.setItem('pl2-write-side-view', JSON.stringify('all')));
+    await page.goto('/app/');
+    await page.evaluate(() => {
+      const rows = JSON.parse(localStorage.getItem('pl2-library'));
+      rows.find(row => row.id === 'weekly').metadata = { artwork: { emoji: '🧪' } };
+      rows.find(row => row.id === 'release').metadata = { artwork: { icon: 'Clock' } };
+      rows.find(row => row.id === 'reply').metadata = { artwork: { image: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAQklEQVR4nGP4v08DK5LLu4MVkaqeYdSCUQuGgAXUMgiX+lELRi0YChZQyyBc6kctGLVgKFhALYNwqR+1YNSCIWABADaYmluVENWtAAAAAElFTkSuQmCC' } };
+      rows.find(row => row.id === 'brief').metadata = { artwork: { image: 'data:image/png;base64,AAAA' } };
+      localStorage.setItem('pl2-library', JSON.stringify(rows));
+    });
+    await page.reload();
+    const toggle = page.getByRole('button', { name: 'Prompts', exact: true });
+    if (await toggle.isVisible()) await toggle.click(); else await page.keyboard.press('Control+Backslash');
+    const panel = page.getByRole('complementary', { name: 'Prompts beside Write' });
+    const search = panel.getByRole('searchbox');
+    for (const theme of ['light', 'dark']) {
+      if (theme === 'dark') {
+        await panel.getByRole('button', { name: 'Close side panel' }).click();
+        await switchTheme(page, 'dark');
+        if (await toggle.isVisible()) await toggle.click(); else await page.keyboard.press('Control+Backslash');
+      }
+      await expect(panel.getByRole('button', { name: 'Open Weekly status update in Write' }).locator('.pl-artwork')).toHaveText('🧪');
+      const image = panel.getByRole('button', { name: 'Open Customer reply in Write' }).locator('img');
+      await expect.poll(() => image.evaluate(el => el.complete && el.naturalWidth === 32)).toBe(true);
+      await expect(panel.getByRole('button', { name: 'Open Research brief in Write' }).locator('img')).toHaveCount(0);
+      await panel.getByRole('button', { name: 'Favorites', exact: true }).click();
+      await search.fill('release');
+      const broaden = panel.getByRole('button', { name: 'Search All prompts', exact: true });
+      await expect(broaden).toBeInViewport({ ratio: 1 });
+      await page.screenshot({ path: testInfo.outputPath(`empty-search-${size.width}-${theme}.png`) });
+      await broaden.click();
+      await expect(search).toHaveValue('release'); await expect(search).toBeFocused();
+      await expect.poll(() => sideTitles(page)).toEqual(['Release checklist']);
+      await search.fill('no matches synthetic');
+      const clear = panel.getByRole('button', { name: 'Clear search', exact: true });
+      await expect(clear).toBeInViewport({ ratio: 1 }); await clear.click();
+      await expect(search).toHaveValue(''); await expect(search).toBeFocused();
+      await expect.poll(() => sideTitles(page)).toHaveLength(4);
+      await fits(page); await page.screenshot({ path: testInfo.outputPath(`artwork-search-${size.width}-${theme}.png`) });
+    }
+  });
+}
