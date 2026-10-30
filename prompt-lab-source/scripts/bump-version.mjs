@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkVersions, sourceRoot, versionFiles } from './check-version-consistency.mjs';
+import { checkVersions, landingBadgePattern, sourceRoot, versionFiles } from './check-version-consistency.mjs';
 
 export function planVersionBump(version, root = sourceRoot) {
   if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version || '')) throw new Error('Use a stable major.minor.patch version.');
@@ -19,6 +19,7 @@ export function planVersionBump(version, root = sourceRoot) {
       if (file.endsWith('package-lock.json')) data.packages[''].version = version;
       text = JSON.stringify(data, null, 2) + '\n';
     } else if (file.endsWith('constants.js')) text = source.replace(/(export const APP_VERSION\s*=\s*['"])[^'"]+/, `$1${version}`);
+    else if (file.endsWith('index.html')) text = source.replace(landingBadgePattern, (match, open, release, middle) => `${open}${version}${middle}${version.split('.').slice(0, 2).join('.')}`);
     else if (file.endsWith('Cargo.toml')) text = source.replace(/(\[package\][\s\S]*?\nversion\s*=\s*")[^"]+/, `$1${version}`);
     else text = source.replace(/(\[\[package\]\]\r?\nname = "prompt-lab-desktop"\r?\nversion = ")[^"]+/, `$1${version}`);
     after.set(file, text);

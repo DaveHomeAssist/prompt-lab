@@ -92,6 +92,35 @@ describe('landing attribution handoff', () => {
     expect(JSON.stringify(result)).not.toMatch(/private|example\.com|sk-secret|person@/);
   });
 
+  it('keeps landing sample strategies and retired sample modes, and drops events with other demo modes', () => {
+    const demoEvent = (demoMode, offset) => ({
+      event: 'landing.demo_completed',
+      placement: 'demo',
+      intent: 'sample',
+      destination: 'demo',
+      demoMode,
+      resultCount: 1,
+      timestamp: NOW - offset,
+    });
+    const sanitized = sanitizeLandingAttribution({
+      version: 1,
+      events: [
+        demoEvent('expanded', 6),
+        demoEvent('refined', 5),
+        demoEvent('rebuilt', 4),
+        demoEvent('balanced', 3),
+        demoEvent('seven-modes', 2),
+      ],
+    }, { now: NOW });
+
+    expect(sanitized.events.map((event) => event.demoMode)).toEqual([
+      'expanded',
+      'refined',
+      'rebuilt',
+      'balanced',
+    ]);
+  });
+
   it('round-trips every captured measurement event without visitor content', () => {
     const plannedEvents = [
       {
@@ -106,7 +135,7 @@ describe('landing attribution handoff', () => {
         placement: 'demo',
         intent: 'sample',
         destination: 'demo',
-        demoMode: 'concise',
+        demoMode: 'refined',
         resultCount: 1,
         timestamp: NOW - 4,
       },

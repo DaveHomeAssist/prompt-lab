@@ -88,7 +88,8 @@ test('landing presents the demo as a transparent sample, not live processing', (
   expectLandingToMatch(/(?:Example|Fixed sample) prompt/);
   expectLandingToMatch(/Show sample result/);
   expectLandingToMatch(/Try your own prompt(?: in PromptLab)?/);
-  expectLandingToMatch(/(?:sample|example|preview).*(?:seven|7) modes/i);
+  expectLandingToMatch(/Preview the three strategies on the same rough prompt/);
+  expectLandingNotToMatch(/\b(?:seven|7) (?:enhancement )?modes\b/i);
 
   expectLandingNotToMatch(/\bRefine\s*→/i);
   expectLandingNotToMatch(/Refining\.\.\./);
@@ -129,16 +130,55 @@ test('pricing card lists library export under Free and keeps it out of Pro', () 
   assert.match(freeCard, /Diff of every improvement/);
 });
 
-// Product call 4: the workbench illustration's mode chips must be real
-// enhancement modes (they used to read Improve / Expand / Shorten / Fix).
-test('workbench illustration only shows real enhancement mode names', () => {
-  const constants = readFileSync(new URL('../prompt-lab-extension/src/constants.js', import.meta.url), 'utf8');
-  const modesBlock = constants.match(/export const MODES = \[([\s\S]*?)\n\];/)?.[1] || '';
-  const modeLabels = new Set([...modesBlock.matchAll(/label: '([^']+)'/g)].map((m) => m[1]));
-  assert.ok(modeLabels.size >= 7, 'MODES labels should be readable from constants.js');
-  const tabs = landingHtml.match(/<div class="mock-tabs">([\s\S]*?)<\/div>\s*<div class="mock-diff">/)?.[1] || '';
-  const chips = [...tabs.matchAll(/<div class="mock-tab[^"]*">([^<]+)<\/div>/g)].map((m) => m[1].trim());
-  assert.ok(chips.length > 0, 'workbench mode chips not found');
-  for (const chip of chips) assert.ok(modeLabels.has(chip), `"${chip}" is not a real mode`);
-  for (const fake of ['Improve', 'Expand', 'Shorten', 'Fix']) assert.ok(!chips.includes(fake), `fake chip "${fake}" is back`);
+// The hero product window and the sample must use the choices the shipped
+// generation controls offer. The seven-mode picker is retired; its ids survive
+// only so old runs can be replayed.
+test('product window and sample only show real generation choices', () => {
+  const options = readFileSync(new URL('../prompt-lab-extension/src/lib/generationOptions.js', import.meta.url), 'utf8');
+  const labelsOf = (name) => {
+    const block = options.match(new RegExp(`export const ${name} = Object\\.freeze\\(\\[([\\s\\S]*?)\\]\\);`))?.[1] || '';
+    return new Set([...block.matchAll(/label: '([^']+)'/g)].map((m) => m[1]));
+  };
+  const strategies = labelsOf('STRATEGIES');
+  const choices = new Set([...strategies, ...labelsOf('TASKS'), ...labelsOf('TARGETS')]);
+  assert.deepEqual([...strategies].sort(), ['Expanded', 'Rebuilt', 'Refined']);
+
+  const segments = landingHtml.match(/<span class="window-segments">([\s\S]*?)<\/span>\s*<span class="window-switch">/)?.[1] || '';
+  const segmentLabels = [...segments.matchAll(/<span\b[^>]*>([^<]+)<\/span>/g)].map((m) => m[1].trim());
+  assert.deepEqual(segmentLabels, ['Expanded', 'Refined', 'Rebuilt']);
+  const selects = [...landingHtml.matchAll(/<span class="window-select">([^<]+)<\/span>/g)].map((m) => m[1].trim());
+  assert.ok(selects.length > 0, 'product window select values not found');
+  for (const value of selects) assert.ok(choices.has(value), `"${value}" is not a real task type or destination`);
+
+  const sampleLabels = [...landingHtml.matchAll(/<input type="radio" name="demoMode"[^>]*><label for="[^"]+">([^<]+)<\/label>/g)].map((m) => m[1]);
+  assert.deepEqual(sampleLabels, ['Expanded', 'Refined', 'Rebuilt']);
+  expectLandingNotToMatch(/\b(?:Balanced|Concise|Detailed|Image Gen|Code Gen)\b/);
+});
+
+test('sensitive data claims match the scanner and never promise name detection', () => {
+  const engine = readFileSync(new URL('../prompt-lab-extension/src/lib/piiEngine.js', import.meta.url), 'utf8');
+  const patternsBlock = engine.match(/export const patterns = Object\.freeze\(\{([\s\S]*?)\n\}\);/)?.[1] || '';
+  const detectorCount = [...patternsBlock.matchAll(/^ {2}\w+: Object\.freeze\(/gm)].length;
+  assert.ok(detectorCount >= 8, 'piiEngine patterns should be readable');
+  assert.doesNotMatch(patternsBlock, /\bname\b/i, 'the engine gained a name detector; update the landing claim');
+
+  const listed = landingHtml.match(/<ul class="safety-types">([\s\S]*?)<\/ul>/)?.[1] || '';
+  assert.equal([...listed.matchAll(/<li>/g)].length, detectorCount, 'list each built-in detector once');
+  expectLandingToMatch(/does not (?:recognise|recognize|detect) names/i);
+  expectLandingNotToMatch(/redaction of names|(?<!not )(?:detects?|catch(?:es)?|finds?) names/i);
+});
+
+test('hero badge names the current release', () => {
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const badge = landingHtml.match(/<div class="hero-badge" data-release="([^"]+)">\s*<span class="hero-badge-dot"><\/span>\s*v(\d+\.\d+) /);
+  assert.ok(badge, 'hero badge with data-release not found');
+  assert.equal(badge[1], pkg.version);
+  assert.equal(badge[2], pkg.version.split('.').slice(0, 2).join('.'));
+  expectLandingToMatch(/v\d+\.\d+ Create Library Evaluate/);
+});
+
+test('Free plan names the strategies, not retired modes', () => {
+  const freeCard = landingHtml.match(/<div class="pricing-tier">Free<\/div>[\s\S]*?<\/ul>/)?.[0] || '';
+  assert.match(freeCard, /<li>Expanded, Refined and Rebuilt strategies<\/li>/);
+  assert.match(freeCard, /<li>Sensitive data check before send<\/li>/);
 });
