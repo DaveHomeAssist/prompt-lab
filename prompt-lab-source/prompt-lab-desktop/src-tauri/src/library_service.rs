@@ -36,6 +36,12 @@ fn now() -> Result<u64, String> {
         .map_err(|_| "CLOCK_UNAVAILABLE".into())
 }
 
+fn new_instance() -> Result<String, String> {
+    let mut bytes = [0u8; 16];
+    getrandom::fill(&mut bytes).map_err(|_| "RANDOM_UNAVAILABLE".to_string())?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
 fn valid_id(id: &str) -> bool {
     !id.is_empty() && id.len() <= 200 && !id.chars().any(char::is_control)
 }
@@ -136,6 +142,12 @@ pub struct Connection {
     pub base_url: String,
     pub token: String,
     pub expires_at: u64,
+}
+
+// Native-only approval binding. A restarted service invalidates pending consent.
+pub struct AccessReview {
+    pub library_id: String,
+    instance: String,
 }
 
 type WriteRequest = (Vec<u8>, mpsc::SyncSender<Result<(), ()>>);
@@ -306,6 +318,12 @@ impl Helper {
                 Some("WRONG_LIBRARY") => "WRONG_LIBRARY",
                 Some("CLOUD_CONFLICT") => "CLOUD_CONFLICT",
                 Some("HASH_MISMATCH") => "HASH_MISMATCH",
+                Some("UNRECOGNIZED_FOLDER") => "UNRECOGNIZED_FOLDER",
+                Some("INCOMPLETE_STORE") => "INCOMPLETE_STORE",
+                Some("MISSING_OBJECT") => "MISSING_OBJECT",
+                Some("UNSAFE_DIRECTORY") => "UNSAFE_DIRECTORY",
+                Some("FOLDER_CHANGED") => "FOLDER_CHANGED",
+                Some("UNSUPPORTED_TRANSACTION") => "UNSUPPORTED_TRANSACTION",
                 _ => "SERVICE_UNAVAILABLE",
             }
             .into());
@@ -359,6 +377,7 @@ struct Running {
     helper: Helper,
     credential: DesktopCredential,
     agents: AccessStore,
+    instance: String,
     base_url: String,
     stopping: bool,
     error: Option<String>,
@@ -418,6 +437,23 @@ impl Default for LibraryService {
 }
 
 impl LibraryService {
+    pub fn inspect_folder(
+        node: PathBuf,
+        entry: PathBuf,
+        directory: PathBuf,
+    ) -> Result<Value, String> {
+        if !directory.is_absolute() {
+            return Err("INVALID_LIBRARY".into());
+        }
+        let mut helper = Helper::spawn(&node, &entry, None)?;
+        let result = helper.request("inspect", json!({ "directory": directory }))?;
+        helper.stop()?;
+        if result["format"] != "promptlab-folder-inspection" || result["schemaVersion"] != 1 {
+            return Err("CONTROL_INVALID".into());
+        }
+        Ok(result)
+    }
+
     pub fn active(&self) -> bool {
         self.active.load(Ordering::SeqCst)
     }
@@ -524,6 +560,7 @@ impl LibraryService {
                 helper,
                 credential,
                 agents,
+                instance: new_instance()?,
                 base_url,
                 stopping: false,
                 error: None,
@@ -657,19 +694,49 @@ impl LibraryService {
         Ok(value.agents.summaries(now()?))
     }
 
-    // Only a native consent flow may call this with the library identity it reviewed.
-    // No Tauri grant command is exposed before that consent flow is connected.
-    pub fn grant_agent(
-        &self,
-        library_id: &str,
-        request: AgentRequest,
-    ) -> Result<AgentConnection, String> {
-        self.grant_agent_with(library_id, request, library_access::save)
+    pub fn access_review(&self, library_id: &str) -> Result<AccessReview, String> {
+        let mut running = self.running.lock().map_err(|_| "SERVICE_UNAVAILABLE")?;
+        let value = running.as_mut().ok_or("SERVICE_UNAVAILABLE")?;
+        if value.stopping || value.helper.exited()? {
+            return Err("SERVICE_UNAVAILABLE".into());
+        }
+        if value.credential.library_id != library_id {
+            return Err("WRONG_LIBRARY".into());
+        }
+        Ok(AccessReview {
+            library_id: library_id.into(),
+            instance: value.instance.clone(),
+        })
     }
 
+    // The native prompt must finish before calling this. No lock spans user consent.
+    pub fn grant_agent(
+        &self,
+        review: &AccessReview,
+        request: AgentRequest,
+    ) -> Result<AgentConnection, String> {
+        self.grant_reviewed(
+            &review.library_id,
+            Some(&review.instance),
+            request,
+            library_access::save,
+        )
+    }
+
+    #[cfg(test)]
     fn grant_agent_with(
         &self,
         library_id: &str,
+        request: AgentRequest,
+        save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
+    ) -> Result<AgentConnection, String> {
+        self.grant_reviewed(library_id, None, request, save)
+    }
+
+    fn grant_reviewed(
+        &self,
+        library_id: &str,
+        instance: Option<&str>,
         request: AgentRequest,
         save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
     ) -> Result<AgentConnection, String> {
@@ -683,6 +750,9 @@ impl LibraryService {
         }
         if value.credential.library_id != library_id {
             return Err("WRONG_LIBRARY".into());
+        }
+        if instance.is_some_and(|id| id != value.instance) {
+            return Err("REVIEW_CHANGED".into());
         }
         let at = now()?;
         let (next, id) = value.agents.grant(request, at)?;
@@ -696,13 +766,29 @@ impl LibraryService {
         value.agents.connection(&id, &value.base_url, now()?)
     }
 
-    pub fn revoke_agent(&self, library_id: &str, client_id: &str) -> Result<(), String> {
-        self.revoke_agent_with(library_id, client_id, library_access::save)
+    pub fn revoke_agent(&self, review: &AccessReview, client_id: &str) -> Result<(), String> {
+        self.revoke_reviewed(
+            &review.library_id,
+            Some(&review.instance),
+            client_id,
+            library_access::save,
+        )
     }
 
+    #[cfg(test)]
     fn revoke_agent_with(
         &self,
         library_id: &str,
+        client_id: &str,
+        save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
+    ) -> Result<(), String> {
+        self.revoke_reviewed(library_id, None, client_id, save)
+    }
+
+    fn revoke_reviewed(
+        &self,
+        library_id: &str,
+        instance: Option<&str>,
         client_id: &str,
         save: impl FnOnce(&AccessStore, &AccessStore, u64) -> Result<(), String>,
     ) -> Result<(), String> {
@@ -716,6 +802,9 @@ impl LibraryService {
         }
         if value.credential.library_id != library_id {
             return Err("WRONG_LIBRARY".into());
+        }
+        if instance.is_some_and(|id| id != value.instance) {
+            return Err("REVIEW_CHANGED".into());
         }
         let next = value.agents.revoke(client_id)?;
         if let Err(error) = save(&value.agents, &next, now()?) {
@@ -1177,6 +1266,31 @@ clearTimeout(deadline);
     }
 
     #[test]
+    fn consent_cannot_authorize_a_restarted_service_even_for_the_same_library() {
+        use crate::library_access::AgentAccess;
+        let fixture = Fixture::new(WORKER);
+        let service = LibraryService::default();
+        fixture.start(&service).unwrap();
+        let review = service.access_review("fixture").unwrap();
+        service.stop().unwrap();
+        fixture.start(&service).unwrap();
+        let granted = service.grant_reviewed(
+            "fixture",
+            Some(&review.instance),
+            agent_request(AgentAccess::ReadOnly),
+            |_, _, _| panic!("stale review must not read or write credentials"),
+        );
+        assert_eq!(granted.err().as_deref(), Some("REVIEW_CHANGED"));
+        let revoked =
+            service.revoke_reviewed("fixture", Some(&review.instance), "missing", |_, _, _| {
+                panic!("stale review must not read or write credentials")
+            });
+        assert_eq!(revoked.err().as_deref(), Some("REVIEW_CHANGED"));
+        assert!(service.agent_access("fixture").unwrap().is_empty());
+        service.stop().unwrap();
+    }
+
+    #[test]
     fn agent_grants_serialize_and_reject_a_different_reviewed_library() {
         use crate::library_access::AgentAccess;
         use std::sync::{Arc, Barrier};
@@ -1281,6 +1395,43 @@ clearTimeout(deadline);
                 service.stop().unwrap();
             }
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn real_folder_inspection_preserves_files_and_returns_actionable_rejections() {
+        let fixture = Fixture::new(WORKER);
+        let helper = std::env::var_os("PL_TEST_LIBRARY_HELPER")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| {
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../library-storage/service-worker.mjs")
+            });
+        let directory = fixture.root.join("selected");
+        fs::create_dir(&directory).unwrap();
+        let inspect = || {
+            LibraryService::inspect_folder(fixture.node.clone(), helper.clone(), directory.clone())
+        };
+        let review = inspect().unwrap();
+        assert_eq!(review["headCount"], 0);
+        assert_eq!(fs::read_dir(&directory).unwrap().count(), 0);
+        let unrelated = directory.join("keep.txt");
+        fs::write(&unrelated, "untouched").unwrap();
+        assert_eq!(inspect().err().as_deref(), Some("UNRECOGNIZED_FOLDER"));
+        assert_eq!(fs::read_to_string(&unrelated).unwrap(), "untouched");
+        assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+        fs::remove_file(&unrelated).unwrap();
+        fs::create_dir(directory.join("transactions")).unwrap();
+        fs::write(
+            directory.join("transactions/interrupted.pending"),
+            "retained",
+        )
+        .unwrap();
+        assert_eq!(inspect().err().as_deref(), Some("INCOMPLETE_STORE"));
+        assert_eq!(
+            fs::read_to_string(directory.join("transactions/interrupted.pending")).unwrap(),
+            "retained"
+        );
     }
 
     #[cfg(unix)]

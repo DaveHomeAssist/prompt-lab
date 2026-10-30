@@ -61,6 +61,21 @@ async function start(owner, directory, credentials, libraryId = 'worker-library'
 const request = (base, auth, path = '/v1/library', options = {}) => fetch(base + path, {
   ...options, signal: AbortSignal.timeout(5_000), headers: { Authorization: `Bearer ${auth.token}`, ...options.headers },
 });
+
+test('private inspection creates no content or API and rejects invalid paths', async t => {
+  const root = await folder(t), owner = worker(t);
+  const before = await contents(root);
+  const inspected = await owner.request('inspect', { directory: root });
+  assert.equal(inspected.ok, true); assert.equal(inspected.result.format, 'promptlab-folder-inspection');
+  assert.equal(inspected.result.libraryId, null); assert.equal(inspected.result.headCount, 0);
+  assert.deepEqual((await owner.request('status')).result, { state: 'stopped' });
+  assert.deepEqual(await contents(root), before);
+  assert.equal((await owner.request('inspect', { directory: 'relative' })).error.code, 'INVALID_CONTROL');
+  assert.equal((await owner.request('inspect', { directory: root, credentials: [] })).error.code, 'INVALID_CONTROL');
+  assert.equal((await owner.request('stop')).ok, true);
+  assert.deepEqual(await owner.exited, [0, null]);
+  assert.deepEqual(await contents(root), before);
+});
 async function commit(base, auth) {
   const preview = await request(base, auth, '/v1/library/previews', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

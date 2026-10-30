@@ -12,18 +12,22 @@ const nameFor = id => {
 
 // Publication never replaces an existing file. A partial file is kept under a
 // .pending name until flushed; an interrupted publication is safe to retry.
-export async function createFolderFiles(directory, kind, fault) {
-  await mkdir(directory, { recursive: true, mode: 0o700 });
+export async function createFolderFiles(directory, kind, fault, { readOnly = false } = {}) {
+  if (!readOnly) await mkdir(directory, { recursive: true, mode: 0o700 });
   const cache = createFolderReadCache({ kind }), proofs = new Map();
   async function directorySafe() {
-    if ((await lstat(directory)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library content directory cannot be a symbolic link.');
+    try {
+      const stat = await lstat(directory);
+      if (!stat.isDirectory() || stat.isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library content directory must be a real directory.');
+      return true;
+    } catch (error) { if (readOnly && error.code === 'ENOENT') return false; throw error; }
   }
   async function flushDirectory() {
     const dir = await open(directory, 'r');
     try { await dir.sync(); } finally { await dir.close(); }
   }
   async function names() {
-    await directorySafe();
+    if (!await directorySafe()) return [];
     const files = (await readdir(directory)).filter(name => name.endsWith('.json')).sort();
     if (files.some(name => !/^[a-f0-9]{64}\.json$/.test(name))) throw new LibraryError('CLOUD_CONFLICT', 'Unexpected library file or cloud conflict copy; review required.', 409);
     return files;
@@ -61,6 +65,7 @@ export async function createFolderFiles(directory, kind, fault) {
     return cache.remember(name, digest, value, contents.byteLength);
   }
   async function publish(id, value) {
+    if (readOnly) throw new LibraryError('READ_ONLY', 'Folder inspection cannot publish content.', 403);
     await directorySafe();
     if (await hash(value) !== id) throw new LibraryError('HASH_MISMATCH', 'Cannot publish content under a different hash.', 503);
     const target = join(directory, nameFor(id));

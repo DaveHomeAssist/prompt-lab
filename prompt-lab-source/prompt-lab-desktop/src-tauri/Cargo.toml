@@ -7,6 +7,9 @@ rust-version = "1.89"
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
+# Keep native dialogs compatible with the existing Tauri 2.10 lock.
+tauri-plugin-dialog = "=2.6.0"
+tauri-plugin-fs = "=2.4.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 getrandom = "=0.3.4"

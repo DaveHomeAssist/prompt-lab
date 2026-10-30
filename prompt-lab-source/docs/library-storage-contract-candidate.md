@@ -1,5 +1,49 @@
 # Library storage contract candidate
 
+## Native selection and consent: October 30
+
+Add supported native folder selection and client consent to the desktop owner.
+The picker returns an opaque, temporary selection and a verified read-only
+inspection. Never create directories or mutate the selected folder while
+inspecting it. Reject unrelated content, missing cloud content and corruption;
+report existing identity and competing heads without choosing a branch.
+Cancellation leaves the previous selection intact. A later reviewed migration
+uses this selection; selecting a folder alone never starts the API or switches
+the app's active library.
+
+Use Tauri's native dialog plugin, pinned to a version compatible with the
+existing shell. This dependency provides the OS picker and consent prompt;
+do not expose its general JavaScript file permissions. Native grant review names
+the current library, client, access scope and 24-hour expiry. Recheck the exact
+service instance after consent so stop/restart cannot reuse a stale approval.
+Cancellation never reads or writes credentials. Revocation must target a listed
+client and report success only after persistence and helper acknowledgement.
+
+Acceptance requires unchanged folder bytes on inspection/cancel/failure,
+malformed and divergent package detection, native request serialization,
+scope-specific consent, and rejection of changed service instances. Keep native
+source, actual OS dialog and installed-app evidence distinct. This boundary
+enables the remaining A2 acceptance and reviewed A3 flow; it does not waive
+their acceptance gates or activate a personal library.
+
+Source acceptance: Dominic Node 22.23.4 passed all 441 storage tests, including
+empty, incomplete, corrupt and divergent folder inspection and the actual helper
+process. Duncan compiled the native dialogs and passed 26 tests; three platform
+credential tests remain ignored in its network session. The bounded Mac owner
+harness passed 25 tests, including real-helper read-only inspection, actionable
+failure codes and stale-consent rejection after service restart. Four explicit
+credential/child-process acceptance entry points remain ignored in that default
+run. The inspection rejection test failed on the previous generic-error mapping
+and passed after preserving the allowlisted error codes.
+
+A fresh isolated copy of the complete 1,666,421-byte real export passed folder
+inspection with all eight file/directory entries unchanged. Inspection took
+0.074 seconds in this single fresh-package observation; this is not scale
+acceptance. The original export hash remains unchanged and no private content
+was uploaded. Actual OS dialog behavior, installed activation, app migration and
+two-client iCloud acceptance remain open. This native boundary prepares A3;
+the Settings connection and activation flow are still not started.
+
 ## Native agent access: October 30
 
 The native owner now retains agent credentials alongside its desktop credential.

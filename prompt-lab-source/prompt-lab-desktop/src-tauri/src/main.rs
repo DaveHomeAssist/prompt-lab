@@ -17,6 +17,7 @@ fn main() {
     }));
     builder
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             diagnostics::diagnostics_record,
             diagnostics::diagnostics_heartbeat,
@@ -26,7 +27,11 @@ fn main() {
             diagnostics::diagnostics_open_issue,
             library_native::library_service_status,
             library_native::library_service_connection,
-            library_native::library_service_stop
+            library_native::library_service_stop,
+            library_native::library_select_folder,
+            library_native::library_agent_access,
+            library_native::library_grant_agent,
+            library_native::library_revoke_agent
         ])
         .setup(|app| {
             app.manage(diagnostics::initialize(app.handle()));

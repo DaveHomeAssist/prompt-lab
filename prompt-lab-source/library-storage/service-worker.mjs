@@ -72,9 +72,15 @@ export function runLibraryServiceChannel(input, output) {
     const id = typeof frame?.id === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(frame.id) ? frame.id : null;
     try {
       if (id === null || !exact(frame, ['protocol', 'id', 'command', 'args']) || frame.protocol !== 1
-        || !['start', 'status', 'credentials', 'stop'].includes(frame.command)) fail('INVALID_CONTROL');
+        || !['inspect', 'start', 'status', 'credentials', 'stop'].includes(frame.command)) fail('INVALID_CONTROL');
       const args = frame.args ?? {};
-      if (frame.command === 'start') {
+      if (frame.command === 'inspect') {
+        if (started) fail('ALREADY_STARTED');
+        if (!exact(args, ['directory']) || typeof args.directory !== 'string' || !isAbsolute(args.directory)
+          || args.directory.length > 4096 || args.directory.includes('\0')) fail('INVALID_CONTROL');
+        const adapter = await createFolderAdapter(args.directory, { readOnly: true });
+        reply(id, await adapter.inspect());
+      } else if (frame.command === 'start') {
         if (started || !accepting) fail('ALREADY_STARTED');
         if (!exact(args, ['directory', 'libraryId', 'credentials']) || typeof args.directory !== 'string'
           || !isAbsolute(args.directory) || args.directory.length > 4096 || args.directory.includes('\0')

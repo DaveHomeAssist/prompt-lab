@@ -21,6 +21,16 @@ pub struct AgentRequest {
     pub access: AgentAccess,
 }
 
+impl AgentRequest {
+    pub fn validate(&self) -> Result<(), String> {
+        if label(&self.label) {
+            Ok(())
+        } else {
+            Err("INVALID_CLIENT".into())
+        }
+    }
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentSummary {
@@ -148,9 +158,7 @@ impl AccessStore {
     }
 
     pub(crate) fn grant(&self, request: AgentRequest, at: u64) -> Result<(Self, String), String> {
-        if !label(&request.label) {
-            return Err("INVALID_CLIENT".into());
-        }
+        request.validate()?;
         if self.clients.len() >= MAX_CLIENTS {
             return Err("CLIENT_LIMIT".into());
         }

@@ -1,4 +1,4 @@
-import { mkdir, lstat, open } from 'node:fs/promises';
+import { mkdir, lstat, open, readdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { canonical, hash, LibraryError } from './contract.mjs';
 import { createFolderFiles } from './folder-files.mjs';
@@ -35,15 +35,18 @@ function preserves(next, previous) {
 
 // Immutable journals reveal competing device heads. No iCloud lock is assumed.
 // The caller supplies a disposable or explicitly selected directory, never a guessed personal path.
-export async function createFolderAdapter(directory, { fault = async () => {} } = {}) {
+export async function createFolderAdapter(directory, { fault = async () => {}, readOnly = false } = {}) {
   const root = resolve(directory);
-  await mkdir(root, { recursive: true, mode: 0o700 });
-  if ((await lstat(root)).isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library directory cannot be a symbolic link.');
-  const transactions = await createFolderFiles(join(root, 'transactions'), '', fault);
-  const objects = await createFolderFiles(join(root, 'objects'), 'object', fault);
-  const receipts = await createFolderFiles(join(root, 'receipts'), 'receipt', fault);
-  const directoryHandle = await open(root, 'r');
-  try { await directoryHandle.sync(); } finally { await directoryHandle.close(); }
+  if (!readOnly) await mkdir(root, { recursive: true, mode: 0o700 });
+  const metadata = await lstat(root);
+  if (!metadata.isDirectory() || metadata.isSymbolicLink()) throw new LibraryError('UNSAFE_DIRECTORY', 'Library directory must be a real directory.');
+  const transactions = await createFolderFiles(join(root, 'transactions'), '', fault, { readOnly });
+  const objects = await createFolderFiles(join(root, 'objects'), 'object', fault, { readOnly });
+  const receipts = await createFolderFiles(join(root, 'receipts'), 'receipt', fault, { readOnly });
+  if (!readOnly) {
+    const directoryHandle = await open(root, 'r');
+    try { await directoryHandle.sync(); } finally { await directoryHandle.close(); }
+  }
   let verifiedSignature;
   const verifiedTransactions = new Set();
   const record = value => value && Object.getPrototypeOf(value) === Object.prototype;
@@ -161,6 +164,32 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
   }
   function access(context = null) { return {
     root,
+    async inspect() {
+      const names = (await readdir(root)).sort();
+      if (names.some(name => !['transactions', 'objects', 'receipts', '.DS_Store'].includes(name))) {
+        fail('UNRECOGNIZED_FOLDER', 'Choose an empty folder or an existing PromptLab library. Keep other files intact.');
+      }
+      const value = await graph(), revision = await graphRevision(value), heads = [];
+      // Verify every head even when the response must be bounded.
+      for (const transactionId of value.heads) {
+        const state = value.rows.get(transactionId).state, transfer = await createTransfer(state);
+        if (heads.length < 100) heads.push({ transactionId, revision: state.revision, counts: transfer.manifest.counts });
+      }
+      if (!value.heads.length) {
+        for (const directory of ['transactions', 'objects', 'receipts']) {
+          const entries = await readdir(join(root, directory)).catch(error => { if (error.code === 'ENOENT') return []; throw error; });
+          if (entries.some(name => name !== '.DS_Store')) fail('INCOMPLETE_STORE', 'Uncommitted content needs recovery before creating a library.');
+        }
+      }
+      const after = await lstat(root);
+      if (after.isSymbolicLink() || after.dev !== metadata.dev || after.ino !== metadata.ino
+        || canonical(names) !== canonical((await readdir(root)).sort()) || revision !== await graphRevision(await graph())) {
+        fail('FOLDER_CHANGED', 'The selected folder changed during inspection. Select it again.');
+      }
+      return { format: 'promptlab-folder-inspection', schemaVersion: 1, libraryId: value.libraryId,
+        graphRevision: revision, headCount: value.heads.length, heads, recoveryRequired: value.heads.length > 1,
+        directoryIdentity: { device: String(after.dev), inode: String(after.ino) } };
+    },
     async read() { return structuredClone((await selected(await graph(), context)).state); },
     // Internal read stages may share immutable content. This still rebuilds
     // the graph from freshly read bytes, including recovery branch checks.
@@ -193,6 +222,7 @@ export async function createFolderAdapter(directory, { fault = async () => {} } 
       return access(next);
     },
     async transact(fn) {
+      if (readOnly) throw new LibraryError('READ_ONLY', 'Folder inspection cannot change the library.', 403);
       const previous = writers.get(root) ?? Promise.resolve();
       const pending = previous.then(async () => {
         const beforeGraph = await graph(), before = await selected(beforeGraph, context);
