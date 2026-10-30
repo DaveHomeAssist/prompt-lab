@@ -8,6 +8,8 @@ import { createAppLibraryRepository, APP_RECORD_VERSION } from '../prompt-lab-ex
 import { createExperimentStore } from '../prompt-lab-extension/src/experimentStore.js';
 import { retryPendingWrites } from '../prompt-lab-extension/src/lib/writeRecovery.js';
 import { createPromptLibraryStore } from '../prompt-lab-extension/src/lib/promptLibraryStore.js';
+import { inspectTransfer } from './transfer.mjs';
+import { reviewRepositoryPack } from '../prompt-lab-extension/src/lib/repositoryPackImport.js';
 
 globalThis.window = { dispatchEvent() {} };
 const stamp = '2026-10-29T21:00:00.000Z';
@@ -47,6 +49,87 @@ async function fixture(promptFields = {}) {
   return { service, transport, store, options, repository, app: createExperimentStore(repository) };
 }
 const read = async (f, domain) => f.service.currentRecords({ libraryId: 'lib', expectedRevision: (await f.service.read()).revision, domain });
+
+test('app backup retains the complete saved graph after edits and deletion and independently reopens', async () => {
+  const f = await fixture(), initial = await f.service.read();
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Later revision' });
+  await f.repository.changePromptLifecycle('trash', await f.repository.readRecord('prompts', 'prompt'));
+  await f.repository.changePromptLifecycle('delete', await f.repository.readRecord('trash', 'prompt'), { confirmPermanentDeletion: true });
+  const app = createPromptLibraryStore(f.repository); await app.open();
+  assert.equal(app.library.length, 0); assert.equal(app.trash.length, 0);
+  const before = await f.service.read(), transfer = await app.exportLibrary(), verified = await inspectTransfer(transfer);
+  assert.deepEqual(verified.state, before);
+  assert.ok(verified.counts.checkpoints > 0);
+  for (const [id, value] of Object.entries(initial.objects)) assert.deepEqual(transfer.objects[id], value);
+  const reopened = createCommandService(createMemoryAdapter(verified.state));
+  assert.deepEqual(await reopened.read(), before);
+  assert.deepEqual(await f.service.read(), before);
+});
+
+test('selected prompt packs export exact retained records and history without publishing membership', async () => {
+  const f = await fixture({ tags: [' padded '], variants: [{ label: 'Opaque', content: '', future: true }] });
+  const app = createPromptLibraryStore(f.repository); await app.open();
+  const before = await f.service.read(), original = await f.repository.readRecord('prompts', 'prompt');
+  const pack = await app.exportEntries(['prompt']);
+  assert.deepEqual(pack.presets, [JSON.parse(JSON.stringify(original))]);
+  assert.equal(pack.presets[0].versions.length, 41);
+  assert.equal(reviewRepositoryPack(JSON.stringify(pack), await f.repository.readPromptLibrary(), () => 'fresh').rows.length, 1);
+  assert.deepEqual(await f.service.read(), before); assert.deepEqual(await f.repository.pending(), []);
+});
+
+test('app exports reject an unreviewed revision, missing selections and unsupported backup transports', async () => {
+  const f = await fixture(), revision = (await f.service.read()).revision;
+  for (const ids of [[], ['prompt', 'prompt'], ['missing'], null]) {
+    await assert.rejects(f.repository.exportPromptSelection(ids, revision));
+  }
+  const older = createPromptLibraryStore(f.repository); await older.open();
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Concurrent edit' });
+  await assert.rejects(older.exportLibrary(), { code: 'REVISION_CONFLICT' });
+  await assert.rejects(older.exportEntries(['prompt']), { code: 'REVISION_CONFLICT' });
+  const unsupported = createAppLibraryRepository({ ...f.options, transport: { ...f.transport, transfer: undefined } });
+  const current = await unsupported.open();
+  await assert.rejects(unsupported.exportLibrary(current.revision), { code: 'TRANSFER_UNAVAILABLE' });
+});
+
+test('app backup rejects corrupt archives and changes during transfer without modifying state', async () => {
+  for (const scenario of ['corrupt', 'changed', 'wrong-library']) {
+    const f = await fixture();
+    const repository = createAppLibraryRepository({ ...f.options, outbox: createCommandOutbox(commandStore()), transport: { ...f.transport,
+      transfer: async revision => {
+        const transfer = await f.transport.transfer(revision);
+        if (scenario === 'corrupt') delete transfer.objects[Object.keys(transfer.objects)[0]];
+        else if (scenario === 'changed') await f.repository.editPrompt(await f.repository.readRecord('prompts', 'prompt'), { notes: 'Concurrent edit' });
+        else {
+          const other = createCommandService(createMemoryAdapter());
+          const committed = await other.apply({ ...await other.preview({ libraryId: 'different-library', expectedRevision: null,
+            sourceText: '{"library":[]}' }), idempotencyKey: 'other' });
+          return other.transfer({ libraryId: 'different-library', expectedRevision: committed.revision });
+        }
+        return transfer;
+      },
+    } });
+    const { revision } = await repository.open();
+    await assert.rejects(repository.exportLibrary(revision), scenario === 'changed' ? { code: 'REVISION_CONFLICT' }
+      : scenario === 'wrong-library' ? { code: 'WRONG_LIBRARY' } : undefined);
+    assert.deepEqual(await repository.pending(), []);
+    assert.equal(Object.keys((await f.service.read()).operations).length, scenario === 'changed' ? 3 : 2);
+  }
+});
+
+test('pending saves prevent both backups and selection exports until the retained command is recovered', async () => {
+  const f = await fixture();
+  const repository = createAppLibraryRepository({ ...f.options, transport: { ...f.transport,
+    apply: async () => { throw new Error('Lost connection'); },
+  } });
+  const { revision } = await repository.open(), prompt = await repository.readRecord('prompts', 'prompt');
+  await assert.rejects(repository.editPrompt(prompt, { notes: 'Pending draft' }));
+  await assert.rejects(repository.exportLibrary(revision), { code: 'LIBRARY_WRITES_PENDING' });
+  await assert.rejects(repository.exportPromptSelection(['prompt'], revision), { code: 'LIBRARY_WRITES_PENDING' });
+  await f.repository.resume();
+  const current = await f.repository.readPromptLibrary();
+  assert.ok(await f.repository.exportLibrary(current.revision));
+  assert.equal((await f.repository.exportPromptSelection(['prompt'], current.revision)).presets[0].notes, 'Pending draft');
+});
 
 for (const action of ['favorite', 'trash']) {
   test(`Library batch ${action} stops before a later selection changed by another client`, async () => {

@@ -7,6 +7,7 @@ import { createCommandService } from '../../library-storage/contract.mjs';
 import { createFolderAdapter } from '../../library-storage/folder-adapter.mjs';
 import { createLocalApi } from '../../library-storage/local-api.mjs';
 import { captureSourceInventory } from '../../library-storage/source-inventory.mjs';
+import { inspectTransfer } from '../../library-storage/transfer.mjs';
 
 let vite, origin;
 test.use(process.env.CHROME_CHANNEL ? { channel: process.env.CHROME_CHANNEL }
@@ -192,6 +193,59 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 375, height: 812 
       const installedState = await adapter.read();
       expect(Object.values(installedState.objects).some(object => object.kind === 'pack-source' && object.data === rawPack)).toBe(true);
       expect(Object.keys(installedState.operations)).toHaveLength(14);
+
     } finally { await api.close(); await rm(directory, { recursive: true, force: true }); }
   });
+  test(`connected Library exports complete backups and exact selections at ${viewport.width}px`, async ({ page }) => {
+    const directory = await mkdtemp(resolve(tmpdir(), 'promptlab-export-ui-'));
+    const adapter = await createFolderAdapter(resolve(directory, 'library')), service = createCommandService(adapter);
+    const workspace = { library: [{ id: 'shared', title: 'Shared prompt', original: 'Retained prompt',
+      tags: [' padded '], variants: [{ label: 'Opaque', content: '', future: true }],
+      versions: Array.from({ length: 41 }, (_, i) => ({ id: `v${i}`, original: `History ${i}`, future: { i } })), future: { keep: true } }],
+      trash: [{ id: 'old-trash', original: 'Retained deleted prompt' }], scratch: { pads: [{ id: 'note', content: 'Keep note' }] } };
+    const values = { 'pl2-library': JSON.stringify(workspace.library), 'pl2-library-trash': JSON.stringify(workspace.trash),
+      'pl2-pads': JSON.stringify(workspace.scratch) };
+    const inventory = await captureSourceInventory({ surface: 'web', sourceIdentity: 'export-fixture',
+      localStorage: { length: 3, key: index => Object.keys(values)[index], getItem: key => values[key] ?? null },
+      readIndexedStore: async () => ({ state: 'absent', reason: 'Synthetic fixture' }), archives: { reviewed: true, records: [] } });
+    const receipt = await service.apply({ ...await service.preview({ libraryId: 'export-fixture', expectedRevision: null, mode: 'import',
+      sourceText: JSON.stringify(workspace), sourceInventory: inventory }), idempotencyKey: 'import' });
+    await service.apply({ ...await service.previewCurrentView({ libraryId: 'export-fixture', expectedRevision: receipt.revision }), idempotencyKey: 'select' });
+    const token = 'synthetic-disposable-library-credential'.repeat(2);
+    const api = createLocalApi({ adapter, libraryId: 'export-fixture', allowedOrigins: [origin], credentials: [{ token, scopes: ['read', 'write'], expiresAt: Date.now() + 180_000 }] });
+    try {
+      const options = { baseUrl: await api.listen(), token, libraryId: 'export-fixture', sourceBinding: receipt.sourceBinding };
+      await page.setViewportSize(viewport);
+      await page.addInitScript(options => { window.fixtureOptions = options; localStorage.setItem('pl2-library', '[]'); }, options);
+      await page.goto(`${origin}/e2e/fixtures/repository-library.html`);
+      await expect(page.getByRole('button', { name: 'Favorite Shared prompt', exact: true })).toBeVisible();
+      const installedState = await adapter.read(), installed = await page.evaluate(() => repository.readPromptLibrary());
+
+      page.once('dialog', dialog => dialog.accept());
+      const backupDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Backup', exact: true }).click();
+      const backupFile = await backupDownload;
+      expect(backupFile.suggestedFilename()).toMatch(/^prompt-lab-backup-.*\.json$/);
+      const backup = JSON.parse(await readFile(await backupFile.path(), 'utf8'));
+      expect((await inspectTransfer(backup)).state).toEqual(installedState);
+      expect(await adapter.read()).toEqual(installedState);
+      await page.getByRole('checkbox', { name: 'Select Shared prompt', exact: true }).check();
+      await page.context().setOffline(true);
+      await page.getByRole('button', { name: 'Export selected', exact: true }).click();
+      await expect(page.getByRole('alert')).toHaveText('Export failed. Library service is unavailable. Reconnect and try the export again.');
+      await expect(page.getByRole('checkbox', { name: 'Select Shared prompt', exact: true })).toBeChecked();
+      await page.screenshot({ path: test.info().outputPath(`export-offline-${viewport.width}.png`) });
+      expect(await page.evaluate(() => ({ width: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        height: document.documentElement.scrollHeight <= document.documentElement.clientHeight }))).toEqual({ width: true, height: true });
+      await page.context().setOffline(false);
+      const selectedDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: 'Export selected', exact: true }).click();
+      const selectedPack = JSON.parse(await readFile(await (await selectedDownload).path(), 'utf8'));
+      expect(selectedPack.type).toBe('prompt-pack');
+      expect(selectedPack.presets).toEqual(installed.library);
+      expect(await adapter.read()).toEqual(installedState);
+      expect(await page.evaluate(() => localStorage.getItem('pl2-library'))).toBe('[]');
+    } finally { await api.close(); await rm(directory, { recursive: true, force: true }); }
+  });
+
 }

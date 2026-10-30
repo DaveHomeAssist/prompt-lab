@@ -110,6 +110,10 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     ...(unchanged ? { unchanged: true } : {}),
     ...(savedAsNew ? { savedAsNew: true } : {}),
   });
+  function exportReady() {
+    if (!ready) throw new Error('Open the selected Library before exporting.');
+    if (attempt || actionAttempt || importReview?.locked) throw new Error('Retry the retained Library change before exporting.');
+  }
   function prepare(args) {
     if (!ready) throw new Error('Open the selected Library before saving.');
     const original = ensureString(args.raw), enhanced = ensureString(args.enhanced).trim() ? ensureString(args.enhanced) : original;
@@ -156,6 +160,8 @@ export function createPromptLibraryStore(repository, { notify = () => {}, newId 
     get saveError() { return saveError; },
     refresh: readback,
     async open() { try { await repository.open(); return await readback(); } catch (error) { report(error); throw error; } },
+    async exportLibrary() { exportReady(); return repository.exportLibrary(view.revision); },
+    async exportEntries(ids) { exportReady(); return repository.exportPromptSelection(ids, view.revision); },
     doSave(args) {
       if (actionAttempt) { report(new Error('Retry the retained Library change before saving the editor.')); return Promise.resolve(null); }
       const signature = JSON.stringify(args);

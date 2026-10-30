@@ -102,7 +102,7 @@ Next action: complete workspace import and remaining Library actions through the
 | --- | --- | --- |
 | A1 | Original five contract criteria pass on the draft candidate | Final integrated acceptance and delivery |
 | A2 | Folder/API, retained history, backup/restore, secure ownership and native source checks implemented | Exact installed package and macOS lifecycle acceptance |
-| A3 | Selected repository connects prompt saves, folders, runs, cases, Scratch, Pack Studio and reviewed pack imports | Workspace import, remaining Library actions, reviewed migration and startup activation |
+| A3 | Selected repository connects prompt saves, folders, runs, cases, Scratch, Pack Studio, reviewed pack imports and verified backup/selection exports | Workspace import, backup restore UI, remaining Library actions, reviewed migration and startup activation |
 | A4 | Synthetic and isolated real-export preservation checks pass | Installed app/API parity, real-data UI, actual two-client iCloud, independent recovery and human acceptance |
 | B1 | Neon/Clerk US East, server-readable encrypted storage and retained-history choices recorded | Provider, cost and policy verification after Phase A acceptance |
 | B2 and B3 | Not started | Accepted Phase A, hosted contract and separately approved paid provisioning if needed |

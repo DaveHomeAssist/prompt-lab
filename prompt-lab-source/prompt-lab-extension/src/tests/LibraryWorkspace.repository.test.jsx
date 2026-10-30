@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { inspectTransfer } from '../../../library-storage/transfer.mjs';
 import LibraryWorkspace from '../LibraryWorkspace.jsx';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { canonical, createCommandService, createMemoryAdapter, LibraryError } from '../../../library-storage/contract.mjs';
@@ -10,7 +11,16 @@ import { createAppLibraryRepository } from '../lib/appLibraryRepository.js';
 
 vi.mock('../icons.jsx', () => ({ default: () => null }));
 vi.mock('../PackStudioPanel.jsx', () => ({ default: () => null }));
-beforeEach(() => { localStorage.clear(); window.location.hash = ''; });
+beforeEach(() => {
+  localStorage.clear(); window.location.hash = '';
+  vi.stubGlobal('URL', class extends URL {
+    static createObjectURL = vi.fn(() => 'blob:backup');
+    static revokeObjectURL = vi.fn();
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+});
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 async function fixture() {
   const workspace = { library: [{ id: 'shared', title: 'Shared prompt', original: 'Keep original', enhanced: 'Keep enhanced',
@@ -37,12 +47,13 @@ async function fixture() {
       entries.set(key, structuredClone(row));
     },
   });
-  let offline = false, barrier = null;
+  let offline = false, rateLimited = false, barrier = null, transferBarrier = null;
   const base = createServiceTransport(service, { libraryId: 'shared-library' });
   const repository = createAppLibraryRepository({ libraryId: 'shared-library', sourceBinding: imported.sourceBinding, outbox,
     transport: { ...base,
-      identity: () => { if (offline) throw new LibraryError('SERVICE_UNAVAILABLE', 'Service offline'); return base.identity(); },
+      identity: () => { if (rateLimited) throw new LibraryError('RATE_LIMIT', 'Generic transport error', 429); if (offline) throw new LibraryError('SERVICE_UNAVAILABLE', 'Service offline'); return base.identity(); },
       apply: async request => { if (barrier) await barrier; return base.apply(request); },
+      transfer: async revision => { if (transferBarrier) await transferBarrier; return base.transfer(revision); },
     } });
   const notify = vi.fn();
   function Surface() {
@@ -56,6 +67,8 @@ async function fixture() {
   const surface = render(<Surface />);
   await screen.findByRole('button', { name: 'Favorite Shared prompt' });
   return { surface, repository, service, workspace, legacy, notify, setOffline: value => { offline = value; },
+    setRateLimited: value => { rateLimited = value; },
+    holdTransfer: () => { let release; transferBarrier = new Promise(resolve => { release = resolve; }); return () => { transferBarrier = null; release(); }; },
     hold: () => { let release; barrier = new Promise(resolve => { release = resolve; }); return () => { barrier = null; release(); }; } };
 }
 
@@ -178,4 +191,76 @@ it('folder artwork and removal use real controls and preserve unrelated source f
   expect((await f.repository.readPromptLibrary()).folders).toHaveLength(0);
   expect((await f.repository.readRecord('prompts', 'shared')).versions).toEqual(f.workspace.library[0].versions);
   expect(localStorage.getItem('pl2-collection-folders')).toBe('[]');
+});
+
+
+const downloaded = () => new Promise((resolve, reject) => {
+  const reader = new FileReader(); reader.onload = () => resolve(JSON.parse(reader.result)); reader.onerror = reject;
+  reader.readAsText(URL.createObjectURL.mock.calls.at(-1)[0]);
+});
+
+it('the visible Backup action waits for verification and downloads the complete saved archive', async () => {
+  const f = await fixture(), before = await f.service.read(), release = f.holdTransfer();
+  fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await screen.findByText('Preparing the saved Library download…');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Backup', exact: true })).toBeDisabled();
+  await act(async () => release());
+  await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
+  expect((await inspectTransfer(await downloaded())).state).toEqual(before);
+  expect(await f.service.read()).toEqual(before);
+  expect(f.notify).toHaveBeenCalledWith('Library backup download started. Retained history and backups are included.');
+  for (const [key, value] of Object.entries(f.legacy)) expect(localStorage.getItem(key)).toBe(value);
+});
+
+it('a canceled or offline backup creates no file and the online retry succeeds', async () => {
+  const f = await fixture(); window.confirm.mockReturnValueOnce(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  f.setOffline(true); fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await screen.findByText('Export failed. Library service is unavailable. Reconnect and try the export again.');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  expect(f.notify.mock.calls.flat().some(message => message.includes('download started'))).toBe(false);
+  f.setOffline(false); fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
+it('selection export preserves raw records and does not announce success when downloading fails', async () => {
+  const f = await fixture();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Select Shared prompt' }));
+  HTMLAnchorElement.prototype.click.mockImplementationOnce(() => { throw new Error('Download unavailable'); });
+  fireEvent.click(screen.getByRole('button', { name: 'Export selected', exact: true }));
+  await screen.findByText('Export failed. Download unavailable');
+  await screen.findByText('Export was not started. Your selection is unchanged.');
+  expect(screen.getByRole('checkbox', { name: 'Select Shared prompt' })).toBeChecked();
+  expect(f.notify.mock.calls.flat().some(message => message.includes('download started'))).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: 'Export selected', exact: true }));
+  await screen.findByText('Download started for 1 selected prompts.');
+  const pack = await downloaded();
+  expect(pack.type).toBe('prompt-pack'); expect(pack.presets).toEqual(f.workspace.library);
+  expect(Object.keys((await f.service.read()).operations)).toHaveLength(2);
+  for (const [key, value] of Object.entries(f.legacy)) expect(localStorage.getItem(key)).toBe(value);
+});
+
+it('a newer service revision requires visible refresh before exporting the updated Library', async () => {
+  const f = await fixture();
+  await f.repository.editPrompt(await f.repository.readRecord('prompts', 'shared'), { notes: 'A newer API change' });
+  fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh Library', exact: true }));
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
+  expect((await inspectTransfer(await downloaded())).state).toEqual(await f.service.read());
+});
+
+
+it('rate limited exports explain the wait and permit an explicit later retry', async () => {
+  const f = await fixture(); f.setRateLimited(true);
+  fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await screen.findByText('Export failed. Too many Library requests. Wait a minute, then try again.');
+  expect(URL.createObjectURL).not.toHaveBeenCalled();
+  f.setRateLimited(false); fireEvent.click(screen.getByRole('button', { name: 'Backup', exact: true }));
+  await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
 });

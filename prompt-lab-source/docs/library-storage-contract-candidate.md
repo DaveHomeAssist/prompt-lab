@@ -1,5 +1,46 @@
 # Library storage contract candidate
 
+## Saved library backup and selected export: October 30
+
+Connect Export to the selected repository. A full backup uses the complete
+transfer format, preserving every retained object, operation and checkpoint.
+Validate the archive, library identity and pinned revision before starting a
+download. Do not label a filtered current-view export as a complete backup.
+Keep the existing browser workspace format when no repository is selected.
+
+Export selected prompts as a portable prompt pack containing the exact retained
+records and complete embedded histories. This is a selection, not a workspace
+backup. It must not publish a pack, change membership or write browser storage.
+Pending commands, unavailable storage, changed revisions, corrupt responses and
+failed downloads must retain selection and report failure without success copy.
+
+Acceptance: exercise the real service and repository, pending and failed
+transfers, competing edits, complete archive verification, selected-pack review,
+browser downloads at three widths and an isolated copy of the full real export.
+No personal folder is activated. Workspace import, remaining Library actions,
+reviewed migration, installed-app, two-client iCloud and hosted gates remain open.
+
+The complete real export passes an isolated Mac Node 22.22.1 check. After one
+disposable edit and move to Trash, the 6,360,899-byte backup independently opens
+with identical state: 26 immutable objects, four receipts and three checkpoints.
+It retains all 215 other prompts, the changed prompt and its prior history,
+three evaluations, four Scratch notes and the original Trash. A selection pack
+preserves all 215 active records exactly. Export itself creates no Library
+writes. The original export bytes/hash are unchanged; no private data is uploaded.
+
+Verification on Dominic, Node 22.23.4: all 448 storage tests and the 1,639-test
+app suite across 144 files pass, plus 231 legacy tests. Final focused checks
+cover the rate-limit and unavailable-service messages refined after that full run. Six real Chromium
+scenarios pass at 375, 1440 and 2560 pixels through the folder adapter and local
+API, including verified downloads, offline retry, exact retained records and
+viewport fit. The original combined test exceeded the unchanged 120-request
+limit; export now has a separate scenario. Its initial incomplete source
+inventory was rejected and corrected without relaxing preservation validation.
+
+The loopback transport still has a 64 MiB response limit. Oversized transfers
+fail explicitly without downloading partial data. Large archive streaming and
+user-facing backup restore remain separate acceptance work.
+
 ## Reviewed pack imports: October 30
 
 Route pack files, shared links and starter libraries into the selected library's

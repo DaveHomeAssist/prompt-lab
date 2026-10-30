@@ -3,6 +3,7 @@ import { createCommandOutbox } from '../../../library-storage/command-outbox.mjs
 import { recordIdField } from '../../../library-storage/record-request.mjs';
 import { createIndexedCommandStore } from './libraryCommandOutbox.js';
 import { APP_RECORD_VERSION } from './appRecordVersion.js';
+import { inspectTransfer } from '../../../library-storage/transfer.mjs';
 
 export { APP_RECORD_VERSION } from './appRecordVersion.js';
 const supported = new Set(['evaluations', 'test-cases', 'execution-traces', 'experiments', 'scratch-notes']);
@@ -128,6 +129,15 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
       if (entry.state !== 'committed') await outbox.replay(libraryId, entry.operationId, transport);
     }
   }
+  async function exportBase(expectedRevision) {
+    if (!address(expectedRevision)) fail('REVISION_CONFLICT', 'Open the current Library before exporting.');
+    await refresh();
+    if (snapshot.revision !== expectedRevision) fail('REVISION_CONFLICT', 'The Library changed. Refresh it and review the export again.');
+    if ((await outbox.list(libraryId)).some(entry => entry.state !== 'committed')) {
+      fail('LIBRARY_WRITES_PENDING', 'Retry pending changes before exporting the saved Library.');
+    }
+    assertConnected();
+  }
   async function publish(request, operationId) {
     const retained = await outbox.read(libraryId, operationId);
     if (!retained) {
@@ -245,6 +255,40 @@ export function createAppLibraryRepository({ libraryId, sourceBinding, transport
           trash: snapshot.items.filter(row => row.domain === 'trash').map(valueOf),
           collections: snapshot.items.filter(row => row.domain === 'collections').map(row => structuredClone(row.value)),
           folders: snapshot.items.filter(row => row.domain === 'folders').map(row => structuredClone(row.value)) };
+      });
+    },
+    async exportLibrary(expectedRevision) {
+      return serial(async () => {
+        await exportBase(expectedRevision);
+        if (typeof transport.transfer !== 'function') fail('TRANSFER_UNAVAILABLE', 'Reconnect to a Library service that supports complete backups.');
+        const transfer = structuredClone(await transport.transfer(expectedRevision));
+        assertConnected();
+        const inspected = await inspectTransfer(transfer);
+        if (inspected.libraryId !== libraryId || inspected.revision !== expectedRevision) {
+          fail('WRONG_LIBRARY', 'The backup does not match the selected Library and reviewed revision.');
+        }
+        await exportBase(expectedRevision);
+        return transfer;
+      });
+    },
+    async exportPromptSelection(ids, expectedRevision) {
+      if (!Array.isArray(ids) || !ids.length || ids.length > 1000 || new Set(ids).size !== ids.length
+        || ids.some(id => typeof id !== 'string' || !id || id.length > 200)) {
+        fail('INVALID_SELECTION', 'Select between 1 and 1,000 distinct prompts to export.');
+      }
+      const selectedIds = [...ids];
+      return serial(async () => {
+        await exportBase(expectedRevision);
+        const presets = selectedIds.map(id => {
+          const row = selected('prompts', id);
+          if (!row) fail('RECORD_TARGET_UNAVAILABLE', 'A selected prompt is no longer available. Review the selection before exporting.');
+          return structuredClone(row.value);
+        });
+        const pack = { type: 'prompt-pack', id: 'promptlab-selection', title: 'Selected prompts', version: '1.0.0', presets };
+        if (new TextEncoder().encode(JSON.stringify(pack)).length > 20_000_000) {
+          fail('SELECTION_TOO_LARGE', 'Choose fewer prompts for an importable pack, or download a full Library backup.');
+        }
+        return pack;
       });
     },
     async changePack(command, expectedRevision) {

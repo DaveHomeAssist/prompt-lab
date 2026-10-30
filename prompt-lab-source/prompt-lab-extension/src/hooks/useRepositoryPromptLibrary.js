@@ -8,6 +8,8 @@ import { getStarterLibraries, getStarterPackSource } from '../lib/seedTransform.
 export function useRepositoryPromptLibrary(repository, notify) {
   const original = useRef(repository), notifyRef = useRef(notify);
   const fileRead = useRef(0);
+  const exportFlight = useRef(null);
+  const [exportState, setExportState] = useState({ pending: false, error: '' });
   notifyRef.current = notify;
   if (repository !== original.current) throw new Error('Remount the Library after reviewing a storage change.');
   const [, render] = useState(0);
@@ -23,12 +25,36 @@ export function useRepositoryPromptLibrary(repository, notify) {
   const unavailable = () => { notifyRef.current?.('This action is not available for the selected Library yet. Your data is unchanged.'); return false; };
   const unconnected = Object.fromEntries(['setLibrary', 'setTrash', 'setCollections', 'duplicateEntry',
     'moveLibraryEntry', 'moveLibraryEntryByOffset', 'clearLibrary',
-    'restoreVersion', 'removeEntriesByPackId', 'assignEntriesToPack', 'exportLib', 'exportEntries', 'importLib',
+    'restoreVersion', 'removeEntriesByPackId', 'assignEntriesToPack', 'importLib',
     'retryImport', 'chooseImportResolution', 'cancelImportPreview', 'confirmImport', 'recoverLegacyWebLibrary',
     'loadStarterPack'].map(key => [key, unavailable]));
   const lifecycle = async (action, id, confirmation = {}) => {
     const result = await store.changeLifecycle(action, id, confirmation);
     return result ? result.record ?? true : false;
+  };
+  const exportFile = (read, filename, message) => {
+    if (exportFlight.current) return Promise.resolve(false);
+    setExportState({ pending: true, error: '' });
+    const task = (async () => {
+      try {
+        const payload = await read();
+        const url = URL.createObjectURL(new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+        try { Object.assign(document.createElement('a'), { href: url, download: filename }).click(); }
+        finally { window.setTimeout(() => URL.revokeObjectURL(url), 0); }
+        setExportState({ pending: false, error: '' });
+        notifyRef.current?.(message);
+        return payload;
+      } catch (error) {
+        const reason = error.code === 'RATE_LIMIT' ? 'Too many Library requests. Wait a minute, then try again.'
+          : ['SERVICE_UNAVAILABLE', 'DISCONNECTED'].includes(error.code) ? 'Library service is unavailable. Reconnect and try the export again.'
+            : error.message || 'Please retry.';
+        const message = `Export failed. ${reason}`;
+        setExportState({ pending: false, error: message, needsRefresh: error.code === 'REVISION_CONFLICT' }); notifyRef.current?.(message);
+        return false;
+      } finally { exportFlight.current = null; }
+    })();
+    exportFlight.current = task;
+    return task;
   };
   return {
     ...unconnected, repository, library: store.library, trash: store.trash,
@@ -36,6 +62,23 @@ export function useRepositoryPromptLibrary(repository, notify) {
     packRegistry: store.packRegistry, packEntries: store.packEntries, revision: store.revision,
     publishPack: store.publishPack, uninstallPack: store.uninstallPack,
     saving: store.saving, saveError: store.saveError, retryPending: store.retryPending,
+    exporting: exportState.pending, exportError: exportState.error, exportNeedsRefresh: exportState.needsRefresh,
+    refreshExport: async () => {
+      try {
+        await store.refresh(); setExportState({ pending: false, error: '' });
+        notifyRef.current?.('Library refreshed. Review the selection and try the export again.'); return true;
+      } catch (error) {
+        setExportState({ pending: false, error: `Refresh failed. ${error.message || 'Please retry.'}`, needsRefresh: true }); return false;
+      }
+    },
+    exportLib: () => {
+      if (exportFlight.current) return Promise.resolve(false);
+      if (!window.confirm('Download a complete saved Library backup? It includes retained history, deleted content and prior backups. Unsaved editor changes are not included.')) return Promise.resolve(false);
+      return exportFile(() => store.exportLibrary(), `prompt-lab-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        'Library backup download started. Retained history and backups are included.');
+    },
+    exportEntries: entries => exportFile(() => store.exportEntries(entries.map(entry => entry.id)), 'prompt-lab-selection.json',
+      'Selected prompt pack download started. Embedded histories are included; this is not a workspace backup.'),
     refresh: store.refresh, doSave: store.doSave, linkSavedPrompt: store.linkSavedPrompt,
     saveEntryDetails: store.saveEntryDetails, setFavorite: store.setFavorite, updateEntries: store.updateEntries,
     saveFolders: store.saveFolders, deleteCollection: store.deleteCollection, moveEntriesToCollection: store.moveEntriesToCollection,

@@ -494,27 +494,31 @@ export default function LibraryWorkspace({
       else setAnnouncement('The change was not confirmed. The prompt remains selected.');
     } catch { setAnnouncement('The change was not confirmed. The prompt remains selected.'); }
   };
-  const exportSelected = () => {
+  const exportSelected = async () => {
     if (!canExportLibrary) { openBilling?.('export'); return; }
-    if (onExportEntries) onExportEntries(checkedEntries);
-    else if (typeof lib.exportEntries === 'function') lib.exportEntries(checkedEntries);
-    else {
-      const payload = {
-        version: APP_VERSION, schemaVersion: 1, exportedAt: new Date().toISOString(),
-        count: checkedEntries.length, library: checkedEntries,
-        collections: uniqueStrings(checkedEntries.map((entry) => entry.collection)),
-        folders: folderRecords.filter(folder => checkedEntries.some(entry => {
-          let current = folderRecords.find(item => item.collection === entry.collection);
-          while (current) { if (current.id === folder.id) return true; current = folderRecords.find(item => item.id === current.parentId); }
-          return false;
-        })),
-      };
-      const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-      const anchor = Object.assign(document.createElement('a'), { href: url, download: 'prompt-library-selection.json' });
-      anchor.click();
-      window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    }
-    setAnnouncement(`Exported ${checkedEntries.length} prompts with complete metadata.`);
+    try {
+      let result;
+      if (onExportEntries) result = await onExportEntries(checkedEntries);
+      else if (typeof lib.exportEntries === 'function') result = await lib.exportEntries(checkedEntries);
+      else {
+        const payload = {
+          version: APP_VERSION, schemaVersion: 1, exportedAt: new Date().toISOString(),
+          count: checkedEntries.length, library: checkedEntries,
+          collections: uniqueStrings(checkedEntries.map((entry) => entry.collection)),
+          folders: folderRecords.filter(folder => checkedEntries.some(entry => {
+            let current = folderRecords.find(item => item.collection === entry.collection);
+            while (current) { if (current.id === folder.id) return true; current = folderRecords.find(item => item.id === current.parentId); }
+            return false;
+          })),
+        };
+        const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+        const anchor = Object.assign(document.createElement('a'), { href: url, download: 'prompt-library-selection.json' });
+        try { anchor.click(); }
+        finally { window.setTimeout(() => URL.revokeObjectURL(url), 0); }
+      }
+      if (result === false || result === null) { setAnnouncement('Export was not started. Your selection is unchanged.'); return; }
+      setAnnouncement(`Download started for ${checkedEntries.length} selected prompts.`);
+    } catch { setAnnouncement('Export was not started. Your selection is unchanged.'); }
   };
   const persistFolders = async (next) => {
     if (typeof lib.saveFolders !== 'function') { setFolderError('Folder storage is unavailable.'); return false; }
@@ -636,13 +640,15 @@ export default function LibraryWorkspace({
         <select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option><option value={STATUS_NOT_SET}>Not set</option></select>
         <select aria-label="Sort prompts" value={lib.sortBy} onChange={(event) => lib.setSortBy(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="most-used">Most used</option><option value="a-z">A–Z</option><option value="z-a">Z–A</option><option value="group">Collection</option><option value="manual">Manual</option></select>
         <div className="pl-layout-toggle" aria-label="Library layout"><button type="button" aria-pressed={layout === 'list'} onClick={() => setLayout('list')} aria-label="List view"><Ic n="List" size={14} /> List</button><button type="button" aria-pressed={layout === 'tiles'} onClick={() => setLayout('tiles')} aria-label="Tile view"><Ic n="LayoutGrid" size={14} /> Cards</button><button type="button" aria-pressed={layout === 'compact'} onClick={() => setLayout('compact')} aria-label="Compact view"><Ic n="List" size={12} /> Compact</button><button type="button" aria-pressed={layout === 'gallery'} onClick={() => setLayout('gallery')} aria-label="Gallery view"><Ic n="Eye" size={14} /> Gallery</button></div>
-        <button type="button" className="pl-secondary-button" onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? 'Export' : 'Export Pro'}</button>
+        <button type="button" className="pl-secondary-button" disabled={lib.exporting} title={lib.repository ? 'Download a complete saved Library backup' : undefined} onClick={canExportLibrary ? lib.exportLib : () => openBilling?.('export')}><Ic n="Download" size={13} /> {canExportLibrary ? (lib.repository ? 'Backup' : 'Export') : 'Export Pro'}</button>
         <button type="button" aria-label={canUsePacks ? 'Open pack studio' : 'Unlock pack studio'} className="pl-secondary-button" onClick={() => canUsePacks ? setShowPackStudio((value) => !value) : openBilling?.('packs')} aria-expanded={canUsePacks ? showPackStudio : undefined}><Ic n="Layers" size={13} /> {canUsePacks ? 'Packs' : 'Packs Pro'}</button>
         {canImportLibrary ? <><button type="button" className="pl-secondary-button" onClick={() => importInputRef.current?.click()}><Ic n="Upload" size={13} /> Import</button><input ref={importInputRef} className="sr-only" type="file" accept="application/json" aria-label="Import Prompt Lab workspace" aria-hidden="true" tabIndex={-1} onChange={lib.importLib} /></> : <button type="button" className="pl-secondary-button" onClick={() => openBilling?.('import')}><Ic n="Upload" size={13} /> Import Pro</button>}
       </header>
 
       {lib.repository && lib.saveError && <div className="pl-library-save-feedback" role="alert"><span>{lib.saveError}</span><button type="button" className="pl-secondary-button" disabled={lib.saving} onClick={retryPendingChanges}>Retry pending changes</button></div>}
       {lib.repository && lib.saving && <p className="pl-library-save-feedback" role="status">Saving to the selected Library…</p>}
+      {lib.repository && lib.exporting && <p className="pl-library-save-feedback" role="status">Preparing the saved Library download…</p>}
+      {lib.repository && lib.exportError && <div className="pl-library-save-feedback" role="alert"><span>{lib.exportError}</span>{lib.exportNeedsRefresh && <button type="button" className="pl-secondary-button" disabled={lib.saving || lib.exporting} onClick={lib.refreshExport}>Refresh Library</button>}</div>}
       {showPackStudio && canUsePacks && <PackStudioPanel m={m} lib={lib} compact onClose={() => setShowPackStudio(false)} />}
       {lib.starterLibraries?.length > 0 && <details className="mt-3 rounded-lg border p-3">
         <summary className="pl-starter-summary cursor-pointer text-sm font-semibold">Starter Libraries</summary>
@@ -671,7 +677,7 @@ export default function LibraryWorkspace({
           <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.updateEntries(checkedIds, (entry) => ({ ...entry, favorite: false })), `Unfavorited ${checkedIds.length} prompts.`)}>Unfavorite</button>
           <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => runEach(checkedEntries, entry => lib.duplicateEntry(entry.id)), `Duplicated ${checkedIds.length} prompts.`)}><Ic n="CopyPlus" size={13} /> Duplicate</button>
           <button type="button" disabled={bulkBusy || lib.saving} onClick={() => copy(checkedEntries.map(entryText).join('\n\n---\n\n'))}><Ic n="Copy" size={13} /> Copy</button>
-          <button type="button" disabled={bulkBusy || lib.saving} onClick={exportSelected}><Ic n="Download" size={13} /> Export selected</button>
+          <button type="button" disabled={bulkBusy || lib.saving || lib.exporting} onClick={exportSelected}><Ic n="Download" size={13} /> Export selected</button>
           <button type="button" disabled={bulkBusy || lib.saving} onClick={() => runBulk(() => lib.deleteEntries(checkedIds), `Moved ${checkedIds.length} prompts to Recently Deleted.`)}><Ic n="Trash2" size={13} /> Move to trash</button>
         </>}
         <button type="button" disabled={bulkBusy || lib.saving} onClick={() => setCheckedIds([])}>Clear selection</button>
