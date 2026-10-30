@@ -8,6 +8,7 @@ on:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/library-storage/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
@@ -17,6 +18,7 @@ on:
     paths:
       - prompt-lab-source/scripts/diagnostic-sourcemaps*
       - prompt-lab-source/prompt-lab-desktop/**
+      - prompt-lab-source/library-storage/**
       - prompt-lab-source/prompt-lab-extension/src/**
       - prompt-lab-source/scripts/desktop-fixture-server.mjs
       - contracts/promptlab-library-v2.json
@@ -111,7 +113,11 @@ jobs:
           projectPath: prompt-lab-source/prompt-lab-desktop
           args: ${{ matrix.args }}
 
-      - name: Test native diagnostic contracts
+      - name: Verify bundled library helper resources and qualified process contracts
+        working-directory: prompt-lab-source/prompt-lab-desktop
+        run: npm run verify:library
+
+      - name: Test native diagnostic and library owner contracts
         working-directory: prompt-lab-source/prompt-lab-desktop/src-tauri
         run: cargo test --release --bin prompt-lab-desktop
 

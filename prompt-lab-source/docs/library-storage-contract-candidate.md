@@ -1,5 +1,67 @@
 # Library storage contract candidate
 
+## Native service owner and packaged runtime: October 29
+
+The private helper needs a real native owner and a shipped runtime. Retain the
+shared JavaScript preservation engine and bundle it with the build's Node 22
+runtime instead of requiring a user-installed executable or rewriting the
+validator in Rust. Vite's existing server bundler follows static and dynamic
+imports. Package only its output, the runtime and the Node license. macOS
+universal builds require both verified official Node architectures and a
+universal sidecar. This increases installer size without adding a second engine.
+
+The Rust owner serializes its private pipe requests, reads bounded responses,
+retains the child until graceful stop finishes, and exposes sanitized status.
+Its desktop credential lives in the platform credential store, outside the
+folder, with a library binding and expiry. Missing or denied secure storage
+fails closed. No environment variable, command argument or plaintext file
+supplies credentials. Register single-instance ownership before other plugins
+on macOS and Windows; Linux folder activation remains unavailable until its
+secure-store and native acceptance are qualified.
+
+Closing the main window while the service is active hides that window. Explicit
+quit stops the service and waits for accepted writes before releasing the app.
+Reopening focuses the existing window. Startup requires an explicit native
+folder/library binding; this work does not choose or migrate a personal folder.
+The later picker and reviewed migration flow must provide that binding.
+
+Use pinned `keyring` and single-instance crates for OS integrations and the
+existing `getrandom` version for cryptographic token bytes. Verify the native
+owner on a qualified remote Rust runner, run the real packaged helper through
+the process suite, and preserve separate macOS Keychain, installed package,
+picker, pairing and actual iCloud acceptance gates.
+
+### Native configuration findings
+
+The pinned single-instance plugin is 2.4.5, compatible with the existing Tauri
+2.10 series. Its newer 2.5.5 release requires Tauri 2.12; that broader upgrade
+is not part of this boundary. The existing desktop workflow now verifies the
+bundled helper manifest and runs process contracts on Linux and macOS.
+
+Duncan compiled the compatible native owner and passed all eleven ordinary
+tests, including a stalled child that cannot hold the private control call.
+The locked dependency check preserves every existing crate version.
+The explicit secure-store acceptance failed. A read of a fresh nonexistent
+disposable credential returned Windows error 1312, `ERROR_NO_SUCH_LOGON_SESSION`,
+before any credential write. Microsoft's credential API associates its store
+with the current logon session and does not provide one for a network logon.
+Interactive Windows credential acceptance therefore remains open.
+
+The actual bundled Windows helper passed five process cases and failed four:
+folder startup reaches directory `fsync`, which returns `EPERM`. Preserve that
+failure; do not ignore directory flush errors. Native Windows activation is
+explicitly unavailable until a verified durability implementation passes the
+same preservation contract. Linux also remains unavailable for native activation
+until secure storage is qualified. Its packaged helper passed all nine process
+cases on Dominic, separate from desktop activation.
+
+macOS Keychain, universal packaging, window close/reopen/quit, crash ownership,
+credential renewal and explicit pairing still require acceptance. The Node 22
+sidecar requires macOS 11 or later; the older shell minimum is not evidence of
+folder-service compatibility. The app's current network policy still needs the
+reviewed loopback connection path when the A3 picker/client flow is connected.
+No personal folder or export was activated, moved or uploaded.
+
 ## A2 owned helper boundary: October 29
 
 The desktop currently has no owner for the JavaScript folder service. Existing

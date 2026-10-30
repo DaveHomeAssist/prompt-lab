@@ -10,7 +10,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFolderAdapter } from './folder-adapter.mjs';
 
-const workerPath = fileURLToPath(new URL('./service-worker.mjs', import.meta.url));
+const workerPath = process.env.PL_TEST_LIBRARY_HELPER ?? fileURLToPath(new URL('./service-worker.mjs', import.meta.url));
+const nodePath = process.env.PL_TEST_LIBRARY_NODE ?? process.execPath;
 const credential = (id, overrides = {}) => ({ id, token: randomBytes(32).toString('base64url'), scopes: ['read', 'write'], expiresAt: Date.now() + 60_000, origin: null, ...overrides });
 async function folder(t) {
   const root = await mkdtemp(join(tmpdir(), 'promptlab-worker-'));
@@ -18,7 +19,7 @@ async function folder(t) {
   return root;
 }
 function worker(t) {
-  const child = spawn(process.execPath, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const child = spawn(nodePath, [workerPath], { stdio: ['pipe', 'pipe', 'pipe'] });
   const exited = once(child, 'exit');
   let buffer = '', sequence = 0, stdout = '', stderr = '';
   const waiters = new Map(), messages = [];

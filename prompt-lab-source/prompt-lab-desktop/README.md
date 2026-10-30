@@ -7,7 +7,7 @@ Prompt Lab Desktop is a Tauri 2 shell around the shared Prompt Lab React fronten
 
 ## Prerequisites
 
-- Node.js 22+
+- Node.js 22.x
 - Rust toolchain with `cargo`
 - Tauri platform dependencies for your OS
   - macOS: Xcode command line tools
@@ -29,6 +29,35 @@ cd prompt-lab-source/prompt-lab-desktop
 npm install
 cargo tauri build
 ```
+
+## Packaged library service candidate
+
+The Tauri build prepares the shared library service with Vite and includes a
+Node 22 sidecar, its license and a file hash manifest. Users do not need Node
+installed. Build preparation needs access to official Node downloads; macOS
+universal builds verify the second architecture against the official checksum
+list and combine both architectures. Generated resources remain outside Git.
+
+Run `npm run prepare:library` and `npm run verify:library` to verify resources
+and the packaged process contract. Linux and macOS run the process suite.
+Windows verifies resources only: actual directory flushing currently returns
+`EPERM`, so Windows folder activation remains unavailable. Linux activation
+also remains unavailable until its secure-store acceptance passes. These
+restrictions do not disable existing import/export.
+
+The native owner uses private pipes and a platform credential store. No
+credential is passed through process arguments, environment variables or the
+library folder. The picker, migration review and user pairing are still pending;
+this candidate does not activate a library. macOS folder service requires macOS
+11 or later, matching the [Node 22 runtime requirements](https://github.com/nodejs/node/blob/v22.23.4/BUILDING.md#platform-list).
+The existing shell minimum does not establish folder-service compatibility.
+
+Native unit checks are `cargo test --bin prompt-lab-desktop` in `src-tauri`.
+The ignored `secure_store_roundtrip_and_expiry_rotation` acceptance test creates
+and removes a disposable credential only when explicitly selected with
+`-- --ignored`; it requires a real user credential-store session. An SSH network
+logon on Windows can return `ERROR_NO_SUCH_LOGON_SESSION` before a write. Keep
+that failure separate from ordinary unit checks and installed app acceptance.
 
 ## Desktop Controls
 

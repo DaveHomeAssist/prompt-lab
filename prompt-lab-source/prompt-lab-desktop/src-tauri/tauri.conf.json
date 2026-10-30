@@ -5,8 +5,8 @@
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "npm run prepare:library && npm run dev",
+    "beforeBuildCommand": "npm run prepare:library && npm run build"
   },
   "app": {
     "windows": [
@@ -29,6 +29,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "externalBin": ["binaries/promptlab-node"],
+    "resources": { "library-helper/": "library-helper/" },
     "icon": [
       "icons/icon.png",
       "icons/icon.icns",
