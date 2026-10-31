@@ -20,7 +20,9 @@ test('app CSP permits the configured Clerk runtime and API domain without a wild
   const csp = await readAppCsp();
 
   assert.match(csp, /script-src[^;]*\bhttps:\/\/clerk\.promptlab\.tools\b/);
+  assert.match(csp, /script-src[^;]*\bhttps:\/\/splendid-orca-54\.clerk\.accounts\.dev\b/);
   assert.match(csp, /connect-src[^;]*\bhttps:\/\/clerk\.promptlab\.tools\b/);
+  assert.match(csp, /connect-src[^;]*\bhttps:\/\/splendid-orca-54\.clerk\.accounts\.dev\b/);
   assert.doesNotMatch(csp, /https:\/\/\*\.clerk\./);
 });
 
