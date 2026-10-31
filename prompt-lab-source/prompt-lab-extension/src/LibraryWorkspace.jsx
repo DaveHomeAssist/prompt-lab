@@ -162,9 +162,9 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
   if (inspectorTab === 'details') {
     return <div className="pl-inspector-details-form">
+      <label className="pl-inspector-primary-field pl-inspector-title-field">Title<input value={detailsDraft.title} onChange={(event) => setDetailsDraft((current) => ({ ...current, title: event.target.value }))} disabled={smartView === 'trash'} /></label>
+      <label className="pl-inspector-primary-field">Purpose<textarea value={detailsDraft.purpose} placeholder="What this prompt is for and when to use it" onChange={(event) => setDetailsDraft((current) => ({ ...current, purpose: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} />
-      <label>Title<input value={detailsDraft.title} onChange={(event) => setDetailsDraft((current) => ({ ...current, title: event.target.value }))} disabled={smartView === 'trash'} /></label>
-      <label>Purpose<textarea value={detailsDraft.purpose} onChange={(event) => setDetailsDraft((current) => ({ ...current, purpose: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label>Owner<input value={detailsDraft.owner} onChange={(event) => setDetailsDraft((current) => ({ ...current, owner: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <div className="pl-inspector-form-row">
         <label>Status<select value={detailsDraft.status} onChange={(event) => setDetailsDraft((current) => ({ ...current, status: event.target.value }))} disabled={smartView === 'trash'}><option value="">Not set</option><option value="draft">Draft</option><option value="active">Active</option><option value="deprecated">Deprecated</option></select></label>

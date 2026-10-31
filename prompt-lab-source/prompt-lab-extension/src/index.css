@@ -459,6 +459,8 @@ textarea:disabled {
 }
 .pl-results-verdict { border-bottom: 1px solid var(--result-line); }
 .pl-results-verdict h2 { margin-top: 0.2rem; font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(1.25rem, 2vw, 1.65rem); line-height: 1.12; }
+.pl-result-summary { max-width: 48rem; font-size: 0.9rem !important; font-weight: 500; }
+.pl-result-summary.is-clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .pl-eyebrow { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
 .pl-result-metrics { display: flex; flex-wrap: wrap; gap: 0.35rem 0.8rem; margin-top: 0.55rem; font-size: 0.68rem; }
 .pl-result-metrics span + span::before { content: '·'; margin-right: 0.8rem; opacity: 0.45; }
@@ -486,6 +488,8 @@ textarea:disabled {
 .pl-icon-button { width: 2rem; padding: 0; }
 .pl-text-button { min-height: auto; border: 0; padding: 0.35rem; color: var(--pl-brand-ember-bright); }
 .pl-results-body { display: grid; grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr); min-height: 28rem; }
+.pl-results-body.is-single { grid-template-columns: minmax(0, 1fr); }
+.pl-results-body.is-single .pl-candidate-rail { display: none; }
 .pl-candidate-rail { border-right: 1px solid var(--result-line); padding: 1rem 0.75rem; background: color-mix(in srgb, currentColor 2.5%, transparent); }
 .pl-candidate-rail > p { margin: 0 0.55rem 0.65rem; }
 .pl-candidate-rail [role='listbox'] { display: grid; gap: 0.4rem; }
@@ -507,7 +511,7 @@ textarea:disabled {
 .pl-segmented { display: flex; min-width: 0; gap: 0.2rem; overflow-x: auto; border: 1px solid var(--result-line); padding: 0.2rem; }
 .pl-segmented button { flex: 0 0 auto; padding: 0.42rem 0.68rem; font-size: 0.68rem; font-weight: 750; opacity: 0.6; }
 .pl-segmented button[aria-selected='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 17%, transparent); color: var(--pl-brand-ember-bright); opacity: 1; }
-.pl-result-editor { width: 100%; min-height: 14rem; resize: vertical; border: 1px solid var(--result-line); border-radius: 0.7rem; background: color-mix(in srgb, currentColor 3%, transparent); padding: 0.9rem; font: 0.83rem/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; outline: none; }
+.pl-result-editor { width: 100%; min-height: clamp(18rem, 58dvh, 56rem); resize: vertical; border: 1px solid var(--result-line); border-radius: 0.7rem; background: color-mix(in srgb, currentColor 3%, transparent); padding: 0.9rem; font: 0.92rem/1.65 ui-monospace, SFMono-Regular, Menlo, monospace; outline: none; }
 .pl-result-editor:focus { border-color: color-mix(in srgb, var(--pl-brand-ember) 58%, transparent); }
 .pl-markdown-result { overflow: auto; font-family: inherit; }
 .pl-side-by-side { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden; border: 1px solid var(--result-line); border-radius: 0.7rem; }
@@ -546,6 +550,16 @@ textarea:disabled {
 [data-theme="light"] .pl-result-commit-bar { background: rgba(255, 253, 250, 0.94); }
 .pl-commit-copy { min-width: 10rem; flex: 1; }
 .pl-commit-copy input { width: min(100%, 24rem); margin-top: 0.3rem; border: 0; border-bottom: 1px solid var(--result-line); border-radius: 0; background: transparent; padding: 0.25rem 0; font-size: 0.82rem; font-weight: 700; }
+.pl-commit-label { display: inline; }
+.pl-header-new-prompt { border-color: color-mix(in srgb, var(--pl-brand-ember) 45%, transparent); }
+.pl-result-after-editor { display: grid; gap: 0.55rem; margin-top: 0.8rem; }
+.pl-result-metrics-after { margin-top: 0; }
+.pl-result-notice { margin-top: 0.75rem; border: 1px solid color-mix(in srgb, var(--pl-brand-ember) 42%, transparent); border-radius: 0.65rem; padding: 0.65rem 0.75rem; color: var(--pl-muted-text); font-size: 0.72rem; line-height: 1.5; }
+.pl-result-notice .pl-text-button { margin-left: 0.35rem; }
+.pl-inspector-primary-field { font-size: 0.68rem !important; }
+.pl-inspector-primary-field input,
+.pl-inspector-primary-field textarea { font-size: 0.9rem; }
+.pl-inspector-title-field input { font-size: 1rem; font-weight: 650; }
 
 @media (max-width: 700px) {
   .pl-app-header { position: sticky; z-index: 60; top: 0; }
@@ -560,6 +574,15 @@ textarea:disabled {
   .pl-side-by-side { grid-template-columns: 1fr; }
   .pl-side-by-side > div + div { border-top: 1px solid var(--result-line); border-left: 0; }
   .pl-result-toolbar { align-items: flex-start; flex-direction: column; }
+  .pl-results-body.is-single .pl-candidate-rail { display: block; order: 2; border-top: 1px solid var(--result-line); border-bottom: 0; }
+}
+
+@media (max-width: 560px) {
+  .pl-result-commit-bar { padding-right: 3rem; }
+  .pl-commit-label { display: inline-block; max-width: 12rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-commit-target { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .pl-result-header-actions { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; justify-content: flex-start; }
+  .pl-result-header-actions > .pl-icon-button { position: absolute; top: 0.7rem; right: 0.7rem; }
 }
 
 .pl-mobile-nav { position: relative; z-index: 70; display: grid; flex: 0 0 auto; grid-template-columns: repeat(6, minmax(0, 1fr)); overflow: hidden; margin: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom)); border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 1rem; background: rgba(10, 8, 8, 0.94); padding: 0.22rem; box-shadow: 0 18px 55px rgba(0, 0, 0, 0.38); backdrop-filter: blur(22px); }
