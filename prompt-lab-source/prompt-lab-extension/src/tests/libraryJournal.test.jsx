@@ -5,7 +5,7 @@ import { saveJson, storageKeys } from '../lib/storage.js';
 import { LIBRARY_DELETED_PREFIX, markLibraryDeleted } from '../lib/libraryDeletion.js';
 import {
   LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_RECORD, LIBRARY_JOURNAL_REVISION_KEY, LIBRARY_JOURNAL_STORE,
-  applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, planLibraryJournalBoot, startLibraryJournal,
+  applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, mergeLibraryEntries, planLibraryJournalBoot, startLibraryJournal,
 } from '../lib/libraryJournal.js';
 
 vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
@@ -316,5 +316,84 @@ describe('desktop library journal', () => {
     vi.useRealTimers();
     await settled(journal);
     expect(JSON.parse(journalRecord().entries[storageKeys.library]).map((row) => row.id)).toEqual(['from-ui']);
+  });
+});
+
+// Like the settings journal's R-20 fix: a write made before this device has
+// read the journal (failed boot read) must not replace the whole record.
+describe('library journal writes after a failed boot read', () => {
+  const row = (id, updatedAt = '2026-11-01T10:00:00.000Z', title = id) => ({ id, title, updatedAt });
+  const STATE = 'pl2-sync-state:user_A';
+
+  it('keeps the journal\'s rows, markers and order and restores them on the next boot', async () => {
+    const first = await boot();
+    localStorage.setItem(storageKeys.library, JSON.stringify([row('a'), row('b')]));
+    localStorage.setItem(storageKeys.collections, JSON.stringify(['Work']));
+    localStorage.setItem(`${LIBRARY_DELETED_PREFIX}gone`, '1');
+    localStorage.setItem(STATE, '{"shadow":{"prompt:a":{},"prompt:b":{}}}');
+    saveJson(storageKeys.library, JSON.parse(localStorage.getItem(storageKeys.library)));
+    await settled(first.journal);
+    first.stop();
+
+    // Local Storage lost everything; the journal answers only after boot gave up.
+    localStorage.clear();
+    idb.state.openDelayMs = 80;
+    const blind = await boot({ timeoutMs: 10 });
+    expect(blind.outcome.action).toBe('unavailable');
+    localStorage.setItem(STATE, '{"shadow":{}}');
+    saveJson(storageKeys.library, [row('c')]);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    await settled(blind.journal);
+
+    const entries = journalRecord().entries;
+    expect(JSON.parse(entries[storageKeys.library]).map(r => r.id)).toEqual(['c', 'a', 'b']);
+    expect(entries[storageKeys.collections]).toBe('["Work"]');
+    expect(entries[`${LIBRARY_DELETED_PREFIX}gone`]).toBe('1');
+    // This device's sync state describes only [c]; it must not pair with the merge.
+    expect(entries[STATE]).toBeUndefined();
+    blind.stop();
+
+    idb.state.openDelayMs = 0;
+    const next = await boot();
+    expect(next.outcome.action).toBe('restore');
+    expect(ids(storageKeys.library)).toEqual(['c', 'a', 'b']);
+    expect(localStorage.getItem(STATE)).toBeNull();
+  });
+
+  it('replaces the record as before once the boot read succeeded', async () => {
+    localStorage.setItem(storageKeys.library, JSON.stringify([row('a'), row('b')]));
+    const { journal } = await boot();
+    await settled(journal);
+    saveJson(storageKeys.library, [row('b')]);
+    await settled(journal);
+    expect(JSON.parse(journalRecord().entries[storageKeys.library]).map(r => r.id)).toEqual(['b']);
+  });
+
+  describe('mergeLibraryEntries', () => {
+    const lib = storageKeys.library;
+    const trash = storageKeys.trash;
+    it('keeps this device\'s copy unless the journal\'s is strictly newer', () => {
+      const merged = mergeLibraryEntries(
+        { [lib]: JSON.stringify([row('a', '2026-11-01T12:00:00.000Z', 'journal'), row('b', '2026-11-01T09:00:00.000Z', 'journal')]) },
+        { [lib]: JSON.stringify([row('b', '2026-11-01T10:00:00.000Z', 'mine'), row('a', '2026-11-01T11:00:00.000Z', 'mine')]) },
+      );
+      expect(JSON.parse(merged[lib]).map(r => `${r.id}:${r.title}`)).toEqual(['b:mine', 'a:journal']);
+    });
+    it('leaves a prompt where this device moved it between Library and trash', () => {
+      const merged = mergeLibraryEntries(
+        { [lib]: JSON.stringify([row('a'), row('x')]), [trash]: JSON.stringify([row('b')]) },
+        { [lib]: JSON.stringify([row('b')]), [trash]: JSON.stringify([row('a')]) },
+      );
+      expect(JSON.parse(merged[lib]).map(r => r.id)).toEqual(['b', 'x']);
+      expect(JSON.parse(merged[trash]).map(r => r.id)).toEqual(['a']);
+    });
+    it('keeps the sync state when the journal adds nothing', () => {
+      const fresh = { [lib]: JSON.stringify([row('a')]), 'pl2-sync-state:u': '{}', 'pl2-sync-queue:u': '[]' };
+      expect(mergeLibraryEntries({ [lib]: JSON.stringify([row('a')]), 'pl2-sync-state:u': '{"old":1}' }, fresh)).toEqual(fresh);
+    });
+    it('never takes the journal\'s sync state', () => {
+      const merged = mergeLibraryEntries({ 'pl2-sync-state:u': '{"old":1}', [lib]: '[]' }, { [lib]: '[]' });
+      expect(merged).toEqual({ [lib]: '[]' });
+    });
   });
 });

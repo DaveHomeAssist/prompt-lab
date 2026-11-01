@@ -125,6 +125,16 @@ export function isOwnerProState(state = {}) {
   );
 }
 
+// The plan and entitlement fields of the billing cache, with the timestamps
+// that anchor its revalidation window and offline grace (the cache has no
+// separate expiry field). The desktop settings journal saves only these;
+// account email, name, Stripe customer/subscription/price ids, the portal link
+// and error text stay out of IndexedDB.
+export const BILLING_ENTITLEMENT_FIELDS = Object.freeze([
+  'plan', 'status', 'billingPeriod', 'productName',
+  'lastValidatedAt', 'lastVerifiedAt', 'billingDisabled', 'checkoutDisabled',
+]);
+
 export function normalizeBillingState(value = {}) {
   const fallback = createDefaultBillingState();
   const plan = value?.plan === PLAN_PRO ? PLAN_PRO : PLAN_FREE;
