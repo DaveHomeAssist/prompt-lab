@@ -8,6 +8,7 @@ import { decodePackShare } from '../lib/packExport.js';
 import { importPresetPack } from '../lib/presetImport.js';
 import { linkEvalRunToPrompt } from '../experimentStore.js';
 import { createSaveReceipt } from '../lib/promptLifecycle.js';
+import { normalizeResultMeta } from '../lib/enhancementResult.js';
 import { normalizeFollowUpOrigin } from '../lib/followUpProvenance.js';
 import { linkScratchNoteToPrompt } from '../lib/sourceLink.js';
 
@@ -29,6 +30,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   const [showSave, setShowSave] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [editingVersionId, setEditingVersionId] = useState(null);
   const [saveTargetId, setSaveTargetId] = useState(null);
   const [saveSourceEntry, setSaveSourceEntry] = useState(null);
   const [saveTitle, setSaveTitle] = useState('');
@@ -66,11 +68,11 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
 
   useSessionRestore({
     setRaw, setEnhanced, setVariants, setNotes, setResultMeta, setTab, setEnhMode,
-    setEditingId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId, setFollowUpOrigin,
+    setEditingId, setEditingVersionId, setSaveTitle, setSaveTags, setSaveCollection, setSourceNoteId, setFollowUpOrigin,
   });
   useSessionSave({
     raw, enhanced, variants, notes, resultMeta, tab, enhMode,
-    editingId, saveTitle, saveTags, saveCollection, sourceNoteId, followUpOrigin,
+    editingId, editingVersionId, saveTitle, saveTags, saveCollection, sourceNoteId, followUpOrigin,
   });
 
   useEffect(() => {
@@ -210,6 +212,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       editorTitleBeforeDetailsRef.current = null;
       activeEntryRef.current = normalized;
       setEditingId(normalized.id);
+      setEditingVersionId(normalized.currentVersionId);
       setFollowUpOrigin(normalized.metadata?.followUpOrigin);
       setRaw(normalized.original);
       setEnhanced(normalized.enhanced);
@@ -313,6 +316,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     // snapshot keeps versions, test cases, and metadata available to recovery.
     activeEntryRef.current = deletedSource ? { ...deletedSource, id: null } : null;
     setEditingId(null);
+    setEditingVersionId(null);
     setSaveTargetId(current => current === entryId ? null : current);
     setSaveSourceEntry(current => current?.id === entryId ? null : current);
     setShowSave(false);
@@ -331,6 +335,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     // usage and emit an unrelated "Loaded" notification.
     activeEntryRef.current = restoredEntry;
     setEditingId(restoredEntry.id);
+    setEditingVersionId(restoredEntry.currentVersionId);
     setRaw(restoredEntry.original);
     setEnhanced(restoredEntry.enhanced);
     setVariants(restoredEntry.variants || []);
@@ -384,6 +389,14 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     const resultMetaValue = Object.prototype.hasOwnProperty.call(overrides, 'resultMetaOverride')
       ? overrides.resultMetaOverride
       : (contentSource?.resultMeta ?? resultMeta);
+    const result = normalizeResultMeta(resultMetaValue, { enhanced: contentSource?.enhanced ?? enhanced, variants: variantsValue });
+    const candidate = result.candidates.find(item => item.id === result.selectedCandidateId);
+    // A split-pane draft save can write different text from the reviewed result.
+    // Capture the actual request before awaiting storage, never the later editor.
+    const resultSnapshot = enhancedValue && enhancedValue === candidate?.content ? {
+      raw: originalValue, content: enhancedValue, candidateId: candidate.id,
+      label: candidate.label, runId: result.runId,
+    } : null;
     const tagsValue = Object.prototype.hasOwnProperty.call(overrides, 'tagsOverride')
       ? overrides.tagsOverride
       : saveTags;
@@ -418,6 +431,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
       title: titleValue,
       collection: collectionValue,
       editingId: targetId,
+      expectedVersionId: contentSource?.currentVersionId || (targetId === editingId ? editingVersionId : null),
       changeNote,
       metadata,
       sourceEntry: contentSource || activeEntryRef.current,
@@ -449,6 +463,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
         };
         if (!contentSource) {
           setEditingId(saved.id);
+          setEditingVersionId(saved.versionId || null);
         }
         setSaveTitle(saved.title || titleValue);
         const savedSourceNoteId = contentSource?.sourceNoteId ?? sourceNoteId;
@@ -456,7 +471,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
           action: targetId && saved.savedAsNew !== true ? 'version' : 'new',
           sourceNoteId: savedSourceNoteId,
         });
-        setLastSaveReceipt(receipt);
+        setLastSaveReceipt({ ...receipt, resultSnapshot });
         if (savedSourceNoteId) linkScratchNoteToPrompt(savedSourceNoteId, saved.id);
         if (resultMetaValue?.runId) {
           void linkEvalRunToPrompt(resultMetaValue.runId, saved.id, saved.versionId)
@@ -502,6 +517,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
     setSourceNoteId('');
     setShowSave(false);
     setEditingId(null);
+    setEditingVersionId(null);
     setSaveTargetId(null);
     setSaveSourceEntry(null);
     setSaveTitle('');
@@ -517,7 +533,7 @@ export default function usePersistenceFlow({ ui, lib, editor }) {
   return {
     showSave, setShowSave,
     followUpOrigin, setFollowUpOrigin,
-    editingId, setEditingId,
+    editingId, setEditingId, editingVersionId, setEditingVersionId,
     saveTargetId,
     hasPanelSaveSource: Boolean(saveSourceEntry),
     saveTitle, setSaveTitle,

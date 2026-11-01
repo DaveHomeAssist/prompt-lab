@@ -309,7 +309,7 @@ test('proxy preflight is origin-specific and fails closed when the route is disa
   assert.match(await disabled.text(), /proxy is disabled/i);
 });
 
-test('proxy locks traffic to the exact Anthropic Messages endpoint and clamps models and token budgets', async () => {
+test('proxy restricts endpoints and models while clamping token budgets', async () => {
   process.env.ANTHROPIC_API_KEY = 'server-key';
   process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-4-6';
   process.env.HOSTED_MAX_TOKENS = '1024';
@@ -342,10 +342,14 @@ test('proxy locks traffic to the exact Anthropic Messages endpoint and clamps mo
     assert.equal(response.status, 403, targetUrl);
   }
 
+  const rejected = await handler(makeRequest({ body: { model: 'claude-opus-4-8', messages: [{ role: 'user', content: 'hello' }] } }));
+  assert.equal(rejected.status, 400);
+  assert.equal(captured.length, 0);
+
   const allowed = await handler(makeRequest({
     headers: { 'x-api-key': '__plb_hosted_shared_key__' },
     body: {
-      model: 'claude-opus-4-8',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       messages: [{ role: 'user', content: 'hello' }],
     },
@@ -1128,4 +1132,56 @@ test('a count refusal releases its budget reservation, and a budget refusal spen
   assert.equal((await broke.json()).code, HostedLimitCode.BUDGET);
   process.env.HOSTED_CYCLE_BUDGET_USD = '1';
   assert.equal((await visitor('198.51.100.3')).status, 200);
+});
+
+
+test('hosted catalogue contains only priced configured choices and calls no provider', async () => {
+  process.env.HOSTED_PROXY_ENABLED = 'true';
+  process.env.HOSTED_ALLOWED_ANTHROPIC_MODELS = 'claude-sonnet-5-5,unknown-model';
+  globalThis.fetch = assert.fail;
+  const handler = await loadHandler();
+  const response = await handler(new Request('https://promptlab.tools/api/proxy', { headers: { Origin: 'https://promptlab.tools' } }));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'no-store');
+  assert.deepEqual((await response.json()).models, [{ id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', input: 2, output: 10 }]);
+  const sameOrigin = await handler(new Request('https://promptlab.tools/api/proxy'));
+  assert.equal(sameOrigin.status, 200);
+  assert.equal((await sameOrigin.json()).models.length, 1);
+  const foreign = await handler(new Request('https://promptlab.tools/api/proxy', { headers: { Origin: 'https://evil.example' } }));
+  assert.equal(foreign.status, 403);
+});
+
+test('each selectable priced model reaches upstream unchanged', async () => {
+  const { HOSTED_MODELS } = await import('../prompt-lab-extension/src/lib/hostedModels.js');
+  for (const { id } of HOSTED_MODELS) {
+    resetEnv();
+    process.env.HOSTED_PROXY_ENABLED = 'true';
+    process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    const sent = [];
+    globalThis.fetch = async (_url, init) => { sent.push(JSON.parse(init.body)); return new Response('{}', { headers: { 'Content-Type': 'application/json' } }); };
+    const handler = await loadHandler();
+    const response = await handler(makeRequest({ body: { model: id, max_tokens: 64, messages: [{ role: 'user', content: 'hello' }] } }));
+    assert.equal(response.status, 200, id);
+    assert.equal(sent[0].model, id);
+    assert.equal(response.headers.get('X-Hosted-Model'), id);
+    await response.text();
+  }
+});
+
+
+test('every selectable model is refused before upstream when the cycle budget cannot cover it', async () => {
+  const { HOSTED_MODELS } = await import('../prompt-lab-extension/src/lib/hostedModels.js');
+  for (const { id } of HOSTED_MODELS) {
+    resetEnv();
+    process.env.HOSTED_PROXY_ENABLED = 'true';
+    process.env.HOSTED_SHARED_KEY_ENABLED = 'true';
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    process.env.HOSTED_CYCLE_BUDGET_USD = '0.000001';
+    globalThis.fetch = assert.fail;
+    const handler = await loadHandler();
+    const response = await handler(makeRequest({ body: { model: id, max_tokens: 64, messages: [{ role: 'user', content: 'hello' }] } }));
+    assert.equal(response.status, 429, id);
+    assert.equal((await response.json()).code, 'hosted_budget_limit');
+  }
 });

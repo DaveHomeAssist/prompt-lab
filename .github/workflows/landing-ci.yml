@@ -108,7 +108,7 @@ concurrency:
 jobs:
   landing-gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: prompt-lab-source
@@ -184,5 +184,6 @@ jobs:
           path: |
             prompt-lab-source/prompt-lab-web/playwright-report
             prompt-lab-source/prompt-lab-web/test-results
+            /tmp/promptlab-app-playwright-results
           if-no-files-found: ignore
           retention-days: 7

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Ic from './icons';
 import ScratchNoteRow from './ScratchNoteRow.jsx';
+import useScratchDurability from './hooks/useScratchDurability.js';
+import { getScratchDurability, startScratchJournal } from './lib/scratchJournal.js';
 import {
   SCRATCH_KEY,
   buildDefaultScratchPayload,
@@ -40,8 +42,12 @@ export default function ScratchSidePanel({
   const [padsState, setPadsState] = useState(() => buildDefaultScratchPayload('', Date.now()));
   const [text, setText] = useState('');
   const [selection, setSelection] = useState({ start: 0, end: 0 });
-  const [saveState, setSaveState] = useState('idle');
-  const [readFailed, setReadFailed] = useState(false);
+  const durability = useScratchDurability();
+  const [localSaveState, setSaveState] = useState('idle');
+  const [readError, setReadFailed] = useState(false);
+  const readFailed = readError || durability.bootFailed;
+  const saveState = durability.status === 'error' ? 'error'
+    : durability.status === 'saving' && localSaveState !== 'dirty' ? 'saving' : localSaveState;
   const padsRef = useRef(padsState);
   const readFailedRef = useRef(false);
   const revisionRef = useRef(0);
@@ -77,7 +83,7 @@ export default function ScratchSidePanel({
     const activeId = current.activePadId;
     const stored = current.pads.find((pad) => pad.id === activeId);
     if (!stored) return true;
-    if (stored.content === value) {
+    if (stored.content === value && !['saving', 'error'].includes(getScratchDurability().status)) {
       clearUnsavedScratchDraft(activeId);
       return true;
     }
@@ -89,7 +95,14 @@ export default function ScratchSidePanel({
         ? normalizeScratchPad({ ...pad, content: value, updatedAt, timestamp: updatedAt })
         : pad),
     }, [activeId]);
-    if (result.ok) clearUnsavedScratchDraft(activeId);
+    if (result.ok && result.durable) {
+      result.durable.then(() => {
+        const kept = readUnsavedScratchDraft();
+        if (kept && result.state.pads.some(pad => pad.id === kept.pad.id && pad.content === kept.text)) clearUnsavedScratchDraft(kept.pad.id);
+      }, () => {
+        if (getScratchDurability().status === 'error') keepUnsavedScratchDraft(stored, value);
+      });
+    } else if (result.ok) clearUnsavedScratchDraft(activeId);
     setSaveState(result.ok ? 'saved' : 'error');
     return result.ok;
   };
@@ -111,6 +124,7 @@ export default function ScratchSidePanel({
   };
 
   const load = () => {
+    if (getScratchDurability().bootFailed) return;
     const { payload, error, errorStage } = migrateScratchStorage();
     readFailedRef.current = Boolean(error && errorStage === 'read');
     setReadFailed(readFailedRef.current);
@@ -178,6 +192,7 @@ export default function ScratchSidePanel({
     const value = event.target.value;
     textRef.current = value;
     setText(value);
+    setSaveState('dirty');
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => commit(value), AUTOSAVE_MS);
   };
@@ -224,6 +239,7 @@ export default function ScratchSidePanel({
     : saveState === 'saving' ? 'Saving…'
       : saveState === 'saved' ? 'Saved'
         : saveState === 'error' ? 'Save failed. Your text is still here; keep typing or retry.'
+          : saveState === 'dirty' ? 'Unsaved changes'
           : 'Saved locally';
 
   return (
@@ -244,9 +260,13 @@ export default function ScratchSidePanel({
       <div className="pl-write-scratch-note">
         <div className="flex min-w-0 items-center justify-between gap-2">
           <p className="min-w-0 truncate text-xs font-semibold" title={activePad?.name}>{activePad?.name || 'Scratch note'}</p>
-          <p role="status" className={`shrink-0 text-[10px] ${saveState === 'error' || readFailed ? 'text-red-500' : m.textMuted || ''}`}>{status}</p>
+          <p role="status" data-testid="scratch-side-save-status" data-save-state={saveState} className={`shrink-0 text-[10px] ${saveState === 'error' || readFailed ? 'text-red-500' : m.textMuted || ''}`}>{status}</p>
         </div>
-        {readFailed && <button type="button" className="pl-text-button self-start text-xs" onClick={load}>Retry loading notes</button>}
+        {readFailed && <button type="button" className="pl-text-button self-start text-xs" onClick={async () => {
+          if (durability.bootFailed) await startScratchJournal();
+          load();
+        }}>Retry loading notes</button>}
+        {!readFailed && saveState === 'error' && <button type="button" className="pl-text-button self-start text-xs" onClick={() => commit(textRef.current)}>Retry saving</button>}
         <textarea
           ref={textareaRef}
           value={text}

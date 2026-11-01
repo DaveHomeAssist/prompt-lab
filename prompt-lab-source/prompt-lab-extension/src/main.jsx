@@ -6,6 +6,7 @@ import App from './App';
 import ErrorBoundary from './ErrorBoundary';
 import ReportProblemHost from './ReportProblemHost.jsx';
 import { libraryJournalSupported, startLibraryJournal } from './lib/libraryJournal.js';
+import { startScratchJournal } from './lib/scratchJournal.js';
 import './index.css';
 
 const render = () => ReactDOM.createRoot(document.getElementById('root')).render(
@@ -16,7 +17,7 @@ const render = () => ReactDOM.createRoot(document.getElementById('root')).render
   </ErrorBoundary></>
 );
 
-// The desktop shell restores the durable Library journal into localStorage
-// before any component reads it. startLibraryJournal never rejects.
-if (libraryJournalSupported()) startLibraryJournal().then(render);
+// Restore the desktop Library and Scratch mirrors before components read them.
+// Both startup routines report recovery failures without rejecting.
+if (libraryJournalSupported()) Promise.all([startLibraryJournal(), startScratchJournal()]).then(render);
 else render();

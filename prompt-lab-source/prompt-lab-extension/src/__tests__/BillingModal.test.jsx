@@ -210,6 +210,11 @@ describe('BillingModal plan order (conversion proposal 1)', () => {
     expect(first.className).toContain('bg-orange-600');
     expect(within(first).getByTestId('billing-best-value')).toHaveTextContent('Best value');
     expect(first).toHaveTextContent('$79/year ($6.58/month), save $29');
+    // The primary price line must not use a text-orange-* utility: the theme
+    // remaps those to the ember fill colour, which hid the price in light mode.
+    const annualDetail = within(first).getByTestId('billing-plan-detail');
+    expect(annualDetail).toHaveTextContent('$79/year ($6.58/month), save $29');
+    expect(annualDetail.className).not.toMatch(/\btext-orange-/);
 
     expect(second).toHaveAttribute('data-period', 'monthly');
     expect(second).toHaveAccessibleName(/Go Pro Monthly/);

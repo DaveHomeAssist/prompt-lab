@@ -1,10 +1,11 @@
 import { logWarn } from './logger.js';
 import { storageKeys } from './storage.js';
+import { assertScratchJournalReady, commitScratchSave } from './scratchJournal.js';
 
 export const LEGACY_SCRATCH_KEY = storageKeys.pad;
 export const LEGACY_SCRATCH_META_KEY = `${storageKeys.pad}_meta`;
-export const SCRATCH_KEY = 'pl2-pads';
-export const SCRATCH_SCHEMA_VERSION_KEY = 'pl2-pads-schema-version';
+export const SCRATCH_KEY = storageKeys.scratch;
+export const SCRATCH_SCHEMA_VERSION_KEY = storageKeys.scratchSchemaVersion;
 export const SCRATCH_SCHEMA_VERSION = '4';
 
 export const DEFAULT_SCRATCH_ID = 'default';
@@ -156,8 +157,10 @@ export function migrateScratchStorage(storage = localStorage, now = Date.now()) 
     if (payload) {
       if (previousVersion !== SCRATCH_SCHEMA_VERSION) {
         errorStage = 'write';
+        if (storage === globalThis.localStorage) assertScratchJournalReady();
         storage.setItem(SCRATCH_KEY, JSON.stringify(payload));
         storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
+        if (storage === globalThis.localStorage) commitScratchSave();
       }
       return {
         migrated: previousVersion !== SCRATCH_SCHEMA_VERSION,
@@ -175,14 +178,22 @@ export function migrateScratchStorage(storage = localStorage, now = Date.now()) 
 
     payload = buildDefaultScratchPayload(legacyContent, parseSavedTimestamp(legacyMeta, now));
     errorStage = 'write';
+    if (storage === globalThis.localStorage) assertScratchJournalReady();
     storage.setItem(SCRATCH_KEY, JSON.stringify(payload));
     storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
 
-    // Destructive cleanup occurs only after both v4 writes succeed.
-    storage.removeItem(LEGACY_SCRATCH_KEY);
-    storage.removeItem(LEGACY_SCRATCH_META_KEY);
-    storage.removeItem('pl-pad');
-    storage.removeItem('pl-pad_meta');
+    const durable = storage === globalThis.localStorage ? commitScratchSave() : null;
+    const cleanup = () => {
+      storage.removeItem(LEGACY_SCRATCH_KEY);
+      storage.removeItem(LEGACY_SCRATCH_META_KEY);
+      storage.removeItem('pl-pad');
+      storage.removeItem('pl-pad_meta');
+    };
+    // Desktop legacy bytes stay available until the replacement is durable.
+    if (durable) durable.then(() => {
+      try { cleanup(); } catch (error) { logWarn('scratch legacy cleanup', error); }
+    }, () => {});
+    else cleanup();
 
     return { migrated: true, payload, error: null };
   } catch (error) {
@@ -236,6 +247,7 @@ export function persistScratchState(nextState, {
   removedIds = [],
 } = {}) {
   try {
+    if (storage === globalThis.localStorage) assertScratchJournalReady();
     const normalized = normalizeScratchPayload(nextState);
     if (!normalized) throw new Error('Scratch state must contain at least one note');
     const stored = readScratchPayload(storage);
@@ -248,7 +260,8 @@ export function persistScratchState(nextState, {
     };
     storage.setItem(SCRATCH_KEY, JSON.stringify(payload));
     storage.setItem(SCRATCH_SCHEMA_VERSION_KEY, SCRATCH_SCHEMA_VERSION);
-    return { ok: true, state: payload };
+    const durable = storage === globalThis.localStorage ? commitScratchSave() : null;
+    return { ok: true, state: payload, ...(durable ? { durable } : {}) };
   } catch (error) {
     logWarn('persist scratch state (quota exceeded?)', error);
     return { ok: false, state: nextState, error };

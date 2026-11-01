@@ -1,6 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { loadHostedModels } = vi.hoisted(() => ({ loadHostedModels: vi.fn() }));
+vi.mock('../lib/hostedModels.js', () => ({ loadHostedModels }));
+
 import { LEGACY_OPENROUTER_MODEL } from '../lib/providerRegistry.js';
 
 const {
@@ -80,6 +83,7 @@ async function openRouterModelField() {
 describe('DesktopSettingsModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    loadHostedModels.mockResolvedValue([{ id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6', input: 3, output: 15 }, { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5', input: 2, output: 10 }]);
     loadProviderSettings.mockResolvedValue({
       provider: 'anthropic',
       apiKey: 'sk-ant',
@@ -226,7 +230,7 @@ describe('DesktopSettingsModal', () => {
     expect(testProviderConnection).not.toHaveBeenCalled();
   });
 
-  it('hosted_web_mode_locks_provider_to_anthropic_and_makes_api_key_optional', async () => {
+  it('hosted mode keeps Anthropic but persists the chosen priced model', async () => {
     vi.stubEnv('VITE_WEB_MODE', 'true');
     loadProviderSettings.mockResolvedValueOnce({
       provider: 'openai',
@@ -242,16 +246,30 @@ describe('DesktopSettingsModal', () => {
     expect(await screen.findByText('Hosted access')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Anthropic (hosted default)')).toBeDisabled();
     expect(screen.getByLabelText('Personal API Key (optional)')).toHaveValue('');
-    expect(screen.getByRole('textbox', { name: 'Model' })).toBeDisabled();
+    const selector = await screen.findByRole('combobox', { name: 'Model' });
+    await waitFor(() => expect(selector).toBeEnabled());
+    fireEvent.change(selector, { target: { value: 'claude-sonnet-5-5' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => {
       expect(saveProviderSettings).toHaveBeenCalledWith(expect.objectContaining({
         provider: 'anthropic',
-        anthropicModel: 'claude-sonnet-4-6',
+        anthropicModel: 'claude-sonnet-5-5',
       }));
     });
+  });
+
+
+  it('does not save or test when the hosted catalogue is unavailable', async () => {
+    vi.stubEnv('VITE_WEB_MODE', 'true');
+    loadHostedModels.mockRejectedValueOnce(new Error('Catalogue unavailable'));
+    await renderModal();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Catalogue unavailable');
+    expect(screen.getByRole('button', { name: 'Save', exact: true })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Test Connection' })).toBeDisabled();
+    expect(saveProviderSettings).not.toHaveBeenCalled();
+    expect(testProviderConnection).not.toHaveBeenCalled();
   });
 
   it('openrouter_model_field_starts_at_a_slug_openrouter_lists', async () => {

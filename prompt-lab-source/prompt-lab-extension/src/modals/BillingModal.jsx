@@ -348,7 +348,10 @@ export default function BillingModal({
                     </span>
                   )}
                 </div>
-                <div className={`mt-1 text-xs ${isPrimary ? 'text-orange-100' : m.textMuted}`}>{plan.detail}</div>
+                {/* The primary card's price line inherits the button's action-text
+                    colour. The theme maps text-orange-* to --pl-brand-ember-bright,
+                    which equals the button fill in light mode (invisible text). */}
+                <div data-testid="billing-plan-detail" className={`mt-1 text-xs ${isPrimary ? 'opacity-90' : m.textMuted}`}>{plan.detail}</div>
                 {isRequested && (
                   <div className={`mt-2 text-[11px] font-semibold uppercase tracking-wider ${isPrimary ? 'text-white' : m.text}`}>Selected on pricing page</div>
                 )}

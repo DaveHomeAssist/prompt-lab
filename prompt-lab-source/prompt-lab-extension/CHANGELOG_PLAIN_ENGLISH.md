@@ -1,5 +1,17 @@
 # Prompt Lab Changelog (Plain English)
 
+## Pending delivery: Prompt artwork
+
+- Change a prompt's artwork directly from its Library card in List, Tiles,
+  Compact or Gallery. The picker offers 22 built-in icons, one emoji, or a
+  local PNG, JPEG or WebP image up to 64 KB.
+- Gallery cards without artwork show an Add image action. Apply saves artwork
+  only; Cancel or Escape discards the pending choice. Failed saves keep the
+  choice ready to retry, and unsaved inspector fields remain available.
+- Emoji artwork travels with workspace exports and imports. Older PromptLab
+  builds may drop emoji artwork when they re-save a prompt. Keep a workspace
+  backup before editing the same library with an older build.
+
 ## Version 1.9.0
 
 Date: 2026-10-27. Covers pull requests #238 to #242.

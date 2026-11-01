@@ -12,7 +12,7 @@ const { useSessionRestore, hasExplicitRoute } = await import('../hooks/useSessio
 
 function restore(session) {
   saved.current = session;
-  const setters = { setRaw: vi.fn(), setEnhanced: vi.fn(), setVariants: vi.fn(), setNotes: vi.fn(), setTab: vi.fn(), setEnhMode: vi.fn() };
+  const setters = { setRaw: vi.fn(), setEnhanced: vi.fn(), setVariants: vi.fn(), setNotes: vi.fn(), setTab: vi.fn(), setEnhMode: vi.fn(), setEditingVersionId: vi.fn() };
   renderHook(() => useSessionRestore(setters));
   return setters;
 }
@@ -55,4 +55,13 @@ describe('session restore of the workspace tab', () => {
     expect(hasExplicitRoute('#/library')).toBe(true);
     expect(hasExplicitRoute('#/split/library')).toBe(true);
   });
+});
+
+it('restores the loaded version instead of treating newer Library state as the draft base', () => {
+  expect(restore({ editingId: 'prompt', editingVersionId: 'loaded-version' }).setEditingVersionId).toHaveBeenCalledWith('loaded-version');
+});
+
+it('requires an explicit reload or separate copy for older sessions without version provenance', () => {
+  expect(restore({ editingId: 'prompt' }).setEditingVersionId).toHaveBeenCalledWith('unverified');
+  expect(restore({ editingId: null }).setEditingVersionId).toHaveBeenCalledWith(null);
 });

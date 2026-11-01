@@ -18,7 +18,7 @@ function autosaveLabel(status, dirty) {
   if (status === 'saving') return 'Saving…';
   if (status === 'error') return 'Save failed';
   if (status === 'pending' || status === 'dirty' || dirty) return 'Unsaved changes';
-  if (status === 'saved') return 'Saved';
+  if (status === 'saved') return 'Draft saved';
   return 'Ready';
 }
 
@@ -358,6 +358,7 @@ export default function DualPaneWorkspace({
           <span
             className="pl-dual-autosave-status"
             data-status={resolvedAutosaveStatus}
+            title="Draft autosave keeps your working text. Use Save new version or Save as new prompt to save it to Library."
             role="status"
             aria-live="polite"
           >
