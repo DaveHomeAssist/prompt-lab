@@ -7,7 +7,7 @@ import { createSyncEngine, queueKey, stateKey } from '../lib/sync/syncEngine.js'
 import { notifyLocalWrite } from '../lib/storage.js';
 import { startSettingsJournal } from '../lib/settingsJournal.js';
 import {
-  LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_RECORD, LIBRARY_JOURNAL_REVISION_KEY, LIBRARY_JOURNAL_STORE,
+  LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_RECORD, LIBRARY_JOURNAL_REMOVED_KEY, LIBRARY_JOURNAL_REVISION_KEY, LIBRARY_JOURNAL_STORE,
   applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, mergeLibraryEntries, planLibraryJournalBoot, startLibraryJournal,
 } from '../lib/libraryJournal.js';
 
@@ -595,7 +595,8 @@ describe('re-review 8: failed-boot merge', () => {
     const preClear = snap();
     await new Promise(r => setTimeout(r, 5));
     const generation = markLibraryCleared(localStorage);
-    expect(Number.isFinite(new Date(localStorage.getItem(`pl2-library-clear:${generation}`)).getTime())).toBe(true);
+    const marker = JSON.parse(localStorage.getItem(`pl2-library-clear:${generation}`));
+    expect(Number.isFinite(new Date(marker.at).getTime())).toBe(true);
     saveJson(storageKeys.library, [row('kept', new Date().toISOString(), { metadata: { libraryGeneration: generation } })]);
     await settled(j.journal); stopAll();
     replaceLocal(preClear); // WebView2 lost the tail: the Clear and later writes
@@ -707,6 +708,76 @@ describe('re-review 8: failed-boot merge', () => {
     await finish(j);
     await boot();
     expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual(['New', 'Work', 'Old']);
+  });
+});
+
+// Fire Watch re-review 9 probes C2, C3 (R-34) and D3 (R-35) as tests.
+describe('re-review 9: failed-boot merge without clock trust', () => {
+  const row = (id, updatedAt = '2026-11-01T10:00:00.000Z', extra = {}) => ({ id, title: id, updatedAt, ...extra });
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+  const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
+  const failBoot = async () => { idb.state.openDelayMs = 80; const started = await boot({ timeoutMs: 10 }); idb.state.openDelayMs = 0; return started; };
+  const finish = async (started) => { await new Promise(r => setTimeout(r, 150)); await settled(started.journal); stopAll(); };
+  const hour = 60 * 60 * 1000;
+  // Clear with `before` in the Library, save `kept` after it, then lose the
+  // tail (WebView2), boot blind, and save `later` with the given clock.
+  const rollbackAcrossClear = async (before, later) => {
+    let j = await boot();
+    saveJson(storageKeys.library, before);
+    await settled(j.journal);
+    const preClear = localEntries();
+    const generation = markLibraryCleared(localStorage);
+    saveJson(storageKeys.library, [row('kept', new Date().toISOString(), { metadata: { libraryGeneration: generation } })]);
+    await settled(j.journal); stopAll();
+    replaceLocal(preClear);
+    j = await failBoot();
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), later]);
+    await finish(j);
+    expect((await boot()).outcome.action).toBe('restore');
+    return visible(storageKeys.library).sort();
+  };
+
+  it('R-34: the Clear marker lists the prompts and trash it cleared', () => {
+    saveJson(storageKeys.library, [row('a'), row('b')]);
+    saveJson(storageKeys.trash, [row('t')]);
+    const generation = markLibraryCleared(localStorage, ['c']);
+    const marker = JSON.parse(localStorage.getItem(`pl2-library-clear:${generation}`));
+    expect(marker.ids.sort()).toEqual(['a', 'b', 'c', 't']);
+  });
+
+  it('R-34 (C2): a cleared prompt with a clock ahead of the Clear stays cleared', async () => {
+    const ahead = new Date(Date.now() + hour).toISOString(); // pulled from a device whose clock runs fast
+    expect(await rollbackAcrossClear([row('old'), row('skewed', ahead)], row('new', new Date().toISOString())))
+      .toEqual(['kept', 'new']);
+  });
+
+  it('R-34 (C3): a prompt saved after the loss with a clock behind the Clear is visible', async () => {
+    const behind = new Date(Date.now() - hour).toISOString(); // saved on a device whose clock runs slow
+    expect(await rollbackAcrossClear([row('old')], row('slow', behind))).toEqual(['kept', 'slow']);
+  });
+
+  it('R-35 (D3): a collection removed in a session whose commit failed stays removed after the next blind session', async () => {
+    let j = await boot();
+    saveJson(storageKeys.library, [row('a')]);
+    saveJson(storageKeys.collections, ['Work', 'Old']);
+    await settled(j.journal); stopAll();
+    // Session 2: blind boot, "Old" removed, the journal commit fails.
+    j = await failBoot();
+    idb.state.failCommits = true;
+    saveJson(storageKeys.collections, ['Work']);
+    await new Promise(r => setTimeout(r, 150));
+    await settled(j.journal).catch(() => {});
+    stopAll();
+    idb.state.failCommits = false;
+    expect(JSON.parse(journalRecord().entries[storageKeys.collections])).toEqual(['Work', 'Old']);
+    // Session 3: blind again; this commit lands.
+    j = await failBoot();
+    saveJson(storageKeys.library, [row('a'), row('b')]);
+    await finish(j);
+    expect(JSON.parse(journalRecord().entries[storageKeys.collections])).toEqual(['Work']);
+    expect(localStorage.getItem(LIBRARY_JOURNAL_REMOVED_KEY)).toBeNull();
+    await boot();
+    expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toEqual(['Work']);
   });
 });
 

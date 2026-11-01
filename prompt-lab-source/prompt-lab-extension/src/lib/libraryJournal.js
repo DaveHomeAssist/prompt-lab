@@ -14,6 +14,9 @@ export const LIBRARY_JOURNAL_STORE = 'journal';
 export const LIBRARY_JOURNAL_RECORD = 'library';
 export const LIBRARY_JOURNAL_REVISION_KEY = 'pl2-library-journal-revision';
 export const LIBRARY_JOURNAL_BOOT_MARK = 'prompt-lab:library-journal-boot';
+// R-35: structure entries removed while the journal was unread, kept until a
+// journal commit that leaves them out succeeds. Not journaled itself.
+export const LIBRARY_JOURNAL_REMOVED_KEY = 'pl2-library-journal-removed';
 const DB_VERSION = 1;
 const BOOT_TIMEOUT_MS = 3000;
 // A cold IndexedDB open can exceed one boot window on a loaded machine (seen on
@@ -116,7 +119,9 @@ const parseArray = (raw) => { try { const value = JSON.parse(raw); return Array.
 //   newer move puts it (deletedAt/updatedAt), whichever side made it (R-31);
 // - rows this device saved after the journal's newer Clear Library move to
 //   that Clear's generation; older rows a rollback brought back stay hidden
-//   (#293 Codex P1, R-30).
+//   (#293 Codex P1, R-30). A marker that lists the cleared ids decides by id:
+//   rows it cleared stay hidden, all others join (R-34, no clock compare).
+//   Markers without ids fall back to the Clear time.
 // When the journal contributed anything, the record leaves out the sync state
 // and outbox: they describe this device's smaller Library, and pairing them
 // with the merged one could push deletes (R-21). The next restore then drops
@@ -133,9 +138,19 @@ const timeOf = (value) => {
   const parsed = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value) ? new Date(value).getTime() : NaN;
   return Number.isFinite(parsed) ? parsed : null;
 };
-// When the journal's Clear happened: the marker records it (R-30). Markers from
-// before that hold '1'; then the journal's last commit time is the bound.
-const clearTime = (entries, generation, savedAt) => timeOf(entries[`${LIBRARY_CLEAR_PREFIX}${generation}`]) ?? timeOf(savedAt);
+// What the journal's Clear removed. Current markers hold { at, ids } (R-34);
+// markers from R-30 hold the ISO time; older ones hold '1', and then the
+// journal's last commit time is the bound.
+const clearMarker = (entries, generation, savedAt) => {
+  const raw = entries[`${LIBRARY_CLEAR_PREFIX}${generation}`];
+  let value = null;
+  try { value = JSON.parse(raw); } catch { value = null; }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const ids = Array.isArray(value.ids) && value.ids.every((id) => typeof id === 'string') ? new Set(value.ids) : null;
+    return { ids, after: timeOf(value.at) ?? timeOf(savedAt) };
+  }
+  return { ids: null, after: timeOf(raw) ?? timeOf(savedAt) };
+};
 const rowClock = (row) => Math.max(timeOf(row?.updatedAt) ?? 0, timeOf(row?.deletedAt) ?? 0, timeOf(row?.createdAt) ?? 0);
 const generationOf = (row) => row?.metadata?.libraryGeneration || '0';
 const STRUCTURE_KEYS = RECORD_KEYS.filter((key) => key !== storageKeys.library && key !== storageKeys.trash);
@@ -161,15 +176,16 @@ export function mergeLibraryEntries(stored, fresh, { savedAt = null, removed = {
   for (const [key, value] of Object.entries(stored)) {
     if (isLibraryDeletionKey(key) && !Object.hasOwn(fresh, key)) merged[key] = value;
   }
-  // R-30: only rows saved after the journal's Clear join its generation.
+  // R-30/R-34: only rows the journal's Clear did not remove join its generation.
   const mine = clearGeneration(fresh);
   const theirs = clearGeneration(stored);
-  const after = theirs > mine ? clearTime(stored, theirs, savedAt) : null;
+  const clear = theirs > mine ? clearMarker(stored, theirs, savedAt) : null;
+  const joins = (row) => (clear.ids ? !clear.ids.has(row.id) : clear.after !== null && rowClock(row) > clear.after);
   const localRows = (key) => {
     if (!Object.hasOwn(fresh, key)) return [];
     const rows = parseArray(fresh[key]);
-    if (!rows || after === null) return rows;
-    return rows.map((row) => (row && typeof row === 'object' && generationOf(row) === mine && rowClock(row) > after)
+    if (!rows || !clear) return rows;
+    return rows.map((row) => (row && typeof row === 'object' && generationOf(row) === mine && joins(row))
       ? { ...row, metadata: { ...(row.metadata || {}), libraryGeneration: theirs } } : row);
   };
   const results = {};
@@ -290,6 +306,7 @@ export function createLibraryJournal({
   mergeEntries = null,
   // Used only until this device has read the record (see mergeLibraryEntries).
   mergeBeforeBoot = recordId === LIBRARY_JOURNAL_RECORD ? mergeLibraryEntries : null,
+  removedKey = recordId === LIBRARY_JOURNAL_RECORD ? LIBRARY_JOURNAL_REMOVED_KEY : null,
 }) {
   const label = recordId.charAt(0).toUpperCase() + recordId.slice(1);
   let dbPromise = null;
@@ -300,9 +317,33 @@ export function createLibraryJournal({
   // True once a boot read has seen the record, so a write knows what it replaces.
   let reconciled = false;
   // R-32: structure entries this device removed while unreconciled, so the
-  // pre-boot merge does not bring them back from the journal.
+  // pre-boot merge does not bring them back from the journal. R-35: they are
+  // kept in localStorage until a commit that leaves them out succeeds, so a
+  // removal whose commit failed survives into the next session.
   let lastSeen = null;
   const removed = {};
+  if (removedKey) {
+    try {
+      const saved = JSON.parse(storage.getItem(removedKey));
+      for (const key of STRUCTURE_KEYS) {
+        if (Array.isArray(saved?.[key])) removed[key] = new Set(saved[key].filter((id) => typeof id === 'string'));
+      }
+    } catch {
+      // Unreadable tombstones only mean the journal copy may come back.
+    }
+  }
+  const saveRemovals = () => {
+    if (!removedKey) return;
+    const out = {};
+    for (const [key, ids] of Object.entries(removed)) if (ids.size) out[key] = [...ids];
+    try {
+      if (Object.keys(out).length) storage.setItem(removedKey, JSON.stringify(out));
+      else storage.removeItem(removedKey);
+    } catch (error) {
+      logWarn('library journal removals', error);
+    }
+  };
+  const snapshotRemovals = () => Object.fromEntries(Object.entries(removed).map(([key, ids]) => [key, new Set(ids)]));
   const trackRemovals = (fresh) => {
     if (lastSeen) {
       for (const key of STRUCTURE_KEYS) {
@@ -312,6 +353,7 @@ export function createLibraryJournal({
         for (const id of before) if (!now.has(id)) gone.add(id);
         for (const id of now) gone.delete(id);
       }
+      saveRemovals();
     }
     lastSeen = fresh;
   };
@@ -349,7 +391,22 @@ export function createLibraryJournal({
     revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
     const wanted = revision;
     setLocalRevision(wanted);
-    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState, mergeEntries || (reconciled ? null : preBootMerge))).then((committed) => {
+    // R-35: the tombstones this commit's snapshot accounted for.
+    let covered = null;
+    const read = (source) => { const fresh = readState(source); covered = snapshotRemovals(); return fresh; };
+    const write = chain.then(() => database()).then((db) => {
+      const merge = mergeEntries || (reconciled ? null : preBootMerge);
+      return writeRecord(db, storage, wanted, recordId, read, merge && ((stored, fresh, record) => {
+        const entries = merge(stored, fresh, record);
+        covered = snapshotRemovals();
+        return entries;
+      }));
+    }).then((committed) => {
+      // The removals are now in the journal, so their tombstones can go.
+      if (covered && Object.keys(covered).length) {
+        for (const [key, ids] of Object.entries(covered)) for (const id of ids) removed[key]?.delete(id);
+        saveRemovals();
+      }
       // The journal was ahead (for example after a boot read timed out), so
       // the commit took a higher revision. Keep localStorage in step with it.
       if (committed > revision) revision = committed;
