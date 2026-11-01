@@ -500,6 +500,25 @@ export const PROVIDER_SETTINGS_KEYS = Object.freeze([
   ...VALID_PROVIDERS.flatMap((id) => PROVIDERS[id].settingsKeys),
 ]);
 
+/** Every provider's API key field. Secrets: never journal, log or export them. */
+export const PROVIDER_SECRET_FIELDS = Object.freeze(
+  VALID_PROVIDERS.map((id) => PROVIDERS[id].apiKeyField).filter(Boolean),
+);
+
+/**
+ * Provider settings fields known to hold no secret: the provider id, each
+ * provider's model field and base URL, and its other settings keys minus the
+ * API key field. Anything not listed (including future fields) counts as secret.
+ */
+export const PROVIDER_NON_SECRET_FIELDS = Object.freeze([...new Set([
+  'provider',
+  ...VALID_PROVIDERS.flatMap((id) => [
+    PROVIDERS[id].modelField,
+    ...(PROVIDERS[id].defaultBaseUrl ? [`${id}BaseUrl`] : []),
+    ...PROVIDERS[id].settingsKeys,
+  ]),
+])].filter((field) => field && !PROVIDER_SECRET_FIELDS.includes(field)));
+
 /** Backward-compatible DEFAULTS object. */
 export const DEFAULTS = Object.freeze(
   Object.fromEntries([

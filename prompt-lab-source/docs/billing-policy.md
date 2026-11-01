@@ -132,6 +132,14 @@ values above against `billingPolicy.js`.
 - The entitlement cache is a client convenience, not a security boundary. A user
   who edits local storage can show Pro locally. Any future server-provided Pro
   feature must check the entitlement on the server.
+- Desktop has no sign-in, so it never re-checks the cached entitlement
+  (`pl2-billing`) with the server: a cached Pro is trusted there with no time
+  limit, and an owner-status cache is never revalidated on any surface. Desktop
+  also journals the cache in IndexedDB (`settingsJournal.js`) so it survives
+  WebView2 Local Storage loss. The journal restores only the exact cached value
+  (with its `lastVerifiedAt`), never anything newer than the device had, so it
+  grants nothing new. The cache holds the account email, name and portal link,
+  which therefore also persist in the desktop profile's IndexedDB.
 - In-app Pro feature gates apply only to the hosted web app (built with
   `VITE_PROMPTLAB_PRO_GATES=on`; `areFeatureGatesActive()` in
   `prompt-lab-extension/src/lib/billing.js`). There, Free accounts cannot use
