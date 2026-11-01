@@ -254,9 +254,10 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   `pl2-loaded-packs` and every deletion/clear marker into one IndexedDB record
   committed with `durability: "strict"`, and bumps
   `pl2-library-journal-revision` after the data it covers. Before the first
-  render the newer copy wins: a higher journal revision restores localStorage
-  (deletion markers are only ever added); a higher local revision, or equal
-  revisions with different contents, rewrites the journal. A journal that
+  render a higher journal revision restores localStorage (deletion markers
+  are only ever added). Equal revisions with different contents also restore
+  the committed journal, because WebView2 can retain a revision while losing
+  mirror data. Only a higher local revision rewrites the journal. A journal that
   fails or does not answer within 3 s never blocks startup. A write still in
   flight when the process ends can be lost and is not acknowledged. Desktop
   Library save callers wait for the strict transaction before showing Saved

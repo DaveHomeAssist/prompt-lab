@@ -174,7 +174,6 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
       <label>Tags<input value={detailsDraft.tags} onChange={(event) => setDetailsDraft((current) => ({ ...current, tags: event.target.value }))} placeholder="research, template" disabled={smartView === 'trash'} /></label>
       <label>Collection<select value={detailsDraft.collection} onChange={(event) => setDetailsDraft((current) => ({ ...current, collection: event.target.value }))} disabled={smartView === 'trash' || !canUseCollections}><option value="">None</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label>
       {!canUseCollections && smartView !== 'trash' && <button type="button" className="pl-inline-upgrade" onClick={() => openBilling?.('collections')}>Unlock collections</button>}
-      {smartView !== 'trash' && <button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button>}
       {smartView !== 'trash' && detailsDirty && <button type="button" className="pl-secondary-button" onClick={discardDetails}>Discard changes</button>}
       <dl className="pl-inspector-audit-metadata">
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
@@ -672,6 +671,7 @@ export default function LibraryWorkspace({
         <div className="pl-inspector-tabs" role="tablist" aria-label="Prompt details" onKeyDown={(event) => handleTabArrowKeys(event, inspectorTab, setInspectorTab)}>
           {INSPECTOR_TABS.map(([id, label]) => <button key={id} type="button" role="tab" data-tab-id={id} id={`library-tab-${id}`} aria-controls="library-inspector-panel" aria-selected={inspectorTab === id} tabIndex={inspectorTab === id ? 0 : -1} onClick={() => setInspectorTab(id)}>{label}</button>)}
         </div>
+        {inspectorTab === 'details' && smartView !== 'trash' && <div className="pl-inspector-details-actions"><button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button></div>}
         <div className="pl-inspector-content" role="tabpanel" id="library-inspector-panel" aria-labelledby={`library-tab-${inspectorTab}`} tabIndex={0}>
           {selected.metadata?.followUpOrigin && <FollowUpOrigin origin={selected.metadata.followUpOrigin} library={lib.library} onOpenParent={selectEntry} m={m} />}
           {lib.library.some(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id) && <section aria-label="Follow-up prompts">

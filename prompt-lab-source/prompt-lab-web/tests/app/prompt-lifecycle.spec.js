@@ -12,7 +12,17 @@ for (const width of [1440, 375]) {
     await page.getByTestId('global-new-prompt').click();
     await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
     await page.getByTestId('prompt-input').fill('A separate synthetic prompt saved before Undo.');
-    await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
+    await page.route('**/api/proxy', route => route.fulfill({
+      status: 200, contentType: 'text/event-stream',
+      body: `data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: JSON.stringify({
+        enhanced: 'Develop a separate verification prompt. Include a named owner, explicit acceptance criteria and a concrete rollback action for every release step.',
+        changes: ['Add explicit acceptance and rollback criteria.'], reasoning: 'Makes the separate synthetic request actionable and independently verifiable.', variants: [],
+      }) } })}\n\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`,
+    }));
+    await page.getByTestId('refine-action').click();
+    await showResult(page);
+    await expect(page.getByTestId('output-textarea')).toHaveValue('Develop a separate verification prompt. Include a named owner, explicit acceptance criteria and a concrete rollback action for every release step.');
+    await page.getByTestId('save-to-library').click();
     await expect(page.locator('#save-receipt-title')).toBeVisible();
     const saved = await readLibrary(page);
     await page.getByRole('button', { name: 'Undo reset', exact: true }).click();
@@ -21,7 +31,17 @@ for (const width of [1440, 375]) {
     await expect(page.getByTestId('prompt-input')).toHaveValue(source);
     await showResult(page);
     await expect(page.getByTestId('output-textarea')).toHaveValue(result);
+    await expect(page.locator('.pl-result-commit-bar')).toContainText('Selected: Expanded. Not saved to Library yet.');
+    await expect(page.locator('.pl-result-commit-bar')).not.toContainText('version 1');
     expect(await readLibrary(page)).toEqual(saved);
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Save as new prompt');
+    await page.getByRole('dialog').getByTestId('save-to-library').click();
+    await expect.poll(async () => (await readLibrary(page)).length).toBe(saved.length + 1);
+    const afterDetailsSave = await readLibrary(page);
+    expect(afterDetailsSave.find(entry => entry.id === saved[0].id)).toEqual(saved[0]);
+    expect(afterDetailsSave.find(entry => entry.id !== saved[0].id)).toMatchObject({ original: source, enhanced: result });
     await fits(page);
   });
 }

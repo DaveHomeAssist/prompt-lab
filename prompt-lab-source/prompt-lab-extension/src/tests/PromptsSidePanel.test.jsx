@@ -119,3 +119,18 @@ describe('PromptsSidePanel', () => {
   fireEvent.change(search, { target: { value: 'alpha' } });
   fireEvent.click(screen.getByRole('button', { name: 'Clear search' })); expect(search).toHaveValue('');
 });
+
+it('offers empty-search recovery while preserving the query when broadening the view', () => {
+  const changeView = vi.fn();
+  renderPanel({ view: 'favorites', onViewChange: changeView });
+  const search = screen.getByRole('searchbox');
+  fireEvent.change(search, { target: { value: 'missing' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Search All prompts' }));
+  expect(changeView).toHaveBeenCalledWith('all'); expect(search).toHaveValue('missing'); expect(search).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search' })); expect(search).toHaveValue(''); expect(search).toHaveFocus();
+});
+it('renders prompt artwork inside the open button and preserves its accessible name', () => {
+  renderPanel({ library: [{ ...library[0], metadata: { artwork: { emoji: '🧪' } } }] });
+  const open = screen.getByRole('button', { name: `Open ${library[0].title} in Write` });
+  expect(open).toHaveTextContent('🧪'); expect(open.querySelector('.pl-artwork')).toHaveAttribute('aria-hidden', 'true');
+});

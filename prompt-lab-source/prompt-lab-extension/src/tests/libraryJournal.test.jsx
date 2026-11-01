@@ -55,7 +55,7 @@ describe('library journal boot decision', () => {
     ['no journal yet', local(0), null, 'journal'],
     ['journal ahead of localStorage', local(3), { revision: 4, entries: { a: '1' } }, 'restore'],
     ['localStorage ahead of journal', local(5), { revision: 4, entries: { a: '1' } }, 'journal'],
-    ['same revision, localStorage kept later writes', local(4, { a: '2' }), { revision: 4, entries: { a: '1' } }, 'journal'],
+    ['same revision, mirror differs from committed journal', local(4, { a: '2' }), { revision: 4, entries: { a: '1' } }, 'restore'],
     ['same revision and contents', local(4), { revision: 4, entries: { a: '1' } }, 'current'],
   ])('%s', (_, localState, record, action) => {
     expect(planLibraryJournalBoot(localState, record)).toBe(action);
@@ -74,6 +74,22 @@ describe('desktop library journal', () => {
     const hook = renderHook(() => usePromptLibrary(notify));
     return { ...started, hook, notify };
   };
+
+  it('restores acknowledged rows when the mirror loses data but keeps the committed revision', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const first = await boot(); await settled(first.journal);
+    saveJson(storageKeys.library, [{ id: 'acknowledged-import', title: 'Retain imported identity' }]);
+    await settled(first.journal);
+    const revision = localStorage.getItem(LIBRARY_JOURNAL_REVISION_KEY);
+    const record = journalRecord();
+    first.stop();
+    localStorage.setItem(storageKeys.library, '[]');
+    expect(localStorage.getItem(LIBRARY_JOURNAL_REVISION_KEY)).toBe(revision);
+    const restarted = await boot(); await settled(restarted.journal);
+    expect(ids(storageKeys.library)).toEqual(['acknowledged-import']);
+    expect(restarted.outcome.action).toBe('restore');
+    expect(journalRecord()).toEqual(record);
+  });
 
   it('withholds success until strict commit and coalesces duplicate clicks', async () => {
     const { hook, notify } = await desktopLibrary();

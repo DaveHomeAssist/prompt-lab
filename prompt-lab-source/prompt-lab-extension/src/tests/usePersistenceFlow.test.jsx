@@ -58,7 +58,7 @@ it('does not relink a restored draft when a dismissed durable save completes', a
   let pending;
   act(() => { pending = result.current.doSave(); });
   act(() => {
-    result.current.closeSavePanel();
+    result.current.clearPersistenceState();
     result.current.dismissSaveReceipt();
     result.current.setEditingId('restored-prompt');
     result.current.setSaveTitle('Restored prompt');

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { rememberArtwork } from '../lib/recentArtwork.js';
 import ArtworkPicker, { Artwork } from '../ArtworkPicker.jsx';
 import { safeArtwork, safeEmoji, ARTWORK_ICONS, MAX_ARTWORK_BYTES } from '../lib/libraryPresentation.js';
 
-afterEach(() => { cleanup(); localStorage.clear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 function Picker() {
   const [value, setValue] = useState({ icon: 'Star' });
   return <><ArtworkPicker value={value} onChange={setValue} label="Prompt artwork" /><output>{JSON.stringify(value)}</output></>;
@@ -41,6 +41,7 @@ describe('artwork choices and validation', () => {
     expect(document.querySelector('output')).toHaveTextContent('Star');
     upload(new File([new Uint8Array(MAX_ARTWORK_BYTES + 1)], 'big.png', { type: 'image/png' }));
     expect(screen.getByRole('alert')).toHaveTextContent('up to 64 KB');
+    vi.spyOn(window, 'Image').mockImplementation(function () { return { decode: () => Promise.resolve(), naturalWidth: 1, naturalHeight: 1 }; });
     upload(new File(['small'], 'small.png', { type: 'image/png' }));
     await waitFor(() => expect(document.querySelector('output')).toHaveTextContent('data:image/png;base64,'));
     fireEvent.click(screen.getByRole('button', { name: 'Clear artwork' }));
@@ -61,4 +62,28 @@ it('reuses a saved image in a collection picker without asking for another file'
   fireEvent.click(screen.getByRole('button', { name: 'Use recent image 1' }));
   expect(chosen.image).toBe(image);
   expect(JSON.parse(localStorage.getItem('pl2-recent-artwork'))).toHaveLength(1);
+});
+
+it('keeps existing artwork and reports a damaged image decode failure', async () => {
+  vi.spyOn(window, 'Image').mockImplementation(function () { return { decode: () => Promise.reject(new Error('decode failed')) }; });
+  render(<Picker />); fireEvent.click(document.querySelector('summary'));
+  fireEvent.change(screen.getByLabelText('Prompt artwork image'), { target: { files: [new File(['broken'], 'broken.png', { type: 'image/png' })] } });
+  await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('could not be read'));
+  expect(document.querySelector('output')).toHaveTextContent('Star');
+  expect(screen.getByLabelText('Prompt artwork image')).not.toBeDisabled();
+});
+
+it('pins and removes individual recent choices without selecting or clearing assigned artwork', async () => {
+  rememberArtwork({ icon: 'Clock' }); rememberArtwork({ emoji: '🧪' });
+  render(<Picker />); fireEvent.click(document.querySelector('summary'));
+  fireEvent.click(screen.getByRole('button', { name: 'Pin recent 🧪' }));
+  expect(screen.getByRole('button', { name: 'Unpin recent 🧪' })).toHaveAttribute('aria-pressed', 'true');
+  expect(document.querySelector('output')).toHaveTextContent('Star');
+  fireEvent.click(screen.getByRole('button', { name: 'Clear recently used' }));
+  expect(screen.getByRole('button', { name: 'Use recent 🧪' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Use recent Clock' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Remove recent 🧪' }));
+  expect(screen.queryByRole('button', { name: 'Use recent 🧪' })).not.toBeInTheDocument();
+  expect(document.querySelector('output')).toHaveTextContent('Star');
+  await waitFor(() => expect(screen.getByLabelText('Prompt artwork emoji')).toHaveFocus());
 });

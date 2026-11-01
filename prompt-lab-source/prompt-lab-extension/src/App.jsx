@@ -158,12 +158,14 @@ export default function App({
   const [writeSideView, setWriteSideView] = usePersistedState('pl2-write-side-view', 'scratch', {
     validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
   });
+  const [writePromptsQuery, setWritePromptsQuery] = useState('');
   const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
   // The prompt list last shown, so Prompts reopens where it was left.
   const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
   const resetCancelRef = useRef(null);
@@ -509,8 +511,9 @@ export default function App({
 
   const undoDraftReset = () => {
     if (!draftRecovery) return;
-    closeSavePanel();
+    persistenceFlow.clearPersistenceState();
     dismissSaveReceipt();
+    setResultContextRevision(revision => revision + 1);
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
@@ -1286,6 +1289,8 @@ export default function App({
                   sortBy={lib.sortBy}
                   view={writeSideView}
                   onViewChange={chooseWritePromptsView}
+                  query={writePromptsQuery}
+                  onQueryChange={setWritePromptsQuery}
                   onOpen={openPromptFromSide}
                   onInsert={(text, entry) => {
                     insertIntoPrompt(text);
@@ -1356,6 +1361,7 @@ export default function App({
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
               lastSaveReceipt={lastSaveReceipt}
+              resultContextRevision={resultContextRevision}
               onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}

@@ -88,6 +88,7 @@ export default function CreateEditorPane({
   enhanced,
   setEnhanced,
   resultMeta,
+  resultContextRevision = 0,
   setResultMeta,
   enhMdPreview,
   setEnhMdPreview,
@@ -595,6 +596,7 @@ export default function CreateEditorPane({
         )}
         {enhanced && <>
           <PostEnhanceResults
+            key={resultContextRevision}
             m={m}
             compact={compact}
             raw={raw}
