@@ -619,6 +619,34 @@ describe('re-review 8: failed-boot merge', () => {
     expect(rows.find(r => r.id === 'old').metadata?.libraryGeneration).toBeUndefined();
   });
 
+  it('#294 Codex P2: with an old "1" Clear marker, a prompt saved after a failed boot survives a second save', async () => {
+    // A journal written before Clear markers carried their time.
+    let j = await boot();
+    saveJson(storageKeys.library, [row('old')]);
+    await settled(j.journal);
+    const preClear = localEntries();
+    const generation = '0000000000000001:abc-0123';
+    localStorage.setItem(`pl2-library-clear:${generation}`, '1');
+    notifyLocalWrite(`pl2-library-clear:${generation}`);
+    saveJson(storageKeys.library, [row('kept', new Date().toISOString(), { metadata: { libraryGeneration: generation } })]);
+    await settled(j.journal); stopAll();
+    await new Promise(r => setTimeout(r, 5));
+
+    replaceLocal(preClear); // the rollback lost the Clear
+    j = await failBoot();
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), row('new', new Date().toISOString())]);
+    await new Promise(r => setTimeout(r, 150));
+    await settled(j.journal);
+    // A second, unrelated save in the same session commits again (savedAt moves on).
+    await new Promise(r => setTimeout(r, 5));
+    saveJson(storageKeys.collections, ['Work']);
+    await settled(j.journal);
+    stopAll();
+
+    expect((await boot()).outcome.action).toBe('restore');
+    expect(visible(storageKeys.library).sort()).toEqual(['kept', 'new']);
+  });
+
   it('R-31 (T1): a rolled-back trash move is not undone, and the prompt is in one place', async () => {
     let j = await boot();
     saveJson(storageKeys.library, [row('a'), row('x')]);

@@ -315,9 +315,16 @@ export function createLibraryJournal({
     }
     lastSeen = fresh;
   };
+  // #294 Codex P2: the fallback Clear cutoff for markers without a time is the
+  // journal's last commit before this session's first write. Later commits in
+  // the session advance savedAt, so it is taken once and kept; otherwise a
+  // prompt re-stamped by the first merge would fall behind the moving cutoff
+  // and lose its generation on the second.
+  let legacyCutoff;
   const preBootMerge = mergeBeforeBoot && ((storedEntries, fresh, record) => {
     trackRemovals(fresh);
-    return mergeBeforeBoot(storedEntries, fresh, { savedAt: record?.savedAt ?? null, removed });
+    if (legacyCutoff === undefined) legacyCutoff = record?.savedAt ?? null;
+    return mergeBeforeBoot(storedEntries, fresh, { savedAt: legacyCutoff, removed });
   });
   const database = () => {
     // A failed open is retried by the next write instead of being cached.
