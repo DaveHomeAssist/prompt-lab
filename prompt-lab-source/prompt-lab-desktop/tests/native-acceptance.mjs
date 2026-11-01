@@ -311,9 +311,45 @@ async function click(selector, using) {
     await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
   }
 }
+// Focus an input for typing. Waits (briefly) until it is in view, its position
+// is stable and nothing covers its centre, then clicks it. A layout shift (for
+// example the Library rail heading reflowing when its web font loads) can still
+// put another element over it; then the click is skipped and the input is
+// focused directly, which is all typing needs. Either way it must end focused.
+async function focusForTyping(selector, id) {
+  const ref = { 'element-6066-11e4-a52e-4f735466cecf': id };
+  await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
+  let previousRect;
+  const clear = await waitFor(async () => {
+    const hit = await execute(`
+      const target = arguments[0];
+      target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
+      const box = target.getBoundingClientRect();
+      const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
+      const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+      const cover = document.elementFromPoint(x, y);
+      return { uncovered: target.contains(cover), x, y, cover: cover?.tagName + '.' + cover?.className };
+    `, [ref]);
+    if (!hit.uncovered) recordDiagnostic('fillOcclusion', { selector, ...hit });
+    const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
+    const stable = rect === previousRect;
+    previousRect = rect;
+    return stable && hit.uncovered;
+  }, `${selector} position stable and unobscured`, 5_000).catch(() => false);
+  let clicked = false;
+  if (clear) {
+    try { await command('POST', `/session/${session}/element/${id}/click`, {}); clicked = true; }
+    catch (error) { if (!/click intercepted|not clickable/i.test(String(error?.message || error))) throw error; }
+  }
+  if (!clicked) {
+    recordDiagnostic('fillFocusFallback', { selector });
+    await execute('arguments[0].scrollIntoView({block:"nearest", behavior:"instant"}); arguments[0].focus();', [ref]);
+  }
+  assert.ok(await execute('return document.activeElement === arguments[0];', [ref]), `${selector} is focused before typing`);
+}
 async function fill(selector, text) {
   const id = await element(selector);
-  await command('POST', `/session/${session}/element/${id}/click`, {});
+  await focusForTyping(selector, id);
   // WebKit's element clear does not update React's controlled input state.
   // Ctrl+A / Backspace produces the same input events as operator replacement.
   await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
