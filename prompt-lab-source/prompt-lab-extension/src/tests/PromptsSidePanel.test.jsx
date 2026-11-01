@@ -100,3 +100,37 @@ describe('PromptsSidePanel', () => {
     expect(screen.getByText('0 prompts')).toBeInTheDocument();
   });
 });
+
+ it('searches title, body, collection and tags within the selected view without changing order', () => {
+  const tagged = library.map(entry => ({ ...entry, tags: entry.id === 'alpha' ? ['launch'] : [] }));
+  const { rerender } = renderPanel({ library: tagged });
+  const search = screen.getByRole('searchbox', { name: 'Search prompts beside Write' });
+  for (const [query, titles] of [['ALPHA', ['Alpha brief']], ['Bravo draft', ['Bravo summary']], ['Ops launch', ['Alpha brief']], ['outline', ['Charlie outline']]]) {
+    fireEvent.change(search, { target: { value: query } }); expect(panelTitles()).toEqual(titles);
+  }
+  fireEvent.change(search, { target: { value: 'draft' } });
+  expect(panelTitles()).toEqual(['Bravo summary', 'Alpha brief']);
+  rerender(<PromptsSidePanel library={tagged} view="favorites" />);
+  expect(panelTitles()).toEqual(['Alpha brief']);
+  fireEvent.change(search, { target: { value: 'missing' } });
+  expect(screen.getByText('No prompts match this search in the selected view.')).toBeInTheDocument();
+  fireEvent.keyDown(search, { key: 'Escape' }); expect(search).toHaveValue('');
+  expect(panelTitles()).toEqual(['Echo email', 'Charlie outline', 'Alpha brief']);
+  fireEvent.change(search, { target: { value: 'alpha' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search' })); expect(search).toHaveValue('');
+});
+
+it('offers empty-search recovery while preserving the query when broadening the view', () => {
+  const changeView = vi.fn();
+  renderPanel({ view: 'favorites', onViewChange: changeView });
+  const search = screen.getByRole('searchbox');
+  fireEvent.change(search, { target: { value: 'missing' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Search All prompts' }));
+  expect(changeView).toHaveBeenCalledWith('all'); expect(search).toHaveValue('missing'); expect(search).toHaveFocus();
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search' })); expect(search).toHaveValue(''); expect(search).toHaveFocus();
+});
+it('renders prompt artwork inside the open button and preserves its accessible name', () => {
+  renderPanel({ library: [{ ...library[0], metadata: { artwork: { emoji: '🧪' } } }] });
+  const open = screen.getByRole('button', { name: `Open ${library[0].title} in Write` });
+  expect(open).toHaveTextContent('🧪'); expect(open.querySelector('.pl-artwork')).toHaveAttribute('aria-hidden', 'true');
+});

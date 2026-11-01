@@ -442,7 +442,7 @@ textarea:disabled {
 /* ── Post-enhance workspace ── */
 .pl-results-shell {
   --result-line: color-mix(in srgb, currentColor 13%, transparent);
-  overflow: hidden;
+  overflow: clip;
   border: 1px solid color-mix(in srgb, var(--pl-brand-ember) 28%, transparent);
   border-radius: 1rem;
   background: color-mix(in srgb, var(--pl-brand-ink) 94%, var(--pl-brand-ember));
@@ -535,9 +535,14 @@ textarea:disabled {
 .pl-reasoning { margin-top: 0.75rem; border: 1px solid var(--result-line); border-radius: 0.65rem; padding: 0.7rem 0.8rem; }
 .pl-reasoning summary { cursor: pointer; font-size: 0.72rem; font-weight: 750; }
 .pl-reasoning p { margin-top: 0.55rem; font-size: 0.73rem; line-height: 1.6; opacity: 0.7; }
-/* Keep save actions in document flow: a sticky footer can cover review controls
-   when the result scrollport is shorter than the candidate rail at tablet sizes. */
-.pl-result-commit-bar { position: static; border-top: 1px solid var(--result-line); background: color-mix(in srgb, var(--pl-brand-ink) 92%, transparent); backdrop-filter: blur(18px); }
+/* The stacked layout scrolls the whole result; pinning a tall bar would obscure its controls. */
+.pl-result-commit-bar { position: relative; z-index: 6; flex-wrap: wrap; border-bottom: 1px solid var(--result-line); background: var(--pl-brand-ink); }
+.pl-result-save-feedback { flex: 1 0 100%; font-size: 0.72rem; overflow-wrap: anywhere; }
+.pl-result-save-more { position: relative; flex: 0 0 auto; }
+.pl-result-save-more > summary { cursor: pointer; }
+.pl-result-save-menu { position: absolute; right: 0; top: calc(100% + 0.25rem); z-index: 8; display: grid; gap: 0.35rem; width: 13rem; padding: 0.5rem; border: 1px solid var(--result-line); border-radius: 0.5rem; background: var(--pl-brand-ink); box-shadow: 0 0.5rem 1.5rem #0004; }
+.pl-result-save-menu button { width: 100%; }
+.pl-create-split-pane[data-pane='result'] { scroll-padding-top: 14rem; }
 [data-theme="light"] .pl-result-commit-bar { background: rgba(255, 253, 250, 0.94); }
 .pl-commit-copy { min-width: 10rem; flex: 1; }
 .pl-commit-copy input { width: min(100%, 24rem); margin-top: 0.3rem; border: 0; border-bottom: 1px solid var(--result-line); border-radius: 0; background: transparent; padding: 0.25rem 0; font-size: 0.82rem; font-weight: 700; }
@@ -915,6 +920,8 @@ textarea:disabled {
 .pl-saved-notes,
 .pl-saved-tests,
 .pl-version-workspace { display: grid; gap: 0.75rem; }
+.pl-inspector-details-actions { position: sticky; top: 0; z-index: 1; background: var(--pl-brand-ink); padding: 0.5rem 0.9rem; flex: 0 0 auto; }
+.pl-inspector-details-actions > button { width: 100%; }
 .pl-inspector-form-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
 .pl-inspector-audit-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; border-top: 1px solid color-mix(in srgb, currentColor 10%, transparent); padding-top: 0.7rem; }
 .pl-inspector-audit-metadata div { display: grid; gap: 0.1rem; }
@@ -1032,7 +1039,11 @@ textarea:disabled {
   .pl-candidate-rail { padding-inline: 0.55rem; }
   .pl-candidate-actions { min-width: max-content; }
   .pl-result-commit-bar { padding: 0.8rem; }
-  .pl-commit-actions > * { flex: 1 1 9rem; }
+  .pl-commit-actions { gap: 0.35rem; }
+  .pl-commit-actions > .pl-primary-button { flex: 1 1 0; min-width: 0; }
+  .pl-commit-actions > .pl-secondary-button,
+  .pl-commit-actions > .pl-result-save-more { flex: 0 0 auto; }
+  .pl-result-commit-bar .pl-eyebrow { display: none; }
   .pl-inspector-form-row,
   .pl-inspector-audit-metadata { grid-template-columns: 1fr; }
 }
@@ -1401,3 +1412,102 @@ html[data-palette]:not([data-palette='ember']) .pl-app-shell[data-theme='light']
 .pl-scratch-toolbar button { min-width: 1.75rem; }
 .pl-drawer-close { min-height: 1.75rem; padding-block: 0.3rem; }
 .pl-context-summary { min-height: 1.5rem; }
+
+/* Save occupies its own area in the bounded result pane, outside review scrolling. */
+.pl-result-save-slot { --result-line: color-mix(in srgb, currentColor 13%, transparent); flex: 0 0 auto; }
+.pl-result-save-slot .pl-result-commit-bar { position: static; border: 1px solid var(--result-line); border-radius: 0.7rem; }
+.pl-create-result-frame { min-width: 0; min-height: 0; }
+.pl-create-split:not(.is-flow) .pl-create-split-pane[data-pane='result'] { overflow: hidden; }
+.pl-create-split:not(.is-flow) .pl-create-result-frame { display: flex; flex-direction: column; height: 100%; }
+.pl-create-split:not(.is-flow) .pl-create-result-review { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pl-create-split.is-flow .pl-result-save-slot { position: sticky; top: 0; z-index: 6; }
+
+/* At high zoom on short screens, retain the title and save state on one line. */
+@media (max-height: 350px) {
+  .pl-context-summary { flex-wrap: nowrap; }
+  .pl-context-heading { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+}
+
+/* Artwork is a separate control, never nested in the Inspect button. */
+.pl-library-results .pl-library-card { grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
+.pl-library-card-artwork { grid-column: 2; display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.pl-library-card-artwork > button { padding: 0; border-radius: 7px; }
+.pl-library-results .pl-library-card-open { grid-column: 2; }
+.pl-library-results .pl-library-card-actions { grid-column: 2; }
+.pl-library-card-artwork > button:hover { outline: 1px solid var(--pl-brand-ember); }
+.pl-library-card-artwork > button:focus-visible, .pl-artwork-popover button:focus-visible, .pl-artwork-popover input:focus-visible { outline: 2px solid var(--pl-brand-ember-bright); outline-offset: 3px; }
+.pl-library-results.is-gallery .pl-library-card-artwork { flex-direction: column; align-items: stretch; }
+.pl-library-results.is-gallery .pl-library-card-artwork > button:first-child .pl-artwork { width: 100%; height: 7rem; }
+.pl-library-card-artwork .pl-artwork-add { padding: 0.4rem 0.6rem; text-align: center; border: 1px dashed currentColor; }
+.pl-artwork-emoji { font-size: 1.25rem; line-height: 1; }
+.pl-artwork-emoji-input { display: grid; gap: 0.25rem; }
+.pl-artwork-emoji-input input { min-width: 0; width: 100%; }
+.pl-artwork-popover { position: fixed; margin: 0; width: min(360px, calc(100vw - 16px)); max-width: none; max-height: calc(100dvh - 16px); padding: 0.75rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 12px; background: var(--pl-brand-ink); color: var(--pl-brand-paper); box-shadow: 0 12px 40px #0006; overflow: auto; }
+.pl-artwork-popover::backdrop { background: #0005; }
+.pl-artwork-popover header { display: grid; gap: 0.2rem; margin-bottom: 0.6rem; }
+.pl-artwork-popover header span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
+.pl-artwork-popover footer { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.6rem; }
+.pl-artwork-popover footer button { padding: 0.4rem 0.8rem; border: 1px solid currentColor; border-radius: 6px; }
+.pl-artwork-popover [role='alert'] { font-size: 0.8rem; margin-top: 0.5rem; }
+@media (min-width: 701px) {
+  .pl-library-results.is-list .pl-library-card, .pl-library-results.is-compact .pl-library-card { grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-rows: auto; }
+  .pl-library-results.is-list .pl-library-card-open, .pl-library-results.is-compact .pl-library-card-open { grid-column: 3; }
+  .pl-library-results.is-list .pl-library-card-actions, .pl-library-results.is-compact .pl-library-card-actions { grid-column: 4; }
+}
+
+.pl-library-card-artwork.is-empty .pl-artwork { color: var(--pl-muted-text); background: color-mix(in srgb, currentColor 6%, transparent); }
+
+.pl-artwork-recents { display: grid; gap: 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); padding-bottom: 0.5rem; }
+.pl-artwork-recents-heading { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
+.pl-artwork-recents-heading button { font-size: 0.65rem; text-decoration: underline; }
+.pl-artwork-recents .pl-artwork-options button { padding: 0; }
+.pl-artwork-history-error { font-size: 0.8rem; padding: 0.5rem; }
+.pl-write-prompt-search { display: flex; gap: 0.4rem; padding: 0 0.6rem 0.5rem; flex: 0 0 auto; min-width: 0; }
+.pl-write-prompt-search input { width: 100%; min-width: 0; min-height: 2rem; border: 1px solid color-mix(in srgb, currentColor 25%, transparent); border-radius: 6px; background: var(--pl-brand-ink); color: var(--pl-brand-paper); padding: 0.4rem 0.5rem; font-size: 0.75rem; }
+.pl-write-prompt-search button { flex: 0 0 auto; font-size: 0.7rem; padding: 0.25rem; }
+.pl-write-prompt-search input:focus-visible { outline: 2px solid var(--pl-brand-ember-bright); outline-offset: 2px; }
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-tab-panel:has(.pl-write-side.is-overlay) { animation: none; }
+  .pl-write-side.is-overlay.is-above-mobile-nav { top: 0.5rem; z-index: 70; height: calc(100dvh - 5.25rem - env(safe-area-inset-bottom)); }
+  .pl-write-side-header, .pl-write-side-subheader { padding: 0.25rem 0.5rem; }
+  .pl-write-side-header > button, .pl-write-side-subheader button, .pl-write-side-tabs button { min-height: 2rem; }
+}
+
+
+/* Artwork reuse controls share the Library visual language. */
+.pl-artwork-recent-list { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.pl-artwork-recent-choice { display: grid; grid-template-columns: repeat(3, 2.75rem); gap: 2px; padding: 2px; border: 1px solid color-mix(in srgb, currentColor 15%, transparent); border-radius: 7px; }
+.pl-artwork-recent-choice button { display: grid; min-width: 2.75rem; min-height: 2.75rem; padding: 0; place-items: center; border-radius: 5px; }
+.pl-artwork-recent-choice[data-pinned='true'] { border-color: var(--pl-brand-ember-bright); }
+.pl-artwork-recent-choice button[aria-pressed='true'] { background: color-mix(in srgb, var(--pl-brand-ember) 20%, transparent); }
+.pl-artwork-recent-choice button:hover, .pl-artwork-recent-choice button:focus-visible { background: color-mix(in srgb, currentColor 10%, transparent); }
+.pl-artwork-suggestions { display: grid; gap: 0.4rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); padding-bottom: 0.5rem; font-size: 0.75rem; }
+.pl-artwork-suggestion { display: grid; min-width: 2.75rem; min-height: 2.75rem; padding: 0; place-items: center; border: 1px dashed color-mix(in srgb, currentColor 30%, transparent); border-radius: 7px; }
+.pl-artwork-suggestion:hover, .pl-artwork-suggestion:focus-visible { background: color-mix(in srgb, currentColor 10%, transparent); }
+.pl-write-prompt-open { display: flex; align-items: center; gap: 0.5rem; }
+.pl-write-prompt-copy { min-width: 0; flex: 1; }
+.pl-write-search-recovery { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+.pl-write-search-recovery button { min-height: 2.25rem; padding: 0.4rem 0.6rem; border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 6px; }
+@media (pointer: coarse) {
+  .pl-artwork-recent-choice { grid-template-columns: repeat(3, 2.75rem); }
+  .pl-artwork-recent-choice button, .pl-write-search-recovery button { min-height: 2.75rem; }
+}
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-write-prompts-empty { padding: 0.25rem 0.5rem; }
+  .pl-write-search-recovery { margin-top: 0; gap: 0.25rem; }
+  .pl-write-search-recovery button { min-height: 2rem; padding: 0.25rem 0.4rem; font-size: 0.65rem; }
+  /* The zero-result count and actions remain visible; keep the explanation for assistive technology. */
+  .pl-write-prompts-empty:has(.pl-write-search-recovery) > p { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+@media (max-width: 719px) and (max-height: 500px) {
+  .pl-app-shell.is-compact .pl-write-side-header, .pl-app-shell.is-compact .pl-write-side-subheader { padding: 0.125rem 0.5rem; }
+  .pl-app-shell.is-compact .pl-write-side-header button, .pl-app-shell.is-compact .pl-write-side-subheader button, .pl-app-shell.is-compact .pl-write-search-recovery button { min-height: 2rem; min-width: 2rem; }
+  .pl-app-shell.is-compact .pl-write-side .pl-segmented { padding: 0.1rem; }
+  .pl-app-shell.is-compact .pl-write-prompt-search input { min-height: 2rem; }
+}
+
+@media (max-height: 350px) {
+  .pl-library-inspector { display: block; }
+  .pl-library-inspector .pl-inspector-content { overflow-y: visible; }
+}

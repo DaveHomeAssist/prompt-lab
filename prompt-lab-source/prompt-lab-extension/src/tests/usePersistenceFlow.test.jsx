@@ -50,6 +50,49 @@ it('does not relink a new draft when an earlier durable save completes', async (
   expect(result.current.showSave).toBe(true);
 });
 
+it('does not relink a restored draft when a dismissed durable save completes', async () => {
+  let settle;
+  const durable = new Promise(resolve => { settle = resolve; });
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => durable });
+  act(() => result.current.openSavePanel());
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  act(() => {
+    result.current.clearPersistenceState();
+    result.current.dismissSaveReceipt();
+    result.current.setEditingId('restored-prompt');
+    result.current.setSaveTitle('Restored prompt');
+  });
+  await act(async () => {
+    settle({ id: 'later-prompt', title: 'Later prompt', versionNumber: 1 });
+    await pending;
+  });
+  expect(result.current.editingId).toBe('restored-prompt');
+  expect(result.current.saveTitle).toBe('Restored prompt');
+  expect(result.current.lastSaveReceipt).toBeNull();
+  expect(result.current.showSave).toBe(false);
+});
+
+it('records the acknowledged result snapshot even if the editor changes while saving', async () => {
+  let settle;
+  const { result } = renderPersistenceFlow({ doSaveImpl: () => new Promise(resolve => { settle = resolve; }) });
+  let pending;
+  act(() => { pending = result.current.doSave(); });
+  act(() => result.current.setEnhanced('Later unsaved result'));
+  await act(async () => {
+    settle({ id: 'saved-result', title: 'Saved result', versionNumber: 2 });
+    await pending;
+  });
+  expect(result.current.lastSaveReceipt.resultSnapshot).toMatchObject({ raw: 'Raw draft', content: 'Enhanced draft', candidateId: 'improved' });
+  expect(result.current.enhanced).toBe('Later unsaved result');
+});
+
+it('does not describe a split-pane draft save as an acknowledged result', async () => {
+  const { result } = renderPersistenceFlow();
+  await act(async () => { await result.current.doSave(undefined, { enhancedOverride: 'Raw draft', rawOverride: 'Raw draft' }); });
+  expect(result.current.lastSaveReceipt.resultSnapshot).toBeNull();
+});
+
 function makeEntry(overrides = {}) {
   return normalizeEntry({
     id: 'entry-1',
@@ -129,6 +172,15 @@ function renderPersistenceFlow({
 }
 
 describe('usePersistenceFlow', () => {
+  it('uses the acknowledged version for the next save instead of its original loaded version', () => {
+    const entry = makeEntry();
+    const { result, doSave } = renderPersistenceFlow({ entry, doSaveImpl: () => ({ id: entry.id, versionId: 'acknowledged-version' }) });
+    act(() => result.current.applyEntry(entry));
+    act(() => result.current.doSave());
+    expect(doSave.mock.calls[0][0].expectedVersionId).toBe(entry.currentVersionId);
+    act(() => result.current.doSave());
+    expect(doSave.mock.calls[1][0].expectedVersionId).toBe('acknowledged-version');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();

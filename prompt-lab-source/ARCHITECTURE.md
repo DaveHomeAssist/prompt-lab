@@ -136,7 +136,15 @@ and React mobile surfaces reach Anthropic only, because that is the sole host
 
 The proxy validates the target against `SUPPORTED_HOST` (`api.anthropic.com`)
 and `SUPPORTED_PATH` (`/v1/messages`), and restricts models to
-`HOSTED_ALLOWED_ANTHROPIC_MODELS`, which defaults to `claude-sonnet-4-6` alone.
+`HOSTED_ALLOWED_ANTHROPIC_MODELS`. Defaults are the reviewed, priced models:
+`claude-sonnet-4-6`, `claude-haiku-5-5`, `claude-sonnet-5-5`,
+`claude-opus-5-5`, `claude-haiku-4-5`, and `claude-opus-4-6`.
+Sonnet 4.6 remains the initial choice; Provider Settings persists an explicit
+selection in the existing browser settings. GET on the proxy returns only the
+configured priced catalogue without an upstream request or credentials. POST
+keeps its existing origin check. Unsupported models are rejected before
+inference, rather than silently substituted. The cycle/day/IP budget, request
+counts and token/input limits apply to every shared-key model.
 A hosted client may send the `__plb_hosted_shared_key__` placeholder instead of
 a real key; the proxy strips it and substitutes the server-side
 `ANTHROPIC_API_KEY`, so hosted usage does not require the visitor to hold a
@@ -231,7 +239,7 @@ Transport verification contracts:
 - Experiment and eval data use the experiment store layer
 - Extension provider settings use `chrome.storage.local`
 - Desktop provider settings use localStorage
-- The desktop shell journals Library state to IndexedDB (`prompt_lab_durable`,
+- The desktop shell journals Library and Scratch state to IndexedDB (`prompt_lab_durable`,
   see below); localStorage stays the copy every reader uses
 - The React mobile prototype stores its local workspace in browser storage
 - The native app uses SwiftData and stores its provider key in Keychain
@@ -246,15 +254,26 @@ Persistence contracts (post 2026-08 behavioral-audit remediation):
   `pl2-loaded-packs` and every deletion/clear marker into one IndexedDB record
   committed with `durability: "strict"`, and bumps
   `pl2-library-journal-revision` after the data it covers. Before the first
-  render the newer copy wins: a higher journal revision restores localStorage
-  (deletion markers are only ever added); a higher local revision, or equal
-  revisions with different contents, rewrites the journal. A journal that
+  render a higher journal revision restores localStorage (deletion markers
+  are only ever added). Equal revisions with different contents also restore
+  the committed journal, because WebView2 can retain a revision while losing
+  mirror data. Only a higher local revision rewrites the journal. A journal that
   fails or does not answer within 3 s never blocks startup. A write still in
   flight when the process ends can be lost and is not acknowledged. Desktop
   Library save callers wait for the strict transaction before showing Saved
   or a save receipt. A rejected or timed-out commit leaves a persistent error
   and the draft available; an identical retry keeps its staged ID and version.
   Completion from an older editing context cannot relink a newer draft.
+
+- Desktop Scratch durability (`src/lib/scratchJournal.js`, Tauri only) uses
+  the same strict transaction engine, with an independent `scratch` record and
+  `pl2-scratch-journal-revision`. The whole note payload, schema marker and
+  legacy note keys are recovered before the first render. Both Scratch views
+  show Saving until the strict commit completes, retain edits on failure and
+  offer retry. Failed startup recovery blocks editing until loading succeeds.
+  Legacy keys are removed only after the replacement has a durable commit.
+  A write interrupted before acknowledgement may roll back to the last
+  committed snapshot. Library recovery never replaces Scratch state.
 
 - Permanent Library deletion uses append-only `pl2-library-deleted:<id>` keys
   with value `1`; the marker contains no title or body. Clear Library appends a

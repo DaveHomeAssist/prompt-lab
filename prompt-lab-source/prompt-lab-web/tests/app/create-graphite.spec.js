@@ -26,12 +26,13 @@ async function pane(page, name) {
 }
 
 async function checkSurface(page, label) {
-  // Theme text updates before the existing control background transitions finish.
-  await page.locator('.pl-create-graphite').evaluate(async root => {
-    const animations = root.getAnimations({ subtree: true })
-      .filter(animation => Number.isFinite(animation.effect?.getComputedTiming().endTime));
-    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
-  });
+  // Closed details can leave a completed transition's finished promise pending.
+  // Observe current finite transition state before checking the final colours.
+  await expect.poll(() => page.locator('.pl-create-graphite').evaluate(root =>
+    root.getAnimations({ subtree: true }).filter(animation =>
+      Number.isFinite(animation.effect?.getComputedTiming().endTime)
+      && !['finished', 'idle'].includes(animation.playState)).length,
+  )).toBe(0);
   const bounds = await page.evaluate(() => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight, scrollWidth: document.documentElement.scrollWidth, scrollHeight: document.documentElement.scrollHeight }));
   expect.soft(bounds.scrollWidth, label).toBeLessThanOrEqual(bounds.width);
   expect.soft(bounds.scrollHeight, label).toBeLessThanOrEqual(bounds.height);

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { listEvalRuns, listTestCases } from '../experimentStore.js';
 import { retryPendingWrites } from '../lib/writeRecovery.js';
+import * as scratchJournal from '../lib/scratchJournal.js';
 
 vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
   ...await importOriginal(), shouldAttemptLegacyWebMigration: () => false,
@@ -82,6 +83,23 @@ async function openPreview(tab, payload) {
   await waitFor(() => expect(tab.result.current.importPreview).toBeTruthy());
 }
 
+it('does not finish a Scratch import until its durable write succeeds, and retries the same stage', async () => {
+  const notify = vi.fn();
+  const tab = renderHook(() => usePromptLibrary(notify));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  const durable = vi.spyOn(scratchJournal, 'commitScratchSave').mockRejectedValueOnce(new Error('Synthetic strict Scratch failure')).mockResolvedValue(2);
+  await openPreview(tab, { library: [{ ...prompt('new'), enhanced: 'Different body' }], scratch: { pads: [{ id: 'note', content: 'Imported durable note' }] } });
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.pendingImport).toBe(true);
+  expect(tab.result.current.importPreview.completedStages).not.toContain('Scratch');
+  expect(notify).not.toHaveBeenCalledWith(expect.stringMatching(/^Imported/));
+  const staged = localStorage.getItem('pl2-pads');
+  await act(async () => tab.result.current.retryImport());
+  expect(tab.result.current.pendingImport).toBe(false);
+  expect(localStorage.getItem('pl2-pads')).toBe(staged);
+  expect(durable).toHaveBeenCalledTimes(2);
+});
+
 it('preview and Cancel perform no import writes, including workspace extras', async () => {
   const tab = renderHook(() => usePromptLibrary(vi.fn()));
   await waitFor(() => expect(tab.result.current.libReady).toBe(true));
@@ -121,6 +139,28 @@ it('requires refreshed confirmation when Clear Library changes the destination g
   expect(tab.result.current.library).toHaveLength(0);
   await act(async () => tab.result.current.confirmImport());
   expect(tab.result.current.library.map(row => row.id)).toEqual(['new']);
+});
+
+it('refreshes folder-only changes before Apply and retains new folders on renewed confirmation', async () => {
+  const folder = { id: 'work', name: 'Work', collection: 'Work', parentId: null, artwork: { icon: 'folder', image: '' } };
+  localStorage.setItem('pl2-collection-folders', JSON.stringify([folder]));
+  const tab = renderHook(() => usePromptLibrary(vi.fn()));
+  await waitFor(() => expect(tab.result.current.libReady).toBe(true));
+  await openPreview(tab, { library: [], folders: [folder] });
+  // A different tab wrote storage, but its storage event has not arrived yet.
+  const added = { ...folder, id: 'other', name: 'Other', collection: 'Other' };
+  const concurrent = [{ ...folder, artwork: { icon: 'star', image: '' } }, added];
+  localStorage.setItem('pl2-collection-folders', JSON.stringify(concurrent));
+  const writes = vi.spyOn(Storage.prototype, 'setItem');
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview?.notice).toContain('workspace changed');
+  expect(writes.mock.calls.filter(([key]) => key !== 'pl2-diagnostics-v1')).toEqual([]);
+  expect(JSON.parse(localStorage.getItem('pl2-collection-folders'))).toEqual(concurrent);
+  await act(async () => tab.result.current.confirmImport());
+  expect(tab.result.current.importPreview).toBeNull();
+  expect(JSON.parse(localStorage.getItem('pl2-collection-folders'))).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: 'work' }), expect.objectContaining({ id: 'other' }),
+  ]));
 });
 
 it('retries only unfinished stages after a run write fails', async () => {

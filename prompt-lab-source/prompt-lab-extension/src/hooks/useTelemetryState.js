@@ -3,6 +3,7 @@ import { loadJson, saveJson, storageKeys } from '../lib/storage.js';
 import {
   buildTelemetryEnvelope,
   buildTelemetryIdentityPayload,
+  buildTelemetryWithdrawalPayload,
   createDefaultTelemetryState,
   createSessionId,
   getTelemetryApiBase,
@@ -32,6 +33,12 @@ function saveConsentState(value) {
   } catch {
     // Consent remains in React state for this session if storage is unavailable.
   }
+}
+
+// A device that never granted consent has nothing stored server-side, so a
+// first-time "No thanks" sends no request at all.
+function wasGranted(consentGiven, state) {
+  return consentGiven === 'granted' || state?.telemetryEnabled === true || Boolean(state?.lastSyncedAt);
 }
 
 export default function useTelemetryState({ notify }) {
@@ -75,8 +82,11 @@ export default function useTelemetryState({ notify }) {
     const landingEvent = payload?.kind === 'event' && isLandingTelemetryEvent(payload?.event);
     const requestPayload = { ...payload };
     if (landingEvent) delete requestPayload.contactEmail;
+    const endpoint = payload?.kind === 'withdraw'
+      ? `${apiBase}/telemetry?action=withdraw`
+      : `${apiBase}/telemetry`;
 
-    const response = await fetch(`${apiBase}/telemetry`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestPayload),
@@ -123,6 +133,32 @@ export default function useTelemetryState({ notify }) {
     }
   }, [flushPending, state.pendingEvents.length, state.telemetryEnabled, telemetryAllowed]);
 
+  // PRIV-02: withdrawing consent asks the server to delete this device's stored
+  // profile, linked contact record and queued events. If the request fails it
+  // stays pending in local state and is retried on the next load.
+  const requestDeletion = useCallback(async (snapshot) => {
+    try {
+      await sendPayload(buildTelemetryWithdrawalPayload(snapshot));
+      setState((prev) => ({ ...prev, deletionPending: false, lastError: '' }));
+      return true;
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        deletionPending: true,
+        lastError: 'Could not delete stored insights data yet. Prompt Lab will retry.',
+      }));
+      return false;
+    }
+  }, [sendPayload]);
+
+  useEffect(() => {
+    if (!telemetryAllowed && state.deletionPending) {
+      requestDeletion(state);
+    }
+    // Retry once per load or whenever a new withdrawal is recorded.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestDeletion, state.deletionPending, telemetryAllowed]);
+
   const track = useCallback(async (event, context = {}, { includeContactEmail = true } = {}) => {
     if (!telemetryAllowed || !state.telemetryEnabled) return false;
 
@@ -151,6 +187,7 @@ export default function useTelemetryState({ notify }) {
 
   const updatePreferences = useCallback(async ({ telemetryEnabled, contactEmail }) => {
     const nextConsent = telemetryEnabled ? 'granted' : 'denied';
+    const withdrawing = !telemetryEnabled && wasGranted(consentGiven, state);
     saveConsentState(nextConsent);
     setConsentGiven(nextConsent);
     const nextState = normalizeTelemetryState({
@@ -158,11 +195,15 @@ export default function useTelemetryState({ notify }) {
       telemetryEnabled,
       contactEmail,
       pendingEvents: telemetryEnabled ? state.pendingEvents : [],
+      // Re-granting consent cancels a withdrawal that has not reached the server.
+      deletionPending: telemetryEnabled ? false : (withdrawing || state.deletionPending),
     });
 
     setState(nextState);
     if (!telemetryEnabled) {
-      notify?.('Insights preferences updated.');
+      notify?.(withdrawing
+        ? 'Insights turned off. Stored insights data for this device is being deleted.'
+        : 'Insights preferences updated.');
       return true;
     }
 
@@ -193,7 +234,7 @@ export default function useTelemetryState({ notify }) {
     } finally {
       setBusyAction('');
     }
-  }, [notify, sendPayload, sessionId, state]);
+  }, [consentGiven, notify, sendPayload, sessionId, state]);
 
   const grantConsent = useCallback(() => {
     saveConsentState('granted');
@@ -201,10 +242,12 @@ export default function useTelemetryState({ notify }) {
     setState((prev) => normalizeTelemetryState({
       ...prev,
       telemetryEnabled: true,
+      deletionPending: false,
     }));
   }, []);
 
   const denyConsent = useCallback(() => {
+    const withdrawing = wasGranted(consentGiven, state);
     saveConsentState('denied');
     setConsentGiven('denied');
     setState((prev) => normalizeTelemetryState({
@@ -212,8 +255,9 @@ export default function useTelemetryState({ notify }) {
       telemetryEnabled: false,
       pendingEvents: [],
       lastError: '',
+      deletionPending: withdrawing || prev.deletionPending,
     }));
-  }, []);
+  }, [consentGiven, state]);
 
   const telemetry = useMemo(() => ({
     ...state,

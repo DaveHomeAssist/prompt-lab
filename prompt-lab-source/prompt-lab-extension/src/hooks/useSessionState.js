@@ -28,6 +28,7 @@ export function useSessionRestore(setters) {
       if ('tab' in s && !hasExplicitRoute(routeAtMount)) setters.setTab(s.tab);
       if ('enhMode' in s) setters.setEnhMode(restoreEditorMode(s.enhMode, readGenerationOptions()));
       if ('editingId' in s && typeof setters.setEditingId === 'function') setters.setEditingId(s.editingId || null);
+      if (typeof setters.setEditingVersionId === 'function') setters.setEditingVersionId(s.editingVersionId || (s.editingId ? 'unverified' : null));
       if ('saveTitle' in s && typeof setters.setSaveTitle === 'function') setters.setSaveTitle(s.saveTitle || '');
       if ('saveTags' in s && typeof setters.setSaveTags === 'function') setters.setSaveTags(Array.isArray(s.saveTags) ? s.saveTags : []);
       if ('saveCollection' in s && typeof setters.setSaveCollection === 'function') setters.setSaveCollection(s.saveCollection || '');
@@ -54,6 +55,7 @@ export function useSessionSave(state) {
     state.tab,
     state.enhMode,
     state.editingId,
+    state.editingVersionId,
     state.saveTitle,
     state.saveTags,
     state.saveCollection,

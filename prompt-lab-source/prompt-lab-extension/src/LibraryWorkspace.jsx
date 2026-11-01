@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ProBadge from './ProBadge.jsx';
 import Ic from './icons';
+import { rememberArtwork } from './lib/recentArtwork.js';
+import ArtworkPopover from './ArtworkPopover.jsx';
 import ArtworkPicker, { Artwork } from './ArtworkPicker.jsx';
+import { suggestArtwork } from './lib/artworkSuggestions.js';
 import { LIBRARY_LAYOUTS, safeArtwork } from './lib/libraryPresentation.js';
 import FollowUpOrigin from './FollowUpOrigin.jsx';
 import { matchesLibrarySearch } from './lib/libraryMatching.js';
@@ -160,7 +163,7 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
 
   if (inspectorTab === 'details') {
     return <div className="pl-inspector-details-form">
-      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} />
+      <ArtworkPicker label="Prompt artwork" value={detailsDraft.artwork} onChange={artwork => setDetailsDraft(current => ({ ...current, artwork }))} disabled={smartView === 'trash'} suggestions={smartView === 'trash' ? [] : suggestArtwork({ title: detailsDraft.title, text: content, tags: selected.tags, collection: selected.collection }, { current: detailsDraft.artwork })} />
       <label>Title<input value={detailsDraft.title} onChange={(event) => setDetailsDraft((current) => ({ ...current, title: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label>Purpose<textarea value={detailsDraft.purpose} onChange={(event) => setDetailsDraft((current) => ({ ...current, purpose: event.target.value }))} disabled={smartView === 'trash'} /></label>
       <label>Owner<input value={detailsDraft.owner} onChange={(event) => setDetailsDraft((current) => ({ ...current, owner: event.target.value }))} disabled={smartView === 'trash'} /></label>
@@ -172,7 +175,6 @@ function InspectorContent({ m, selected, smartView, inspectorTab, detailsDraft, 
       <label>Tags<input value={detailsDraft.tags} onChange={(event) => setDetailsDraft((current) => ({ ...current, tags: event.target.value }))} placeholder="research, template" disabled={smartView === 'trash'} /></label>
       <label>Collection<select value={detailsDraft.collection} onChange={(event) => setDetailsDraft((current) => ({ ...current, collection: event.target.value }))} disabled={smartView === 'trash' || !canUseCollections}><option value="">None</option>{lib.collections.map((item) => <option key={item}>{item}</option>)}</select></label>
       {!canUseCollections && smartView !== 'trash' && <button type="button" className="pl-inline-upgrade" onClick={() => openBilling?.('collections')}>Unlock collections</button>}
-      {smartView !== 'trash' && <button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button>}
       {smartView !== 'trash' && detailsDirty && <button type="button" className="pl-secondary-button" onClick={discardDetails}>Discard changes</button>}
       <dl className="pl-inspector-audit-metadata">
         <div><dt>Created</dt><dd>{new Date(selected.createdAt).toLocaleString()}</dd></div>
@@ -245,7 +247,9 @@ export default function LibraryWorkspace({
   // them the Tests tab stays read-only.
   testCasesByPrompt, testCaseControls,
 }) {
-  const [smartView, setSmartView] = useState('all');
+  const [localSmartView, setLocalSmartView] = useState(() => lib.activeCollection ? 'collection' : lib.activeTag ? 'tag' : 'all');
+  const smartView = lib.smartView ?? localSmartView;
+  const setSmartView = lib.setSmartView || setLocalSmartView;
   // Persisted like the other UI preferences (pl2-mode, pl2-density) so the
   // chosen layout survives navigating away and reloading. The validator keeps
   // a corrupted or removed value from rendering an unknown `is-<layout>` class.
@@ -264,6 +268,9 @@ export default function LibraryWorkspace({
   const [collapsedFolders, setCollapsedFolders] = useState([]);
   const [collectionParent, setCollectionParent] = useState('');
   const [artworkCollection, setArtworkCollection] = useState('');
+  const [artworkTarget, setArtworkTarget] = useState(null);
+  const [artworkHistoryError, setArtworkHistoryError] = useState('');
+  const recordArtwork = artwork => setArtworkHistoryError(rememberArtwork(artwork).error);
   const [folderSaving, setFolderSaving] = useState(false);
   const [folderError, setFolderError] = useState('');
   const workspaceRef = useRef(null);
@@ -304,7 +311,9 @@ export default function LibraryWorkspace({
   const [selectedId, setSelectedId] = useState(null);
   const [checkedIds, setCheckedIds] = useState([]);
   const [searchDraft, setSearchDraft] = useState(lib.search || '');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [localStatusFilter, setLocalStatusFilter] = useState('');
+  const statusFilter = lib.statusFilter ?? localStatusFilter;
+  const setStatusFilter = lib.setStatusFilter || setLocalStatusFilter;
   const [bulkTag, setBulkTag] = useState('');
   const [bulkCollection, setBulkCollection] = useState('');
   const [inspectorTab, setInspectorTab] = useState('details');
@@ -350,6 +359,21 @@ export default function LibraryWorkspace({
     if (JSON.stringify(next) === JSON.stringify(expectedDetails)) pendingDetailsRef.current.delete(selected.id);
     else pendingDetailsRef.current.set(selected.id, next);
     setDetailsRevision(revision => revision + 1);
+  };
+  const saveCardArtwork = async (id, artwork) => {
+    if (smartView === 'trash' || !lib.library.some(entry => entry.id === id)) return false;
+    const nextArtwork = safeArtwork(artwork);
+    const saved = await lib.saveEntryDetails(id, entry => ({
+      ...entry, metadata: { ...entry.metadata, artwork: nextArtwork }, updatedAt: new Date().toISOString(),
+    }));
+    if (saved !== true) return false;
+    // Keep all other inspector edits, but rebase its artwork after this explicit save.
+    const pending = pendingDetailsRef.current.get(id);
+    if (pending) pendingDetailsRef.current.set(id, { ...pending, artwork: nextArtwork });
+    setDetailsRevision(revision => revision + 1);
+    recordArtwork(nextArtwork);
+    setAnnouncement('Prompt artwork saved.');
+    return true;
   };
   const discardDetails = () => {
     if (!selected) return;
@@ -414,6 +438,7 @@ export default function LibraryWorkspace({
       return;
     }
     // Saved: drop the kept draft so the inspector shows the stored entry.
+    recordArtwork(detailsDraft.artwork);
     pendingDetailsRef.current.delete(savedId);
     setDetailsRevision(revision => revision + 1);
     setAnnouncement(`Saved details for ${detailsDraft.title.trim()}.`);
@@ -511,7 +536,7 @@ export default function LibraryWorkspace({
           {folderRows.map(folder => renamingCollection === folder.id
             ? <div key={folder.id} className="pl-collection-edit"><input value={renameCollectionDraft} onChange={event => setRenameCollectionDraft(event.target.value)} aria-label={`Rename ${folder.name}`} /><button type="button" disabled={folderSaving} onClick={saveCollectionRename}>Save</button><button type="button" onClick={() => setRenamingCollection('')}>Cancel</button></div>
             : <div key={folder.id} className="pl-collection-manage-row"><span>{folder.collection}</span><button type="button" onClick={() => setArtworkCollection(artworkCollection === folder.id ? '' : folder.id)}>Artwork</button><button type="button" onClick={() => { setRenamingCollection(folder.id); setRenameCollectionDraft(folder.name); setCollectionParent(folder.parentId || ''); }}>Rename / Move</button><button type="button" disabled={folderSaving} onClick={() => deleteFolder(folder)} aria-label={`Remove folder ${folder.name}, keep prompts`}>Remove</button></div>)}
-          {artworkCollection && <ArtworkPicker key={artworkCollection} label="Collection artwork" disabled={folderSaving} value={folderRecords.find(folder => folder.id === artworkCollection)?.artwork} onChange={artwork => persistFolders(folderRecords.map(folder => folder.id === artworkCollection ? { ...folder, artwork } : folder))} />}
+          {artworkCollection && <ArtworkPicker key={artworkCollection} label="Collection artwork" disabled={folderSaving} value={folderRecords.find(folder => folder.id === artworkCollection)?.artwork} onChange={async artwork => { const saved = await persistFolders(folderRecords.map(folder => folder.id === artworkCollection ? { ...folder, artwork } : folder)); if (saved) recordArtwork(artwork); }} />}
           {folderError && <p role="alert">{folderError}</p>}
           <small>Select a parent, then add a folder or save Rename / Move. Parent views include subfolders. Removing a folder keeps its prompts. Artwork travels with workspace exports.</small>
         </div>}
@@ -583,6 +608,8 @@ export default function LibraryWorkspace({
         <button type="button" onClick={() => setCheckedIds([])}>Clear selection</button>
       </div>}
 
+      {artworkTarget && smartView !== 'trash' && lib.library.some(entry => entry.id === artworkTarget.id) && <ArtworkPopover key={artworkTarget.id} entry={lib.library.find(entry => entry.id === artworkTarget.id)} trigger={artworkTarget.trigger} onSave={saveCardArtwork} onClose={() => setArtworkTarget(null)} />}
+      {artworkHistoryError && <p role="status" className="pl-artwork-history-error">{artworkHistoryError}</p>}
       <div className="pl-library-index-heading">
         <div><p className="pl-eyebrow">{smartView === 'collection' ? lib.activeCollection : smartView === 'tag' ? `#${lib.activeTag}` : smartView === 'trash' ? 'Recently Deleted' : SMART_VIEWS.find((view) => view.id === smartView)?.label || 'All prompts'}</p><h2>{entries.length} {entries.length === 1 ? 'prompt' : 'prompts'}</h2></div>
         <div className="pl-library-index-actions">{entries.length > 0 && <label className="pl-library-select-all"><input type="checkbox" checked={allVisibleChecked} onChange={() => setCheckedIds(allVisibleChecked ? [] : entries.map((entry) => entry.id))} /> Select all</label>}</div>
@@ -593,8 +620,12 @@ export default function LibraryWorkspace({
         : <div className={`pl-library-results is-${layout}`} role="list" aria-label="Saved prompts">
           {entries.map((entry, index) => <article key={entry.id} className={`pl-library-card${selectedId === entry.id ? ' is-selected' : ''}`} role="listitem">
             <label className="pl-library-card-select"><input type="checkbox" aria-label={`Select ${entry.title}`} checked={checkedIds.includes(entry.id)} onChange={() => toggleChecked(entry.id)} /></label>
+            <div className={`pl-library-card-artwork${Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) ? '' : ' is-empty'}`}>
+              <button type="button" disabled={smartView === 'trash'} aria-label={`Change artwork for ${entry.title}`} aria-haspopup="dialog" aria-expanded={artworkTarget?.id === entry.id} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}><Artwork value={entry.metadata?.artwork} /></button>
+              {layout === 'gallery' && !Object.values(safeArtwork(entry.metadata?.artwork)).some(Boolean) && smartView !== 'trash' && <button type="button" className="pl-artwork-add" aria-label={`Add image for ${entry.title}`} onClick={event => setArtworkTarget({ id: entry.id, trigger: event.currentTarget })}>Add image</button>}
+            </div>
             <button type="button" className="pl-library-card-open" aria-pressed={selectedId === entry.id} aria-label={`Inspect ${entry.title}`} onClick={() => selectEntry(entry)}>
-              <span className="pl-library-card-copy"><Artwork value={entry.metadata?.artwork} /><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
+              <span className="pl-library-card-copy"><span className="pl-library-card-title"><strong>{entry.title}</strong>{entry.favorite && <Ic n="Star" size={12} className="text-amber-400" />}{entry.metadata?.suite?.verdict && <span className={entry.metadata.suite.verdict === 'pass' ? 'pl-suite-pass' : 'pl-suite-fail'}>{entry.metadata.suite.verdict === 'pass' ? '✓ suite' : '✗ suite'}</span>}</span><span className="pl-library-card-excerpt">{entryText(entry).slice(0, layout === 'tiles' ? 180 : 260)}</span><span className="pl-library-card-labels">{entry.collection && <span>{entry.collection}</span>}{(entry.tags || []).slice(0, 4).map((tag) => <span key={tag}>#{tag}</span>)}</span></span>
               <span className="pl-library-card-meta"><span title={`${getVersionCount(entry)} version${getVersionCount(entry) === 1 ? '' : 's'}, including the current one`}>{getVersionCount(entry)} ver</span><span>{entry.useCount || 0} uses</span><time>{smartView === 'trash' ? trashExpiryLabel(entry) : formatEntryDate(entry)}</time></span>
             </button>
             <div className="pl-library-card-actions">
@@ -641,6 +672,7 @@ export default function LibraryWorkspace({
         <div className="pl-inspector-tabs" role="tablist" aria-label="Prompt details" onKeyDown={(event) => handleTabArrowKeys(event, inspectorTab, setInspectorTab)}>
           {INSPECTOR_TABS.map(([id, label]) => <button key={id} type="button" role="tab" data-tab-id={id} id={`library-tab-${id}`} aria-controls="library-inspector-panel" aria-selected={inspectorTab === id} tabIndex={inspectorTab === id ? 0 : -1} onClick={() => setInspectorTab(id)}>{label}</button>)}
         </div>
+        {inspectorTab === 'details' && smartView !== 'trash' && <div className="pl-inspector-details-actions"><button type="button" className="pl-primary-button" disabled={!detailsDirty || !detailsDraft.title.trim()} onClick={saveDetails}>Save details</button></div>}
         <div className="pl-inspector-content" role="tabpanel" id="library-inspector-panel" aria-labelledby={`library-tab-${inspectorTab}`} tabIndex={0}>
           {selected.metadata?.followUpOrigin && <FollowUpOrigin origin={selected.metadata.followUpOrigin} library={lib.library} onOpenParent={selectEntry} m={m} />}
           {lib.library.some(child => child.metadata?.followUpOrigin?.sourcePromptId === selected.id) && <section aria-label="Follow-up prompts">

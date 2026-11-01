@@ -8,6 +8,8 @@ export const storageKeys = Object.freeze({
   sortBy: 'pl2-sort-by',
   mode: 'pl2-mode',
   pad: 'pl2-pad',
+  scratch: 'pl2-pads',
+  scratchSchemaVersion: 'pl2-pads-schema-version',
   experimentHistory: 'pl2-experiment-history',
   billing: 'pl2-billing',
   telemetry: 'pl2-telemetry',

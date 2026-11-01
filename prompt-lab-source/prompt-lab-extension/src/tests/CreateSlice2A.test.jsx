@@ -37,6 +37,12 @@ afterEach(() => {
 });
 
 describe('describeEditingContext', () => {
+  it('does not treat an optimistic Library record as acknowledged while saving or after failure', () => {
+    const base = { currentEntry: savedEntry, raw: savedEntry.original, enhanced: savedEntry.enhanced };
+    expect(describeEditingContext({ ...base, saving: true })).toMatchObject({ unsaved: true, saveState: 'Saving…' });
+    expect(describeEditingContext({ ...base, saveError: 'Durable commit failed' })).toMatchObject({ unsaved: true, saveState: 'Save failed. Retry to confirm.' });
+    expect(describeEditingContext({ ...base, saving: false, saveError: '' })).toMatchObject({ unsaved: false, saveState: 'No unsaved changes' });
+  });
   it('reports a saved prompt with no changes', () => {
     const context = describeEditingContext({ currentEntry: savedEntry, raw: 'Draft prompt body', enhanced: 'Refined prompt output' });
     expect(context).toMatchObject({ mode: 'editing', title: 'Voice Memo Cleanup', folder: 'Ops', unsaved: false, saveState: 'No unsaved changes', saveBehavior: 'Save adds a new version' });
@@ -66,6 +72,15 @@ describe('describeEditingContext', () => {
 
 describe('CreateContextBar', () => {
   const baseProps = { m, canSavePanel: true, openSavePanel: vi.fn(), accentTextClass: 'text-orange-400', accentHoverTextClass: '', accentBadgeClass: 'bg-amber-500/15' };
+  it('keeps pending and failed save state visible in the collapsed summary', () => {
+    const { container, rerender } = render(<CreateContextBar {...baseProps} compact currentEntry={savedEntry} raw={savedEntry.original} enhanced={savedEntry.enhanced} saving />);
+    expect(container.querySelector('summary')).toHaveTextContent('Saving…');
+    expect(container.querySelector('details')).not.toHaveAttribute('open');
+    rerender(<CreateContextBar {...baseProps} compact currentEntry={savedEntry} raw={savedEntry.original} enhanced={savedEntry.enhanced} saveError="Durable commit failed" />);
+    expect(container.querySelector('summary')).toHaveTextContent('Save failed. Retry to confirm.');
+    expect(container.querySelector('summary')).not.toHaveTextContent('No unsaved changes');
+    expect(screen.getByRole('status')).toHaveAttribute('title', 'Durable commit failed');
+  });
   it('names the saved prompt, its folder, its save state and what Save does', () => {
     const openSection = vi.fn();
     const onStartNew = vi.fn();
@@ -288,6 +303,16 @@ describe('CreateContextBar Scratch toggle', () => {
     fireEvent.click(prompts);
     expect(promptsToggle).toHaveBeenCalledTimes(1);
     expect(scratchToggle).not.toHaveBeenCalled();
+  });
+
+  it('keeps the toggles together so they wrap as a row instead of covering the heading (320px)', () => {
+    const { container } = render(<CreateContextBar {...baseProps} currentEntry={null} raw="Draft" enhanced=""
+      scratchPanel={{ open: false, onToggle: vi.fn() }} promptsPanel={{ open: false, onToggle: vi.fn() }} />);
+    const group = container.querySelector('.pl-context-toggles');
+    expect(group).not.toBeNull();
+    expect(within(group).getAllByRole('button').map((b) => b.textContent.trim())).toEqual(['Scratch', 'Prompts']);
+    // The details reserve room for the shrink-0 "New unsaved prompt" heading.
+    expect(container.querySelector('details')).toHaveClass('min-w-[9.5rem]', 'basis-[9.5rem]');
   });
 
   it('reports and toggles the Scratch panel state', () => {

@@ -180,6 +180,18 @@ Acceptance: the picker opens by click and keyboard, closes on Escape, and
 returns focus to the card; chosen artwork survives reload, export and import;
 image limits and error messages are unchanged.
 
+### Slice 3 implementation contract
+
+Card artwork uses a dedicated button and a shared modal popover with Apply and
+Cancel. Apply saves only artwork after acknowledged persistence, retaining the
+choice on failure. Existing inspector drafts keep their other fields and adopt
+the explicitly applied artwork so a later Details save cannot restore stale art.
+Deleted prompts remain read-only. Images take precedence over emoji, then icons.
+Emoji accepts one grapheme, including flags, skin tones and joined sequences.
+Existing image limits and local storage remain unchanged. No new dependencies,
+provider calls, image processing, bulk editing or account sync are introduced.
+Older builds may drop emoji when re-saving a prompt.
+
 ## Slice 4: Feedback from inside the app
 
 Problem: there is no in-app way to capture a bug or request, and the earlier
@@ -289,3 +301,48 @@ Each slice ships as its own pull request with targeted tests, shared builds,
 CI and a production check of the hosted web app, in the repository's usual
 order. Issue Backlog rows for the accepted slices were created on 2026-10-26.
 Physical-device, signing and tagged-release acceptance stay separate gates.
+
+## Quality of life follow-up: October 29
+
+Dave authorized three fixes first, then Recently used artwork and search beside
+Write. This is a bounded follow-up to the delivered artwork and Write side panel.
+
+Fixes: retain Library smart view and status in the parent Library controller so
+collection/tag chips and results agree after workspace navigation. Composer offers
+Insert, Append and Open as new draft using the existing recoverable draft flow;
+Clear keeps its removed blocks available through Undo. Scratch copy reports
+success only after the modern API or a checked fallback succeeds. The active
+Scratch implementation already awaits the modern API; the audit's legacy-handler
+citation was superseded by inspection of the actual default export.
+
+Conveniences: share the last 12 successfully saved artwork choices across prompt
+and collection pickers, with a 256 KiB serialized local cache cap, deduplication,
+Clear recently used, and storage error feedback. Canceled/failed artwork saves
+do not enter history. History is a local preference, separate from portable
+prompt artwork and workspace exports. Add a labeled search beside Write across
+All, Recent and Favorites using the existing Library matcher, retaining the
+existing sort order and a clear no-match state.
+
+Acceptance: cover Library collection/tag/status return navigation; recoverable
+Composer handoffs with saved prompt identity detached for new drafts; Undo Clear
+without dropping blocks added afterwards; clipboard pending/rejection/fallback
+false/throw/success; recent icon/emoji/image reuse, deduplication, limits, reload,
+clear and storage failure; side search across title/text/tags/collection and all
+three views. Verify mobile/desktop/both themes and no page overflow. Use synthetic
+fixtures on Dominic Node 22, then normal CI/merge/deployment and disposable QA
+production checks. No new dependencies, provider calls, bulk metadata, named
+presets, global search, account sync or packaged release are included.
+
+
+### Artwork decode and Write search retention, October 30
+
+Reject damaged PNG, JPEG and WebP uploads before changing artwork. Keep the previous choice, show a readable failure and allow retry. Validate browser decoding after reading the bounded local file; do not add dependencies, upload services or schema changes. Retain the Write prompt search in the parent workspace while the panel is closed or its Scratch tab is shown. Clear and Escape still clear it; a reload starts an empty query. Acceptance: damaged PNG rejected with unchanged saved artwork, valid PNG retry/export/reload passes, and filtered results/query survive close/reopen at phone and desktop sizes.
+
+
+### Artwork reuse controls and Write search recovery, October 30
+
+User outcome: recognize prompts by the same artwork beside Write, keep useful artwork available, remove individual history choices, and recover from an empty search without retyping. Use the existing Artwork renderer for icon, emoji, image and failed-image fallback inside each prompt's open button. Keep the title and insertion/favorite actions readable on phone and desktop.
+
+Recent artwork remains a local array with an optional pinned boolean, at most12 choices and256KiB serialized. Pins sort before unpinned recency, survive new selections and Clear recently used, and remain individually removable. Removing a history choice never edits assigned prompt or collection artwork. Reusing a pin preserves its pin. If pins fill the cache, leave them intact and explain how to make room. Legacy unpinned arrays continue to work; same-tab and cross-tab updates remain shared. No hosted sync, library export schema change or new dependency.
+
+Empty searches offer Clear search. Favorites and Recent additionally offer Search All prompts, preserving the query. Explicit Clear and Escape still clear it. Query retention across panel close and Scratch switching remains unchanged. Acceptance includes pin/reuse/unpin/remove/reload/cross-tab/limits/write failure; thumbnails and fallback; empty-search recovery with keyboard focus; light/dark phone, short-window, desktop and ultrawide layout checks.
