@@ -154,3 +154,53 @@ test('R-06: weekly pg_dump export restores into a fresh database per the runbook
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Supabase runs migrations as `postgres`, which is NOT a superuser there. The
+// first apply to the real project failed with "permission denied for schema
+// sync" (2026-11-01) because ownership hand-offs need CREATE on the schema for
+// the new owner. Apply the migration in a fresh database as a non-superuser
+// role with CREATEROLE, as on Supabase, and check the grant guard still holds.
+test('migration applies as a non-superuser migration role (as on Supabase)', { timeout: 60000 }, async () => {
+  const admin = await connect();
+  const db = 'pl_nonsuper';
+  const role = `pl_migrator_${Math.random().toString(36).slice(2, 8)}`;
+  const rolePassword = `local-${Math.random().toString(36).slice(2)}`;
+  await admin.query(`create role ${role} login createrole password '${rolePassword}'`);
+  await admin.query(`create database ${db} owner ${role}`);
+  const dbAdmin = await connect(db);
+  await dbAdmin.query(`alter schema public owner to ${role}`);
+  // Roles are cluster-wide and already exist from before(): give the migrator
+  // the admin rights it would hold had it created them itself, as on Supabase.
+  await dbAdmin.query(`grant anon, authenticated, service_role, sync_owner to ${role} with admin option`);
+  await dbAdmin.end();
+  const migrator = new pg.Client({ host: '127.0.0.1', port, user: role, password: rolePassword, database: db });
+  await migrator.connect();
+  try {
+    const { rows: [{ rolsuper }] } = await migrator.query('select rolsuper from pg_roles where rolname = current_user');
+    assert.equal(rolsuper, false);
+    // Supabase's default privileges grant everything in public to the API roles.
+    await migrator.query(`alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+      alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+      alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+      grant usage on schema public to anon, authenticated, service_role;`);
+    await migrator.query('begin');
+    for (const sql of migrationSql()) await migrator.query(sql);
+    await migrator.query('commit');
+    const { rows: [check] } = await migrator.query(`select
+      has_table_privilege('authenticated', 'public.sync_items', 'select') as items_select,
+      has_table_privilege('anon', 'public.sync_conflicts', 'select') as conflicts_select,
+      has_schema_privilege('sync_owner', 'public', 'create') as owner_create_public,
+      has_schema_privilege('sync_owner', 'sync', 'create') as owner_create_sync,
+      has_function_privilege('anon', 'public.sync_push(text, jsonb)', 'execute') as anon_push,
+      has_function_privilege('authenticated', 'public.sync_push(text, jsonb)', 'execute') as auth_push,
+      (select pg_get_userbyid(proowner) from pg_proc where oid = 'public.sync_push(text, jsonb)'::regprocedure) as push_owner`);
+    assert.deepEqual(check, { items_select: false, conflicts_select: false, owner_create_public: false, owner_create_sync: false, anon_push: false, auth_push: true, push_owner: 'sync_owner' });
+  } finally {
+    await migrator.end();
+    const cleanup = await connect();
+    await cleanup.query(`drop database if exists ${db}`);
+    await cleanup.end();
+    await admin.query(`drop role if exists ${role}`).catch(() => {});
+    await admin.end();
+  }
+});

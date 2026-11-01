@@ -73,8 +73,13 @@ describe('sync model', () => {
     expect(stored.title).toBe('remote');
     expect(Date.parse(stored.updatedAt)).toBeGreaterThan(Date.parse('2026-10-30T10:00:00.000Z'));
   });
-  it('treats the same starter-pack prompt as a duplicate', () => {
-    expect(duplicateKey({ id: '1', metadata: { packId: 'p', seedPromptId: 's' } })).toBe(duplicateKey({ id: '2', title: 'x', metadata: { packId: 'p', seedPromptId: 's' } }));
+  it('treats the same untouched starter-pack prompt as a duplicate', () => {
+    const seed = { packId: 'p', seedPromptId: 's' };
+    expect(duplicateKey({ id: '1', title: 'x', original: 'o', metadata: seed })).toBe(duplicateKey({ id: '2', title: 'x', original: 'o', metadata: seed }));
+  });
+  it('never treats a customized starter-pack copy as a duplicate (#277 review)', () => {
+    const seed = { packId: 'p', seedPromptId: 's' };
+    expect(duplicateKey({ id: '1', title: 'x', original: 'default', metadata: seed })).not.toBe(duplicateKey({ id: '2', title: 'x', original: 'my customized text', metadata: seed }));
   });
   it('merges folder trees without orphans or duplicate paths', () => {
     const merged = mergeStructure(
@@ -244,3 +249,17 @@ describe('supabase transport refusals (R-08)', () => {
   });
 });
 
+
+import { batchesWithinBytes, MAX_PUSH_BYTES } from '../lib/sync/syncEngine.js';
+
+describe('push batches (#277 review P2)', () => {
+  it('splits by serialized bytes as well as item count', () => {
+    const big = (i) => ({ entry: { key: `prompt:${i}` }, wire: { item_id: String(i), payload: 'x'.repeat(200 * 1024) } });
+    const batches = batchesWithinBytes(Array.from({ length: 12 }, (_, i) => big(i)));
+    expect(batches.length).toBeGreaterThan(1);
+    for (const batch of batches) expect(new TextEncoder().encode(JSON.stringify(batch.map((item) => item.wire))).length).toBeLessThanOrEqual(MAX_PUSH_BYTES + 64 * 1024);
+    expect(batches.flat().length).toBe(12);
+    const small = batchesWithinBytes(Array.from({ length: 250 }, (_, i) => ({ entry: {}, wire: { i } })));
+    expect(small.map((batch) => batch.length)).toEqual([100, 100, 50]);
+  });
+});

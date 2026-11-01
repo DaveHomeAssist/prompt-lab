@@ -16,6 +16,9 @@ export const stateKey = (userId) => `pl2-sync-state:${userId}`;
 export const queueKey = (userId) => `pl2-sync-queue:${userId}`;
 const PULL_LIMIT = 500;
 const PUSH_BATCH = 100;
+// Server refuses a push over max_request_bytes (2 MiB) as a whole; stay under
+// it with room for the JSON envelope (#277 review).
+export const MAX_PUSH_BYTES = 2 * 1024 * 1024 - 64 * 1024;
 const FETCH_BATCH = 500;
 // The server ends a pull page at its byte cap (max_response_bytes) and marks
 // the last row page_truncated; a full page (row limit) may also have more.
@@ -52,6 +55,18 @@ export function getDeviceId(storage, makeId = () => crypto.randomUUID()) {
 
 const emptyState = () => ({ initialized: false, cursor: 0, clock: 0, lastManifestAt: 0, shadow: {}, oversize: {} });
 const splitKey = (key) => { const at = key.indexOf(':'); return { kind: key.slice(0, at), item_id: key.slice(at + 1) }; };
+
+/** Split queued changes into push batches of at most PUSH_BATCH items and MAX_PUSH_BYTES. */
+export function batchesWithinBytes(items, { maxItems = PUSH_BATCH, maxBytes = MAX_PUSH_BYTES } = {}) {
+  const batches = []; let current = []; let bytes = 0;
+  for (const item of items) {
+    const size = byteLength(item.wire) + 1;
+    if (current.length && (current.length >= maxItems || bytes + size > maxBytes)) { batches.push(current); current = []; bytes = 0; }
+    current.push(item); bytes += size;
+  }
+  if (current.length) batches.push(current);
+  return batches;
+}
 
 export function createSyncEngine({ storage, transport, userId, deviceId = getDeviceId(storage), notifyWrite, now = () => Date.now(), random = Math.random, makeId = () => crypto.randomUUID() }) {
   if (!userId) throw new Error('Account sync needs a signed-in user.');
@@ -121,6 +136,12 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   // pending local edit wait for the push result; a permanently deleted prompt
   // (local deletion marker) is answered with a tombstone, never resurrected.
   function applyServerRows(rows) {
+    // An empty outbox does not prove the local copy is unchanged: the daily
+    // manifest runs before the regular capture, and the user can save while a
+    // pull is awaiting the network. Re-read local content against the shadow
+    // first (synchronously, so nothing can land in between), so a local edit is
+    // queued and its remote row deferred instead of overwritten (#277 review).
+    captureLocal();
     rows.forEach((row) => seen(row.lamport));
     const fresh = rows.filter((row) => (state.shadow[itemKey(row.kind, row.item_id)]?.version || 0) < Number(row.version));
     const { deletedIds } = readLibraryDeletionState(storage);
@@ -184,21 +205,20 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
 
   async function pushQueue(deferred = new Map()) {
     const outcome = { pushed: 0, conflicts: 0, written: [] };
-    const due = queue.due(now());
-    for (let start = 0; start < due.length; start += PUSH_BATCH) {
-      const batch = due.slice(start, start + PUSH_BATCH);
+    const toWire = ({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at }) => ({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at });
+    for (const batch of batchesWithinBytes(queue.due(now()).map((entry) => ({ entry, wire: toWire(entry) })))) {
       let results;
       try {
-        results = await transport.push(deviceId, batch.map(({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at }) => ({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at })));
+        results = await transport.push(deviceId, batch.map(({ wire }) => wire));
       } catch (error) {
-        queue.fail(batch.map((entry) => entry.key), error?.message, now(), random);
+        queue.fail(batch.map(({ entry }) => entry.key), error?.message, now(), random);
         if (error && typeof error === 'object') error.queueBackedOff = true;
         throw error;
       }
       const lost = [];
       for (const result of results) {
         const key = itemKey(result.kind, result.item_id);
-        const sent = batch.find((entry) => entry.key === key);
+        const sent = batch.find(({ entry }) => entry.key === key)?.entry;
         if (!sent) continue;
         queue.acknowledge(key, sent.lamport);
         if (result.status === 'conflict_lost') { outcome.conflicts += 1; lost.push({ key, version: Number(result.version) }); continue; }
@@ -210,7 +230,10 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         // The account kept another device's edit; ours is saved as a conflict copy.
         const known = lost.map(({ key, version }) => (deferred.get(key)?.version >= version ? deferred.get(key) : null));
         const fetched = await fetchRows(lost.filter((item, index) => !known[index]).map((item) => item.key));
-        outcome.written.push(...applyRows([...known.filter(Boolean), ...fetched]));
+        // An edit made while the fetch was in flight is queued again and kept
+        // locally; it goes up on the next push instead of being overwritten.
+        captureLocal();
+        outcome.written.push(...applyRows([...known.filter(Boolean), ...fetched].filter((row) => !queue.get(itemKey(row.kind, row.item_id)))));
       }
       saveState();
     }

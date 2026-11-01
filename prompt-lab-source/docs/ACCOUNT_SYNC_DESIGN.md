@@ -1,6 +1,6 @@
 # Account sync design (hosted, Supabase + Clerk)
 
-Status: built on local branch `labbot/account-sync-2026-10-30`, behind a flag that is off by default. Updated after Fire Watch's re-review (R-01 to R-07); see [section 15](#15-review-status). Nothing is provisioned. No remote Supabase project, Clerk setting, Vercel env var or Chrome Web Store listing has been created or changed. Written Fri Oct 30 2026, ET.
+Status: on `main` behind `VITE_PL_ACCOUNT_SYNC`, which is off by default. Supabase project `promptlab-sync` (ref `djoboqvwuojhpqnubnpc`, us-east-1, Free, $0/month) was created and the migration applied on Sun Nov 1 2026 (R1, R2). Sync UI built and `test:sync` runs in CI. Remaining rollout steps need Dave's Clerk and Vercel dashboards (R3 to R9). Updated Nov 1 2026, ET.
 
 Request: Dave, relayed 6:09 AM ET: real sync for every user. That is, every promptlab.tools user signs in on web, the extension and desktop, their Library follows them across devices automatically, and clearing site data loses nothing.
 
@@ -224,7 +224,8 @@ Estimates, from the payload format and this design's polling. These are not meas
 | Extension Clerk Sync Host bootstrap, manifest additions, side-panel handling | Built; flag off; not run in Chrome |
 | Desktop PKCE and token exchange in Rust, loopback state/path checks, keychain, token bridge with client_id/scope checks and rate limit, CSP overlay | Built; Rust module logic compiled and tested standalone with the same crates (the Tauri command wrappers and a full Tauri build need webkit2gtk, not on the build box) |
 | Desktop ticket to Clerk session (clerk-js non-browser mode) | Not built |
-| UI: status line, conflict copies, owner-mismatch choice, delete-my-data, export and restore buttons, "close and reopen the panel" hint | Not built (engine and RPCs exist) |
+| UI: status bar, sign-in prompt, "close and reopen the panel" hint, conflict copies with restore, owner-mismatch block, sign-out keeping local data ([`AccountSync.jsx`](../prompt-lab-extension/src/AccountSync.jsx)) | Built; flag off |
+| UI: owner-mismatch choice (keep separate, merge, start empty), delete-my-data, export and snapshot-restore buttons | Not built (engine and RPCs exist) |
 | Runs, evals, Scratch, settings | Not synced |
 | Telemetry of sync status counts | Not built |
 
@@ -247,8 +248,8 @@ Worth reusing from #248:
 
 ## 14. Rollout (each step needs Dave)
 
-1. **R1.** Create a Supabase project on the free org (`us-east-1` suggested). `garden-os-online` is paused, so the org stays within its 2 active free projects.
-2. **R2.** Apply `supabase/migrations/20261030090000_account_sync.sql`. Run the Supabase security and performance advisors, and confirm the `sync` schema is not in the exposed schemas.
+1. **R1.** Done Nov 1 2026: `promptlab-sync`, ref `djoboqvwuojhpqnubnpc`, us-east-1, Free org, `get_cost` $0/month.
+2. **R2.** Done Nov 1 2026: migration applied. Advisors: security lint 0029 (7 WARN) lists the seven client RPCs, which are the intended API (definer functions with caller checks, see section 10); performance: 2 INFO unused-index notices on the empty tables. Confirm in the dashboard that `sync` is not in the exposed schemas.
 3. **R3.** Supabase Auth: turn off "Allow new users to sign up" and anonymous sign-ins. Leave Realtime off.
 4. **R4.** Clerk: open "Connect with Supabase", which adds `role: authenticated` to session tokens. In Supabase, add the Clerk third-party provider with domain `clerk.promptlab.tools`. Production instance only. Do not use a JWT template.
 5. **R5.** Clerk: confirm bot protection and email verification for sign-up.
@@ -296,7 +297,7 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | F-05 cursor skip under concurrent pushes | Fixed | concurrency.pg: F-05 |
 | F-06 daily full re-pull egress | Fixed (manifest check) | e2e: daily manifest check |
 | F-07 no backups on Free | Mitigated: device snapshots, weekly export runbook (rehearsed locally, R-06); export not set up (R11, Dave) | e2e snapshot tests; concurrency.pg: R-06 |
-| F-08 no CI guard on RLS | Guard tests exist; wiring `test:sync` into CI not done (no CI runs allowed) | security: F-08, grants guard |
+| F-08 no CI guard on RLS | Fixed: `npm run test:sync` runs in the `test-and-build` job of `extension-ci.yml` (Node 22) on every push that touches sync | security: F-08, grants guard |
 | F-09 no deletion on Clerk account delete | Fixed; webhook endpoint setup is R7 (Dave) | clerk-sync-webhook tests |
 | F-10 rate limiting | Fixed after re-review 2: before R-08 a failing call rolled its counter back, so failing calls were never limited | security: F-10, default pull limit, R-08 tests |
 | F-11 stale GitHub Pages claim | Not in this branch's scope | - |
@@ -315,6 +316,11 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | R-06 pg_dump rehearsal | Rehearsed locally: box `pg_dump` 17.11 against the embedded Postgres 17.10 server, restored into a fresh database; found and documented two restore steps (truncate `sync.settings`, set the sequence first). Not rehearsed against a real Supabase project. | concurrency.pg: R-06 |
 | R-07 webhook raw body on Vercel | Fixed in code (raw stream read, parsed bodies refused); not run on Vercel itself | clerk-sync-webhook: R-07 tests |
 | Low: account deletion without the per-user lock | Fixed | concurrency.pg: LOW admin delete waits |
+| #277 Codex P1: in-flight run sends the next account's token | Fixed: each run's token getter is bound to its account and returns nothing after a switch or sign-out | vitest: useAccountSync account binding |
+| #277 Codex P1: unqueued local edit overwritten by a newer remote row (manifest before capture, save during pull) | Fixed: local content is re-captured against the shadow right before any remote row is applied | e2e: #277 P1 save during pull, manifest |
+| #277 Codex P1: customized starter copy dropped as a duplicate | Fixed: starter provenance must also match content | e2e: #277 P1 customized starter; vitest |
+| #277 Codex P2: 100-item push over the 2 MiB request cap | Fixed: batches bounded by bytes and count | e2e: #277 P2; vitest: push batches |
+| Migration failed on Supabase (`permission denied for schema sync`: `postgres` is not a superuser there) | Fixed: `sync_owner` gets CREATE on `sync` and `public` only for the migration, revoked at the end | concurrency.pg: non-superuser migration |
 | Low: extension Clerk token in `chrome.storage.local` | Fixed: `chrome.storage.session` with trusted-contexts access, memory fallback | vitest: extension token cache |
 | R-08 failing calls never rate limited (High) | Fixed: the counter is taken first; the work runs in an inner exception block and refusals are returned as data with `response.status`, so the counter commits. Repeated failing pushes and reads get 429 | security: R-08 tests (mutation check: re-raising in the wrappers fails all four) |
 | R-09 5 accounts drain the project download budget (Medium) | Fixed: per-user budget 8 MiB (was 32), new accounts 4 MiB for 7 days, both also capped at 3 × stored bytes + 1 MiB; `project_download_budget_low` in `sync_status` at 70% | security: R-09 tests; e2e: paging (a full second-device sync plus export still fits) |

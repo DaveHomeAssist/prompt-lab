@@ -19,6 +19,7 @@ import useFollowUpSuggestions from './hooks/useFollowUpSuggestions.js';
 import { resolveFollowUpSource } from './lib/followUpProvenance.js';
 import useABTest from './hooks/useABTest.js';
 import useAccountSync from './hooks/useAccountSync.js';
+import { AccountSyncBar, AccountSyncPanel } from './AccountSync.jsx';
 import useBillingState from './hooks/useBillingState.js';
 import useTelemetryState from './hooks/useTelemetryState.js';
 import Toast from './Toast';
@@ -239,7 +240,8 @@ export default function App({
   const telemetry = useTelemetryState({ notify });
   const billing = useBillingState({ notify, telemetry, clerkUser, clerkGetToken });
   // Account sync (docs/ACCOUNT_SYNC_DESIGN.md). Off unless VITE_PL_ACCOUNT_SYNC=on.
-  useAccountSync({ clerkUser, clerkGetToken });
+  const accountSync = useAccountSync({ clerkUser, clerkGetToken });
+  const [showAccountSync, setShowAccountSync] = useState(false);
   const telemetryConsentPending = telemetry.consentGiven == null;
   // "Ask me later" hides the consent bar for this browser session without
   // recording a choice; nothing is sent while consent is still pending.
@@ -1197,6 +1199,16 @@ export default function App({
       />
 
       <PendingWritesNotice m={m} />
+      <AccountSyncBar sync={accountSync} m={m} onOpen={() => setShowAccountSync(true)} />
+      <AccountSyncPanel
+        sync={accountSync}
+        m={m}
+        open={showAccountSync}
+        onClose={() => setShowAccountSync(false)}
+        onSignOut={clerkUser && clerkAccountActions?.signOut
+          ? () => { setShowAccountSync(false); clerkAccountActions.signOut(); }
+          : accountSync.signOut ? () => { setShowAccountSync(false); accountSync.signOut(); } : undefined}
+      />
 
       {telemetryConsentPending && !telemetryPromptDeferred && (
         <div className={`pl-consent-bar ${m.surface} ${m.border} border-b px-4 py-3`} data-telemetry-consent role="region" aria-label="Usage analytics">

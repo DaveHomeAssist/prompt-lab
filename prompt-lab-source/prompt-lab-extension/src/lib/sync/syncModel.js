@@ -110,16 +110,22 @@ export function applyRemoteRows(storage, rows, { notifyWrite } = {}) {
   return { written: [...written], applied, deletedIds: deleted };
 }
 
-/** Content identity used to drop exact duplicates on the first upload. */
+/**
+ * Content identity used to drop exact duplicates on the first upload.
+ * Starter-pack provenance (packId + seedPromptId) is part of the key but never
+ * enough on its own: a customized copy of a starter prompt keeps its seed ids,
+ * so content must match too, or the customized copy would be dropped (#277 review).
+ */
 export function duplicateKey(entry) {
   const meta = entry?.metadata || {};
-  if (meta.seedPromptId && meta.packId) return `seed:${meta.packId}:${meta.seedPromptId}`;
-  return `content:${hashValue({
+  const content = hashValue({
     title: String(entry?.title || '').trim(),
     original: entry?.original || '',
     enhanced: entry?.enhanced || '',
     collection: entry?.collection || '',
-  })}`;
+  });
+  if (meta.seedPromptId && meta.packId) return `seed:${meta.packId}:${meta.seedPromptId}:${content}`;
+  return `content:${content}`;
 }
 
 const union = (...lists) => [...new Set(lists.flat().filter((value) => typeof value === 'string' && value))];

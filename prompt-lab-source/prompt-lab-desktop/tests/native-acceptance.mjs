@@ -568,6 +568,24 @@ async function exerciseFollowUp(parentId) {
     };`, args: [source] });
   assert.equal(seeded.ok, true, JSON.stringify(seeded));
   await refreshPage();
+  // The open editor draft is not part of the durable Library journal. After the
+  // three hard restarts above, WebView2 can drop the tail of its Local Storage
+  // log ("Corruption: partial record without end", seen on windows-latest), and
+  // the draft comes back empty while the Library itself is intact. This step is
+  // about follow-up provenance, so open the saved source from the Library the
+  // way a user would whenever the draft did not survive.
+  let panelVisible = false;
+  for (let attempt = 0; attempt < 20 && !panelVisible; attempt++) {
+    panelVisible = await execute('return Boolean(document.querySelector(\'[aria-label="Follow-up source"]\'));');
+    if (!panelVisible) await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  if (!panelVisible) {
+    recordDiagnostic('followUpDraftReopened', { parentId: parent.id, input: await execute('return document.querySelector("[data-testid=prompt-input]")?.value || "";') });
+    await click('[data-testid="nav-library"]');
+    await fill('[data-testid="library-search"]', parent.title);
+    await click(`//button[@aria-label="Inspect ${parent.title}"]`, 'xpath');
+    await click('//button[normalize-space(.)="Open in Editor"]', 'xpath');
+  }
   await click('[aria-label="Follow-up source"]');
   const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
   await command('POST', `/session/${session}/element/${sourceOption}/click`, {});

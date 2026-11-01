@@ -265,3 +265,95 @@ test('R-01b: a new device pages through byte-capped pulls and fetches, and expor
     await db.query(`update sync.settings set value = '2097152' where key = 'max_response_bytes'`);
   }
 });
+
+// #277 review (Codex) regressions.
+function hookedDevice(name, sub, hooks = {}) {
+  const storage = new MemoryStorage();
+  const transport = () => {
+    const base = pgTransport(sub);
+    return { ...base, pull: async (cursor, limit) => { const rows = await base.pull(cursor, limit); await hooks.afterPull?.(storage, rows); return rows; } };
+  };
+  const engine = () => createSyncEngine({ storage, transport: transport(), userId: sub, deviceId: name, now, random: () => 0.5 });
+  return { storage, sync: (options) => engine().syncOnce(options), name };
+}
+const conflictTitles = async (sub) => (await inspect(sub, 'select losing_payload from public.sync_conflicts')).map((row) => row.losing_payload?.entry?.title);
+const serverTitle = async (sub, id) => (await inspect(sub, `select payload from public.sync_items where kind = 'prompt' and item_id = $1`, [id]))[0]?.payload?.entry?.title;
+
+test('#277 P1: a save made while a pull is in flight is not overwritten by a newer remote version', async () => {
+  const C = 'user_Ce2e';
+  let editDuringPull = false;
+  const c1 = device('c1', C);
+  const c2 = hookedDevice('c2', C, {
+    afterPull: (storage, rows) => {
+      if (!editDuringPull || !rows.length) return;
+      editDuringPull = false;
+      const library = JSON.parse(storage.getItem('pl2-library'));
+      storage.setItem('pl2-library', JSON.stringify(library.map((item) => (item.id === 'cp1' ? { ...item, title: 'Saved during pull', updatedAt: '2026-10-30T11:00:00Z' } : item))));
+    },
+  });
+  write(c1, 'pl2-library', [entry('cp1', 'Original')]);
+  assert.equal((await c1.sync()).status, 'synced');
+  assert.equal((await c2.sync()).status, 'synced');
+  write(c1, 'pl2-library', [entry('cp1', 'Remote edit', '2026-10-30T10:30:00Z')]);
+  assert.equal((await c1.sync()).status, 'synced');
+  editDuringPull = true;
+  const result = await c2.sync();
+  assert.equal(result.status, 'synced');
+  // The local save survives: either it is live on the account, or it is kept as a conflict copy.
+  const live = await serverTitle(C, 'cp1');
+  const kept = await conflictTitles(C);
+  assert.ok(live === 'Saved during pull' || kept.includes('Saved during pull'), `local save lost (live=${live}, kept=${kept})`);
+  assert.ok(live === 'Remote edit' || kept.includes('Remote edit'), 'remote edit lost');
+  assert.ok(result.conflicts >= 1);
+});
+
+test('#277 P1: the daily manifest check does not overwrite an unqueued local edit', async () => {
+  const D = 'user_De2e';
+  const d1 = device('d1', D);
+  const d2 = device('d2', D);
+  write(d1, 'pl2-library', [entry('dp1', 'Original')]);
+  await d1.sync(); await d2.sync();
+  write(d1, 'pl2-library', [entry('dp1', 'Remote edit', '2026-10-30T10:30:00Z')]);
+  await d1.sync();
+  // d2 edits locally, then its next sync starts with the daily manifest check.
+  write(d2, 'pl2-library', [entry('dp1', 'Local edit before manifest', '2026-10-30T11:00:00Z')]);
+  const saved = fakeNow; fakeNow += 25 * 60 * 60 * 1000;
+  try {
+    const result = await d2.sync();
+    assert.equal(result.status, 'synced');
+  } finally { fakeNow = saved; }
+  const live = await serverTitle(D, 'dp1');
+  const kept = await conflictTitles(D);
+  assert.ok(live === 'Local edit before manifest' || kept.includes('Local edit before manifest'), `local edit lost (live=${live}, kept=${kept})`);
+});
+
+test('#277 P1: a customized starter prompt is not dropped as a duplicate on first sync', async () => {
+  const E = 'user_Ee2e';
+  const seed = { metadata: { packId: 'starter', seedPromptId: 'code-review' } };
+  const e1 = device('e1', E);
+  const e2 = device('e2', E);
+  write(e1, 'pl2-library', [entry('ep-a', 'Code review', undefined, { ...seed, original: 'Default text' })]);
+  await e1.sync();
+  write(e2, 'pl2-library', [entry('ep-b', 'Code review', undefined, { ...seed, original: 'My customized review prompt' })]);
+  const result = await e2.sync();
+  assert.equal(result.status, 'synced');
+  assert.equal(result.dropped, 0);
+  const originals = (await inspect(E, `select payload from public.sync_items where kind = 'prompt'`)).map((row) => row.payload.entry.original).sort();
+  assert.deepEqual(originals, ['Default text', 'My customized review prompt']);
+  // An untouched copy of the same starter prompt is still de-duplicated.
+  const e3 = device('e3', E);
+  write(e3, 'pl2-library', [entry('ep-c', 'Code review', undefined, { ...seed, original: 'Default text' })]);
+  assert.equal((await e3.sync()).dropped, 1);
+});
+
+test('#277 P2: prompts that together exceed 2 MiB push in several byte-bounded batches', async () => {
+  const F = 'user_Fe2e';
+  const f1 = device('f1', F);
+  const body = (i) => `${i}:`.padEnd(200 * 1024, 'x');
+  write(f1, 'pl2-library', Array.from({ length: 12 }, (_, i) => entry(`fp${i}`, `Big ${i}`, undefined, { original: body(i) })));
+  const result = await f1.sync();
+  assert.equal(result.status, 'synced', result.error);
+  assert.equal(result.pending, 0);
+  const [{ n }] = await inspect(F, `select count(*)::int as n from public.sync_items where kind = 'prompt'`);
+  assert.equal(n, 12);
+});

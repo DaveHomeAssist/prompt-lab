@@ -9,7 +9,7 @@
 -- below, which run as the non-superuser role sync_owner, take the caller id
 -- from the verified JWT, enforce quotas, rate limits, a daily download budget
 -- and a kill switch, and are themselves still subject to owner-only row-level
--- security. Nothing in this file has been applied to a remote project.
+-- security. Applied to the promptlab-sync project (us-east-1) on 2026-11-01.
 
 create schema if not exists sync;
 revoke all on schema sync from public;
@@ -22,6 +22,10 @@ end $$;
 -- The migration role must be able to hand objects to sync_owner (PG16+ rules).
 grant sync_owner to current_user;
 grant usage on schema sync, public to sync_owner;
+-- Changing an object's owner needs CREATE on its schema for the new owner when
+-- the migration role is not a superuser (Supabase's postgres role is not).
+-- Granted for the duration of this migration and revoked at the end.
+grant create on schema sync, public to sync_owner;
 
 -- Operator settings: kill switch, accepted issuer, quotas and rate limits.
 -- Not reachable from the Data API. Change with SQL, for example:
@@ -706,3 +710,6 @@ do $$ begin
     grant execute on function public.sync_admin_delete_user(text) to service_role;
   end if;
 end $$;
+
+-- sync_owner only needed CREATE to receive ownership above.
+revoke create on schema sync, public from sync_owner;

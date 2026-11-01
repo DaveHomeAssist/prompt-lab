@@ -3,7 +3,7 @@
 // (src/extensionAccountAuth.js) and the desktop sign-in (desktopAuth.js)
 // publish here instead, so App never imports a surface-specific SDK.
 const listeners = new Set();
-let current = { userId: '', getToken: null, surface: '', needsReopen: false };
+let current = { userId: '', getToken: null, surface: '', needsReopen: false, signOut: null };
 
 export function publishAccountAuth(next) {
   current = { ...current, ...next };
