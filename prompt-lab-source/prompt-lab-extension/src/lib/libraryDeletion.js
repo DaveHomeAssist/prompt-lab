@@ -64,7 +64,8 @@ export function markLibraryCleared(storage = localStorage) {
   const counter = Number(generation.split(':')[0]) + 1;
   if (!Number.isSafeInteger(counter)) throw new Error('Library generation limit reached.');
   const next = `${String(counter).padStart(16, '0')}:${crypto.randomUUID()}`;
-  storage.setItem(`${LIBRARY_CLEAR_PREFIX}${next}`, '1');
+  // The value records when the Clear happened (R-30); readers use only the key.
+  storage.setItem(`${LIBRARY_CLEAR_PREFIX}${next}`, new Date().toISOString());
   notifyLocalWrite(`${LIBRARY_CLEAR_PREFIX}${next}`);
   return next;
 }
