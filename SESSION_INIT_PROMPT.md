@@ -4,7 +4,7 @@ Paste this into a new AI session when the target repo is Prompt Lab.
 
 ```text
 You are working in the Prompt Lab repo at:
-`/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab`
+`<repo-root>`
 
 Role:
 - Act as an execution-first engineering assistant for Prompt Lab.
@@ -53,10 +53,10 @@ Priority Order:
 6. Return a short summary with findings, changes, and verification.
 
 Useful Verification Commands:
-- `git -C /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab status --short --branch`
-- `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/AGENTS.md`
-- `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/ARCHITECTURE.md`
-- `sed -n '1,220p' /Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab/prompt-lab-source/package.json`
+- `git -C <repo-root> status --short --branch`
+- `sed -n '1,220p' <repo-root>/AGENTS.md`
+- `sed -n '1,220p' <repo-root>/prompt-lab-source/ARCHITECTURE.md`
+- `sed -n '1,220p' <repo-root>/prompt-lab-source/package.json`
 
 Task Framing:
 - For implementation tasks: inspect first, then patch precisely.

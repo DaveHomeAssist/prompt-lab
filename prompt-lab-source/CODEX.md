@@ -5,7 +5,7 @@
 - Branch naming: `sprint-N-[description]` branched from task branch
 - Pre-sprint: create sub-branches manually before launching parallel agents
 - Worktree note: Project is in git root `/prompt-lab-source/` — standard worktree isolation available
-- Active repo base path: `/Users/daverobertson/Desktop/Code/10-active-projects/prompt-lab-main-clean/prompt-lab-source/`
+- Active repo base path: `<repo-root>/prompt-lab-source/`
 - Open blocker: D-001 (nav strategy) must be resolved before Phase 2 UI work begins
 
 ## Dave OS — Architecture (2026-03-28)
