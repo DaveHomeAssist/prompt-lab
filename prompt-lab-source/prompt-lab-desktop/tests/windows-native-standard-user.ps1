@@ -5,6 +5,9 @@ $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'Use only on disposable GitHub runners' }
 if (!$env:PL_NATIVE_PROCESS_EVIDENCE -or !$env:PL_NATIVE_APP) { throw 'Native test environment missing' }
 
+$evidenceDir = Split-Path -Parent $env:PL_NATIVE_PROCESS_EVIDENCE
+if ($evidenceDir) { $null = New-Item -ItemType Directory -Force -Path $evidenceDir }
+$compileWatch = [Diagnostics.Stopwatch]::StartNew()
 Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
@@ -145,9 +148,14 @@ public static class NativeStandardUser {
             bool ownedObjectAccess = HasUserObjectAccess(childToken);
             if (childIntegrity != "S-1-16-8192" || childAdmin || !ownedObjectAccess)
                 throw new InvalidOperationException("Native app token failed integrity, membership, or owned-object access checks");
-            File.WriteAllText(evidence, "{\"parentIntegrity\":\"" + parentIntegrity + "\",\"childIntegrity\":\"" +
+            // Write to a temp file and rename, so the Node harness never reads
+            // a half-written evidence file while it polls.
+            string partial = evidence + ".partial";
+            File.WriteAllText(partial, "{\"parentIntegrity\":\"" + parentIntegrity + "\",\"childIntegrity\":\"" +
                 childIntegrity + "\",\"childAdministrator\":false,\"ownedObjectAccess\":true,\"userAccessAdded\":" +
                 userAccessAdded.ToString().ToLowerInvariant() + ",\"childPid\":" + child.processId + "}");
+            if (File.Exists(evidence)) File.Delete(evidence);
+            File.Move(partial, evidence);
             Console.WriteLine(File.ReadAllText(evidence));
             using (var process = Process.GetProcessById((int)child.processId)) {
                 if (ResumeThread(child.thread) == UInt32.MaxValue) Check(false, "Resume native app");
@@ -173,5 +181,6 @@ public static class NativeStandardUser {
 }
 '@
 
+Write-Host "[standard-user launcher] helper compiled in $($compileWatch.ElapsedMilliseconds) ms"
 $code = [NativeStandardUser]::Run($env:PL_NATIVE_APP, $PWD.Path, $env:PL_NATIVE_PROCESS_EVIDENCE)
 exit $code

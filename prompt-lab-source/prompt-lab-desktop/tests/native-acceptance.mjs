@@ -457,7 +457,26 @@ async function openSession() {
     });
     nativeApp.on('error', error => { nativeAppError = error; });
     for (const stream of [nativeApp.stdout, nativeApp.stderr]) stream.on('data', chunk => { nativeOutput = (nativeOutput + chunk).slice(-32_000); });
-    const privileges = await waitFor(async () => JSON.parse(await readFile(privilegesFile, 'utf8')), 'standard user app launch');
+    // The launcher compiles its C# helper with Add-Type before it starts the
+    // app, which took ~20 s on a cold windows-latest runner (#302: the file
+    // landed at +20.1 s, just after the old 20 s default). Wait up to 120 s,
+    // stop at once if the launcher itself exits, and log the elapsed time.
+    const launcherStarted = Date.now();
+    const privileges = await waitFor(async () => {
+      if (nativeApp.exitCode !== null) {
+        // waitFor() rethrows nativeAppError on its next poll, so this fails
+        // fast instead of retrying until the timeout.
+        nativeAppError = new Error(`Standard-user launcher exited with ${nativeApp.exitCode} before writing ${path.basename(privilegesFile)}: ${nativeOutput.slice(-2000)}`);
+        throw nativeAppError;
+      }
+      return JSON.parse(await readFile(privilegesFile, 'utf8'));
+    }, 'standard user app launch', 120_000).catch((error) => {
+      error.message += ` [launcher ${nativeApp.exitCode === null ? 'still running' : `exit ${nativeApp.exitCode}`}; output: ${nativeOutput.slice(-1500) || 'none'}]`;
+      throw error;
+    });
+    const launcherElapsedMs = Date.now() - launcherStarted;
+    (evidence.standardUserLaunchWaits ||= []).push({ launch: launchNumber, elapsedMs: launcherElapsedMs });
+    console.log(`[native-acceptance] launch ${launchNumber} standard-user launcher wrote privileges after ${launcherElapsedMs} ms`);
     assert.equal(privileges.childIntegrity, 'S-1-16-8192');
     assert.equal(privileges.childAdministrator, false);
     assert.equal(privileges.ownedObjectAccess, true);
