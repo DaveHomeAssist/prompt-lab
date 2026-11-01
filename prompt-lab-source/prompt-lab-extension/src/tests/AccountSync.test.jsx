@@ -83,6 +83,16 @@ describe('account sync UI', () => {
     expect(readUnseenConflicts(s, 'user_A')).toBe(0);
   });
 
+  it('never throws from the display-only counter when storage fails (Codex P2)', () => {
+    const quota = () => { throw new DOMException('full', 'QuotaExceededError'); };
+    const full = { getItem: () => '1', setItem: quota, removeItem: quota };
+    expect(addUnseenConflicts(full, 'user_A', 2)).toBe(3);
+    expect(() => clearUnseenConflicts(full, 'user_A')).not.toThrow();
+    const broken = { getItem: quota, setItem: quota, removeItem: quota };
+    expect(readUnseenConflicts(broken, 'user_A')).toBe(0);
+    expect(addUnseenConflicts(broken, 'user_A', 1)).toBe(1);
+  });
+
   it('signs out without touching local data', () => {
     window.localStorage.setItem('pl2-library', JSON.stringify([{ id: 'p1', title: 'Keep me' }]));
     const onSignOut = vi.fn();
