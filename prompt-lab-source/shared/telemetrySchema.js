@@ -114,7 +114,7 @@ export const TELEMETRY_EVENT_SCHEMAS = Object.freeze({
   'landing.cta_clicked': schema({ ...LANDING_BASE_FIELDS }, ['attributionVersion', 'placement', 'intent', 'destination']),
   'landing.demo_completed': schema({
     ...LANDING_BASE_FIELDS,
-    demoMode: enumField('balanced', 'concise', 'detailed'),
+    demoMode: enumField('expanded', 'refined', 'rebuilt', 'balanced', 'concise', 'detailed'),
     resultCount: integerField(50),
   }, ['attributionVersion', 'placement', 'intent', 'destination', 'demoMode', 'resultCount']),
   'landing.docs_result_selected': schema({

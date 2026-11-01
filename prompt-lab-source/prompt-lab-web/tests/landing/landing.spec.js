@@ -212,12 +212,12 @@ test('critical landing controls work through the tab order without pointer input
   await page.keyboard.press('Enter');
   await expect(page.locator('#main-content')).toBeFocused();
 
-  const balancedMode = page.locator('#demoBalanced');
-  const conciseMode = page.locator('#demoConcise');
-  await tabUntil(page, balancedMode);
+  const expandedMode = page.locator('#demoExpanded');
+  const refinedMode = page.locator('#demoRefined');
+  await tabUntil(page, expandedMode);
   await page.keyboard.press('ArrowRight');
-  await expect(conciseMode).toBeChecked();
-  await expect(conciseMode).toBeFocused();
+  await expect(refinedMode).toBeChecked();
+  await expect(refinedMode).toBeFocused();
 
   const run = page.locator('#demoRun');
   await tabUntil(page, run);
@@ -254,12 +254,12 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
   const run = page.locator('#demoRun');
   const status = page.locator('#demoStatus');
   const cta = page.locator('#demoCta');
-  const conciseMode = page.locator('input[name="demoMode"][value="concise"]');
+  const refinedMode = page.locator('input[name="demoMode"][value="refined"]');
 
   await expect(input).toHaveAttribute('readonly', '');
   await expect(page.locator('input[name="demoMode"]')).toHaveCount(3);
-  await page.locator('label[for="demoConcise"]').click();
-  await expect(conciseMode).toBeChecked();
+  await page.locator('label[for="demoRefined"]').click();
+  await expect(refinedMode).toBeChecked();
 
   await page.locator('#main-content').focus();
   await page.keyboard.press('Control+Enter');
@@ -294,7 +294,7 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
 
   await input.focus();
   await page.keyboard.press('Control+Enter');
-  await expect(status).toContainText(/(?:Example ready|(?:Balanced|Concise|Detailed) sample ready)/i, { timeout: 5_000 });
+  await expect(status).toContainText(/(?:Example ready|(?:Expanded|Refined|Rebuilt) sample ready)/i, { timeout: 5_000 });
   await expect(output).toHaveAttribute('aria-busy', 'false');
   await expect(output).not.toBeEmpty();
   const renderedSample = await output.textContent();
@@ -324,7 +324,7 @@ test('sample modes, shortcut scope, busy state, status, result, and handoff work
     state.outputBusy === 'false'
     && state.runBusy === 'false'
     && !state.disabled
-    && /(?:Example ready|(?:Balanced|Concise|Detailed) sample ready)/i.test(state.status)
+    && /(?:Example ready|(?:Expanded|Refined|Rebuilt) sample ready)/i.test(state.status)
   )), 'Demo should expose a completed/ready state').toBe(true);
   expect(
     demoGate.statusChanges.filter((message) => message === 'Example ready. No provider was called.'),
@@ -458,7 +458,7 @@ test.describe('reduced motion', () => {
 
     await page.evaluate(() => { window.__landingTimeoutDelays = []; });
     await page.locator('#demoRun').click();
-    await expect(page.locator('#demoStatus')).toContainText(/(?:Example ready|(?:Balanced|Concise|Detailed) sample ready)/i, { timeout: 750 });
+    await expect(page.locator('#demoStatus')).toContainText(/(?:Example ready|(?:Expanded|Refined|Rebuilt) sample ready)/i, { timeout: 750 });
     await expect(page.locator('#demoOutput')).not.toBeEmpty();
 
     const timeoutDelays = await page.evaluate(() => window.__landingTimeoutDelays);
@@ -587,9 +587,9 @@ test('1280x800 at 200% reflow proxy stays usable at a 640x400 CSS viewport', asy
   for (const selector of [
     '.nav-mobile-cta',
     '#navToggle',
-    'label[for="demoBalanced"]',
-    'label[for="demoConcise"]',
-    'label[for="demoDetailed"]',
+    'label[for="demoExpanded"]',
+    'label[for="demoRefined"]',
+    'label[for="demoRebuilt"]',
     '#demoRun',
     'label[for="billingMonthly"]',
     'label[for="billingAnnual"]',
