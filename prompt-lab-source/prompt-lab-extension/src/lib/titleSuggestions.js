@@ -9,7 +9,7 @@ const SMALL = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'in', 'of', 'o
 const ROLE = /^\s*(?:[#>*\-\s]*)(?:you are|you're|act as|acting as|imagine you(?:'re| are))\s+(?:an?\s+|the\s+)?([^.!?\n]{2,60})/im;
 
 const clean = (value) => value.replace(/…$/, '').replace(/[.:;,!?]+$/, '').replace(/\s+/g, ' ').trim();
-const titleCase = (words) => words.map((word, index) => {
+const titleCase = (words) => words.filter(Boolean).map((word, index) => {
   if (/[A-Z].*[A-Z]|\d/.test(word)) return word; // keep acronyms, versions and mixed case
   const lower = word.toLowerCase();
   return index > 0 && SMALL.has(lower) ? lower : lower[0].toUpperCase() + lower.slice(1);
@@ -20,7 +20,7 @@ export function compactTitle(title, maxWords = 5) {
   const words = clean(title).split(' ').filter(Boolean);
   if (words.length <= 3) return '';
   const kept = words.filter((word, index) => index === 0 || !FILLER.has(word.toLowerCase().replace(/[^a-z']/g, '')));
-  const short = kept.slice(0, maxWords).map((word) => word.replace(/[,;:]+$/, ''));
+  const short = kept.map((word) => word.replace(/[,;:]+$/, '')).filter(Boolean).slice(0, maxWords);
   return short.length >= 2 ? titleCase(short) : '';
 }
 

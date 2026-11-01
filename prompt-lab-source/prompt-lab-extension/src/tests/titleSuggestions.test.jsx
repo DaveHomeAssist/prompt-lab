@@ -58,3 +58,11 @@ describe('Save panel title suggestions', () => {
     expect(screen.queryByRole('group', { name: 'Title suggestions' })).not.toBeInTheDocument();
   });
 });
+
+describe('title suggestions with standalone punctuation', () => {
+  it('does not throw on a standalone colon or semicolon', () => {
+    expect(() => compactTitle('Review this code : find bugs ; fast')).not.toThrow();
+    expect(() => suggestTitleAlternatives('Review this code : find bugs ; and report them')).not.toThrow();
+    expect(compactTitle('Review this code : find bugs ; fast')).toBe('Review Code Find Bugs Fast');
+  });
+});
