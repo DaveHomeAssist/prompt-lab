@@ -1554,6 +1554,7 @@ export default function App({
         <SavePanel
           m={m} primaryModKey={primaryModKey} saveTargetId={saveTargetId}
           saveTitle={saveTitle} setSaveTitle={setSaveTitle}
+          titleSourceText={saveSourceText}
           saveCollection={saveCollection} setSaveCollection={setSaveCollection}
           saveTags={saveTags} setSaveTags={setSaveTags}
           changeNote={changeNote} setChangeNote={setChangeNote}
