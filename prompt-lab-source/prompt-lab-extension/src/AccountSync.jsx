@@ -49,18 +49,25 @@ export function AccountSyncBar({ sync, m, onOpen, onSignIn }) {
   if (!sync?.enabled) return null;
   const view = describeSyncStatus(sync);
   const signedOut = sync.status === 'signed-out';
+  // Copies kept since the user last opened the list (falls back to this sync's count).
+  const unseen = sync.signedIn && sync.status !== 'owner-mismatch' ? Number(sync.unseenConflicts ?? sync.conflicts) || 0 : 0;
   return (
     <div data-testid="account-sync-bar" data-sync-status={sync.status} className={`flex flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-1.5 text-xs ${m.surface} ${m.border}`} role="status" aria-live="polite">
       <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${DOT[view.tone]}`} aria-hidden="true" />
       <span className="font-medium">{view.label}</span>
       {['warn', 'blocked'].includes(view.tone) && view.detail && <span className={`hidden sm:inline ${m.textSub}`}>{view.detail}</span>}
-      {sync.conflicts > 0 && sync.status === 'synced' && <span className={m.textSub}>{sync.conflicts} conflict {sync.conflicts === 1 ? 'copy' : 'copies'} kept</span>}
+      {unseen > 0 && (
+        <button type="button" data-testid="sync-conflicts-link" className={`ui-control rounded px-1 font-medium text-orange-600 underline underline-offset-2 hover:text-orange-400`}
+          onClick={() => onOpen?.('conflicts')} aria-haspopup="dialog" title="Open the conflict copies kept from edits made on two devices">
+          {unseen} conflict {unseen === 1 ? 'copy' : 'copies'}
+        </button>
+      )}
       {sync.tooLarge > 0 && <span className={m.textSub}>{sync.tooLarge} too large to sync, kept on this device</span>}
       <span className="ml-auto flex items-center gap-2">
         {signedOut && !sync.needsReopen && (
           <button type="button" className="ui-control rounded-md bg-orange-600 px-2.5 py-1 font-medium text-white hover:bg-orange-500" onClick={() => openSignIn(onSignIn)}>Sign in to sync</button>
         )}
-        <button type="button" className={`ui-control rounded-md border px-2.5 py-1 ${m.border} ${m.btn}`} onClick={onOpen} aria-haspopup="dialog">Sync details</button>
+        <button type="button" className={`ui-control rounded-md border px-2.5 py-1 ${m.border} ${m.btn}`} onClick={() => onOpen?.()} aria-haspopup="dialog">Sync details</button>
       </span>
     </div>
   );
@@ -73,7 +80,7 @@ function ConflictCopies({ sync, m }) {
     let live = true;
     if (!sync.listConflicts || !sync.signedIn || sync.status === 'owner-mismatch') { setState({ loading: false, rows: [], error: '' }); return undefined; }
     sync.listConflicts()
-      .then((rows) => { if (live) setState({ loading: false, rows, error: '' }); })
+      .then((rows) => { if (live) { setState({ loading: false, rows, error: '' }); sync.markConflictsSeen?.(); } })
       .catch(() => { if (live) setState({ loading: false, rows: [], error: 'Could not load conflict copies right now. Try again in a minute.' }); });
     return () => { live = false; };
   }, [sync.listConflicts, sync.signedIn, sync.status]);
@@ -109,15 +116,20 @@ function ConflictCopies({ sync, m }) {
   );
 }
 
-export function AccountSyncPanel({ sync, m, open, onClose, onSignOut, onSignIn }) {
+export function AccountSyncPanel({ sync, m, open, focus, onClose, onSignOut, onSignIn }) {
   const closeRef = useRef(null);
+  const conflictsRef = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
-    closeRef.current?.focus();
+    // Opened from the "N conflict copies" link: go straight to the list.
+    if (focus === 'conflicts' && conflictsRef.current) {
+      conflictsRef.current.scrollIntoView?.({ block: 'start' });
+      conflictsRef.current.focus();
+    } else closeRef.current?.focus();
     const onKey = (event) => { if (event.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open, focus, onClose]);
   if (!open || !sync?.enabled) return null;
   const view = describeSyncStatus(sync);
   const mismatch = sync.status === 'owner-mismatch';
@@ -152,7 +164,7 @@ export function AccountSyncPanel({ sync, m, open, onClose, onSignOut, onSignIn }
 
         {sync.signedIn && !mismatch && (
           <section aria-labelledby="sync-conflicts-title" className="flex flex-col gap-2">
-            <h3 id="sync-conflicts-title" className="text-sm font-semibold">Conflict copies</h3>
+            <h3 id="sync-conflicts-title" ref={conflictsRef} tabIndex={-1} className="text-sm font-semibold outline-none">Conflict copies</h3>
             <ConflictCopies sync={sync} m={m} />
           </section>
         )}

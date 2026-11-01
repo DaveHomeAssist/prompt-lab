@@ -6,6 +6,20 @@ import { applyRemoteRows } from './syncModel.js';
 
 export const restoredKey = (userId) => `pl2-sync-restored:${userId}`;
 
+// Conflict copies kept by syncs since the user last opened the list. Counted
+// on the device from each sync's result, so showing it costs no extra reads.
+export const unseenConflictsKey = (userId) => `pl2-sync-conflicts-unseen:${userId}`;
+export function readUnseenConflicts(storage, userId) {
+  const n = Number(storage.getItem(unseenConflictsKey(userId)));
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+export function addUnseenConflicts(storage, userId, count) {
+  const next = readUnseenConflicts(storage, userId) + Math.max(0, Number(count) || 0);
+  if (next > 0) storage.setItem(unseenConflictsKey(userId), String(next));
+  return next;
+}
+export function clearUnseenConflicts(storage, userId) { storage.removeItem(unseenConflictsKey(userId)); }
+
 export function readRestoredConflictIds(storage, userId) {
   try {
     const list = JSON.parse(storage.getItem(restoredKey(userId)) || '[]');

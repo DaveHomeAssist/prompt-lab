@@ -1199,11 +1199,12 @@ export default function App({
       />
 
       <PendingWritesNotice m={m} />
-      <AccountSyncBar sync={accountSync} m={m} onOpen={() => setShowAccountSync(true)} />
+      <AccountSyncBar sync={accountSync} m={m} onOpen={(focus) => setShowAccountSync(focus || true)} />
       <AccountSyncPanel
         sync={accountSync}
         m={m}
-        open={showAccountSync}
+        open={Boolean(showAccountSync)}
+        focus={showAccountSync === 'conflicts' ? 'conflicts' : undefined}
         onClose={() => setShowAccountSync(false)}
         onSignOut={clerkUser && clerkAccountActions?.signOut
           ? () => { setShowAccountSync(false); clerkAccountActions.signOut(); }
