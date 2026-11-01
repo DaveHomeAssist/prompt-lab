@@ -11,3 +11,4 @@ prompt-lab-web/playwright-report/
 prompt-lab-web/test-results/
 .vercel
 .env*.local
+prompt-lab-desktop/src-tauri/tauri.sync.conf.json
