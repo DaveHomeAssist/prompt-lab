@@ -553,7 +553,12 @@ test('an unverified token email cannot claim an unbound legacy Stripe customer',
       headers: { Authorization: `Bearer ${jwks.tokenFor({ claims: { email_verified: false } })}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'validate' }),
     }));
-    assert.equal(response.status, 400);
+    // INT-06: a license check without a verified email finds nothing and
+    // answers Free; it never reads the email list or creates a customer.
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.plan, 'free');
+    assert.equal(body.customerId, '');
     assert.equal(calls.some(({ url, init }) => url.includes('/customers?') || init.method === 'POST'), false);
   } finally {
     await jwks.close();
