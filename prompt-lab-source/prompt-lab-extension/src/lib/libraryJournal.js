@@ -37,7 +37,13 @@ const RECORD_KEYS = [
   storageKeys.library, storageKeys.trash, storageKeys.collections, storageKeys.folders, storageKeys.packs, storageKeys.loadedPacks,
 ];
 
-export const isLibraryJournalKey = (key) => RECORD_KEYS.includes(key) || isLibraryDeletionKey(key);
+// R-21: account-sync state (shadow, cursor) and the outbox describe the
+// Library, so they are journaled in the same record and transaction. A restore
+// can then never pair a newer shadow with an older Library, which would make
+// the engine push stale content (based on the current version) or deletes.
+export const isSyncLibraryKey = (key) => typeof key === 'string'
+  && (key.startsWith('pl2-sync-state:') || key.startsWith('pl2-sync-queue:'));
+export const isLibraryJournalKey = (key) => RECORD_KEYS.includes(key) || isLibraryDeletionKey(key) || isSyncLibraryKey(key);
 
 // Desktop only. The extension's storage is owned by the browser profile, and
 // the web shell keeps its existing behavior.
@@ -79,7 +85,9 @@ export function applyLibraryJournalRecord(storage, record) {
   // Deletion markers are append-only, so keep any the journal lacks rather
   // than let a deleted prompt return.
   for (const key of Object.keys(readLibraryState(storage))) {
-    if (RECORD_KEYS.includes(key) && !Object.hasOwn(record.entries, key)) storage.removeItem(key);
+    // Sync state the snapshot does not have belongs to a newer Library than the
+    // one restored: drop it, so the engine re-merges from the account instead.
+    if ((RECORD_KEYS.includes(key) || isSyncLibraryKey(key)) && !Object.hasOwn(record.entries, key)) storage.removeItem(key);
   }
   for (const [key, value] of Object.entries(record.entries)) storage.setItem(key, value);
   storage.setItem(LIBRARY_JOURNAL_REVISION_KEY, String(record.revision));
@@ -113,7 +121,7 @@ function readRecord(db, recordId) {
 // (flushed) commit. The snapshot is read inside the transaction, so commits
 // that IndexedDB serializes always carry the newest localStorage state, and the
 // revision always moves past the journal's, so the journal never goes back.
-function writeRecord(db, storage, wanted, recordId, readState) {
+function writeRecord(db, storage, wanted, recordId, readState, mergeEntries) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(LIBRARY_JOURNAL_STORE, 'readwrite', { durability: 'strict' });
     const store = transaction.objectStore(LIBRARY_JOURNAL_STORE);
@@ -121,7 +129,12 @@ function writeRecord(db, storage, wanted, recordId, readState) {
     let revision = wanted;
     current.onsuccess = () => {
       revision = Math.max(wanted, (current.result?.revision || 0) + 1);
-      store.put({ id: recordId, revision, entries: readState(storage), savedAt: new Date().toISOString() });
+      // mergeEntries (settings journal, R-20) folds the stored record in per key
+      // inside this transaction, so a write after a failed boot read cannot
+      // drop keys the journal holds and this device has not seen.
+      const fresh = readState(storage);
+      const entries = mergeEntries ? mergeEntries(current.result?.entries || {}, fresh) : fresh;
+      store.put({ id: recordId, revision, entries, savedAt: new Date().toISOString() });
     };
     transaction.oncomplete = () => resolve(revision);
     transaction.onerror = () => reject(transaction.error);
@@ -129,10 +142,10 @@ function writeRecord(db, storage, wanted, recordId, readState) {
   });
 }
 
-function withTimeout(promise, timeoutMs) {
+function withTimeout(promise, timeoutMs, label = 'Library') {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(Object.assign(new Error('Library journal did not answer in time.'), { code: TIMEOUT_CODE })), timeoutMs);
+    timer = setTimeout(() => reject(Object.assign(new Error(`${label} journal did not answer in time.`), { code: TIMEOUT_CODE })), timeoutMs);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
@@ -152,7 +165,9 @@ export function createLibraryJournal({
   readState = readLibraryState,
   applyRecord = applyLibraryJournalRecord,
   isKey = isLibraryJournalKey,
+  mergeEntries = null,
 }) {
+  const label = recordId.charAt(0).toUpperCase() + recordId.slice(1);
   let dbPromise = null;
   let queued = false;
   let chain = Promise.resolve();
@@ -181,7 +196,7 @@ export function createLibraryJournal({
     revision = Math.max(revision, readLocalRevision(storage, revisionKey)) + 1;
     const wanted = revision;
     setLocalRevision(wanted);
-    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState)).then((committed) => {
+    const write = chain.then(() => database()).then((db) => writeRecord(db, storage, wanted, recordId, readState, mergeEntries)).then((committed) => {
       // The journal was ahead (for example after a boot read timed out), so
       // the commit took a higher revision. Keep localStorage in step with it.
       if (committed > revision) revision = committed;
@@ -213,7 +228,7 @@ export function createLibraryJournal({
       attempts += 1;
       try {
         // The open is not cancelled on timeout, so a retry keeps waiting on it.
-        record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs);
+        record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs, label);
         break;
       } catch (error) {
         if (error?.code !== TIMEOUT_CODE || attempts > bootRetries) { error.attempts = attempts; throw error; }
@@ -233,7 +248,7 @@ export function createLibraryJournal({
 
   return { note, restore, commit, flush: () => {
     if (queued) commit();
-    return withTimeout(pending, timeoutMs);
+    return withTimeout(pending, timeoutMs, label);
   } };
 }
 

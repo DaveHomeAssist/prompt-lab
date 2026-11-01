@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -42,6 +42,9 @@ let fixture;
 let nativeApp;
 let nativeAppPid;
 let launchNumber = 0;
+// R-22: once launch 1 of the exercise phase seeds the synthetic settings and
+// sync keys, every later launch (and every retention launch) must still have them.
+let seededSettings = phase === 'retention';
 let nativeAppError;
 let nativeOutput = '';
 const events = [];
@@ -123,6 +126,22 @@ const readDurableLocalState = (parentId) => execute(`
   const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
   return { ids: library.map(row => row.id).sort(), parent: library.find(row => row.id === arguments[0]) || null,
     sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])) };`, [parentId]);
+const SEEDED_SETTINGS = { provider: 'ollama', consent: 'denied', billingPlan: 'pro' };
+const readSeededSettings = () => execute(`
+  const read = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return 'unreadable'; } };
+  const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
+  return { sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])),
+    settings: { provider: read('pl2-provider-settings')?.provider ?? null, consent: localStorage.getItem('pl_telemetry_consent'),
+      billingPlan: read('pl2-billing')?.plan ?? null } };`);
+// R-22: the fixture sync keys and seeded settings hold exactly on this launch,
+// on every platform, whether Local Storage kept them or a journal restored them.
+async function assertSeededSettings(context) {
+  const state = await readSeededSettings();
+  (evidence.seededSettingsChecks ||= []).push({ launch: launchNumber, context, ...state.settings, syncKeys: Object.keys(state.sync) });
+  assert.deepEqual(state.sync, SYNC_FIXTURE_KEYS, `Seeded sync keys are intact (${context})`);
+  assert.deepEqual(state.settings, SEEDED_SETTINGS, `Seeded provider, consent and billing settings are intact (${context})`);
+  console.log(`[native-acceptance] launch ${launchNumber} seeded sync keys and settings intact (${context})`);
+}
 const describeNode = `const describeNode = node => {
   if (!(node instanceof Element)) return node ? String(node.nodeName || node) : null;
   const testId = node.getAttribute('data-testid');
@@ -314,39 +333,50 @@ async function click(selector, using) {
     await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
   }
 }
-// Focus an input for typing. Waits (briefly) until it is in view, its position
-// is stable and nothing covers its centre, then clicks it. A layout shift (for
-// example the Library rail heading reflowing when its web font loads) can still
-// put another element over it; then the click is skipped and the input is
-// focused directly, which is all typing needs. Either way it must end focused.
+// Focus an input for typing. Waits up to 10 s until it is in view, its
+// position is stable and nothing covers its centre, then clicks it. A brief
+// layout shift (for example the Library rail heading reflowing when its web
+// font loads) is waited out, and an intercepted click is retried twice. An
+// overlay that stays on top fails the run and names the cover (R-23): typing
+// into an input a user cannot reach would hide a real UI bug.
 async function focusForTyping(selector, id) {
   const ref = { 'element-6066-11e4-a52e-4f735466cecf': id };
   await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
-  let previousRect;
-  const clear = await waitFor(async () => {
-    const hit = await execute(`
-      const target = arguments[0];
-      target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
-      const box = target.getBoundingClientRect();
-      const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
-      const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
-      const cover = document.elementFromPoint(x, y);
-      return { uncovered: target.contains(cover), x, y, cover: cover?.tagName + '.' + cover?.className };
-    `, [ref]);
-    if (!hit.uncovered) recordDiagnostic('fillOcclusion', { selector, ...hit });
-    const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
-    const stable = rect === previousRect;
-    previousRect = rect;
-    return stable && hit.uncovered;
-  }, `${selector} position stable and unobscured`, 5_000).catch(() => false);
-  let clicked = false;
-  if (clear) {
-    try { await command('POST', `/session/${session}/element/${id}/click`, {}); clicked = true; }
-    catch (error) { if (!/click intercepted|not clickable/i.test(String(error?.message || error))) throw error; }
-  }
-  if (!clicked) {
-    recordDiagnostic('fillFocusFallback', { selector });
-    await execute('arguments[0].scrollIntoView({block:"nearest", behavior:"instant"}); arguments[0].focus();', [ref]);
+  let lastHit = null;
+  const waitUnobscured = async () => {
+    let previousRect;
+    await waitFor(async () => {
+      const hit = await execute(`
+        const target = arguments[0];
+        target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
+        const box = target.getBoundingClientRect();
+        const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
+        const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+        const cover = document.elementFromPoint(x, y);
+        return { uncovered: target.contains(cover), x, y, cover: cover?.tagName + '.' + cover?.className };
+      `, [ref]);
+      lastHit = hit;
+      if (!hit.uncovered) recordDiagnostic('fillOcclusion', { selector, ...hit });
+      const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
+      const stable = rect === previousRect;
+      previousRect = rect;
+      return stable && hit.uncovered;
+    }, `${selector} position stable and unobscured`, 10_000).catch((error) => {
+      throw new Error(`${selector} stayed covered or moving for 10 s; cover: ${lastHit?.cover ?? 'unknown'} at (${lastHit?.x}, ${lastHit?.y}) (${error.message})`);
+    });
+  };
+  for (let attempt = 1; ; attempt += 1) {
+    await waitUnobscured();
+    try {
+      await command('POST', `/session/${session}/element/${id}/click`, {});
+      break;
+    } catch (error) {
+      const message = String(error?.message || error);
+      if (!/click intercepted|not clickable/i.test(message) || attempt > 2) {
+        throw new Error(`${selector} click failed after ${attempt} attempt(s); last cover: ${lastHit?.cover ?? 'unknown'} (${message})`);
+      }
+      recordDiagnostic('fillClickRetry', { selector, attempt, error: message.slice(0, 300) });
+    }
   }
   assert.ok(await execute('return document.activeElement === arguments[0];', [ref]), `${selector} is focused before typing`);
 }
@@ -483,6 +513,12 @@ async function openSession() {
   });
   { const boot = evidence.scratchJournalsAtBoot.at(-1).boot;
     console.log(`[native-acceptance] launch ${launchNumber} scratch journal boot: ${boot?.action || 'not recorded'}, ${boot?.attempts ?? '?'} attempt(s)${boot?.error ? `, ${boot.error}` : ''}`); }
+  (evidence.settingsJournalBoots ||= []).push({ launch: launchNumber,
+    ...(await execute(`return performance.getEntriesByName('prompt-lab:settings-journal-boot').at(-1)?.detail || { action: 'not recorded' };`)
+      .catch(error => ({ error: error.message }))) });
+  { const boot = evidence.settingsJournalBoots.at(-1);
+    console.log(`[native-acceptance] launch ${launchNumber} settings journal boot: ${boot.action || 'unknown'}, ${boot.attempts ?? '?'} attempt(s)${boot.error ? `, ${boot.error}` : ''}`); }
+  if (seededSettings) await assertSeededSettings(`${phase} launch ${launchNumber}`);
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
@@ -598,6 +634,48 @@ async function closeSession() {
     }
     if (closingSession && closeNativeWindowFirst) await command('DELETE', `/session/${closingSession}`);
   }
+}
+// R-22: prove the desktop journals natively. Close the app, move WebView2's
+// Local Storage folder out of the profile (to the app, it is deleted), relaunch
+// and require both journals to restore the Library, sync keys and settings.
+// The original folder is put back afterwards so retention runs on the profile
+// the exercise left, as before. WebView2's profile path is Windows-only here.
+async function relaunchWithoutLocalStorage(expectedLibrary) {
+  if (process.platform !== 'win32') {
+    const skipped = { ran: false, reason: `${process.platform}: the Local Storage folder path is only known for WebView2 (Windows)` };
+    console.log(`[native-acceptance] Local Storage loss relaunch skipped: ${skipped.reason}`);
+    return skipped;
+  }
+  const folder = path.join(evidence.userDataFolder, 'EBWebView', 'Default', 'Local Storage');
+  const aside = `${folder}.rr6-aside`;
+  const moveWithRetry = async (from, to) => {
+    for (let attempt = 1; ; attempt += 1) {
+      try { await rename(from, to); return attempt; } catch (error) {
+        if (!['EBUSY', 'EPERM', 'EACCES'].includes(error.code) || attempt >= 50) throw error;
+        await delay(200);
+      }
+    }
+  };
+  await closeSession();
+  await stat(folder);
+  await rm(aside, { recursive: true, force: true });
+  const moveAttempts = await moveWithRetry(folder, aside);
+  console.log(`[native-acceptance] Local Storage moved out of the profile (attempt ${moveAttempts}); relaunching`);
+  await openSession();
+  const libraryBoot = evidence.libraryJournalBoots.at(-1);
+  const settingsBoot = evidence.settingsJournalBoots.at(-1);
+  const restoredIds = (await readLibrary()).map(row => row.id);
+  const result = { ran: true, launch: launchNumber, libraryBoot: libraryBoot.action, settingsBoot: settingsBoot.action, ids: restoredIds.length };
+  console.log(`[native-acceptance] Local Storage loss relaunch: library ${libraryBoot.action}, settings ${settingsBoot.action}, ${restoredIds.length} Library rows`);
+  assert.equal(libraryBoot.action, 'restore', 'The Library journal restored after Local Storage was deleted');
+  assert.equal(settingsBoot.action, 'restore', 'The settings journal restored after Local Storage was deleted');
+  assert.deepEqual(restoredIds, expectedLibrary.map(row => row.id), 'The restored Library has every row, in order');
+  // openSession already asserted the seeded sync keys and settings on this launch.
+  await closeSession();
+  await rm(folder, { recursive: true, force: true });
+  await moveWithRetry(aside, folder);
+  result.originalRestored = true;
+  return result;
 }
 async function startFixture(mode, responseKind = 'enhancement') {
   if (fixture) { fixture.closeAllConnections(); await new Promise(resolve => fixture.close(resolve)); }
@@ -968,7 +1046,9 @@ try {
     // Seed it with the other launch-1 settings, which every later launch already
     // depends on, rather than only in the launch that also tests persistence.
     await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); for (const [key, value] of Object.entries(arguments[0])) localStorage.setItem(key, value); return true;', [SYNC_FIXTURE_KEYS]);
+    seededSettings = true;
     await refreshPage();
+    await assertSeededSettings('exercise after seeding');
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
     await enhance('fixture enhancement', () => execute('return document.body.innerText.includes("Fixture enhanced prompt");'));
@@ -1105,6 +1185,7 @@ try {
     const afterImport = await readLibrary();
     evidence.libraryMatrix.order = afterImport.map(row => row.id);
     evidence.libraryMatrix.entries = afterImport.filter(row => evidence.libraryMatrix.entries.some(entry => entry.id === row.id));
+    evidence.localStorageLossRestore = await relaunchWithoutLocalStorage(afterImport);
   }
   evidence.status = 'passed';
 } catch (error) {
