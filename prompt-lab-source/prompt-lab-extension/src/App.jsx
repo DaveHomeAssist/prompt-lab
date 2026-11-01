@@ -435,6 +435,7 @@ export default function App({
       }
       setShowSettings(true);
     },
+    onRouteResultTab: setResultTab,
   });
 
   useEffect(() => {

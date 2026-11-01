@@ -145,7 +145,9 @@ describe('useTelemetryState', () => {
       await result.current.track('app.opened');
     });
 
-    expect(global.fetch).not.toHaveBeenCalled();
+    // PRIV-02: the only request after withdrawal is the deletion request.
+    const sentBodies = global.fetch.mock.calls.map(([, init]) => JSON.parse(init.body));
+    expect(sentBodies.filter((body) => body.kind !== 'withdraw')).toEqual([]);
     expect(localStorage.getItem('pl_telemetry_consent')).toBe('denied');
   });
 
@@ -169,5 +171,90 @@ describe('useTelemetryState', () => {
       telemetryEnabled: true,
       context: { section: 'create' },
     }]);
+  });
+
+  describe('PRIV-02 consent withdrawal', () => {
+    function withdrawCalls() {
+      return global.fetch.mock.calls
+        .map(([, init]) => JSON.parse(init.body))
+        .filter((body) => body.kind === 'withdraw');
+    }
+
+    it('asks the server to delete stored records when consent is withdrawn in settings', async () => {
+      const notify = vi.fn();
+      const { result } = renderHook(() => useTelemetryState({ notify }));
+
+      await act(async () => {
+        await result.current.updatePreferences({ telemetryEnabled: true, contactEmail: 'Person@Example.com' });
+      });
+      await act(async () => {
+        await result.current.updatePreferences({ telemetryEnabled: false, contactEmail: 'Person@Example.com' });
+      });
+
+      await waitFor(() => expect(withdrawCalls()).toHaveLength(1));
+      const [withdraw] = withdrawCalls();
+      expect(withdraw).toMatchObject({
+        kind: 'withdraw',
+        deviceId: result.current.deviceId,
+        contactEmail: 'person@example.com',
+        telemetryEnabled: false,
+      });
+      await waitFor(() => expect(result.current.deletionPending).toBe(false));
+      expect(notify).toHaveBeenLastCalledWith(
+        'Insights turned off. Stored insights data for this device is being deleted.',
+      );
+    });
+
+    it('asks the server to delete stored records when consent is withdrawn from the banner', async () => {
+      const { result } = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+      act(() => result.current.grantConsent());
+      await waitFor(() => expect(result.current.consentGiven).toBe('granted'));
+      act(() => result.current.denyConsent());
+
+      await waitFor(() => expect(withdrawCalls()).toHaveLength(1));
+      expect(withdrawCalls()[0].deviceId).toBe(result.current.deviceId);
+      expect(withdrawCalls()[0]).not.toHaveProperty('contactEmail');
+    });
+
+    it('sends nothing when consent was never granted', async () => {
+      const { result } = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+      act(() => result.current.denyConsent());
+      await act(async () => {
+        await result.current.updatePreferences({ telemetryEnabled: false, contactEmail: '' });
+      });
+      await waitFor(() => expect(result.current.consentGiven).toBe('denied'));
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(result.current.deletionPending).toBe(false);
+    });
+
+    it('keeps a failed deletion pending and retries it on the next load', async () => {
+      localStorage.setItem('pl_telemetry_consent', 'granted');
+      global.fetch = vi.fn(async () => new Response(JSON.stringify({ error: 'down' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+      const first = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+      act(() => first.result.current.denyConsent());
+      await waitFor(() => expect(first.result.current.lastError).toMatch(/will retry/));
+      expect(first.result.current.deletionPending).toBe(true);
+      expect(JSON.parse(localStorage.getItem('pl2-telemetry')).deletionPending).toBe(true);
+      first.unmount();
+
+      global.fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true, withdrawn: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }));
+      const second = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+      await waitFor(() => expect(withdrawCalls()).toHaveLength(1));
+      await waitFor(() => expect(second.result.current.deletionPending).toBe(false));
+    });
+
+    it('re-granting consent cancels a withdrawal that has not been sent', () => {
+      const state = normalizeTelemetryState({ deletionPending: true });
+      expect(state.deletionPending).toBe(true);
+      const { result } = renderHook(() => useTelemetryState({ notify: vi.fn() }));
+      act(() => result.current.grantConsent());
+      expect(result.current.deletionPending).toBe(false);
+    });
   });
 });
