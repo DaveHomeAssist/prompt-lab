@@ -100,10 +100,18 @@ test('LOW: sync_admin_delete_user waits for an in-flight push and erases what it
   await Promise.all([pusher.end(), admin.end()]);
 });
 
-const PG_DUMP = ['/usr/lib/postgresql/17/bin/pg_dump', '/usr/bin/pg_dump'].find((path) => existsSync(path));
-const PSQL = ['/usr/lib/postgresql/17/bin/psql', '/usr/bin/psql'].find((path) => existsSync(path));
+// pg_dump refuses a server newer than itself, and the embedded server is
+// Postgres 17. GitHub's ubuntu-latest ships an older client, so the rehearsal
+// runs only where a 17+ client exists (it skips, rather than fails, elsewhere).
+const clientMajor = (path) => {
+  try { return Number((execFileSync(path, ['--version'], { encoding: 'utf8' }).match(/(\d+)(?:\.\d+)?/) || [])[1]) || 0; } catch { return 0; }
+};
+const findClient = (name) => ['/usr/lib/postgresql/18/bin', '/usr/lib/postgresql/17/bin', '/usr/bin']
+  .map((dir) => `${dir}/${name}`).find((path) => existsSync(path) && clientMajor(path) >= 17);
+const PG_DUMP = findClient('pg_dump');
+const PSQL = findClient('psql');
 
-test('R-06: weekly pg_dump export restores into a fresh database per the runbook', { timeout: 120000, skip: !(PG_DUMP && PSQL) && 'pg_dump/psql not installed' }, async () => {
+test('R-06: weekly pg_dump export restores into a fresh database per the runbook', { timeout: 120000, skip: !(PG_DUMP && PSQL) && 'no pg_dump/psql 17+ client installed' }, async () => {
   const src = await connect();
   const R = 'user_Restore1';
   const items = Array.from({ length: 20 }, (_, i) => ({ kind: 'prompt', item_id: `r${i}`, base_version: 0, lamport: i + 1, payload: { state: 'active', entry: { id: `r${i}`, title: `Restore ${i}`, notes: 'é ünïcödé ✓' } } }));
