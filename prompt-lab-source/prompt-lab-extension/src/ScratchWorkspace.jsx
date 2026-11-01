@@ -10,6 +10,7 @@ import PanelResizer from './PanelResizer.jsx';
 import useScratchDurability from './hooks/useScratchDurability.js';
 import { getScratchDurability, startScratchJournal } from './lib/scratchJournal.js';
 import ScratchNoteRow, { SCRATCH_COLOR_SWATCHES, SCRATCH_LIST_DENSITIES, formatRelativeTime } from './ScratchNoteRow.jsx';
+import { matchShortcutIn } from './lib/shortcutMap.js';
 import {
   SCRATCH_KEY,
   buildDefaultScratchPayload,
@@ -476,16 +477,18 @@ export default function ScratchWorkspace({
 
   const handleEditorKeyDown = (event) => {
     const modifier = event.metaKey || event.ctrlKey;
-    if (modifier && event.key.toLowerCase() === 'b') {
+    // Editor shortcuts are declared in lib/shortcutMap.js (scope 'editor').
+    const editorShortcut = event.shiftKey ? null : matchShortcutIn('editor', event);
+    if (editorShortcut?.id === 'bold') {
       event.preventDefault(); replaceSelection('**', '**', 'bold text'); return;
     }
-    if (modifier && event.key.toLowerCase() === 'i') {
+    if (editorShortcut?.id === 'italic') {
       event.preventDefault(); replaceSelection('_', '_', 'italic text'); return;
     }
-    if (modifier && event.key.toLowerCase() === 'k') {
+    if (editorShortcut?.id === 'link') {
       event.preventDefault(); replaceSelection('[', '](https://)', 'link text'); return;
     }
-    if (event.key === 'Tab' && !modifier) {
+    if (editorShortcut?.id === 'indent') {
       event.preventDefault(); replaceSelection('  '); return;
     }
     if (event.key !== 'Enter' || modifier || event.shiftKey) return;
