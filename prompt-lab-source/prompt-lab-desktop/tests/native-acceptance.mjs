@@ -90,7 +90,10 @@ async function command(method, route, body) {
     body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(method === 'POST' && route === '/session' ? 120_000 : 30_000),
   });
   const result = await response.json();
-  if (!response.ok || result.value?.error) throw new Error(`${route}: ${result.value?.error || response.status} ${result.value?.message || ''}`);
+  // W3C errors carry {error, message, stacktrace}. A script result that merely has an
+  // `error` field (for example a journal boot outcome) is data, not a driver error.
+  const w3cError = result.value && typeof result.value === 'object' && typeof result.value.error === 'string' && 'stacktrace' in result.value;
+  if (!response.ok || w3cError) throw new Error(`${route}: ${result.value?.error || response.status} ${result.value?.message || ''}`);
   return result.value;
 }
 async function waitFor(probe, label, timeout = 20_000) {
@@ -311,9 +314,45 @@ async function click(selector, using) {
     await command('POST', `/session/${session}/element/${selectId}/value`, { text: '\uE00C' });
   }
 }
+// Focus an input for typing. Waits (briefly) until it is in view, its position
+// is stable and nothing covers its centre, then clicks it. A layout shift (for
+// example the Library rail heading reflowing when its web font loads) can still
+// put another element over it; then the click is skipped and the input is
+// focused directly, which is all typing needs. Either way it must end focused.
+async function focusForTyping(selector, id) {
+  const ref = { 'element-6066-11e4-a52e-4f735466cecf': id };
+  await waitFor(() => command('GET', `/session/${session}/element/${id}/enabled`), `${selector} enabled`);
+  let previousRect;
+  const clear = await waitFor(async () => {
+    const hit = await execute(`
+      const target = arguments[0];
+      target.scrollIntoView({block:'nearest', inline:'nearest', behavior:'instant'});
+      const box = target.getBoundingClientRect();
+      const x = (Math.max(0, box.left) + Math.min(innerWidth, box.right)) / 2;
+      const y = (Math.max(0, box.top) + Math.min(innerHeight, box.bottom)) / 2;
+      const cover = document.elementFromPoint(x, y);
+      return { uncovered: target.contains(cover), x, y, cover: cover?.tagName + '.' + cover?.className };
+    `, [ref]);
+    if (!hit.uncovered) recordDiagnostic('fillOcclusion', { selector, ...hit });
+    const rect = JSON.stringify(await command('GET', `/session/${session}/element/${id}/rect`));
+    const stable = rect === previousRect;
+    previousRect = rect;
+    return stable && hit.uncovered;
+  }, `${selector} position stable and unobscured`, 5_000).catch(() => false);
+  let clicked = false;
+  if (clear) {
+    try { await command('POST', `/session/${session}/element/${id}/click`, {}); clicked = true; }
+    catch (error) { if (!/click intercepted|not clickable/i.test(String(error?.message || error))) throw error; }
+  }
+  if (!clicked) {
+    recordDiagnostic('fillFocusFallback', { selector });
+    await execute('arguments[0].scrollIntoView({block:"nearest", behavior:"instant"}); arguments[0].focus();', [ref]);
+  }
+  assert.ok(await execute('return document.activeElement === arguments[0];', [ref]), `${selector} is focused before typing`);
+}
 async function fill(selector, text) {
   const id = await element(selector);
-  await command('POST', `/session/${session}/element/${id}/click`, {});
+  await focusForTyping(selector, id);
   // WebKit's element clear does not update React's controlled input state.
   // Ctrl+A / Backspace produces the same input events as operator replacement.
   await command('POST', `/session/${session}/element/${id}/value`, { text: '\uE009a\uE000\uE003' });
@@ -395,14 +434,29 @@ async function openSession() {
     assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
     nativeAppPid = privileges.childPid;
     (evidence.nativeProcessPrivileges ||= []).push(privileges);
-    await waitFor(async () => {
-      if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
-      const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
-      if (!response.ok) return false;
-      const version = await response.json();
-      evidence.debuggingVersion = version;
-      return Boolean(version.webSocketDebuggerUrl);
-    }, 'installed WebView2 debugging endpoint');
+    // A cold first launch on a loaded Windows runner can take well over the
+    // default 20 s to open WebView2's debugging port (#289, ca3ed29). Allow
+    // 90 s on every launch and log how long it took; the readiness test is
+    // unchanged (the port answers /json/version with a debugger URL).
+    const portWaitStarted = Date.now();
+    let portPolls = 0;
+    let portReady = false;
+    try {
+      await waitFor(async () => {
+        portPolls += 1;
+        if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
+        const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
+        if (!response.ok) return false;
+        const version = await response.json();
+        evidence.debuggingVersion = version;
+        portReady = Boolean(version.webSocketDebuggerUrl);
+        return portReady;
+      }, 'installed WebView2 debugging endpoint', 90_000);
+    } finally {
+      const elapsedMs = Date.now() - portWaitStarted;
+      (evidence.debuggingPortWaits ||= []).push({ launch: launchNumber, elapsedMs, polls: portPolls, ready: portReady });
+      console.log(`[native-acceptance] launch ${launchNumber} WebView2 debugging endpoint ${portReady ? 'ready' : 'not ready'} after ${elapsedMs} ms (${portPolls} polls)`);
+    }
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
   const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
@@ -418,6 +472,8 @@ async function openSession() {
     return { ...(mark ? mark.detail : { action: 'not recorded' }), setup: {
       provider: read('pl2-provider-settings')?.provider ?? null, billingPlan: read('pl2-billing')?.plan ?? null,
     } };`).catch(error => ({ error: error.message })) });
+  { const boot = evidence.libraryJournalBoots.at(-1);
+    console.log(`[native-acceptance] launch ${launchNumber} library journal boot: ${boot.action || 'unknown'}, ${boot.attempts ?? '?'} attempt(s)${boot.error ? `, ${boot.error}` : ''}`); }
   // Inspect after startup only. A readonly IndexedDB transaction before close
   // can wait behind a pending write and accidentally give it time to commit.
   (evidence.libraryJournalsAtBoot ||= []).push({ launch: launchNumber, ...await readLibraryJournal().catch(error => ({ error: error.message })) });
@@ -425,11 +481,38 @@ async function openSession() {
     boot: await execute(`return performance.getEntriesByName('prompt-lab:scratch-journal-boot').at(-1)?.detail || null;`),
     record: await readScratchJournal().catch(error => ({ error: error.message })),
   });
+  { const boot = evidence.scratchJournalsAtBoot.at(-1).boot;
+    console.log(`[native-acceptance] launch ${launchNumber} scratch journal boot: ${boot?.action || 'not recorded'}, ${boot?.attempts ?? '?'} attempt(s)${boot?.error ? `, ${boot.error}` : ''}`); }
   // WebView2 can restore a compact native window despite the driver rect request.
   // Readiness and navigation must follow the app's actual responsive surface.
   (evidence.viewports ||= []).push(await execute(`return {width: innerWidth, height: innerHeight, compact: Boolean(document.querySelector('[aria-label="Primary mobile navigation"]'))};`));
   await openCreate();
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=prompt-input]"));'), 'Create editor visible');
+}
+// Read-only PowerShell probes on a loaded Windows runner can take far longer
+// than usual to start (the a698d24/d83e4b9 runs timed out at 30 s). Give each
+// attempt 90 s and retry up to twice; every attempt is logged and kept as
+// evidence. Callers still assert on the final attempt's status and output.
+function runPowerShellWithRetry(label, script, env = {}, { timeout = 90_000, retries = 2 } = {}) {
+  const attempts = [];
+  let result;
+  for (let attempt = 1; attempt <= retries + 1; attempt += 1) {
+    const started = Date.now();
+    result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+      encoding: 'utf8', timeout, env: { ...process.env, ...env },
+    });
+    const record = {
+      attempt, ms: Date.now() - started, status: result.status, signal: result.signal,
+      error: result.error ? { code: result.error.code, message: result.error.message } : null,
+      stderr: String(result.stderr || '').slice(-500),
+    };
+    attempts.push(record);
+    console.log(`[native-acceptance] ${label}: attempt ${attempt}/${retries + 1} ${result.status === 0 ? 'ok' : 'failed'} in ${record.ms} ms` +
+      (result.status === 0 ? '' : ` (status ${result.status}, signal ${result.signal}, ${record.error?.code || 'no spawn error'})`));
+    if (result.status === 0) break;
+  }
+  (evidence.powershellAttempts ||= {})[label] = [...(evidence.powershellAttempts?.[label] || []), ...attempts];
+  return Object.assign(result, { attempts });
 }
 async function closeSession() {
   let browserPids = [];
@@ -437,7 +520,7 @@ async function closeSession() {
   if (session) shutdown.libraryBeforeClose = await readLibrary().catch(error => ({ error: error.message }));
   (evidence.nativeShutdowns ||= []).push(shutdown);
   if (nativeAppPid) {
-    const probe = spawnSync('powershell.exe', ['-NoProfile', '-Command', `
+    const probe = runPowerShellWithRetry('owned WebView2 process discovery', `
       $processes = @(Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'")
       $roots = @($processes | Where-Object { $_.ParentProcessId -eq [int]$env:PL_NATIVE_OWNED_PID } |
         Select-Object -ExpandProperty ProcessId)
@@ -450,11 +533,11 @@ async function closeSession() {
         $parents = $children
       } while ($parents.Count)
       @{ roots = $roots; all = @($owned | Sort-Object) } | ConvertTo-Json -Compress
-    `], { encoding: 'utf8', timeout: 30_000, env: { ...process.env, PL_NATIVE_OWNED_PID: String(nativeAppPid) } });
+    `, { PL_NATIVE_OWNED_PID: String(nativeAppPid) });
     shutdown.processDiscovery = {
       status: probe.status, signal: probe.signal,
       error: probe.error ? { code: probe.error.code, message: probe.error.message } : null,
-      stderr: probe.stderr,
+      stderr: probe.stderr, attempts: probe.attempts,
     };
     assert.equal(probe.status, 0, `Owned WebView2 process discovery failed: ${JSON.stringify(shutdown.processDiscovery)}`);
     const owned = JSON.parse(probe.stdout.trim());

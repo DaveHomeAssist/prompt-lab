@@ -7,7 +7,7 @@ import { readAccountAuth, subscribeAccountAuth } from '../lib/sync/accountAuthBr
 import { createSyncEngine } from '../lib/sync/syncEngine.js';
 import { createSupabaseTransport } from '../lib/sync/supabaseTransport.js';
 import { backoffDelay } from '../lib/sync/syncQueue.js';
-import { readRestoredConflictIds, restoreConflictCopy } from '../lib/sync/syncConflicts.js';
+import { addUnseenConflicts, clearUnseenConflicts, readRestoredConflictIds, readUnseenConflicts, restoreConflictCopy } from '../lib/sync/syncConflicts.js';
 
 const IDLE = { status: 'off', pending: 0 };
 const LOCAL_DEBOUNCE_MS = 2000;
@@ -71,7 +71,8 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
       const result = navigator.locks?.request ? await navigator.locks.request('pl-sync', exec) : await exec();
       if (stopped) return;
       for (const key of result.written || []) window.dispatchEvent(new StorageEvent('storage', { key }));
-      setSyncState({ status: result.status, pending: result.pending, conflicts: result.conflicts, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
+      const unseen = result.conflicts > 0 ? addUnseenConflicts(window.localStorage, runUserId, result.conflicts) : readUnseenConflicts(window.localStorage, runUserId);
+      setSyncState({ status: result.status, pending: result.pending, conflicts: result.conflicts, unseenConflicts: unseen, tooLarge: result.tooLarge || 0, error: result.error, at: Date.now(), needsReopen: Boolean(bridged.needsReopen) });
       failures = result.status === 'synced' || result.status === 'owner-mismatch' ? 0 : failures + 1;
       // Signed out, another account's data on this device, or over quota:
       // wait for the next local change or sign-in instead of retrying.
@@ -89,7 +90,7 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     window.addEventListener('focus', wake);
     window.addEventListener('online', run);
     document.addEventListener('visibilitychange', wake);
-    setSyncState({ status: 'syncing', pending: engine.pendingCount() });
+    setSyncState({ status: 'syncing', pending: engine.pendingCount(), unseenConflicts: readUnseenConflicts(window.localStorage, runUserId) });
     runRef.current = run;
     transportRef.current = transport;
     run();
@@ -113,6 +114,12 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     const restored = readRestoredConflictIds(window.localStorage, userId);
     return (Array.isArray(rows) ? rows : []).map((row) => ({ ...row, restored: restored.has(String(row.id)) }));
   }, [userId]);
+  // Opening the conflict list counts as having seen the copies.
+  const markConflictsSeen = useCallback(() => {
+    if (!userId) return;
+    clearUnseenConflicts(window.localStorage, userId);
+    setSyncState((prev) => (prev.unseenConflicts ? { ...prev, unseenConflicts: 0 } : prev));
+  }, [userId]);
   // Restoring a copy is a normal local edit; the next sync uploads it.
   const restoreConflict = useCallback((copy) => {
     const result = restoreConflictCopy(window.localStorage, userId, copy, { notifyWrite: notifyLocalWrite });
@@ -130,6 +137,7 @@ export default function useAccountSync({ clerkUser, clerkGetToken, config = read
     signOut: !clerkUser && typeof bridged.signOut === 'function' ? bridged.signOut : undefined,
     syncNow,
     listConflicts,
+    markConflictsSeen,
     restoreConflict,
   };
 }

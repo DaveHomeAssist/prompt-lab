@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { act, fireEvent, render, renderHook, screen, waitFor, cleanup } from '@testing-library/react';
 import { AccountSyncBar, AccountSyncPanel, describeSyncStatus } from '../AccountSync.jsx';
-import { restoreConflictCopy, readRestoredConflictIds } from '../lib/sync/syncConflicts.js';
+import { addUnseenConflicts, clearUnseenConflicts, readUnseenConflicts, restoreConflictCopy, readRestoredConflictIds } from '../lib/sync/syncConflicts.js';
 import useAccountSync from '../hooks/useAccountSync.js';
 import { T } from '../constants.js';
 
@@ -26,7 +26,7 @@ describe('account sync UI', () => {
   it('shows status, pending changes and conflict counts', () => {
     render(<AccountSyncBar sync={{ ...base, status: 'synced', at: Date.now(), conflicts: 2 }} m={m} onOpen={() => {}} />);
     expect(screen.getByText('Synced just now')).toBeTruthy();
-    expect(screen.getByText('2 conflict copies kept')).toBeTruthy();
+    expect(screen.getByTestId('sync-conflicts-link').textContent).toBe('2 conflict copies');
     expect(describeSyncStatus({ status: 'offline', pending: 3 }).detail).toMatch(/3 changes waiting/);
   });
 
@@ -46,6 +46,51 @@ describe('account sync UI', () => {
     fireEvent.click(screen.getByText('Restore this copy'));
     expect(restoreConflict).toHaveBeenCalledWith(copy);
     expect(screen.getByText('Restored')).toBeTruthy();
+  });
+
+  it('keeps a visible "N conflict copies" link until the list is opened, and it opens the list', async () => {
+    const onOpen = vi.fn();
+    // Later syncs report 0 new conflicts, but the copies kept earlier still show.
+    const { rerender } = render(<AccountSyncBar sync={{ ...base, status: 'offline', conflicts: 0, unseenConflicts: 1 }} m={m} onOpen={onOpen} />);
+    const link = screen.getByTestId('sync-conflicts-link');
+    expect(link.textContent).toBe('1 conflict copy');
+    fireEvent.click(link);
+    expect(onOpen).toHaveBeenCalledWith('conflicts');
+    fireEvent.click(screen.getByText('Sync details'));
+    expect(onOpen).toHaveBeenLastCalledWith();
+    rerender(<AccountSyncBar sync={{ ...base, status: 'synced', conflicts: 0, unseenConflicts: 0 }} m={m} onOpen={onOpen} />);
+    expect(screen.queryByTestId('sync-conflicts-link')).toBeNull();
+    rerender(<AccountSyncBar sync={{ ...base, status: 'owner-mismatch', unseenConflicts: 3 }} m={m} onOpen={onOpen} />);
+    expect(screen.queryByTestId('sync-conflicts-link')).toBeNull();
+  });
+
+  it('opened from the link, the panel focuses the conflict list and marks the copies seen', async () => {
+    const copy = { id: 9, kind: 'prompt', item_id: 'p2', losing_payload: { state: 'active', entry: { id: 'p2', title: 'Desktop edit', original: 'x' } }, losing_deleted: false, created_at: '2026-11-01T10:00:00Z' };
+    const markConflictsSeen = vi.fn();
+    render(<AccountSyncPanel sync={{ ...base, status: 'synced', listConflicts: async () => [copy], markConflictsSeen }} m={m} open focus="conflicts" onClose={() => {}} />);
+    expect(document.activeElement?.id).toBe('sync-conflicts-title');
+    await waitFor(() => expect(screen.getByText('Desktop edit')).toBeTruthy());
+    expect(markConflictsSeen).toHaveBeenCalled();
+  });
+
+  it('counts unseen conflict copies per account on the device', () => {
+    const s = window.localStorage;
+    expect(readUnseenConflicts(s, 'user_A')).toBe(0);
+    expect(addUnseenConflicts(s, 'user_A', 2)).toBe(2);
+    expect(addUnseenConflicts(s, 'user_A', 1)).toBe(3);
+    expect(readUnseenConflicts(s, 'user_B')).toBe(0);
+    clearUnseenConflicts(s, 'user_A');
+    expect(readUnseenConflicts(s, 'user_A')).toBe(0);
+  });
+
+  it('never throws from the display-only counter when storage fails (Codex P2)', () => {
+    const quota = () => { throw new DOMException('full', 'QuotaExceededError'); };
+    const full = { getItem: () => '1', setItem: quota, removeItem: quota };
+    expect(addUnseenConflicts(full, 'user_A', 2)).toBe(3);
+    expect(() => clearUnseenConflicts(full, 'user_A')).not.toThrow();
+    const broken = { getItem: quota, setItem: quota, removeItem: quota };
+    expect(readUnseenConflicts(broken, 'user_A')).toBe(0);
+    expect(addUnseenConflicts(broken, 'user_A', 1)).toBe(1);
   });
 
   it('signs out without touching local data', () => {

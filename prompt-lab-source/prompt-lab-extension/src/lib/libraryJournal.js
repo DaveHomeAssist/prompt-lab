@@ -16,6 +16,11 @@ export const LIBRARY_JOURNAL_REVISION_KEY = 'pl2-library-journal-revision';
 export const LIBRARY_JOURNAL_BOOT_MARK = 'prompt-lab:library-journal-boot';
 const DB_VERSION = 1;
 const BOOT_TIMEOUT_MS = 3000;
+// A cold IndexedDB open can exceed one boot window on a loaded machine (seen on
+// Windows CI). A timed-out boot read is retried, still bounded, before the app
+// starts without the journal. Saves keep the single timeout.
+const BOOT_RETRIES = 2;
+const TIMEOUT_CODE = 'journal-timeout';
 let activeJournal = null;
 
 // Save callers must wait for the strict transaction, not the localStorage
@@ -127,7 +132,7 @@ function writeRecord(db, storage, wanted, recordId, readState) {
 function withTimeout(promise, timeoutMs) {
   let timer;
   const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Library journal did not answer in time.')), timeoutMs);
+    timer = setTimeout(() => reject(Object.assign(new Error('Library journal did not answer in time.'), { code: TIMEOUT_CODE })), timeoutMs);
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
@@ -141,7 +146,7 @@ function markBoot(detail) {
 }
 
 export function createLibraryJournal({
-  storage, idb, timeoutMs = BOOT_TIMEOUT_MS,
+  storage, idb, timeoutMs = BOOT_TIMEOUT_MS, bootRetries = BOOT_RETRIES,
   recordId = LIBRARY_JOURNAL_RECORD,
   revisionKey = LIBRARY_JOURNAL_REVISION_KEY,
   readState = readLibraryState,
@@ -202,7 +207,19 @@ export function createLibraryJournal({
   const restore = async () => {
     const local = { revision: readLocalRevision(storage, revisionKey), entries: readState(storage) };
     revision = local.revision;
-    const record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs);
+    let record;
+    let attempts = 0;
+    for (;;) {
+      attempts += 1;
+      try {
+        // The open is not cancelled on timeout, so a retry keeps waiting on it.
+        record = await withTimeout(database().then(db => readRecord(db, recordId)), timeoutMs);
+        break;
+      } catch (error) {
+        if (error?.code !== TIMEOUT_CODE || attempts > bootRetries) { error.attempts = attempts; throw error; }
+        logWarn(`${recordId} journal boot read attempt ${attempts}/${bootRetries + 1} timed out after ${timeoutMs} ms; retrying`, error);
+      }
+    }
     const action = planLibraryJournalBoot(local, record);
     if (action === 'restore') {
       applyRecord(storage, record);
@@ -211,7 +228,7 @@ export function createLibraryJournal({
       revision = Math.max(revision, record?.revision || 0);
       commit();
     }
-    return { action, localRevision: local.revision, journalRevision: record?.revision ?? null };
+    return { action, localRevision: local.revision, journalRevision: record?.revision ?? null, attempts };
   };
 
   return { note, restore, commit, flush: () => {
@@ -229,7 +246,7 @@ export async function startLibraryJournal({ storage = localStorage, idb = indexe
     outcome = await journal.restore();
   } catch (error) {
     logWarn('library journal restore', error);
-    outcome = { action: 'unavailable', error: error?.message || String(error) };
+    outcome = { action: 'unavailable', error: error?.message || String(error), attempts: error?.attempts ?? 1 };
   }
   activeJournal = journal;
   const unsubscribe = onLocalWrite(journal.note);
