@@ -450,3 +450,54 @@ test('R-12: a 413 "request too large" splits the batch and retries instead of re
     await db.query(`update sync.settings set value = '2097152' where key = 'max_request_bytes'`);
   }
 });
+
+test('R-11 / #285 Codex P1: a failed winner fetch after a lost push is retried and the winner still lands', async () => {
+  const N = 'user_Ne2e';
+  const n1 = device('n1', N);
+  const titleOf = (dev) => read(dev, 'pl2-library').find((item) => item.id === 'np1')?.title;
+  const storage = new MemoryStorage();
+  const base = pgTransport(N);
+  let editBeforePush = false; let failFetch = false;
+  const transport = {
+    ...base,
+    // Another device saves between this device's pull and its push, so the
+    // winner is not among the pulled rows and has to be fetched.
+    push: async (deviceId, changes) => {
+      if (editBeforePush) {
+        editBeforePush = false;
+        // Several saves, so the laptop's clock is ahead and it wins the conflict.
+        for (const title of ['Laptop 4', 'Laptop 5', 'Laptop wins']) {
+          write(n1, 'pl2-library', [entry('np1', title, '2026-10-30T10:08:00Z')]);
+          assert.equal((await n1.sync()).status, 'synced');
+        }
+        failFetch = true;
+      }
+      return base.push(deviceId, changes);
+    },
+    fetchItems: async (keys) => {
+      if (failFetch) { failFetch = false; throw Object.assign(new Error('Network unavailable.'), { status: 0 }); }
+      return base.fetchItems(keys);
+    },
+  };
+  const n2 = { storage, sync: () => createSyncEngine({ storage, transport, userId: N, deviceId: 'n2', now, random: () => 0.5 }).syncOnce() };
+  write(n1, 'pl2-library', [entry('np1', 'Original')]);
+  await n1.sync(); await n2.sync();
+  for (const n of [1, 2, 3]) { write(n1, 'pl2-library', [entry('np1', `Laptop ${n}`, `2026-10-30T10:0${n}:00Z`)]); await n1.sync(); }
+  await n2.sync();
+  write(n2, 'pl2-library', [entry('np1', 'Desktop loses', '2026-10-30T10:05:00Z')]);
+  editBeforePush = true;
+  const failed = await n2.sync();
+  assert.equal(failed.status, 'offline', 'the winner fetch failed');
+  assert.equal(await serverTitle(N, 'np1'), 'Laptop wins', 'the laptop edit won on the server');
+  assert.ok((await conflictTitles(N)).includes('Desktop loses'), 'the losing edit is a conflict copy');
+  fakeNow += 60 * 1000;
+  const retry = await n2.sync();
+  assert.equal(retry.status, 'synced', retry.error);
+  assert.equal(titleOf(n2), 'Laptop wins', 'the winner lands after the failed fetch');
+  assert.equal(retry.pending, 0);
+  assert.equal(await serverTitle(N, 'np1'), 'Laptop wins', 'the loser was not re-pushed');
+  // A later manifest check agrees.
+  const saved = fakeNow; fakeNow += 25 * 60 * 60 * 1000;
+  try { assert.equal((await n2.sync()).status, 'synced'); } finally { fakeNow = saved; }
+  assert.equal(titleOf(n2), 'Laptop wins');
+});

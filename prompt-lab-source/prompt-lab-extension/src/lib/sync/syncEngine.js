@@ -65,7 +65,7 @@ export function getDeviceId(storage, makeId = () => crypto.randomUUID()) {
   return id;
 }
 
-const emptyState = () => ({ initialized: false, cursor: 0, clock: 0, lastManifestAt: 0, shadow: {}, oversize: {} });
+const emptyState = () => ({ initialized: false, cursor: 0, clock: 0, lastManifestAt: 0, shadow: {}, oversize: {}, lost: {} });
 const splitKey = (key) => { const at = key.indexOf(':'); return { kind: key.slice(0, at), item_id: key.slice(at + 1) }; };
 
 /** Split queued changes into push batches of at most PUSH_BATCH items and MAX_PUSH_BYTES. */
@@ -110,15 +110,30 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     });
   };
 
+  // R-11 / #285 Codex P1: a push that lost a conflict leaves a pending record
+  // { version, hash } until the winner's row is actually applied. The shadow
+  // keeps the last applied version, so pulls and the manifest still deliver
+  // the winner; the record marks the losing content as settled (it is saved as
+  // a conflict copy) so it is not pushed again, and a newer edit is based on
+  // the winning version.
+  const lostRecord = (key) => state.lost?.[key];
+  const settleShadow = (key, value) => {
+    state.shadow[key] = value;
+    if (state.lost?.[key]) { const { [key]: done, ...rest } = state.lost; state.lost = rest; }
+  };
+
   function captureLocal() {
     const local = readLocalItems(storage);
     for (const [key, item] of local) {
-      const shadow = state.shadow[key];
-      if (!shadow || shadow.hash !== hashValue(item.payload)) enqueue({ key, ...item });
+      const lost = lostRecord(key);
+      const settledHash = lost ? lost.hash : state.shadow[key]?.hash;
+      if ((!lost && !state.shadow[key]) || settledHash !== hashValue(item.payload)) enqueue({ key, ...item, ...(lost ? { baseVersion: lost.version } : {}) });
     }
     for (const [key, shadow] of Object.entries(state.shadow)) {
-      if (shadow.hash !== null && !local.has(key) && key.startsWith('prompt:')) {
-        enqueue({ key, kind: 'prompt', item_id: key.slice('prompt:'.length), payload: null, deleted: true });
+      const lost = lostRecord(key);
+      const settledHash = lost ? lost.hash : shadow.hash;
+      if (settledHash !== null && !local.has(key) && key.startsWith('prompt:')) {
+        enqueue({ key, kind: 'prompt', item_id: key.slice('prompt:'.length), payload: null, deleted: true, ...(lost ? { baseVersion: lost.version } : {}) });
       }
     }
   }
@@ -139,7 +154,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     const result = applyRemoteRows(storage, rows, { notifyWrite });
     for (const row of rows) {
       const key = itemKey(row.kind, row.item_id);
-      state.shadow[key] = { version: Number(row.version), hash: result.applied.has(key) ? result.applied.get(key) : null };
+      settleShadow(key, { version: Number(row.version), hash: result.applied.has(key) ? result.applied.get(key) : null });
     }
     return result.written;
   }
@@ -251,25 +266,28 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
           outcome.conflicts += 1;
           lost.push({ key, version: Number(result.version) });
           // R-11: the server kept the other device's edit and saved ours as a
-          // conflict copy, so the losing edit is settled. Record it against the
-          // winning version; only an edit made after this point differs from
-          // the shadow and is queued again by captureLocal below. The content
+          // conflict copy, so the losing edit is settled: record it as pending
+          // until the winner is applied (see lostRecord). Only an edit made
+          // after this point differs from it and is queued again. The content
           // the device holds now counts as settled when it is what was sent or
           // what the shadow already had (the first-run merge applied the
           // account's row before pushing the local copy as the loser).
           const current = localNow.get(key);
           const currentHash = current && !current.deleted ? hashValue(current.payload) : null;
           const settled = currentHash !== null && currentHash === state.shadow[key]?.hash ? currentHash : sent.hash;
-          state.shadow[key] = { version: Number(result.version), hash: settled };
+          state.lost = { ...(state.lost || {}), [key]: { version: Number(result.version), hash: settled } };
           continue;
         }
         if (result.status === 'conflict_won') outcome.conflicts += 1;
-        state.shadow[key] = { version: Number(result.version), hash: sent.hash };
+        settleShadow(key, { version: Number(result.version), hash: sent.hash });
         outcome.pushed += 1;
       }
       if (lost.length) {
         // The account kept another device's edit; ours is saved as a conflict copy.
         const known = lost.map(({ key, version }) => (deferred.get(key)?.version >= version ? deferred.get(key) : null));
+        // Saved first: if this fetch fails, the pending records survive and
+        // the next sync fetches the winners before anything else.
+        saveState();
         const fetched = await fetchRows(lost.filter((item, index) => !known[index]).map((item) => item.key));
         // Only an edit made after the push answered is queued again and kept
         // locally; everything else takes the winner's content.
@@ -360,6 +378,14 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         if (now() - (state.lastManifestAt || 0) > MANIFEST_EVERY_MS) {
           const checked = await reconcileManifest();
           add(checked.written); summary.pulled += checked.pulled; deferred = checked.deferred;
+        }
+        const lostKeys = Object.keys(state.lost || {});
+        if (lostKeys.length) {
+          // Winners a lost push could not fetch last time (#285 Codex P1).
+          const recovered = applyServerRows(await fetchRows(lostKeys));
+          add(recovered.written); summary.pulled += recovered.pulled;
+          for (const [key, row] of recovered.deferred) deferred.set(key, row);
+          saveState();
         }
         captureLocal();
         saveState();
