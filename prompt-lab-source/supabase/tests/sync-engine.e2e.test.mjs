@@ -357,3 +357,96 @@ test('#277 P2: prompts that together exceed 2 MiB push in several byte-bounded b
   const [{ n }] = await inspect(F, `select count(*)::int as n from public.sync_items where kind = 'prompt'`);
   assert.equal(n, 12);
 });
+
+// Fire Watch re-review 3 regressions.
+test('R-11: the device that loses a conflict takes the winner and keeps its edit only as a conflict copy', async () => {
+  const G = 'user_Ge2e';
+  const g1 = device('g1', G);
+  const g2 = device('g2', G);
+  const titleOf = (dev) => read(dev, 'pl2-library').find((item) => item.id === 'gp1')?.title;
+  write(g1, 'pl2-library', [entry('gp1', 'Original')]);
+  await g1.sync(); await g2.sync();
+  // g1 edits a few times so its clock is ahead, then g2 edits the same prompt offline.
+  for (const n of [1, 2, 3]) { write(g1, 'pl2-library', [entry('gp1', `Laptop edit ${n}`, `2026-10-30T10:0${n}:00Z`)]); await g1.sync(); }
+  write(g2, 'pl2-library', [entry('gp1', 'Desktop edit', '2026-10-30T10:05:00Z')]);
+  const first = await g2.sync();
+  assert.equal(first.conflicts, 1);
+  const winner = await serverTitle(G, 'gp1');
+  const loser = winner === 'Laptop edit 3' ? 'Desktop edit' : 'Laptop edit 3';
+  assert.ok((await conflictTitles(G)).includes(loser), 'the losing edit is a conflict copy');
+  // The next syncs on both devices must not re-push the losing edit over the winner.
+  await g2.sync(); await g1.sync(); await g2.sync();
+  assert.equal(await serverTitle(G, 'gp1'), winner, 'the account still holds the winner');
+  assert.equal(titleOf(g1), winner);
+  assert.equal(titleOf(g2), winner);
+  assert.equal((await conflictTitles(G)).filter((title) => title === loser).length, 1, 'one conflict copy, not a re-push loop');
+  assert.equal((await g1.sync()).pending, 0);
+  assert.equal((await g2.sync()).pending, 0);
+});
+
+test('R-11: an edit made while the losing push is in flight is kept and pushed', async () => {
+  const H = 'user_He2e';
+  const h1 = device('h1', H);
+  let editAfterPush = false;
+  const storage = new MemoryStorage();
+  const base = pgTransport(H);
+  const transport = { ...base, push: async (deviceId, changes) => {
+    const results = await base.push(deviceId, changes);
+    if (editAfterPush) { editAfterPush = false; storage.setItem('pl2-library', JSON.stringify([entry('hp1', 'Typed during push', '2026-10-30T10:09:00Z')])); }
+    return results;
+  } };
+  const h2 = { storage, sync: () => createSyncEngine({ storage, transport, userId: H, deviceId: 'h2', now, random: () => 0.5 }).syncOnce() };
+  write(h1, 'pl2-library', [entry('hp1', 'Original')]);
+  await h1.sync(); await h2.sync();
+  for (const n of [1, 2, 3]) { write(h1, 'pl2-library', [entry('hp1', `Laptop ${n}`, `2026-10-30T10:0${n}:00Z`)]); await h1.sync(); }
+  write(h2, 'pl2-library', [entry('hp1', 'Desktop edit', '2026-10-30T10:05:00Z')]);
+  editAfterPush = true;
+  assert.equal((await h2.sync()).conflicts, 1);
+  assert.ok((await conflictTitles(H)).includes('Desktop edit'));
+  await h2.sync();
+  assert.equal(await serverTitle(H, 'hp1'), 'Typed during push', 'a newer edit is not overwritten by the winner');
+  await h1.sync();
+  assert.equal(read(h1, 'pl2-library').find((item) => item.id === 'hp1').title, 'Typed during push');
+});
+
+test('R-12: batches are sized the way the server counts jsonb (spaces after : and ,)', async () => {
+  const K = 'user_Ke2e';
+  const k1 = device('k1', K);
+  // Member-heavy prompts: about 1.9 MiB as JSON.stringify, about 2.3 MiB as jsonb::text.
+  const fields = (i) => Object.fromEntries(Array.from({ length: 17000 }, (_, j) => [`f${j}`, i]));
+  write(k1, 'pl2-library', Array.from({ length: 10 }, (_, i) => entry(`kp${i}`, `Wide ${i}`, undefined, { metadata: fields(i) })));
+  const result = await k1.sync();
+  assert.equal(result.status, 'synced', result.error);
+  assert.equal(result.pending, 0);
+  const [{ n }] = await inspect(K, `select count(*)::int as n from public.sync_items where kind = 'prompt'`);
+  assert.equal(n, 10);
+});
+
+test('R-12: a single item under the cap as JSON.stringify but over it as jsonb stays local and does not block the rest', async () => {
+  const L = 'user_Le2e';
+  const l1 = device('l1', L);
+  const wide = Object.fromEntries(Array.from({ length: 21000 }, (_, j) => [`f${j}`, 1]));
+  assert.ok(JSON.stringify(wide).length < 255 * 1024, 'under the old client check');
+  write(l1, 'pl2-library', [entry('lp-wide', 'Wide', undefined, { metadata: wide }), entry('lp-small', 'Small')]);
+  const result = await l1.sync();
+  assert.equal(result.status, 'synced', result.error);
+  assert.equal(result.tooLarge, 1);
+  const ids = (await inspect(L, `select item_id from public.sync_items where kind = 'prompt'`)).map((row) => row.item_id);
+  assert.deepEqual(ids, ['lp-small']);
+});
+
+test('R-12: a 413 "request too large" splits the batch and retries instead of reporting quota', async () => {
+  const M = 'user_Me2e';
+  const m1 = device('m1', M);
+  await db.query(`update sync.settings set value = '300000' where key = 'max_request_bytes'`);
+  try {
+    write(m1, 'pl2-library', Array.from({ length: 4 }, (_, i) => entry(`mp${i}`, `Mid ${i}`, undefined, { original: `${i}`.padEnd(120 * 1024, 'm') })));
+    const result = await m1.sync();
+    assert.equal(result.status, 'synced', result.error);
+    assert.equal(result.pending, 0);
+    const [{ n }] = await inspect(M, `select count(*)::int as n from public.sync_items where kind = 'prompt'`);
+    assert.equal(n, 4);
+  } finally {
+    await db.query(`update sync.settings set value = '2097152' where key = 'max_request_bytes'`);
+  }
+});

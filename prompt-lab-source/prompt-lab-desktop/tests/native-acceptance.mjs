@@ -106,6 +106,12 @@ async function waitFor(probe, label, timeout = 20_000) {
 }
 const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
+// Library row ids, the saved source row, and every account-sync key (pl2-sync-*) as stored.
+const readDurableLocalState = (parentId) => execute(`
+  const library = JSON.parse(localStorage.getItem('pl2-library') || '[]');
+  const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
+  return { ids: library.map(row => row.id).sort(), parent: library.find(row => row.id === arguments[0]) || null,
+    sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])) };`, [parentId]);
 const describeNode = `const describeNode = node => {
   if (!(node instanceof Element)) return node ? String(node.nodeName || node) : null;
   const testId = node.getAttribute('data-testid');
@@ -567,6 +573,7 @@ async function exerciseFollowUp(parentId) {
       transaction.onabort = () => { db.close(); done({error: String(transaction.error)}); };
     };`, args: [source] });
   assert.equal(seeded.ok, true, JSON.stringify(seeded));
+  const durableBefore = await readDurableLocalState(parent.id);
   await refreshPage();
   // The open editor draft is not part of the durable Library journal. After the
   // three hard restarts above, WebView2 can drop the tail of its Local Storage
@@ -580,6 +587,11 @@ async function exerciseFollowUp(parentId) {
     if (!panelVisible) await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (!panelVisible) {
+    // R-15: only the WebView2 log corruption explains a missing draft, so the
+    // fallback runs on Windows alone, and only when everything durable came
+    // back exactly: every Library row and the account-sync keys.
+    assert.equal(process.platform, 'win32', 'The open draft must survive a restart outside Windows');
+    assert.deepEqual(await readDurableLocalState(parent.id), durableBefore, 'Library and sync state are intact after the restart');
     recordDiagnostic('followUpDraftReopened', { parentId: parent.id, input: await execute('return document.querySelector("[data-testid=prompt-input]")?.value || "";') });
     await click('[data-testid="nav-library"]');
     await fill('[data-testid="library-search"]', parent.title);

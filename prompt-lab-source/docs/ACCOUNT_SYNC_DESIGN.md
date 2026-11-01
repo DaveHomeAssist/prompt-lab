@@ -26,7 +26,7 @@ Rejected for now:
 
 ## 2. Data model
 
-Migration: [`supabase/migrations/20261030090000_account_sync.sql`](../supabase/migrations/20261030090000_account_sync.sql).
+Migration: [`supabase/migrations/20261101113124_account_sync.sql`](../supabase/migrations/20261101113124_account_sync.sql).
 
 `public.sync_items`, one row per synced item, primary key `(user_id, kind, item_id)`:
 
@@ -69,7 +69,7 @@ All calls are PostgREST RPCs with `apikey: <publishable key>` and `Authorization
 | `sync_fetch(keys[])` | full rows for up to 500 named items, up to 2 MiB; the client asks again for the rest |
 | `sync_list_conflicts(limit)` | the caller's unresolved conflict copies, newest first, up to 200 rows or 2 MiB |
 | `sync_status()` | usage (including conflict bytes and today's download bytes), limits, kill-switch state; works while paused |
-| `sync_delete_my_data()` | erase the caller's rows, conflict copies and counters |
+| `sync_delete_my_data()` | erase the caller's rows and conflict copies (limits and budgets stay; R-10) |
 | `sync_admin_delete_user(user_id)` | service role only, for the Clerk `user.deleted` webhook |
 
 One sync cycle ([`syncEngine.js`](../prompt-lab-extension/src/lib/sync/syncEngine.js)):
@@ -157,7 +157,7 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 
 - **Sign-out** stops sync and keeps all local data. Queue, shadow and cursor stay scoped to that user id.
 - **Different account on the same device:** `pl2-sync-owner` records the account the local Library was merged with. Another account gets status `owner-mismatch` and nothing is uploaded or merged. The choice UI (keep separate, merge or start empty) is not built.
-- **Delete my synced data:** `sync_delete_my_data()` erases the caller's rows, conflict copies and counters, even while sync is paused. Local data stays. UI not built.
+- **Delete my synced data:** `sync_delete_my_data()` erases the caller's rows and conflict copies, even while sync is paused; rate-limit counters, download budgets and the first-seen record stay (R-10), and the call itself is limited to 2 a minute and 10 a day. Local data stays. UI not built.
 - **Account deletion** (review F-09): [`api/sync/clerk-webhook.js`](../api/sync/clerk-webhook.js) handles Clerk `user.deleted`. It verifies the Svix signature (HMAC-SHA256, 5-minute tolerance, constant-time compare) before parsing, then calls `sync_admin_delete_user` with the server-only secret key. Non-2xx responses make Clerk retry, and the delete is idempotent. Off (503) until its env vars exist.
   - Raw body (re-review R-07): the deployed Node entry point reads the raw request stream itself and verifies the HMAC over those exact bytes. If a runtime has already drained the stream it accepts only an unparsed Buffer or string body; a framework-parsed object is refused (400), never re-serialized. It also exports `config = { api: { bodyParser: false } }` for runtimes that honor it.
   - `sync_admin_delete_user` takes the same per-user advisory lock as `sync_push`, so a push in flight cannot land after the erase (re-review, low).
@@ -183,7 +183,7 @@ Already on Clerk (`@clerk/clerk-react`). `App` passes `clerkUser` and `clerkGetT
 | Downloads, whole project | 150 MiB per UTC day, about 4.4 GiB per 30 days, under Free's 5 GB egress (`PT429`) |
 
   A batch that shrinks usage, for example deletes, is always allowed.
-- Rate limits (review F-10, R-01b, R-08): per user per minute, 30 pushes, 12 reads (pull, manifest, fetch and list-conflicts share one counter; a 5-minute poll uses 1 to 3) and 12 status calls (`PT429`). Failing calls count too: each RPC takes the counter first and runs its work in an inner exception block, and a refusal after that point is returned as data (no rows or an `{error, code, status}` body, with `response.status` and `X-Sync-Error` / `X-Sync-Code` headers) so PostgREST commits the counter. Only the three guards (not signed in, paused, too many) still raise.
+- Rate limits (review F-10, R-01b, R-08): per user per minute, 30 pushes, 12 reads (pull, manifest, fetch and list-conflicts share one counter; a 5-minute poll uses 1 to 3) and 12 status calls (`PT429`). Failing calls count too: each RPC takes the counter first and runs its work in an inner exception block, and a refusal after that point is returned as data (no rows or an `{error, code, status}` body, with `response.status` and `X-Sync-Error` / `X-Sync-Code` headers) so PostgREST commits the counter. Only the three guards (not signed in, paused, too many) still raise. Erasing synced data (2 a minute, 10 per UTC day) leaves every counter, the day's download count and the first-seen record in place (R-10); only account deletion clears them.
 - Kill switch (review F-17, R-01b): `update sync.settings set value = 'off' where key = 'enabled'` pauses push and every read RPC for everyone immediately (`PT503`); clients back off and keep local data. Status and erasure still work.
 - The project-wide download budget is a single counter row, so enough accounts together can use it up for everyone for the rest of the UTC day. That trades availability for staying inside Free's egress. Since re-review 2 (R-09) it takes about 19 established accounts or 37 new ones, each with a library big enough to earn the budget, instead of 5. `sync_status` reports `project_download_budget_low` once the project has used 70% of the day's budget; the operator check is `select bytes from sync.egress where user_id = '*'`. Clerk bot protection and email verification (R5) remain the main defence against scripted sign-ups.
 - Secrets: only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` reach clients. `SUPABASE_SECRET_KEY` and `CLERK_WEBHOOK_SIGNING_SECRET` are server-only, Sensitive, production only.
@@ -286,7 +286,7 @@ Run: `npm run test:sync` from `prompt-lab-source` (Node 22).
 
 ## 15. Review status
 
-Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79`; its re-review (R-01 to R-07) covered `e850e79`; re-review 2 (R-08, R-09 and lows, in `/workspace/promptlab-review/REVIEW.md` under "Re-review 2 (36b08d6)") covered `36b08d6`. This table reflects the follow-up commit on top of `36b08d6`. Earlier versions of this table marked F-10 and R-01b as fixed; re-review 2 showed both held only for well-behaved clients until R-08 and R-09 were fixed.
+Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79`; its re-review (R-01 to R-07) covered `e850e79`; re-review 2 (R-08, R-09 and lows, in `/workspace/promptlab-review/REVIEW.md` under "Re-review 2 (36b08d6)") covered `36b08d6`. Re-review 3 (R-10 to R-15, same file, "Re-review 3") covered #277 as merged (`2a068ba`). This table reflects the review-3 fix branch on top of that. Earlier versions of this table marked F-10 and R-01b as fixed; re-review 2 showed both held only for well-behaved clients until R-08 and R-09 were fixed. The re-review 2 version then marked R-08, R-09, the #277 local-edit fix and byte-bounded batches as fixed; re-review 3 showed that erasure reset every limit (R-10), that a device losing a conflict re-pushed its losing edit (R-11) and that batches were sized smaller than the server counts them (R-12). Those rows now say what was wrong and when it was fixed.
 
 | Finding | Status | Shown by |
 | --- | --- | --- |
@@ -297,9 +297,9 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | F-05 cursor skip under concurrent pushes | Fixed | concurrency.pg: F-05 |
 | F-06 daily full re-pull egress | Fixed (manifest check) | e2e: daily manifest check |
 | F-07 no backups on Free | Mitigated: device snapshots, weekly export runbook (rehearsed locally, R-06); export not set up (R11, Dave) | e2e snapshot tests; concurrency.pg: R-06 |
-| F-08 no CI guard on RLS | Fixed: `npm run test:sync` runs in the `test-and-build` job of `extension-ci.yml` (Node 22) on every push that touches sync | security: F-08, grants guard |
+| F-08 no CI guard on RLS | Fixed: `npm run test:sync` runs in the `test-and-build` job of `extension-ci.yml` (Node 22) on every push that touches sync. The grants guard covered tables and functions but not sequences, so it missed R-13; it now checks every `sync*` sequence too | security: F-08, grants guard, R-13 |
 | F-09 no deletion on Clerk account delete | Fixed; webhook endpoint setup is R7 (Dave) | clerk-sync-webhook tests |
-| F-10 rate limiting | Fixed after re-review 2: before R-08 a failing call rolled its counter back, so failing calls were never limited | security: F-10, default pull limit, R-08 tests |
+| F-10 rate limiting | Fixed after re-review 3: before R-08 a failing call rolled its counter back, and before R-10 "Delete my synced data" cleared the counters, so push/delete/push was never limited | security: F-10, default pull limit, R-08 and R-10 tests |
 | F-11 stale GitHub Pages claim | Not in this branch's scope | - |
 | F-12 www does not redirect | Not in scope (Vercel setting, Dave) | - |
 | F-13 mobile subdomain NXDOMAIN | Not in scope (DNS, Dave) | - |
@@ -317,11 +317,19 @@ Fire Watch's first review (F-01 to F-17) covered the work before commit `e850e79
 | R-07 webhook raw body on Vercel | Fixed in code (raw stream read, parsed bodies refused); not run on Vercel itself | clerk-sync-webhook: R-07 tests |
 | Low: account deletion without the per-user lock | Fixed | concurrency.pg: LOW admin delete waits |
 | #277 Codex P1: in-flight run sends the next account's token | Fixed: each run's token getter is bound to its account and returns nothing after a switch or sign-out | vitest: useAccountSync account binding |
-| #277 Codex P1: unqueued local edit overwritten by a newer remote row (manifest before capture, save during pull) | Fixed: local content is re-captured against the shadow right before any remote row is applied | e2e: #277 P1 save during pull, manifest |
+| #277 Codex P1: unqueued local edit overwritten by a newer remote row (manifest before capture, save during pull) | Fixed: local content is re-captured against the shadow right before any remote row is applied. The first version of this fix also re-captured after a lost conflict without settling the shadow, so the losing edit was queued again and pushed over the winner on the next sync (R-11, High); fixed in the review-3 branch | e2e: #277 P1 save during pull, manifest; R-11 tests |
 | #277 Codex P1: customized starter copy dropped as a duplicate | Fixed: starter provenance must also match content | e2e: #277 P1 customized starter; vitest |
-| #277 Codex P2: 100-item push over the 2 MiB request cap | Fixed: batches bounded by bytes and count | e2e: #277 P2; vitest: push batches |
+| #277 Codex P2: 100-item push over the 2 MiB request cap | Fixed in the review-3 branch. The #277 version measured `JSON.stringify` bytes while the server counts `jsonb::text` (a space after every `:` and `,`), so member-heavy batches still got 413 and showed "quota" (R-12) | e2e: #277 P2, R-12 tests; vitest: push batches |
 | Migration failed on Supabase (`permission denied for schema sync`: `postgres` is not a superuser there) | Fixed: `sync_owner` gets CREATE on `sync` and `public` only for the migration, revoked at the end | concurrency.pg: non-superuser migration |
 | Low: extension Clerk token in `chrome.storage.local` | Fixed: `chrome.storage.session` with trusted-contexts access, memory fallback | vitest: extension token cache |
-| R-08 failing calls never rate limited (High) | Fixed: the counter is taken first; the work runs in an inner exception block and refusals are returned as data with `response.status`, so the counter commits. Repeated failing pushes and reads get 429 | security: R-08 tests (mutation check: re-raising in the wrappers fails all four) |
-| R-09 5 accounts drain the project download budget (Medium) | Fixed: per-user budget 8 MiB (was 32), new accounts 4 MiB for 7 days, both also capped at 3 × stored bytes + 1 MiB; `project_download_budget_low` in `sync_status` at 70% | security: R-09 tests; e2e: paging (a full second-device sync plus export still fits) |
-| R-06 on a real Supabase project; R-07 on a real Vercel deploy | Not run (no project, no deploy allowed) | - |
+| R-08 failing calls never rate limited (High) | Fixed, but bypassable until R-10 was fixed (erasure cleared the counter). The counter is taken first; the work runs in an inner exception block and refusals are returned as data with `response.status`, so the counter commits. Repeated failing pushes and reads get 429 | security: R-08 tests (mutation check: re-raising in the wrappers fails all four) |
+| R-09 5 accounts drain the project download budget (Medium) | Fixed, but bypassable until R-10 was fixed (erasure cleared the day's download counter and the first-seen record, so each delete gave a fresh new-account budget). Per-user budget 8 MiB (was 32), new accounts 4 MiB for 7 days, both also capped at 3 × stored bytes + 1 MiB; `project_download_budget_low` in `sync_status` at 70% | security: R-09 tests; e2e: paging (a full second-device sync plus export still fits) |
+| R-10 erasure resets rate limits, daily budget and first-seen record (High) | Fixed (migration `20261101125531_sync_review3.sql`, applied to promptlab-sync): `sync_delete_my_data` removes items and conflict copies only; counters expire with their window or day and only account deletion clears them. The delete call is limited to 2 a minute (works while paused) and 10 a UTC day, refusals counted | security: R-10 push/delete loop gets 429, budgets kept, delete limits |
+| R-11 losing device re-pushes its losing edit (High) | Fixed: a `conflict_lost` result records the shadow against the winning version, so the device applies the winner and its edit lives only as the conflict copy. An edit typed while the push was in flight is still kept and pushed | e2e: R-11 winner on both devices after the next syncs; R-11 in-flight edit kept |
+| R-12 batch and item sizes measured differently from the server | Fixed: sizes are measured as `jsonb::text` would print them (64 KiB margin under 2 MiB per request, 1 KiB under 256 KiB per item). A 413 "request too large" splits the batch and retries; a single item still refused stays on the device as too large. Storage-quota 413s still show "quota" | e2e: R-12 member-heavy batches, R-12 single item, R-12 413 split |
+| R-13 anon/authenticated privileges on `sync_conflicts_id_seq` | Fixed: same migration revokes all on every `sync*` sequence in `public` | security: R-13 |
+| R-14 repo migration version differs from the live one | Fixed: the base migration file is now `20261101113124_account_sync.sql`, matching the version recorded on promptlab-sync, and the review-3 migration carries its live version, so `supabase db push` sees nothing to apply | `list_migrations` on promptlab-sync |
+| R-15 Windows acceptance fallback too broad | Fixed: the reopen-from-Library fallback runs only on Windows, and first asserts the Library rows, the saved source and every `pl2-sync-*` key are unchanged by the restart | desktop-build (Windows) acceptance |
+| R-04 window gating (Low) | Still open, unchanged (see the R-04 row above); left for a branch that can run a full Tauri build | - |
+| R-03 desktop ticket-to-session (Low) | Deferred; see the R-03 row above | - |
+| R-06 on a real Supabase project; R-07 on a real Vercel deploy | Not run (R-06 needs a scratch Supabase project; no Vercel deploy allowed) | - |

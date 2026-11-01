@@ -30,7 +30,19 @@ const BULK_APPLY_SNAPSHOT = 50;
 // (for example very long version histories) stay on this device and are
 // reported, instead of failing every push that contains them.
 export const MAX_ITEM_BYTES = 256 * 1024 - 1024;
-const byteLength = (value) => new TextEncoder().encode(JSON.stringify(value)).length;
+const utf8Length = (text) => new TextEncoder().encode(text).length;
+// The server measures sizes as octet_length(value::text) on jsonb, and jsonb
+// prints a space after every ':' and ',' (R-12): {"a": 1, "b": [1, 2]}.
+// JSON.stringify omits those spaces, so a member-heavy payload measured that
+// way can be far smaller than what the server counts.
+function jsonbLength(value) {
+  if (value === null || typeof value !== 'object') return utf8Length(JSON.stringify(value) ?? 'null');
+  if (Array.isArray(value)) return 2 + value.reduce((sum, item, index) => sum + (index ? 2 : 0) + jsonbLength(item), 0);
+  const entries = Object.entries(value);
+  return 2 + entries.reduce((sum, [key, item], index) => sum + (index ? 2 : 0) + utf8Length(JSON.stringify(key)) + 2 + jsonbLength(item), 0);
+}
+/** Byte size of a JSON value as the server's jsonb::text counts it. */
+export const jsonbTextBytes = (value) => (value === undefined ? 0 : jsonbLength(JSON.parse(JSON.stringify(value))));
 
 export class SyncHttpError extends Error {
   constructor(status, message) { super(message || `Sync request failed (${status})`); this.status = status; }
@@ -60,7 +72,7 @@ const splitKey = (key) => { const at = key.indexOf(':'); return { kind: key.slic
 export function batchesWithinBytes(items, { maxItems = PUSH_BATCH, maxBytes = MAX_PUSH_BYTES } = {}) {
   const batches = []; let current = []; let bytes = 0;
   for (const item of items) {
-    const size = byteLength(item.wire) + 1;
+    const size = jsonbTextBytes(item.wire) + 2;
     if (current.length && (current.length >= maxItems || bytes + size > maxBytes)) { batches.push(current); current = []; bytes = 0; }
     current.push(item); bytes += size;
   }
@@ -80,7 +92,7 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   const seen = (lamport) => { state.clock = Math.max(state.clock, Number(lamport) || 0); };
 
   const enqueue = ({ key, kind, item_id, payload, deleted = false, baseVersion, lamport }) => {
-    if (!deleted && byteLength(payload) > MAX_ITEM_BYTES) {
+    if (!deleted && jsonbTextBytes(payload) > MAX_ITEM_BYTES) {
       state.oversize = { ...(state.oversize || {}), [key]: true };
       return;
     }
@@ -206,22 +218,51 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   async function pushQueue(deferred = new Map()) {
     const outcome = { pushed: 0, conflicts: 0, written: [] };
     const toWire = ({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at }) => ({ kind, item_id, base_version, lamport, payload, deleted, client_updated_at });
-    for (const batch of batchesWithinBytes(queue.due(now()).map((entry) => ({ entry, wire: toWire(entry) })))) {
+    const pending = batchesWithinBytes(queue.due(now()).map((entry) => ({ entry, wire: toWire(entry) })));
+    while (pending.length) {
+      const batch = pending.shift();
       let results;
       try {
         results = await transport.push(deviceId, batch.map(({ wire }) => wire));
       } catch (error) {
+        // R-12: a request-size refusal splits the batch and retries the halves
+        // instead of reporting a storage quota. A single item the server still
+        // calls too large stays on this device, like any oversize item.
+        if (Number(error?.status) === 413 && /too large/i.test(error?.message || '')) {
+          if (batch.length > 1) { const half = Math.ceil(batch.length / 2); pending.unshift(batch.slice(0, half), batch.slice(half)); continue; }
+          const [{ entry }] = batch;
+          queue.acknowledge(entry.key, entry.lamport);
+          state.oversize = { ...(state.oversize || {}), [entry.key]: true };
+          saveState();
+          continue;
+        }
         queue.fail(batch.map(({ entry }) => entry.key), error?.message, now(), random);
         if (error && typeof error === 'object') error.queueBackedOff = true;
         throw error;
       }
       const lost = [];
+      const localNow = readLocalItems(storage);
       for (const result of results) {
         const key = itemKey(result.kind, result.item_id);
         const sent = batch.find(({ entry }) => entry.key === key)?.entry;
         if (!sent) continue;
         queue.acknowledge(key, sent.lamport);
-        if (result.status === 'conflict_lost') { outcome.conflicts += 1; lost.push({ key, version: Number(result.version) }); continue; }
+        if (result.status === 'conflict_lost') {
+          outcome.conflicts += 1;
+          lost.push({ key, version: Number(result.version) });
+          // R-11: the server kept the other device's edit and saved ours as a
+          // conflict copy, so the losing edit is settled. Record it against the
+          // winning version; only an edit made after this point differs from
+          // the shadow and is queued again by captureLocal below. The content
+          // the device holds now counts as settled when it is what was sent or
+          // what the shadow already had (the first-run merge applied the
+          // account's row before pushing the local copy as the loser).
+          const current = localNow.get(key);
+          const currentHash = current && !current.deleted ? hashValue(current.payload) : null;
+          const settled = currentHash !== null && currentHash === state.shadow[key]?.hash ? currentHash : sent.hash;
+          state.shadow[key] = { version: Number(result.version), hash: settled };
+          continue;
+        }
         if (result.status === 'conflict_won') outcome.conflicts += 1;
         state.shadow[key] = { version: Number(result.version), hash: sent.hash };
         outcome.pushed += 1;
@@ -230,8 +271,8 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
         // The account kept another device's edit; ours is saved as a conflict copy.
         const known = lost.map(({ key, version }) => (deferred.get(key)?.version >= version ? deferred.get(key) : null));
         const fetched = await fetchRows(lost.filter((item, index) => !known[index]).map((item) => item.key));
-        // An edit made while the fetch was in flight is queued again and kept
-        // locally; it goes up on the next push instead of being overwritten.
+        // Only an edit made after the push answered is queued again and kept
+        // locally; everything else takes the winner's content.
         captureLocal();
         outcome.written.push(...applyRows([...known.filter(Boolean), ...fetched].filter((row) => !queue.get(itemKey(row.kind, row.item_id)))));
       }
