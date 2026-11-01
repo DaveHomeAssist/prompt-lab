@@ -1,8 +1,9 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import Ic from './icons';
 import SaveTagsField from './SaveTagsField.jsx';
 import useDialogA11y from './hooks/useDialogA11y.js';
 import { getPrimarySaveLabel, SAVE_LABELS } from './lib/promptLifecycle.js';
+import { suggestTitleAlternatives } from './lib/titleSuggestions.js';
 
 export default function SavePanel({
   m, primaryModKey, saveTargetId, saveTitle, setSaveTitle,
@@ -12,10 +13,12 @@ export default function SavePanel({
   showNewColl, setShowNewColl, newCollName, setNewCollName,
   commitNewCollection, doSave, doSaveAsNew, closeSavePanel, canSavePanel,
   canUseCollections = true, onRequestCollectionsUpgrade,
+  titleSourceText = '',
 }) {
   const titleInputRef = useRef(null);
   const dialogRef = useDialogA11y({ onClose: closeSavePanel, initialFocusRef: titleInputRef });
   const primaryLabel = getPrimarySaveLabel(saveTargetId);
+  const titleIdeas = useMemo(() => suggestTitleAlternatives(titleSourceText, { current: saveTitle }), [titleSourceText, saveTitle]);
   return (
     <div
       className={`fixed inset-0 z-[90] ${m.modalBg}`}
@@ -65,6 +68,23 @@ export default function SavePanel({
               value={saveTitle}
               onChange={(e) => setSaveTitle(e.target.value)}
             />
+            {titleIdeas.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-1.5" role="group" aria-label="Title suggestions">
+                <span className={`text-[11px] ${m.textMuted}`}>Suggestions</span>
+                {titleIdeas.map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => { setSaveTitle(idea); titleInputRef.current?.focus(); }}
+                    className={`ui-control max-w-full truncate rounded-full border px-2.5 py-1 text-[11px] transition-colors ${m.border} ${m.btn} ${m.textAlt} hover:text-orange-400`}
+                    aria-label={`Use title: ${idea}`}
+                    title={idea}
+                  >
+                    {idea}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
