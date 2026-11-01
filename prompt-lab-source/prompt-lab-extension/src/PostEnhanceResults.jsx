@@ -6,6 +6,7 @@ import { scorePrompt, wordDiff } from './promptUtils';
 import { handleTabArrowKeys } from './hooks/useDialogA11y.js';
 import { SAVE_LABELS } from './lib/promptLifecycle.js';
 import { normalizeResultMeta, replaceCandidateContent, revertAssumptionFromText, revertStructuredEdit } from './lib/enhancementResult.js';
+import { getHostedOutputCap } from './lib/hostedOutputCap.js';
 
 const CHANGE_STYLES = {
   added: 'border-emerald-400/25 bg-emerald-500/10 text-emerald-300',
@@ -13,6 +14,7 @@ const CHANGE_STYLES = {
   changed: 'border-sky-400/25 bg-sky-500/10 text-sky-300',
 };
 const metricLabel = value => Number.isFinite(value) ? value.toLocaleString() : '—';
+const SUMMARY_PREVIEW_CHARS = 180;
 function candidateMetrics(content) {
   const text = typeof content === 'string' ? content : '';
   return { words: text.trim() ? text.trim().split(/\s+/).length : 0, chars: text.length, score: scorePrompt(text)?.points ?? 0 };
@@ -50,6 +52,7 @@ export default function PostEnhanceResults({
   const [preview, setPreview] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [saveFeedback, setSaveFeedback] = useState(null);
+  const [showFullSummary, setShowFullSummary] = useState(false);
   const savePendingRef = useRef(false);
   const normalized = useMemo(() => normalizeResultMeta(resultMeta, { enhanced, variants }), [resultMeta, enhanced, variants]);
   const selected = normalized.candidates.find(candidate => candidate.id === normalized.selectedCandidateId)
@@ -60,6 +63,9 @@ export default function PostEnhanceResults({
   const changes = normalized.changes.filter(item => (item.candidateId || 'improved') === selected.id);
   const metrics = candidateMetrics(selected.content);
   const verdict = (isPrimary && normalized.changeSummary) || 'Review this candidate against your original requirements.';
+  const hostedCap = getHostedOutputCap();
+  const summaryClamped = verdict.length > SUMMARY_PREVIEW_CHARS;
+  const visibleVerdict = !summaryClamped || showFullSummary ? verdict : `${verdict.slice(0, SUMMARY_PREVIEW_CHARS).trimEnd()}…`;
   const provider = normalized.provider || evalRuns?.[0]?.provider || '';
   const model = normalized.model || evalRuns?.[0]?.model || '';
   const latencyMs = normalized.latencyMs ?? evalRuns?.[0]?.latencyMs;
@@ -72,6 +78,7 @@ export default function PostEnhanceResults({
       title: lastSaveReceipt.title, versionNumber: lastSaveReceipt.versionNumber,
     });
   }, [lastSaveReceipt, editingId]);
+  useEffect(() => setShowFullSummary(false), [normalized.runId]);
   const saving = Boolean(lib?.saving || saveFeedback?.state === 'pending');
   const changedSinceSave = saveFeedback?.state === 'saved' && (
     saveFeedback.content !== selected.content || saveFeedback.raw !== raw
@@ -147,7 +154,7 @@ export default function PostEnhanceResults({
           {splitWorkspace && (
             <button type="button" onClick={() => copy(selected.content, `${selected.label} copied`)} className="pl-secondary-button"><Ic n="Copy" size={13} /> Copy</button>
           )}
-          <button data-testid="save-to-library" type="button" onClick={() => saveSelected()} disabled={!canSavePanel || saving} className="pl-primary-button"><Ic n="Save" size={13} /> {saving ? 'Saving…' : currentEntry ? 'Save new version' : 'Save as new prompt'}{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
+          <button data-testid="save-to-library" type="button" onClick={() => saveSelected()} disabled={!canSavePanel || saving} className="pl-primary-button"><Ic n="Save" size={13} /> <span className="pl-commit-label">{saving ? 'Saving…' : currentEntry ? 'Save new version' : 'Save as new prompt'}</span>{splitWorkspace && <span className="pl-commit-target"> · {selected.label}</span>}</button>
           {(editingId || currentEntry || showInlineSaveBar) && <details className="pl-result-save-more" onKeyDown={event => {
             if (event.key === 'Escape') { event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus(); }
           }}>
@@ -177,14 +184,14 @@ export default function PostEnhanceResults({
       <header className="pl-results-verdict">
         <span className="sr-only">Results</span>
         <div className="min-w-0">
-          <p className="pl-eyebrow">What changed</p><h2 id="result-verdict-title">{verdict}</h2>
+          <p className="pl-eyebrow">What changed</p><h2 id="result-verdict-title" className={`pl-result-summary${summaryClamped && !showFullSummary ? ' is-clamped' : ''}`}>{visibleVerdict}</h2>
+          {summaryClamped && <button type="button" className="pl-text-button" aria-expanded={showFullSummary} onClick={() => setShowFullSummary(value => !value)}>{showFullSummary ? 'Show less' : 'Show full summary'}</button>}
           <div className="pl-result-metrics" aria-label="Run details">
             {provider && <span>{provider}</span>}{model && <span>{model}</span>}
             {Number.isFinite(latencyMs) && <span>{metricLabel(latencyMs)} ms</span>}
             {usage && <span>{metricLabel(usage.input)} input · {metricLabel(usage.output)} output · {metricLabel(usage.total)} total tokens</span>}
             <span>{metrics.words.toLocaleString()} words · {metrics.chars.toLocaleString()} chars</span>
             <span title="Keyword-based structure checks, not an assessment of effectiveness">Structure checks {metrics.score}/5</span>
-            {normalized.requestedOutputTokens && <span>{normalized.requestedOutputTokens.toLocaleString()} tokens requested; provider limits apply</span>}
           </div>
           {normalized.tags.length > 0 && <ul className="pl-result-tags" aria-label="Suggested tags">{normalized.tags.map(tag => <li key={tag}>{tag}</li>)}</ul>}
         </div>
@@ -216,8 +223,7 @@ export default function PostEnhanceResults({
           <button type="button" onClick={dismiss} className="pl-icon-button" aria-label="Discard results and keep them available to restore"><Ic n="X" size={15} /></button>
         </div>
       </header>
-      {normalized.metadataIncomplete && <p role="status" className="p-3 text-sm">The prompt completed, but supporting metadata was cut off. Review the full diff; assumptions and change notes may be missing.</p>}
-      <div className={`pl-results-body ${compact ? 'is-compact' : ''}`}>
+      <div className={`pl-results-body ${compact ? 'is-compact' : ''}${normalized.candidates.length === 1 ? ' is-single' : ''}`}>
         <aside className="pl-candidate-rail" aria-label="Result candidates">
           <p className="pl-eyebrow">Candidates</p>
           <div role="listbox" aria-label="Enhancement candidates" onKeyDown={handleCandidateKeyDown}>
@@ -242,10 +248,6 @@ export default function PostEnhanceResults({
           </div>
         </aside>
         <div className="pl-result-workspace">
-          <button type="button" className="pl-original-toggle" aria-expanded={showOriginal} aria-controls="enhancement-original" onClick={() => setShowOriginal(value => !value)}>
-            <span><Ic n="FileText" size={13} /> Original prompt</span><Ic n={showOriginal ? 'ChevronUp' : 'ChevronDown'} size={13} />
-          </button>
-          {showOriginal && <pre id="enhancement-original" className="pl-original-content">{raw}</pre>}
           <div className="pl-result-toolbar">
             <div className="pl-segmented" role="tablist" aria-label="Result views" onKeyDown={event => handleTabArrowKeys(event, view, setView)}>
               {[['changes', 'Changes'], ['improved', 'Prompt'], ['compare', 'Side-by-side']].map(([id, label]) => (
@@ -272,6 +274,16 @@ export default function PostEnhanceResults({
                 : <textarea data-testid="output-textarea" aria-label={`${selected.label} candidate`} className="pl-result-editor" value={selected.content} onChange={event => updateCandidate(event.target.value)} />}
             </div>
           )}
+          <div className="pl-result-after-editor">
+            <button type="button" className="pl-original-toggle" aria-expanded={showOriginal} aria-controls="enhancement-original" onClick={() => setShowOriginal(value => !value)}>
+              <span><Ic n="FileText" size={13} /> Original prompt</span><Ic n={showOriginal ? 'ChevronUp' : 'ChevronDown'} size={13} />
+            </button>
+            {showOriginal && <pre id="enhancement-original" className="pl-original-content">{raw}</pre>}
+            <div className="pl-result-metrics pl-result-metrics-after" aria-label="Run details">
+              {normalized.requestedOutputTokens && <span>{normalized.requestedOutputTokens.toLocaleString()} tokens requested{hostedCap && hostedCap < normalized.requestedOutputTokens ? `; hosted cap ${hostedCap.toLocaleString()}` : '; provider limits apply'}</span>}
+            </div>
+          </div>
+          {normalized.metadataIncomplete && <p role="status" data-testid="metadata-incomplete-notice" className="pl-result-notice">The prompt above is complete, but supporting metadata was cut off. Review the full diff; assumptions and change notes may be missing.{hostedCap && normalized.requestedOutputTokens && hostedCap < normalized.requestedOutputTokens ? ` (hosted cap ${hostedCap.toLocaleString()} tokens; this run asked for ${normalized.requestedOutputTokens.toLocaleString()}).` : ''} <button type="button" className="pl-text-button" onClick={() => setView('changes')}>Open diff</button></p>}
           {view === 'compare' && <div id="result-panel-compare" role="tabpanel" aria-labelledby="result-tab-compare" className="pl-side-by-side"><div><p className="pl-eyebrow">Original</p><pre>{raw}</pre></div><div><p className="pl-eyebrow">{selected.label}</p><pre>{selected.content}</pre></div></div>}
           {assumptions.length > 0 && (
             <section className="pl-result-section">
