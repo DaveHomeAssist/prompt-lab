@@ -415,9 +415,54 @@ test('R-09: sync_status flags project_download_budget_low at 70% of the project 
   assert.equal(await low(), false, 'a new UTC day clears it');
 });
 
-test('R-09: erasure also removes the first-seen record', async () => {
-  await push(U, [prompt('a')]);
-  assert.equal((await adminRows('select 1 from sync.accounts where user_id = $1', [U])).length, 1);
+// ---- Re-review 3: R-10 (erasure must not reset limits) and R-13 (sequence grants) ----
+test('R-10: the push/delete loop stays refused: erasure keeps the push counter', async () => {
+  await setting('push_per_minute', 3);
+  for (let i = 0; i < 3; i += 1) assert.equal((await push(U, [prompt(`p${i}`)]))[0].status, 'applied');
+  await assert.rejects(push(U, [prompt('p3')]), (error) => error.code === 'PT429');
+  const erased = (await rpc(U, 'select public.sync_delete_my_data() as r'))[0].r;
+  assert.equal(erased.items, 3);
+  await assert.rejects(push(U, [prompt('p4')]), (error) => error.code === 'PT429' && /too many sync requests/.test(error.message), 'delete did not reset the limit');
+  assert.equal(await rateCalls(U, 'push'), 3, 'the push counter survived erasure');
+});
+
+test('R-10: erasure keeps the daily download counter and the first-seen record (R-09 budgets hold)', async () => {
+  await setting('max_egress_bytes_new_user_day', 150000);
+  await push(U, [prompt('a', { original: 'q'.repeat(100000) })]);
+  assert.equal((await rpc(U, 'select * from public.sync_pull(0, 500)')).length, 1);
+  await db.query(`update sync.accounts set first_seen = now() - interval '1 day' where user_id = $1`, [U]);
+  const before = await adminRows('select day, bytes from sync.egress where user_id = $1', [U]);
   await rpc(U, 'select public.sync_delete_my_data() as r');
-  assert.equal((await adminRows('select 1 from sync.accounts where user_id = $1', [U])).length, 0);
+  assert.deepEqual(await adminRows('select day, bytes from sync.egress where user_id = $1', [U]), before);
+  const [account] = await adminRows(`select first_seen < now() - interval '12 hours' as old from sync.accounts where user_id = $1`, [U]);
+  assert.equal(account?.old, true, 'first-seen record kept, so a delete does not mint a fresh account');
+  await push(U, [prompt('a', { original: 'q'.repeat(100000) })]);
+  await assert.rejects(rpc(U, 'select * from public.sync_pull(0, 500)'), /daily sync download budget/, 'the day budget still applies after erasure');
+});
+
+test('R-10: the delete call itself is rate limited per minute and per day, and still works while paused', async () => {
+  await setting('enabled', 'off');
+  const del = () => rpc(U, 'select public.sync_delete_my_data() as r');
+  const perMinute = Number(defaults.find((d) => d.key === 'delete_per_minute').value);
+  for (let i = 0; i < perMinute; i += 1) assert.equal((await del())[0].r.items, 0);
+  await assert.rejects(del(), (error) => error.code === 'PT429' && /too many sync requests/.test(error.message));
+  assert.equal(await rateCalls(U, 'delete'), perMinute, 'the refused call left the counter at the limit');
+  await setting('delete_per_minute', 1000);
+  const perDay = Number(defaults.find((d) => d.key === 'delete_per_day').value);
+  for (let i = perMinute; i < perDay; i += 1) await del();
+  await assert.rejects(del(), (error) => error.refusal && error.status === 429 && /too many delete requests today/.test(error.message));
+  await assert.rejects(del(), (error) => error.status === 429, 'the refusal is counted, not rolled back');
+  assert.equal(await rateCalls(U, 'delete_day'), perDay + 2);
+  await assert.rejects(rpc(null, 'select public.sync_delete_my_data() as r'), /not authenticated|permission denied/);
+});
+
+test('R-13: clients hold no privileges on any sync sequence', async () => {
+  const seqs = (await db.query(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'S' and c.relname like 'sync%'`)).rows.map((r) => r.relname);
+  assert.ok(seqs.includes('sync_conflicts_id_seq'), seqs.join(','));
+  for (const seq of seqs) {
+    for (const role of ['anon', 'authenticated']) {
+      const [{ any }] = (await db.query(`select has_sequence_privilege($1, 'public.' || $2, 'USAGE') or has_sequence_privilege($1, 'public.' || $2, 'SELECT') or has_sequence_privilege($1, 'public.' || $2, 'UPDATE') as any`, [role, seq])).rows;
+      assert.equal(any, false, `${role} has a privilege on ${seq}`);
+    }
+  }
 });
