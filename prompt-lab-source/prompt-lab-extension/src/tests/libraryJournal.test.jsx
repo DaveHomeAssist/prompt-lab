@@ -285,6 +285,26 @@ describe('desktop library journal', () => {
     expect(ids(storageKeys.library)).toEqual(['local']);
   });
 
+  it('retries a slow boot read before starting without the journal', async () => {
+    localStorage.setItem(storageKeys.library, '[{"id":"local"}]');
+    const first = await boot();
+    await settled(first.journal);
+    first.stop();
+    idb.state.openDelayMs = 50;
+    const { outcome } = await boot({ timeoutMs: 20 });
+    expect(outcome.action).not.toBe('unavailable');
+    expect(outcome.attempts).toBe(3);
+    expect(ids(storageKeys.library)).toEqual(['local']);
+  });
+
+  it('gives up after the bounded boot retries when the journal never answers', async () => {
+    idb.state.hangOpen = true;
+    const started = Date.now();
+    const { outcome } = await boot({ timeoutMs: 20 });
+    expect(outcome).toMatchObject({ action: 'unavailable', attempts: 3, error: 'Library journal did not answer in time.' });
+    expect(Date.now() - started).toBeLessThan(1000);
+  });
+
   it('journals saves made through usePromptLibrary', async () => {
     localStorage.setItem(storageKeys.library, '[]');
     const { journal } = await boot();
