@@ -106,6 +106,10 @@ const ROUTE_TO_STATE = Object.freeze({
   '/scratch': { primaryView: 'notebook' },
   // Backward-compatible route for saved links from the Notebook-era UI.
   '/pad': { primaryView: 'notebook' },
+  // The diff viewer is the Diff tab of Write's result (free on every plan).
+  // /diff opens Write on that tab, then settles on the canonical '/' route
+  // without a "Page not found" notice.
+  '/diff': { primaryView: 'create', workspaceView: 'editor', resultTab: 'diff', canonical: '/' },
   // Dialog routes: open a modal over the current workspace instead of
   // swapping views, then settle back on that workspace's canonical route.
   '/settings': { modal: 'settings' },

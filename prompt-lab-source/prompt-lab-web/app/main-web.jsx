@@ -197,8 +197,11 @@ if (!CLERK_KEY) {
 } else {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
+      {/* PRIV-08: no Clerk SDK telemetry. Clerk only collects it on development
+          instances, which Vercel previews use after #274. */}
       <ClerkProvider
         publishableKey={CLERK_KEY}
+        telemetry={false}
         signInFallbackRedirectUrl={authRedirectUrls.fallbackRedirectUrl}
         signUpFallbackRedirectUrl={authRedirectUrls.signUpFallbackRedirectUrl}
       >
