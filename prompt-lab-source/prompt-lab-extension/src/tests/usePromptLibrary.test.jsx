@@ -522,9 +522,121 @@ describe('usePromptLibrary', () => {
       expect(result.current.recoveringLegacyLibrary).toBe(false);
     });
 
-    expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
+    // One request per source (www, then tawny).
+    expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(2);
     expect(localStorage.getItem(LEGACY_LIBRARY_CHECK_KEY)).toBe(JSON.stringify(true));
+    // www retries an unreachable bridge on a later load instead of giving up.
+    expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBeNull();
+    expect(localStorage.getItem('pl2-legacy-web-library-attempts:www')).toBe('1');
     expect(notify).not.toHaveBeenCalledWith(expect.stringContaining('Recovered'));
+  });
+
+  describe('www -> apex migration (S-06)', () => {
+    const wwwOnly = (source) => source.id === 'www';
+    const payloadFrom = (library, collections = []) => ({ library, collections, sourceOrigin: 'https://www.promptlab.tools' });
+    const mountUntilSettled = async (notify = vi.fn()) => {
+      const hook = renderHook(() => usePromptLibrary(notify));
+      await waitFor(() => {
+        expect(hook.result.current.libReady).toBe(true);
+        expect(hook.result.current.recoveringLegacyLibrary).toBe(false);
+      });
+      return hook;
+    };
+
+    beforeEach(() => {
+      legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockImplementation((_origin, _protocol, source) => wwwOnly(source));
+    });
+
+    it('merges www prompts into a non-empty apex library, persists them, then marks www checked', async () => {
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1', title: 'Apex', original: 'Apex body' })]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom(
+        [makeEntry({ id: 'www-1', title: 'From www', original: 'Www body', collection: 'Ops' })], ['Ops'],
+      ));
+      const notify = vi.fn();
+      const { result } = await mountUntilSettled(notify);
+
+      expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
+      expect(legacyBridgeMocks.requestLegacyLibraryPayload.mock.calls[0][0].source.id).toBe('www');
+      expect(result.current.library.map((entry) => entry.title).sort()).toEqual(['Apex', 'From www']);
+      // Written synchronously through the normal save path, before the checked mark.
+      expect(JSON.parse(localStorage.getItem(storageKeys.library)).map((entry) => entry.title).sort()).toEqual(['Apex', 'From www']);
+      expect(JSON.parse(localStorage.getItem(storageKeys.collections))).toContain('Ops');
+      expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBe('true');
+      expect(notify).toHaveBeenCalledWith('Recovered 1 prompts from www.promptlab.tools.');
+    });
+
+    it('does not duplicate prompts that both hosts already share', async () => {
+      const shared = makeEntry({ id: 'shared', title: 'Shared', original: 'Shared body' });
+      localStorage.setItem(storageKeys.library, JSON.stringify([shared]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom([{ ...shared, id: 'www-shared' }]));
+      const notify = vi.fn();
+      const { result } = await mountUntilSettled(notify);
+      expect(result.current.library).toHaveLength(1);
+      expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBe('true');
+      expect(notify).not.toHaveBeenCalledWith(expect.stringContaining('Recovered'));
+    });
+
+    it('does not ask www again once checked, so a second load cannot duplicate', async () => {
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1' })]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom([makeEntry({ id: 'www-1', title: 'From www', original: 'Www body' })]));
+      const first = await mountUntilSettled();
+      first.unmount();
+      const second = await mountUntilSettled();
+      expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(1);
+      expect(second.result.current.library).toHaveLength(2);
+    });
+
+    it('leaves www unchecked when the merged library cannot be written, and says so', async () => {
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1' })]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom([makeEntry({ id: 'www-1', title: 'From www', original: 'Www body' })]));
+      const original = Storage.prototype.setItem;
+      const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (key, value) {
+        if (key === storageKeys.library) throw new DOMException('Storage quota exceeded', 'QuotaExceededError');
+        return original.call(this, key, value);
+      });
+      const notify = vi.fn();
+      await mountUntilSettled(notify);
+      setItem.mockRestore();
+      expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBeNull();
+      expect(notify).toHaveBeenCalledWith('Prompts from www.promptlab.tools could not be saved yet. Prompt Lab will try again next time.');
+    });
+
+    it('gives up on an unreachable www bridge after three loads', async () => {
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(null);
+      for (let load = 1; load <= 3; load += 1) {
+        const hook = await mountUntilSettled();
+        hook.unmount();
+      }
+      expect(localStorage.getItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`)).toBe('true');
+      expect(localStorage.getItem('pl2-legacy-web-library-attempts:www')).toBeNull();
+      await mountUntilSettled();
+      expect(legacyBridgeMocks.requestLegacyLibraryPayload).toHaveBeenCalledTimes(3);
+    });
+
+    it('still skips tawny for a non-empty library', async () => {
+      legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockReturnValue(true);
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1' })]));
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockResolvedValue(payloadFrom([]));
+      await mountUntilSettled();
+      expect(legacyBridgeMocks.requestLegacyLibraryPayload.mock.calls.map(([options]) => options.source.id)).toEqual(['www']);
+    });
+
+    it('manual Recover asks every supported source and reports the total', async () => {
+      legacyBridgeMocks.shouldAttemptLegacyWebMigration.mockReturnValue(true);
+      localStorage.setItem(storageKeys.library, JSON.stringify([makeEntry({ id: 'apex-1' })]));
+      localStorage.setItem(`${LEGACY_LIBRARY_CHECK_KEY}:www`, 'true');
+      localStorage.setItem(LEGACY_LIBRARY_CHECK_KEY, 'true');
+      legacyBridgeMocks.requestLegacyLibraryPayload.mockImplementation(async ({ source }) => payloadFrom(
+        source.id === 'www' ? [makeEntry({ id: 'w', title: 'W', original: 'W body' })] : [makeEntry({ id: 't', title: 'T', original: 'T body' })],
+      ));
+      const notify = vi.fn();
+      const { result } = await mountUntilSettled(notify);
+      let outcome;
+      await act(async () => { outcome = await result.current.recoverLegacyWebLibrary({ force: true }); });
+      expect(outcome).toEqual({ importedCount: 2, reason: 'recovered' });
+      expect(notify).toHaveBeenCalledWith('Recovered 2 prompts from www.promptlab.tools and your legacy web library.');
+      expect(result.current.library).toHaveLength(3);
+    });
   });
 
   it('does not retry the legacy bridge on rerender when notify changes identity', async () => {

@@ -79,14 +79,18 @@ test('app CSP keeps its restrictive baseline', async () => {
 // https://prompt-lab-tawny.vercel.app/legacy-library-bridge.html (the old demo
 // origin) to read a library saved there. frame-src blocked it on every load,
 // so migration failed silently. Allow exactly that origin, nothing broader.
-test('app CSP lets the legacy-library bridge frame load from the old demo origin only', async () => {
+test('app CSP lets the legacy-library bridge frame load from the www and old demo origins only', async () => {
   const csp = await readAppCsp();
   const frameSrc = directive(csp, 'frame-src');
-  const { LEGACY_WEB_APP_ORIGIN } = await import('../../../prompt-lab-extension/src/lib/legacyLibraryMigration.js');
+  const { LEGACY_WEB_APP_ORIGIN, WWW_WEB_APP_ORIGIN, LEGACY_LIBRARY_SOURCES } = await import('../../../prompt-lab-extension/src/lib/legacyLibraryMigration.js');
 
   assert.equal(LEGACY_WEB_APP_ORIGIN, 'https://prompt-lab-tawny.vercel.app');
-  assert.ok(frameSrc.split(/\s+/).includes(LEGACY_WEB_APP_ORIGIN), 'frame-src must list the legacy origin');
+  assert.equal(WWW_WEB_APP_ORIGIN, 'https://www.promptlab.tools');
+  // S-06: every migration source must be frameable, and nothing else.
+  for (const source of LEGACY_LIBRARY_SOURCES) {
+    assert.ok(frameSrc.split(/\s+/).includes(source.origin), `frame-src must list ${source.origin}`);
+  }
   assert.doesNotMatch(frameSrc, /\*\.vercel\.app|https:\/\/\*|\bhttps:(?:\s|$)/);
-  assert.deepEqual(frameSrc.split(/\s+/).sort(), ["'self'", 'https://challenges.cloudflare.com', LEGACY_WEB_APP_ORIGIN].sort());
+  assert.deepEqual(frameSrc.split(/\s+/).sort(), ["'self'", 'https://challenges.cloudflare.com', WWW_WEB_APP_ORIGIN, LEGACY_WEB_APP_ORIGIN].sort());
   assert.equal(directive(csp, 'child-src'), null, 'no separate child-src is needed; frame-src governs frames');
 });
