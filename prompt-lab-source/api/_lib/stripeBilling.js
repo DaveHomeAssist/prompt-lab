@@ -870,26 +870,34 @@ export async function persistStripeWebhookRecord(record, config = buildStripeCon
     // INT-02: Stripe redelivers an event after a non-2xx answer. The first
     // delivery claims the event id; later deliveries store nothing new (the
     // access policy still runs again in the route).
-    if (record.eventId) {
-      const claimed = await redisCommand(config, 'set', [`${prefix}:event:${record.eventId}`, '1', 'NX', 'EX', ttl]);
+    const claimKey = record.eventId ? `${prefix}:event:${record.eventId}` : '';
+    if (claimKey) {
+      const claimed = await redisCommand(config, 'set', [claimKey, '1', 'NX', 'EX', ttl]);
       if (claimed !== 'OK') return { ok: true, mode: 'redis', duplicate: true };
     }
 
-    const eventListKey = `${prefix}:events`;
-    await redisCommand(config, 'rpush', [eventListKey], serialized);
-    await redisCommand(config, 'ltrim', [eventListKey, -eventListLimit, -1]);
-    await redisCommand(config, 'expire', [eventListKey, ttl]);
+    try {
+      const eventListKey = `${prefix}:events`;
+      await redisCommand(config, 'rpush', [eventListKey], serialized);
+      await redisCommand(config, 'ltrim', [eventListKey, -eventListLimit, -1]);
+      await redisCommand(config, 'expire', [eventListKey, ttl]);
 
-    // Latest record per customer, email and subscription. Each key expires;
-    // the never-expiring index sets that listed them are no longer written.
-    const latestKeys = [
-      record.customerId ? `${prefix}:customer:${record.customerId}` : '',
-      record.customerEmail ? `${prefix}:email:${record.customerEmail}` : '',
-      record.subscriptionId ? `${prefix}:subscription:${record.subscriptionId}` : '',
-    ].filter(Boolean);
-    for (const key of latestKeys) {
-      await redisCommand(config, 'set', [key], serialized);
-      await redisCommand(config, 'expire', [key, ttl]);
+      // Latest record per customer, email and subscription. Each key expires;
+      // the never-expiring index sets that listed them are no longer written.
+      const latestKeys = [
+        record.customerId ? `${prefix}:customer:${record.customerId}` : '',
+        record.customerEmail ? `${prefix}:email:${record.customerEmail}` : '',
+        record.subscriptionId ? `${prefix}:subscription:${record.subscriptionId}` : '',
+      ].filter(Boolean);
+      for (const key of latestKeys) {
+        await redisCommand(config, 'set', [key], serialized);
+        await redisCommand(config, 'expire', [key, ttl]);
+      }
+    } catch (error) {
+      // A write failed after the claim: release it so Stripe's retry can
+      // finish the record instead of being skipped as a duplicate.
+      if (claimKey) await redisCommand(config, 'del', [claimKey]).catch(() => {});
+      throw error;
     }
     return { ok: true, mode: 'redis' };
   }

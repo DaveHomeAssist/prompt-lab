@@ -243,3 +243,31 @@ test('AN-07: the client event envelope never includes the contact email', async 
   assert.equal(Object.hasOwn(envelope, 'contactEmail'), false);
   assert.equal(buildTelemetryIdentityPayload(state, 'plsess-1').contactEmail, 'person@example.com');
 });
+
+test('INT-02: a delivery that fails after claiming the event id releases the claim so the retry stores it', async () => {
+  const { buildStripeWebhookRecord, persistStripeWebhookRecord } = await load(stripeBillingUrl);
+  const commands = [];
+  const keys = new Set();
+  let failNextRpush = true;
+  globalThis.fetch = async (url, init = {}) => {
+    const parts = new URL(String(url)).pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    commands.push({ parts, body: init.body == null ? null : String(init.body) });
+    const [command, key, ...rest] = parts;
+    if (command === 'set' && rest.includes('NX')) {
+      if (keys.has(key)) return Response.json({ result: null });
+      keys.add(key);
+      return Response.json({ result: 'OK' });
+    }
+    if (command === 'del') { keys.delete(key); return Response.json({ result: 1 }); }
+    if (command === 'rpush' && failNextRpush) { failNextRpush = false; return new Response('boom', { status: 500 }); }
+    return Response.json({ result: 'OK' });
+  };
+  const config = redisConfig();
+  const event = { id: 'evt_retry', type: 'checkout.session.completed', data: { object: { id: 'cs_r', object: 'checkout.session', customer: 'cus_r', subscription: 'sub_r' } } };
+
+  await assert.rejects(() => persistStripeWebhookRecord(buildStripeWebhookRecord(event, config), config));
+  assert.ok(commands.some(({ parts }) => parts[0] === 'del' && parts[1] === 'promptlab:stripe:event:evt_retry'), 'claim released');
+  const retry = await persistStripeWebhookRecord(buildStripeWebhookRecord(event, config), config);
+  assert.deepEqual(retry, { ok: true, mode: 'redis' });
+  assert.equal(commands.filter(({ parts }) => parts[0] === 'rpush').length, 2);
+});
