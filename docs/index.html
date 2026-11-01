@@ -485,19 +485,7 @@ img { display: block; max-width: 100%; }
   margin-bottom: 80px;
 }
 
-/* Feature rows — alternating layout */
-.feature-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 64px;
-  align-items: center;
-  margin-bottom: 120px;
-}
-.feature-row:last-child { margin-bottom: 0; }
-.feature-row.reverse .feature-text { order: 2; }
-.feature-row.reverse .feature-visual { order: 1; }
 
-.feature-text {}
 .feature-tag {
   font-family: var(--font-mono);
   font-size: 0.7rem;
@@ -522,14 +510,6 @@ img { display: block; max-width: 100%; }
   letter-spacing: -0.02em;
   margin-bottom: 16px;
 }
-.feature-desc {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.7;
-  font-weight: 300;
-  margin-bottom: 24px;
-  max-width: 440px;
-}
 .feature-bullets {
   list-style: none;
   display: flex;
@@ -550,15 +530,7 @@ img { display: block; max-width: 100%; }
   flex-shrink: 0;
 }
 
-/* Feature visual — mock UI */
-.feature-visual {
-  position: relative;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  aspect-ratio: 4/3;
-}
+/* Window chrome for the product windows */
 .feature-visual-chrome {
   display: flex;
   align-items: center;
@@ -582,109 +554,10 @@ img { display: block; max-width: 100%; }
   color: var(--text-tertiary);
   letter-spacing: 0.04em;
 }
-.feature-visual-body {
-  padding: 24px;
-  height: calc(100% - 42px);
-  display: flex;
-  flex-direction: column;
-}
 
 /* Mock UI elements */
-.mock-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
-}
-.mock-tab {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  padding: 6px 12px;
-  border-radius: 6px;
-  color: var(--text-tertiary);
-  letter-spacing: 0.02em;
-}
-.mock-tab.active {
-  background: var(--accent-subtle);
-  color: var(--accent);
-  border: 1px solid rgba(232, 81, 47, 0.2);
-}
-.mock-line {
-  height: 8px;
-  background: var(--bg-surface);
-  border-radius: 4px;
-  margin-bottom: 8px;
-}
-.mock-line.short { width: 60%; }
-.mock-line.medium { width: 80%; }
-.mock-line.accent { background: var(--accent-subtle); }
-.mock-diff {
-  display: flex;
-  gap: 16px;
-  flex: 1;
-}
-.mock-diff-panel {
-  flex: 1;
-  background: var(--bg-primary);
-  border-radius: 8px;
-  padding: 16px;
-  border: 1px solid var(--border);
-}
-.mock-diff-label {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 12px;
-}
-.mock-diff-line {
-  height: 6px;
-  border-radius: 3px;
-  margin-bottom: 6px;
-}
-.mock-diff-line.del { background: rgba(255, 80, 80, 0.15); }
-.mock-diff-line.add { background: rgba(80, 255, 120, 0.15); }
-.mock-diff-line.neutral { background: var(--bg-surface); }
 
 /* Models grid in feature visual */
-.mock-models {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  flex: 1;
-}
-.mock-model-card {
-  background: var(--bg-primary);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.mock-model-name {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--text-primary);
-  letter-spacing: 0.03em;
-}
-.mock-model-provider {
-  font-size: 0.65rem;
-  color: var(--text-tertiary);
-}
-.mock-model-bar {
-  height: 4px;
-  border-radius: 2px;
-  background: var(--bg-surface);
-  margin-top: auto;
-}
-.mock-model-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-}
 
 /* ========== INTERACTIVE DEMO ========== */
 .demo-section {
@@ -851,62 +724,6 @@ img { display: block; max-width: 100%; }
   letter-spacing: 0.02em;
 }
 
-/* ========== BENTO GRID ========== */
-.bento {
-  padding: 140px 0;
-}
-.bento-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-.bento-card {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 32px;
-  transition: border-color 0.3s, transform 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-.bento-card:hover {
-  border-color: var(--border-hover);
-  transform: translateY(-4px);
-}
-.bento-card.span-2 { grid-column: span 2; }
-.bento-icon {
-  width: 40px;
-  height: 40px;
-  background: var(--accent-subtle);
-  border: 1px solid rgba(232, 81, 47, 0.15);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-}
-.bento-icon svg {
-  width: 20px;
-  height: 20px;
-  stroke: var(--accent);
-  fill: none;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.bento-title {
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  margin-bottom: 8px;
-  letter-spacing: -0.01em;
-}
-.bento-desc {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  line-height: 1.6;
-  font-weight: 300;
-}
 
 /* ========== PRICING ========== */
 .pricing {
@@ -1122,17 +939,6 @@ img { display: block; max-width: 100%; }
 
 /* ========== RESPONSIVE ========== */
 @media (max-width: 900px) {
-  .feature-row {
-    grid-template-columns: 1fr;
-    gap: 40px;
-  }
-  .feature-row.reverse .feature-text { order: 1; }
-  .feature-row.reverse .feature-visual { order: 2; }
-  .feature-visual { aspect-ratio: 16/10; }
-  .bento-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .bento-card.span-2 { grid-column: span 2; }
   .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
   .proof-grid { grid-template-columns: repeat(2, 1fr); gap: 32px; }
@@ -1144,7 +950,7 @@ img { display: block; max-width: 100%; }
   .hero-headline { font-size: 2.8rem; }
   .nav-links { display: none; }
   .nav-toggle { display: flex; }
-  .features, .demo-section, .bento, .pricing, .cta-section { padding: 80px 0; }
+  .features, .demo-section, .pricing, .cta-section { padding: 80px 0; }
   .section-heading { font-size: 1.8rem; }
   .demo-modes {
     flex-wrap: wrap;
@@ -1161,10 +967,7 @@ img { display: block; max-width: 100%; }
     border-left: none;
     border-top: 1px solid var(--border);
   }
-  .bento-grid { grid-template-columns: 1fr; }
-  .bento-card.span-2 { grid-column: span 1; }
   .footer-grid { grid-template-columns: 1fr; }
-  .feature-row { margin-bottom: 80px; }
   .proof-grid { grid-template-columns: 1fr 1fr; gap: 24px; }
   .hero-actions { flex-direction: column; align-items: flex-start; }
 }
@@ -1213,6 +1016,9 @@ img { display: block; max-width: 100%; }
   --text-tertiary: #8A8A98;
   --accent-text: #E86A47;
   --focus: #FFD166;
+  /* The app's own action colours, used only where the page depicts the app. */
+  --app-ember: #FB7A55;
+  --app-action-text: #210B05;
 }
 
 html { scroll-padding-top: 88px; }
@@ -1456,7 +1262,6 @@ section[id] { scroll-margin-top: 88px; }
 .section-label,
 .surface-eyebrow,
 .feature-tag,
-.mock-tab.active,
 .feature-bullets li::before,
 .pricing-features li::before,
 .billing-option input:not(:checked) + label .billing-save {
@@ -1523,7 +1328,7 @@ section[id] { scroll-margin-top: 88px; }
   padding: 2px;
 }
 .demo-output:empty::before {
-  content: 'Choose a sample style, then show the result.';
+  content: 'Choose a strategy, then show the result.';
   color: var(--text-tertiary);
 }
 .demo-output[aria-busy='true']::before {
@@ -1580,7 +1385,6 @@ section[id] { scroll-margin-top: 88px; }
 .features { padding: 120px 0; }
 .workflow-intro { margin-bottom: 82px; }
 .workflow-intro .section-sub { margin-bottom: 0; }
-.feature-row { margin-bottom: 96px; }
 
 .privacy-band {
   padding: 100px 0;
@@ -1706,6 +1510,297 @@ section[id] { scroll-margin-top: 88px; }
 .footer a { min-height: 36px; display: inline-flex; align-items: center; }
 .footer-bottom a { min-height: 44px; }
 
+/* ========== SPLASH REDESIGN (2026-10) ========== */
+/* Small accent text uses --accent-text (6.3:1 on --bg-void); --accent is 3.9:1. */
+.section-label,
+.faq-list summary::after { color: var(--accent-text); }
+/* Display headings are set in the serif at regular weight, not the browser's bold. */
+.hero-headline,
+.section-heading,
+.feature-title,
+.cta-heading,
+.surface-card h3,
+.pricing-price { font-weight: 400; }
+
+.hero { padding: 148px 0 104px; }
+.hero-headline {
+  max-width: none;
+  font-size: clamp(3.2rem, 6vw, 5.4rem);
+  margin-bottom: 44px;
+}
+.hero-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 56px;
+  align-items: start;
+}
+.hero-copy .hero-sub { max-width: 460px; }
+
+/* Product windows: illustrations of the real app, written in real text. */
+.product-window {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-hover);
+  border-radius: 20px;
+  background: var(--bg-elevated);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+.window-body { display: grid; gap: 14px; padding: 20px; }
+.window-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.window-field {
+  display: grid;
+  flex: 1 1 150px;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.window-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border: 1px solid var(--border-hover);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+.window-select::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid var(--text-tertiary);
+  border-bottom: 1.5px solid var(--text-tertiary);
+  transform: rotate(45deg) translateY(-2px);
+}
+.window-segments {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border-hover);
+  border-radius: 10px;
+  background: var(--bg-primary);
+}
+.window-segments span {
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.window-segments .is-on {
+  background: var(--accent-subtle);
+  box-shadow: inset 0 0 0 1px rgba(232, 81, 47, 0.25);
+  color: var(--accent-text);
+}
+.window-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.window-switch i {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--app-ember);
+}
+.window-switch i::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--app-action-text);
+}
+.window-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  gap: 12px;
+}
+.window-pane {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.window-pane p { margin-bottom: 6px; color: var(--text-secondary); }
+.window-pane-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.window-add {
+  display: block;
+  margin: 0 -6px 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(80, 255, 120, 0.09);
+  color: var(--text-primary);
+}
+.window-add::before { content: '+ '; color: #7EE2A0; font-family: var(--font-mono); }
+.window-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.window-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-hover);
+  border-radius: 100px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+.window-chip b { color: var(--text-primary); font-weight: 500; }
+.window-chip.is-assumption { border-color: rgba(196, 164, 74, 0.45); }
+.window-chip.is-assumption::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.window-chip.is-clear::before { content: '\2713'; color: #7EE2A0; font-size: 0.7rem; }
+.window-enhance {
+  margin-left: auto;
+  padding: 9px 18px;
+  border-radius: 8px;
+  background: var(--app-ember);
+  color: var(--app-action-text);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+/* How it works: three steps side by side. */
+.workflow-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.workflow-step {
+  position: relative;
+  padding: 32px 28px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+}
+.workflow-step .feature-title {
+  margin-bottom: 20px;
+  font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+}
+.workflow-step .feature-bullets li { line-height: 1.5; }
+.workflow-step-number {
+  position: absolute;
+  top: 30px;
+  right: 28px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+/* Privacy and safety. */
+.privacy-copy .privacy-list { margin-bottom: 28px; }
+.safety-window .window-body { gap: 18px; padding: 24px; }
+.window-heading {
+  margin: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.safety-types { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; }
+.safety-types li {
+  padding: 5px 12px;
+  border: 1px solid var(--border-hover);
+  border-radius: 100px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+.safety-window .window-pane-label { margin-bottom: -8px; }
+.safety-example {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.safety-example mark {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(196, 164, 74, 0.16);
+  color: var(--gold);
+}
+.safety-note {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border-hover);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.safety-note svg {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Rhythm: the surface chooser now follows the privacy band, which already draws the rule. */
+.demo-section,
+.features,
+.pricing { padding: 104px 0; }
+.privacy-band { padding: 104px 0; }
+.surface-chooser { border-top: 0; }
+
+@media (max-width: 980px) {
+  .hero-layout { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .workflow-steps { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 680px) {
+  .hero-headline { margin-bottom: 32px; }
+  .window-body,
+  .safety-window .window-body { padding: 16px; }
+  .window-panes { grid-template-columns: minmax(0, 1fr); }
+  .window-switch,
+  .window-enhance { margin-left: 0; }
+  .workflow-step { padding: 26px 22px; }
+  .workflow-step-number { top: 24px; right: 22px; }
+}
+
+@media (max-width: 420px) {
+  .window-segments span { padding: 6px 8px; }
+}
+
 @media (max-width: 980px) {
   .nav-version { display: none; }
   .nav-links { gap: 18px; }
@@ -1759,8 +1854,6 @@ section[id] { scroll-margin-top: 88px; }
   .demo-footer-actions { width: 100%; margin-left: 0; flex-direction: column; }
   .demo-footer-actions > * { width: 100%; justify-content: center; }
   .demo-status { padding-inline: 16px; }
-  .feature-visual { aspect-ratio: auto; min-height: 360px; }
-  .mock-models { grid-template-columns: 1fr; }
   .pricing-grid { grid-template-columns: 1fr; }
   .billing-toggle { width: 100%; }
   .billing-option { flex: 1; }
@@ -1876,59 +1969,67 @@ section[id] { scroll-margin-top: 88px; }
     <div class="hero-grid"></div>
   </div>
   <div class="container hero-content">
-    <div class="hero-badge">
+    <div class="hero-badge" data-release="1.9.0">
       <span class="hero-badge-dot"></span>
-      v1.7 &middot; Draft &middot; Improve &middot; Reuse &middot; Evaluate
+      v1.9 &middot; Create &middot; Library &middot; Evaluate
     </div>
     <h1 class="hero-headline">
       <span>Turn rough prompts into</span>
       <span><span class="hero-italic">reusable, tested workflows.</span></span>
     </h1>
-    <p class="hero-sub">
-      Prompt Lab gives you one focused place to shape a draft, keep the version that works, and compare results when the work needs proof.
-    </p>
-    <div class="hero-actions">
-      <a href="/app?source=landing&amp;placement=hero&amp;intent=free" class="btn-primary" data-analytics-id="landing.hero.try_free">
-        Try PromptLab free
-        <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <a href="#demo" class="btn-secondary" data-analytics-id="landing.hero.see_workflow">See the workflow</a>
-    </div>
-    <div class="trust-line">
-      <span>Free editor</span>
-      <span>Local library storage</span>
-      <span>Connect a provider when ready</span>
-    </div>
-  </div>
-</section>
-
-<!-- ===== SURFACE CHOOSER ===== -->
-<section class="surface-chooser" id="product" aria-labelledby="surfaceHeading">
-  <div class="container">
-    <div class="surface-heading">
-      <div class="section-label">Choose your surface</div>
-      <h2 class="section-heading" id="surfaceHeading">Start where you already work.</h2>
-    </div>
-    <div class="surface-grid">
-      <a class="surface-card recommended" href="/app?source=landing&amp;placement=surface_web&amp;intent=free" data-analytics-id="landing.surface.web">
-        <span class="surface-eyebrow">Recommended</span>
-        <h3>Web app</h3>
-        <p>Open the complete workspace in a browser. No installation required.</p>
-        <span class="surface-link">Start free &rarr;</span>
-      </a>
-      <a class="surface-card" href="/setup.html" data-analytics-id="landing.surface.extension">
-        <span class="surface-eyebrow">Browser extension &mdash; setup</span>
-        <h3>Extension</h3>
-        <p>Keep the workbench beside ChatGPT, Claude, and other browser-based AI tools.</p>
-        <span class="surface-link">View setup guide &rarr;</span>
-      </a>
-      <a class="surface-card" href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer" data-analytics-id="landing.surface.desktop_source">
-        <span class="surface-eyebrow">Source build</span>
-        <h3>Desktop</h3>
-        <p>Keep a local build nearby for provider workflows and a focused desktop surface.</p>
-        <span class="surface-link">View source and build notes &rarr;</span>
-        <span class="surface-note">No packaged installer is advertised.</span>
-      </a>
+    <div class="hero-layout">
+      <div class="hero-copy">
+        <p class="hero-sub">
+          Prompt Lab gives you one focused place to shape a draft, keep the version that works, and compare results when the work needs proof.
+        </p>
+        <div class="hero-actions">
+          <a href="/app?source=landing&amp;placement=hero&amp;intent=free" class="btn-primary" data-analytics-id="landing.hero.try_free">
+            Try PromptLab free
+            <svg aria-hidden="true" focusable="false" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a href="#demo" class="btn-secondary" data-analytics-id="landing.hero.see_workflow">See the workflow</a>
+        </div>
+        <div class="trust-line">
+          <span>Free editor</span>
+          <span>Local library storage</span>
+          <span>Connect a provider when ready</span>
+        </div>
+      </div>
+      <div class="product-window hero-window" role="img" aria-label="Illustration of the Create workspace: task type Code, destination Claude, the Expanded strategy with alternatives on, a draft beside its expanded version with four added lines, one assumption you can revert, and a clear sensitive data check.">
+        <div class="feature-visual-chrome">
+          <div class="feature-visual-dot"></div><div class="feature-visual-dot"></div><div class="feature-visual-dot"></div>
+          <span class="feature-visual-chrome-title">prompt lab &middot; create</span>
+        </div>
+        <div class="window-body">
+          <div class="window-controls">
+            <span class="window-field">Task type<span class="window-select">Code</span></span>
+            <span class="window-field">Intended destination<span class="window-select">Claude</span></span>
+          </div>
+          <div class="window-controls">
+            <span class="window-segments"><span class="is-on">Expanded</span><span>Refined</span><span>Rebuilt</span></span>
+            <span class="window-switch"><i></i>Alternatives &middot; 3 candidates</span>
+          </div>
+          <div class="window-panes">
+            <div class="window-pane">
+              <div class="window-pane-label"><span>Draft</span></div>
+              <p>Write a Python script that reads a CSV and makes charts. Make it easy to use and handle errors well.</p>
+            </div>
+            <div class="window-pane">
+              <div class="window-pane-label"><span>Expanded</span><span>+4 &middot; 1 assumption</span></div>
+              <p>Write a Python 3 script that reads a CSV file and creates charts from it.</p>
+              <span class="window-add">Take the CSV path as a command-line argument.</span>
+              <span class="window-add">Draw one chart per numeric column and save each as a PNG.</span>
+              <span class="window-add">Print a usage line when run without arguments.</span>
+              <span class="window-add">Exit with a clear message if the file is missing or has no numeric columns.</span>
+            </div>
+          </div>
+          <div class="window-footer">
+            <span class="window-chip is-assumption"><b>Assumption</b> PNG output &middot; revert</span>
+            <span class="window-chip is-clear">Sensitive data check: clear</span>
+            <span class="window-enhance">Enhance</span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1938,7 +2039,7 @@ section[id] { scroll-margin-top: 88px; }
   <div class="container demo-wrapper">
     <div class="demo-header reveal">
       <div class="section-label">Interactive sample</div>
-      <h2 class="section-heading" id="demoHeading" style="margin-left:auto;margin-right:auto;">See exactly what changes.</h2>
+      <h2 class="section-heading" id="demoHeading" style="margin-left:auto;margin-right:auto;">One rough prompt, three strategies.</h2>
       <p class="section-sub" style="margin-left:auto;margin-right:auto;">This transparent sample uses fixed example content. It never reads or sends your text.</p>
     </div>
     <div class="demo-container reveal">
@@ -1947,11 +2048,11 @@ section[id] { scroll-margin-top: 88px; }
         <div class="demo-chrome-title">prompt lab · sample</div>
       </div>
       <fieldset class="demo-modes" id="demoModes">
-        <legend>Preview three of PromptLab's seven modes on the same rough prompt</legend>
+        <legend>Preview the three strategies on the same rough prompt</legend>
         <div class="demo-mode-options">
-          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoBalanced" value="balanced" checked data-analytics-id="landing.demo.mode_balanced"><label for="demoBalanced">Balanced</label></div>
-          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoConcise" value="concise" data-analytics-id="landing.demo.mode_concise"><label for="demoConcise">Concise</label></div>
-          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoDetailed" value="detailed" data-analytics-id="landing.demo.mode_detailed"><label for="demoDetailed">Detailed</label></div>
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoExpanded" value="expanded" checked data-analytics-id="landing.demo.mode_expanded"><label for="demoExpanded">Expanded</label></div>
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoRefined" value="refined" data-analytics-id="landing.demo.mode_refined"><label for="demoRefined">Refined</label></div>
+          <div class="demo-mode-option"><input type="radio" name="demoMode" id="demoRebuilt" value="rebuilt" data-analytics-id="landing.demo.mode_rebuilt"><label for="demoRebuilt">Rebuilt</label></div>
         </div>
       </fieldset>
       <div class="demo-body">
@@ -1979,7 +2080,7 @@ section[id] { scroll-margin-top: 88px; }
   </div>
 </section>
 
-<!-- ===== FEATURES ===== -->
+<!-- ===== HOW IT WORKS ===== -->
 <section class="features" id="workflow">
   <div class="container">
     <div class="reveal workflow-intro">
@@ -1987,241 +2088,114 @@ section[id] { scroll-margin-top: 88px; }
       <h2 class="section-heading">Shape it. Save it. Prove it.</h2>
       <p class="section-sub">One repeatable loop keeps prompt work from disappearing into chat history: improve the instruction, save the useful version, and compare outcomes when quality matters.</p>
     </div>
-
-    <!-- Feature 1: Create -->
-    <div class="feature-row reveal">
-      <div class="feature-text">
+    <div class="workflow-steps">
+      <article class="workflow-step reveal">
+        <span class="workflow-step-number" aria-hidden="true">01</span>
         <div class="feature-tag">Create</div>
         <h3 class="feature-title">Sharpen drafts without losing the point</h3>
-        <p class="feature-desc">Use the workbench to turn rough instructions into usable prompts with fast iteration, quality checks, and enhancement modes that keep the original intent intact.</p>
         <ul class="feature-bullets">
-          <li>Seven enhancement modes inside one working surface</li>
+          <li>Choose a task type and destination, then Expanded, Refined or Rebuilt</li>
+          <li>Ask for alternatives to see all three strategies side by side</li>
+          <li>Every result shows a diff, its assumptions, and edits you can revert</li>
           <li>Prompt scoring and lint checks surface weak spots early</li>
-          <li>One-click accept, copy, or iterate further</li>
         </ul>
-      </div>
-      <div class="feature-visual">
-        <div class="feature-visual-chrome">
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">workbench</span>
-        </div>
-        <div class="feature-visual-body">
-          <div class="mock-tabs">
-            <div class="mock-tab active">Balanced</div>
-            <div class="mock-tab">Claude</div>
-            <div class="mock-tab">ChatGPT</div>
-            <div class="mock-tab">Concise</div>
-          </div>
-          <div class="mock-diff">
-            <div class="mock-diff-panel">
-              <div class="mock-diff-label">Original</div>
-              <div class="mock-diff-line neutral" style="width:90%"></div>
-              <div class="mock-diff-line del" style="width:75%"></div>
-              <div class="mock-diff-line neutral" style="width:85%"></div>
-              <div class="mock-diff-line del" style="width:60%"></div>
-              <div class="mock-diff-line neutral" style="width:70%"></div>
-            </div>
-            <div class="mock-diff-panel">
-              <div class="mock-diff-label">Enhanced</div>
-              <div class="mock-diff-line neutral" style="width:90%"></div>
-              <div class="mock-diff-line add" style="width:80%"></div>
-              <div class="mock-diff-line neutral" style="width:85%"></div>
-              <div class="mock-diff-line add" style="width:95%"></div>
-              <div class="mock-diff-line add" style="width:55%"></div>
-              <div class="mock-diff-line neutral" style="width:70%"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 2: Library -->
-    <div class="feature-row reverse reveal">
-      <div class="feature-text">
+      </article>
+      <article class="workflow-step reveal reveal-delay-1">
+        <span class="workflow-step-number" aria-hidden="true">02</span>
         <div class="feature-tag">Library</div>
         <h3 class="feature-title">Keep and import the prompts worth reusing</h3>
-        <p class="feature-desc">Save the prompts that earn a second life. Import Prompt Lab exports, starter libraries, or raw prompt arrays, then search and reuse the strongest blocks later.</p>
         <ul class="feature-bullets">
-          <li>Import preset packs, library exports, and starter bundles</li>
+          <li>Import preset packs, library exports, starter bundles and raw prompt arrays</li>
           <li>Full-text search across your entire library</li>
           <li>Compose longer prompts from saved fragments</li>
+          <li>Scratch notes stay beside the editor, out of your saved versions</li>
         </ul>
-      </div>
-      <div class="feature-visual">
-        <div class="feature-visual-chrome">
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">library</span>
-        </div>
-        <div class="feature-visual-body" style="gap: 10px;">
-          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
-            <div style="width:8px; height:8px; border-radius:3px; background:var(--accent); flex-shrink:0;"></div>
-            <div style="flex:1;">
-              <div class="mock-model-name" style="margin-bottom:3px;">Code Review System Prompt</div>
-              <div class="mock-model-provider">engineering · saved 2d ago</div>
-            </div>
-            <div class="mock-model-provider">1.2k tokens</div>
-          </div>
-          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
-            <div style="width:8px; height:8px; border-radius:3px; background:var(--gold); flex-shrink:0;"></div>
-            <div style="flex:1;">
-              <div class="mock-model-name" style="margin-bottom:3px;">Email Tone Matcher</div>
-              <div class="mock-model-provider">writing · saved 5d ago</div>
-            </div>
-            <div class="mock-model-provider">840 tokens</div>
-          </div>
-          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
-            <div style="width:8px; height:8px; border-radius:3px; background:#28C840; flex-shrink:0;"></div>
-            <div style="flex:1;">
-              <div class="mock-model-name" style="margin-bottom:3px;">Data Analysis Chain</div>
-              <div class="mock-model-provider">research · saved 1w ago</div>
-            </div>
-            <div class="mock-model-provider">2.1k tokens</div>
-          </div>
-          <div class="mock-model-card" style="flex-direction: row; align-items: center; gap: 14px; padding: 14px 16px;">
-            <div style="width:8px; height:8px; border-radius:3px; background:#5B8DEF; flex-shrink:0;"></div>
-            <div style="flex:1;">
-              <div class="mock-model-name" style="margin-bottom:3px;">API Documentation Generator</div>
-              <div class="mock-model-provider">engineering · saved 2w ago</div>
-            </div>
-            <div class="mock-model-provider">960 tokens</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feature 3: Evaluate -->
-    <div class="feature-row reveal">
-      <div class="feature-text">
+      </article>
+      <article class="workflow-step reveal reveal-delay-2">
+        <span class="workflow-step-number" aria-hidden="true">03</span>
         <div class="feature-tag">Evaluate</div>
         <h3 class="feature-title">Review runs instead of guessing</h3>
-        <p class="feature-desc">Keep evaluation history visible, compare variants when the workflow needs proof, and preserve the model context behind every result you reuse.</p>
         <ul class="feature-bullets">
-          <li>Run timeline with provider, model, latency, and status</li>
+          <li>Run timeline with provider, model, latency and status</li>
           <li>Diff of every improvement on every plan; Compare in Pro</li>
-          <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter, and Ollama</li>
+          <li>Extension and desktop support Claude, OpenAI, Gemini, OpenRouter and Ollama</li>
+          <li>The browser extension keeps the workbench beside ChatGPT, Claude and other AI tools</li>
         </ul>
-      </div>
-      <div class="feature-visual">
-        <div class="feature-visual-chrome">
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <div class="feature-visual-dot"></div>
-          <span class="feature-visual-chrome-title">evaluate</span>
-        </div>
-        <div class="feature-visual-body">
-          <div class="mock-models">
-            <div class="mock-model-card">
-              <div class="mock-model-name">Claude</div>
-              <div class="mock-model-provider">Anthropic</div>
-              <div class="mock-line" style="width:90%; margin-top: 8px;"></div>
-              <div class="mock-line short"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:92%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">OpenAI model</div>
-              <div class="mock-model-provider">OpenAI</div>
-              <div class="mock-line medium" style="margin-top: 8px;"></div>
-              <div class="mock-line" style="width:70%"></div>
-              <div class="mock-line short"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:78%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">Gemini</div>
-              <div class="mock-model-provider">Google</div>
-              <div class="mock-line" style="width:85%; margin-top: 8px;"></div>
-              <div class="mock-line" style="width:65%"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:85%"></div></div>
-            </div>
-            <div class="mock-model-card">
-              <div class="mock-model-name">Local model</div>
-              <div class="mock-model-provider">Ollama (local)</div>
-              <div class="mock-line short" style="margin-top: 8px;"></div>
-              <div class="mock-line" style="width:75%"></div>
-              <div class="mock-line medium"></div>
-              <div class="mock-model-bar"><div class="mock-model-bar-fill" style="width:70%"></div></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ===== BENTO GRID ===== -->
-<section class="bento">
-  <div class="container">
-    <div class="reveal" style="margin-bottom: 64px;">
-      <div class="section-label">Where it fits</div>
-      <h2 class="section-heading">Built for the rest<br>of the workflow.</h2>
-    </div>
-    <div class="bento-grid">
-      <div class="bento-card span-2 reveal">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 3v18"/></svg>
-        </div>
-        <div class="bento-title">Browser extension</div>
-        <div class="bento-desc">Keep Prompt Lab beside ChatGPT, Claude, or any AI interface when you want the workbench in context. Works on Chrome, Vivaldi, Brave, and Edge.</div>
-      </div>
-      <div class="bento-card reveal reveal-delay-1">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-        </div>
-        <div class="bento-title">Compose</div>
-        <div class="bento-desc">Build longer prompts from reusable fragments in the same system as your saved library and workbench drafts.</div>
-      </div>
-      <div class="bento-card reveal reveal-delay-1">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </div>
-        <div class="bento-title">PII Scanner</div>
-        <div class="bento-desc">Catch personal data before you send. Automatic detection and optional redaction of names, emails, phone numbers, and more.</div>
-      </div>
-      <div class="bento-card reveal reveal-delay-2">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        </div>
-        <div class="bento-title">Pack Import</div>
-        <div class="bento-desc">Load preset packs, exported libraries, starter bundles, and raw prompt arrays through one preview-and-merge flow.</div>
-      </div>
-      <div class="bento-card reveal reveal-delay-2">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        </div>
-        <div class="bento-title">Notebook</div>
-        <div class="bento-desc">Keep rough notes, snippets, and scratch work nearby without polluting the prompt versions that actually matter.</div>
-      </div>
-      <div class="bento-card reveal reveal-delay-3">
-        <div class="bento-icon">
-          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        </div>
-        <div class="bento-title">Run timeline</div>
-        <div class="bento-desc">Track every evaluation with timestamps, provider context, and scored results so your wins stay legible over time.</div>
-      </div>
+      </article>
     </div>
   </div>
 </section>
 
-<!-- ===== PRIVACY & PORTABILITY ===== -->
+<!-- ===== PRIVACY & SAFETY ===== -->
 <section class="privacy-band" id="privacy" aria-labelledby="privacyHeading">
   <div class="container privacy-layout">
     <div class="privacy-copy">
-      <div class="section-label">Privacy and portability</div>
-      <h2 class="section-heading" id="privacyHeading">Your prompt library stays useful outside Prompt Lab.</h2>
-      <p class="section-sub">The editor keeps prompts and libraries in local browser storage. Provider calls happen only when you choose to connect and run one.</p>
+      <div class="section-label">Privacy and safety</div>
+      <h2 class="section-heading" id="privacyHeading">Local by default. Checked before it&rsquo;s sent.</h2>
+      <p class="section-sub">The editor keeps prompts and libraries in local browser storage. Before a prompt goes to a provider, Prompt Lab scans it and offers to redact what it finds.</p>
+      <ul class="privacy-list">
+        <li><strong>Local by default</strong><span>Drafts and saved library items remain in this browser unless you export or connect another service.</span></li>
+        <li><strong>Provider choice</strong><span>A provider receives content only when you connect it and run a provider-backed action.</span></li>
+        <li><strong>Exportable work</strong><span>Keep reusable prompts portable with library import and JSON export.</span></li>
+      </ul>
       <a class="btn-secondary" href="/privacy" data-analytics-id="landing.privacy.open_policy">Read the privacy policy &rarr;</a>
     </div>
-    <ul class="privacy-list">
-      <li><strong>Local by default</strong><span>Drafts and saved library items remain in this browser unless you export or connect another service.</span></li>
-      <li><strong>Provider choice</strong><span>Use supported provider connections when a workflow needs a real model response.</span></li>
-      <li><strong>Exportable work</strong><span>Keep reusable prompts portable with the available library import and export tools.</span></li>
-    </ul>
+    <div class="product-window safety-window">
+      <div class="feature-visual-chrome" aria-hidden="true">
+        <div class="feature-visual-dot"></div><div class="feature-visual-dot"></div><div class="feature-visual-dot"></div>
+        <span class="feature-visual-chrome-title">sensitive data check</span>
+      </div>
+      <div class="window-body">
+        <h3 class="window-heading" id="safetyHeading">What the check looks for</h3>
+        <ul class="safety-types">
+          <li>Email addresses</li>
+          <li>Phone numbers</li>
+          <li>US Social Security numbers</li>
+          <li>Payment card numbers</li>
+          <li>IPv4 addresses</li>
+          <li>API keys</li>
+          <li>Bearer tokens</li>
+          <li>Passwords and secrets</li>
+        </ul>
+        <div class="window-pane-label"><span>Example, redacted before send</span><span>2 found</span></div>
+        <p class="safety-example">Summarise this support thread from <mark>[EMAIL]</mark>. The webhook fails with Authorization: Bearer <mark>[BEARER_TOKEN]</mark></p>
+        <p class="safety-note">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5"/><path d="M8 7v4M8 4.8v.2"/></svg>
+          <span>The check is pattern-based. It does not recognise names, street addresses or other free-text personal details, so review those yourself.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SURFACE CHOOSER ===== -->
+<section class="surface-chooser" id="product" aria-labelledby="surfaceHeading">
+  <div class="container">
+    <div class="surface-heading">
+      <div class="section-label">Choose your surface</div>
+      <h2 class="section-heading" id="surfaceHeading">Start where you already work.</h2>
+    </div>
+    <div class="surface-grid">
+      <a class="surface-card recommended" href="/app?source=landing&amp;placement=surface_web&amp;intent=free" data-analytics-id="landing.surface.web">
+        <span class="surface-eyebrow">Recommended</span>
+        <h3>Web app</h3>
+        <p>Open the complete workspace in a browser. Sign in with a free account; no installation required.</p>
+        <span class="surface-link">Start free &rarr;</span>
+      </a>
+      <a class="surface-card" href="/setup.html" data-analytics-id="landing.surface.extension">
+        <span class="surface-eyebrow">Browser extension &mdash; setup</span>
+        <h3>Extension</h3>
+        <p>Keep the workbench beside ChatGPT, Claude, and other browser-based AI tools. Works on Chrome, Vivaldi, Brave, and Edge.</p>
+        <span class="surface-link">View setup guide &rarr;</span>
+      </a>
+      <a class="surface-card" href="https://github.com/DaveHomeAssist/prompt-lab" target="_blank" rel="noopener noreferrer" data-analytics-id="landing.surface.desktop_source">
+        <span class="surface-eyebrow">Source build</span>
+        <h3>Desktop</h3>
+        <p>Keep a local build nearby for provider workflows and a focused desktop surface.</p>
+        <span class="surface-link">View source and build notes &rarr;</span>
+        <span class="surface-note">No packaged installer is advertised.</span>
+      </a>
+    </div>
   </div>
 </section>
 
@@ -2242,10 +2216,11 @@ section[id] { scroll-margin-top: 88px; }
       <div class="pricing-card reveal">
         <div class="pricing-tier">Free</div>
         <div class="pricing-price"><span class="currency">$</span>0</div>
-        <div class="pricing-period">Forever free</div>
+        <div class="pricing-period">Free account</div>
         <ul class="pricing-features">
-          <li>All 7 enhancement modes</li>
+          <li>Expanded, Refined and Rebuilt strategies</li>
           <li>Diff of every improvement</li>
+          <li>Sensitive data check before send</li>
           <li>Prompt library with search</li>
           <li>Preset pack and library import</li>
           <li>JSON library export</li>
@@ -2283,6 +2258,10 @@ section[id] { scroll-margin-top: 88px; }
       <details>
         <summary>Do I need an account?</summary>
         <p>The hosted web app currently asks you to sign in. This landing-page sample does not, and it never sends example content to a provider.</p>
+      </details>
+      <details>
+        <summary>What does the sensitive data check catch?</summary>
+        <p>Email addresses, phone numbers, US Social Security numbers, payment card numbers, IPv4 addresses, API keys, Bearer tokens, and password or secret assignments. It is pattern-based, so it does not detect names, street addresses or other free-text personal details.</p>
       </details>
       <details>
         <summary>Are AI provider costs included in Pro?</summary>
@@ -2515,7 +2494,8 @@ section[id] { scroll-margin-top: 88px; }
   const allowedIntents = new Set(['open', 'free', 'upgrade', 'sample']);
   const allowedDestinations = new Set(['app', 'demo', 'setup', 'source', 'guide', 'privacy']);
   const allowedPeriods = new Set(['monthly', 'annual']);
-  const allowedDemoModes = new Set(['balanced', 'concise', 'detailed']);
+  // Strategy samples, plus the retired mode samples so attribution saved before this release still validates.
+  const allowedDemoModes = new Set(['expanded', 'refined', 'rebuilt', 'balanced', 'concise', 'detailed']);
   const eventFields = {
     'landing.cta_clicked': ['placement', 'intent', 'destination', 'period'],
     'landing.demo_completed': ['placement', 'intent', 'destination', 'demoMode', 'resultCount'],
@@ -2643,44 +2623,44 @@ section[id] { scroll-margin-top: 88px; }
   const demoModes = document.querySelectorAll('input[name="demoMode"]');
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   demoRun.disabled = false;
+  // Fixed samples that follow the shipped strategy rules: keep the stated stack,
+  // flag consequential choices instead of making them, and keep the answer format.
   const demoResults = {
-    balanced: [
-      'Create a Python command-line script that accepts a CSV file path and generates appropriate charts from its data.',
+    expanded: [
+      'Write a Python 3 command-line script that reads a CSV file and creates charts from it.',
       '',
-      'Requirements:',
-      '1. Validate that the file exists and contains readable CSV data.',
-      '2. Detect numeric, categorical, and date columns.',
-      '3. Generate sensible bar, line, or scatter charts.',
-      '4. Save charts as PNG files in an output folder.',
-      '5. Return clear messages for missing files, empty data, or malformed rows.',
+      'Input',
+      '• Take the CSV path as a command-line argument.',
+      '• Print a short usage line when the script runs without arguments.',
       '',
-      'Use pandas for data handling, matplotlib for charts, and argparse for the command-line interface.'
+      'Charts',
+      '• Draw one chart per numeric column.',
+      '• Save each chart as a PNG file next to the CSV, named after its column.',
+      '',
+      'Errors',
+      '• If the file is missing, unreadable, empty or has no numeric columns, print a clear message and exit with a non-zero code instead of showing a stack trace.',
+      '',
+      'Assumptions to confirm: PNG output and one chart per numeric column. No charting library was specified; name the one you use.'
     ].join('\n'),
-    concise: [
-      'Build a Python CLI that reads a CSV, detects useful column types, and saves suitable bar, line, or scatter charts as PNG files.',
+    refined: [
+      'Write a Python script that reads a CSV file and creates charts from its data.',
       '',
-      'Use argparse, pandas, and matplotlib. Validate the input and return clear errors for missing, empty, or malformed files.'
+      'Make it easy to use: accept the file path as an argument and show usage help when it is missing.',
+      'Handle errors well: report missing, unreadable or malformed files with a clear message instead of a stack trace.'
     ].join('\n'),
-    detailed: [
-      'Develop a Python 3 command-line application for turning CSV datasets into a small visualization report.',
+    rebuilt: [
+      'Goal: a small Python tool that turns a CSV file into charts.',
       '',
-      'Input and validation:',
-      '• Accept the CSV path plus optional output-directory and preview flags.',
-      '• Verify the file exists, is readable, and contains at least one data row.',
-      '• Report encoding, parsing, and unsupported-data errors with an actionable message.',
-      '',
-      'Chart selection:',
-      '• Bar charts for bounded categorical comparisons.',
-      '• Line charts when a date or ordered index is present.',
-      '• Scatter plots for useful numeric pairs.',
-      '',
-      'Save deterministic PNG filenames and print a summary of created files. Use small functions, type hints, argparse, pandas, and matplotlib.'
+      'Input: the path to a CSV file.',
+      'Output: one or more chart images.',
+      'Must: run simply from the command line and fail with clear messages on bad input.',
+      'Done when: a valid CSV produces charts, and a missing or malformed file produces a message that explains what went wrong.'
     ].join('\n')
   };
 
   function selectedDemoMode() {
     const selected = document.querySelector('input[name="demoMode"]:checked');
-    return selected ? selected.value : 'balanced';
+    return selected ? selected.value : 'expanded';
   }
 
   function resetDemo() {
