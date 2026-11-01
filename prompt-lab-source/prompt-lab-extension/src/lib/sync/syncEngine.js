@@ -7,7 +7,7 @@ import { createSyncQueue } from './syncQueue.js';
 import { hashValue } from './syncHash.js';
 import { STRUCTURE_ID, applyRemoteRows, duplicateKey, itemKey, mergeStructure, readLocalItems } from './syncModel.js';
 import { LIBRARY_DELETED_BATCH_PREFIX, readLibraryDeletionState } from '../libraryDeletion.js';
-import { storageKeys } from '../storage.js';
+import { holdSyncWrites, storageKeys } from '../storage.js';
 import { addSnapshotUndoKey, takeLocalSnapshot } from './syncBackup.js';
 
 export const DEVICE_KEY = 'pl2-sync-device-id';
@@ -382,13 +382,18 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
   }
 
   // R-28/R-29: the sync state and outbox are journaled with the Library on
-  // desktop. Tell the journal once per sync, after the last save, rather than
-  // on every save (each commit rewrites the whole Library record), and do it
-  // here so it never depends on another module watching Storage.
+  // desktop. Their saves are held back while the sync runs and announced
+  // once, after the last save, rather than on every save (each commit rewrites
+  // the whole Library record). The engine announces them itself, so this never
+  // depends on another module watching Storage. A sync that never finishes
+  // (the app closed) leaves the journal at its last commit, which always pairs
+  // the Library with the sync state that describes it.
   async function syncOnce(options) {
+    const release = holdSyncWrites();
     try {
       return await runSync(options);
     } finally {
+      release();
       notifyWrite?.(stateKey(userId));
       notifyWrite?.(queueKey(userId));
     }

@@ -478,3 +478,100 @@ describe('sync state reaches the Library journal from the engine', () => {
     expect(journalRecord().revision - before).toBe(1);
   });
 });
+
+describe('sync-key saves held during a sync', () => {
+  const STATE = stateKey('u1');
+  const bootBoth = async () => {
+    const library = await boot();
+    const settings = await startSettingsJournal({ storage: localStorage, idb });
+    stops.push(settings.stop);
+    return library;
+  };
+  const stopAll = () => { for (const stop of stops.splice(0)) stop(); };
+
+  it('a raw sync-state write outside a sync is saved to the Library record', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await bootBoth();
+    await settled(journal);
+    localStorage.setItem(STATE, '{"initialized":true,"cursor":42}');
+    localStorage.setItem(queueKey('u1'), '{}');
+    await settled(journal);
+    expect(journalRecord().entries[STATE]).toBe('{"initialized":true,"cursor":42}');
+    expect(journalRecord().entries[queueKey('u1')]).toBe('{}');
+    // And it survives a reload with Local Storage intact.
+    stopAll();
+    expect((await bootBoth()).outcome.action).toBe('current');
+    expect(localStorage.getItem(STATE)).toBe('{"initialized":true,"cursor":42}');
+  });
+
+  // The app dies while a push is in flight. Whatever Local Storage kept, the
+  // next boot pairs the Library with the sync state of the same commit, and the
+  // next sync pushes only the genuinely new local prompt: no stray push, no delete.
+  it.each([
+    ['Local Storage kept the writes after the last commit', 'kept'],
+    ['Local Storage lost everything', 'lost'],
+  ])('a crash mid-sync leaves the last good state: %s', async (_, mode) => {
+    const entry = (id) => ({ id, title: id, original: id, enhanced: id, tags: [], createdAt: '2026-11-01T10:00:00.000Z', updatedAt: '2026-11-01T10:00:00.000Z' });
+    const rows = new Map(); let seq = 0; const pushes = []; let hangPush = null;
+    const put = (item_id, payload, deleted = false) => {
+      const version = (rows.get(item_id)?.version || 0) + 1;
+      rows.set(item_id, { kind: 'prompt', item_id, payload, deleted, version, lamport: 1, change_seq: ++seq });
+      return version;
+    };
+    const transport = {
+      pull: async (cursor, limit) => [...rows.values()].filter(r => r.change_seq > cursor).sort((a, b) => a.change_seq - b.change_seq).slice(0, limit),
+      push: async (device, items) => {
+        if (hangPush) await hangPush.promise;
+        return items.map((item) => {
+          pushes.push(item);
+          if (item.kind !== 'prompt') return { kind: item.kind, item_id: item.item_id, status: 'applied', version: 1 };
+          const current = rows.get(item.item_id);
+          if ((current?.version || 0) !== Number(item.base_version)) return { kind: item.kind, item_id: item.item_id, status: 'conflict_lost', version: current.version };
+          return { kind: item.kind, item_id: item.item_id, status: 'applied', version: put(item.item_id, item.payload, item.deleted) };
+        });
+      },
+      manifest: async () => [...rows.values()].map(({ kind, item_id, version }) => ({ kind, item_id, version })),
+      fetchItems: async (keys) => keys.map(({ item_id }) => rows.get(item_id)).filter(Boolean),
+    };
+    const engine = () => createSyncEngine({ storage: localStorage, transport, userId: 'u1', deviceId: 'd1', notifyWrite: notifyLocalWrite });
+
+    put('a', { state: 'active', entry: entry('a') });
+    localStorage.setItem(storageKeys.library, '[]');
+    let library = await bootBoth();
+    await engine().syncOnce();
+    await settled(library.journal);
+
+    // Another device adds b; this device saves c; the push never returns.
+    put('b', { state: 'active', entry: entry('b') });
+    saveJson(storageKeys.library, [...JSON.parse(localStorage.getItem(storageKeys.library)), entry('c')]);
+    await settled(library.journal);
+    let release;
+    hangPush = { promise: new Promise((resolve, reject) => { release = reject; }) };
+    const inFlight = engine().syncOnce();
+    for (let i = 0; i < 20 && !rows.size; i += 1) await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, 20));
+    await library.journal.flush().catch(() => {});
+
+    // Crash: the journals stop; what Local Storage held at that moment is all that is left.
+    const atCrash = localEntries();
+    stopAll();
+    release(new Error('app closed'));
+    await inFlight;
+    replaceLocal(mode === 'kept' ? atCrash : {});
+    hangPush = null;
+
+    library = await bootBoth();
+    const ids = JSON.parse(localStorage.getItem(storageKeys.library)).map(r => r.id).sort();
+    const shadow = Object.keys(JSON.parse(localStorage.getItem(STATE)).shadow).filter(k => k.startsWith('prompt:')).sort();
+    // The Library and the shadow come from one commit.
+    expect(ids).toEqual(['a', 'b', 'c']);
+    expect(shadow).toEqual(['prompt:a', 'prompt:b']);
+
+    pushes.length = 0;
+    await engine().syncOnce();
+    const prompts = pushes.filter(item => item.kind === 'prompt');
+    expect(prompts.map(item => item.item_id)).toEqual(['c']);
+    expect(prompts.some(item => item.deleted)).toBe(false);
+    expect([...rows.values()].filter(r => !r.deleted).map(r => r.item_id).sort()).toEqual(['a', 'b', 'c']);
+  });
+});
