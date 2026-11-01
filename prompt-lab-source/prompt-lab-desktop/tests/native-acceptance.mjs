@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+import net from 'node:net';
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -36,7 +37,12 @@ const driver = process.platform === 'win32'
 let driverOutput = '';
 let driverError;
 driver.on('error', error => { driverError = error; });
-for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => { driverOutput = (driverOutput + chunk).slice(-32_000); });
+// Counted separately because driverOutput is a capped tail.
+let driverGtkInitFailures = 0;
+for (const stream of [driver.stdout, driver.stderr]) stream.on('data', chunk => {
+  driverOutput = (driverOutput + chunk).slice(-32_000);
+  driverGtkInitFailures += String(chunk).split('Failed to initialize gtk backend').length - 1;
+});
 let session;
 let fixture;
 let nativeApp;
@@ -447,6 +453,68 @@ async function openCreate() {
   }
   await click('//*[@data-testid="nav-create"] | //nav[@aria-label="Primary mobile navigation"]//button[normalize-space(.)="Write"]', 'xpath');
 }
+// Linux runs under `xvfb-run -a`. #302 (run 41358152026) failed when the
+// relaunched app panicked with "Failed to initialize gtk backend!" and
+// WebKitWebDriver then sat on POST /session until its 120 s deadline. Before
+// every Linux launch, prove the X display the app will inherit is still
+// there: DISPLAY is set, its socket exists, it accepts a connection, and the
+// Xvfb process is alive. Each probe is kept as evidence.
+function xvfbProcesses() {
+  try {
+    return spawnSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8', timeout: 5_000 }).stdout
+      .split('\n').map(line => line.trim()).filter(line => /\bXvfb\b/.test(line));
+  } catch { return []; }
+}
+async function probeLinuxDisplay() {
+  const display = process.env.DISPLAY || '';
+  const number = /^:(\d+)/.exec(display)?.[1];
+  const socketPath = number === undefined ? '' : `/tmp/.X11-unix/X${number}`;
+  const probe = { at: new Date().toISOString(), launch: launchNumber, display, socketPath, xauthority: Boolean(process.env.XAUTHORITY), xvfb: xvfbProcesses() };
+  probe.socketExists = Boolean(socketPath) && await stat(socketPath).then(() => true, () => false);
+  probe.accepts = probe.socketExists && await new Promise((resolve) => {
+    const socket = net.createConnection(socketPath);
+    const finish = (ok) => { socket.destroy(); resolve(ok); };
+    socket.setTimeout(2_000, () => finish(false));
+    socket.once('connect', () => finish(true));
+    socket.once('error', () => finish(false));
+  });
+  probe.ok = Boolean(display) && probe.socketExists && probe.accepts && probe.xvfb.length > 0;
+  return probe;
+}
+async function waitForLinuxDisplay(context) {
+  const started = Date.now();
+  let probe;
+  for (;;) {
+    probe = await probeLinuxDisplay();
+    if (probe.ok || Date.now() - started > 15_000) break;
+    await delay(250);
+  }
+  probe.context = context;
+  probe.waitedMs = Date.now() - started;
+  (evidence.linuxDisplayProbes ||= []).push(probe);
+  console.log(`[native-acceptance] launch ${launchNumber} X display ${probe.display || '(unset)'} ${probe.ok ? 'ready' : 'NOT READY'} before ${context} (socket ${probe.socketExists ? 'present' : 'missing'}, ${probe.accepts ? 'accepting' : 'not accepting'}, ${probe.xvfb.length} Xvfb process(es), waited ${probe.waitedMs} ms)`);
+  if (!probe.ok) throw new Error(`X display is not usable before ${context}: ${JSON.stringify(probe)}`);
+  return probe;
+}
+async function createNativeSession(capabilities) {
+  if (process.platform !== 'linux') return command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  await waitForLinuxDisplay('POST /session');
+  const gtkFailuresBefore = driverGtkInitFailures;
+  try {
+    return await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  } catch (error) {
+    const gtkInitFailed = driverGtkInitFailures > gtkFailuresBefore;
+    const after = await probeLinuxDisplay();
+    (evidence.linuxDisplayProbes ||= []).push({ ...after, context: 'after failed POST /session' });
+    // Exactly one retry, and only for the GTK-init panic while the display is
+    // provably healthy. Any other failure, or a dead display, fails as before.
+    if (!gtkInitFailed || !after.ok || evidence.gtkInitRetry) throw error;
+    evidence.gtkInitRetry = { launch: launchNumber, firstError: error.message, displayAfterFailure: after, at: new Date().toISOString() };
+    console.error(`[native-acceptance] !!! GTK INIT FAILURE on launch ${launchNumber} with a healthy X display (${after.display}); retrying POST /session ONCE. This is recorded in evidence.gtkInitRetry and must be investigated if it recurs. !!!`);
+    await waitForLinuxDisplay('POST /session retry after GTK init failure');
+    return command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  }
+}
 async function openSession() {
   let capabilities = { 'tauri:options': tauriOptions };
   if (process.platform === 'win32') {
@@ -508,7 +576,8 @@ async function openSession() {
     }
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
-  const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
+  if (process.platform === 'linux') launchNumber += 1;
+  const result = await createNativeSession(capabilities);
   session = result.sessionId;
   assert.ok(session, 'Native session created');
   await command('POST', `/session/${session}/window/rect`, { width: 1180, height: 900 });
