@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { lookupOwnerEntitlement } from './ownerEntitlements.js';
-import { DEFAULT_WEB_ORIGIN, MOBILE_WEB_ORIGIN } from './allowedOrigins.js';
+import { DEFAULT_WEB_ORIGIN } from './allowedOrigins.js';
 import { readListEnv } from './runtimeSafety.js';
 
 const DEFAULT_ISSUER = 'https://clerk.promptlab.tools';
@@ -49,7 +49,6 @@ export async function isHostedOwner(request) {
     });
     const authorizedParties = [
       DEFAULT_WEB_ORIGIN,
-      MOBILE_WEB_ORIGIN,
       ...readListEnv('CLERK_AUTHORIZED_PARTIES', []),
     ];
     return (payload.sts === undefined || payload.sts === 'active')

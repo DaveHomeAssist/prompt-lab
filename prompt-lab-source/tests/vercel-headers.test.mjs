@@ -98,3 +98,12 @@ test('/pricing and /privacy redirect to real content (AUD-023)', () => {
   }
   assert.ok(!config.rewrites.some((rule) => rule.source.startsWith('/privacy')), 'privacy must redirect, not rewrite to the stub');
 });
+
+test('the retired mobile.promptlab.tools host has no rewrite and no API trust', () => {
+  const hostRules = [...(config.rewrites || []), ...(config.redirects || []), ...(config.headers || [])]
+    .filter(rule => (rule.has || []).some(cond => cond.type === 'host' && /mobile\.promptlab\.tools/i.test(cond.value)));
+  assert.deepEqual(hostRules, []);
+  for (const file of ['../api/_lib/allowedOrigins.js', '../api/_lib/hostedOwner.js', '../api/_lib/verifyClerkToken.js']) {
+    assert.doesNotMatch(readFileSync(new URL(file, import.meta.url), 'utf8'), /['"`]https:\/\/mobile\.promptlab\.tools/i, file);
+  }
+});

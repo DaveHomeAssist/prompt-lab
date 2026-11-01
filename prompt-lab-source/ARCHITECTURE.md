@@ -96,7 +96,7 @@ The hosted web deployment is split into a landing route and an app route:
 - `mobileProvider.js` imports shared Anthropic/provider helpers from the extension source
 - Vite builds `mobile/index.html` as a third web entry and Vercel rewrites `/mobile` to it
 - The prototype is a public evaluation surface, not an App Store or installed mobile release
-- `mobile.promptlab.tools` has a host rewrite in `vercel.json`, but the verified public route is `https://promptlab.tools/mobile/`; separate subdomain DNS is not configured
+- The phone web app is served at `https://promptlab.tools/mobile/`. `mobile.promptlab.tools` is retired: it has no DNS record or `vercel.json` rewrite, and it is not a trusted API origin or Clerk authorized party
 
 ### Native iPhone/iPad path
 

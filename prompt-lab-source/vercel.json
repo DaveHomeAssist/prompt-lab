@@ -66,11 +66,6 @@
     }
   ],
   "rewrites": [
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "mobile.promptlab.tools" }],
-      "destination": "/mobile/index.html"
-    },
     { "source": "/tools", "destination": "/tools.html" },
     { "source": "/templates", "destination": "/templates/index.html" },
     { "source": "/terms", "destination": "/terms.html" },
