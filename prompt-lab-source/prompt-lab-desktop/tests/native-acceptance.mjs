@@ -106,6 +106,12 @@ async function waitFor(probe, label, timeout = 20_000) {
 }
 const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
+// Library row ids, the saved source row, and every account-sync key (pl2-sync-*) as stored.
+const readDurableLocalState = (parentId) => execute(`
+  const library = JSON.parse(localStorage.getItem('pl2-library') || '[]');
+  const sync = Object.keys(localStorage).filter(key => key.startsWith('pl2-sync-')).sort();
+  return { ids: library.map(row => row.id).sort(), parent: library.find(row => row.id === arguments[0]) || null,
+    sync: Object.fromEntries(sync.map(key => [key, localStorage.getItem(key)])) };`, [parentId]);
 const describeNode = `const describeNode = node => {
   if (!(node instanceof Element)) return node ? String(node.nodeName || node) : null;
   const testId = node.getAttribute('data-testid');
@@ -555,7 +561,7 @@ async function exerciseFollowUp(parentId) {
   const source = { id: 'native-follow-up-source', promptId: parent.id, promptVersionId: parent.currentVersionId,
     promptTitle: parent.title, mode: 'ab', status: 'success', input: parent.original,
     output: 'Native saved answer: prioritize the measured acceptance gaps.', provider: 'ollama', model: 'promptlab-fixture', createdAt: new Date().toISOString() };
-  const seeded = await command('POST', `/session/${session}/execute/async`, { script: `
+  const seedSourceRun = () => command('POST', `/session/${session}/execute/async`, { script: `
     const record = arguments[0], done = arguments[arguments.length - 1];
     const request = indexedDB.open('prompt_lab_local', 4);
     request.onerror = () => done({error: String(request.error)});
@@ -566,7 +572,56 @@ async function exerciseFollowUp(parentId) {
       transaction.oncomplete = () => { db.close(); done({ok: true}); };
       transaction.onabort = () => { db.close(); done({error: String(transaction.error)}); };
     };`, args: [source] });
+  const seeded = await seedSourceRun();
   assert.equal(seeded.ok, true, JSON.stringify(seeded));
+  // After the Windows reopen (below), opening the prompt resets the follow-up
+  // source and reloads its saved runs asynchronously; an option click can land
+  // before that settles and be reset, so Suggest uses the enhanced prompt
+  // (seen on windows-latest, #285). Select the saved run through React's
+  // change event, re-seed it if the reopened prompt does not list it, and wait
+  // until the panel reports the saved run as the source and keeps it.
+  const sourceSelect = '[aria-label="Follow-up source"]';
+  const sourceState = () => execute(`
+    const select = document.querySelector(arguments[0]);
+    const panel = document.querySelector('[data-testid=follow-up-panel]');
+    return { value: select?.value ?? null, hasOption: Boolean(select?.querySelector('option[value="' + arguments[1] + '"]')),
+      savedRun: Boolean(panel?.innerText.includes('Saved run output. ')) };`, [sourceSelect, source.id]);
+  async function selectReopenedSource() {
+    await element(sourceSelect);
+    let reseeded = false;
+    await waitFor(async () => {
+      let state = await sourceState();
+      if (!state.hasOption) {
+        if (!reseeded) {
+          reseeded = true;
+          const again = await seedSourceRun();
+          assert.equal(again.ok, true, JSON.stringify(again));
+          recordDiagnostic('followUpSourceReseeded', true);
+          // Saved runs reload when the editor tab is opened again.
+          await click('[data-testid="nav-library"]');
+          await openCreate();
+        }
+        return false;
+      }
+      if (state.value !== source.id || !state.savedRun) {
+        await execute(`
+          const select = document.querySelector(arguments[0]);
+          const setValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+          setValue.call(select, arguments[1]);
+          select.dispatchEvent(new Event('input', { bubbles: true }));
+          select.dispatchEvent(new Event('change', { bubbles: true }));`, [sourceSelect, source.id]);
+        await delay(300);
+        state = await sourceState();
+        if (state.value !== source.id || !state.savedRun) return false;
+      }
+      // Still selected a moment later: no pending reset or reload undid it.
+      await delay(750);
+      state = await sourceState();
+      return state.value === source.id && state.savedRun;
+    }, 'reopened prompt uses the saved run as follow-up source', 30_000);
+    recordDiagnostic('followUpSourceSelected', await sourceState());
+  }
+  const durableBefore = await readDurableLocalState(parent.id);
   await refreshPage();
   // The open editor draft is not part of the durable Library journal. After the
   // three hard restarts above, WebView2 can drop the tail of its Local Storage
@@ -580,15 +635,22 @@ async function exerciseFollowUp(parentId) {
     if (!panelVisible) await new Promise(resolve => setTimeout(resolve, 250));
   }
   if (!panelVisible) {
+    // R-15: only the WebView2 log corruption explains a missing draft, so the
+    // fallback runs on Windows alone, and only when everything durable came
+    // back exactly: every Library row and the account-sync keys.
+    assert.equal(process.platform, 'win32', 'The open draft must survive a restart outside Windows');
+    assert.deepEqual(await readDurableLocalState(parent.id), durableBefore, 'Library and sync state are intact after the restart');
     recordDiagnostic('followUpDraftReopened', { parentId: parent.id, input: await execute('return document.querySelector("[data-testid=prompt-input]")?.value || "";') });
     await click('[data-testid="nav-library"]');
     await fill('[data-testid="library-search"]', parent.title);
     await click(`//button[@aria-label="Inspect ${parent.title}"]`, 'xpath');
     await click('//button[normalize-space(.)="Open in Editor"]', 'xpath');
+    await selectReopenedSource();
+  } else {
+    await click('[aria-label="Follow-up source"]');
+    const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
+    await command('POST', `/session/${session}/element/${sourceOption}/click`, {});
   }
-  await click('[aria-label="Follow-up source"]');
-  const sourceOption = await element('[aria-label="Follow-up source"] option[value="native-follow-up-source"]');
-  await command('POST', `/session/${session}/element/${sourceOption}/click`, {});
   await startFixture('error', 'follow-up');
   await click('[data-testid="suggest-follow-ups"]');
   await waitFor(() => execute('return Boolean(document.querySelector("[data-testid=follow-up-panel] .text-red-400")?.textContent.trim());'), 'follow-up provider failure visible');
