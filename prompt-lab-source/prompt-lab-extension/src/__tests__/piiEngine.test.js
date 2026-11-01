@@ -77,6 +77,12 @@ describe('piiEngine send-time redaction regressions', () => {
       ['a dot-joined JWT', 'token: eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.c2lnbmF0dXJlMTIzNDU2', 'token: SECRET'],
       ['base64-padded', 'secret = c3VwZXJzZWNyZXR2YWx1ZQ==', 'secret = SECRET'],
       ['followed by a sentence period', 'The password: correcthorsebatterystaple.', 'The password: SECRET.'],
+      // Residual gaps from the Oct 5 fix: punctuation inside a bare value and spaces inside a quoted one.
+      ['a bare value with punctuation', 'password: correct!horse#battery$staple', 'password: SECRET'],
+      ['a double-quoted passphrase with spaces', 'password: "my secret phrase here"', 'password: "SECRET"'],
+      ['a single-quoted passphrase with spaces', "secret = 'open sesame please'", "secret = 'SECRET'"],
+      ['a connection-string field', 'Password=abc!def123456;Database=prod', 'Password=SECRET;Database=prod'],
+      ['a bare value with punctuation before a comma', 'token: abc!def123456, then continue', 'token: SECRET, then continue'],
     ])('redacts the whole value when it is %s', (_name, text, expected) => {
       expect(redactText(text)).toBe(expected);
     });

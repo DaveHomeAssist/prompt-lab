@@ -6,6 +6,16 @@ import { luhnPasses } from './utils.js';
 // stops early (or misses entirely) and the rest of the secret reaches the provider.
 const TOKEN_BODY = String.raw`[A-Za-z0-9+/_\-]+(?:\.[A-Za-z0-9+/_\-]+)*=*`;
 const SECRET_MIN_LENGTH = 10;
+// Secret assignments: a quoted value may hold any characters but its quote and
+// a line break (passphrases with spaces), and a bare value runs to the next
+// whitespace, quote or common delimiter (";" in connection strings, "&" in
+// query strings), so characters such as "!" or "#" no longer end it early.
+const SECRET_ASSIGNMENT_VALUE = String.raw`(?:"([^"\r\n]+)"|'([^'\r\n]+)'|["']?([^\s"'\`;&<>]+))`;
+// Sentence punctuation after a bare value is prose, not part of the secret.
+const TRAILING_PROSE_PUNCTUATION = /[.,:)]+$/;
+// Template and environment references ({{db_password}}, ${SECRET}, $DB_PASSWORD, %TOKEN%)
+// name a secret without containing one.
+const SECRET_REFERENCE = /^(?:\{\{[^{}]*\}\}|\$\{[^{}]*\}|\$[A-Za-z_][A-Za-z0-9_]*|%[A-Za-z_][A-Za-z0-9_]*%)$/;
 const BEARER_MIN_LENGTH = 16;
 
 export const patterns = Object.freeze({
@@ -63,11 +73,11 @@ export const patterns = Object.freeze({
     description: 'Looks like a password or secret assignment.',
     placeholder: 'SECRET',
     regex: new RegExp(
-      String.raw`\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*["']?(${TOKEN_BODY})`,
+      String.raw`\b(?:token|secret|password|passwd|private[_-]?key|client[_-]?secret)\b\s*[:=]\s*${SECRET_ASSIGNMENT_VALUE}`,
       'gi',
     ),
-    extract: (match) => match[1] || match[0],
-    validate: (value) => value.length >= SECRET_MIN_LENGTH,
+    extract: (match) => match[1] || match[2] || (match[3] || '').replace(TRAILING_PROSE_PUNCTUATION, ''),
+    validate: (value) => value.length >= SECRET_MIN_LENGTH && !SECRET_REFERENCE.test(value),
   }),
 });
 
@@ -125,7 +135,9 @@ function makeFinding(detector, match, index) {
   if (!value) return null;
   if (detector.validate && !detector.validate(value)) return null;
 
-  const start = detector.extract ? match.index + match[0].indexOf(value) : match.index;
+  // Extracted values sit at the end of their match (after the keyword), so search
+  // from the end: a value that also occurs inside the keyword can't misplace the span.
+  const start = detector.extract ? match.index + match[0].lastIndexOf(value) : match.index;
   const end = start + value.length;
   return {
     id: `${detector.type}:${start}:${end}:${index}`,

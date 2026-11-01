@@ -113,3 +113,12 @@ test('pages send HSTS with includeSubDomains and COOP (security pass 2026-11-01)
   assert.equal(bridge['strict-transport-security'], 'max-age=63072000; includeSubDomains');
   assert.equal(bridge['cross-origin-opener-policy'], undefined);
 });
+
+test('the retired mobile.promptlab.tools host has no rewrite and no API trust', () => {
+  const hostRules = [...(config.rewrites || []), ...(config.redirects || []), ...(config.headers || [])]
+    .filter(rule => (rule.has || []).some(cond => cond.type === 'host' && /mobile\.promptlab\.tools/i.test(cond.value)));
+  assert.deepEqual(hostRules, []);
+  for (const file of ['../api/_lib/allowedOrigins.js', '../api/_lib/hostedOwner.js', '../api/_lib/verifyClerkToken.js']) {
+    assert.doesNotMatch(readFileSync(new URL(file, import.meta.url), 'utf8'), /['"`]https:\/\/mobile\.promptlab\.tools/i, file);
+  }
+});
