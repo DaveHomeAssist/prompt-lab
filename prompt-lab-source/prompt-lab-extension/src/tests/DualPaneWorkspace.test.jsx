@@ -172,7 +172,7 @@ describe('DualPaneWorkspace', () => {
     });
 
     expect(onAutosave).toHaveBeenCalledWith({ raw: 'Draft text', title: 'Autosaved title' });
-    expect(screen.getByText('Saved')).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByText('Draft saved')).toHaveAttribute('aria-live', 'polite');
   });
 
   it('supports controlled compact pane routing and arrow-key tab navigation', () => {

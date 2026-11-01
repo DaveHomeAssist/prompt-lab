@@ -117,7 +117,7 @@ function buildComposerSections(entries) {
   return sections;
 }
 
-export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, setRaw, setTab, saveChain, compact = false, pageScroll = false }) {
+export default function ComposerTab({ m, library, composerBlocks, setComposerBlocks, addToComposer, notify, copy, onSendToEditor, onClear, onUndoClear, canUndoClear = false, saveChain, compact = false, pageScroll = false }) {
   const [dragOverComposer, setDragOverComposer] = useState(false);
   const [draggingLibId, setDraggingLibId] = useState(null);
   const [dragOverBlockIdx, setDragOverBlockIdx] = useState(null);
@@ -247,9 +247,12 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
             <p className={`text-xs ${m.textMuted} mt-1`}>Pinned starters are meant to get you moving. Use Add Popular, Add Starter, and Add Block for more deliberate composition.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {canUndoClear && <button type="button" className={`ui-control ${m.btn}`} onClick={onUndoClear}>Undo Clear</button>}
             {composerBlocks.length > 0 && <>
               <button onClick={() => copy(composedPrompt, 'Composed prompt copied!')} className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} px-2 py-1 rounded-lg transition-colors`}><Ic n="Copy" size={11} />Copy All</button>
-              <button onClick={() => { setRaw(composedPrompt); setTab('editor'); notify('Loaded into editor!'); }} className="flex items-center gap-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Send to Editor</button>
+              <button onClick={() => { onSendToEditor?.(composedPrompt, 'new'); }} className="flex items-center gap-1.5 text-xs bg-orange-600 hover:bg-orange-500 text-white px-2 py-1 rounded-lg transition-colors"><Ic n="ArrowRight" size={11} />Open as new draft</button>
+              <button type="button" className={`ui-control ${m.btn}`} onClick={() => onSendToEditor?.(composedPrompt, 'insert')}>Insert at cursor</button>
+              <button type="button" className={`ui-control ${m.btn}`} onClick={() => onSendToEditor?.(composedPrompt, 'append')}>Append to draft</button>
               {typeof saveChain === 'function' && (
                 <button onClick={async () => { const saved = await saveChain(composerBlocks); if (saved) setShowChainLab(true); }} disabled={composerBlocks.length === 0}
                   className={`flex items-center gap-1 text-xs ${m.btn} ${m.textAlt} disabled:opacity-40 px-2 py-1 rounded-lg transition-colors`}>
@@ -260,7 +263,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
                 className={`flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ${showChainLab ? 'bg-orange-600 text-white' : `${m.btn} ${m.textAlt}`}`}>
                 <Ic n="GitBranch" size={11} />Chain Lab
               </button>
-              <button onClick={() => setComposerBlocks([])} className={`flex items-center gap-1 text-xs ${m.dangerBtn} px-2 py-1 rounded-lg transition-colors`}><Ic n="Trash2" size={11} />Clear</button>
+              <button onClick={onClear} className={`flex items-center gap-1 text-xs ${m.dangerBtn} px-2 py-1 rounded-lg transition-colors`}><Ic n="Trash2" size={11} />Clear</button>
             </>}
           </div>
         </div>
@@ -397,8 +400,7 @@ export default function ComposerTab({ m, library, composerBlocks, setComposerBlo
           library={library}
           notify={notify}
           copy={copy}
-          setRaw={setRaw}
-          setTab={setTab}
+          onSendToEditor={onSendToEditor}
           onClose={() => setShowChainLab(false)}
         />
       )}

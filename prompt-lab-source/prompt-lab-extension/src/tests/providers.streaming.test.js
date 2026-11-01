@@ -85,3 +85,25 @@ describe('current provider adapter', () => {
     });
   });
 });
+
+
+it('records the upstream stream model rather than the requested alias', async () => {
+  const fetchImpl = vi.fn().mockResolvedValue({ ok: true,
+    headers: new Headers({ 'X-Hosted-Model': 'claude-sonnet-5-5' }),
+    body: makeSseStream([
+      'data: {"type":"message_start","message":{"model":"claude-sonnet-5-5-20260928","usage":{"input_tokens":5}}}\n\n',
+      'data: {"type":"content_block_delta","delta":{"text":"Done"}}\n\n',
+      'data: {"type":"message_stop"}\n\n',
+    ]),
+  });
+  const result = await callProvider({ provider: 'anthropic', payload: { messages: [{ role: 'user', content: 'test' }], temperature: 0.4 }, settings: { apiKey: 'fixture', anthropicModel: 'claude-sonnet-5-5' }, fetchImpl, onChunk: vi.fn() });
+  expect(result.model).toBe('claude-sonnet-5-5-20260928');
+  expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).not.toHaveProperty('temperature');
+});
+
+it.each(['claude-haiku-5-5', 'claude-opus-5-5'])('omits incompatible sampling parameters for %s', async model => {
+  const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ content: [{ type: 'text', text: 'Done' }], model }) });
+  await callProvider({ provider: 'anthropic', payload: { temperature: 0.4, messages: [{ role: 'user', content: 'test' }] }, settings: { apiKey: 'fixture', anthropicModel: model }, fetchImpl });
+  expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toMatchObject({ model });
+  expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).not.toHaveProperty('temperature');
+});

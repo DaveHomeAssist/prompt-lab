@@ -439,7 +439,7 @@ describe('usePromptLibrary', () => {
     expect(result.current.library).toEqual([expect.objectContaining({ id: entry.id })]);
     expect(result.current.trash).toEqual([]);
     expect(JSON.parse(localStorage.getItem(storageKeys.library))).toEqual([entry]);
-    expect(notify).toHaveBeenCalledWith('Delete failed — browser storage may be full. The prompt is still in your Library.');
+    expect(notify).toHaveBeenCalledWith('Delete failed. Browser storage may be full. The prompt is still in your Library.');
     setItem.mockRestore();
   });
 
@@ -469,7 +469,7 @@ describe('usePromptLibrary', () => {
     expect(result.current.library).toEqual([expect.objectContaining({ id: entry.id })]);
     expect(result.current.trash).toEqual([]);
     expect(JSON.parse(localStorage.getItem(storageKeys.trash))).toEqual([]);
-    expect(notify).toHaveBeenCalledWith('Delete failed — browser storage may be full. The prompt is still in your Library.');
+    expect(notify).toHaveBeenCalledWith('Delete failed. Browser storage may be full. The prompt is still in your Library.');
     setItem.mockRestore();
   });
 

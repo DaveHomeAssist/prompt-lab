@@ -88,6 +88,7 @@ export default function CreateEditorPane({
   enhanced,
   setEnhanced,
   resultMeta,
+  resultContextRevision = 0,
   setResultMeta,
   enhMdPreview,
   setEnhMdPreview,
@@ -102,6 +103,7 @@ export default function CreateEditorPane({
   setSaveTitle,
   quickSave,
   quickSaveAsNew,
+  lastSaveReceipt,
   dismissResult,
   onCandidateSelection,
   // Golden
@@ -158,6 +160,7 @@ export default function CreateEditorPane({
   // ── Scoring strip (inline) ──
   const rawInputRef = useRef(null);
   const [activePane, setActivePane] = useState('source');
+  const [saveBarTarget, setSaveBarTarget] = useState(null);
   // A refine run lands in the result pane, so follow it there on narrow widths.
   useEffect(() => {
     if (splitLayout && loading) setActivePane('result');
@@ -593,6 +596,7 @@ export default function CreateEditorPane({
         )}
         {enhanced && <>
           <PostEnhanceResults
+            key={resultContextRevision}
             m={m}
             compact={compact}
             raw={raw}
@@ -616,10 +620,12 @@ export default function CreateEditorPane({
             canSavePanel={canSavePanel}
             quickSave={quickSave}
             quickSaveAsNew={quickSaveAsNew}
+            lastSaveReceipt={lastSaveReceipt}
             openSavePanel={openSavePanel}
             currentEntry={currentEntry}
             onCandidateSelection={onCandidateSelection}
             splitWorkspace={splitLayout}
+            saveBarTarget={splitLayout ? saveBarTarget : null}
             explicitSaveLabels={contextControls}
           />
           {/* Follow-up suggestions */}
@@ -787,7 +793,9 @@ export default function CreateEditorPane({
                 {sourceSections}
               </div>
             </section>
-            <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane" tabIndex={scrollWithWorkspace ? undefined : 0}>
+            <section id="create-result-pane" data-pane="result" aria-label="Enhanced result" className="pl-create-split-pane">
+              <div className="pl-create-result-frame">
+              <div ref={setSaveBarTarget} className="pl-result-save-slot" />
               {/* Narrow widths jump here when a refine starts, which hides the
                   source pane's Cancel; CSS hides this bar again once both panes show. */}
               {loading && (
@@ -806,8 +814,9 @@ export default function CreateEditorPane({
                   </button>
                 </div>
               )}
-              <div className="space-y-3">
+              <div className="pl-create-result-review space-y-3" role="region" aria-label="Result review content" tabIndex={scrollWithWorkspace ? undefined : 0}>
                 {resultSections}
+              </div>
               </div>
             </section>
           </div>

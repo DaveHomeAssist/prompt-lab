@@ -78,6 +78,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
   let fullText = '';
   let usage = null;
   let completed = false;
+  let model = null;
 
   const mergeUsage = (next) => {
     if (!next) return;
@@ -106,6 +107,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
     buffer = result.buffer;
     result.chunks.forEach(emitText);
     mergeUsage(result.usage);
+    if (result.model) model = result.model;
     completed ||= result.done === true;
     if (result.error) throw result.error;
   };
@@ -124,7 +126,7 @@ async function readTextStream(stream, { onChunk, parser, signal }) {
     if (buffer) consume(parser(buffer, true));
     checkAbort(signal);
     if (!completed) throw new Error('Provider stream terminated before its completion event.');
-    return { text: fullText, usage };
+    return { text: fullText, usage, model };
   } catch (error) {
     error.partialText = fullText;
     error.usage = usage;
@@ -169,7 +171,7 @@ async function executeProviderStream(descriptor, payload, settings, fetchImpl, o
 
   return {
     content: [{ type: 'text', text: streamed.text }],
-    model: resolvedModel,
+    model: streamed.model || response.headers?.get?.('X-Hosted-Model') || resolvedModel,
     provider: descriptor.id,
     ...(streamed.usage ? { usage: streamed.usage } : {}),
   };

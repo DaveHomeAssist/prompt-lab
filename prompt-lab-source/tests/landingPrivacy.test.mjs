@@ -60,3 +60,26 @@ test('privacy discloses Free account billing validation and separates local and 
   assert.match(privacy, /source available under the repository's license/);
   assert.doesNotMatch(privacy, /Prompt Lab is open source/);
 });
+
+// PRIV-02: the retention and deletion promises must match the shipped code.
+test('privacy states the 180-day retention and the deletion routes the code ships', async () => {
+  const store = await readFile(new URL('../api/_lib/telemetryStore.js', import.meta.url), 'utf8');
+  const api = await readFile(new URL('../api/telemetry.js', import.meta.url), 'utf8');
+  const hook = await readFile(new URL('../prompt-lab-extension/src/hooks/useTelemetryState.js', import.meta.url), 'utf8');
+  const extensionPolicy = await readFile(new URL('../prompt-lab-extension/PRIVACY_POLICY.md', import.meta.url), 'utf8');
+
+  assert.match(store, /DEFAULT_RECORD_TTL_DAYS = 180;/);
+  assert.match(store, /DEFAULT_EVENT_LIST_LIMIT = 2000;/);
+  assert.match(api, /action'\) === 'withdraw'/);
+  assert.match(hook, /telemetry\?action=withdraw/);
+
+  for (const doc of [privacy, extensionPolicy]) {
+    assert.match(doc, /expire 180 days after the last event/);
+    assert.match(doc, /2,000 most recent events/);
+    assert.match(doc, /asks its server to delete the device profile, the contact record created from that device/);
+    assert.match(doc, /avbydave@gmail\.com/);
+    // The public contact address is the only email address the policy names.
+    const emails = new Set(doc.match(/[\w.+-]+@[\w-]+\.[\w.]+/g) || []);
+    assert.deepEqual([...emails], ['avbydave@gmail.com']);
+  }
+});

@@ -158,12 +158,14 @@ export default function App({
   const [writeSideView, setWriteSideView] = usePersistedState('pl2-write-side-view', 'scratch', {
     validate: (value) => (WRITE_SIDE_VIEWS.includes(value) ? value : 'scratch'),
   });
+  const [writePromptsQuery, setWritePromptsQuery] = useState('');
   const writeSideTab = writeSideView === 'scratch' ? 'scratch' : 'prompts';
   // The prompt list last shown, so Prompts reopens where it was left.
   const [writePromptsView, setWritePromptsView] = useState(() => (writeSideView === 'scratch' ? 'all' : writeSideView));
   const scratchToggleRef = useRef(null);
   const promptsToggleRef = useRef(null);
   const [draftRecovery, setDraftRecovery] = useState(loadDraftRecovery);
+  const [resultContextRevision, setResultContextRevision] = useState(0);
   const appShellRef = useRef(null);
   const settingsButtonRef = useRef(null);
   const resetCancelRef = useRef(null);
@@ -298,6 +300,7 @@ export default function App({
     lintIssues, lintOpen, setLintOpen, handleLintFix,
     piiWarning, piiSendAnyway, piiRedactAndSend, piiCancel,
     showSave, setShowSave, editingId, setEditingId, saveTargetId, hasPanelSaveSource, saveTitle, setSaveTitle,
+    editingVersionId, setEditingVersionId,
     saveTags, setSaveTags, saveCollection, setSaveCollection,
     changeNote, setChangeNote,
     sourceNoteId, setSourceNoteId, followUpOrigin, setFollowUpOrigin,
@@ -350,7 +353,7 @@ export default function App({
 
   // Keep latest handler fns in a ref so the keydown effect never goes stale
   const kbFns = useRef({ enhance, doSave, openSavePanel, primarySave: doSave });
-  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: quickSave }; });
+  useEffect(() => { kbFns.current = { enhance, doSave, openSavePanel, primarySave: saveCurrentPrompt }; });
 
   const nav = useNavigation({
     primaryView, setPrimaryView,
@@ -429,6 +432,7 @@ export default function App({
       }
       setShowSettings(true);
     },
+    onRouteResultTab: setResultTab,
   });
 
   useEffect(() => {
@@ -452,6 +456,7 @@ export default function App({
     },
     persistence: {
       editingId,
+      editingVersionId,
       saveTitle,
       saveTags: [...saveTags],
       saveCollection,
@@ -506,6 +511,9 @@ export default function App({
 
   const undoDraftReset = () => {
     if (!draftRecovery) return;
+    persistenceFlow.clearPersistenceState();
+    dismissSaveReceipt();
+    setResultContextRevision(revision => revision + 1);
     const { editor, persistence, resultTab: recoveredResultTab } = draftRecovery;
     setRaw(editor.raw || '');
     setEnhanced(editor.enhanced || '');
@@ -515,6 +523,7 @@ export default function App({
     setEnhMode(restoreEditorMode(editor.enhMode, readGenerationOptions()));
     if (editor.cursor && typeof updateCursor === 'function') updateCursor(editor.cursor.start || 0, editor.cursor.end || 0);
     setEditingId(persistence?.editingId || null);
+    setEditingVersionId?.(persistence?.editingVersionId || (persistence?.editingId ? 'unverified' : null));
     setSaveTitle(persistence?.saveTitle || '');
     setSaveTags(Array.isArray(persistence?.saveTags) ? persistence.saveTags : []);
     setSaveCollection(persistence?.saveCollection || '');
@@ -626,7 +635,7 @@ export default function App({
       .filter((input) => input && typeof input === 'object' && typeof input.key === 'string')
       .map((input) => [input.key, input])
   );
-  const recoveryActionLabel = draftRecovery?.reason === 'discard-result'
+  const recoveryActionLabel = draftRecovery?.reason === 'composer-handoff' ? 'Restore previous draft' : draftRecovery?.reason === 'discard-result'
     ? 'Restore discarded result'
     : draftRecovery?.reason === 'navigation'
       ? 'Restore previous draft'
@@ -970,6 +979,9 @@ export default function App({
       ...saveFlowOverrides,
     },
   );
+  const saveCurrentPrompt = () => primaryView === 'create' && workspaceView === 'split'
+    ? saveDualDraft({ raw, title: saveTitle }, Boolean(editingId))
+    : quickSave();
   const sendScratchToEditor = (payload) => {
     if (raw.trim() || enhanced.trim() || editingId) preserveDraftForUndo('scratch-handoff');
     clearEditor();
@@ -979,6 +991,30 @@ export default function App({
     setSourceNoteId(payload.sourceNoteId || '');
     openCreateView('editor');
     notify(payload.selectionOnly ? 'Scratch selection opened in Write.' : 'Scratch note opened in Write.');
+  };
+  const [composerRecovery, setComposerRecovery] = useState(null);
+  const clearComposer = () => {
+    setComposerRecovery(composerBlocks.map(block => ({ ...block })));
+    setComposerBlocks([]);
+  };
+  const undoComposerClear = () => {
+    if (!composerRecovery) return;
+    setComposerBlocks(current => [...composerRecovery, ...current]);
+    setComposerRecovery(null);
+  };
+  const sendComposerToEditor = (content, mode = 'new') => {
+    if (!content.trim()) return;
+    if (raw.trim() || enhanced.trim() || variants.length || notes.trim() || editingId) preserveDraftForUndo('composer-handoff');
+    dismissSaveReceipt();
+    if (mode === 'insert') insertIntoPrompt(content);
+    else if (mode === 'append') {
+      const next = insertAtCursor(raw, { start: raw.length, end: raw.length }, content, { separateAtEnd: true });
+      setRaw(next.value); updateCursor(next.caret);
+    } else {
+      clearEditor(); setRaw(content); setSaveTitle(suggestTitleFromText(content));
+    }
+    openCreateView('editor');
+    notify('Composer content opened in Write.');
   };
   const sendScratchToComposer = (payload) => {
     handleAddToComposer({
@@ -1098,7 +1134,7 @@ export default function App({
   };
   const CMD_ACTIONS = buildCommandActions({
     enhance: () => { if (!loading && raw.trim()) handleEnhanceRequest(); closePalette(); },
-    save: () => { if (canSavePanel) quickSave(); closePalette(); },
+    save: () => { if (canSavePanel) saveCurrentPrompt(); closePalette(); },
     saveLabel: primarySaveLabel,
     newPrompt: () => { requestDraftReset('new'); closePalette(); },
     clear: () => { requestDraftReset(); closePalette(); },
@@ -1201,7 +1237,8 @@ export default function App({
 
       {primaryView === 'create' && (workspaceView === 'editor' || workspaceView === 'split') && (
         <div className="px-3 py-1 shrink-0">
-          <CreateContextBar m={m} compact={viewportHeight < 500 || viewportWidth < 1100} currentEntry={currentEntry} raw={raw} enhanced={enhanced}
+          <CreateContextBar m={m} compact={viewportHeight < 500 || viewportWidth < 1100} currentEntry={currentEntry} raw={raw} enhanced={workspaceView === 'split' ? raw : enhanced}
+            saving={lib.saving} saveError={lib.saveError}
             resultMeta={resultMeta} variants={variants} notes={notes}
             suggestedSaveTitle={suggestedSaveTitle} saveTitle={saveTitle}
             saveCollection={saveCollection} saveTags={saveTags} canSavePanel={canSavePanel}
@@ -1252,6 +1289,8 @@ export default function App({
                   sortBy={lib.sortBy}
                   view={writeSideView}
                   onViewChange={chooseWritePromptsView}
+                  query={writePromptsQuery}
+                  onQueryChange={setWritePromptsQuery}
                   onOpen={openPromptFromSide}
                   onInsert={(text, entry) => {
                     insertIntoPrompt(text);
@@ -1321,6 +1360,8 @@ export default function App({
               showInlineSaveBar={showInlineSaveBar}
               saveTitle={saveTitle} setSaveTitle={setSaveTitle} quickSave={quickSave}
               quickSaveAsNew={quickSaveAsNew} dismissResult={dismissEnhancedResult}
+              lastSaveReceipt={lastSaveReceipt}
+              resultContextRevision={resultContextRevision}
               onCandidateSelection={handleCandidateSelection}
               editingId={editingId}
               goldenResponse={goldenResponse} goldenSimilarity={goldenSimilarity}
@@ -1421,7 +1462,7 @@ export default function App({
         // panel-locally. Extension and desktop keep the bare wrapper unchanged.
         <div className={contained ? 'pl-tab-panel flex h-full min-h-0 flex-col overflow-hidden' : 'pl-tab-panel'}>
         <ComposerTab m={m} library={lib.library} composerBlocks={composerBlocks} setComposerBlocks={setComposerBlocks}
-          addToComposer={addToComposer} notify={notify} copy={copy} setRaw={setRaw} setTab={setTab} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
+          addToComposer={addToComposer} notify={notify} copy={copy} onSendToEditor={sendComposerToEditor} onClear={clearComposer} onUndoClear={undoComposerClear} canUndoClear={Boolean(composerRecovery)} saveChain={saveComposerChain} compact={compact} pageScroll={pageScroll} />
         </div>
       )}
 

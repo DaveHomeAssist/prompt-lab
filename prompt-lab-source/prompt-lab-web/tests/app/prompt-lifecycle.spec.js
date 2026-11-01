@@ -5,6 +5,47 @@ const source = 'Write a release checklist with owners and clear acceptance crite
 const result = 'Create a release checklist. For every item name its owner, verification command, expected result and rollback action.';
 const readLibrary = page => page.evaluate(() => JSON.parse(localStorage.getItem('pl2-library') || '[]'));
 
+for (const width of [1440, 375]) {
+  test(`Undo dismisses another prompt's save receipt and restores the recoverable draft at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+    await prepare(page, 'split');
+    await page.getByTestId('global-new-prompt').click();
+    await page.getByRole('button', { name: 'Start new prompt', exact: true }).click();
+    await page.getByTestId('prompt-input').fill('A separate synthetic prompt saved before Undo.');
+    await page.route('**/api/proxy', route => route.fulfill({
+      status: 200, contentType: 'text/event-stream',
+      body: `data: ${JSON.stringify({ type: 'content_block_delta', delta: { text: JSON.stringify({
+        enhanced: 'Develop a separate verification prompt. Include a named owner, explicit acceptance criteria and a concrete rollback action for every release step.',
+        changes: ['Add explicit acceptance and rollback criteria.'], reasoning: 'Makes the separate synthetic request actionable and independently verifiable.', variants: [],
+      }) } })}\n\ndata: ${JSON.stringify({ type: 'message_stop' })}\n\n`,
+    }));
+    await page.getByTestId('refine-action').click();
+    await showResult(page);
+    await expect(page.getByTestId('output-textarea')).toHaveValue('Develop a separate verification prompt. Include a named owner, explicit acceptance criteria and a concrete rollback action for every release step.');
+    await page.getByTestId('save-to-library').click();
+    await expect(page.locator('#save-receipt-title')).toBeVisible();
+    const saved = await readLibrary(page);
+    await page.getByRole('button', { name: 'Undo reset', exact: true }).click();
+    await expect(page.locator('#save-receipt-title')).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Editing context' })).toHaveAttribute('data-editing-mode', 'new');
+    await expect(page.getByTestId('prompt-input')).toHaveValue(source);
+    await showResult(page);
+    await expect(page.getByTestId('output-textarea')).toHaveValue(result);
+    await expect(page.locator('.pl-result-commit-bar')).toContainText('Selected: Expanded. Not saved to Library yet.');
+    await expect(page.locator('.pl-result-commit-bar')).not.toContainText('version 1');
+    expect(await readLibrary(page)).toEqual(saved);
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Save as new prompt');
+    await page.getByRole('dialog').getByTestId('save-to-library').click();
+    await expect.poll(async () => (await readLibrary(page)).length).toBe(saved.length + 1);
+    const afterDetailsSave = await readLibrary(page);
+    expect(afterDetailsSave.find(entry => entry.id === saved[0].id)).toEqual(saved[0]);
+    expect(afterDetailsSave.find(entry => entry.id !== saved[0].id)).toMatchObject({ original: source, enhanced: result });
+    await fits(page);
+  });
+}
+
 async function prepare(page, layout) {
   await page.addInitScript(({ layout, source, result }) => {
     if (sessionStorage.getItem('__lifecycleFixture')) return;
@@ -51,10 +92,12 @@ for (const layout of ['stacked', 'split']) for (const width of [1440, 375]) {
     await expect(context).toHaveAttribute('data-editing-mode', 'new');
     await expect(context.getByTestId('refinement-identity')).toContainText('Refine keeps this draft');
     await showResult(page);
-    await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
     await page.getByLabel('Title', { exact: true }).fill('My release checklist');
     await page.getByRole('button', { name: 'Close save panel' }).click();
-    await page.getByRole('button', { name: 'Open library details', exact: true }).click();
+    await page.getByLabel('More result actions', { exact: true }).click();
+    await page.getByRole('button', { name: 'Library details', exact: true }).click();
     await expect(page.getByLabel('Title', { exact: true })).toHaveValue('My release checklist');
     await page.getByRole('button', { name: 'Close save panel' }).click();
     await page.getByTestId('save-to-library').click();
@@ -86,6 +129,7 @@ for (const layout of ['stacked', 'split']) for (const width of [1440, 375]) {
     const versioned = (await readLibrary(page))[0];
     expect(versioned.id).toBe(first.id);
     expect(versioned.title).toBe('My release checklist');
+    await page.getByLabel('More result actions', { exact: true }).click();
     await page.getByRole('button', { name: 'Save as new prompt', exact: true }).click();
     await expect.poll(async () => (await readLibrary(page)).length).toBe(2);
     const separate = (await readLibrary(page)).find(entry => entry.id !== first.id);

@@ -42,7 +42,7 @@ for (const layout of ['stacked', 'split']) for (const theme of ['light', 'dark']
 
     // With no candidates, the results scroller has no interactive descendants.
     // Its cancellation notice must still be reachable using the keyboard.
-    const results = page.getByRole('region', { name: layout === 'stacked' ? 'Enhancement results' : 'Enhanced result', exact: true });
+    const results = page.getByRole('region', { name: layout === 'stacked' ? 'Enhancement results' : 'Result review content', exact: true });
     await expect(results).toHaveAttribute('tabindex', '0');
     const anchor = layout === 'stacked'
       ? page.getByRole('button', { name: 'Reset Draft', exact: true })

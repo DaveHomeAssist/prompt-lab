@@ -12,75 +12,7 @@ vi.mock('../lib/legacyLibraryMigration.js', async (importOriginal) => ({
   ...await importOriginal(), shouldAttemptLegacyWebMigration: () => false,
 }));
 
-// Minimal IndexedDB: staged puts reach the database only when a transaction
-// completes, so a failed commit leaves the previous journal in place.
-function createFakeIndexedDb() {
-  const databases = new Map();
-  const transactions = [];
-  const state = { failCommits: false, holdCommits: false, hangOpen: false };
-  const later = (callback) => Promise.resolve().then(callback);
-  const request = () => ({ result: undefined, error: null });
-
-  function transaction(data, storeName, mode, options = {}) {
-    const table = data.stores.get(storeName);
-    const staged = [];
-    const tx = { mode, options, error: null };
-    let finished = false;
-    let outstanding = 0;
-    const settle = () => later(() => {
-      if (outstanding || finished) return;
-      if (mode === 'readwrite' && state.holdCommits) { tx.release = settle; return; }
-      finished = true;
-      if (state.failCommits) {
-        tx.error = new Error('Synthetic commit failure');
-        tx.onabort?.();
-        return;
-      }
-      for (const [key, value] of staged) table.rows.set(key, structuredClone(value));
-      tx.oncomplete?.();
-    });
-    tx.objectStore = () => ({
-      get(key) {
-        const req = request();
-        outstanding += 1;
-        later(() => {
-          req.result = structuredClone(table.rows.get(key));
-          outstanding -= 1;
-          req.onsuccess?.();
-          settle();
-        });
-        return req;
-      },
-      put(value) { staged.push([value[table.keyPath], value]); },
-    });
-    transactions.push(tx);
-    settle();
-    return tx;
-  }
-
-  function open(name, version) {
-    const req = request();
-    if (state.hangOpen) return req;
-    later(() => {
-      let data = databases.get(name);
-      const upgrade = !data || data.version < version;
-      if (!data) databases.set(name, data = { version, stores: new Map() });
-      req.result = {
-        objectStoreNames: { contains: (store) => data.stores.has(store) },
-        createObjectStore: (store, { keyPath }) => data.stores.set(store, { keyPath, rows: new Map() }),
-        transaction: (store, mode, options) => transaction(data, store, mode, options),
-      };
-      if (upgrade) {
-        data.version = version;
-        req.onupgradeneeded?.();
-      }
-      req.onsuccess?.();
-    });
-    return req;
-  }
-
-  return { open, transactions, state, rows: () => databases.get(LIBRARY_JOURNAL_DB)?.stores.get(LIBRARY_JOURNAL_STORE)?.rows };
-}
+import { createFakeIndexedDb } from './helpers/fakeIndexedDb.js';
 
 let idb;
 const stops = [];
@@ -123,7 +55,7 @@ describe('library journal boot decision', () => {
     ['no journal yet', local(0), null, 'journal'],
     ['journal ahead of localStorage', local(3), { revision: 4, entries: { a: '1' } }, 'restore'],
     ['localStorage ahead of journal', local(5), { revision: 4, entries: { a: '1' } }, 'journal'],
-    ['same revision, localStorage kept later writes', local(4, { a: '2' }), { revision: 4, entries: { a: '1' } }, 'journal'],
+    ['same revision, mirror differs from committed journal', local(4, { a: '2' }), { revision: 4, entries: { a: '1' } }, 'restore'],
     ['same revision and contents', local(4), { revision: 4, entries: { a: '1' } }, 'current'],
   ])('%s', (_, localState, record, action) => {
     expect(planLibraryJournalBoot(localState, record)).toBe(action);
@@ -142,6 +74,22 @@ describe('desktop library journal', () => {
     const hook = renderHook(() => usePromptLibrary(notify));
     return { ...started, hook, notify };
   };
+
+  it('restores acknowledged rows when the mirror loses data but keeps the committed revision', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const first = await boot(); await settled(first.journal);
+    saveJson(storageKeys.library, [{ id: 'acknowledged-import', title: 'Retain imported identity' }]);
+    await settled(first.journal);
+    const revision = localStorage.getItem(LIBRARY_JOURNAL_REVISION_KEY);
+    const record = journalRecord();
+    first.stop();
+    localStorage.setItem(storageKeys.library, '[]');
+    expect(localStorage.getItem(LIBRARY_JOURNAL_REVISION_KEY)).toBe(revision);
+    const restarted = await boot(); await settled(restarted.journal);
+    expect(ids(storageKeys.library)).toEqual(['acknowledged-import']);
+    expect(restarted.outcome.action).toBe('restore');
+    expect(journalRecord()).toEqual(record);
+  });
 
   it('withholds success until strict commit and coalesces duplicate clicks', async () => {
     const { hook, notify } = await desktopLibrary();
@@ -213,7 +161,7 @@ describe('desktop library journal', () => {
     await act(async () => { first = await hook.result.current.doSave(saveArgs); });
     await settled(journal);
     const beforeEdit = localEntries();
-    const edit = { ...saveArgs, editingId: first.id, enhanced: 'Durable edited body' };
+    const edit = { ...saveArgs, editingId: first.id, expectedVersionId: first.versionId, enhanced: 'Durable edited body' };
     idb.state.failCommits = true;
     await act(async () => { expect(await hook.result.current.doSave(edit)).toBeNull(); });
     const failedVersion = hook.result.current.library[0].currentVersionId;
