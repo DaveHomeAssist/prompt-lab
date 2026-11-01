@@ -4,7 +4,7 @@ import {
   isSettingsJournalKey, journalValue, mergeSettingsEntries, startSettingsJournal,
 } from '../lib/settingsJournal.js';
 import { LIBRARY_JOURNAL_RECORD, isSyncLibraryKey, startLibraryJournal } from '../lib/libraryJournal.js';
-import { PROVIDER_NON_SECRET_FIELDS, PROVIDER_SECRET_FIELDS, VALID_PROVIDERS } from '../lib/providerRegistry.js';
+import { PROVIDER_NON_SECRET_FIELDS, PROVIDER_SECRET_FIELDS, VALID_PROVIDERS, getProvider } from '../lib/providerRegistry.js';
 import { notifyLocalWrite, storageKeys } from '../lib/storage.js';
 import { createSyncEngine, stateKey } from '../lib/sync/syncEngine.js';
 import { createFakeIndexedDb } from './helpers/fakeIndexedDb.js';
@@ -118,6 +118,25 @@ describe('desktop settings journal', () => {
         expect(out).not.toContain('user:');
       });
     }
+
+    it('R-27: every provider settings key is a model field, a base URL or a listed secret field', () => {
+      const SECRET_NAME = /key|secret|token|password|passwd|auth|bearer|credential|pat$|signature|cookie/i;
+      for (const id of VALID_PROVIDERS) {
+        const provider = getProvider(id);
+        const secrets = [...(provider.secretFields || []), provider.apiKeyField].filter(Boolean);
+        expect(Array.isArray(provider.secretFields), `${id}.secretFields is explicit`).toBe(true);
+        for (const field of provider.settingsKeys) {
+          const known = field === provider.modelField || field === `${id}BaseUrl` || secrets.includes(field);
+          expect(known, `${id}.${field} must be a model field, a base URL or listed in secretFields`).toBe(true);
+          if (SECRET_NAME.test(field)) expect(secrets, `${id}.${field} looks secret`).toContain(field);
+          if (secrets.includes(field)) {
+            expect(PROVIDER_SECRET_FIELDS).toContain(field);
+            expect(PROVIDER_NON_SECRET_FIELDS).not.toContain(field);
+          }
+        }
+      }
+      for (const field of PROVIDER_NON_SECRET_FIELDS) expect(SECRET_NAME.test(field), field).toBe(false);
+    });
 
     it('keeps allowlisted primitives only and strips URL credentials', () => {
       const out = JSON.parse(journalValue('pl2-provider-settings', JSON.stringify({

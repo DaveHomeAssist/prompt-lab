@@ -381,7 +381,20 @@ export function createSyncEngine({ storage, transport, userId, deviceId = getDev
     return { pulled: toApply.length, written, dropped: dropped.length, conflicts };
   }
 
-  async function syncOnce({ allowOwnerChange = false } = {}) {
+  // R-28/R-29: the sync state and outbox are journaled with the Library on
+  // desktop. Tell the journal once per sync, after the last save, rather than
+  // on every save (each commit rewrites the whole Library record), and do it
+  // here so it never depends on another module watching Storage.
+  async function syncOnce(options) {
+    try {
+      return await runSync(options);
+    } finally {
+      notifyWrite?.(stateKey(userId));
+      notifyWrite?.(queueKey(userId));
+    }
+  }
+
+  async function runSync({ allowOwnerChange = false } = {}) {
     const owner = storage.getItem(OWNER_KEY);
     if (owner && owner !== userId && !allowOwnerChange) {
       return { status: 'owner-mismatch', pending: queue.size() };

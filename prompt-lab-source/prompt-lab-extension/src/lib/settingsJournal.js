@@ -1,5 +1,5 @@
 import { createLibraryJournal, isSyncLibraryKey } from './libraryJournal.js';
-import { notifyLocalWrite, storageKeys } from './storage.js';
+import { storageKeys } from './storage.js';
 import { logWarn } from './logger.js';
 import { PROVIDER_NON_SECRET_FIELDS } from './providerRegistry.js';
 import { BILLING_ENTITLEMENT_FIELDS } from './billing.js';
@@ -245,8 +245,9 @@ function watchWrites(storage, onWrite) {
     }
   };
   const after = (key) => {
+    // Sync state and outbox writes are not forwarded: the sync engine tells the
+    // Library journal itself, once per sync (R-28, R-29).
     if (isSettingsJournalKey(key)) { stamp(key); onWrite(key); }
-    else if (isSyncLibraryKey(key)) notifyLocalWrite(key);
   };
   function setItem(key, value) {
     const result = originalSet.call(this, key, value);

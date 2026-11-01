@@ -1,5 +1,5 @@
 import { logWarn } from './logger.js';
-import { isLibraryDeletionKey } from './libraryDeletion.js';
+import { LIBRARY_CLEAR_PREFIX, isLibraryDeletionKey } from './libraryDeletion.js';
 import { onLocalWrite, storageKeys } from './storage.js';
 
 // WebView2 batches localStorage commits in its storage service and can drop a
@@ -118,24 +118,51 @@ const parseArray = (raw) => { try { const value = JSON.parse(raw); return Array.
 // with the merged one could push deletes (R-21). The next restore then drops
 // them and the engine re-merges safely. The merged record differs from Local
 // Storage, so the next boot restores it.
+const CLEAR_GENERATION = /^\d{16}:[\da-f-]+$/;
+// The newest Clear Library generation among a record's marker keys ('0' if none).
+const clearGeneration = (entries) => Object.keys(entries).reduce((newest, key) => {
+  if (!key.startsWith(LIBRARY_CLEAR_PREFIX)) return newest;
+  const candidate = key.slice(LIBRARY_CLEAR_PREFIX.length);
+  return CLEAR_GENERATION.test(candidate) && candidate > newest ? candidate : newest;
+}, '0');
+
+// #293 Codex P1: this device saved its rows under the Clear generation it
+// knew. When the merge brings in a newer Clear marker from the journal, move
+// those rows to that generation, or the restored marker would hide prompts
+// saved after the loss. Journal rows keep their own generation, so whatever
+// the clear removed stays hidden.
+function restampToGeneration(raw, from, to) {
+  const rows = parseArray(raw);
+  if (!rows) return raw;
+  return JSON.stringify(rows.map((row) => (row && typeof row === 'object' && (row.metadata?.libraryGeneration || '0') === from)
+    ? { ...row, metadata: { ...(row.metadata || {}), libraryGeneration: to } } : row));
+}
+
 export function mergeLibraryEntries(stored, fresh) {
   const merged = { ...fresh };
   let adopted = false;
+  const mine = clearGeneration(fresh);
+  const theirs = clearGeneration(stored);
+  if (theirs > mine) {
+    for (const key of [storageKeys.library, storageKeys.trash]) {
+      if (Object.hasOwn(fresh, key)) merged[key] = restampToGeneration(fresh[key], mine, theirs);
+    }
+  }
   const freshIds = (key) => new Set((parseArray(fresh[key]) || []).map(elementKey));
   const otherSide = { [storageKeys.library]: freshIds(storageKeys.trash), [storageKeys.trash]: freshIds(storageKeys.library) };
   for (const [key, storedValue] of Object.entries(stored)) {
     if (isSyncLibraryKey(key)) continue;
     if (!RECORD_KEYS.includes(key) && !isLibraryDeletionKey(key)) continue;
     if (!Object.hasOwn(fresh, key)) { merged[key] = storedValue; adopted = true; continue; }
-    if (!RECORD_KEYS.includes(key) || storedValue === fresh[key]) continue;
-    const mine = parseArray(fresh[key]);
-    const theirs = parseArray(storedValue);
-    if (!mine || !theirs) continue;
+    if (!RECORD_KEYS.includes(key) || storedValue === merged[key]) continue;
+    const local = parseArray(merged[key]);
+    const journal = parseArray(storedValue);
+    if (!local || !journal) continue;
     const exclude = otherSide[key] || new Set();
-    const index = new Map(mine.map((item, position) => [elementKey(item), position]));
-    const result = [...mine];
+    const index = new Map(local.map((item, position) => [elementKey(item), position]));
+    const result = [...local];
     let changed = false;
-    for (const item of theirs) {
+    for (const item of journal) {
       const id = elementKey(item);
       if (index.has(id)) {
         const position = index.get(id);

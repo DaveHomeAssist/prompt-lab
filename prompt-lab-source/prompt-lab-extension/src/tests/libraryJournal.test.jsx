@@ -2,7 +2,10 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import usePromptLibrary from '../hooks/usePromptLibrary.js';
 import { saveJson, storageKeys } from '../lib/storage.js';
-import { LIBRARY_DELETED_PREFIX, markLibraryDeleted } from '../lib/libraryDeletion.js';
+import { LIBRARY_DELETED_PREFIX, filterDeletedLibraryRecords, markLibraryCleared, markLibraryDeleted, readLibraryDeletionState } from '../lib/libraryDeletion.js';
+import { createSyncEngine, queueKey, stateKey } from '../lib/sync/syncEngine.js';
+import { notifyLocalWrite } from '../lib/storage.js';
+import { startSettingsJournal } from '../lib/settingsJournal.js';
 import {
   LIBRARY_JOURNAL_DB, LIBRARY_JOURNAL_RECORD, LIBRARY_JOURNAL_REVISION_KEY, LIBRARY_JOURNAL_STORE,
   applyLibraryJournalRecord, createLibraryJournal, libraryJournalSupported, mergeLibraryEntries, planLibraryJournalBoot, startLibraryJournal,
@@ -369,6 +372,33 @@ describe('library journal writes after a failed boot read', () => {
     expect(JSON.parse(journalRecord().entries[storageKeys.library]).map(r => r.id)).toEqual(['b']);
   });
 
+  it('#293 Codex P1: prompts saved after the loss stay visible when an older Clear marker comes back', async () => {
+    const first = await boot();
+    saveJson(storageKeys.library, [row('old')]);
+    const generation = markLibraryCleared(localStorage);
+    saveJson(storageKeys.library, [{ ...row('kept'), metadata: { libraryGeneration: generation } }]);
+    await settled(first.journal);
+    first.stop();
+
+    localStorage.clear();
+    idb.state.openDelayMs = 80;
+    const blind = await boot({ timeoutMs: 10 });
+    expect(blind.outcome.action).toBe('unavailable');
+    // No Clear marker locally, so the new prompt is saved under generation '0'.
+    saveJson(storageKeys.library, [row('new')]);
+    saveJson(storageKeys.trash, [row('binned')]);
+    await new Promise(resolve => setTimeout(resolve, 150));
+    await settled(blind.journal);
+    blind.stop();
+
+    idb.state.openDelayMs = 0;
+    expect((await boot()).outcome.action).toBe('restore');
+    const visible = (key) => filterDeletedLibraryRecords(JSON.parse(localStorage.getItem(key) || '[]'), readLibraryDeletionState(localStorage)).map(r => r.id);
+    expect(visible(storageKeys.library)).toEqual(['new', 'kept']);
+    expect(visible(storageKeys.trash)).toEqual(['binned']);
+    expect(JSON.parse(localStorage.getItem(storageKeys.library)).some(r => r.id === 'old')).toBe(false);
+  });
+
   describe('mergeLibraryEntries', () => {
     const lib = storageKeys.library;
     const trash = storageKeys.trash;
@@ -395,5 +425,56 @@ describe('library journal writes after a failed boot read', () => {
       const merged = mergeLibraryEntries({ 'pl2-sync-state:u': '{"old":1}', [lib]: '[]' }, { [lib]: '[]' });
       expect(merged).toEqual({ [lib]: '[]' });
     });
+  });
+});
+
+// R-28 / R-29: the engine tells the Library journal about its state and
+// outbox itself, once per sync.
+describe('sync state reaches the Library journal from the engine', () => {
+  const emptyServer = () => ({
+    pull: async () => [], push: async (device, items) => items.map(item => ({ kind: item.kind, item_id: item.item_id, status: 'applied', version: 1 })),
+    manifest: async () => [], fetchItems: async () => [],
+  });
+  const engine = (transport, now = () => Date.now()) => createSyncEngine({ storage: localStorage, transport, userId: 'u1', deviceId: 'd1', notifyWrite: notifyLocalWrite, now });
+
+  it('R-29: with only the Library journal running, a sync commits its state and outbox', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await boot();
+    await settled(journal);
+    await engine(emptyServer()).syncOnce();
+    await settled(journal);
+    // A later sync that only changes the state (the manifest check is due).
+    const firstState = localStorage.getItem(stateKey('u1'));
+    await engine(emptyServer(), () => Date.now() + 7 * 24 * 3600 * 1000).syncOnce();
+    await settled(journal);
+    expect(localStorage.getItem(stateKey('u1'))).not.toBe(firstState);
+    const entries = journalRecord().entries;
+    expect(entries[stateKey('u1')]).toBe(localStorage.getItem(stateKey('u1')));
+    expect(JSON.parse(entries[stateKey('u1')]).initialized).toBe(true);
+    expect(Object.hasOwn(entries, queueKey('u1'))).toBe(localStorage.getItem(queueKey('u1')) !== null);
+  });
+
+  it('R-28: one Library commit per sync however often the state is saved', async () => {
+    localStorage.setItem(storageKeys.library, '[]');
+    const { journal } = await boot();
+    // The desktop also runs the settings journal, which watches every Storage write.
+    const settings = await startSettingsJournal({ storage: localStorage, idb });
+    stops.push(settings.stop);
+    await settled(journal);
+    const clock = () => Date.now();
+    await engine(emptyServer(), clock).syncOnce(); // first run
+    await settled(journal);
+    // A slow transport spreads the saves of one sync over several turns.
+    const slow = { ...emptyServer(), pull: async () => { await new Promise(r => setTimeout(r, 5)); return []; } };
+    let saves = 0;
+    const realSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) { if (key === stateKey('u1')) saves += 1; return realSet.call(this, key, value); };
+    const before = journalRecord().revision;
+    try {
+      await engine(slow, clock).syncOnce();
+      await settled(journal);
+    } finally { Storage.prototype.setItem = realSet; }
+    expect(saves).toBeGreaterThan(1);
+    expect(journalRecord().revision - before).toBe(1);
   });
 });
