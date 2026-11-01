@@ -434,14 +434,29 @@ async function openSession() {
     assert.ok(Number.isSafeInteger(privileges.childPid) && privileges.childPid > 1);
     nativeAppPid = privileges.childPid;
     (evidence.nativeProcessPrivileges ||= []).push(privileges);
-    await waitFor(async () => {
-      if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
-      const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
-      if (!response.ok) return false;
-      const version = await response.json();
-      evidence.debuggingVersion = version;
-      return Boolean(version.webSocketDebuggerUrl);
-    }, 'installed WebView2 debugging endpoint');
+    // A cold first launch on a loaded Windows runner can take well over the
+    // default 20 s to open WebView2's debugging port (#289, ca3ed29). Allow
+    // 90 s on every launch and log how long it took; the readiness test is
+    // unchanged (the port answers /json/version with a debugger URL).
+    const portWaitStarted = Date.now();
+    let portPolls = 0;
+    let portReady = false;
+    try {
+      await waitFor(async () => {
+        portPolls += 1;
+        if (nativeApp.exitCode !== null) throw new Error(`Installed app exited with ${nativeApp.exitCode}`);
+        const response = await fetch('http://127.0.0.1:9222/json/version', { signal: AbortSignal.timeout(1500) });
+        if (!response.ok) return false;
+        const version = await response.json();
+        evidence.debuggingVersion = version;
+        portReady = Boolean(version.webSocketDebuggerUrl);
+        return portReady;
+      }, 'installed WebView2 debugging endpoint', 90_000);
+    } finally {
+      const elapsedMs = Date.now() - portWaitStarted;
+      (evidence.debuggingPortWaits ||= []).push({ launch: launchNumber, elapsedMs, polls: portPolls, ready: portReady });
+      console.log(`[native-acceptance] launch ${launchNumber} WebView2 debugging endpoint ${portReady ? 'ready' : 'not ready'} after ${elapsedMs} ms (${portPolls} polls)`);
+    }
     capabilities = { browserName: 'webview2', 'ms:edgeOptions': { debuggerAddress: '127.0.0.1:9222' } };
   }
   const result = await command('POST', '/session', { capabilities: { alwaysMatch: capabilities } });
