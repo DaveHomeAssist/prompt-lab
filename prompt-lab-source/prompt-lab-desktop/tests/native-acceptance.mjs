@@ -105,6 +105,14 @@ async function waitFor(probe, label, timeout = 20_000) {
   throw new Error(`Timed out: ${label}${last ? ` (${last.message})` : ''}`);
 }
 const execute = (script, args = []) => command('POST', `/session/${session}/execute/sync`, { script, args });
+// Synthetic account-sync keys (sync is off in CI), so the Windows fallback's
+// intact check compares real pl2-sync-* data instead of an empty set.
+const SYNC_FIXTURE_KEYS = {
+  'pl2-sync-device-id': 'native-acceptance-device',
+  'pl2-sync-owner': 'user_nativeAcceptance',
+  'pl2-sync-state:user_nativeAcceptance': JSON.stringify({ initialized: true, cursor: 42, clock: 7, lastManifestAt: 0, shadow: { 'prompt:native-fixture': { version: 3, hash: 'fixture' } }, oversize: {}, lost: {} }),
+  'pl2-sync-queue:user_nativeAcceptance': JSON.stringify([]),
+};
 const readLibrary = () => execute('return JSON.parse(localStorage.getItem("pl2-library") || "[]");');
 // Library row ids, the saved source row, and every account-sync key (pl2-sync-*) as stored.
 const readDurableLocalState = (parentId) => execute(`
@@ -586,18 +594,33 @@ async function exerciseFollowUp(parentId) {
     const panel = document.querySelector('[data-testid=follow-up-panel]');
     return { value: select?.value ?? null, hasOption: Boolean(select?.querySelector('option[value="' + arguments[1] + '"]')),
       savedRun: Boolean(panel?.innerText.includes('Saved run output. ')) };`, [sourceSelect, source.id]);
+  const readSavedRunExists = async () => {
+    const found = await command('POST', `/session/${session}/execute/async`, { script: `
+      const id = arguments[0], done = arguments[arguments.length - 1];
+      const request = indexedDB.open('prompt_lab_local', 4);
+      request.onerror = () => done({ error: String(request.error) });
+      request.onsuccess = () => {
+        const db = request.result;
+        const get = db.transaction('eval_runs', 'readonly').objectStore('eval_runs').get(id);
+        get.onsuccess = () => { db.close(); done({ ok: Boolean(get.result) }); };
+        get.onerror = () => { db.close(); done({ error: String(get.error) }); };
+      };`, args: [source.id] });
+    if (found.error) throw new Error(`Saved run lookup failed: ${found.error}`);
+    return found.ok;
+  };
   async function selectReopenedSource() {
     await element(sourceSelect);
-    let reseeded = false;
+    let reloaded = false;
     await waitFor(async () => {
       let state = await sourceState();
       if (!state.hasOption) {
-        if (!reseeded) {
-          reseeded = true;
-          const again = await seedSourceRun();
-          assert.equal(again.ok, true, JSON.stringify(again));
-          recordDiagnostic('followUpSourceReseeded', true);
-          // Saved runs reload when the editor tab is opened again.
+        // Re-review 4: never re-seed here. A saved run missing after the
+        // restart is an IndexedDB loss and fails the run; a run that is stored
+        // but not listed yet gets one reload of the editor's saved runs.
+        assert.equal(await readSavedRunExists(), true, 'The saved run survived the restart in IndexedDB');
+        if (!reloaded) {
+          reloaded = true;
+          recordDiagnostic('followUpSourceReloaded', true);
           await click('[data-testid="nav-library"]');
           await openCreate();
         }
@@ -640,6 +663,10 @@ async function exerciseFollowUp(parentId) {
     // back exactly: every Library row and the account-sync keys.
     assert.equal(process.platform, 'win32', 'The open draft must survive a restart outside Windows');
     assert.deepEqual(await readDurableLocalState(parent.id), durableBefore, 'Library and sync state are intact after the restart');
+    // Sync is off in CI, so launch 1 seeds fixture pl2-sync-* keys; they must
+    // still hold exactly what was written before the hard restarts.
+    assert.deepEqual(durableBefore.sync, SYNC_FIXTURE_KEYS, 'Seeded sync keys survived the hard restarts');
+    assert.equal(await readSavedRunExists(), true, 'The saved run survived the restart in IndexedDB');
     recordDiagnostic('followUpDraftReopened', { parentId: parent.id, input: await execute('return document.querySelector("[data-testid=prompt-input]")?.value || "";') });
     await click('[data-testid="nav-library"]');
     await fill('[data-testid="library-search"]', parent.title);
@@ -857,7 +884,7 @@ try {
     // The Library matrix needs the synthetic Pro entitlement in later launches.
     // Seed it with the other launch-1 settings, which every later launch already
     // depends on, rather than only in the launch that also tests persistence.
-    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); return true;');
+    await execute('localStorage.setItem("pl_telemetry_consent", "denied"); localStorage.setItem("pl2-provider-settings", JSON.stringify({provider:"ollama",ollamaBaseUrl:"http://127.0.0.1:11434",ollamaModel:"promptlab-fixture"})); localStorage.setItem("pl2-billing", JSON.stringify({plan:"pro",status:"active",productName:"Prompt Lab Pro"})); for (const [key, value] of Object.entries(arguments[0])) localStorage.setItem(key, value); return true;', [SYNC_FIXTURE_KEYS]);
     await refreshPage();
     await startFixture('success');
     await fill('[data-testid="prompt-input"]', 'Summarize this synthetic native acceptance note.');
