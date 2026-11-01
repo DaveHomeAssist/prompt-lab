@@ -23,7 +23,7 @@ redirectAppPathToHash();
 // its own chunk. Signed-out phones get the sign-in screen without downloading
 // and parsing it. When Clerk's session cookie says someone is probably signed
 // in, start fetching it now so it loads alongside Clerk instead of after.
-const loadApp = () => import('../../prompt-lab-extension/src/App');
+import { loadApp } from '@promptlab/workbench-loader';
 const App = React.lazy(loadApp);
 const likelySignedIn = typeof document !== 'undefined' && hasClerkSessionHint(document.cookie);
 if (likelySignedIn) loadApp().catch(() => {});
@@ -215,13 +215,17 @@ function AuthGate() {
 if (!CLERK_KEY) {
   if (import.meta.env.DEV) {
     console.warn('[PromptLab] Clerk key missing - running unauthenticated in dev mode');
+    // No sign-in step here, so wait for the workbench before the first render,
+    // as before AUD-007. On the dev server the loader resolves at once (see
+    // workbenchLoader.dev.js), so the app is mounted by the time the page has
+    // loaded. Production never takes this branch, so its signed-out path still
+    // renders without the workbench.
+    const { default: Workbench } = await loadApp();
     ReactDOM.createRoot(document.getElementById('root')).render(
       <ErrorBoundary>
-        <React.Suspense fallback={<LoadingScreen />}>
-          <HashRouter>
-            <App {...landingProps} />
-          </HashRouter>
-        </React.Suspense>
+        <HashRouter>
+          <Workbench {...landingProps} />
+        </HashRouter>
       </ErrorBoundary>
     );
   } else {
