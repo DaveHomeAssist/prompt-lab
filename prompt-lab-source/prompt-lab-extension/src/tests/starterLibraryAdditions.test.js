@@ -56,7 +56,9 @@ describe('Agent Briefs starter library', () => {
   });
 
   it('keeps private addresses out of starter content', () => {
+    // The only address allowed in shipped starter content is the public support email.
     const text = JSON.stringify(seedData);
-    expect(text).not.toMatch(/DaveRobertson9353/i);
+    const addresses = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi) || [];
+    expect(addresses.filter((address) => address.toLowerCase() !== 'avbydave@gmail.com')).toEqual([]);
   });
 });
