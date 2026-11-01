@@ -40,3 +40,19 @@ test('billing preflight rejects unlisted origins', async () => {
 
   assert.equal(response.status, 403);
 });
+
+test('billing rejections never send Access-Control-Allow-Origin, including for Origin: null (security pass 2026-11-01)', async () => {
+  const handler = await loadHandler();
+  for (const origin of ['https://evil.example', 'null']) {
+    for (const method of ['OPTIONS', 'GET']) {
+      const response = await handler(new Request('https://promptlab.tools/api/billing/license', {
+        method,
+        headers: { Origin: origin, 'Access-Control-Request-Headers': 'Authorization' },
+      }));
+      assert.equal(response.status, 403, `${method} ${origin}`);
+      assert.equal(response.headers.get('Access-Control-Allow-Origin'), null, `${method} ${origin} ACAO`);
+      assert.equal(response.headers.get('Access-Control-Allow-Headers'), null, `${method} ${origin} ACAH`);
+      assert.equal(response.headers.get('Vary'), 'Origin');
+    }
+  }
+});
