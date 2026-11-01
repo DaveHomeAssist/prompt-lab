@@ -2265,8 +2265,8 @@ section[id] { scroll-margin-top: 88px; }
           <li>Batch test-case runs</li>
           <li>Collections for grouped libraries</li>
         </ul>
-        <a href="/app?upgrade=pro&amp;period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-period="annual" data-analytics-id="landing.pricing.pro">Continue to PromptLab &rarr;</a>
-        <p class="pricing-note">Opens Prompt Lab and asks you to confirm before checkout. Selecting a plan here never charges you.</p>
+        <a href="/app?upgrade=pro&amp;period=annual&amp;source=landing-pricing" class="pricing-btn filled" id="proCta" data-period="annual" data-analytics-id="landing.pricing.pro">Get Pro, $79/year &rarr;</a>
+        <p class="pricing-note">You'll confirm in Prompt Lab before Stripe Checkout. Nothing is charged here.</p>
       </div>
     </div>
   </div>
@@ -2749,6 +2749,8 @@ section[id] { scroll-margin-top: 88px; }
       proPrice.textContent = '9';
       proPeriod.textContent = 'per month';
     }
+    // CA-03: the Pro CTA names the selected plan and its price.
+    proCta.textContent = period === 'annual' ? 'Get Pro, $79/year \u2192' : 'Get Pro, $9/month \u2192';
     proCta.href = '/app?upgrade=pro&period=' + period + '&source=landing-pricing';
     proCta.dataset.period = period;
     if (event) {
