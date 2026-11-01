@@ -719,6 +719,9 @@ export default function App({
   // ── Keyboard shortcuts (driven by navigationRegistry) ──
   useEffect(() => {
     const h = e => {
+      // A focused control that already handled the key (the Scratch editor's
+      // Cmd/Ctrl+K link, a dialog's own Escape) wins over the global map.
+      if (e.defaultPrevented) return;
       const shortcut = matchShortcut(e);
       if (!shortcut) return;
       e.preventDefault();
