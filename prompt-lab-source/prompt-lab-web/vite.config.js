@@ -1,6 +1,7 @@
 import { checkVersions } from '../scripts/check-version-consistency.mjs';
 import { buildIdentity } from '../scripts/build-identity.mjs';
 import { diagnosticSourceMaps } from '../scripts/diagnostic-sourcemaps.mjs';
+import { previewClerkCsp } from '../scripts/preview-clerk-csp.mjs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'path';
@@ -10,7 +11,7 @@ if (versionErrors.length) throw new Error(versionErrors.join('\n'));
 
 export default defineConfig({
   appType: 'mpa',
-  plugins: [react(), diagnosticSourceMaps('web')],
+  plugins: [react(), diagnosticSourceMaps('web'), previewClerkCsp()],
   define: {
     ...buildIdentity(),
     'import.meta.env.VITE_WEB_MODE': JSON.stringify('true'),
